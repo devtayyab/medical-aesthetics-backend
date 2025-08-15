@@ -43,7 +43,7 @@ export class FirebaseService {
           title,
           body: message,
         },
-        data: data ? JSON.stringify(data) : undefined,
+        data: data ? data : {},  // Ensure data is an object
         token,
       };
 
@@ -73,11 +73,11 @@ export class FirebaseService {
           title,
           body: message,
         },
-        data: data ? JSON.stringify(data) : undefined,
+        data: data ? JSON.stringify(data) : {},
         tokens,
       };
 
-      const response = await admin.messaging().sendMulticast(payload);
+      const response = await admin.messaging().sendEachForMulticast(payload);
       this.logger.log(`Batch push notifications sent: ${response.successCount}/${tokens.length}`);
       return response;
     } catch (error) {

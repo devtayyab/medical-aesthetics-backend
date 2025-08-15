@@ -23,7 +23,7 @@ export class QueueService {
       {
         delay: reminderTime.getTime() - Date.now(),
         attempts: 3,
-        backoff: 'exponential',
+        backoff: { type: 'exponential', delay: 1000 }, 
       },
     );
     
@@ -42,7 +42,7 @@ export class QueueService {
       {
         delay: followUpTime.getTime() - Date.now(),
         attempts: 3,
-        backoff: 'exponential',
+        backoff: { type: 'exponential', delay: 1000 }, 
       },
     );
     
@@ -77,7 +77,7 @@ export class QueueService {
       {
         repeat: { cron: cronExpression },
         attempts: 3,
-        backoff: 'exponential',
+        backoff: { type: 'exponential', delay: 1000 }, 
       },
     );
     

@@ -29,7 +29,7 @@ export class EventHandlersService {
       type: TaskType.FOLLOW_UP_CALL,
       customerId: lead.id,
       assigneeId: lead.assignedSalesId,
-      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toDateString(), // 24 hours from now
     });
 
     // Send notification to assigned salesperson
@@ -98,7 +98,7 @@ export class EventHandlersService {
         type: TaskType.TREATMENT_FOLLOW_UP,
         customerId: appointment.clientId,
         assigneeId: appointment.providerId,
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days later
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toDateString(), // 7 days later
       });
     }
 

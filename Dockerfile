@@ -1,13 +1,13 @@
-FROM node:18-alpine
+FROM node:20-alpine
+
+RUN corepack enable
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production
+COPY package.json pnpm-lock.yaml ./
+
+RUN pnpm install --prod --frozen-lockfile
 
 COPY . .
-RUN npm run build
 
-EXPOSE 3000
-
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/main.js"]
