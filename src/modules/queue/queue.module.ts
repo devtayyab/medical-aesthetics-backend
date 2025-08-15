@@ -1,0 +1,28 @@
+import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bull';
+import { ScheduleModule } from '@nestjs/schedule';
+import { QueueService } from './queue.service';
+import { ScheduledTasksService } from './scheduled-tasks.service';
+import { ReminderProcessor } from './processors/reminder.processor';
+import { FollowUpProcessor } from './processors/followup.processor';
+import { RecurringAppointmentProcessor } from './processors/recurring-appointment.processor';
+
+@Module({
+  imports: [
+    BullModule.registerQueue(
+      { name: 'reminders' },
+      { name: 'followups' },
+      { name: 'recurring' },
+    ),
+    ScheduleModule,
+  ],
+  providers: [
+    QueueService,
+    ScheduledTasksService,
+    ReminderProcessor,
+    FollowUpProcessor,
+    RecurringAppointmentProcessor,
+  ],
+  exports: [QueueService],
+})
+export class QueueModule {}
