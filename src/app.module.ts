@@ -21,6 +21,8 @@ import { LoyaltyModule } from './modules/loyalty/loyalty.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { QueueModule } from './modules/queue/queue.module';
+import { EventsModule } from './modules/events/events.module';
 
 @Module({
   imports: [
@@ -57,6 +59,8 @@ import { AuditModule } from './modules/audit/audit.module';
     NotificationsModule,
     AdminModule,
     AuditModule,
+    QueueModule,
+    EventsModule,
   ],
   controllers: [AppController],
 })

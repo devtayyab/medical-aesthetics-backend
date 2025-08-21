@@ -6,6 +6,9 @@ import { ScheduledTasksService } from './scheduled-tasks.service';
 import { ReminderProcessor } from './processors/reminder.processor';
 import { FollowUpProcessor } from './processors/followup.processor';
 import { RecurringAppointmentProcessor } from './processors/recurring-appointment.processor';
+import { BookingsModule } from '../bookings/bookings.module';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { TasksModule } from '../tasks/tasks.module';
 
 @Module({
   imports: [
@@ -15,6 +18,9 @@ import { RecurringAppointmentProcessor } from './processors/recurring-appointmen
       { name: 'recurring' },
     ),
     ScheduleModule,
+    BookingsModule,
+    LoyaltyModule,
+    TasksModule,
   ],
   providers: [
     QueueService,
