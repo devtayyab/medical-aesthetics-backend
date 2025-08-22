@@ -1,4 +1,4 @@
-@@ .. @@
+
    "scripts": {
      "dev": "vite",
      "build": "tsc && vite build",
