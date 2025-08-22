@@ -39,43 +39,57 @@ const variantStyles = {
   primary: css`
     background-color: var(--color-primary);
     color: var(--color-white);
+    box-shadow: var(--shadow-button);
+    font-weight: var(--font-weight-semibold);
     
     &:hover:not(:disabled) {
       background-color: var(--color-primary-dark);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-lg);
     }
   `,
   secondary: css`
     background-color: var(--color-secondary);
     color: var(--color-white);
+    box-shadow: var(--shadow-button);
+    font-weight: var(--font-weight-semibold);
     
     &:hover:not(:disabled) {
       background-color: var(--color-secondary-dark);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-lg);
     }
   `,
   outline: css`
     background-color: transparent;
     color: var(--color-primary);
     border-color: var(--color-primary);
+    font-weight: var(--font-weight-semibold);
     
     &:hover:not(:disabled) {
       background-color: var(--color-primary);
       color: var(--color-white);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-button);
     }
   `,
   ghost: css`
     background-color: transparent;
-    color: var(--color-gray-700);
+    color: var(--color-medical-text);
+    font-weight: var(--font-weight-medium);
     
     &:hover:not(:disabled) {
-      background-color: var(--color-gray-100);
+      background-color: var(--color-medical-bg);
     }
   `,
   danger: css`
     background-color: var(--color-error);
     color: var(--color-white);
+    font-weight: var(--font-weight-semibold);
     
     &:hover:not(:disabled) {
       background-color: #dc2626;
+      transform: translateY(-1px);
     }
   `,
 };

@@ -23,7 +23,7 @@ const fullWidthStyle = css`
 const labelStyle = css`
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-gray-700);
+  color: var(--color-medical-text);
 `;
 
 const inputWrapperStyle = css`
@@ -35,26 +35,27 @@ const inputWrapperStyle = css`
 const inputStyle = css`
   width: 100%;
   padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-gray-300);
+  border: 1px solid var(--color-medical-border);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-base);
   transition: all var(--transition-fast);
   background-color: var(--color-white);
+  color: var(--color-medical-text);
   
   &:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgb(99 102 241 / 0.1);
+    box-shadow: 0 0 0 3px rgba(124, 179, 66, 0.1);
   }
   
   &:disabled {
-    background-color: var(--color-gray-50);
-    color: var(--color-gray-500);
+    background-color: var(--color-medical-bg);
+    color: var(--color-medical-text-light);
     cursor: not-allowed;
   }
   
   &::placeholder {
-    color: var(--color-gray-400);
+    color: var(--color-medical-text-light);
   }
 `;
 
@@ -71,7 +72,7 @@ const inputErrorStyle = css`
   
   &:focus {
     border-color: var(--color-error);
-    box-shadow: 0 0 0 3px rgb(239 68 68 / 0.1);
+    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
   }
 `;
 
@@ -79,7 +80,7 @@ const iconStyle = css`
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--color-gray-400);
+  color: var(--color-medical-text-light);
   pointer-events: none;
 `;
 
@@ -95,7 +96,7 @@ const rightIconStyle = css`
 
 const helperTextStyle = css`
   font-size: var(--font-size-xs);
-  color: var(--color-gray-500);
+  color: var(--color-medical-text-light);
 `;
 
 const errorTextStyle = css`

@@ -15,13 +15,15 @@ const baseCardStyle = css`
 
 const variantStyles = {
   default: css`
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--color-medical-border);
   `,
   elevated: css`
     box-shadow: var(--shadow-lg);
+    border: 1px solid var(--color-medical-border);
   `,
   outlined: css`
-    border: 1px solid var(--color-gray-200);
+    border: 1px solid var(--color-medical-border);
     box-shadow: none;
   `,
 };
@@ -45,7 +47,7 @@ const hoverableStyle = css`
   cursor: pointer;
   
   &:hover {
-    transform: translateY(-2px);
+    transform: translateY(-4px);
     box-shadow: var(--shadow-xl);
   }
 `;

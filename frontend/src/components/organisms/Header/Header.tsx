@@ -10,10 +10,11 @@ import { logout } from '@/store/slices/authSlice';
 
 const headerStyle = css`
   background-color: var(--color-white);
-  border-bottom: 1px solid var(--color-gray-200);
+  border-bottom: 1px solid var(--color-medical-border);
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
+  box-shadow: var(--shadow-sm);
 `;
 
 const containerStyle = css`
@@ -32,9 +33,10 @@ const containerStyle = css`
 
 const logoStyle = css`
   font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-extrabold);
   color: var(--color-primary);
   text-decoration: none;
+  letter-spacing: -0.025em;
   
   &:hover {
     color: var(--color-primary-dark);
@@ -106,9 +108,11 @@ const userMenuButtonStyle = css`
   cursor: pointer;
   border-radius: var(--radius-lg);
   transition: background-color var(--transition-fast);
+  color: var(--color-medical-text);
+  font-weight: var(--font-weight-medium);
   
   &:hover {
-    background-color: var(--color-gray-100);
+    background-color: var(--color-medical-bg);
   }
 `;
 
@@ -117,9 +121,9 @@ const userMenuDropdownStyle = css`
   top: 100%;
   right: 0;
   background-color: var(--color-white);
-  border: 1px solid var(--color-gray-200);
+  border: 1px solid var(--color-medical-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
   min-width: 200px;
   z-index: var(--z-dropdown);
   padding: var(--spacing-sm);
@@ -136,10 +140,11 @@ const userMenuItemStyle = css`
   border-radius: var(--radius-md);
   transition: background-color var(--transition-fast);
   text-decoration: none;
-  color: var(--color-gray-700);
+  color: var(--color-medical-text);
+  font-weight: var(--font-weight-medium);
   
   &:hover {
-    background-color: var(--color-gray-100);
+    background-color: var(--color-medical-bg);
   }
 `;
 
@@ -151,9 +156,10 @@ const notificationButtonStyle = css`
   cursor: pointer;
   border-radius: var(--radius-lg);
   transition: background-color var(--transition-fast);
+  color: var(--color-medical-text);
   
   &:hover {
-    background-color: var(--color-gray-100);
+    background-color: var(--color-medical-bg);
   }
 `;
 
@@ -201,7 +207,7 @@ export const Header: React.FC = () => {
     <header className={headerStyle}>
       <div className={containerStyle}>
         <Link to="/" className={logoStyle}>
-          BeautyBook
+          MedAesthetics
         </Link>
         
         <div className={searchContainerStyle}>

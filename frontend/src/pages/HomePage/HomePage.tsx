@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { css } from '@emotion/css';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Search, MapPin, Star, TrendingUp } from 'lucide-react';
+import { Search, MapPin, Star, TrendingUp, CheckCircle, Calendar, UserCheck } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Card } from '@/components/atoms/Card/Card';
@@ -12,34 +12,54 @@ import type { RootState, AppDispatch } from '@/store';
 import type { Clinic } from '@/types';
 
 const heroStyle = css`
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-  color: var(--color-white);
-  padding: var(--spacing-3xl) 0;
+  background: linear-gradient(135deg, rgba(248, 249, 250, 0.9) 0%, rgba(255, 255, 255, 0.95) 100%),
+              url('https://images.pexels.com/photos/4173251/pexels-photo-4173251.jpeg?auto=compress&cs=tinysrgb&w=1200') center/cover;
+  color: var(--color-medical-text);
+  padding: var(--spacing-4xl) 0;
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
   text-align: center;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.85);
+    z-index: 1;
+  }
 `;
 
 const heroContentStyle = css`
+  position: relative;
+  z-index: 2;
   max-width: 800px;
   margin: 0 auto;
   padding: 0 var(--spacing-md);
 `;
 
 const heroTitleStyle = css`
-  font-size: var(--font-size-4xl);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-extrabold);
   margin-bottom: var(--spacing-lg);
   line-height: var(--line-height-tight);
+  color: var(--color-medical-text);
   
   @media (max-width: 768px) {
-    font-size: var(--font-size-3xl);
+    font-size: var(--font-size-4xl);
   }
 `;
 
 const heroSubtitleStyle = css`
   font-size: var(--font-size-xl);
   margin-bottom: var(--spacing-2xl);
-  opacity: 0.9;
+  color: var(--color-medical-text-light);
   line-height: var(--line-height-normal);
+  font-weight: var(--font-weight-normal);
   
   @media (max-width: 768px) {
     font-size: var(--font-size-lg);
@@ -48,11 +68,12 @@ const heroSubtitleStyle = css`
 
 const searchBoxStyle = css`
   background-color: var(--color-white);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-3xl);
   padding: var(--spacing-lg);
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--shadow-2xl);
   max-width: 600px;
   margin: 0 auto;
+  border: 1px solid var(--color-medical-border);
 `;
 
 const searchFormStyle = css`
@@ -65,7 +86,8 @@ const searchFormStyle = css`
 `;
 
 const sectionStyle = css`
-  padding: var(--spacing-3xl) 0;
+  padding: var(--spacing-4xl) 0;
+  background-color: var(--color-medical-bg);
 `;
 
 const containerStyle = css`
@@ -84,17 +106,71 @@ const sectionHeaderStyle = css`
 `;
 
 const sectionTitleStyle = css`
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-gray-900);
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-medical-text);
   margin-bottom: var(--spacing-md);
 `;
 
 const sectionSubtitleStyle = css`
   font-size: var(--font-size-lg);
-  color: var(--color-gray-600);
+  color: var(--color-medical-text-light);
   max-width: 600px;
   margin: 0 auto;
+  font-weight: var(--font-weight-normal);
+`;
+
+const stepsStyle = css`
+  background-color: var(--color-white);
+  padding: var(--spacing-4xl) 0;
+`;
+
+const stepsGridStyle = css`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-2xl);
+  margin-top: var(--spacing-2xl);
+`;
+
+const stepCardStyle = css`
+  text-align: center;
+  padding: var(--spacing-2xl);
+  background: var(--color-white);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-medical-border);
+  transition: all var(--transition-normal);
+  
+  &:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-xl);
+  }
+`;
+
+const stepIconStyle = css`
+  width: 80px;
+  height: 80px;
+  background: var(--color-primary);
+  border-radius: var(--radius-2xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--spacing-lg);
+  color: var(--color-white);
+  box-shadow: var(--shadow-button);
+`;
+
+const stepTitleStyle = css`
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-medical-text);
+  margin-bottom: var(--spacing-sm);
+`;
+
+const stepDescriptionStyle = css`
+  font-size: var(--font-size-base);
+  color: var(--color-medical-text-light);
+  line-height: var(--line-height-relaxed);
 `;
 
 const categoriesGridStyle = css`
@@ -109,34 +185,39 @@ const categoryCardStyle = css`
   padding: var(--spacing-xl);
   cursor: pointer;
   transition: transform var(--transition-fast);
+  background: var(--color-white);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--color-medical-border);
   
   &:hover {
-    transform: translateY(-4px);
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
   }
 `;
 
 const categoryIconStyle = css`
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  border-radius: var(--radius-2xl);
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto var(--spacing-md);
   color: var(--color-white);
+  box-shadow: var(--shadow-button);
 `;
 
 const categoryTitleStyle = css`
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
+  color: var(--color-medical-text);
   margin-bottom: var(--spacing-sm);
 `;
 
 const categoryDescriptionStyle = css`
   font-size: var(--font-size-sm);
-  color: var(--color-gray-600);
+  color: var(--color-medical-text-light);
 `;
 
 const clinicsGridStyle = css`
@@ -146,8 +227,9 @@ const clinicsGridStyle = css`
 `;
 
 const statsStyle = css`
-  background-color: var(--color-gray-50);
-  padding: var(--spacing-2xl) 0;
+  background: var(--color-primary);
+  padding: var(--spacing-4xl) 0;
+  color: var(--color-white);
 `;
 
 const statsGridStyle = css`
@@ -159,52 +241,62 @@ const statsGridStyle = css`
 
 const statNumberStyle = css`
   font-size: var(--font-size-4xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-primary);
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-white);
   margin-bottom: var(--spacing-sm);
 `;
 
 const statLabelStyle = css`
   font-size: var(--font-size-lg);
-  color: var(--color-gray-600);
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: var(--font-weight-medium);
 `;
+
+const treatmentSteps = [
+  {
+    id: 'choose',
+    name: 'Choose a Category',
+    description: 'Dermatology, Plastic Surgery, Skin Treatments, or Aesthetics',
+    icon: <Search size={32} />,
+  },
+  {
+    id: 'schedule',
+    name: 'Pick Date & Time',
+    description: 'Select the day and time that works best for you',
+    icon: <Calendar size={32} />,
+  },
+  {
+    id: 'confirm',
+    name: 'Confirm Your Appointment',
+    description: 'Book your consultation or treatment with a certified clinic',
+    icon: <CheckCircle size={32} />,
+  },
+];
 
 const categories = [
   {
-    id: 'facial',
-    name: 'Facial Treatments',
-    description: 'Rejuvenating facials and skincare',
+    id: 'dermatology',
+    name: 'Dermatology',
+    description: 'Skin health and medical treatments',
+    icon: '🔬',
+  },
+  {
+    id: 'plastic-surgery',
+    name: 'Plastic Surgery',
+    description: 'Cosmetic and reconstructive procedures',
     icon: '✨',
   },
   {
-    id: 'massage',
-    name: 'Massage Therapy',
-    description: 'Relaxing and therapeutic massages',
-    icon: '💆',
+    id: 'aesthetics',
+    name: 'Aesthetics',
+    description: 'Non-surgical beauty treatments',
+    icon: '💫',
   },
   {
-    id: 'nails',
-    name: 'Nail Care',
-    description: 'Manicures, pedicures, and nail art',
-    icon: '💅',
-  },
-  {
-    id: 'hair',
-    name: 'Hair Services',
-    description: 'Cuts, styling, and treatments',
-    icon: '💇',
-  },
-  {
-    id: 'body',
-    name: 'Body Treatments',
-    description: 'Body wraps, scrubs, and contouring',
-    icon: '🧴',
-  },
-  {
-    id: 'laser',
-    name: 'Laser Treatments',
-    description: 'Hair removal and skin resurfacing',
-    icon: '⚡',
+    id: 'wellness',
+    name: 'Wellness',
+    description: 'Holistic health and wellness',
+    icon: '🌿',
   },
 ];
 
@@ -243,32 +335,56 @@ export const HomePage: React.FC = () => {
       <section className={heroStyle}>
         <div className={heroContentStyle}>
           <h1 className={heroTitleStyle}>
-            Discover Your Perfect Beauty Experience
+            Your Skin. Your Confidence. Your Clinic.
           </h1>
           <p className={heroSubtitleStyle}>
-            Book appointments with top-rated beauty clinics and wellness centers near you
+            Find Trusted Dermatologists & Aesthetic Clinics Near You
           </p>
           
           <div className={searchBoxStyle}>
             <form onSubmit={handleSearch} className={searchFormStyle}>
               <Input
-                placeholder="Search treatments, services..."
+                placeholder="Services"
                 leftIcon={<Search size={16} />}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 fullWidth
               />
               <Input
-                placeholder="Enter location"
+                placeholder="Location"
                 leftIcon={<MapPin size={16} />}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 fullWidth
               />
-              <Button type="submit" size="lg">
+              <Button type="submit" size="lg" style={{ backgroundColor: var(--color-primary) }}>
                 Search
               </Button>
             </form>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className={stepsStyle}>
+        <div className={containerStyle}>
+          <div className={sectionHeaderStyle}>
+            <h2 className={sectionTitleStyle}>How It Works</h2>
+            <h3 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-medical-text)', marginBottom: 'var(--spacing-md)' }}>
+              3 Steps to Your Treatment
+            </h3>
+          </div>
+          
+          <div className={stepsGridStyle}>
+            {treatmentSteps.map((step) => (
+              <div key={step.id} className={stepCardStyle}>
+                <div className={stepIconStyle}>
+                  {step.icon}
+                </div>
+                <h3 className={stepTitleStyle}>{step.name}</h3>
+                <p className={stepDescriptionStyle}>{step.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -287,7 +403,7 @@ export const HomePage: React.FC = () => {
             {categories.map((category) => (
               <Card
                 key={category.id}
-                variant="outlined"
+                variant="default"
                 hoverable
                 className={categoryCardStyle}
                 onClick={() => handleCategoryClick(category.id)}
@@ -309,7 +425,7 @@ export const HomePage: React.FC = () => {
           <div className={sectionHeaderStyle}>
             <h2 className={sectionTitleStyle}>Featured Clinics</h2>
             <p className={sectionSubtitleStyle}>
-              Discover top-rated beauty clinics and wellness centers
+              Discover top-rated medical aesthetic clinics and dermatology centers
             </p>
           </div>
           
@@ -342,20 +458,20 @@ export const HomePage: React.FC = () => {
         <div className={containerStyle}>
           <div className={statsGridStyle}>
             <div>
-              <div className={statNumberStyle}>10,000+</div>
-              <div className={statLabelStyle}>Happy Clients</div>
+              <div className={statNumberStyle}>25,000+</div>
+              <div className={statLabelStyle}>Happy Patients</div>
             </div>
             <div>
-              <div className={statNumberStyle}>500+</div>
-              <div className={statLabelStyle}>Partner Clinics</div>
+              <div className={statNumberStyle}>1,200+</div>
+              <div className={statLabelStyle}>Certified Clinics</div>
             </div>
             <div>
-              <div className={statNumberStyle}>50+</div>
-              <div className={statLabelStyle}>Treatment Types</div>
+              <div className={statNumberStyle}>150+</div>
+              <div className={statLabelStyle}>Medical Procedures</div>
             </div>
             <div>
               <div className={statNumberStyle}>4.9</div>
-              <div className={statLabelStyle}>Average Rating</div>
+              <div className={statLabelStyle}>Patient Satisfaction</div>
             </div>
           </div>
         </div>
