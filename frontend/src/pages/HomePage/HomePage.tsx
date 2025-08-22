@@ -357,9 +357,14 @@ export const HomePage: React.FC = () => {
                 onChange={(e) => setLocation(e.target.value)}
                 fullWidth
               />
-              <Button type="submit" size="lg" style={{ backgroundColor: var(--color-primary) }}>
-                Search
-              </Button>
+              <Button
+              type="submit"
+              size="lg"
+              style={{ backgroundColor: "var(--color-primary)" }}
+        >
+          Search
+          </Button>
+  
             </form>
           </div>
         </div>
