@@ -1,4 +1,6 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import { store } from '@/store';
+import { setTokens, logout } from '@/store/slices/authSlice';
 import type { User, Clinic, Service, Appointment, TimeSlot, LoyaltyBalance, Notification } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -12,7 +14,8 @@ const api = axios.create({
 
 // Request interceptor to add auth token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
+  const state = store.getState();
+  const token = state.auth.accessToken || localStorage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -22,24 +25,23 @@ api.interceptors.request.use((config) => {
 // Response interceptor to handle token refresh
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      const refreshToken = localStorage.getItem('refreshToken');
+  async (error: AxiosError) => {
+    const originalRequest = error.config as any;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const state = store.getState();
+      const refreshToken = state.auth.refreshToken || localStorage.getItem('refreshToken');
       if (refreshToken) {
         try {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
-          const { accessToken } = response.data;
-          localStorage.setItem('accessToken', accessToken);
-          
-          // Retry the original request
-          error.config.headers.Authorization = `Bearer ${accessToken}`;
-          return api.request(error.config);
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+          const { accessToken, refreshToken: newRefreshToken } = response.data;
+          store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken }));
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          return api(originalRequest);
         } catch (refreshError) {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
+          store.dispatch(logout());
           window.location.href = '/login';
+          return Promise.reject(refreshError);
         }
       }
     }
@@ -128,6 +130,10 @@ export const userAPI = {
   exportData: () => api.get('/users/me/export'),
   
   deleteData: () => api.post('/users/me/delete'),
+  
+  // New endpoint to fetch all users (for admin use)
+  getAllUsers: (params: { limit?: number; offset?: number; role?: string }) =>
+    api.get('/users', { params }),
 };
 
 export const loyaltyAPI = {

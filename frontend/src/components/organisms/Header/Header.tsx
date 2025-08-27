@@ -5,7 +5,7 @@ import { Search, User, Bell, Menu, X } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
-import type { RootState } from '@/store';
+import type { RootState, AppDispatch } from '@/store';
 import { logout } from '@/store/slices/authSlice';
 
 const headerStyle = css`
@@ -149,6 +149,7 @@ const userMenuItemStyle = css`
 `;
 
 const notificationButtonStyle = css`
+  display: flex;
   position: relative;
   padding: var(--spacing-sm);
   border: none;
@@ -185,9 +186,11 @@ export const Header: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  // const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  console.log("user", user)
   const { unreadCount } = useSelector((state: RootState) => state.notifications);
 
   const handleSearch = (e: React.FormEvent) => {
