@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "@/store/slices/authSlice";
@@ -23,7 +23,8 @@ const loginContainerStyle = css`
 const loginCardStyle = css`
   width: 100%;
   max-width: 540px;
-  padding: var(--spacing-2xl);
+  // padding: var(--spacing-2xl);
+  padding: 48px 72px;
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-xl);
   background: var(--color-white);
@@ -71,6 +72,12 @@ export const Login: React.FC = () => {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
+
   const validateForm = () => {
     let isValid = true;
     setEmailError("");
@@ -93,16 +100,10 @@ export const Login: React.FC = () => {
 
     try {
       await dispatch(login({ email, password })).unwrap();
-      navigate("/");
     } catch (err) {
       // Error handled in Redux
     }
   };
-
-  if (isAuthenticated) {
-    navigate("/");
-    return null;
-  }
 
   return (
     <div className={loginContainerStyle}>
@@ -111,22 +112,26 @@ export const Login: React.FC = () => {
         {error && <p className={errorStyle}>{error}</p>}
         <form onSubmit={handleSubmit} className={formStyle}>
           <div>
+            <label htmlFor="email">Email</label>
             <Input
               type="email"
-              placeholder="Email"
+              // placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               fullWidth
+              style={{ padding: "14px" }}
             />
             {emailError && <p className={errorStyle}>{emailError}</p>}
           </div>
-          <div>
+          <div style={{ marginBottom: "20px" }}>
+            <label htmlFor="password">Password</label>
             <Input
               type="password"
-              placeholder="Password"
+              // placeholder="Enter Your Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               fullWidth
+              style={{ padding: "14px" }}
             />
             {passwordError && <p className={errorStyle}>{passwordError}</p>}
           </div>
@@ -134,7 +139,12 @@ export const Login: React.FC = () => {
             type="submit"
             fullWidth
             disabled={isLoading}
-            style={{ backgroundColor: "var(--color-primary)" }}
+            style={{
+              backgroundColor: "#CBFF38",
+              color: "#33373F",
+              padding: "14px",
+              borderRadius: "12px",
+            }}
           >
             {isLoading ? "Logging in..." : "Login"}
           </Button>

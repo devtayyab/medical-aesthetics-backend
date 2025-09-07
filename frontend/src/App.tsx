@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,12 +6,14 @@ import {
   useLocation,
   Link,
 } from "react-router-dom";
-import { Provider } from "react-redux";
+import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "@/store";
+import { fetchUser } from "@/store/slices/authSlice";
 import { Header } from "@/components/organisms/Header/Header";
 import { HomePage } from "@/pages/HomePage/HomePage";
 import { Login } from "@/pages/Login/Login";
 import { Register } from "@/pages/Register/Register";
+import type { RootState, AppDispatch } from "@/store";
 import { css } from "@emotion/css";
 import "@/styles/globals.css";
 
@@ -37,7 +39,6 @@ const authContainerStyle = css`
 const authLogoStyle = css`
   font-size: 2rem;
   font-weight: 500;
-  // font-weight: 600;
   color: var(--color-white);
   text-decoration: none;
   letter-spacing: -0.025em;
@@ -57,18 +58,33 @@ const AuthHeader: React.FC = () => (
 
 function AppContent() {
   const location = useLocation();
+  const dispatch = useDispatch<AppDispatch>();
+  const { isAuthenticated, isLoading, user, initializing } = useSelector(
+    (state: RootState) => state.auth
+  );
   const isAuthPage =
     location.pathname === "/login" || location.pathname === "/register";
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (accessToken && !user && !isLoading) {
+      dispatch(fetchUser());
+    }
+  }, [dispatch, user, isLoading]);
 
   return (
     <div className="App">
       {isAuthPage ? <AuthHeader /> : <Header />}
       <main>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-        </Routes>
+        {initializing ? (
+          <div>Loading...</div>
+        ) : (
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Routes>
+        )}
       </main>
     </div>
   );
