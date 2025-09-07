@@ -71,6 +71,11 @@ export const Login: React.FC = () => {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  if (isAuthenticated) {
+    navigate("/", { replace: true });
+    return null;
+  }
+
   const validateForm = () => {
     let isValid = true;
     setEmailError("");
@@ -93,16 +98,11 @@ export const Login: React.FC = () => {
 
     try {
       await dispatch(login({ email, password })).unwrap();
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (err) {
-      // Error handled in Redux
+      console.log("Login error:", err);
     }
   };
-
-  if (isAuthenticated) {
-    navigate("/");
-    return null;
-  }
 
   return (
     <div className={loginContainerStyle}>

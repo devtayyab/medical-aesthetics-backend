@@ -1,21 +1,23 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   useLocation,
   Link,
+  Navigate,
 } from "react-router-dom";
-import { Provider } from "react-redux";
-import { store } from "@/store";
+import { Provider, useDispatch, useSelector } from "react-redux";
+import { store, AppDispatch } from "@/store";
+import { restoreSession } from "@/store/slices/authSlice";
 import { Header } from "@/components/organisms/Header/Header";
 import { HomePage } from "@/pages/HomePage/HomePage";
 import { Login } from "@/pages/Login/Login";
 import { Register } from "@/pages/Register/Register";
 import { css } from "@emotion/css";
+import type { RootState } from "@/store";
 import "@/styles/globals.css";
 
-// AuthHeader styles
 const authHeaderStyle = css`
   background-color: #203400;
   border-bottom: 1px solid var(--color-medical-border, #e5e7eb);
@@ -37,12 +39,19 @@ const authContainerStyle = css`
 const authLogoStyle = css`
   font-size: 2rem;
   font-weight: 500;
-  // font-weight: 600;
   color: var(--color-white);
   text-decoration: none;
   letter-spacing: -0.025em;
   display: flex;
   align-items: center;
+`;
+
+const loadingStyle = css`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: var(--color-primary);
 `;
 
 const AuthHeader: React.FC = () => (
@@ -57,8 +66,37 @@ const AuthHeader: React.FC = () => (
 
 function AppContent() {
   const location = useLocation();
+  const dispatch = useDispatch<AppDispatch>();
+  const { isLoading, isAuthenticated, user, refreshToken } = useSelector(
+    (state: RootState) => state.auth
+  );
   const isAuthPage =
     location.pathname === "/login" || location.pathname === "/register";
+
+  useEffect(() => {
+    console.log(
+      "App: Dispatching restoreSession, localStorage refreshToken:",
+      localStorage.getItem("refreshToken")
+        ? `${localStorage.getItem("refreshToken")!.substring(0, 20)}...`
+        : "null"
+    );
+    dispatch(restoreSession());
+  }, [dispatch]);
+
+  console.log(
+    "App: Rendering, isLoading:",
+    isLoading,
+    "isAuthenticated:",
+    isAuthenticated,
+    "user:",
+    user,
+    "refreshToken:",
+    refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
+  );
+
+  if (isLoading) {
+    return <div className={loadingStyle}>Loading...</div>;
+  }
 
   return (
     <div className="App">
@@ -66,8 +104,16 @@ function AppContent() {
       <main>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route
+            path="/login"
+            element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
+          />
+          <Route
+            path="/register"
+            element={
+              isAuthenticated ? <Navigate to="/" replace /> : <Register />
+            }
+          />
         </Routes>
       </main>
     </div>

@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { css } from '@emotion/css';
-import { Link, useNavigate } from 'react-router-dom';
-import { Search, User, Bell, Menu, X } from 'lucide-react';
-import { useSelector, useDispatch } from 'react-redux';
-import { Button } from '@/components/atoms/Button/Button';
-import { Input } from '@/components/atoms/Input/Input';
-import type { RootState, AppDispatch } from '@/store';
-import { logout } from '@/store/slices/authSlice';
+import React, { useState } from "react";
+import { css } from "@emotion/css";
+import { Link, useNavigate } from "react-router-dom";
+import { Search, User, Bell, Menu, X } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { Button } from "@/components/atoms/Button/Button";
+import { Input } from "@/components/atoms/Input/Input";
+import type { RootState, AppDispatch } from "@/store";
+import { logout } from "@/store/slices/authSlice";
 
 const headerStyle = css`
   background-color: var(--color-white);
@@ -25,7 +25,6 @@ const containerStyle = css`
   align-items: center;
   justify-content: space-between;
   height: 4rem;
-  
   @media (min-width: 768px) {
     padding: 0 var(--spacing-xl);
   }
@@ -37,7 +36,6 @@ const logoStyle = css`
   color: var(--color-primary);
   text-decoration: none;
   letter-spacing: -0.025em;
-  
   &:hover {
     color: var(--color-primary-dark);
   }
@@ -47,7 +45,6 @@ const searchContainerStyle = css`
   flex: 1;
   max-width: 400px;
   margin: 0 var(--spacing-xl);
-  
   @media (max-width: 768px) {
     display: none;
   }
@@ -57,7 +54,6 @@ const navStyle = css`
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  
   @media (max-width: 768px) {
     display: none;
   }
@@ -65,7 +61,6 @@ const navStyle = css`
 
 const mobileMenuButtonStyle = css`
   display: none;
-  
   @media (max-width: 768px) {
     display: flex;
   }
@@ -110,7 +105,6 @@ const userMenuButtonStyle = css`
   transition: background-color var(--transition-fast);
   color: var(--color-medical-text);
   font-weight: var(--font-weight-medium);
-  
   &:hover {
     background-color: var(--color-medical-bg);
   }
@@ -142,7 +136,6 @@ const userMenuItemStyle = css`
   text-decoration: none;
   color: var(--color-medical-text);
   font-weight: var(--font-weight-medium);
-  
   &:hover {
     background-color: var(--color-medical-bg);
   }
@@ -158,7 +151,6 @@ const notificationButtonStyle = css`
   border-radius: var(--radius-lg);
   transition: background-color var(--transition-fast);
   color: var(--color-medical-text);
-  
   &:hover {
     background-color: var(--color-medical-bg);
   }
@@ -183,15 +175,22 @@ const notificationBadgeStyle = css`
 export const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
-  // const dispatch = useDispatch();
   const dispatch = useDispatch<AppDispatch>();
-  
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
-  console.log("user", user)
-  const { unreadCount } = useSelector((state: RootState) => state.notifications);
+  const { isAuthenticated, user, refreshToken } = useSelector(
+    (state: RootState) => state.auth
+  ); // Use useSelector
+  const { unreadCount } = useSelector(
+    (state: RootState) => state.notifications
+  );
+
+  console.log("Header - user:", user);
+  console.log("Header - isAuthenticated:", isAuthenticated);
+  console.log(
+    "Header - refreshToken:",
+    refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
+  );
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,10 +199,10 @@ export const Header: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const handleLogout = async () => {
     setIsUserMenuOpen(false);
-    navigate('/');
+    await dispatch(logout());
+    navigate("/");
   };
 
   return (
@@ -212,7 +211,7 @@ export const Header: React.FC = () => {
         <Link to="/" className={logoStyle}>
           MedAesthetics
         </Link>
-        
+
         <div className={searchContainerStyle}>
           <form onSubmit={handleSearch}>
             <Input
@@ -224,7 +223,7 @@ export const Header: React.FC = () => {
             />
           </form>
         </div>
-        
+
         <nav className={navStyle}>
           {isAuthenticated ? (
             <>
@@ -232,20 +231,20 @@ export const Header: React.FC = () => {
                 <Bell size={20} />
                 {unreadCount > 0 && (
                   <span className={notificationBadgeStyle}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                    {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
               </button>
-              
+
               <div className={userMenuStyle}>
                 <button
                   className={userMenuButtonStyle}
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 >
                   <User size={20} />
-                  <span>{user?.firstName}</span>
+                  <span>{user?.firstName || "User"}</span>
                 </button>
-                
+
                 {isUserMenuOpen && (
                   <div className={userMenuDropdownStyle}>
                     <Link
@@ -281,16 +280,14 @@ export const Header: React.FC = () => {
             </>
           ) : (
             <>
-              <Button variant="ghost" onClick={() => navigate('/login')}>
+              <Button variant="ghost" onClick={() => navigate("/login")}>
                 Sign In
               </Button>
-              <Button onClick={() => navigate('/register')}>
-                Sign Up
-              </Button>
+              <Button onClick={() => navigate("/register")}>Sign Up</Button>
             </>
           )}
         </nav>
-        
+
         <button
           className={mobileMenuButtonStyle}
           onClick={() => setIsMobileMenuOpen(true)}
@@ -298,18 +295,18 @@ export const Header: React.FC = () => {
           <Menu size={24} />
         </button>
       </div>
-      
+
       {isMobileMenuOpen && (
         <div className={mobileMenuStyle}>
           <div className={mobileMenuHeaderStyle}>
             <Link to="/" className={logoStyle}>
-              BeautyBook
+              MedAesthetics
             </Link>
             <button onClick={() => setIsMobileMenuOpen(false)}>
               <X size={24} />
             </button>
           </div>
-          
+
           <form onSubmit={handleSearch}>
             <Input
               placeholder="Search treatments, clinics..."
@@ -319,29 +316,53 @@ export const Header: React.FC = () => {
               fullWidth
             />
           </form>
-          
+
           {isAuthenticated ? (
-            <div>
-              <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
+            <div
+              css={css`
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-md);
+              `}
+            >
+              <Link
+                to="/dashboard"
+                onClick={() => setIsMobileMenuOpen(false)}
+                css={userMenuItemStyle}
+              >
                 Dashboard
               </Link>
-              <Link to="/appointments" onClick={() => setIsMobileMenuOpen(false)}>
+              <Link
+                to="/appointments"
+                onClick={() => setIsMobileMenuOpen(false)}
+                css={userMenuItemStyle}
+              >
                 My Appointments
               </Link>
-              <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)}>
+              <Link
+                to="/profile"
+                onClick={() => setIsMobileMenuOpen(false)}
+                css={userMenuItemStyle}
+              >
                 Profile
               </Link>
-              <button onClick={handleLogout}>
+              <button onClick={handleLogout} css={userMenuItemStyle}>
                 Logout
               </button>
             </div>
           ) : (
-            <div>
+            <div
+              css={css`
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-md);
+              `}
+            >
               <Button
                 variant="ghost"
                 fullWidth
                 onClick={() => {
-                  navigate('/login');
+                  navigate("/login");
                   setIsMobileMenuOpen(false);
                 }}
               >
@@ -350,7 +371,7 @@ export const Header: React.FC = () => {
               <Button
                 fullWidth
                 onClick={() => {
-                  navigate('/register');
+                  navigate("/register");
                   setIsMobileMenuOpen(false);
                 }}
               >
