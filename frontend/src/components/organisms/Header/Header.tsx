@@ -10,6 +10,7 @@ import { logout } from "@/store/slices/authSlice";
 
 const headerStyle = css`
   background-color: var(--color-white);
+  // background-color: #203400;
   border-bottom: 1px solid var(--color-medical-border);
   position: sticky;
   top: 0;
@@ -34,6 +35,7 @@ const logoStyle = css`
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-extrabold);
   color: var(--color-primary);
+  // color: white;
   text-decoration: none;
   letter-spacing: -0.025em;
   &:hover {
@@ -103,10 +105,11 @@ const userMenuButtonStyle = css`
   cursor: pointer;
   border-radius: var(--radius-lg);
   transition: background-color var(--transition-fast);
-  color: var(--color-medical-text);
+  color: white;
   font-weight: var(--font-weight-medium);
   &:hover {
-    background-color: var(--color-medical-bg);
+    background-color: #cbff38;
+    color: black;
   }
 `;
 
@@ -152,7 +155,8 @@ const notificationButtonStyle = css`
   transition: background-color var(--transition-fast);
   color: var(--color-medical-text);
   &:hover {
-    background-color: var(--color-medical-bg);
+    background-color: #cbff38;
+    color: black;
   }
 `;
 
@@ -206,14 +210,17 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className={headerStyle}>
+    <header className="bg-[#203400] py-[28px]">
       <div className={containerStyle}>
-        <Link to="/" className={logoStyle}>
-          MedAesthetics
+        <Link
+          to="/"
+          className="text-[#CBFF38] text-2xl font-bold flex items-center"
+        >
+          Med<span style={{ color: "#fff" }}>Aesthetics</span>
         </Link>
 
         <div className={searchContainerStyle}>
-          <form onSubmit={handleSearch}>
+          {/* <form onSubmit={handleSearch}>
             <Input
               placeholder="Search treatments, clinics..."
               leftIcon={<Search size={16} />}
@@ -221,14 +228,24 @@ export const Header: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               fullWidth
             />
-          </form>
+          </form> */}
+          <ul className="flex justify-center items-center gap-8 text-white font-medium">
+            <li className="text-[#CBFF38] border-b-2 border-[#CBFF38] cursor-pointer">
+              Home
+            </li>
+            <li className="hover:text-[#CBFF38] cursor-pointer">
+              How It Works
+            </li>
+            <li className="hover:text-[#CBFF38] cursor-pointer">Features</li>
+            <li className="hover:text-[#CBFF38] cursor-pointer">Support</li>
+          </ul>
         </div>
 
-        <nav className={navStyle}>
+        <nav className="hidden md:flex items-center gap-4">
           {isAuthenticated ? (
             <>
-              <button className={notificationButtonStyle}>
-                <Bell size={20} />
+              <button className={`group ${notificationButtonStyle}`}>
+                <Bell size={20} className="text-white group-hover:text-black" />
                 {unreadCount > 0 && (
                   <span className={notificationBadgeStyle}>
                     {unreadCount > 9 ? "9+" : unreadCount}

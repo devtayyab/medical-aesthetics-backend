@@ -15,7 +15,8 @@ const initialState: AuthState = {
   user: null,
   accessToken: null,
   refreshToken: localStorage.getItem('refreshToken') || null,
-  isAuthenticated: !!localStorage.getItem('refreshToken'),
+  // isAuthenticated: !!localStorage.getItem('refreshToken'),
+  isAuthenticated: false,
   isLoading: false,
   error: null,
 };
@@ -83,8 +84,8 @@ export const restoreSession = createAsyncThunk(
     console.log('restoreSession: Using refreshToken:', refreshToken ? `${refreshToken.substring(0, 20)}...` : 'null');
 
     if (!refreshToken) {
-      console.log('restoreSession: No refresh token, rejecting');
-      return rejectWithValue('No valid refresh token found');
+      console.log('restoreSession: No refresh token, rejecting silently');
+      return rejectWithValue(null); // Silent rejection
     }
 
     try {
@@ -185,23 +186,27 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken || state.refreshToken; // Keep existing if not provided
+        state.refreshToken = action.payload.refreshToken || state.refreshToken;
         state.isAuthenticated = true;
         state.error = null;
         console.log('restoreSession.fulfilled: User:', state.user, 'refreshToken:', state.refreshToken?.substring(0, 20) + '...');
       })
       .addCase(restoreSession.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload as string;
-        if (state.error.includes('Invalid') || state.error.includes('No valid') || state.error.includes('401')) {
-          state.user = null;
-          state.accessToken = null;
-          state.refreshToken = null;
-          state.isAuthenticated = false;
-          localStorage.removeItem('refreshToken');
-          console.log('restoreSession.rejected: Error:', state.error, 'Cleared session');
+        if (action.payload) {
+          state.error = action.payload as string;
+          if (state.error.includes('Invalid') || state.error.includes('401')) {
+            state.user = null;
+            state.accessToken = null;
+            state.refreshToken = null;
+            state.isAuthenticated = false;
+            localStorage.removeItem('refreshToken');
+            console.log('restoreSession.rejected: Error:', state.error, 'Cleared session');
+          } else {
+            console.log('restoreSession.rejected: Error:', state.error, 'Keeping session');
+          }
         } else {
-          console.log('restoreSession.rejected: Error:', state.error, 'Keeping session');
+          console.log('restoreSession.rejected: No error (no token), keeping state');
         }
       });
   },

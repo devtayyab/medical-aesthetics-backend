@@ -1,313 +1,97 @@
-import React, { useEffect } from 'react';
-import { css } from '@emotion/css';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { Search, MapPin, Star, TrendingUp, CheckCircle, Calendar, UserCheck } from 'lucide-react';
-import { Button } from '@/components/atoms/Button/Button';
-import { Input } from '@/components/atoms/Input/Input';
-import { Card } from '@/components/atoms/Card/Card';
-import { ClinicCard } from '@/components/molecules/ClinicCard/ClinicCard';
-import { fetchFeaturedClinics } from '@/store/slices/clinicsSlice';
-import type { RootState, AppDispatch } from '@/store';
-import type { Clinic } from '@/types';
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  Search,
+  MapPin,
+  Star,
+  TrendingUp,
+  CheckCircle,
+  Calendar,
+  UserCheck,
+} from "lucide-react";
+import {
+  FaStethoscope,
+  FaHospital,
+  FaSearch,
+  FaMapMarkerAlt,
+  FaCalendarAlt,
+} from "react-icons/fa";
+import { Button } from "@/components/atoms/Button/Button";
+// import { Input } from "@/components/atoms/Input/Input";
+import { Card } from "@/components/atoms/Card/Card";
+import { ClinicCard } from "@/components/molecules/ClinicCard/ClinicCard";
+import { fetchFeaturedClinics } from "@/store/slices/clinicsSlice";
+import type { RootState, AppDispatch } from "@/store";
+import type { Clinic } from "@/types";
 
-const heroStyle = css`
-  background: linear-gradient(135deg, rgba(248, 249, 250, 0.9) 0%, rgba(255, 255, 255, 0.95) 100%),
-              url('https://images.pexels.com/photos/4173251/pexels-photo-4173251.jpeg?auto=compress&cs=tinysrgb&w=1200') center/cover;
-  color: var(--color-medical-text);
-  padding: var(--spacing-4xl) 0;
-  min-height: 70vh;
-  display: flex;
-  align-items: center;
-  text-align: center;
-  position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.85);
-    z-index: 1;
-  }
-`;
-
-const heroContentStyle = css`
-  position: relative;
-  z-index: 2;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-md);
-`;
-
-const heroTitleStyle = css`
-  font-size: var(--font-size-5xl);
-  font-weight: var(--font-weight-extrabold);
-  margin-bottom: var(--spacing-lg);
-  line-height: var(--line-height-tight);
-  color: var(--color-medical-text);
-  
-  @media (max-width: 768px) {
-    font-size: var(--font-size-4xl);
-  }
-`;
-
-const heroSubtitleStyle = css`
-  font-size: var(--font-size-xl);
-  margin-bottom: var(--spacing-2xl);
-  color: var(--color-medical-text-light);
-  line-height: var(--line-height-normal);
-  font-weight: var(--font-weight-normal);
-  
-  @media (max-width: 768px) {
-    font-size: var(--font-size-lg);
-  }
-`;
-
-const searchBoxStyle = css`
-  background-color: var(--color-white);
-  border-radius: var(--radius-3xl);
-  padding: var(--spacing-lg);
-  box-shadow: var(--shadow-2xl);
-  max-width: 600px;
-  margin: 0 auto;
-  border: 1px solid var(--color-medical-border);
-`;
-
-const searchFormStyle = css`
-  display: flex;
-  gap: var(--spacing-md);
-  
-  @media (max-width: 768px) {
-    flex-direction: column;
-  }
-`;
-
-const sectionStyle = css`
-  padding: var(--spacing-4xl) 0;
-  background-color: var(--color-medical-bg);
-`;
-
-const containerStyle = css`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-md);
-  
-  @media (min-width: 768px) {
-    padding: 0 var(--spacing-xl);
-  }
-`;
-
-const sectionHeaderStyle = css`
-  text-align: center;
-  margin-bottom: var(--spacing-2xl);
-`;
-
-const sectionTitleStyle = css`
-  font-size: var(--font-size-4xl);
-  font-weight: var(--font-weight-extrabold);
-  color: var(--color-medical-text);
-  margin-bottom: var(--spacing-md);
-`;
-
-const sectionSubtitleStyle = css`
-  font-size: var(--font-size-lg);
-  color: var(--color-medical-text-light);
-  max-width: 600px;
-  margin: 0 auto;
-  font-weight: var(--font-weight-normal);
-`;
-
-const stepsStyle = css`
-  background-color: var(--color-white);
-  padding: var(--spacing-4xl) 0;
-`;
-
-const stepsGridStyle = css`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--spacing-2xl);
-  margin-top: var(--spacing-2xl);
-`;
-
-const stepCardStyle = css`
-  text-align: center;
-  padding: var(--spacing-2xl);
-  background: var(--color-white);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-card);
-  border: 1px solid var(--color-medical-border);
-  transition: all var(--transition-normal);
-  
-  &:hover {
-    transform: translateY(-8px);
-    box-shadow: var(--shadow-xl);
-  }
-`;
-
-const stepIconStyle = css`
-  width: 80px;
-  height: 80px;
-  background: var(--color-primary);
-  border-radius: var(--radius-2xl);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto var(--spacing-lg);
-  color: var(--color-white);
-  box-shadow: var(--shadow-button);
-`;
-
-const stepTitleStyle = css`
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-medical-text);
-  margin-bottom: var(--spacing-sm);
-`;
-
-const stepDescriptionStyle = css`
-  font-size: var(--font-size-base);
-  color: var(--color-medical-text-light);
-  line-height: var(--line-height-relaxed);
-`;
-
-const categoriesGridStyle = css`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-2xl);
-`;
-
-const categoryCardStyle = css`
-  text-align: center;
-  padding: var(--spacing-xl);
-  cursor: pointer;
-  transition: transform var(--transition-fast);
-  background: var(--color-white);
-  border-radius: var(--radius-2xl);
-  border: 1px solid var(--color-medical-border);
-  
-  &:hover {
-    transform: translateY(-8px);
-    box-shadow: var(--shadow-lg);
-  }
-`;
-
-const categoryIconStyle = css`
-  width: 60px;
-  height: 60px;
-  background: var(--color-primary);
-  border-radius: var(--radius-2xl);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto var(--spacing-md);
-  color: var(--color-white);
-  box-shadow: var(--shadow-button);
-`;
-
-const categoryTitleStyle = css`
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-medical-text);
-  margin-bottom: var(--spacing-sm);
-`;
-
-const categoryDescriptionStyle = css`
-  font-size: var(--font-size-sm);
-  color: var(--color-medical-text-light);
-`;
-
-const clinicsGridStyle = css`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-xl);
-`;
-
-const statsStyle = css`
-  background: var(--color-primary);
-  padding: var(--spacing-4xl) 0;
-  color: var(--color-white);
-`;
-
-const statsGridStyle = css`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-xl);
-  text-align: center;
-`;
-
-const statNumberStyle = css`
-  font-size: var(--font-size-4xl);
-  font-weight: var(--font-weight-extrabold);
-  color: var(--color-white);
-  margin-bottom: var(--spacing-sm);
-`;
-
-const statLabelStyle = css`
-  font-size: var(--font-size-lg);
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: var(--font-weight-medium);
-`;
+// Images
+import HeaderBanner from "@/assets/HeaderBanner.jpg";
+import PlusIcon from "@/assets/Icons/PlusIcon.svg";
+import CalendarIcon from "@/assets/Icons/CalendarIcon.svg";
+import TickIcon from "@/assets/Icons/TickIcon.svg";
 
 const treatmentSteps = [
   {
-    id: 'choose',
-    name: 'Choose a Category',
-    description: 'Dermatology, Plastic Surgery, Skin Treatments, or Aesthetics',
-    icon: <Search size={32} />,
+    id: "choose",
+    name: "Choose a Category",
+    description: "Dermatology, Plastic Surgery, Skin Treatments, or Aesthetics",
+    // icon: <Search size={32} />,
+    icon: PlusIcon,
   },
   {
-    id: 'schedule',
-    name: 'Pick Date & Time',
-    description: 'Select the day and time that works best for you',
-    icon: <Calendar size={32} />,
+    id: "schedule",
+    name: "Pick Date & Time",
+    description: "Select the day and time that works best for you",
+    // icon: <Calendar size={32} />,
+    icon: CalendarIcon,
   },
   {
-    id: 'confirm',
-    name: 'Confirm Your Appointment',
-    description: 'Book your consultation or treatment with a certified clinic',
-    icon: <CheckCircle size={32} />,
+    id: "confirm",
+    name: "Confirm Your Appointment",
+    description: "Book your consultation or treatment with a certified clinic",
+    // icon: <CheckCircle size={32} />,
+    icon: TickIcon,
   },
 ];
 
 const categories = [
   {
-    id: 'dermatology',
-    name: 'Dermatology',
-    description: 'Skin health and medical treatments',
-    icon: '🔬',
+    id: "dermatology",
+    name: "Dermatology",
+    description: "Skin health and medical treatments",
+    icon: "🔬",
   },
   {
-    id: 'plastic-surgery',
-    name: 'Plastic Surgery',
-    description: 'Cosmetic and reconstructive procedures',
-    icon: '✨',
+    id: "plastic-surgery",
+    name: "Plastic Surgery",
+    description: "Cosmetic and reconstructive procedures",
+    icon: "✨",
   },
   {
-    id: 'aesthetics',
-    name: 'Aesthetics',
-    description: 'Non-surgical beauty treatments',
-    icon: '💫',
+    id: "aesthetics",
+    name: "Aesthetics",
+    description: "Non-surgical beauty treatments",
+    icon: "💫",
   },
   {
-    id: 'wellness',
-    name: 'Wellness',
-    description: 'Holistic health and wellness',
-    icon: '🌿',
+    id: "wellness",
+    name: "Wellness",
+    description: "Holistic health and wellness",
+    icon: "🌿",
   },
 ];
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  
-  const { featuredClinics, isLoading } = useSelector((state: RootState) => state.clinics);
-  
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [location, setLocation] = React.useState('');
+
+  const { featuredClinics, isLoading } = useSelector(
+    (state: RootState) => state.clinics
+  );
+
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [location, setLocation] = React.useState("");
 
   useEffect(() => {
     dispatch(fetchFeaturedClinics());
@@ -316,8 +100,8 @@ export const HomePage: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
-    if (searchQuery) params.set('q', searchQuery);
-    if (location) params.set('location', location);
+    if (searchQuery) params.set("q", searchQuery);
+    if (location) params.set("location", location);
     navigate(`/search?${params.toString()}`);
   };
 
@@ -332,92 +116,148 @@ export const HomePage: React.FC = () => {
   return (
     <div>
       {/* Hero Section */}
-      <section className={heroStyle}>
-        <div className={heroContentStyle}>
-          <h1 className={heroTitleStyle}>
-            Your Skin. Your Confidence. Your Clinic.
-          </h1>
-          <p className={heroSubtitleStyle}>
-            Find Trusted Dermatologists & Aesthetic Clinics Near You
-          </p>
-          
-          <div className={searchBoxStyle}>
-            <form onSubmit={handleSearch} className={searchFormStyle}>
-              <Input
-                placeholder="Services"
-                leftIcon={<Search size={16} />}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                fullWidth
-              />
-              <Input
-                placeholder="Location"
-                leftIcon={<MapPin size={16} />}
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                fullWidth
-              />
-              <Button
-              type="submit"
-              size="lg"
-              style={{ backgroundColor: "var(--color-primary)" }}
-        >
-          Search
-          </Button>
-  
+      <section
+        className="relative bg-cover bg-center min-h-[70vh]"
+        style={{
+          backgroundImage: `url(${HeaderBanner})`,
+          alignContent: "center",
+        }}
+      >
+        {/* Container with max-width */}
+        <div className="max-w-[1200px] mx-auto grid grid-cols-2 gap-8 items-center h-full px-6">
+          {/* Left: White search box */}
+          <div className="bg-white shadow-lg rounded-xl p-6">
+            {/* Tabs */}
+            <div className="flex border rounded-lg overflow-hidden mb-6">
+              <button className="flex-1 flex items-center justify-center gap-2 py-2 bg-green-800 text-white font-medium">
+                <FaStethoscope /> Treatments
+              </button>
+              <button className="flex-1 flex items-center justify-center gap-2 py-2 bg-white text-gray-700 font-medium border-l">
+                <FaHospital /> Clinics
+              </button>
+            </div>
+
+            {/* Search form */}
+            <form onSubmit={handleSearch} className="space-y-4">
+              {/* Services */}
+              <div className="flex items-center border rounded-lg px-3 py-2">
+                <FaSearch className="text-gray-500 mr-2" />
+                <input
+                  type="text"
+                  placeholder="Search for treatments"
+                  className="w-full outline-none text-gray-700"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Location */}
+              <div className="flex items-center border rounded-lg px-3 py-2">
+                <FaMapMarkerAlt className="text-gray-500 mr-2" />
+                <input
+                  type="text"
+                  placeholder="Enter postcode"
+                  className="w-full outline-none text-gray-700"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                />
+              </div>
+
+              {/* Date */}
+              <div className="flex items-center border rounded-lg px-3 py-2">
+                <FaCalendarAlt className="text-gray-500 mr-2" />
+                <input
+                  type="date"
+                  className="w-full outline-none text-gray-700"
+                />
+              </div>
+
+              {/* Search button */}
+              <button
+                type="submit"
+                className="w-full py-3 rounded-lg font-medium text-lg flex items-center justify-center gap-2 bg-lime-400 text-black hover:bg-lime-500 transition"
+              >
+                <FaSearch /> Search
+              </button>
             </form>
           </div>
+
+          {/* Right: Doctor image full height */}
+          <div className="flex justify-center"></div>
         </div>
       </section>
 
       {/* How It Works Section */}
-      <section className={stepsStyle}>
-        <div className={containerStyle}>
-          <div className={sectionHeaderStyle}>
-            <h2 className={sectionTitleStyle}>How It Works</h2>
-            <h3 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-medical-text)', marginBottom: 'var(--spacing-md)' }}>
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-[#586271] text-xl">How It Works</h2>
+            <h3 className="text-[#33373F] text-2xl font-semibold mb-2">
               3 Steps to Your Treatment
             </h3>
           </div>
-          
-          <div className={stepsGridStyle}>
-            {treatmentSteps.map((step) => (
-              <div key={step.id} className={stepCardStyle}>
-                <div className={stepIconStyle}>
-                  {step.icon}
+
+          <div className="flex justify-center items-start flex-wrap gap-8 mt-10">
+            {treatmentSteps.map((step, index) => (
+              <React.Fragment key={index}>
+                {/* Box */}
+                <div className="w-full lg:w-[240px] text-center group hover:-translate-y-2 transition-all duration-300">
+                  <div className="w-fit bg-white rounded-[24px] flex items-center justify-center mx-auto mb-6 px-[30px] py-[26px] text-white shadow-lg group-hover:border-[1px] group-hover:border-[#5F8B00]">
+                    <img src={step.icon} alt={step.name} className="w-[48px]" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    {step.name}
+                  </h3>
+                  <p className="text-base text-gray-600 leading-relaxed">
+                    {step.description}
+                  </p>
                 </div>
-                <h3 className={stepTitleStyle}>{step.name}</h3>
-                <p className={stepDescriptionStyle}>{step.description}</p>
-              </div>
+
+                {/* Divider (only between boxes) */}
+                {index < treatmentSteps.length - 1 && (
+                  <div
+                    className="hidden lg:block w-[100px] h-[2px] self-start mt-[52px]"
+                    style={{
+                      backgroundImage:
+                        "repeating-linear-gradient(to right, #9CA3AF 0 10px, transparent 10px 15px)",
+                    }}
+                  ></div>
+                )}
+              </React.Fragment>
             ))}
           </div>
         </div>
       </section>
 
+
       {/* Categories Section */}
-      <section className={sectionStyle}>
-        <div className={containerStyle}>
-          <div className={sectionHeaderStyle}>
-            <h2 className={sectionTitleStyle}>Popular Categories</h2>
-            <p className={sectionSubtitleStyle}>
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-4xl font-extrabold text-gray-900">
+              Popular Categories
+            </h2>
+            <p className="text-lg text-gray-600 max-w-[600px] mx-auto mt-2">
               Explore our wide range of beauty and wellness services
             </p>
           </div>
-          
-          <div className={categoriesGridStyle}>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {categories.map((category) => (
               <Card
                 key={category.id}
                 variant="default"
                 hoverable
-                className={categoryCardStyle}
+                className="text-center p-6 cursor-pointer transition-transform duration-200 bg-white rounded-2xl border border-gray-200 hover:-translate-y-2 hover:shadow-lg"
                 onClick={() => handleCategoryClick(category.id)}
               >
-                <div className={categoryIconStyle}>
-                  <span style={{ fontSize: '24px' }}>{category.icon}</span>
+                <div className="w-15 h-15 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-md">
+                  <span style={{ fontSize: "24px" }}>{category.icon}</span>
                 </div>
-                <h3 className={categoryTitleStyle}>{category.name}</h3>
-                <p className={categoryDescriptionStyle}>{category.description}</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                  {category.name}
+                </h3>
+                <p className="text-sm text-gray-600">{category.description}</p>
               </Card>
             ))}
           </div>
@@ -425,16 +265,19 @@ export const HomePage: React.FC = () => {
       </section>
 
       {/* Featured Clinics Section */}
-      <section className={sectionStyle}>
-        <div className={containerStyle}>
-          <div className={sectionHeaderStyle}>
-            <h2 className={sectionTitleStyle}>Featured Clinics</h2>
-            <p className={sectionSubtitleStyle}>
-              Discover top-rated medical aesthetic clinics and dermatology centers
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-4xl font-extrabold text-gray-900">
+              Featured Clinics
+            </h2>
+            <p className="text-lg text-gray-600 max-w-[600px] mx-auto mt-2">
+              Discover top-rated medical aesthetic clinics and dermatology
+              centers
             </p>
           </div>
-          
-          <div className={clinicsGridStyle}>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredClinics.map((clinic) => (
               <ClinicCard
                 key={clinic.id}
@@ -443,13 +286,13 @@ export const HomePage: React.FC = () => {
               />
             ))}
           </div>
-          
+
           {featuredClinics.length > 0 && (
-            <div style={{ textAlign: 'center', marginTop: 'var(--spacing-2xl)' }}>
+            <div className="text-center mt-10">
               <Button
                 variant="outline"
                 size="lg"
-                onClick={() => navigate('/search')}
+                onClick={() => navigate("/search")}
               >
                 View All Clinics
               </Button>
@@ -459,24 +302,38 @@ export const HomePage: React.FC = () => {
       </section>
 
       {/* Stats Section */}
-      <section className={statsStyle}>
-        <div className={containerStyle}>
-          <div className={statsGridStyle}>
+      <section className="py-16 bg-blue-600 text-white">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
             <div>
-              <div className={statNumberStyle}>25,000+</div>
-              <div className={statLabelStyle}>Happy Patients</div>
+              <div className="text-4xl font-extrabold text-white mb-2">
+                25,000+
+              </div>
+              <div className="text-lg text-white/90 font-medium">
+                Happy Patients
+              </div>
             </div>
             <div>
-              <div className={statNumberStyle}>1,200+</div>
-              <div className={statLabelStyle}>Certified Clinics</div>
+              <div className="text-4xl font-extrabold text-white mb-2">
+                1,200+
+              </div>
+              <div className="text-lg text-white/90 font-medium">
+                Certified Clinics
+              </div>
             </div>
             <div>
-              <div className={statNumberStyle}>150+</div>
-              <div className={statLabelStyle}>Medical Procedures</div>
+              <div className="text-4xl font-extrabold text-white mb-2">
+                150+
+              </div>
+              <div className="text-lg text-white/90 font-medium">
+                Medical Procedures
+              </div>
             </div>
             <div>
-              <div className={statNumberStyle}>4.9</div>
-              <div className={statLabelStyle}>Patient Satisfaction</div>
+              <div className="text-4xl font-extrabold text-white mb-2">4.9</div>
+              <div className="text-lg text-white/90 font-medium">
+                Patient Satisfaction
+              </div>
             </div>
           </div>
         </div>
