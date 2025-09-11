@@ -10,7 +10,6 @@ import {
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { store, AppDispatch } from "@/store";
 import { restoreSession } from "@/store/slices/authSlice";
-import { initializeFirebase } from "@/services/firebase";
 import { Header } from "@/components/organisms/Header/Header";
 import { HomePage } from "@/pages/HomePage/HomePage";
 import { Login } from "@/pages/Login/Login";
@@ -62,7 +61,8 @@ function AppContent() {
     location.pathname === "/login" || location.pathname === "/register";
 
   useEffect(() => {
-    if (!isAuthPage) {
+    if (!isAuthPage && location.pathname === "/") {
+      // Only on root path
       console.log(
         "App: Dispatching restoreSession, localStorage refreshToken:",
         localStorage.getItem("refreshToken")
@@ -70,9 +70,8 @@ function AppContent() {
           : "null"
       );
       dispatch(restoreSession());
-      initializeFirebase(dispatch);
     }
-  }, [dispatch, isAuthPage]);
+  }, [dispatch, isAuthPage, location.pathname]); // Added location.pathname to dependency
 
   console.log(
     "App: Rendering, isLoading:",

@@ -15,8 +15,7 @@ const initialState: AuthState = {
   user: null,
   accessToken: null,
   refreshToken: localStorage.getItem('refreshToken') || null,
-  // isAuthenticated: !!localStorage.getItem('refreshToken'),
-  isAuthenticated: false,
+  isAuthenticated: false, // Changed to false to avoid assuming until restoreSession succeeds
   isLoading: false,
   error: null,
 };
@@ -85,7 +84,7 @@ export const restoreSession = createAsyncThunk(
 
     if (!refreshToken) {
       console.log('restoreSession: No refresh token, rejecting silently');
-      return rejectWithValue(null); // Silent rejection
+      return rejectWithValue(null); // Silent rejection - no error in state
     }
 
     try {
@@ -117,12 +116,15 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    setTokens: (state, action: PayloadAction<{ accessToken: string; refreshToken: string }>) => {
+    setTokens: (state, action: PayloadAction<{ accessToken: string; refreshToken?: string }>) => {
       state.accessToken = action.payload.accessToken;
-      state.refreshToken = action.payload.refreshToken;
+      if (action.payload.refreshToken) {
+        state.refreshToken = action.payload.refreshToken;
+        localStorage.setItem('refreshToken', action.payload.refreshToken);
+        console.log('setTokens: Stored new refreshToken:', action.payload.refreshToken.substring(0, 20) + '...');
+      }
       state.isAuthenticated = true;
-      localStorage.setItem('refreshToken', action.payload.refreshToken);
-      console.log('setTokens: Stored refreshToken:', action.payload.refreshToken.substring(0, 20) + '...');
+      console.log('setTokens: Updated accessToken, isAuthenticated: true');
     },
     setAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;

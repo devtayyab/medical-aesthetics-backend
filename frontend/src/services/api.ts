@@ -37,8 +37,7 @@ api.interceptors.response.use(
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
           console.log("Interceptor: Refresh success, response:", response.data);
           const { accessToken, refreshToken: newRefreshToken } = response.data;
-          store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken }));
-          // localStorage.setItem('refreshToken', newRefreshToken);
+          store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken })); // Optional refreshToken
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
         } catch (refreshError: any) {
