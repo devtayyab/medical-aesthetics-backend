@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 import { store } from "@/store";
 import { setTokens, logout } from "@/store/slices/authSlice";
-import type { User, Clinic, Service, Appointment, TimeSlot, LoyaltyBalance, Notification } from "@/types";
+import type { User, Clinic, Service, Appointment, TimeSlot, LoyaltyBalance, Notification, Lead, Task } from "@/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
@@ -15,6 +15,7 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const state = store.getState();
   const token = state.auth.accessToken;
+  console.log("Request interceptor: Using accessToken:", token ? "present" : "missing");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -29,20 +30,25 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       const state = store.getState();
       const refreshToken = state.auth.refreshToken || localStorage.getItem("refreshToken");
+      console.log("Interceptor: refreshToken:", refreshToken ? `${refreshToken.substring(0, 20)}...` : "null");
+
       if (refreshToken) {
         try {
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+          console.log("Interceptor: Refresh success, response:", response.data);
           const { accessToken, refreshToken: newRefreshToken } = response.data;
           store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken }));
-          localStorage.setItem('refreshToken', newRefreshToken);
+          // localStorage.setItem('refreshToken', newRefreshToken);
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
         } catch (refreshError: any) {
+          console.error("Interceptor: Refresh failed:", refreshError.response?.data || refreshError.message);
           store.dispatch(logout());
           window.location.href = "/login";
           return Promise.reject(refreshError);
         }
       } else {
+        console.log("Interceptor: No refreshToken, logging out");
         store.dispatch(logout());
         window.location.href = "/login";
       }
@@ -65,6 +71,7 @@ export const authAPI = {
     const token = state.auth.accessToken;
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     return api.post("/auth/logout", {}, { headers }).catch((error) => {
+      console.log("Logout API failed, clearing state:", error.response?.data || error.message);
       return Promise.resolve({ data: { message: "Logged out" } });
     });
   },
@@ -150,6 +157,26 @@ export const notificationsAPI = {
   },
   getUnreadCount: () => api.get("/notifications/unread-count"),
   markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+};
+
+export const crmAPI = {
+  createLead: (data: { name: string; email: string; phone?: string; tags?: string[]; status: string }) => api.post("/crm/leads", data),
+  getLeads: () => api.get("/crm/leads"),
+  getLead: (id: string) => api.get(`/crm/leads/${id}`),
+  updateLead: (id: string, data: Partial<Lead>) => api.patch(`/crm/leads/${id}`, data),
+  logAction: (customerId: string, data: { type: string; notes: string }) => api.post("/crm/actions", { customerId, ...data }),
+  createTask: (data: { customerId: string; description: string; type: string; dueDate: string; assignedTo: string }) => api.post("/crm/tasks", data),
+  getTasks: (salespersonId: string) => api.get(`/crm/tasks/${salespersonId}`),
+  updateTask: (id: string, data: Partial<Task>) => api.patch(`/crm/tasks/${id}`, data),
+  scheduleRecurring: (data: { customerId: string; serviceId: string; frequency: string; startDate: string }) => api.post("/crm/recurring", data),
+};
+
+export const adminAPI = {
+  getMetrics: () => api.get("/admin/metrics"),
+  getUsers: () => api.get("/admin/users"),
+  updateRole: (id: string, role: string) => api.patch(`/admin/users/${id}/role`, { role }),
+  updateLoyalty: (data: { tiers: { name: string; points: number; rewards: string[] }[] }) => api.patch("/admin/loyalty", data),
+  getLogs: () => api.get("/admin/monitor"),
 };
 
 export default api;

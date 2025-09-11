@@ -4,6 +4,10 @@ import clinicsSlice from './slices/clinicsSlice';
 import bookingSlice from './slices/bookingSlice';
 import userSlice from './slices/userSlice';
 import notificationsSlice from './slices/notificationsSlice';
+import clientSlice from './slices/clientSlice';
+import clinicSlice from './slices/clinicSlice';
+import crmSlice from './slices/crmSlice';
+import adminSlice from './slices/adminSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +16,10 @@ export const store = configureStore({
     booking: bookingSlice,
     user: userSlice,
     notifications: notificationsSlice,
+    client: clientSlice,
+    clinic: clinicSlice,
+    crm: crmSlice,
+    admin: adminSlice,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
