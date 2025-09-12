@@ -210,7 +210,8 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-[#203400] py-[28px]">
+    // <header className="bg-[#203400] py-[28px]">
+    <header className="bg-gray-900 py-5">
       <div className={containerStyle}>
         <Link
           to="/"

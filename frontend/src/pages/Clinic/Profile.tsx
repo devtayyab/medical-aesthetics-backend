@@ -8,7 +8,6 @@ import {
 } from "@/store/slices/clinicSlice";
 import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
-import { Sidebar } from "@/components/organisms/Sidebar";
 
 export const Profile: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -37,51 +36,48 @@ export const Profile: React.FC = () => {
   };
 
   return (
-    <div className="flex max-w-[1200px] mx-auto p-4">
-      <Sidebar />
-      <div className="flex-1 ml-64">
-        <h2 className="text-2xl font-bold mb-4">Clinic Profile</h2>
-        {isLoading && <p>Loading...</p>}
-        {error && <p className="text-red-600">{error}</p>}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input
-            name="name"
-            placeholder="Clinic Name"
-            value={form.name || ""}
-            onChange={handleChange}
-            fullWidth
-          />
-          <Input
-            name="description"
-            placeholder="Description"
-            value={form.description || ""}
-            onChange={handleChange}
-            fullWidth
-          />
-          <Input
-            name="address"
-            placeholder="Address"
-            value={form.address || ""}
-            onChange={handleChange}
-            fullWidth
-          />
-          <Input
-            name="phone"
-            placeholder="Phone"
-            value={form.phone || ""}
-            onChange={handleChange}
-            fullWidth
-          />
-          <Input
-            name="email"
-            placeholder="Email"
-            value={form.email || ""}
-            onChange={handleChange}
-            fullWidth
-          />
-          <Button type="submit">Save Profile</Button>
-        </form>
-      </div>
-    </div>
+    <>
+      <h2 className="text-2xl font-bold mb-4">Clinic Profile</h2>
+      {isLoading && <p>Loading...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Input
+          name="name"
+          placeholder="Clinic Name"
+          value={form.name || ""}
+          onChange={handleChange}
+          fullWidth
+        />
+        <Input
+          name="description"
+          placeholder="Description"
+          value={form.description || ""}
+          onChange={handleChange}
+          fullWidth
+        />
+        <Input
+          name="address"
+          placeholder="Address"
+          value={form.address || ""}
+          onChange={handleChange}
+          fullWidth
+        />
+        <Input
+          name="phone"
+          placeholder="Phone"
+          value={form.phone || ""}
+          onChange={handleChange}
+          fullWidth
+        />
+        <Input
+          name="email"
+          placeholder="Email"
+          value={form.email || ""}
+          onChange={handleChange}
+          fullWidth
+        />
+        <Button type="submit">Save Profile</Button>
+      </form>
+    </>
   );
 };

@@ -197,18 +197,19 @@ const authSlice = createSlice({
         state.isLoading = false;
         if (action.payload) {
           state.error = action.payload as string;
-          if (state.error.includes('Invalid') || state.error.includes('401')) {
+          // Only clear session on 401 or invalid token errors
+          if (state.error.includes('401') || state.error.includes('Invalid')) {
             state.user = null;
             state.accessToken = null;
             state.refreshToken = null;
             state.isAuthenticated = false;
             localStorage.removeItem('refreshToken');
-            console.log('restoreSession.rejected: Error:', state.error, 'Cleared session');
+            console.log('restoreSession.rejected: 401/Invalid error, cleared session');
           } else {
-            console.log('restoreSession.rejected: Error:', state.error, 'Keeping session');
+            console.log('restoreSession.rejected: Non-critical error:', state.error, 'Keeping session');
           }
         } else {
-          console.log('restoreSession.rejected: No error (no token), keeping state');
+          console.log('restoreSession.rejected: No token (silent), keeping state');
         }
       });
   },

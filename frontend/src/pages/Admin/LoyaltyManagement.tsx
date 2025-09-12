@@ -47,38 +47,33 @@ export const LoyaltyManagement: React.FC = () => {
   };
 
   return (
-    <div className="flex max-w-[1200px] mx-auto p-4">
-      <Sidebar />
-      <div className="flex-1 ml-64">
-        <h2 className="text-2xl font-bold mb-4">Loyalty Management</h2>
-        {isLoading && <p>Loading...</p>}
-        {error && <p className="text-red-600">{error}</p>}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {tiers.map((tier, index) => (
-            <div key={index} className="flex gap-2">
-              <Input
-                placeholder="Tier Name"
-                value={tier.name}
-                onChange={(e) =>
-                  handleTierChange(index, "name", e.target.value)
-                }
-              />
-              <Input
-                type="number"
-                placeholder="Points"
-                value={tier.points}
-                onChange={(e) =>
-                  handleTierChange(index, "points", Number(e.target.value))
-                }
-              />
-            </div>
-          ))}
-          <Button variant="outline" onClick={handleAddTier}>
-            Add Tier
-          </Button>
-          <Button type="submit">Save Tiers</Button>
-        </form>
-      </div>
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Loyalty Management</h2>
+      {isLoading && <p>Loading...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {tiers.map((tier, index) => (
+          <div key={index} className="flex gap-2">
+            <Input
+              placeholder="Tier Name"
+              value={tier.name}
+              onChange={(e) => handleTierChange(index, "name", e.target.value)}
+            />
+            <Input
+              type="number"
+              placeholder="Points"
+              value={tier.points}
+              onChange={(e) =>
+                handleTierChange(index, "points", Number(e.target.value))
+              }
+            />
+          </div>
+        ))}
+        <Button variant="outline" onClick={handleAddTier}>
+          Add Tier
+        </Button>
+        <Button type="submit">Save Tiers</Button>
+      </form>
     </div>
   );
 };

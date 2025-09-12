@@ -26,12 +26,58 @@ interface ClientState {
 }
 
 const initialState: ClientState = {
-  clinics: [],
-  featuredClinics: [],
+  clinics: [
+    {
+      id: "1",
+      name: "Aesthetic Clinic A",
+      description: "Premium aesthetic services",
+      address: { street: "123 Main St", city: "New York", state: "NY", zipCode: "10001", country: "USA" },
+      phone: "+1-234-567-8901",
+      email: "info@clinicA.com",
+      services: [{ id: "1", name: "Botox", price: 500, durationMinutes: 30, category: "Aesthetics" }],
+      rating: 4.8,
+      reviewCount: 120,
+      isActive: true,
+      ownerId: "owner1",
+    },
+  ],
+  featuredClinics: [
+    {
+      id: "2",
+      name: "Featured Clinic B",
+      description: "Top-rated dermatology",
+      address: { street: "456 Oak Ave", city: "Los Angeles", state: "CA", zipCode: "90210", country: "USA" },
+      phone: "+1-234-567-8902",
+      email: "info@clinicB.com",
+      services: [{ id: "2", name: "Laser Treatment", price: 800, durationMinutes: 60, category: "Dermatology" }],
+      rating: 4.9,
+      reviewCount: 200,
+      isActive: true,
+      ownerId: "owner2",
+    },
+  ],
   selectedClinic: null,
   services: [],
   availableSlots: [],
-  appointments: [],
+  appointments: [
+    {
+      id: "1",
+      clinicId: "1",
+      serviceId: "1",
+      providerId: "provider1",
+      clientId: "client1",
+      startTime: "2025-09-15T10:00:00.000Z",
+      endTime: "2025-09-15T10:30:00.000Z",
+      status: "confirmed",
+      notes: "First session",
+      paymentMethod: "credit_card",
+      totalAmount: 500,
+      clinic: { name: "Aesthetic Clinic A" },
+      service: { name: "Botox" },
+      provider: { firstName: "Dr. Smith" },
+      client: { firstName: "John" },
+    },
+  ],
   loyaltyBalance: null,
   isLoading: false,
   error: null,
@@ -121,9 +167,15 @@ export const createAppointment = createAsyncThunk(
 
 export const fetchUserAppointments = createAsyncThunk(
   "client/fetchUserAppointments",
-  async () => {
-    const response = await bookingAPI.getUserAppointments();
-    return response.data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await bookingAPI.getUserAppointments();
+      console.log('fetchUserAppointments: Response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('fetchUserAppointments: Error:', error.response?.data || error.message);
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch appointments");
+    }
   }
 );
 

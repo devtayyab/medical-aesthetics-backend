@@ -108,7 +108,9 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
   };
 
   const getBusinessHoursText = () => {
-    const today = new Date().toLocaleLowerCase().slice(0, 3) + 'day';
+    const today = new Date()
+    .toLocaleDateString("en-US", { weekday: "short" })
+    .toLowerCase() + "day";
     const todayHours = clinic.businessHours?.[today];
     
     if (!todayHours || !todayHours.isOpen) {

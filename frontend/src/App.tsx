@@ -14,6 +14,7 @@ import { Header } from "@/components/organisms/Header/Header";
 import { HomePage } from "@/pages/HomePage/HomePage";
 import { Login } from "@/pages/Login/Login";
 import { Register } from "@/pages/Register/Register";
+import { ProtectedLayout } from "@/components/organisms/ProtectedLayout";
 import { Search } from "@/pages/Client/Search";
 import { ClinicDetails } from "@/pages/Client/ClinicDetails";
 import { AppointmentBooking } from "@/pages/Client/AppointmentBooking";
@@ -61,17 +62,15 @@ function AppContent() {
     location.pathname === "/login" || location.pathname === "/register";
 
   useEffect(() => {
-    if (!isAuthPage && location.pathname === "/") {
-      // Only on root path
+    const localRefreshToken = localStorage.getItem("refreshToken");
+    if (!isAuthPage && !isLoading && !isAuthenticated && localRefreshToken) {
       console.log(
         "App: Dispatching restoreSession, localStorage refreshToken:",
-        localStorage.getItem("refreshToken")
-          ? `${localStorage.getItem("refreshToken")!.substring(0, 20)}...`
-          : "null"
+        localRefreshToken.substring(0, 20) + "..."
       );
       dispatch(restoreSession());
     }
-  }, [dispatch, isAuthPage, location.pathname]); // Added location.pathname to dependency
+  }, [dispatch, isAuthPage, isLoading, isAuthenticated]);
 
   console.log(
     "App: Rendering, isLoading:",
@@ -84,15 +83,13 @@ function AppContent() {
     refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
   );
 
-  if (isLoading) {
+  if (isLoading && !isAuthPage) {
     return (
       <div className="flex justify-center items-center min-h-screen text-[var(--color-primary)]">
         Loading...
       </div>
     );
   }
-
-  const role = user?.role || "";
 
   return (
     <div className="App">
@@ -102,226 +99,198 @@ function AppContent() {
           <Route path="/" element={<HomePage />} />
           <Route
             path="/login"
-            element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
+            element={
+              isAuthenticated ? (
+                <Navigate
+                  to="/appointments"
+                  replace
+                  state={{ from: location }}
+                />
+              ) : (
+                <Login />
+              )
+            }
           />
           <Route
             path="/register"
             element={
-              isAuthenticated ? <Navigate to="/" replace /> : <Register />
+              isAuthenticated ? (
+                <Navigate to="/appointments" replace />
+              ) : (
+                <Register />
+              )
             }
           />
           {/* Client Routes */}
           <Route
             path="/search"
             element={
-              isAuthenticated && role === "client" ? (
+              <ProtectedLayout allowedRoles={["client"]}>
                 <Search />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/clinic/:id"
             element={
-              isAuthenticated && role === "client" ? (
+              <ProtectedLayout allowedRoles={["client"]}>
                 <ClinicDetails />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/appointment/booking"
             element={
-              isAuthenticated && role === "client" ? (
+              <ProtectedLayout allowedRoles={["client"]}>
                 <AppointmentBooking />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/appointments"
             element={
-              isAuthenticated && role === "client" ? (
+              <ProtectedLayout allowedRoles={["client"]}>
                 <Appointments />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/history"
             element={
-              isAuthenticated && role === "client" ? (
+              <ProtectedLayout allowedRoles={["client"]}>
                 <History />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/reviews"
             element={
-              isAuthenticated && role === "client" ? (
+              <ProtectedLayout allowedRoles={["client"]}>
                 <Reviews />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/loyalty"
             element={
-              isAuthenticated && role === "client" ? (
+              <ProtectedLayout allowedRoles={["client"]}>
                 <Loyalty />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           {/* Clinic Routes */}
           <Route
             path="/clinic/profile"
             element={
-              isAuthenticated && role === "clinic_owner" ? (
+              <ProtectedLayout allowedRoles={["clinic_owner"]}>
                 <ClinicProfile />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/clinic/diary"
             element={
-              isAuthenticated && role === "clinic_owner" ? (
+              <ProtectedLayout allowedRoles={["clinic_owner"]}>
                 <Diary />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/clinic/availability"
             element={
-              isAuthenticated && role === "clinic_owner" ? (
+              <ProtectedLayout allowedRoles={["clinic_owner"]}>
                 <Availability />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/clinic/execution"
             element={
-              isAuthenticated && role === "clinic_owner" ? (
+              <ProtectedLayout allowedRoles={["clinic_owner"]}>
                 <Execution />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/clinic/reports"
             element={
-              isAuthenticated && role === "clinic_owner" ? (
+              <ProtectedLayout allowedRoles={["clinic_owner"]}>
                 <Reports />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           {/* CRM Routes */}
           <Route
             path="/crm/customers"
             element={
-              isAuthenticated && role === "salesperson" ? (
+              <ProtectedLayout allowedRoles={["salesperson"]}>
                 <Customers />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/crm/customer/:id"
             element={
-              isAuthenticated && role === "salesperson" ? (
+              <ProtectedLayout allowedRoles={["salesperson"]}>
                 <CustomerDetails />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/crm/tasks"
             element={
-              isAuthenticated && role === "salesperson" ? (
+              <ProtectedLayout allowedRoles={["salesperson"]}>
                 <Tasks />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/crm/actions"
             element={
-              isAuthenticated && role === "salesperson" ? (
+              <ProtectedLayout allowedRoles={["salesperson"]}>
                 <Actions />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/crm/repeat-management"
             element={
-              isAuthenticated && role === "salesperson" ? (
+              <ProtectedLayout allowedRoles={["salesperson"]}>
                 <RepeatManagement />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           {/* Admin Routes */}
           <Route
             path="/admin/dashboard"
             element={
-              isAuthenticated && role === "admin" ? (
+              <ProtectedLayout allowedRoles={["admin"]}>
                 <AdminDashboard />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/admin/users"
             element={
-              isAuthenticated && role === "admin" ? (
+              <ProtectedLayout allowedRoles={["admin"]}>
                 <AdminUsers />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/admin/loyalty-management"
             element={
-              isAuthenticated && role === "admin" ? (
+              <ProtectedLayout allowedRoles={["admin"]}>
                 <LoyaltyManagement />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
           <Route
             path="/admin/monitor"
             element={
-              isAuthenticated && role === "admin" ? (
+              <ProtectedLayout allowedRoles={["admin"]}>
                 <Monitor />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedLayout>
             }
           />
         </Routes>

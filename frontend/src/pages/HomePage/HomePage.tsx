@@ -93,9 +93,20 @@ export const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [location, setLocation] = React.useState("");
 
+  // useEffect(() => {
+  //   dispatch(fetchFeaturedClinics());
+  // }, [dispatch]);
+
+  const { isAuthenticated, isLoading: authLoading } = useSelector(
+    (state: RootState) => state.auth
+  );
+
   useEffect(() => {
-    dispatch(fetchFeaturedClinics());
-  }, [dispatch]);
+    if (isAuthenticated && !authLoading) {
+      console.log("HomePage: Dispatching fetchFeaturedClinics");
+      dispatch(fetchFeaturedClinics());
+    }
+  }, [dispatch, isAuthenticated, authLoading]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,7 +239,6 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
-
 
       {/* Categories Section */}
       <section className="py-16 bg-gray-50">

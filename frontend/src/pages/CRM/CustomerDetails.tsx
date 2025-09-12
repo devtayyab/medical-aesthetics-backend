@@ -8,7 +8,6 @@ import type { RootState, AppDispatch } from "@/store";
 import type { Lead } from "@/types";
 import { Input } from "@/components/atoms/Input/Input";
 import { Button } from "@/components/atoms/Button/Button";
-import { Sidebar } from "@/components/organisms/Sidebar";
 
 export const CustomerDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -54,37 +53,34 @@ export const CustomerDetails: React.FC = () => {
   };
 
   return (
-    <div className="flex max-w-[1200px] mx-auto p-4">
-      <Sidebar />
-      <div className="flex-1 ml-64">
-        <h2 className="text-2xl font-bold mb-4">Customer Details</h2>
-        {isLoading && <p>Loading...</p>}
-        {error && <p className="text-red-600">{error}</p>}
-        {selectedLead && (
-          <div className="flex flex-col gap-4">
-            <p>Name: {selectedLead.name}</p>
-            <p>Email: {selectedLead.email}</p>
-            <p>Phone: {selectedLead.phone || "N/A"}</p>
-            <p>Status: {selectedLead.status}</p>
-            <TagSelector
-              tags={selectedLead.tags || []}
-              onAddTag={handleAddTag}
-              onRemoveTag={handleRemoveTag}
+    <>
+      <h2 className="text-2xl font-bold mb-4">Customer Details</h2>
+      {isLoading && <p>Loading...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+      {selectedLead && (
+        <div className="flex flex-col gap-4">
+          <p>Name: {selectedLead.name}</p>
+          <p>Email: {selectedLead.email}</p>
+          <p>Phone: {selectedLead.phone || "N/A"}</p>
+          <p>Status: {selectedLead.status}</p>
+          <TagSelector
+            tags={selectedLead.tags || []}
+            onAddTag={handleAddTag}
+            onRemoveTag={handleRemoveTag}
+          />
+          <div>
+            <h3 className="text-lg font-semibold">Log Action</h3>
+            <Input
+              placeholder="Add note"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              fullWidth
             />
-            <div>
-              <h3 className="text-lg font-semibold">Log Action</h3>
-              <Input
-                placeholder="Add note"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                fullWidth
-              />
-              <Button onClick={handleLogAction}>Log Note</Button>
-            </div>
-            <ActionLog actions={actions} />
+            <Button onClick={handleLogAction}>Log Note</Button>
           </div>
-        )}
-      </div>
-    </div>
+          <ActionLog actions={actions} />
+        </div>
+      )}
+    </>
   );
 };

@@ -15,7 +15,11 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const state = store.getState();
   const token = state.auth.accessToken;
-  console.log("Request interceptor: Using accessToken:", token ? "present" : "missing");
+  console.log('Request interceptor:', {
+    url: config.url,
+    method: config.method,
+    accessToken: token ? `${token.substring(0, 20)}...` : 'missing',
+  });
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -30,28 +34,29 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       const state = store.getState();
       const refreshToken = state.auth.refreshToken || localStorage.getItem("refreshToken");
-      console.log("Interceptor: refreshToken:", refreshToken ? `${refreshToken.substring(0, 20)}...` : "null");
+      console.log('Interceptor: 401 detected, refreshToken:', refreshToken ? `${refreshToken.substring(0, 20)}...` : 'null');
 
       if (refreshToken) {
         try {
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
-          console.log("Interceptor: Refresh success, response:", response.data);
+          console.log('Interceptor: Refresh success, response:', response.data);
           const { accessToken, refreshToken: newRefreshToken } = response.data;
-          store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken })); // Optional refreshToken
+          store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken }));
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
         } catch (refreshError: any) {
-          console.error("Interceptor: Refresh failed:", refreshError.response?.data || refreshError.message);
+          console.error('Interceptor: Refresh failed:', refreshError.response?.data || refreshError.message);
           store.dispatch(logout());
           window.location.href = "/login";
           return Promise.reject(refreshError);
         }
       } else {
-        console.log("Interceptor: No refreshToken, logging out");
+        console.log('Interceptor: No refreshToken, logging out');
         store.dispatch(logout());
         window.location.href = "/login";
       }
     }
+    console.error('Interceptor: Non-401 error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );

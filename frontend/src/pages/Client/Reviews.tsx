@@ -8,12 +8,9 @@ export const Reviews: React.FC = () => {
   };
 
   return (
-    <div className="flex max-w-[1200px] mx-auto p-4">
-      <Sidebar />
-      <div className="flex-1 ml-64">
-        <h2 className="text-2xl font-bold mb-4">Submit a Review</h2>
-        <ReviewForm onSubmit={handleSubmitReview} />
-      </div>
-    </div>
+    <>
+      <h2 className="text-2xl font-bold mb-4">Submit a Review</h2>
+      <ReviewForm onSubmit={handleSubmitReview} />
+    </>
   );
 };
