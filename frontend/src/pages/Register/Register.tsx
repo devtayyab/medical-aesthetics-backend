@@ -191,7 +191,13 @@ export const Register: React.FC = () => {
             type="submit"
             fullWidth
             disabled={isLoading}
-            style={{ backgroundColor: "var(--color-primary)" }}
+            style={{
+              color: "#33373F",
+              backgroundColor: "#CBFF38",
+              paddingTop: "12px",
+              paddingBottom: "12px",
+            }}
+            className="mt-5"
           >
             {isLoading ? "Registering..." : "Register"}
           </Button>

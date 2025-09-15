@@ -111,22 +111,26 @@ export const Login: React.FC = () => {
         {error && <p className={errorStyle}>{error}</p>}
         <form onSubmit={handleSubmit} className={formStyle}>
           <div>
+            <label htmlFor="email">Email</label>
             <Input
               type="email"
-              placeholder="Email"
+              placeholder="abc@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               fullWidth
+              className="bg-white text-[15px] mt-1"
             />
             {emailError && <p className={errorStyle}>{emailError}</p>}
           </div>
           <div>
+            <label htmlFor="password">Password</label>
             <Input
               type="password"
-              placeholder="Password"
+              placeholder="Enter Your Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               fullWidth
+              className="bg-white text-[15px] mt-1"
             />
             {passwordError && <p className={errorStyle}>{passwordError}</p>}
           </div>
@@ -134,7 +138,13 @@ export const Login: React.FC = () => {
             type="submit"
             fullWidth
             disabled={isLoading}
-            style={{ backgroundColor: "var(--color-primary)" }}
+            style={{
+              color: "#33373F",
+              backgroundColor: "#CBFF38",
+              paddingTop: "12px",
+              paddingBottom: "12px",
+            }}
+            className="mt-5"
           >
             {isLoading ? "Logging in..." : "Login"}
           </Button>
@@ -144,7 +154,7 @@ export const Login: React.FC = () => {
           <Link
             to="/register"
             className={linkStyle}
-            style={{ color: "#1570EF" }}
+            style={{ color: "#7CB342" }}
           >
             Sign Up
           </Link>

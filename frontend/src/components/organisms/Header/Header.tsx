@@ -210,8 +210,8 @@ export const Header: React.FC = () => {
   };
 
   return (
-    // <header className="bg-[#203400] py-[28px]">
-    <header className="bg-gray-900 py-5">
+    // <header className="bg-gray-900 py-5">
+    <header className="bg-[#203400] py-5">
       <div className={containerStyle}>
         <Link
           to="/"
@@ -298,7 +298,11 @@ export const Header: React.FC = () => {
             </>
           ) : (
             <>
-              <Button variant="ghost" onClick={() => navigate("/login")}>
+              <Button
+                variant="ghost"
+                className="text-white hover:text-black"
+                onClick={() => navigate("/login")}
+              >
                 Sign In
               </Button>
               <Button onClick={() => navigate("/register")}>Sign Up</Button>
