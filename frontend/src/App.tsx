@@ -11,6 +11,7 @@ import { Provider, useDispatch, useSelector } from "react-redux";
 import { store, AppDispatch } from "@/store";
 import { restoreSession } from "@/store/slices/authSlice";
 import { Header } from "@/components/organisms/Header/Header";
+import { Footer } from "@/components/organisms/Footer/Footer";
 import { HomePage } from "@/pages/HomePage/HomePage";
 import { Login } from "@/pages/Login/Login";
 import { Register } from "@/pages/Register/Register";
@@ -40,7 +41,7 @@ import type { RootState } from "@/store";
 import "@/styles/globals.css";
 
 const AuthHeader: React.FC = () => (
-  <header className="bg-[#203400] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
+  <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
     <div className="max-w-[480px] mx-auto px-4 py-6 flex items-center justify-center">
       <Link
         to="/"
@@ -295,6 +296,7 @@ function AppContent() {
           />
         </Routes>
       </main>
+      {!isAuthPage && <Footer />}
     </div>
   );
 }

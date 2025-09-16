@@ -8,16 +8,6 @@ import { Input } from "@/components/atoms/Input/Input";
 import type { RootState, AppDispatch } from "@/store";
 import { logout } from "@/store/slices/authSlice";
 
-const headerStyle = css`
-  background-color: var(--color-white);
-  // background-color: #203400;
-  border-bottom: 1px solid var(--color-medical-border);
-  position: sticky;
-  top: 0;
-  z-index: var(--z-sticky);
-  box-shadow: var(--shadow-sm);
-`;
-
 const containerStyle = css`
   max-width: 1200px;
   margin: 0 auto;
@@ -211,7 +201,7 @@ export const Header: React.FC = () => {
 
   return (
     // <header className="bg-gray-900 py-5">
-    <header className="bg-[#203400] py-5">
+    <header className="bg-[#2D3748] py-5">
       <div className={containerStyle}>
         <Link
           to="/"

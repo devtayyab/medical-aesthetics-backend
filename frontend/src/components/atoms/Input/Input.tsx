@@ -125,7 +125,7 @@ export const Input: React.FC<InputProps> = ({
         {leftIcon && <div className={leftIconStyle}>{leftIcon}</div>}
 
         <input
-          className={`p-3 rounded-[12px] ${inputStyle} ${leftIcon ? inputWithLeftIconStyle : ""} ${
+          className={`p-3 rounded-[12px] bg-white ${inputStyle} ${leftIcon ? inputWithLeftIconStyle : ""} ${
             rightIcon ? inputWithRightIconStyle : ""
           } ${error ? inputErrorStyle : ""}`}
           {...props}

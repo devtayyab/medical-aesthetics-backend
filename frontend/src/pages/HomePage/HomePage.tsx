@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Calendar,
   UserCheck,
+  Rotate3D,
 } from "lucide-react";
 import {
   FaStethoscope,
@@ -26,10 +27,13 @@ import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 
 // Images
-import HeaderBanner from "@/assets/HeaderBanner.jpg";
+import HeaderBanner from "@/assets/HeaderBanner.svg";
+import LayeredBG from "@/assets/LayeredBG.svg";
 import PlusIcon from "@/assets/Icons/PlusIcon.svg";
 import CalendarIcon from "@/assets/Icons/CalendarIcon.svg";
 import TickIcon from "@/assets/Icons/TickIcon.svg";
+import GiftConfidenceImg from "@/assets/GiftConfidenceImg.svg";
+import TopRatedClinicImg from "@/assets/TopRatedClinicImg.svg";
 
 const treatmentSteps = [
   {
@@ -128,22 +132,22 @@ export const HomePage: React.FC = () => {
     <div>
       {/* Hero Section */}
       <section
-        className="relative bg-cover bg-center min-h-[70vh]"
+        className="relative bg-cover bg-center min-h-[550px]"
         style={{
           backgroundImage: `url(${HeaderBanner})`,
           alignContent: "center",
         }}
       >
         {/* Container with max-width */}
-        <div className="max-w-[1200px] mx-auto grid grid-cols-2 gap-8 items-center h-full px-6">
+        <div className="max-w-[1200px] mx-auto grid grid-cols-1 gap-8 items-center h-full px-6">
           {/* Left: White search box */}
-          <div className="bg-white shadow-lg rounded-xl p-6">
+          <div className="max-w-[70%] bg-white shadow-lg rounded-xl px-6 py-7">
             {/* Tabs */}
-            <div className="flex border rounded-lg overflow-hidden mb-6">
-              <button className="flex-1 flex items-center justify-center gap-2 py-2 bg-green-800 text-white font-medium">
+            <div className="flex border border-[#2D3748] rounded-[16px] overflow-hidden mb-6">
+              <button className="flex-1 flex items-center justify-center gap-2 py-[10px] bg-[#2D3748] text-white font-medium">
                 <FaStethoscope /> Treatments
               </button>
-              <button className="flex-1 flex items-center justify-center gap-2 py-2 bg-white text-gray-700 font-medium border-l">
+              <button className="flex-1 flex items-center justify-center gap-2 py-[10px] bg-white text-gray-700 font-medium border-l">
                 <FaHospital /> Clinics
               </button>
             </div>
@@ -151,7 +155,7 @@ export const HomePage: React.FC = () => {
             {/* Search form */}
             <form onSubmit={handleSearch} className="space-y-4">
               {/* Services */}
-              <div className="flex items-center border rounded-lg px-3 py-2">
+              <div className="flex items-center border rounded-lg px-3 py-4">
                 <FaSearch className="text-gray-500 mr-2" />
                 <input
                   type="text"
@@ -163,7 +167,7 @@ export const HomePage: React.FC = () => {
               </div>
 
               {/* Location */}
-              <div className="flex items-center border rounded-lg px-3 py-2">
+              <div className="flex items-center border rounded-lg px-3 py-4">
                 <FaMapMarkerAlt className="text-gray-500 mr-2" />
                 <input
                   type="text"
@@ -175,7 +179,7 @@ export const HomePage: React.FC = () => {
               </div>
 
               {/* Date */}
-              <div className="flex items-center border rounded-lg px-3 py-2">
+              <div className="flex items-center border rounded-lg px-3 py-4">
                 <FaCalendarAlt className="text-gray-500 mr-2" />
                 <input
                   type="date"
@@ -186,7 +190,7 @@ export const HomePage: React.FC = () => {
               {/* Search button */}
               <button
                 type="submit"
-                className="w-full py-3 rounded-lg font-medium text-lg flex items-center justify-center gap-2 bg-lime-400 text-black hover:bg-lime-500 transition"
+                className="!mt-7 w-full py-3 rounded-lg font-medium text-lg flex items-center justify-center gap-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 transition"
               >
                 <FaSearch /> Search
               </button>
@@ -194,7 +198,7 @@ export const HomePage: React.FC = () => {
           </div>
 
           {/* Right: Doctor image full height */}
-          <div className="flex justify-center"></div>
+          {/* <div className="flex justify-center"></div> */}
         </div>
       </section>
 
@@ -240,112 +244,63 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h2 className="text-4xl font-extrabold text-gray-900">
-              Popular Categories
-            </h2>
-            <p className="text-lg text-gray-600 max-w-[600px] mx-auto mt-2">
-              Explore our wide range of beauty and wellness services
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {categories.map((category) => (
-              <Card
-                key={category.id}
-                variant="default"
-                hoverable
-                className="text-center p-6 cursor-pointer transition-transform duration-200 bg-white rounded-2xl border border-gray-200 hover:-translate-y-2 hover:shadow-lg"
-                onClick={() => handleCategoryClick(category.id)}
-              >
-                <div className="w-15 h-15 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-md">
-                  <span style={{ fontSize: "24px" }}>{category.icon}</span>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                  {category.name}
-                </h3>
-                <p className="text-sm text-gray-600">{category.description}</p>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Clinics Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h2 className="text-4xl font-extrabold text-gray-900">
-              Featured Clinics
-            </h2>
-            <p className="text-lg text-gray-600 max-w-[600px] mx-auto mt-2">
-              Discover top-rated medical aesthetic clinics and dermatology
-              centers
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredClinics.map((clinic) => (
-              <ClinicCard
-                key={clinic.id}
-                clinic={clinic}
-                onSelect={handleClinicSelect}
-              />
-            ))}
-          </div>
-
-          {featuredClinics.length > 0 && (
-            <div className="text-center mt-10">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => navigate("/search")}
-              >
-                View All Clinics
-              </Button>
+      <section
+        className="relative bg-cover bg-center min-h-[550px] flex items-center justify-center px-4 -scale-x-100"
+        style={{ backgroundImage: `url(${LayeredBG})` }}
+      >
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 w-full grid grid-cols-1 md:grid-cols-2 gap-12 -scale-x-100">
+          {/* Card 1 */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+            <img
+              src={GiftConfidenceImg}
+              alt="Gift Confidence"
+              className="w-full h-[241px] object-cover"
+            />
+            <div className="p-6 flex flex-col flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Gift Confidence, Not Just Care
+              </h3>
+              <p className="mt-2 text-gray-600 text-sm flex-1">
+                Give the gift of expert medical beauty treatments — from
+                dermatology to aesthetic enhancements — and help your loved ones
+                feel their best.
+              </p>
+              <button className="mt-4 w-fit inline-flex items-center justify-center border border-green-600 text-green-700 hover:bg-green-50 font-medium px-4 py-2 rounded-md text-sm">
+                Send a Treatment Gift Card
+                <span className="ml-2">→</span>
+              </button>
             </div>
-          )}
+          </div>
+
+          {/* Card 2 */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+            <img
+              src={TopRatedClinicImg}
+              alt="Find Clinics"
+              className="w-full h-[241px] object-cover"
+            />
+            <div className="p-6 flex flex-col flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Find Trusted, Top-Rated Clinics
+              </h3>
+              <p className="mt-2 text-gray-600 text-sm flex-1">
+                Discover clinics recognized for their excellence in dermatology,
+                plastic surgery, and aesthetic medicine. Backed by real patient
+                reviews, so you can book with confidence.
+              </p>
+              <button className="mt-4 w-fit inline-flex items-center justify-center border border-green-600 text-green-700 hover:bg-green-50 font-medium px-4 py-2 rounded-md text-sm">
+                Explore Top Clinics
+                <span className="ml-2">→</span>
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-blue-600 text-white">
+      <section className="py-16 bg-[#71809633] text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
-            <div>
-              <div className="text-4xl font-extrabold text-white mb-2">
-                25,000+
-              </div>
-              <div className="text-lg text-white/90 font-medium">
-                Happy Patients
-              </div>
-            </div>
-            <div>
-              <div className="text-4xl font-extrabold text-white mb-2">
-                1,200+
-              </div>
-              <div className="text-lg text-white/90 font-medium">
-                Certified Clinics
-              </div>
-            </div>
-            <div>
-              <div className="text-4xl font-extrabold text-white mb-2">
-                150+
-              </div>
-              <div className="text-lg text-white/90 font-medium">
-                Medical Procedures
-              </div>
-            </div>
-            <div>
-              <div className="text-4xl font-extrabold text-white mb-2">4.9</div>
-              <div className="text-lg text-white/90 font-medium">
-                Patient Satisfaction
-              </div>
-            </div>
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-center"></div>
         </div>
       </section>
     </div>
