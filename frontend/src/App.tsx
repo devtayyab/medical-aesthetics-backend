@@ -12,6 +12,7 @@ import { store, AppDispatch } from "@/store";
 import { restoreSession } from "@/store/slices/authSlice";
 import { Header } from "@/components/organisms/Header/Header";
 import { HomePage } from "@/pages/HomePage/HomePage";
+import Booking from "@/pages/Booking/Booking"
 import { Login } from "@/pages/Login/Login";
 import { Register } from "@/pages/Register/Register";
 import { Search } from "@/pages/Client/Search";
@@ -100,6 +101,7 @@ function AppContent() {
       <main>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/Booking" element={<Booking/>} />
           <Route
             path="/login"
             element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
