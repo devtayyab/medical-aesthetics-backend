@@ -13,6 +13,7 @@ import { restoreSession } from "@/store/slices/authSlice";
 import { Header } from "@/components/organisms/Header/Header";
 import { Footer } from "@/components/organisms/Footer/Footer";
 import { HomePage } from "@/pages/HomePage/HomePage";
+import { Booking } from "@/pages/Booking/Booking";
 import { Login } from "@/pages/Login/Login";
 import { Register } from "@/pages/Register/Register";
 import { ProtectedLayout } from "@/components/organisms/ProtectedLayout";
@@ -98,6 +99,7 @@ function AppContent() {
       <main>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/booking" element={<Booking />} />
           <Route
             path="/login"
             element={

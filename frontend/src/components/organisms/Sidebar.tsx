@@ -55,7 +55,7 @@ export const Sidebar: React.FC = () => {
             : [];
 
   return (
-    <aside className="w-64 bg-gray-100 h-screen p-4 fixed">
+    <aside className="w-64 bg-gray-100 h-screen p-4 border">
       <div className="flex flex-col gap-2">
         {links.map((link) => (
           <Link

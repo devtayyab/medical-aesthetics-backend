@@ -1,4 +1,3 @@
-// src/components/layout/Footer.tsx
 import React from "react";
 import { Link } from "react-router-dom";
 import { FaFacebookF, FaLinkedinIn } from "react-icons/fa";
