@@ -270,11 +270,13 @@ export const Header: React.FC = () => {
                       My Appointments
                     </Link>
                     <Link
-                      to="/profile"
+                      // to="/profile"
+                      to="/my-account"
                       className={userMenuItemStyle}
                       onClick={() => setIsUserMenuOpen(false)}
                     >
-                      Profile
+                      {/* Profile */}
+                      My Account
                     </Link>
                     <button
                       className={userMenuItemStyle}
@@ -328,70 +330,70 @@ export const Header: React.FC = () => {
               fullWidth
             />
           </form>
-{isAuthenticated ? (
-  <div
-    className={css`
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-md);
-    `}
-  >
-    <Link
-      to="/dashboard"
-      onClick={() => setIsMobileMenuOpen(false)}
-      className={userMenuItemStyle}
-    >
-      Dashboard
-    </Link>
-    <Link
-      to="/appointments"
-      onClick={() => setIsMobileMenuOpen(false)}
-      className={userMenuItemStyle}
-    >
-      My Appointments
-    </Link>
-    <Link
-      to="/profile"
-      onClick={() => setIsMobileMenuOpen(false)}
-      className={userMenuItemStyle}
-    >
-      Profile
-    </Link>
-    <button onClick={handleLogout} className={userMenuItemStyle}>
-      Logout
-    </button>
-  </div>
-) : (
-  <div
-    className={css`
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-md);
-    `}
-  >
-    <Button
-      variant="ghost"
-      fullWidth
-      onClick={() => {
-        navigate("/login");
-        setIsMobileMenuOpen(false);
-      }}
-    >
-      Sign In
-    </Button>
-    <Button
-      fullWidth
-      onClick={() => {
-        navigate("/register");
-        setIsMobileMenuOpen(false);
-      }}
-    >
-      Sign Up
-    </Button>
-  </div>
-)}
-
-          
+          {isAuthenticated ? (
+            <div
+              className={css`
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-md);
+              `}
+            >
+              <Link
+                to="/dashboard"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={userMenuItemStyle}
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/appointments"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={userMenuItemStyle}
+              >
+                My Appointments
+              </Link>
+              <Link
+                // to="/profile"
+                to="/my-account"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={userMenuItemStyle}
+              >
+                {/* Profile */}
+                My Account
+              </Link>
+              <button onClick={handleLogout} className={userMenuItemStyle}>
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div
+              className={css`
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-md);
+              `}
+            >
+              <Button
+                variant="ghost"
+                fullWidth
+                onClick={() => {
+                  navigate("/login");
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                Sign In
+              </Button>
+              <Button
+                fullWidth
+                onClick={() => {
+                  navigate("/register");
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                Sign Up
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </header>

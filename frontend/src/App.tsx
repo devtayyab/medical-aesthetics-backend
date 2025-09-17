@@ -38,6 +38,7 @@ import { Dashboard as AdminDashboard } from "@/pages/Admin/Dashboard";
 import { Users as AdminUsers } from "@/pages/Admin/Users";
 import { LoyaltyManagement } from "@/pages/Admin/LoyaltyManagement";
 import { Monitor } from "@/pages/Admin/Monitor";
+import { MyAccount } from "@/pages/Client/MyAccount";
 import type { RootState } from "@/store";
 import "@/styles/globals.css";
 
@@ -178,6 +179,14 @@ function AppContent() {
             element={
               <ProtectedLayout allowedRoles={["client"]}>
                 <Loyalty />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/my-account"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <MyAccount />
               </ProtectedLayout>
             }
           />

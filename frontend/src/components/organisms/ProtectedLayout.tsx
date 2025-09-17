@@ -53,8 +53,9 @@ export const ProtectedLayout: React.FC<ProtectedLayoutProps> = ({
 
   return (
     <div className="flex max-w-[1200px] mx-auto p-4">
-      <Sidebar />
-      <div className="flex-1 ml-64">{children}</div>
+      {/* <Sidebar /> */}
+      {/* <div className="flex-1 ml-64">{children}</div> */}
+      <div className="flex-1">{children}</div>
     </div>
   );
 };
