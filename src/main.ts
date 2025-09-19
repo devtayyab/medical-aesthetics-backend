@@ -46,7 +46,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
   console.log(`🚀 Medical Aesthetics Platform API running on port ${port}`);
-  console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+  console.log(`📚 API Documentation: http://13.50.240.252:${port}/api/docs`);
 }
 
 bootstrap();

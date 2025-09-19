@@ -13,10 +13,9 @@ import type {
   Task,
 } from "@/types";
 
-// const API_BASE_URL =
-//   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://13.50.240.252:3000";
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-const API_BASE_URL = "http://localhost:3000";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
