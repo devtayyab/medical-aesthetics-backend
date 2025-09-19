@@ -1,9 +1,7 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { restoreSession } from "@/store/slices/authSlice";
-import type { RootState, AppDispatch } from "@/store";
-import { Sidebar } from "@/components/organisms/Sidebar";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store";
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;
@@ -14,19 +12,10 @@ export const ProtectedLayout: React.FC<ProtectedLayoutProps> = ({
   children,
   allowedRoles = [],
 }) => {
-  const dispatch = useDispatch<AppDispatch>();
-  const { isAuthenticated, user, refreshToken, isLoading } = useSelector(
+  const { isAuthenticated, user, isLoading } = useSelector(
     (state: RootState) => state.auth
   );
   const location = useLocation();
-
-  useEffect(() => {
-    const localRefreshToken = localStorage.getItem("refreshToken");
-    if (!isAuthenticated && localRefreshToken) {
-      console.log("ProtectedLayout: Dispatching restoreSession on reload");
-      dispatch(restoreSession());
-    }
-  }, [dispatch, isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -51,11 +40,5 @@ export const ProtectedLayout: React.FC<ProtectedLayoutProps> = ({
     return <Navigate to="/" replace />;
   }
 
-  return (
-    <div className="flex max-w-[1200px] mx-auto p-4">
-      {/* <Sidebar /> */}
-      {/* <div className="flex-1 ml-64">{children}</div> */}
-      <div className="flex-1">{children}</div>
-    </div>
-  );
+  return <div>{children}</div>;
 };

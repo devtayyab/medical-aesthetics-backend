@@ -89,33 +89,49 @@ const initialState: ClientState = {
 
 export const searchClinics = createAsyncThunk(
   "client/searchClinics",
-  async (params: SearchFilters) => {
-    const response = await clinicsAPI.search(params);
-    return response.data;
+  async (params: SearchFilters, { rejectWithValue }) => {
+    try {
+      const response = await clinicsAPI.search(params);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to search clinics");
+    }
   }
 );
 
 export const fetchFeaturedClinics = createAsyncThunk(
   "client/fetchFeaturedClinics",
-  async () => {
-    const response = await clinicsAPI.getFeatured();
-    return response.data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await clinicsAPI.getFeatured();
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch featured clinics");
+    }
   }
 );
 
 export const fetchClinicById = createAsyncThunk(
   "client/fetchClinicById",
-  async (id: string) => {
-    const response = await clinicsAPI.getById(id);
-    return response.data;
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await clinicsAPI.getById(id);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch clinic");
+    }
   }
 );
 
 export const fetchClinicServices = createAsyncThunk(
   "client/fetchClinicServices",
-  async (clinicId: string) => {
-    const response = await clinicsAPI.getServices(clinicId);
-    return response.data;
+  async (clinicId: string, { rejectWithValue }) => {
+    try {
+      const response = await clinicsAPI.getServices(clinicId);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch services");
+    }
   }
 );
 
@@ -126,9 +142,13 @@ export const fetchAvailability = createAsyncThunk(
     serviceId: string;
     providerId: string;
     date: string;
-  }) => {
-    const response = await bookingAPI.getAvailability(params);
-    return response.data;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await bookingAPI.getAvailability(params);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch availability");
+    }
   }
 );
 
@@ -140,9 +160,13 @@ export const holdSlot = createAsyncThunk(
     providerId: string;
     startTime: string;
     endTime: string;
-  }) => {
-    const response = await bookingAPI.holdSlot(data);
-    return response.data;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await bookingAPI.holdSlot(data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to hold slot");
+    }
   }
 );
 
@@ -159,16 +183,22 @@ export const createAppointment = createAsyncThunk(
     paymentMethod?: string;
     advancePaymentAmount?: number;
     holdId?: string;
-  }) => {
-    const response = await bookingAPI.createAppointment(data);
-    return response.data;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await bookingAPI.createAppointment(data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to create appointment");
+    }
   }
 );
 
 export const fetchUserAppointments = createAsyncThunk(
   "client/fetchUserAppointments",
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
+      const state = getState() as RootState;
+      console.log('fetchUserAppointments: Using accessToken:', state.auth.accessToken ? `${state.auth.accessToken.substring(0, 20)}...` : 'missing');
       const response = await bookingAPI.getUserAppointments();
       console.log('fetchUserAppointments: Response:', response.data);
       return response.data;
@@ -183,7 +213,7 @@ export const cancel = createAsyncThunk(
   "client/cancelAppointment",
   async (appointmentId: string, { rejectWithValue }) => {
     try {
-      const response = await bookingAPI.cancelAppointment(appointmentId);
+      const response = await bookingAPI.cancel(appointmentId);
       return { id: appointmentId, ...response.data };
     } catch (error: any) {
       return rejectWithValue(
@@ -204,11 +234,7 @@ export const reschedule = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await bookingAPI.rescheduleAppointment({
-        appointmentId,
-        newStartTime,
-        newEndTime,
-      });
+      const response = await bookingAPI.reschedule(appointmentId, newStartTime, newEndTime);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -220,17 +246,25 @@ export const reschedule = createAsyncThunk(
 
 export const fetchLoyaltyBalance = createAsyncThunk(
   "client/fetchLoyaltyBalance",
-  async (clientId: string) => {
-    const response = await loyaltyAPI.getBalance(clientId);
-    return response.data;
+  async (clientId: string, { rejectWithValue }) => {
+    try {
+      const response = await loyaltyAPI.getBalance(clientId);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch loyalty balance");
+    }
   }
 );
 
 export const fetchLoyaltyHistory = createAsyncThunk(
   "client/fetchLoyaltyHistory",
-  async (clientId: string) => {
-    const response = await loyaltyAPI.getHistory(clientId);
-    return response.data;
+  async (clientId: string, { rejectWithValue }) => {
+    try {
+      const response = await loyaltyAPI.getHistory(clientId);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch loyalty history");
+    }
   }
 );
 
@@ -241,9 +275,13 @@ export const redeemPoints = createAsyncThunk(
     clinicId: string;
     points: number;
     description: string;
-  }) => {
-    const response = await loyaltyAPI.redeemPoints(data);
-    return response.data;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await loyaltyAPI.redeemPoints(data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to redeem points");
+    }
   }
 );
 
@@ -277,7 +315,7 @@ const clientSlice = createSlice({
       })
       .addCase(searchClinics.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message || "Failed to search clinics";
+        state.error = action.payload as string;
       })
       .addCase(fetchFeaturedClinics.fulfilled, (state, action) => {
         state.featuredClinics = action.payload;
@@ -296,7 +334,7 @@ const clientSlice = createSlice({
       })
       .addCase(createAppointment.fulfilled, (state, action) => {
         state.appointments.push(action.payload);
-        state.holdId = undefined; // Clear hold after successful booking
+        state.holdId = undefined;
       })
       .addCase(fetchUserAppointments.fulfilled, (state, action) => {
         state.appointments = action.payload;

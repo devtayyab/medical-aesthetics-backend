@@ -20,7 +20,7 @@ export const Appointments: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('Appointments: Dispatching fetchUserAppointments');
+      console.log("Appointments: Dispatching fetchUserAppointments");
       dispatch(fetchUserAppointments());
     }
   }, [dispatch, isAuthenticated]);
@@ -39,7 +39,7 @@ export const Appointments: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="max-w-[1200px] mx-auto p-8">
       <h2 className="text-2xl font-bold mb-4">My Appointments</h2>
       {isLoading && <p>Loading...</p>}
       {error && <p className="text-red-600">{error}</p>}

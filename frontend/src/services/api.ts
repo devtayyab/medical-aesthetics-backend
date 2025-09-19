@@ -1,9 +1,22 @@
 import axios, { AxiosError } from "axios";
 import { store } from "@/store";
 import { setTokens, logout } from "@/store/slices/authSlice";
-import type { User, Clinic, Service, Appointment, TimeSlot, LoyaltyBalance, Notification, Lead, Task } from "@/types";
+import type {
+  User,
+  Clinic,
+  Service,
+  Appointment,
+  TimeSlot,
+  LoyaltyBalance,
+  Notification,
+  Lead,
+  Task,
+} from "@/types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+// const API_BASE_URL =
+//   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+const API_BASE_URL = "http://localhost:3000";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,13 +25,28 @@ const api = axios.create({
   },
 });
 
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+const subscribeTokenRefresh = (cb: (token: string) => void) => {
+  refreshSubscribers.push(cb);
+};
+
+const onRefreshed = (token: string) => {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+};
+
 api.interceptors.request.use((config) => {
   const state = store.getState();
   const token = state.auth.accessToken;
-  console.log('Request interceptor:', {
+  console.log("Request interceptor:", {
     url: config.url,
     method: config.method,
-    accessToken: token ? `${token.substring(0, 20)}...` : 'missing',
+    accessToken: token ? `${token.substring(0, 20)}...` : "null",
+    hasRefreshToken:
+      !!state.auth.refreshToken || !!localStorage.getItem("refreshToken"),
+    fullHeader: token ? `Bearer ${token}` : "No token",
   });
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -27,42 +55,101 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log("Response received:", {
+      url: response.config.url,
+      status: response.status,
+    });
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as any;
+    console.log("Response error detected:", {
+      status: error.response?.status,
+      url: originalRequest.url,
+      headers: originalRequest.headers,
+    });
     if (error.response?.status === 401 && !originalRequest._retry) {
+      console.log(
+        "401 detected, isRefreshing:",
+        isRefreshing,
+        "originalRequest:",
+        {
+          url: originalRequest.url,
+          method: originalRequest.method,
+          headers: originalRequest.headers,
+        }
+      );
+      if (isRefreshing) {
+        console.log("Waiting for token refresh...");
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token) => {
+            console.log(
+              "Refreshed token applied:",
+              token.substring(0, 20) + "..."
+            );
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
       const state = store.getState();
-      const refreshToken = state.auth.refreshToken || localStorage.getItem("refreshToken");
-      console.log('Interceptor: 401 detected, refreshToken:', refreshToken ? `${refreshToken.substring(0, 20)}...` : 'null');
+      const refreshToken =
+        state.auth.refreshToken || localStorage.getItem("refreshToken");
+      console.log(
+        "Attempting refresh with refreshToken:",
+        refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
+      );
 
       if (refreshToken) {
         try {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
-          console.log('Interceptor: Refresh success, response:', response.data);
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken,
+          });
+          console.log("Refresh success, response:", response.data);
           const { accessToken, refreshToken: newRefreshToken } = response.data;
-          store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken }));
+          store.dispatch(
+            setTokens({ accessToken, refreshToken: newRefreshToken })
+          );
+          onRefreshed(accessToken);
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          console.log(
+            "Retrying request with new token:",
+            accessToken.substring(0, 20) + "..."
+          );
           return api(originalRequest);
         } catch (refreshError: any) {
-          console.error('Interceptor: Refresh failed:', refreshError.response?.data || refreshError.message);
+          console.error("Refresh failed:", {
+            message: refreshError.response?.data || refreshError.message,
+            status: refreshError.response?.status,
+          });
           store.dispatch(logout());
           window.location.href = "/login";
           return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
         }
       } else {
-        console.log('Interceptor: No refreshToken, logging out');
+        console.log("No refreshToken available, logging out");
         store.dispatch(logout());
         window.location.href = "/login";
       }
     }
-    console.error('Interceptor: Non-401 error:', error.response?.data || error.message);
+    console.error("Non-401 error:", {
+      message: error.response?.data || error.message,
+      status: error.response?.status,
+    });
     return Promise.reject(error);
   }
 );
 
 export const authAPI = {
-  login: (email: string, password: string) => api.post("/auth/login", { email, password }),
+  login: (email: string, password: string) =>
+    api.post("/auth/login", { email, password }),
   register: (userData: {
     email: string;
     password: string;
@@ -75,11 +162,15 @@ export const authAPI = {
     const token = state.auth.accessToken;
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     return api.post("/auth/logout", {}, { headers }).catch((error) => {
-      console.log("Logout API failed, clearing state:", error.response?.data || error.message);
+      console.log(
+        "Logout API failed, clearing state:",
+        error.response?.data || error.message
+      );
       return Promise.resolve({ data: { message: "Logged out" } });
     });
   },
-  refreshToken: (refreshToken: string) => axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }),
+  refreshToken: (refreshToken: string) =>
+    axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }),
 };
 
 export const clinicsAPI = {
@@ -164,22 +255,45 @@ export const notificationsAPI = {
 };
 
 export const crmAPI = {
-  createLead: (data: { name: string; email: string; phone?: string; tags?: string[]; status: string }) => api.post("/crm/leads", data),
+  createLead: (data: {
+    name: string;
+    email: string;
+    phone?: string;
+    tags?: string[];
+    status: string;
+  }) => api.post("/crm/leads", data),
   getLeads: () => api.get("/crm/leads"),
   getLead: (id: string) => api.get(`/crm/leads/${id}`),
-  updateLead: (id: string, data: Partial<Lead>) => api.patch(`/crm/leads/${id}`, data),
-  logAction: (customerId: string, data: { type: string; notes: string }) => api.post("/crm/actions", { customerId, ...data }),
-  createTask: (data: { customerId: string; description: string; type: string; dueDate: string; assignedTo: string }) => api.post("/crm/tasks", data),
+  updateLead: (id: string, data: Partial<Lead>) =>
+    api.patch(`/crm/leads/${id}`, data),
+  logAction: (customerId: string, data: { type: string; notes: string }) =>
+    api.post("/crm/actions", { customerId, ...data }),
+  createTask: (data: {
+    customerId: string;
+    description: string;
+    type: string;
+    dueDate: string;
+    assignedTo: string;
+  }) => api.post("/crm/tasks", data),
   getTasks: (salespersonId: string) => api.get(`/crm/tasks/${salespersonId}`),
-  updateTask: (id: string, data: Partial<Task>) => api.patch(`/crm/tasks/${id}`, data),
-  scheduleRecurring: (data: { customerId: string; serviceId: string; frequency: string; startDate: string }) => api.post("/crm/recurring", data),
+  updateTask: (id: string, data: Partial<Task>) =>
+    api.patch(`/crm/tasks/${id}`, data),
+  scheduleRecurring: (data: {
+    customerId: string;
+    serviceId: string;
+    frequency: string;
+    startDate: string;
+  }) => api.post("/crm/recurring", data),
 };
 
 export const adminAPI = {
   getMetrics: () => api.get("/admin/metrics"),
   getUsers: () => api.get("/admin/users"),
-  updateRole: (id: string, role: string) => api.patch(`/admin/users/${id}/role`, { role }),
-  updateLoyalty: (data: { tiers: { name: string; points: number; rewards: string[] }[] }) => api.patch("/admin/loyalty", data),
+  updateRole: (id: string, role: string) =>
+    api.patch(`/admin/users/${id}/role`, { role }),
+  updateLoyalty: (data: {
+    tiers: { name: string; points: number; rewards: string[] }[];
+  }) => api.patch("/admin/loyalty", data),
   getLogs: () => api.get("/admin/monitor"),
 };
 

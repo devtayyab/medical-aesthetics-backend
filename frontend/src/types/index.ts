@@ -90,9 +90,10 @@ export interface TimeSlot {
 export interface LoyaltyBalance {
   clientId: string;
   clinicId?: string;
-  totalPoints: number;
+  // totalPoints: number;
+  points: number;
   tier: 'bronze' | 'silver' | 'gold' | 'platinum';
-  rewards: string[]; // Added to match LoyaltyCard usage
+  rewards: string[];
 }
 
 export interface Notification {
@@ -141,9 +142,11 @@ export interface Lead {
 export interface Task {
   id: string;
   description: string;
+  type: 'phone' | 'email' | 'meeting';
   dueDate: string;
   status: 'pending' | 'in_progress' | 'completed';
-  assignedTo: string; // User ID
+  assignedTo: string;
+  customerId?: string;
   createdAt: string;
 }
 

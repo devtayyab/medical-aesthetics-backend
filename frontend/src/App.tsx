@@ -1,9 +1,10 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   useLocation,
+  useNavigate,
   Link,
   Navigate,
 } from "react-router-dom";
@@ -39,6 +40,11 @@ import { Users as AdminUsers } from "@/pages/Admin/Users";
 import { LoyaltyManagement } from "@/pages/Admin/LoyaltyManagement";
 import { Monitor } from "@/pages/Admin/Monitor";
 import { MyAccount } from "@/pages/Client/MyAccount";
+import { PersonalDetails } from "@/pages/Client/AccountPages/PersonalDetails";
+import { Rewards } from "@/pages/Client/AccountPages/Rewards";
+import { Wallet } from "@/pages/Client/AccountPages/Wallet";
+import { InviteFriend } from "@/pages/Client/AccountPages/InviteFriend";
+import { Settings } from "@/pages/Client/AccountPages/Settings";
 import type { RootState } from "@/store";
 import "@/styles/globals.css";
 
@@ -57,23 +63,38 @@ const AuthHeader: React.FC = () => (
 
 function AppContent() {
   const location = useLocation();
+  const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { isLoading, isAuthenticated, user, refreshToken } = useSelector(
     (state: RootState) => state.auth
   );
   const isAuthPage =
     location.pathname === "/login" || location.pathname === "/register";
+  const [hasRestoredSession, setHasRestoredSession] = useState(false);
 
   useEffect(() => {
     const localRefreshToken = localStorage.getItem("refreshToken");
-    if (!isAuthPage && !isLoading && !isAuthenticated && localRefreshToken) {
+    if (!isAuthPage && !hasRestoredSession && localRefreshToken) {
       console.log(
         "App: Dispatching restoreSession, localStorage refreshToken:",
         localRefreshToken.substring(0, 20) + "..."
       );
-      dispatch(restoreSession());
+      dispatch(restoreSession()).finally(() => setHasRestoredSession(true));
     }
-  }, [dispatch, isAuthPage, isLoading, isAuthenticated]);
+  }, [dispatch, isAuthPage, hasRestoredSession]);
+
+  useEffect(() => {
+    if (
+      isAuthenticated &&
+      !isLoading &&
+      location.pathname === "/login" &&
+      hasRestoredSession
+    ) {
+      const from = location.state?.from?.pathname || "/my-account";
+      console.log("App: Redirecting to original path:", from);
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, isLoading, location, navigate, hasRestoredSession]);
 
   console.log(
     "App: Rendering, isLoading:",
@@ -106,9 +127,8 @@ function AppContent() {
             element={
               isAuthenticated ? (
                 <Navigate
-                  to="/appointments"
+                  to={location.state?.from?.pathname || "/my-account"}
                   replace
-                  state={{ from: location }}
                 />
               ) : (
                 <Login />
@@ -119,7 +139,10 @@ function AppContent() {
             path="/register"
             element={
               isAuthenticated ? (
-                <Navigate to="/appointments" replace />
+                <Navigate
+                  to={location.state?.from?.pathname || "/my-account"}
+                  replace
+                />
               ) : (
                 <Register />
               )
@@ -187,6 +210,46 @@ function AppContent() {
             element={
               <ProtectedLayout allowedRoles={["client"]}>
                 <MyAccount />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/personal-details"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <PersonalDetails />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/rewards"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <Rewards />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/wallet"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <Wallet />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/invite-friend"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <InviteFriend />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <Settings />
               </ProtectedLayout>
             }
           />

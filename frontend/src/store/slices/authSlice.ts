@@ -124,7 +124,7 @@ const authSlice = createSlice({
         console.log('setTokens: Stored new refreshToken:', action.payload.refreshToken.substring(0, 20) + '...');
       }
       state.isAuthenticated = true;
-      console.log('setTokens: Updated accessToken, isAuthenticated: true');
+      console.log('setTokens: Updated accessToken:', state.accessToken.substring(0, 20) + '...', 'isAuthenticated:', state.isAuthenticated);
     },
     setAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;
@@ -191,7 +191,11 @@ const authSlice = createSlice({
         state.refreshToken = action.payload.refreshToken || state.refreshToken;
         state.isAuthenticated = true;
         state.error = null;
-        console.log('restoreSession.fulfilled: User:', state.user, 'refreshToken:', state.refreshToken?.substring(0, 20) + '...');
+        console.log("restoreSession.fulfilled: Updated state -", {
+          accessToken: state.accessToken ? `${state.accessToken.substring(0, 20)}...` : "null",
+          refreshToken: state.refreshToken ? `${state.refreshToken.substring(0, 20)}...` : "null",
+          isAuthenticated: state.isAuthenticated,
+        });
       })
       .addCase(restoreSession.rejected, (state, action) => {
         state.isLoading = false;
