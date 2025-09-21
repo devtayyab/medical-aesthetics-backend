@@ -11,7 +11,7 @@ import { FaChevronRight } from "react-icons/fa6";
 
 const containerStyle = css`
   width: 100%;
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 0 16px;
 `;
@@ -82,11 +82,23 @@ export const PersonalDetails: React.FC = () => {
       setIsEditingFirstName(false);
       setIsEditingLastName(false);
       setIsEditingPhone(false);
+      setError(null);
     } catch (err: any) {
       console.error("Update profile error:", err.response?.data || err.message);
-      setError(
-        "Failed to update profile. Please ensure you are logged in and try again."
-      );
+      let message = "Failed to update profile. Please try again.";
+
+      // If backend sends an array of messages (like NestJS validation errors)
+      if (err.response?.data?.message) {
+        if (Array.isArray(err.response.data.message)) {
+          message = err.response.data.message.join(", ");
+        } else {
+          message = err.response.data.message;
+        }
+      } else if (err.message) {
+        message = err.message;
+      }
+
+      setError(message);
     }
   };
 
@@ -100,9 +112,11 @@ export const PersonalDetails: React.FC = () => {
     placeholder: string = "Not set"
   ) => (
     <div
-      className={`flex justify-between ${isEditing ? "flex-col" : "items-baseline"} py-6 border-b border-[#EAEAEA]`}
+      className={`flex justify-between ${isEditing ? "flex-col" : "items-baseline"} py-6 border-b border-[#EAEAEA] last-of-type:border-none`}
     >
-      <div className={`space-y-1 ${isEditing ? "w-full flex flex-col mb-4" : ""}`}>
+      <div
+        className={`space-y-1 ${isEditing ? "w-full flex flex-col mb-4" : ""}`}
+      >
         <label className="text-[#33373F] text-[18px] font-medium py-[1.25px]">
           {label}
         </label>
@@ -117,7 +131,7 @@ export const PersonalDetails: React.FC = () => {
           <div className="flex gap-2">
             <Button
               onClick={onSave}
-              className="text-[#203400] bg-[#CBFF38] border-[#203400] px-6 py-2 rounded-[12px] hover:bg-[#b8e632] transition-colors"
+              className="text-[#203400] hover:!text-white bg-[#CBFF38] hover:!bg-[#7CB342] border-[#203400] hover:border-[#5F8B00] px-6 py-2 rounded-[12px] transition-colors"
             >
               Save
             </Button>
@@ -127,17 +141,14 @@ export const PersonalDetails: React.FC = () => {
                 if (label === "Last Name") setIsEditingLastName(false);
                 if (label === "Phone") setIsEditingPhone(false);
               }}
-              className="text-[#586271] bg-transparent border-[#D1D5DB] px-6 py-2 rounded-[12px] hover:bg-gray-100 transition-colors"
+              className="text-[#405C0B] border border-[#5F8B00] px-4 py-2 rounded-[12px] hover:bg-[#7CB342] hover:text-white transition-colors"
               variant="outline"
             >
               Cancel
             </Button>
           </div>
         ) : (
-          <button
-            onClick={onEdit}
-            className="text-[#405C0B] border border-[#5F8B00] px-4 py-2 rounded-[12px] hover:bg-[#5F8B00] hover:text-white transition-colors"
-          >
+          <button onClick={onEdit} className="text-[#33373F] hover:underline">
             {value ? "Edit" : "Add"}
           </button>
         )}
@@ -147,7 +158,7 @@ export const PersonalDetails: React.FC = () => {
 
   return (
     <section
-      className="relative bg-cover bg-center flex items-center justify-center px-4 py-[60px] min-h-screen"
+      className="relative bg-cover bg-center flex items-center justify-center px-4 py-[60px]"
       style={{
         backgroundImage: `url(${LayeredBG})`,
         backgroundPosition: "center",
@@ -224,10 +235,28 @@ export const PersonalDetails: React.FC = () => {
               <input
                 type="text"
                 value={phoneCountryCode}
-                onChange={(e) => setPhoneCountryCode(e.target.value)}
+                onChange={(e) => {
+                  let value = e.target.value;
+
+                  // Ensure it starts with "+"
+                  if (!value.startsWith("+")) {
+                    value = "+" + value.replace(/\+/g, "");
+                  }
+
+                  // Allow only digits after "+"
+                  value = "+" + value.slice(1).replace(/\D/g, "");
+
+                  // Limit to + and max 2 digits
+                  if (value.length > 3) {
+                    value = value.slice(0, 3);
+                  }
+
+                  setPhoneCountryCode(value);
+                }}
                 className="w-20 rounded-[12px] px-4 py-3 border border-[#D1D5DB] focus:border-[3px] focus:border-[#D1E9FF] outline-none transition-all"
-                placeholder="+1"
+                placeholder="+92"
               />
+
               <input
                 type="text"
                 value={phoneNumber}
@@ -244,7 +273,7 @@ export const PersonalDetails: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-8 flex justify-between">
+          {/* <div className="pt-8 flex justify-between">
             <Button
               onClick={() => navigate("/my-account")}
               className="text-[18px] text-[#586271] border-[#D1D5DB] hover:bg-gray-50 rounded-[12px] px-6 py-3"
@@ -266,7 +295,7 @@ export const PersonalDetails: React.FC = () => {
                 Cancel All
               </Button>
             )}
-          </div>
+          </div> */}
         </div>
       </div>
     </section>

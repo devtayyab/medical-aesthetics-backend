@@ -85,7 +85,7 @@ export const MyAccount: React.FC = () => {
         backgroundRepeat: "no-repeat",
       }}
     >
-      <div className="w-full max-w-[1200px] mx-auto my-11 p-4">
+      <div className="w-full max-w-[1100px] mx-auto my-11 p-4">
         <div className="mb-14 flex items-center gap-3">
           <img src={AvatarImg} className="size-[77px]" alt="Avatar" />
           <span>

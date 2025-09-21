@@ -250,13 +250,18 @@ export const Header: React.FC = () => {
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 >
                   <User size={20} />
-                  <span>{user?.firstName || "User"}</span>
+                  <span>
+                    {(user?.firstName || "User")
+                      .split(" ")
+                      .slice(0, 1)
+                      .join(" ")}
+                  </span>
                 </button>
 
                 {isUserMenuOpen && (
                   <div className={userMenuDropdownStyle}>
                     <Link
-                      to="/dashboard"
+                      to="/admin/dashboard"
                       className={userMenuItemStyle}
                       onClick={() => setIsUserMenuOpen(false)}
                     >
@@ -339,7 +344,7 @@ export const Header: React.FC = () => {
               `}
             >
               <Link
-                to="/dashboard"
+                to="/admin/dashboard"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={userMenuItemStyle}
               >
