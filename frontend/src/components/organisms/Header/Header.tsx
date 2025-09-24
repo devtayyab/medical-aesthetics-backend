@@ -220,16 +220,16 @@ export const Header: React.FC = () => {
               fullWidth
             />
           </form> */}
-          <ul className="flex justify-center items-center gap-8 text-white font-medium">
-            <li className="text-[#CBFF38] border-b-2 border-[#CBFF38] cursor-pointer">
-              Home
-            </li>
-            <li className="hover:text-[#CBFF38] cursor-pointer">
-              How It Works
-            </li>
-            <li className="hover:text-[#CBFF38] cursor-pointer">Features</li>
-            <li className="hover:text-[#CBFF38] cursor-pointer">Support</li>
-          </ul>
+          <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
+  <li className="text-[#CBFF38] border-b-2 border-[#CBFF38] cursor-pointer">
+    Home
+  </li>
+  <li className="hover:text-[#CBFF38] cursor-pointer">Clinics</li>
+  <li className="hover:text-[#CBFF38] cursor-pointer">How It Works</li>
+  <li className="hover:text-[#CBFF38] cursor-pointer">Features</li>
+  <li className="hover:text-[#CBFF38] cursor-pointer">Support</li>
+</ul>
+
         </div>
 
         <nav className="hidden md:flex items-center gap-4">
