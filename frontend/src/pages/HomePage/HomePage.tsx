@@ -136,16 +136,17 @@ export const HomePage: React.FC = () => {
         {/* Container with max-width */}
         <div className="max-w-[1200px] mx-auto grid grid-cols-1 gap-8 items-center h-full px-6">
           {/* Left: White search box */}
-          <div className="max-w-[70%] bg-white shadow-lg rounded-xl px-6 py-7">
+          <div className="w-[55%] mx-auto bg-white shadow-lg rounded-xl px-6 py-7">
             {/* Tabs */}
-            <div className="flex border border-[#2D3748] rounded-[16px] overflow-hidden mb-6">
+            {/* <div className="flex border border-[#2D3748] rounded-[16px] overflow-hidden mb-6">
               <button className="flex-1 flex items-center justify-center gap-2 py-[10px] bg-[#2D3748] text-white font-medium">
                 <FaStethoscope /> Treatments
               </button>
               <button className="flex-1 flex items-center justify-center gap-2 py-[10px] bg-white text-gray-700 font-medium border-l">
                 <FaHospital /> Clinics
               </button>
-            </div>
+            </div> */}
+            <h2 className="text-[#33373F] text-[32px] font-semibold text-center mb-7">What would you like to improve?</h2>
 
             {/* Search form */}
             <form onSubmit={handleSearch} className="space-y-4">
@@ -154,7 +155,7 @@ export const HomePage: React.FC = () => {
                 <FaSearch className="text-gray-500 mr-2" />
                 <input
                   type="text"
-                  placeholder="Search for treatments"
+                  placeholder="Find Treatments"
                   className="w-full outline-none text-gray-700"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -166,7 +167,7 @@ export const HomePage: React.FC = () => {
                 <FaMapMarkerAlt className="text-gray-500 mr-2" />
                 <input
                   type="text"
-                  placeholder="Enter postcode"
+                  placeholder="Find Cliinic"
                   className="w-full outline-none text-gray-700"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
@@ -174,13 +175,13 @@ export const HomePage: React.FC = () => {
               </div>
 
               {/* Date */}
-              <div className="flex items-center border rounded-lg px-3 py-4">
+              {/* <div className="flex items-center border rounded-lg px-3 py-4">
                 <FaCalendarAlt className="text-gray-500 mr-2" />
                 <input
                   type="date"
                   className="w-full outline-none text-gray-700"
                 />
-              </div>
+              </div> */}
 
               {/* Search button */}
               <button
