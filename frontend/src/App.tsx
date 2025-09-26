@@ -15,6 +15,7 @@ import { Header } from "@/components/organisms/Header/Header";
 import { Footer } from "@/components/organisms/Footer/Footer";
 import { HomePage } from "@/pages/HomePage/HomePage";
 import { Booking } from "@/pages/Booking/Booking";
+import {Clinic} from "@/pages/ClinicPage/ClinicPage"
 import { Login } from "@/pages/Login/Login";
 import { Register } from "@/pages/Register/Register";
 import { ProtectedLayout } from "@/components/organisms/ProtectedLayout";
@@ -117,6 +118,11 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/booking" element={<Booking />} />
+            <Route path="/clinicpage" element={<Clinic />} />
+
+
+          
+
           <Route
             path="/login"
             element={
