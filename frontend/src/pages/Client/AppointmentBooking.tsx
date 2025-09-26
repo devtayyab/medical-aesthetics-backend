@@ -1,93 +1,191 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useLocation, useNavigate } from "react-router-dom";
-import { PaymentForm } from "@/components/molecules/PaymentForm";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/atoms/Button/Button";
+import { Input } from "@/components/atoms/Input/Input";
 import {
   fetchAvailability,
-  holdSlot,
+  holdTimeSlot,
   createAppointment,
-} from "@/store/slices/clientSlice";
-import type { RootState, AppDispatch } from "@/store";
-import type { TimeSlot } from "@/types";
+  clearBooking,
+} from "@/store/slices/bookingSlice";
+import { fetchClinicServices } from "@/store/slices/clinicsSlice";
+import { RootState } from "@/store";
+import { AppDispatch } from "@/store";
+import { Clinic } from "@/types"; // Import Clinic type
 
 export const AppointmentBooking: React.FC = () => {
-  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { availableSlots, isLoading, error, holdId } = useSelector(
-    (state: RootState) => state.client
-  );
   const { user } = useSelector((state: RootState) => state.auth);
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
-
-  const params = new URLSearchParams(location.search);
-  const clinicId = params.get("clinicId") || "";
-  const serviceId = params.get("serviceId") || "";
-  const date = new Date().toISOString().split("T")[0];
+  const { availableSlots, selectedClinic, holdId, isLoading, error } =
+    useSelector((state: RootState) => state.booking);
+  const { services } = useSelector((state: RootState) => state.clinics); // Use clinics slice for services
+  const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    if (clinicId && serviceId) {
+    if (selectedClinic?.id) {
+      dispatch(fetchClinicServices(selectedClinic.id));
+    }
+  }, [dispatch, selectedClinic]);
+
+  const handleFetchAvailability = async () => {
+    if (selectedClinic?.id && selectedServiceId) {
       dispatch(
-        fetchAvailability({ clinicId, serviceId, providerId: "any", date })
+        fetchAvailability({
+          clinicId: selectedClinic.id,
+          serviceId: selectedServiceId,
+          providerId: "provider1", // Replace with dynamic provider selection if needed
+          date: new Date().toISOString().split("T")[0],
+        })
       );
     }
-  }, [dispatch, clinicId, serviceId]);
-
-  const handleSelectSlot = (slot: TimeSlot) => {
-    setSelectedSlot(slot);
-    dispatch(
-      holdSlot({
-        clinicId,
-        serviceId,
-        providerId: "any",
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-      })
-    );
   };
 
-  const handlePaymentSuccess = (paymentIntent: any) => {
-    if (selectedSlot && user) {
-      dispatch(
-        createAppointment({
-          clinicId,
-          serviceId,
-          providerId: "any",
-          clientId: user.id,
-          startTime: selectedSlot.startTime,
-          endTime: selectedSlot.endTime,
-          holdId,
-          paymentMethod: "stripe",
-          advancePaymentAmount: paymentIntent.amount,
+  const handleHoldSlot = async () => {
+    if (selectedClinic?.id && selectedServiceId && selectedSlot) {
+      const [startTime, endTime] = selectedSlot.split(" - ");
+      const response = await dispatch(
+        holdTimeSlot({
+          clinicId: selectedClinic.id,
+          serviceId: selectedServiceId,
+          providerId: "provider1",
+          startTime,
+          endTime,
         })
-      ).then(() => navigate("/appointments"));
+      ).unwrap();
+      console.log("Slot held:", response);
+    }
+  };
+
+  const handleBookAppointment = async () => {
+    if (selectedClinic?.id && selectedServiceId && selectedSlot && user?.id) {
+      const [startTime, endTime] = selectedSlot.split(" - ");
+      await dispatch(
+        createAppointment({
+          clinicId: selectedClinic.id,
+          serviceId: selectedServiceId,
+          providerId: "provider1",
+          clientId: user.id,
+          startTime,
+          endTime,
+          notes,
+          holdId,
+        })
+      ).unwrap();
+      dispatch(clearBooking());
+      navigate("/appointments");
     }
   };
 
   return (
-    <>
+    <div className="p-4 max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">Book Appointment</h2>
-      {isLoading && <p>Loading...</p>}
-      {error && <p className="text-red-600">{error}</p>}
-      <div className="flex flex-col gap-4">
-        <h3 className="text-lg font-semibold">Available Slots</h3>
-        <div className="grid grid-cols-3 gap-2">
-          {availableSlots.map((slot: TimeSlot) => (
-            <button
-              key={slot.startTime}
-              onClick={() => handleSelectSlot(slot)}
-              className={`p-2 border rounded ${
-                selectedSlot?.startTime === slot.startTime ? "bg-[#CBFF38]" : ""
-              }`}
-            >
-              {new Date(slot.startTime).toLocaleTimeString()}
-            </button>
-          ))}
-        </div>
-        {selectedSlot && (
-          <PaymentForm amount={1000} onSuccess={handlePaymentSuccess} />
-        )}
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+      <div className="mb-4">
+        <label
+          htmlFor="clinic-select"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Select Clinic
+        </label>
+        <select
+          id="clinic-select"
+          value={selectedClinic?.id || ""}
+          onChange={(e) => {
+            const clinic = {
+              id: e.target.value,
+              name: e.target.options[e.target.selectedIndex].text,
+            } as Clinic;
+            dispatch({ type: "booking/setSelectedClinic", payload: clinic });
+          }}
+          className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="" disabled>
+            Select Clinic
+          </option>
+          <option value="1">Aesthetic Clinic A</option>
+          <option value="2">Featured Clinic B</option>
+        </select>
       </div>
-    </>
+      <div className="mb-4">
+        <label
+          htmlFor="service-select"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Select Service
+        </label>
+        <select
+          id="service-select"
+          value={selectedServiceId}
+          onChange={(e) => setSelectedServiceId(e.target.value)}
+          className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="" disabled>
+            Select Service
+          </option>
+          {services.map((s) => (
+            <option key={s.id} value={s.id}>{`${s.name} - $${s.price}`}</option>
+          ))}
+        </select>
+      </div>
+      <Button
+        onClick={handleFetchAvailability}
+        disabled={!selectedServiceId || isLoading}
+      >
+        Check Availability
+      </Button>
+      {availableSlots.length > 0 && (
+        <div className="mt-4">
+          <div className="mb-4">
+            <label
+              htmlFor="slot-select"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Select Time Slot
+            </label>
+            <select
+              id="slot-select"
+              value={selectedSlot || ""}
+              onChange={(e) => setSelectedSlot(e.target.value)}
+              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="" disabled>
+                Select Time Slot
+              </option>
+              {availableSlots.map((s) => (
+                <option
+                  key={s.startTime}
+                  value={`${s.startTime} - ${s.endTime}`}
+                >
+                  {`${new Date(s.startTime).toLocaleTimeString()} - ${new Date(s.endTime).toLocaleTimeString()}`}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button
+            onClick={handleHoldSlot}
+            disabled={!selectedSlot || isLoading}
+          >
+            Hold Slot
+          </Button>
+        </div>
+      )}
+      <Input
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Notes (optional)"
+        className="mt-4"
+      />
+      <Button
+        onClick={handleBookAppointment}
+        disabled={!holdId || isLoading}
+        className="mt-4"
+      >
+        Confirm Booking
+      </Button>
+    </div>
   );
 };

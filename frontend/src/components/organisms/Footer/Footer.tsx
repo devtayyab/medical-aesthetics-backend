@@ -128,7 +128,7 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Bottom */}
-        <div className="mt-16 flex justify-between items-center border-t border-[#586271] pt-8">
+        <div className="mt-16 flex flex-wrap justify-center md:justify-between gap-7 items-center border-t border-[#586271] pt-8">
           <div className="flex space-x-[10px]">
             <a
               href="#"

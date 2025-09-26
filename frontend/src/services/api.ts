@@ -14,7 +14,7 @@ import type {
 } from "@/types";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://13.50.240.252:3000";
+  import.meta.env.VITE_API_BASE_URL || "http://51.20.141.141:3000";
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 const api = axios.create({

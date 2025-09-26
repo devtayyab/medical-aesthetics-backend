@@ -48,14 +48,16 @@ import { Settings } from "@/pages/Client/AccountPages/Settings";
 import type { RootState } from "@/store";
 import "@/styles/globals.css";
 
+import SiteLogo from "@/assets/SiteLogo.png";
+
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
-    <div className="max-w-[480px] mx-auto px-4 py-6 flex items-center justify-center">
+    <div className="max-w-[480px] mx-auto p-4 flex items-center justify-center">
       <Link
         to="/"
         className="text-[2rem] font-medium text-white no-underline tracking-tight flex items-center"
       >
-        <span className="text-[#CBFF38]">med</span>logo
+        <img src={SiteLogo} alt="Site Logo" className="w-[200px]"/>
       </Link>
     </div>
   </header>
@@ -73,12 +75,7 @@ function AppContent() {
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
 
   useEffect(() => {
-    const localRefreshToken = localStorage.getItem("refreshToken");
-    if (!isAuthPage && !hasRestoredSession && localRefreshToken) {
-      console.log(
-        "App: Dispatching restoreSession, localStorage refreshToken:",
-        localRefreshToken.substring(0, 20) + "..."
-      );
+    if (!isAuthPage && !hasRestoredSession) {
       dispatch(restoreSession()).finally(() => setHasRestoredSession(true));
     }
   }, [dispatch, isAuthPage, hasRestoredSession]);
@@ -87,12 +84,10 @@ function AppContent() {
     if (
       isAuthenticated &&
       !isLoading &&
-      location.pathname === "/login" &&
+      (location.pathname === "/login" || location.pathname === "/register") &&
       hasRestoredSession
     ) {
-      const from = location.state?.from?.pathname || "/my-account";
-      console.log("App: Redirecting to original path:", from);
-      navigate(from, { replace: true });
+      navigate("/my-account", { replace: true });
     }
   }, [isAuthenticated, isLoading, location, navigate, hasRestoredSession]);
 
@@ -125,26 +120,20 @@ function AppContent() {
           <Route
             path="/login"
             element={
-              isAuthenticated ? (
-                <Navigate
-                  to={location.state?.from?.pathname || "/my-account"}
-                  replace
-                />
-              ) : (
+              !isAuthenticated ? (
                 <Login />
+              ) : (
+                <Navigate to="/my-account" replace />
               )
             }
           />
           <Route
             path="/register"
             element={
-              isAuthenticated ? (
-                <Navigate
-                  to={location.state?.from?.pathname || "/my-account"}
-                  replace
-                />
-              ) : (
+              !isAuthenticated ? (
                 <Register />
+              ) : (
+                <Navigate to="/my-account" replace />
               )
             }
           />

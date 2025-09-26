@@ -8,6 +8,8 @@ import { Input } from "@/components/atoms/Input/Input";
 import type { RootState, AppDispatch } from "@/store";
 import { logout } from "@/store/slices/authSlice";
 
+import SiteLogo from "@/assets/SiteLogo.png";
+
 const containerStyle = css`
   max-width: 1200px;
   margin: 0 auto;
@@ -207,7 +209,7 @@ export const Header: React.FC = () => {
           to="/"
           className="text-[#CBFF38] text-2xl font-bold flex items-center"
         >
-          Med<span style={{ color: "#fff" }}>Aesthetics</span>
+          <img src={SiteLogo} alt="Site Logo" className="w-[200px]" />
         </Link>
 
         <div className={searchContainerStyle}>
@@ -260,20 +262,23 @@ export const Header: React.FC = () => {
 
                 {isUserMenuOpen && (
                   <div className={userMenuDropdownStyle}>
-                    <Link
-                      to="/admin/dashboard"
-                      className={userMenuItemStyle}
-                      onClick={() => setIsUserMenuOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      to="/appointments"
-                      className={userMenuItemStyle}
-                      onClick={() => setIsUserMenuOpen(false)}
-                    >
-                      My Appointments
-                    </Link>
+                    {user?.role === "admin" ? (
+                      <Link
+                        to="/admin/dashboard"
+                        className={userMenuItemStyle}
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        Dashboard
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/appointments"
+                        className={userMenuItemStyle}
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        My Appointments
+                      </Link>
+                    )}
                     <Link
                       // to="/profile"
                       to="/my-account"
@@ -319,57 +324,68 @@ export const Header: React.FC = () => {
         <div className={mobileMenuStyle}>
           <div className={mobileMenuHeaderStyle}>
             <Link to="/" className={logoStyle}>
-              MedAesthetics
+              <img src={SiteLogo} alt="Site Logo" className="w-[200px]" />
             </Link>
+            {/* <Link
+              to="/"
+              className="text-[#CBFF38] text-2xl font-bold flex items-center"
+            >
+              beauty<span style={{ color: "#fff" }}>doctors</span>
+            </Link> */}
             <button onClick={() => setIsMobileMenuOpen(false)}>
               <X size={24} />
             </button>
           </div>
 
-          <form onSubmit={handleSearch}>
-            <Input
-              placeholder="Search treatments, clinics..."
-              leftIcon={<Search size={16} />}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              fullWidth
-            />
-          </form>
           {isAuthenticated ? (
-            <div
-              className={css`
-                display: flex;
-                flex-direction: column;
-                gap: var(--spacing-md);
-              `}
-            >
-              <Link
-                to="/admin/dashboard"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={userMenuItemStyle}
+            <>
+              <form onSubmit={handleSearch}>
+                <Input
+                  placeholder="Search treatments, clinics..."
+                  leftIcon={<Search size={16} />}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  fullWidth
+                />
+              </form>
+              <div
+                className={css`
+                  display: flex;
+                  flex-direction: column;
+                  gap: var(--spacing-md);
+                `}
               >
-                Dashboard
-              </Link>
-              <Link
-                to="/appointments"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={userMenuItemStyle}
-              >
-                My Appointments
-              </Link>
-              <Link
-                // to="/profile"
-                to="/my-account"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={userMenuItemStyle}
-              >
-                {/* Profile */}
-                My Account
-              </Link>
-              <button onClick={handleLogout} className={userMenuItemStyle}>
-                Logout
-              </button>
-            </div>
+                {user?.role === "admin" ? (
+                  <Link
+                    to="/admin/dashboard"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={userMenuItemStyle}
+                  >
+                    Dashboard
+                  </Link>
+                ) : (
+                  <Link
+                    to="/appointments"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={userMenuItemStyle}
+                  >
+                    My Appointments
+                  </Link>
+                )}
+                <Link
+                  // to="/profile"
+                  to="/my-account"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={userMenuItemStyle}
+                >
+                  {/* Profile */}
+                  My Account
+                </Link>
+                <button onClick={handleLogout} className={userMenuItemStyle}>
+                  Logout
+                </button>
+              </div>
+            </>
           ) : (
             <div
               className={css`

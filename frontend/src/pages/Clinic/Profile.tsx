@@ -1,83 +1,43 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Input } from "@/components/atoms/Input/Input";
-import { Button } from "@/components/atoms/Button/Button";
-import {
-  fetchClinicProfile,
-  updateClinicProfile,
-} from "@/store/slices/clinicSlice";
-import type { RootState, AppDispatch } from "@/store";
-import type { Clinic } from "@/types";
+import { fetchClinicProfile } from "@/store/slices/clinicSlice";
+import { RootState } from "@/store";
+import { AppDispatch } from "@/store";
 
 export const Profile: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { profile, isLoading, error } = useSelector(
     (state: RootState) => state.clinic
   );
-  const [form, setForm] = useState<Partial<Clinic>>({});
 
   useEffect(() => {
     dispatch(fetchClinicProfile());
   }, [dispatch]);
 
-  useEffect(() => {
-    if (profile) {
-      setForm(profile);
-    }
-  }, [profile]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    dispatch(updateClinicProfile(form));
-  };
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
+  if (!profile) return <div>Profile not found.</div>;
 
   return (
-    <>
+    <div className="p-4 max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">Clinic Profile</h2>
-      {isLoading && <p>Loading...</p>}
-      {error && <p className="text-red-600">{error}</p>}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <Input
-          name="name"
-          placeholder="Clinic Name"
-          value={form.name || ""}
-          onChange={handleChange}
-          fullWidth
-        />
-        <Input
-          name="description"
-          placeholder="Description"
-          value={form.description || ""}
-          onChange={handleChange}
-          fullWidth
-        />
-        <Input
-          name="address"
-          placeholder="Address"
-          value={form.address || ""}
-          onChange={handleChange}
-          fullWidth
-        />
-        <Input
-          name="phone"
-          placeholder="Phone"
-          value={form.phone || ""}
-          onChange={handleChange}
-          fullWidth
-        />
-        <Input
-          name="email"
-          placeholder="Email"
-          value={form.email || ""}
-          onChange={handleChange}
-          fullWidth
-        />
-        <Button type="submit">Save Profile</Button>
-      </form>
-    </>
+      <p>
+        <strong>Name:</strong> {profile.name}
+      </p>
+      <p>
+        <strong>Description:</strong> {profile.description}
+      </p>
+      <p>
+        <strong>Address:</strong> {profile.address?.street},{" "}
+        {profile.address?.city}, {profile.address?.state}{" "}
+        {profile.address?.zipCode}
+      </p>
+      <p>
+        <strong>Phone:</strong> {profile.phone}
+      </p>
+      <p>
+        <strong>Email:</strong> {profile.email}
+      </p>
+    </div>
   );
 };

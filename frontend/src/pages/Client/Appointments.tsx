@@ -1,58 +1,49 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import { AppointmentCard } from "@/components/molecules/AppointmentCard";
-import {
-  fetchUserAppointments,
-  reschedule,
-  cancel,
-} from "@/store/slices/clientSlice";
-import type { RootState, AppDispatch } from "@/store";
-import type { Appointment } from "@/types";
+import { fetchUserAppointments } from "@/store/slices/bookingSlice";
+import { RootState } from "@/store";
+import { AppDispatch } from "@/store";
 
 export const Appointments: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const navigate = useNavigate();
   const { appointments, isLoading, error } = useSelector(
-    (state: RootState) => state.client
+    (state: RootState) => state.booking
   );
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log("Appointments: Dispatching fetchUserAppointments");
-      dispatch(fetchUserAppointments());
-    }
-  }, [dispatch, isAuthenticated]);
+    dispatch(fetchUserAppointments());
+  }, [dispatch]);
 
-  const handleCancel = (id: string) => {
-    dispatch(cancel(id));
-  };
-
-  const handleReschedule = (id: string) => {
-    const appointment = appointments.find((appt) => appt.id === id);
-    if (appointment) {
-      navigate(
-        `/appointment/booking?clinicId=${appointment.clinicId}&serviceId=${appointment.serviceId}&appointmentId=${id}`
-      );
-    }
-  };
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <div className="max-w-[1200px] mx-auto p-8">
+    <div className="p-4 max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">My Appointments</h2>
-      {isLoading && <p>Loading...</p>}
-      {error && <p className="text-red-600">{error}</p>}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {appointments.map((appointment: Appointment) => (
-          <AppointmentCard
-            key={appointment.id}
-            appointment={appointment}
-            onCancel={handleCancel}
-            onReschedule={handleReschedule}
-          />
-        ))}
-      </div>
+      {appointments.length === 0 ? (
+        <p>No appointments found.</p>
+      ) : (
+        <ul className="space-y-4">
+          {appointments.map((apt) => (
+            <li key={apt.id} className="p-4 border rounded">
+              <p>
+                <strong>Clinic:</strong> {apt.clinic?.name}
+              </p>
+              <p>
+                <strong>Service:</strong> {apt.service?.name}
+              </p>
+              <p>
+                <strong>Time:</strong>{" "}
+                {new Date(apt.startTime).toLocaleString()} -{" "}
+                {new Date(apt.endTime).toLocaleString()}
+              </p>
+              <p>
+                <strong>Status:</strong> {apt.status}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
