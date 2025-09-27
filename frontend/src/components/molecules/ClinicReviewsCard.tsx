@@ -17,7 +17,7 @@ const ClinicReviewCard: React.FC<ReviewCardProps> = ({
   author,
 }) => {
   return (
-    <div className="bg-white shadow rounded-lg p-4 mb-4">
+    <div className="bg-white p-2 rounded-lg  mb-2 ">
       {/* Stars */}
       <div className="flex mb-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -33,7 +33,7 @@ const ClinicReviewCard: React.FC<ReviewCardProps> = ({
       </div>
 
       {/* Review Text */}
-      <p className="text-gray-700 italic mb-3">"{review}"</p>
+      <p className="text-gray-700 italic mb-2">"{review}"</p>
 
       {/* Doctor + Treatment */}
       <div className="flex flex-row items-center gap-2 text-sm text-gray-600 mb-2">
