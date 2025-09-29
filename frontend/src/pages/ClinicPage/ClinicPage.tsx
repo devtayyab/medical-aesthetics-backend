@@ -35,28 +35,28 @@ import ClinicReviews from '@/components/molecules/ClinicReviews'
 ];
  export  const Clinic: React.FC = () => {
    return (
-    <div className="flex flex-col">
+    <div className="flex flex-col w-full ">
       {/* Top row */}
-      <div className="flex justify-between  items-center w-full">
+      <div className="flex flex-col md:flex-row justify-between items-center ml-2  md:px-44 ">
         {/* Left side */}
-        <div className="flex flex-col">
-          <h2 className="text-black font-medium mt-4 text-xl ">Botteqa Clinic</h2>
-          <p className="flex flex-row  ">
-            4.0{" "}
-            <span className="flex flex-row items-center text-yellow-500 text-sm">
+        <div className="flex flex-col w-full  ">
+          <h2 className="  text-black  pt-9 font-semibold items-center text-2xl ">Botox Treatment</h2>
+          <p className="flex items-center text-xl   text-yellow-500 gap-2 ">
+            4.0
+            <span className=" text-yellow-500 text-xl">
               ★★★★☆
             </span>
           </p>
         </div>
   {/* Right side */}
-    <div className="flex flex-row gap-1">
-  <Button className="px-2 py-0.5 text-xs text-black bg-white border border-blue-900 hover:!bg-blue-950 hover:!text-white">
-    Book Now
+    <div className="flex flex-nowwrap gap-3 md:mt-0">
+  <Button className="  px-6 py-3   rounded-xl text-xs text-black bg-white border border-blue-900 hover:!bg-blue-950 hover:!text-white">
+    Book Now 
   </Button>
-  <Button className="px-2 py-0.5 text-xs text-black bg-white border border-blue-900 hover:!bg-blue-950 hover:!text-white">
+  <Button className="  px-6 py-3   rounded-xl text-xs text-black bg-white border border-blue-900 hover:!bg-blue-950 hover:!text-white">
     Reviews
   </Button>
-  <Button className="px-2 py-0.5 text-xs text-black bg-white border border-blue-900 hover:!bg-blue-950 hover:!text-white">
+  <Button className="px-6 py-3  text-xs rounded-xl  text-black bg-white border border-blue-900 hover:!bg-blue-950 hover:!text-white">
     About
   </Button>
 </div>
@@ -65,50 +65,64 @@ import ClinicReviews from '@/components/molecules/ClinicReviews'
       </div>
 
       {/* Image */}
-      <div className="mt-6 flex justify-center">
-        <div className="w-full max-w-5xl">
-          <img src={clinic} alt="Clinic" className="w-full rounded-lg shadow-md" />
-          <p className="flex flex-row items-center text-gray-700">
-            <FaLocationDot className="mr-2 text-green-600" />
+      <div className="mt-4 flex flex-col items-center px-4 md:px-12">
+        <div className="w-full max-w-6xl">
+          <img src={clinic} alt="Clinic" className="w-full rounded shadow-md" />
+          <p className="flex items-center gap-3  mt-4 text-gray-700">
+            <FaLocationDot   className="h-6 text-green-600" />
             Show on map
           </p>
-          <p className="flex flex-row items-center text-gray-700">
-            <FaClock className="mr-2 text-green-600" />
+          <p className="flex flex-row items-center text-gray-700  mt-2 gap-3">
+            <FaClock className=" h-6  text-green-600" />
             Open Hours
           </p>
-          <p className="text-green-600 font-medium">%Off peak</p>
-           <h2 className=" flex text-2xl font-bold text-black mt-1 ">
-        Matching your search
-      </h2>
+          <p className="text-green-600 font-medium  mt-2">%Off peak</p>
+        <div className="flex flex-col w-full max-w-6xl mx-auto px-4 md:px-12 mt-8 gap-12">
+ <div className=" justify-between">
+  <div className="flex">
+    <h2 className="text-xl md:text-2xl mb-4 font-bold text-black">
+      Matching your search
+    </h2>
+  </div>
+
+  {/* Services list */}
+  <div className="flex flex-col md:flex-col md:flex-wrap justify-between gap-2">
+    {services.map((service) => (
+      <ClinicInfo
+        key={service.id}
+        id={service.id}
+        title={service.title}
+        duration={service.duration}
+        description={service.description}
+        discount={service.discount}
+        price={service.price}
+      />
+    ))}
+  </div>
+</div>
+</div>
+
       
-      {/* Services */}
-       <div>
-        {services.map((service) => (
-          <ClinicInfo
-            key={service.id}
-            id={service.id}
-            title={service.title}
-            duration={service.duration}
-            description={service.description}
-            discount={service.discount}
-            price={service.price}
-          />
-         
-        ))}
-         {/* <ClinicReviews /> */}
-      </div>
-     
-  <h2 className=" flex flex-col text-2xl gap-16 font-medium text-black mt-6  ">
-        Now what are you looking for ?<span className=" flex  font-bold text-black ">Browse Services</span>
+      <div className="flex flex-col md:flex-row justify-between w-full max-w-6xl mx-auto   mt-4 gap-12">
+       <div className="flex flex-col">
+  <h2 className=" flex flex-col text-2xl   font-normal text-black  ">
+        Now what are you looking for ?<span className="  font-semibold  text-black ">Browse Services</span>
        </h2>
-      
-         
+     <div className="flex flex-col mt-16 mb-20 gap-4 font-normal text-lg">
+      <h3 >Dermatology(3)</h3>
+      <h3>Dermatology(3)</h3>
+      <h3>Dermatology(3)</h3>
+      <h3>Dermatology(3)</h3>
+      <h3>Dermatology(3)</h3>
+      <h3>Dermatology(3)</h3>
+      <h3>Dermatology(3)</h3>
+      </div>
+       </div>       
      {/* Services */}
-       <div  className="space-y-6 whitespace-nowrap mt-16">
-        <h3 className='text-lg
-         text-green-500 text-end '>Some of these services contain OFF peaks discounts
+       <div  >
+        <h3 className='text-lg text-green-500 whitespace-nowrap pr-24 mt-12 mb-4 text-end '>Some of these services contain OFF peaks discounts
           </h3>
-         
+       <div className="flex flex-col md:flex-col md:flex-wrap justify-between gap-2"> 
       {services.map((service) => (
           <ClinicInfo
            key={service.id}
@@ -121,29 +135,22 @@ import ClinicReviews from '@/components/molecules/ClinicReviews'
           />
          
         ))}
+        </div> 
         
         </div>
-        <div className="flex flex-col gap-9 font-normal text-2xl mb-20  ">
-      <h3>Dermatology(3)</h3>
-      <h3>Dermatology(3)</h3>
-      <h3>Dermatology(3)</h3>
-      <h3>Dermatology(3)</h3>
-      <h3>Dermatology(3)</h3>
-      <h3>Dermatology(3)</h3>
-      <h3>Dermatology(3)</h3>
+        </div>
+         
+        
       
-      </div>
         
-        
+       
          <ClinicReviews />
+         
           
          
          </div>
         </div>
-        
       </div>
-    
-
   );
 };
 

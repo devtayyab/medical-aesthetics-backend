@@ -22,7 +22,7 @@ const ClinicInfo: React.FC<ClinicInfoProps> = ({
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   return (
-   <div className="flex  justify-end gap-6 items-end mt-2">
+     <div className="flex  justify-end gap-6 items-end ">  
        {/* Left Info */}
 <div className="flex flex-col gap-2">
   {/* First Row */}
@@ -45,7 +45,7 @@ const ClinicInfo: React.FC<ClinicInfoProps> = ({
             onClick={() => setSelectedId(id)}
             className={`px-4 py-1  mb-2 rounded border ${
               selectedId === id
-                ? "bg-green-200 text-green-800 border-green-600"
+                ? "bg-green-100 text-green-800 "
                 : "bg-white text-red-600 border-red-600"
             }`}
           >
@@ -55,6 +55,7 @@ const ClinicInfo: React.FC<ClinicInfoProps> = ({
         
   
       </div>
+     
      
    
   );

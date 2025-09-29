@@ -54,8 +54,8 @@ const ClinicReviews: React.FC = () => {
   ];
 
   return (
-    <div>
-      <div className="flex flex-col p-4 pl-32 space-y-1">
+    <div >
+      <div className="flex flex-col mt-4 gap-2 ">
         <h2 className="text-xl text-black font-bold">Venue Reviews</h2>
         <div className="flex flex-row">
           <p className= "flex  text-6xl">4.0</p>
@@ -65,20 +65,20 @@ const ClinicReviews: React.FC = () => {
            </div>
            
       </div>
-      <hr />
+      <hr  className="my-6" />
 
       <div>
-  <div className="  mt-2 grid grid-cols-1 md:grid-cols-4 gap-6 p-6 ">
+  <div className=" flex md:flex-row space-x-4  ">
     {/* Filters Section */}
-    <div className="bg-white h-72 shadow rounded-lg p-4">
+    <div className="bg-white w-[428px] h-72  rounded-lg p-2">
       <h3 className="font-semibold mb-2">Filter by treatment</h3>
-      <select className="w-full border rounded p-2 mb-4">
-        <option>All Treatments</option>
+      <select className=" border rounded pl-2 pr-2  mb-4">
+        <option >All Treatments</option>
         <option>Hair Transplant</option>
         <option>Facial Treatment</option>
       </select>
       <h3 className="font-semibold mb-2">Filter by rating</h3>
-      <div className="space-y-2">
+      <div>
         {filters.map((filter) => (
           <label key={filter.stars} className="flex items-center gap-2">
             <input type="checkbox" className="form-checkbox" />
@@ -101,7 +101,7 @@ const ClinicReviews: React.FC = () => {
     </div>
 
     {/* Reviews Section */}
-    <div className="md:col-span-3  shadow rounded-lg p-4">
+    <div className=" w-full h-auto md:col-span-3 rounded-lg ">
       {reviews.map((review, index) => (
         <ClinicReviewCard key={index} {...review} />
       ))}
@@ -116,13 +116,13 @@ const ClinicReviews: React.FC = () => {
 </div>
 
       <div>
-        <h2 className="font-bold text-2xl">About </h2>
+        <h2 className="font-bold text-2xl ">About </h2>
         <div>
-          <img src={location} className="w-full rounded-lg shadow-md" />
+          <img src={location} className="w-full rounded-lg mt-2 mb-6 " />
         </div>
-        <div className=" w-full flex mt-16 mb-16  gap-9">
-          <div className="flex flex-col">
-        <p className=" w-full text-lg ">
+        <div className="flex flex-col lg:flex-row gap-12">
+          <div className=" flex-1 flex flex-col gap-2">
+        <p className="leading-relaxed text-lg ">
           Lorem ipsum dolor sit amet consectetur.Arcu dui vivamus vel
           consectetur a.Sit mauris diam turpis libero maecenas consectetur
           lacus.Cras amet at feugiat at a leo.Consectetur nulla vestibulum sit
@@ -151,22 +151,22 @@ const ClinicReviews: React.FC = () => {
     <li className="text-gray-500" >Sunday</li>
   </ul>
 <div className="flex flex-col">
-  <h4 className="w-full whitespace-nowrap">8:00 AM - 8:00 PM</h4>
-  <h4 className="w-full whitespace-nowrap">8:00 AM - 8:00 PM</h4>
-  <h4 className="w-full whitespace-nowrap">8:00 AM - 8:00 PM</h4>
-  <h4 className="w-full whitespace-nowrap">8:00 AM - 8:00 PM</h4>
-  <h4 className="w-full whitespace-nowrap">8:00 AM - 8:00 PM</h4>
-  <h4 className="w-full whitespace-nowrap">8:00 AM - 8:00 PM</h4>
-  <h4 className="w-full whitespace-nowrap text-gray-500 ">Closed</h4>
+  <h4 className=" whitespace-nowrap">8:00 AM - 8:00 PM</h4>
+  <h4 className=" whitespace-nowrap">8:00 AM - 8:00 PM</h4>
+  <h4 className="whitespace-nowrap">8:00 AM - 8:00 PM</h4>
+  <h4 className="whitespace-nowrap">8:00 AM - 8:00 PM</h4>
+  <h4 className=" whitespace-nowrap">8:00 AM - 8:00 PM</h4>
+  <h4 className="whitespace-nowrap">8:00 AM - 8:00 PM</h4>
+  <h4 className=" whitespace-nowrap text-gray-500 ">Closed</h4>
   </div>
 </div>
 
       
         </div>
-        <div className="container border-2 border-gray-200">
-          <h2 className="font-bold">Clinics nearby</h2>
-          <img src={image} className="w-full rounded-lg shadow-md" />
-          <Link to='/' className="text-green-900 flex flex-row font-medium  text-sm" >Other Clinics in Barnes,London
+            <div className="mt-16 w-full border border-gray-200 rounded-lg p-4">
+          <h2 className="font-bold text-xl mb-2">Clinics nearby</h2>
+          <img src={image} className="w-full rounded-lg " />
+          <Link to='/' className="text-green-900 flex flex-row font-medium  text-sm mt-2" >Other Clinics in Barnes,London
         <span className="text-green-900 "> <MoveUpRight  size={16}/></span> 
          </Link>
         </div>
