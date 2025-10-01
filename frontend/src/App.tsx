@@ -71,22 +71,22 @@ function AppContent() {
   const { isLoading, isAuthenticated, user, refreshToken } = useSelector(
     (state: RootState) => state.auth
   );
-  const isAuthPage =
-    location.pathname === "/login" || location.pathname === "/register";
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
 
   useEffect(() => {
-    if (!isAuthPage && !hasRestoredSession) {
+    // Always attempt to restore session on initial load, regardless of path
+    if (!hasRestoredSession) {
       dispatch(restoreSession()).finally(() => setHasRestoredSession(true));
     }
-  }, [dispatch, isAuthPage, hasRestoredSession]);
+  }, [dispatch, hasRestoredSession]);
 
+  // Only redirect to /my-account from /login or /register after session is restored
   useEffect(() => {
     if (
+      hasRestoredSession &&
       isAuthenticated &&
       !isLoading &&
-      (location.pathname === "/login" || location.pathname === "/register") &&
-      hasRestoredSession
+      (location.pathname === "/login" || location.pathname === "/register")
     ) {
       navigate("/my-account", { replace: true });
     }
@@ -103,17 +103,22 @@ function AppContent() {
     refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
   );
 
-  if (isLoading && !isAuthPage) {
+  // Show loader until session is restored
+  if (!hasRestoredSession || isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen text-[var(--color-primary)]">
-        Loading...
+      <div className="flex justify-center items-center min-h-screen bg-gray-100">
+        <div className="size-12 border-4 border-t-4 border-[#2D3748] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
     <div className="App">
-      {isAuthPage ? <AuthHeader /> : <Header />}
+      {location.pathname === "/login" || location.pathname === "/register" ? (
+        <AuthHeader />
+      ) : (
+        <Header />
+      )}
       <main>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -361,7 +366,9 @@ function AppContent() {
           />
         </Routes>
       </main>
-      {!isAuthPage && <Footer />}
+      {location.pathname !== "/login" && location.pathname !== "/register" && (
+        <Footer />
+      )}
     </div>
   );
 }

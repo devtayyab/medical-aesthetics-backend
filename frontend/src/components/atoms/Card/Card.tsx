@@ -8,7 +8,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const baseCardStyle = css`
-  background-color: var(--color-white);
+  // background-color: var(--color-white);
   border-radius: var(--radius-xl);
   transition: all var(--transition-fast);
 `;

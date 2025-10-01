@@ -9,9 +9,13 @@ interface SearchBarProps {
     location?: string;
     category?: string;
   }) => void;
+  className?: string;
 }
 
-export const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
+export const SearchBar: React.FC<SearchBarProps> = ({
+  onSearch,
+  className,
+}) => {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
   const [category, setCategory] = useState("");
@@ -22,13 +26,17 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form
+      onSubmit={handleSubmit}
+      className={`flex flex-col sm:flex-row gap-4 ${className || ""}`}
+    >
       <Input
         placeholder="Search treatments or clinics"
         leftIcon={<Search size={16} />}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         fullWidth
+        style={{ paddingLeft: "35px" }}
       />
       <Input
         placeholder="Location"
@@ -36,12 +44,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
         onChange={(e) => setLocation(e.target.value)}
         fullWidth
       />
-      <Input
+      {/* <Input
         placeholder="Category"
         value={category}
         onChange={(e) => setCategory(e.target.value)}
         fullWidth
-      />
+      /> */}
       <Button type="submit">Search</Button>
     </form>
   );

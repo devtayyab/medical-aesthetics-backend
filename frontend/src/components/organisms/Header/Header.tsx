@@ -50,7 +50,7 @@ const searchContainerStyle = css`
 //   gap: var(--spacing-md);
 //   @media (max-width: 768px) {
 //     display: none;
-//   }
+  //   }
 // `;
 
 const mobileMenuButtonStyle = css`
@@ -176,7 +176,7 @@ export const Header: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { isAuthenticated, user, refreshToken } = useSelector(
     (state: RootState) => state.auth
-  ); // Use useSelector
+  );
   const { unreadCount } = useSelector(
     (state: RootState) => state.notifications
   );
@@ -202,7 +202,6 @@ export const Header: React.FC = () => {
   };
 
   return (
-    // <header className="bg-gray-900 py-5">
     <header className="bg-[#2D3748] py-5">
       <div className={containerStyle}>
         <Link
@@ -223,15 +222,25 @@ export const Header: React.FC = () => {
             />
           </form> */}
           <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
-  <li className="text-[#CBFF38] border-b-2 border-[#CBFF38] cursor-pointer">
-    Home
-  </li>
-  <li className="hover:text-[#CBFF38] cursor-pointer">Clinics</li>
-  <li className="hover:text-[#CBFF38] cursor-pointer">How It Works</li>
-  <li className="hover:text-[#CBFF38] cursor-pointer">Features</li>
-  <li className="hover:text-[#CBFF38] cursor-pointer">Support</li>
-</ul>
-
+            <li className="text-[#CBFF38] border-b-2 border-[#CBFF38] cursor-pointer">
+              <Link to="/" className="no-underline text-[#CBFF38]">
+                Home
+              </Link>
+            </li>
+            <li className="hover:text-[#CBFF38] cursor-pointer">
+              <Link
+                to="/search"
+                className="no-underline text-white hover:text-[#CBFF38]"
+              >
+                Clinics
+              </Link>
+            </li>
+            <li className="hover:text-[#CBFF38] cursor-pointer">
+              How It Works
+            </li>
+            <li className="hover:text-[#CBFF38] cursor-pointer">Features</li>
+            <li className="hover:text-[#CBFF38] cursor-pointer">Support</li>
+          </ul>
         </div>
 
         <nav className="hidden md:flex items-center gap-4">
@@ -271,21 +280,28 @@ export const Header: React.FC = () => {
                         Dashboard
                       </Link>
                     ) : (
-                      <Link
-                        to="/appointments"
-                        className={userMenuItemStyle}
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        My Appointments
-                      </Link>
+                      <>
+                        <Link
+                          to="/search"
+                          className={userMenuItemStyle}
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          Clinics
+                        </Link>
+                        <Link
+                          to="/appointments"
+                          className={userMenuItemStyle}
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          My Appointments
+                        </Link>
+                      </>
                     )}
                     <Link
-                      // to="/profile"
                       to="/my-account"
                       className={userMenuItemStyle}
                       onClick={() => setIsUserMenuOpen(false)}
                     >
-                      {/* Profile */}
                       My Account
                     </Link>
                     <button
@@ -326,12 +342,6 @@ export const Header: React.FC = () => {
             <Link to="/" className={logoStyle}>
               <img src={SiteLogo} alt="Site Logo" className="w-[200px]" />
             </Link>
-            {/* <Link
-              to="/"
-              className="text-[#CBFF38] text-2xl font-bold flex items-center"
-            >
-              beauty<span style={{ color: "#fff" }}>doctors</span>
-            </Link> */}
             <button onClick={() => setIsMobileMenuOpen(false)}>
               <X size={24} />
             </button>
@@ -364,21 +374,28 @@ export const Header: React.FC = () => {
                     Dashboard
                   </Link>
                 ) : (
-                  <Link
-                    to="/appointments"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={userMenuItemStyle}
-                  >
-                    My Appointments
-                  </Link>
+                  <>
+                    <Link
+                      to="/search"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={userMenuItemStyle}
+                    >
+                      Clinics
+                    </Link>
+                    <Link
+                      to="/appointments"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={userMenuItemStyle}
+                    >
+                      My Appointments
+                    </Link>
+                  </>
                 )}
                 <Link
-                  // to="/profile"
                   to="/my-account"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={userMenuItemStyle}
                 >
-                  {/* Profile */}
                   My Account
                 </Link>
                 <button onClick={handleLogout} className={userMenuItemStyle}>

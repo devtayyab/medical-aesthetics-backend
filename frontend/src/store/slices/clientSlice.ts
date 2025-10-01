@@ -29,27 +29,173 @@ const initialState: ClientState = {
   clinics: [
     {
       id: "1",
-      name: "Aesthetic Clinic A",
-      description: "Premium aesthetic services",
-      address: { street: "123 Main St", city: "New York", state: "NY", zipCode: "10001", country: "USA" },
+      name: "Botox Treatment",
+      description: "Premium aesthetic services with advanced treatments",
+      address: {
+        street: "123 Main St",
+        city: "New York",
+        state: "NY",
+        zipCode: "10001",
+        country: "USA",
+      },
       phone: "+1-234-567-8901",
       email: "info@clinicA.com",
-      services: [{ id: "1", name: "Botox", price: 500, durationMinutes: 30, category: "Aesthetics" }],
+      businessHours: {
+        monday: { open: "09:00", close: "17:00", isOpen: true },
+        tuesday: { open: "09:00", close: "17:00", isOpen: true },
+        wednesday: { open: "09:00", close: "17:00", isOpen: true },
+        thursday: { open: "09:00", close: "17:00", isOpen: true },
+        friday: { open: "09:00", close: "17:00", isOpen: true },
+        saturday: { open: "10:00", close: "15:00", isOpen: true },
+        sunday: { open: "10:00", close: "15:00", isOpen: false },
+      },
+      services: [
+        {
+          id: "1",
+          name: "Glossy Blow Dry",
+          price: 200,
+          durationMinutes: 30,
+          category: "Dermatology",
+        },
+        {
+          id: "2",
+          name: "Dermal Fillers",
+          price: 600,
+          durationMinutes: 45,
+          category: "Aesthetics",
+        },
+      ],
       rating: 4.8,
       reviewCount: 120,
       isActive: true,
       ownerId: "owner1",
     },
+    {
+      id: "2",
+      name: "Hyalouronic Acid",
+      description: "Specialized in skin treatments and care",
+      address: {
+        street: "456 Oak Ave",
+        city: "Los Angeles",
+        state: "CA",
+        zipCode: "90210",
+        country: "USA",
+      },
+      phone: "+1-234-567-8902",
+      email: "info@clinicB.com",
+      businessHours: {
+        monday: { open: "08:00", close: "18:00", isOpen: true },
+        tuesday: { open: "08:00", close: "18:00", isOpen: true },
+        wednesday: { open: "08:00", close: "18:00", isOpen: true },
+        thursday: { open: "08:00", close: "18:00", isOpen: true },
+        friday: { open: "08:00", close: "18:00", isOpen: true },
+        saturday: { open: "09:00", close: "14:00", isOpen: true },
+        sunday: { open: "09:00", close: "14:00", isOpen: false },
+      },
+      services: [
+        {
+          id: "3",
+          name: "Laser Treatment",
+          price: 800,
+          durationMinutes: 60,
+          category: "Dermatology",
+        },
+        {
+          id: "4",
+          name: "Chemical Peel",
+          price: 300,
+          durationMinutes: 40,
+          category: "Dermatology",
+        },
+      ],
+      rating: 4.9,
+      reviewCount: 200,
+      isActive: true,
+      ownerId: "owner2",
+    },
   ],
   featuredClinics: [
     {
+      id: "1",
+      name: "Botox Treatment",
+      description: "Premium aesthetic services with advanced treatments",
+      address: {
+        street: "123 Main St",
+        city: "New York",
+        state: "NY",
+        zipCode: "10001",
+        country: "USA",
+      },
+      phone: "+1-234-567-8901",
+      email: "info@clinicA.com",
+      businessHours: {
+        monday: { open: "09:00", close: "17:00", isOpen: true },
+        tuesday: { open: "09:00", close: "17:00", isOpen: true },
+        wednesday: { open: "09:00", close: "17:00", isOpen: true },
+        thursday: { open: "09:00", close: "17:00", isOpen: true },
+        friday: { open: "09:00", close: "17:00", isOpen: true },
+        saturday: { open: "10:00", close: "15:00", isOpen: true },
+        sunday: { open: "10:00", close: "15:00", isOpen: false },
+      },
+      services: [
+        {
+          id: "1",
+          name: "Glossy Blow Dry",
+          price: 200,
+          durationMinutes: 30,
+          category: "Aesthetics",
+        },
+        {
+          id: "2",
+          name: "Dermal Fillers",
+          price: 600,
+          durationMinutes: 45,
+          category: "Aesthetics",
+        },
+      ],
+      rating: 4.8,
+      reviewCount: 120,
+      isActive: true,
+      ownerId: "owner1",
+    },
+    {
       id: "2",
-      name: "Featured Clinic B",
-      description: "Top-rated dermatology",
-      address: { street: "456 Oak Ave", city: "Los Angeles", state: "CA", zipCode: "90210", country: "USA" },
+      name: "Hyalouronic Acid",
+      description: "Specialized in skin treatments and care",
+      address: {
+        street: "456 Oak Ave",
+        city: "Los Angeles",
+        state: "CA",
+        zipCode: "90210",
+        country: "USA",
+      },
       phone: "+1-234-567-8902",
       email: "info@clinicB.com",
-      services: [{ id: "2", name: "Laser Treatment", price: 800, durationMinutes: 60, category: "Dermatology" }],
+      businessHours: {
+        monday: { open: "08:00", close: "18:00", isOpen: true },
+        tuesday: { open: "08:00", close: "18:00", isOpen: true },
+        wednesday: { open: "08:00", close: "18:00", isOpen: true },
+        thursday: { open: "08:00", close: "18:00", isOpen: true },
+        friday: { open: "08:00", close: "18:00", isOpen: true },
+        saturday: { open: "09:00", close: "14:00", isOpen: true },
+        sunday: { open: "09:00", close: "14:00", isOpen: false },
+      },
+      services: [
+        {
+          id: "3",
+          name: "Laser Treatment",
+          price: 800,
+          durationMinutes: 60,
+          category: "Dermatology",
+        },
+        {
+          id: "4",
+          name: "Chemical Peel",
+          price: 300,
+          durationMinutes: 40,
+          category: "Dermatology",
+        },
+      ],
       rating: 4.9,
       reviewCount: 200,
       isActive: true,
@@ -72,8 +218,8 @@ const initialState: ClientState = {
       notes: "First session",
       paymentMethod: "credit_card",
       totalAmount: 500,
-      clinic: { name: "Aesthetic Clinic A" },
-      service: { name: "Botox" },
+      clinic: { name: "Botox Treatment" },
+      service: { name: "Glossy Blow Dry" },
       provider: { firstName: "Dr. Smith" },
       client: { firstName: "John" },
     },
@@ -83,7 +229,7 @@ const initialState: ClientState = {
   error: null,
   searchFilters: {},
   hasMore: true,
-  total: 0,
+  total: 2, // Reflect the number of dummy clinics
   holdId: undefined,
 };
 
@@ -94,7 +240,9 @@ export const searchClinics = createAsyncThunk(
       const response = await clinicsAPI.search(params);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to search clinics");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to search clinics"
+      );
     }
   }
 );
@@ -106,7 +254,9 @@ export const fetchFeaturedClinics = createAsyncThunk(
       const response = await clinicsAPI.getFeatured();
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch featured clinics");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch featured clinics"
+      );
     }
   }
 );
@@ -118,7 +268,9 @@ export const fetchClinicById = createAsyncThunk(
       const response = await clinicsAPI.getById(id);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch clinic");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch clinic"
+      );
     }
   }
 );
@@ -130,65 +282,82 @@ export const fetchClinicServices = createAsyncThunk(
       const response = await clinicsAPI.getServices(clinicId);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch services");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch services"
+      );
     }
   }
 );
 
 export const fetchAvailability = createAsyncThunk(
   "client/fetchAvailability",
-  async (params: {
-    clinicId: string;
-    serviceId: string;
-    providerId: string;
-    date: string;
-  }, { rejectWithValue }) => {
+  async (
+    params: {
+      clinicId: string;
+      serviceId: string;
+      providerId: string;
+      date: string;
+    },
+    { rejectWithValue }
+  ) => {
     try {
       const response = await bookingAPI.getAvailability(params);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch availability");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch availability"
+      );
     }
   }
 );
 
 export const holdSlot = createAsyncThunk(
   "client/holdSlot",
-  async (data: {
-    clinicId: string;
-    serviceId: string;
-    providerId: string;
-    startTime: string;
-    endTime: string;
-  }, { rejectWithValue }) => {
+  async (
+    data: {
+      clinicId: string;
+      serviceId: string;
+      providerId: string;
+      startTime: string;
+      endTime: string;
+    },
+    { rejectWithValue }
+  ) => {
     try {
       const response = await bookingAPI.holdSlot(data);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to hold slot");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to hold slot"
+      );
     }
   }
 );
 
 export const createAppointment = createAsyncThunk(
   "client/createAppointment",
-  async (data: {
-    clinicId: string;
-    serviceId: string;
-    providerId: string;
-    clientId: string;
-    startTime: string;
-    endTime: string;
-    notes?: string;
-    paymentMethod?: string;
-    advancePaymentAmount?: number;
-    holdId?: string;
-  }, { rejectWithValue }) => {
+  async (
+    data: {
+      clinicId: string;
+      serviceId: string;
+      providerId: string;
+      clientId: string;
+      startTime: string;
+      endTime: string;
+      notes?: string;
+      paymentMethod?: string;
+      advancePaymentAmount?: number;
+      holdId?: string;
+    },
+    { rejectWithValue }
+  ) => {
     try {
       const response = await bookingAPI.createAppointment(data);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to create appointment");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to create appointment"
+      );
     }
   }
 );
@@ -198,13 +367,23 @@ export const fetchUserAppointments = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     try {
       const state = getState() as RootState;
-      console.log('fetchUserAppointments: Using accessToken:', state.auth.accessToken ? `${state.auth.accessToken.substring(0, 20)}...` : 'missing');
+      console.log(
+        "fetchUserAppointments: Using accessToken:",
+        state.auth.accessToken
+          ? `${state.auth.accessToken.substring(0, 20)}...`
+          : "missing"
+      );
       const response = await bookingAPI.getUserAppointments();
-      console.log('fetchUserAppointments: Response:', response.data);
+      console.log("fetchUserAppointments: Response:", response.data);
       return response.data;
     } catch (error: any) {
-      console.error('fetchUserAppointments: Error:', error.response?.data || error.message);
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch appointments");
+      console.error(
+        "fetchUserAppointments: Error:",
+        error.response?.data || error.message
+      );
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch appointments"
+      );
     }
   }
 );
@@ -234,7 +413,11 @@ export const reschedule = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await bookingAPI.reschedule(appointmentId, newStartTime, newEndTime);
+      const response = await bookingAPI.reschedule(
+        appointmentId,
+        newStartTime,
+        newEndTime
+      );
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -251,7 +434,9 @@ export const fetchLoyaltyBalance = createAsyncThunk(
       const response = await loyaltyAPI.getBalance(clientId);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch loyalty balance");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch loyalty balance"
+      );
     }
   }
 );
@@ -263,24 +448,31 @@ export const fetchLoyaltyHistory = createAsyncThunk(
       const response = await loyaltyAPI.getHistory(clientId);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch loyalty history");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch loyalty history"
+      );
     }
   }
 );
 
 export const redeemPoints = createAsyncThunk(
   "client/redeemPoints",
-  async (data: {
-    clientId: string;
-    clinicId: string;
-    points: number;
-    description: string;
-  }, { rejectWithValue }) => {
+  async (
+    data: {
+      clientId: string;
+      clinicId: string;
+      points: number;
+      description: string;
+    },
+    { rejectWithValue }
+  ) => {
     try {
       const response = await loyaltyAPI.redeemPoints(data);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to redeem points");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to redeem points"
+      );
     }
   }
 );
