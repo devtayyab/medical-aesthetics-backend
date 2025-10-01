@@ -95,7 +95,7 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
           </p>
         </div>
       </div>
-      <hr />
+      <hr className="my-6" />
 
       <div>
         <div className="mt-2 flex justify-between gap-3 py-6">

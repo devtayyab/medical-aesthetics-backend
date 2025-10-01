@@ -4,46 +4,38 @@ import { Button } from "@/components/atoms/Button/Button";
 import ClinicCard from "@/components/molecules/BookingCard/ClinicCard"
 import { IoSearchSharp } from "react-icons/io5";
 import { LuMapPin } from "react-icons/lu";
-import { SlCalender } from "react-icons/sl";
-import { TfiMapAlt } from "react-icons/tfi";
+import CardDetails from "@/components/molecules/BookingCard/CardDetails";
+
 
 const clinics = [
   {
     id: 1,
-    name: "Botteqa Clinic",
+    name: "Hyalouronic Acid",
     location: "Lahore, Pakistan",
     price: 1,
   },
-  {
+   {
     id: 2,
-    name: "Botteqa Clinic",
+    name: "Hyalouronic Acid",
     location: "Lahore, Pakistan",
     price: 1,
   },
-  {
-    id: 3,
-    name: "Botteqa Clinic",
+  
+];
+const cards=[
+     {
+    id: 1,
+    name: " Botox Treatment",
     location: "Lahore, Pakistan",
     price: 1,
   },
-  {
-    id: 4,
-    name: "Botteqa Clinic",
-    location: "Lahore, Pakistan",
-    price: 1,
-  },
-  {
-    id: 5,
-    name: "Botteqa Clinic",
-    location: "Lahore, Pakistan",
-    price: 1,
-  },
+  
 ];
 
 export const Booking: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
-  const [showMap, setShowMap] = useState(false);
+
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,24 +44,22 @@ export const Booking: React.FC = () => {
 
   return (
     <>
-      <div className="w-full bg-gray-600 px-4 py-6 l-3pxl">
-       
-        <form onSubmit={handleSearch} className="flex flex-col gap-4 w-full">
-          <div className="container bg-white flex flex-col md:flex-row gap-2 md:gap-6 w-full p-2 rounded-lg shadow mb-6">
-      
-            {/* Search Input */}
-
-  <div className="relative flex-1">
+   <div className=" w-full h-[250px] flex items-center justify-center  bg-gray-600 -top-[11px] ">
+ <form onSubmit={handleSearch} className="flex flex-col w-full gap-4 px-4">
+  <div className=" bg-white w-auto mx-auto my-2 h-auto opacity-100 rounded-xl p-6  ">
+   <div className="flex flex-col md:flex-row w-full gap-4">
+  {/* Search Input */}
+<div className="relative flex-1">
               <IoSearchSharp
                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5 pointer-events-none"
               />
               <input
                 type="text"
-                placeholder="Search for treatments"
+                placeholder="Find Treatment"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full  mt-2 mb-2 pl-10 pr-4 py-2 rounded-md border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-green-600"
-              />
+                className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-gray-600"
+          />
             </div>
 
             {/* Location Input */}
@@ -79,61 +69,26 @@ export const Booking: React.FC = () => {
               />
               <input
                 type="text"
-                placeholder="Enter postcode"
+                placeholder="Find Clinic"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="w-full mt-2 mb-2 pl-10 pr-4 py-2 rounded-md border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-green-600"
-              />
+                 className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-green-600"
+          />
             </div>
-
-            {/* Date Input */}
-            <div className="relative flex-1">
-              <SlCalender  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5 pointer-events-none"
-              />
-              
-               
-              <input
-                type="date"
-                className="w-full mt-2 mb-2 pl-10 pr-4 py-2 rounded-md border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-green-600"
-              />
-            </div>
-            </div>
-            
-          
-
-          <div className="flex justify-center gap-5">
-            <Button
-             
-              type="button"
-              onClick={() => setShowMap(!showMap)}
-              className="px-6 py-2 rounded-md border border-gray-400 shadow  text-gray-700 hover:bg-green-800 transition"
-            >
-              <TfiMapAlt  />
-              {showMap ? "Hide Map" : "Show Map"}
-            </Button>
-          </div>
-
-          {/* Map Container */}
-          {showMap && (
-            <div className="container mx-auto px-6 pb-4">
-              <div className="w-full h-64 bg-gray-300 flex items-center justify-center rounded-md">
-                <span>[Map placeholder]</span>
-              </div>
-            </div>
-          )}
+            </div>  
+            </div>        
         </form>
       </div>
+      
 
       {/* Filters */}
-      <div className="mt-6 mb-6">
-        <div className="container gap-2 px-9 py-4 flex justify-center   flex-wrap">
+      <div className="px-4 py-6">
+        <div className="flex flex-wrap gap-4  justify-center ">
           {[
-            "Any price",
-            "Amenities",
-            "Brands",
-            "Top rated clinics",
-            "Express offers",
-            "Listing",
+            "By price",
+            "Top rated treatments",
+            "Most Booked this week",
+            "Rating",
           ].map((filter, i) => (
             <Button
 
@@ -145,10 +100,19 @@ export const Booking: React.FC = () => {
           ))}
         </div>
       </div>
-
+   
+      
       {/* Clinics List */}
-      <div className="container mx-auto px-6 space-y-6">
-        {clinics.map((clinic) => (
+    <div className="container ">
+        {cards.map((card) => (
+          <CardDetails
+            key={card.id}
+            name={card.name}
+            location={card.location}
+            price={card.price}
+          />
+        ))}
+            {clinics.map((clinic) => (
           <ClinicCard
             key={clinic.id}
             name={clinic.name}
@@ -156,6 +120,7 @@ export const Booking: React.FC = () => {
             price={clinic.price}
           />
         ))}
+           
       </div>
     </>
   );

@@ -50,7 +50,7 @@ const searchContainerStyle = css`
 //   gap: var(--spacing-md);
 //   @media (max-width: 768px) {
 //     display: none;
-  //   }
+//   }
 // `;
 
 const mobileMenuButtonStyle = css`
@@ -227,7 +227,7 @@ export const Header: React.FC = () => {
                 Home
               </Link>
             </li>
-            <li className="hover:text-[#CBFF38] cursor-pointer">
+            <li className="hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38] cursor-pointer">
               <Link
                 to="/search"
                 className="no-underline text-white hover:text-[#CBFF38]"

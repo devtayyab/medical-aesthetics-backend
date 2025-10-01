@@ -18,7 +18,7 @@ const ClinicInfo: React.FC<ClinicInfoProps> = ({
   price,
   id,
 }) => {
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // const [selectedId, setSelectedId] = useState<number | null>(null);
 
   return (
     <div className="w-full flex justify-between gap-6 items-end mt-2">
