@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchClinicAppointments } from "@/store/slices/clinicSlice";
+import { fetchAppointments } from "@/store/slices/clinicSlice";
 import { RootState } from "@/store";
 import { AppDispatch } from "@/store";
 
@@ -11,7 +11,7 @@ export const Diary: React.FC = () => {
   );
 
   useEffect(() => {
-    dispatch(fetchClinicAppointments());
+    dispatch(fetchAppointments());
   }, [dispatch]);
 
   if (isLoading) return <div>Loading...</div>;

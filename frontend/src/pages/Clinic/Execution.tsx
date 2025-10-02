@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { recordExecution } from "@/store/slices/clinicSlice";
+import { completeAppointment } from "@/store/slices/clinicSlice";
 import { RootState } from "@/store";
 import { AppDispatch } from "@/store";
 import { Button } from "@/components/atoms/Button/Button";
@@ -18,10 +18,16 @@ export const Execution: React.FC = () => {
   const handleRecordExecution = () => {
     if (selectedAppointmentId && paymentMethod && finalAmount > 0) {
       dispatch(
-        recordExecution({
-          appointmentId: selectedAppointmentId,
-          paymentMethod,
-          finalAmount,
+        completeAppointment({
+          id: selectedAppointmentId,
+          data: {
+            paymentData: {
+              paymentMethod: paymentMethod as any,
+              amount: finalAmount,
+              isAdvancePayment: false
+            },
+            treatmentDetails: {}
+          }
         })
       ).unwrap();
     }

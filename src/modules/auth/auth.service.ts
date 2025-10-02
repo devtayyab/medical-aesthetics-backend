@@ -4,6 +4,8 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
 import { ConfigService } from '@nestjs/config';
+import { RegisterDto } from './dto/register.dto';
+import { ClinicsService } from '../clinics/clinics.service';
 
 @Injectable()
 export class AuthService {
@@ -11,6 +13,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private clinicsService: ClinicsService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<User | null> {
@@ -76,6 +79,40 @@ export class AuthService {
       console.error('[AuthService] Refresh token error:', error.message);
       throw new UnauthorizedException('Invalid refresh token');
     }
+  }
+
+  async register(registerDto: RegisterDto) {
+    console.log('[AuthService] Registering user:', registerDto.email, 'with role:', registerDto.role);
+    
+    // Create user
+    const user = await this.usersService.create(registerDto);
+    
+    // If role is clinic_owner and clinicData is provided, create clinic
+    if (registerDto.role === 'clinic_owner' && registerDto.clinicData) {
+      console.log('[AuthService] Creating clinic for user:', user.id);
+      try {
+        // Ensure required fields are present
+        if (!registerDto.clinicData.address) {
+          throw new Error('Address is required for clinic creation');
+        }
+        
+        await this.clinicsService.createClinic({
+          name: registerDto.clinicData.name,
+          description: registerDto.clinicData.description || '', // Provide default empty description
+          address: registerDto.clinicData.address,
+          phone: registerDto.clinicData.phone,
+          email: registerDto.clinicData.email,
+          ownerId: user.id,
+        });
+        console.log('[AuthService] Clinic created successfully');
+      } catch (error) {
+        console.error('[AuthService] Failed to create clinic:', error.message);
+        // Continue with registration even if clinic creation fails
+      }
+    }
+    
+    // Generate tokens and return
+    return this.login(user);
   }
 
   async logout(userId: string) {

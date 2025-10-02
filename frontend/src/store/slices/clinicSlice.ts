@@ -1,112 +1,303 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { clinicsAPI, bookingAPI, loyaltyAPI } from "@/services/api";
-import type { Clinic, Appointment, TimeSlot, LoyaltyBalance } from "@/types";
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import clinicApi from '../../services/api/clinicApi';
+import {
+  ClinicProfile,
+  Service,
+  Appointment,
+  AppointmentFilters,
+  CompleteAppointmentDto,
+  RecordPaymentDto,
+  Client,
+  Review,
+  ReviewStatistics,
+  AvailabilitySettings,
+  AppointmentStatus,
+} from '../../types/clinic.types';
 
 interface ClinicState {
-  profile: Clinic | null;
+  profile: ClinicProfile | null;
+  services: Service[];
   appointments: Appointment[];
-  availability: TimeSlot[];
-  reports: any; // Loyalty reports
+  selectedAppointment: Appointment | null;
+  clients: Client[];
+  reviews: Review[];
+  reviewStats: ReviewStatistics | null;
+  availability: AvailabilitySettings | null;
   isLoading: boolean;
   error: string | null;
 }
 
 const initialState: ClinicState = {
   profile: null,
+  services: [],
   appointments: [],
-  availability: [],
-  reports: null,
+  selectedAppointment: null,
+  clients: [],
+  reviews: [],
+  reviewStats: null,
+  availability: null,
   isLoading: false,
   error: null,
 };
 
+// Async Thunks
 export const fetchClinicProfile = createAsyncThunk(
-  "clinic/fetchProfile",
-  async () => {
-    const response = await clinicsAPI.getById("me"); // Assume /clinics/me for own profile
-    return response.data;
+  'clinic/fetchProfile',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await clinicApi.clinicProfile.getProfile();
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch profile');
+    }
   }
 );
 
 export const updateClinicProfile = createAsyncThunk(
-  "clinic/updateProfile",
-  async (data: Partial<Clinic>) => {
-    const response = api.patch("/clinics/me", data); // Assume /clinics/me for update
-    return response.data;
+  'clinic/updateProfile',
+  async (data: Partial<ClinicProfile>, { rejectWithValue }) => {
+    try {
+      return await clinicApi.clinicProfile.updateProfile(data);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
+    }
   }
 );
 
-export const fetchClinicAppointments = createAsyncThunk(
-  "clinic/fetchAppointments",
-  async () => {
-    const response = await bookingAPI.getUserAppointments(); // Reuse or add /clinics/me/appointments
-    return response.data;
+export const fetchServices = createAsyncThunk(
+  'clinic/fetchServices',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await clinicApi.services.getAll();
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch services');
+    }
+  }
+);
+
+export const fetchAppointments = createAsyncThunk(
+  'clinic/fetchAppointments',
+  async (filters: AppointmentFilters | undefined, { rejectWithValue }) => {
+    try {
+      return await clinicApi.appointments.getAll(filters);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch appointments');
+    }
+  }
+);
+
+export const fetchAppointmentById = createAsyncThunk(
+  'clinic/fetchAppointmentById',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      return await clinicApi.appointments.getById(id);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch appointment');
+    }
+  }
+);
+
+export const updateAppointmentStatus = createAsyncThunk(
+  'clinic/updateAppointmentStatus',
+  async (
+    { id, status, notes, treatmentDetails }: {
+      id: string;
+      status: AppointmentStatus;
+      notes?: string;
+      treatmentDetails?: any;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      return await clinicApi.appointments.updateStatus(id, status, notes, treatmentDetails);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update status');
+    }
+  }
+);
+
+export const completeAppointment = createAsyncThunk(
+  'clinic/completeAppointment',
+  async ({ id, data }: { id: string; data: CompleteAppointmentDto }, { rejectWithValue }) => {
+    try {
+      return await clinicApi.appointments.complete(id, data);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to complete appointment');
+    }
+  }
+);
+
+export const rescheduleAppointment = createAsyncThunk(
+  'clinic/rescheduleAppointment',
+  async (
+    { id, startTime, endTime, reason }: {
+      id: string;
+      startTime: string;
+      endTime: string;
+      reason?: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      return await clinicApi.appointments.reschedule(id, startTime, endTime, reason);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reschedule');
+    }
+  }
+);
+
+export const fetchClients = createAsyncThunk(
+  'clinic/fetchClients',
+  async (params: { limit?: number; offset?: number } | undefined = undefined, { rejectWithValue }) => {
+    try {
+      return await clinicApi.clients.getAll(params);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch clients');
+    }
+  }
+);
+
+export const fetchReviews = createAsyncThunk(
+  'clinic/fetchReviews',
+  async (params: { limit?: number; offset?: number } | undefined = undefined, { rejectWithValue }) => {
+    try {
+      const data = await clinicApi.reviews.getAll(params);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch reviews');
+    }
+  }
+);
+
+export const fetchReviewStatistics = createAsyncThunk(
+  'clinic/fetchReviewStatistics',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await clinicApi.reviews.getStatistics();
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch statistics');
+    }
+  }
+);
+
+export const fetchAvailability = createAsyncThunk(
+  'clinic/fetchAvailability',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await clinicApi.availability.get();
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch availability');
+    }
   }
 );
 
 export const updateAvailability = createAsyncThunk(
-  "clinic/updateAvailability",
-  async (data: { date: string; slots: TimeSlot[] }) => {
-    const response = await clinicsAPI.updateAvailability(data);
-    return response.data;
-  }
-);
-
-export const recordExecution = createAsyncThunk(
-  "clinic/recordExecution",
-  async (data: {
-    appointmentId: string;
-    paymentMethod: string;
-    finalAmount: number;
-  }) => {
-    const response = await bookingAPI.recordExecution(data);
-    return response.data;
-  }
-);
-
-export const fetchLoyaltyReports = createAsyncThunk(
-  "clinic/fetchLoyaltyReports",
-  async (clinicId: string) => {
-    const response = await loyaltyAPI.getReports(clinicId);
-    return response.data;
+  'clinic/updateAvailability',
+  async (data: AvailabilitySettings, { rejectWithValue }) => {
+    try {
+      return await clinicApi.availability.update(data);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update availability');
+    }
   }
 );
 
 const clinicSlice = createSlice({
-  name: "clinic",
+  name: 'clinic',
   initialState,
   reducers: {
     clearError: (state) => {
       state.error = null;
     },
+    clearSelectedAppointment: (state) => {
+      state.selectedAppointment = null;
+    },
   },
   extraReducers: (builder) => {
     builder
+      // Profile
+      .addCase(fetchClinicProfile.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(fetchClinicProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
         state.profile = action.payload;
       })
+      .addCase(fetchClinicProfile.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Update Profile
       .addCase(updateClinicProfile.fulfilled, (state, action) => {
         state.profile = action.payload;
       })
-      .addCase(fetchClinicAppointments.fulfilled, (state, action) => {
+      // Services
+      .addCase(fetchServices.fulfilled, (state, action) => {
+        state.services = action.payload;
+      })
+      // Appointments
+      .addCase(fetchAppointments.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(fetchAppointments.fulfilled, (state, action) => {
+        state.isLoading = false;
         state.appointments = action.payload;
       })
-      .addCase(updateAvailability.fulfilled, (state, action) => {
-        state.availability = action.payload;
+      .addCase(fetchAppointments.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
       })
-      .addCase(recordExecution.fulfilled, (state, action) => {
-        const index = state.appointments.findIndex(
-          (a) => a.id === action.payload.id
-        );
+      // Appointment by ID
+      .addCase(fetchAppointmentById.fulfilled, (state, action) => {
+        state.selectedAppointment = action.payload;
+      })
+      // Update Status
+      .addCase(updateAppointmentStatus.fulfilled, (state, action) => {
+        const index = state.appointments.findIndex((a) => a.id === action.payload.id);
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        if (state.selectedAppointment?.id === action.payload.id) {
+          state.selectedAppointment = action.payload;
+        }
+      })
+      // Complete Appointment
+      .addCase(completeAppointment.fulfilled, (state, action) => {
+        const index = state.appointments.findIndex((a) => a.id === action.payload.id);
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
+        }
+        if (state.selectedAppointment?.id === action.payload.id) {
+          state.selectedAppointment = action.payload;
+        }
+      })
+      // Reschedule
+      .addCase(rescheduleAppointment.fulfilled, (state, action) => {
+        const index = state.appointments.findIndex((a) => a.id === action.payload.id);
         if (index !== -1) {
           state.appointments[index] = action.payload;
         }
       })
-      .addCase(fetchLoyaltyReports.fulfilled, (state, action) => {
-        state.reports = action.payload;
+      // Clients
+      .addCase(fetchClients.fulfilled, (state, action) => {
+        state.clients = action.payload;
+      })
+      // Reviews
+      .addCase(fetchReviews.fulfilled, (state, action) => {
+        state.reviews = action.payload.reviews;
+      })
+      .addCase(fetchReviewStatistics.fulfilled, (state, action) => {
+        state.reviewStats = action.payload;
+      })
+      // Availability
+      .addCase(fetchAvailability.fulfilled, (state, action) => {
+        state.availability = action.payload;
+      })
+      .addCase(updateAvailability.fulfilled, (state, action) => {
+        state.availability = action.payload;
       });
   },
 });
 
-export const { clearError } = clinicSlice.actions;
+export const { clearError, clearSelectedAppointment } = clinicSlice.actions;
 export default clinicSlice.reducer;

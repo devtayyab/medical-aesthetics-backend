@@ -97,8 +97,20 @@ export const Login: React.FC = () => {
     if (!validateForm()) return;
 
     try {
-      await dispatch(login({ email, password })).unwrap();
-      navigate("/", { replace: true });
+      const result = await dispatch(login({ email, password })).unwrap();
+      
+      // Redirect based on user role
+      const clinicRoles = ['clinic_owner', 'doctor', 'secretariat', 'salesperson'];
+      
+      if (clinicRoles.includes(result.user.role)) {
+        navigate("/clinic/dashboard", { replace: true });
+      } else if (result.user.role === 'admin') {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (result.user.role === 'client') {
+        navigate("/my-account", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (err) {
       console.log("Login error:", err);
     }
