@@ -96,4 +96,33 @@ export class AvailabilityService {
 
     return slots;
   }
+
+  async getClinicAvailability(
+    userId: string,
+    userRole: string,
+    query: any,
+  ): Promise<any> {
+    // Get clinic based on user role
+    let clinic;
+    if (userRole === 'clinic_owner') {
+      clinic = await this.clinicsService.findByOwnerId(userId);
+    } else {
+      // For doctors and staff, we need to find their clinic
+      // This is a simplified approach - in reality, you'd need to map users to clinics
+      throw new Error('Clinic availability lookup not implemented for this user role');
+    }
+
+    if (!clinic) {
+      throw new Error('Clinic not found');
+    }
+
+    // Return clinic availability settings
+    return {
+      clinicId: clinic.id,
+      clinicName: clinic.name,
+      timezone: clinic.timezone,
+      businessHours: clinic.businessHours,
+      blockedDates: [], // This would come from a separate blocked dates entity
+    };
+  }
 }
