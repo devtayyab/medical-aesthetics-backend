@@ -157,6 +157,7 @@ export const ClinicDetails: React.FC = () => {
     (state: RootState) => state.client
   );
   const { selectedServices } = useSelector((state: RootState) => state.booking);
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     if (id) {
@@ -197,6 +198,13 @@ export const ClinicDetails: React.FC = () => {
   };
 
   const handleBookNow = () => {
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      // Redirect to login with return URL
+      navigate(`/login?redirect=/clinic/${id}`);
+      return;
+    }
+    
     if (selectedServices.length > 0 && clinicData) {
       const serviceIds = selectedServices.map((s) => s.id).join(",");
       navigate(

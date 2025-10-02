@@ -154,23 +154,11 @@ function AppContent() {
               )
             }
           />
-          {/* Client Routes */}
-          <Route
-            path="/search"
-            element={
-              <ProtectedLayout allowedRoles={["client"]}>
-                <Search />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/clinic/:id"
-            element={
-              <ProtectedLayout allowedRoles={["client"]}>
-                <ClinicDetails />
-              </ProtectedLayout>
-            }
-          />
+          {/* Client Routes - Public clinic browsing */}
+          <Route path="/search" element={<Search />} />
+          <Route path="/clinic/:id" element={<ClinicDetails />} />
+          
+          {/* Protected booking route - requires login */}
           <Route
             path="/appointment/booking"
             element={
