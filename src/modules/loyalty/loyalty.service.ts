@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoyaltyLedger } from './entities/loyalty-ledger.entity';
+import { ClinicsService } from '../clinics/clinics.service';
 
 @Injectable()
 export class LoyaltyService {
@@ -10,6 +11,7 @@ export class LoyaltyService {
     @InjectRepository(LoyaltyLedger)
     private ledgerRepository: Repository<LoyaltyLedger>,
     private eventEmitter: EventEmitter2,
+    private clinicsService: ClinicsService,
   ) {}
 
   async getClientBalance(clientId: string, clinicId?: string): Promise<any> {
@@ -146,5 +148,69 @@ export class LoyaltyService {
         expiresAt: null,
       });
     }
+  }
+
+  async getClinicLoyaltyAnalytics(
+    userId: string,
+    userRole: string,
+    query: { startDate?: string; endDate?: string },
+  ): Promise<any> {
+    // Get clinic based on user role
+    let clinic;
+    if (userRole === 'clinic_owner') {
+      clinic = await this.clinicsService.findByOwnerId(userId);
+    } else {
+      throw new Error('Loyalty analytics not available for this user role');
+    }
+
+    if (!clinic) {
+      throw new Error('Clinic not found');
+    }
+
+    // Get loyalty statistics for the clinic
+    const loyaltyStats = await this.ledgerRepository
+      .createQueryBuilder('ledger')
+      .select([
+        'SUM(ledger.points) as totalPoints',
+        'COUNT(DISTINCT ledger.clientId) as uniqueClients',
+        'AVG(ledger.points) as avgPointsPerTransaction',
+      ])
+      .where('ledger.clinicId = :clinicId', { clinicId: clinic.id });
+
+    if (query.startDate && query.endDate) {
+      loyaltyStats.andWhere('ledger.createdAt BETWEEN :startDate AND :endDate', {
+        startDate: new Date(query.startDate),
+        endDate: new Date(query.endDate),
+      });
+    }
+
+    const stats = await loyaltyStats.getRawOne();
+
+    // Get top clients by points
+    const topClients = await this.ledgerRepository
+      .createQueryBuilder('ledger')
+      .select([
+        'ledger.clientId',
+        'SUM(ledger.points) as totalPoints',
+        'COUNT(ledger.id) as transactions',
+      ])
+      .where('ledger.clinicId = :clinicId', { clinicId: clinic.id })
+      .andWhere('(ledger.expiresAt IS NULL OR ledger.expiresAt > NOW())')
+      .groupBy('ledger.clientId')
+      .orderBy('totalPoints', 'DESC')
+      .limit(10)
+      .getRawMany();
+
+    return {
+      clinicId: clinic.id,
+      clinicName: clinic.name,
+      period: { startDate: query.startDate, endDate: query.endDate },
+      stats: {
+        totalPoints: parseInt(stats.totalPoints) || 0,
+        uniqueClients: parseInt(stats.uniqueClients) || 0,
+        avgPointsPerTransaction: parseFloat(stats.avgPointsPerTransaction) || 0,
+      },
+      topClients,
+    };
   }
 }
