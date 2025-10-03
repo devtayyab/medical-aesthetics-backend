@@ -85,5 +85,5 @@ COPY . .
 # Expose the port
 EXPOSE 3001
 
-# Start the application
-CMD ["npm", "run", "start:dev"]
+# Start the application using pnpm exec
+CMD ["pnpm", "exec", "nest", "start", "--watch"]
