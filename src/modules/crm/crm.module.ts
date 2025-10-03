@@ -10,6 +10,9 @@ import { CustomerTag } from './entities/customer-tag.entity';
 import { TasksModule } from '../tasks/tasks.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { UsersModule } from '../users/users.module';
+import { Appointment } from '../bookings/entities/appointment.entity';
+import { User } from '../users/entities/user.entity';
 
 @Module({
   imports: [
@@ -19,10 +22,13 @@ import { NotificationsModule } from '../notifications/notifications.module';
       CommunicationLog,
       CrmAction,
       CustomerTag,
+      Appointment,
+      User,
     ]),
     TasksModule,
     BookingsModule,
     NotificationsModule,
+    UsersModule,
   ],
   controllers: [CrmController],
   providers: [CrmService],

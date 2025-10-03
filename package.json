@@ -4,8 +4,9 @@
   "description": "Complete backend for Medical Aesthetics Platform",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc",
+    "build": "nest build",
     "start": "node dist/main.js",
+    
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "prestart:prod": "npm run build",

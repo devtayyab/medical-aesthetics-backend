@@ -3,21 +3,15 @@ import { store } from "@/store";
 import { setTokens, logout } from "@/store/slices/authSlice";
 import type {
   User,
-  Clinic,
-  Service,
-  Appointment,
-  TimeSlot,
-  LoyaltyBalance,
-  Notification,
   Lead,
   Task,
 } from "@/types";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://51.20.141.141:3000";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
@@ -39,14 +33,6 @@ const onRefreshed = (token: string) => {
 api.interceptors.request.use((config) => {
   const state = store.getState();
   const token = state.auth.accessToken;
-  console.log("Request interceptor:", {
-    url: config.url,
-    method: config.method,
-    accessToken: token ? `${token.substring(0, 20)}...` : "null",
-    hasRefreshToken:
-      !!state.auth.refreshToken || !!localStorage.getItem("refreshToken"),
-    fullHeader: token ? `Bearer ${token}` : "No token",
-  });
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -55,19 +41,10 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => {
-    console.log("Response received:", {
-      url: response.config.url,
-      status: response.status,
-    });
     return response;
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as any;
-    console.log("Response error detected:", {
-      status: error.response?.status,
-      url: originalRequest.url,
-      headers: originalRequest.headers,
-    });
     if (error.response?.status === 401 && !originalRequest._retry) {
       console.log(
         "401 detected, isRefreshing:",
@@ -80,13 +57,8 @@ api.interceptors.response.use(
         }
       );
       if (isRefreshing) {
-        console.log("Waiting for token refresh...");
         return new Promise((resolve) => {
           subscribeTokenRefresh((token) => {
-            console.log(
-              "Refreshed token applied:",
-              token.substring(0, 20) + "..."
-            );
             originalRequest.headers.Authorization = `Bearer ${token}`;
             resolve(api(originalRequest));
           });
@@ -99,27 +71,17 @@ api.interceptors.response.use(
       const state = store.getState();
       const refreshToken =
         state.auth.refreshToken || localStorage.getItem("refreshToken");
-      console.log(
-        "Attempting refresh with refreshToken:",
-        refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
-      );
-
       if (refreshToken) {
         try {
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
             refreshToken,
           });
-          console.log("Refresh success, response:", response.data);
           const { accessToken, refreshToken: newRefreshToken } = response.data;
           store.dispatch(
             setTokens({ accessToken, refreshToken: newRefreshToken })
           );
           onRefreshed(accessToken);
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          console.log(
-            "Retrying request with new token:",
-            accessToken.substring(0, 20) + "..."
-          );
           return api(originalRequest);
         } catch (refreshError: any) {
           console.error("Refresh failed:", {
@@ -133,15 +95,10 @@ api.interceptors.response.use(
           isRefreshing = false;
         }
       } else {
-        console.log("No refreshToken available, logging out");
         store.dispatch(logout());
         window.location.href = "/login";
       }
     }
-    console.error("Non-401 error:", {
-      message: error.response?.data || error.message,
-      status: error.response?.status,
-    });
     return Promise.reject(error);
   }
 );

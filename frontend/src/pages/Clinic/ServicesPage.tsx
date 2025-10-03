@@ -114,7 +114,7 @@ const ServicesPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-gray-400" />
                   <span className="text-xl font-bold text-gray-900">
-                    ${service.price.toFixed(2)}
+                    ${service.price}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-600">

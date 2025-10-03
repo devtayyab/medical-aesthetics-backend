@@ -30,7 +30,7 @@ const PaymentFormInner: React.FC<PaymentFormProps> = ({
 
     setProcessing(true);
     try {
-      const response = await fetch("http://51.20.141.141:3000/payments/intent", {
+      const response = await fetch("http://localhost:3001/payments/intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount }),

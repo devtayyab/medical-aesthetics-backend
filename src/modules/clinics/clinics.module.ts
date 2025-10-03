@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClinicsController } from './clinics.controller';
 import { ClinicManagementController } from './clinic-management.controller';
@@ -13,8 +13,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Clinic, Service, Review]),
-    BookingsModule,
-    LoyaltyModule,
+    forwardRef(() => BookingsModule),
+    forwardRef(() => LoyaltyModule),
     NotificationsModule,
   ],
   controllers: [ClinicsController, ClinicManagementController],

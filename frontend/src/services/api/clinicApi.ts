@@ -1,4 +1,3 @@
-import axios from 'axios';
 import {
   ClinicProfile,
   Service,
@@ -20,25 +19,9 @@ import {
   AvailabilitySettings,
   AppointmentStatus,
 } from '../../types/clinic.types';
+import { api as apiClient } from '../api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
-// Create axios instance with auth token
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add auth token to requests
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
 
 // Clinic Profile API
 export const clinicProfileApi = {

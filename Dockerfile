@@ -1,50 +1,89 @@
-# FROM node:20-alpine
+# # Builder stage
+# FROM node:20-alpine AS builder
 
 # RUN corepack enable
 
 # WORKDIR /app
 
+# # Copy package files
 # COPY package.json pnpm-lock.yaml ./
 
-# RUN pnpm install --prod --frozen-lockfile
+# # Install all dependencies (including dev dependencies for building)
+# RUN pnpm install --frozen-lockfile
 
+# # Copy source code
 # COPY . .
 
-# CMD ["node", "dist/main.js"]
+# # Build the NestJS application
+# RUN pnpm run build
 
+# # Remove dev dependencies
+# RUN pnpm prune --prod
 
-
-# # runner
+# # Runner stage
 # FROM node:20-alpine
-# WORKDIR /app
+
 # RUN corepack enable
+
+# # Install dumb-init for proper signal handling
+# RUN apk add --no-cache dumb-init
+
+# # Create non-root user for security
+# RUN addgroup -g 1001 -S nodejs && \
+#     adduser -S nestjs -u 1001
+
+# WORKDIR /app
+
+# # Copy package files
 # COPY package.json pnpm-lock.yaml ./
-# RUN pnpm install --prod --frozen-lockfile
+
+# # Copy production node_modules from builder
+# COPY --from=builder /app/node_modules ./node_modules
+
+# # Copy built application from builder stage
 # COPY --from=builder /app/dist ./dist
+
+# # Copy any other necessary files (adjust as needed)
+# # COPY --from=builder /app/public ./public
+
+# # Change ownership to non-root user
+# RUN chown -R nestjs:nodejs /app
+
+# # Switch to non-root user
+# USER nestjs
+
+# # Set environment to production
 # ENV NODE_ENV=production
-# EXPOSE 3000
+
+# # Expose the port
+# EXPOSE 3001
+
+# # Use dumb-init to handle signals properly
+# ENTRYPOINT ["dumb-init", "--"]
+
+# # Start the application
 # CMD ["node", "dist/main.js"]
 
-# Stage 1: Build
-FROM node:20-alpine AS builder
+
+
+# dev stage
+FROM node:20-alpine AS dev
 
 RUN corepack enable
+
 WORKDIR /app
 
+# Copy package files
 COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
 RUN pnpm install --frozen-lockfile
 
+# Copy source code
 COPY . .
-RUN pnpm run build
 
-# Stage 2: Runtime
-FROM node:20-alpine
+# Expose the port
+EXPOSE 3001
 
-WORKDIR /app
-
-# Copy only needed files from builder
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY package.json ./
-
-CMD ["node", "dist/main.js"]
+# Start the application
+CMD ["npm", "run", "start:dev"]

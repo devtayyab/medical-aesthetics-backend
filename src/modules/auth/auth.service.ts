@@ -6,6 +6,8 @@ import { User } from '../users/entities/user.entity';
 import { ConfigService } from '@nestjs/config';
 import { RegisterDto } from './dto/register.dto';
 import { ClinicsService } from '../clinics/clinics.service';
+import { Roles } from '@/common/decorators/roles.decorator';
+import { UserRole } from '@/common/enums/user-role.enum';
 
 @Injectable()
 export class AuthService {
@@ -88,11 +90,11 @@ export class AuthService {
     const user = await this.usersService.create(registerDto);
     
     // If role is clinic_owner and clinicData is provided, create clinic
-    if (registerDto.role === 'clinic_owner' && registerDto.clinicData) {
+    if (registerDto.role  === UserRole.CLINIC_OWNER  || registerDto.role === UserRole.DOCTOR || registerDto.role === UserRole.SECRETARIAT && registerDto?.clinicData) {
       console.log('[AuthService] Creating clinic for user:', user.id);
       try {
         // Ensure required fields are present
-        if (!registerDto.clinicData.address) {
+        if (!registerDto.clinicData?.address) {
           throw new Error('Address is required for clinic creation');
         }
         

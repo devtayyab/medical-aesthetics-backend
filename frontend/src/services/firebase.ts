@@ -29,7 +29,7 @@ export const initializeFirebase = async (
       console.log("FCM Token:", token);
 
       // Send token to backend to associate with user
-      await fetch("http://51.20.141.141:3000/notifications/register", {
+      await fetch("http://localhost:3001/notifications/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
