@@ -62,7 +62,7 @@ export interface Appointment {
   id: string;
   clinicId: string;
   serviceId: string;
-  providerId: string;
+  providerId?: string;
   clientId: string;
   startTime: string;
   endTime: string;

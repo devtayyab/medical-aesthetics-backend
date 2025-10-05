@@ -12,6 +12,7 @@ import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 import LinedBg from "@/assets/LinedBg.svg";
 import LayeredBG from "@/assets/LayeredBG.svg";
+import { store } from "@/store"; // Import the store here
 
 export const Search: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -21,17 +22,26 @@ export const Search: React.FC = () => {
     (state: RootState) => state.client
   );
 
+  console.log("clinics:", clinics);
+  console.log("isLoading:", isLoading, "error:", error);
+
   useEffect(() => {
+    console.log("Dispatching searchClinics");
+    const state = store.getState() as RootState;
+    console.log(
+      "Current accessToken:",
+      state.auth.accessToken?.substring(0, 20) || "No token"
+    );
     const params = new URLSearchParams(location.search);
     const filters = {
       query: params.get("q") || "",
       location: params.get("location") || "",
       category: params.get("category") || "",
+      limit: 10,
+      offset: 0,
     };
     dispatch(setSearchFilters(filters));
-    if (filters.query || filters.location || filters.category) {
-      dispatch(searchClinics({ ...filters, limit: 10, offset: 0 }));
-    }
+    dispatch(searchClinics({ ...filters }));
     return () => {
       dispatch(clearError());
     };
@@ -51,7 +61,6 @@ export const Search: React.FC = () => {
 
   return (
     <div className="">
-      {/* <div className="p-6 max-w-[1200px] mx-auto bg-white min-h-screen"> */}
       <div
         className="p-6 bg-[#1A202C] min-h-[315px]"
         style={{
@@ -82,38 +91,34 @@ export const Search: React.FC = () => {
           )}
           {error && (
             <p className="text-red-600 text-xl font-medium text-center min-h-[200px] py-16">
-              {error}adada
+              {error}
             </p>
           )}
-          {clinics.length === 0 && !isLoading && !error ? (
+          {clinics.length === 0 && !isLoading && !error && (
             <p className="text-black text-xl font-medium text-center min-h-[200px] py-16">
               No clinics found.
             </p>
-          ) : (
-            <>
-              <div className="pb-10 px-4 flex justify-center items-center flex-wrap gap-[10px]">
-                <button className="px-[22px] py-3 font-medium text-[#2D3748] border border-[#2D3748] rounded-[12px]">
-                  By price
-                </button>
-                <button className="px-[22px] py-3 font-medium text-[#2D3748] border border-[#2D3748] rounded-[12px]">
-                  Top rated treatments
-                </button>
-                <button className="px-[22px] py-3 font-medium text-[#2D3748] border border-[#2D3748] rounded-[12px]">
-                  Most booked this week
-                </button>
-                <button className="px-[22px] py-3 font-medium text-[#2D3748] border border-[#2D3748] rounded-[12px]">
-                  Rating
-                </button>
-              </div>
-            </>
           )}
+          <div className="pb-10 px-4 flex justify-center items-center flex-wrap gap-[10px]">
+            <button className="px-[22px] py-3 font-medium text-[#2D3748] border border-[#2D3748] rounded-[12px]">
+              By price
+            </button>
+            <button className="px-[22px] py-3 font-medium text-[#2D3748] border border-[#2D3748] rounded-[12px]">
+              Top rated treatments
+            </button>
+            <button className="px-[22px] py-3 font-medium text-[#2D3748] border border-[#2D3748] rounded-[12px]">
+              Most booked this week
+            </button>
+            <button className="px-[22px] py-3 font-medium text-[#2D3748] border border-[#2D3748] rounded-[12px]">
+              Rating
+            </button>
+          </div>
           <div className="flex flex-col justify-center items-center gap-6">
             {clinics.map((clinic: Clinic) => (
               <ClinicCard
                 key={clinic.id}
                 clinic={clinic}
                 onSelect={() => navigate(`/clinic/${clinic.id}`)}
-                // className="bg-white shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-shadow"
               />
             ))}
           </div>

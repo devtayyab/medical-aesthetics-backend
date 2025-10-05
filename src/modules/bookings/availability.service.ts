@@ -20,9 +20,10 @@ export class AvailabilityService {
   async getAvailableSlots(
     clinicId: string,
     serviceId: string,
-    providerId: string,
-    date: string,
+    providerId?: string | null,
+    date?: string,
   ): Promise<any[]> {
+    console.log('🔵 Availability Request:', { clinicId, serviceId, providerId, date });
     const clinic = await this.clinicsService.findById(clinicId);
     const services = await this.clinicsService.findServices(clinicId);
     

@@ -26,216 +26,27 @@ interface ClientState {
 }
 
 const initialState: ClientState = {
-  clinics: [
-    {
-      id: "1",
-      name: "Botox Treatment",
-      description: "Premium aesthetic services with advanced treatments",
-      address: {
-        street: "123 Main St",
-        city: "New York",
-        state: "NY",
-        zipCode: "10001",
-        country: "USA",
-      },
-      phone: "+1-234-567-8901",
-      email: "info@clinicA.com",
-      businessHours: {
-        monday: { open: "09:00", close: "17:00", isOpen: true },
-        tuesday: { open: "09:00", close: "17:00", isOpen: true },
-        wednesday: { open: "09:00", close: "17:00", isOpen: true },
-        thursday: { open: "09:00", close: "17:00", isOpen: true },
-        friday: { open: "09:00", close: "17:00", isOpen: true },
-        saturday: { open: "10:00", close: "15:00", isOpen: true },
-        sunday: { open: "10:00", close: "15:00", isOpen: false },
-      },
-      services: [
-        {
-          id: "1",
-          name: "Glossy Blow Dry",
-          price: 200,
-          durationMinutes: 30,
-          category: "Dermatology",
-        },
-        {
-          id: "2",
-          name: "Dermal Fillers",
-          price: 600,
-          durationMinutes: 45,
-          category: "Aesthetics",
-        },
-      ],
-      rating: 4.8,
-      reviewCount: 120,
-      isActive: true,
-      ownerId: "owner1",
-    },
-    {
-      id: "2",
-      name: "Hyalouronic Acid",
-      description: "Specialized in skin treatments and care",
-      address: {
-        street: "456 Oak Ave",
-        city: "Los Angeles",
-        state: "CA",
-        zipCode: "90210",
-        country: "USA",
-      },
-      phone: "+1-234-567-8902",
-      email: "info@clinicB.com",
-      businessHours: {
-        monday: { open: "08:00", close: "18:00", isOpen: true },
-        tuesday: { open: "08:00", close: "18:00", isOpen: true },
-        wednesday: { open: "08:00", close: "18:00", isOpen: true },
-        thursday: { open: "08:00", close: "18:00", isOpen: true },
-        friday: { open: "08:00", close: "18:00", isOpen: true },
-        saturday: { open: "09:00", close: "14:00", isOpen: true },
-        sunday: { open: "09:00", close: "14:00", isOpen: false },
-      },
-      services: [
-        {
-          id: "3",
-          name: "Laser Treatment",
-          price: 800,
-          durationMinutes: 60,
-          category: "Dermatology",
-        },
-        {
-          id: "4",
-          name: "Chemical Peel",
-          price: 300,
-          durationMinutes: 40,
-          category: "Dermatology",
-        },
-      ],
-      rating: 4.9,
-      reviewCount: 200,
-      isActive: true,
-      ownerId: "owner2",
-    },
-  ],
-  featuredClinics: [
-    {
-      id: "1",
-      name: "Botox Treatment",
-      description: "Premium aesthetic services with advanced treatments",
-      address: {
-        street: "123 Main St",
-        city: "New York",
-        state: "NY",
-        zipCode: "10001",
-        country: "USA",
-      },
-      phone: "+1-234-567-8901",
-      email: "info@clinicA.com",
-      businessHours: {
-        monday: { open: "09:00", close: "17:00", isOpen: true },
-        tuesday: { open: "09:00", close: "17:00", isOpen: true },
-        wednesday: { open: "09:00", close: "17:00", isOpen: true },
-        thursday: { open: "09:00", close: "17:00", isOpen: true },
-        friday: { open: "09:00", close: "17:00", isOpen: true },
-        saturday: { open: "10:00", close: "15:00", isOpen: true },
-        sunday: { open: "10:00", close: "15:00", isOpen: false },
-      },
-      services: [
-        {
-          id: "1",
-          name: "Glossy Blow Dry",
-          price: 200,
-          durationMinutes: 30,
-          category: "Aesthetics",
-        },
-        {
-          id: "2",
-          name: "Dermal Fillers",
-          price: 600,
-          durationMinutes: 45,
-          category: "Aesthetics",
-        },
-      ],
-      rating: 4.8,
-      reviewCount: 120,
-      isActive: true,
-      ownerId: "owner1",
-    },
-    {
-      id: "2",
-      name: "Hyalouronic Acid",
-      description: "Specialized in skin treatments and care",
-      address: {
-        street: "456 Oak Ave",
-        city: "Los Angeles",
-        state: "CA",
-        zipCode: "90210",
-        country: "USA",
-      },
-      phone: "+1-234-567-8902",
-      email: "info@clinicB.com",
-      businessHours: {
-        monday: { open: "08:00", close: "18:00", isOpen: true },
-        tuesday: { open: "08:00", close: "18:00", isOpen: true },
-        wednesday: { open: "08:00", close: "18:00", isOpen: true },
-        thursday: { open: "08:00", close: "18:00", isOpen: true },
-        friday: { open: "08:00", close: "18:00", isOpen: true },
-        saturday: { open: "09:00", close: "14:00", isOpen: true },
-        sunday: { open: "09:00", close: "14:00", isOpen: false },
-      },
-      services: [
-        {
-          id: "3",
-          name: "Laser Treatment",
-          price: 800,
-          durationMinutes: 60,
-          category: "Dermatology",
-        },
-        {
-          id: "4",
-          name: "Chemical Peel",
-          price: 300,
-          durationMinutes: 40,
-          category: "Dermatology",
-        },
-      ],
-      rating: 4.9,
-      reviewCount: 200,
-      isActive: true,
-      ownerId: "owner2",
-    },
-  ],
+  clinics: [],
+  featuredClinics: [],
   selectedClinic: null,
   services: [],
   availableSlots: [],
-  appointments: [
-    {
-      id: "1",
-      clinicId: "1",
-      serviceId: "1",
-      providerId: "provider1",
-      clientId: "client1",
-      startTime: "2025-09-15T10:00:00.000Z",
-      endTime: "2025-09-15T10:30:00.000Z",
-      status: "confirmed",
-      notes: "First session",
-      paymentMethod: "credit_card",
-      totalAmount: 500,
-      clinic: { name: "Botox Treatment" },
-      service: { name: "Glossy Blow Dry" },
-      provider: { firstName: "Dr. Smith" },
-      client: { firstName: "John" },
-    },
-  ],
+  appointments: [],
   loyaltyBalance: null,
   isLoading: false,
   error: null,
   searchFilters: {},
   hasMore: true,
-  total: 2, // Reflect the number of dummy clinics
+  total: 0,
   holdId: undefined,
 };
 
 export const searchClinics = createAsyncThunk(
   "client/searchClinics",
-  async (params: SearchFilters, { rejectWithValue }) => {
+  async (
+    params: SearchFilters & { limit?: number; offset?: number },
+    { rejectWithValue }
+  ) => {
     try {
       const response = await clinicsAPI.search(params);
       return response.data;
@@ -295,7 +106,7 @@ export const fetchAvailability = createAsyncThunk(
     params: {
       clinicId: string;
       serviceId: string;
-      providerId: string;
+      providerId?: string;
       date: string;
     },
     { rejectWithValue }
@@ -317,7 +128,7 @@ export const holdSlot = createAsyncThunk(
     data: {
       clinicId: string;
       serviceId: string;
-      providerId: string;
+      providerId?: string;
       startTime: string;
       endTime: string;
     },
@@ -340,7 +151,7 @@ export const createAppointment = createAsyncThunk(
     data: {
       clinicId: string;
       serviceId: string;
-      providerId: string;
+      providerId?: string;
       clientId: string;
       startTime: string;
       endTime: string;
@@ -501,25 +312,25 @@ const clientSlice = createSlice({
       })
       .addCase(searchClinics.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.clinics = action.payload.clinics;
-        state.total = action.payload.total;
-        state.hasMore = action.payload.hasMore;
+        state.clinics = action.payload.clinics || [];
+        state.total = action.payload.total || 0;
+        state.hasMore = action.payload.hasMore || false;
       })
       .addCase(searchClinics.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       })
       .addCase(fetchFeaturedClinics.fulfilled, (state, action) => {
-        state.featuredClinics = action.payload;
+        state.featuredClinics = action.payload || [];
       })
       .addCase(fetchClinicById.fulfilled, (state, action) => {
         state.selectedClinic = action.payload;
       })
       .addCase(fetchClinicServices.fulfilled, (state, action) => {
-        state.services = action.payload;
+        state.services = action.payload || [];
       })
       .addCase(fetchAvailability.fulfilled, (state, action) => {
-        state.availableSlots = action.payload;
+        state.availableSlots = action.payload || [];
       })
       .addCase(holdSlot.fulfilled, (state, action) => {
         state.holdId = action.payload.id;
@@ -529,7 +340,7 @@ const clientSlice = createSlice({
         state.holdId = undefined;
       })
       .addCase(fetchUserAppointments.fulfilled, (state, action) => {
-        state.appointments = action.payload;
+        state.appointments = action.payload || [];
       })
       .addCase(fetchLoyaltyBalance.fulfilled, (state, action) => {
         state.loyaltyBalance = action.payload;

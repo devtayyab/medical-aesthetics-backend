@@ -8,6 +8,7 @@ interface BookingState extends BookingFlow {
   isLoading: boolean;
   error: string | null;
   holdId?: string;
+  selectedClinic?: Clinic;
 }
 
 const initialState: BookingState = {
@@ -25,7 +26,7 @@ export const fetchAvailability = createAsyncThunk(
   async (params: {
     clinicId: string;
     serviceId: string;
-    providerId: string;
+    providerId?: string;
     date: string;
   }) => {
     const response = await bookingAPI.getAvailability(params);
@@ -38,7 +39,7 @@ export const holdTimeSlot = createAsyncThunk(
   async (data: {
     clinicId: string;
     serviceId: string;
-    providerId: string;
+    providerId?: string;
     startTime: string;
     endTime: string;
   }) => {
@@ -52,7 +53,7 @@ export const createAppointment = createAsyncThunk(
   async (data: {
     clinicId: string;
     serviceId: string;
-    providerId: string;
+    providerId?: string;
     clientId: string;
     startTime: string;
     endTime: string;
@@ -97,7 +98,7 @@ const bookingSlice = createSlice({
         state.totalAmount -= service.price;
       }
     },
-    setSelectedClinic: (state, action) => {
+    setSelectedClinic: (state, action: PayloadAction<Clinic>) => {
       state.selectedClinic = action.payload;
     },
     setSelectedDate: (state, action: PayloadAction<string>) => {

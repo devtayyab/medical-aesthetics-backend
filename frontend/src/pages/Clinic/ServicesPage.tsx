@@ -59,7 +59,7 @@ const ServicesPage: React.FC = () => {
         </div>
       ) : services.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
-          <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          {/* <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" /> */}
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No services yet</h3>
           <p className="text-gray-600 mb-4">Start by adding your first service or treatment</p>
           {canManage && (
@@ -112,7 +112,7 @@ const ServicesPage: React.FC = () => {
               {/* Price & Duration */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-gray-400" />
+                  {/* <DollarSign className="w-4 h-4 text-gray-400" /> */}
                   <span className="text-xl font-bold text-gray-900">
                     ${service.price}
                   </span>

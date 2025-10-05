@@ -1,27 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../store';
-import { fetchAvailability, updateAvailability } from '../../store/slices/clinicSlice';
-import { AvailabilitySettings, BusinessHours } from '../../types/clinic.types';
-import { Clock, Save, Calendar } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../store";
+import {
+  fetchAvailability,
+  updateAvailability,
+} from "../../store/slices/clinicSlice";
+import { AvailabilitySettings, BusinessHours } from "../../types/clinic.types";
+import { Clock, Save, Calendar } from "lucide-react";
 
 const AvailabilityPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { availability, isLoading } = useSelector((state: RootState) => state.clinic);
+  const { availability, isLoading } = useSelector(
+    (state: RootState) => state.clinic
+  );
 
   const [businessHours, setBusinessHours] = useState<BusinessHours>({
-    monday: { open: '09:00', close: '17:00', isOpen: true },
-    tuesday: { open: '09:00', close: '17:00', isOpen: true },
-    wednesday: { open: '09:00', close: '17:00', isOpen: true },
-    thursday: { open: '09:00', close: '17:00', isOpen: true },
-    friday: { open: '09:00', close: '17:00', isOpen: true },
-    saturday: { open: '10:00', close: '15:00', isOpen: true },
-    sunday: { open: '10:00', close: '15:00', isOpen: false },
+    monday: { open: "09:00", close: "17:00", isOpen: true },
+    tuesday: { open: "09:00", close: "17:00", isOpen: true },
+    wednesday: { open: "09:00", close: "17:00", isOpen: true },
+    thursday: { open: "09:00", close: "17:00", isOpen: true },
+    friday: { open: "09:00", close: "17:00", isOpen: true },
+    saturday: { open: "10:00", close: "15:00", isOpen: true },
+    sunday: { open: "10:00", close: "15:00", isOpen: false },
   });
 
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
-  const [newBlockedDate, setNewBlockedDate] = useState('');
-  const [timezone, setTimezone] = useState('America/New_York');
+  const [newBlockedDate, setNewBlockedDate] = useState("");
+  const [timezone, setTimezone] = useState("America/New_York");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -30,32 +35,51 @@ const AvailabilityPage: React.FC = () => {
 
   useEffect(() => {
     if (availability) {
-      setBusinessHours(availability.businessHours);
+      setBusinessHours(
+        availability.businessHours ?? {
+          monday: { open: "09:00", close: "17:00", isOpen: true },
+          tuesday: { open: "09:00", close: "17:00", isOpen: true },
+          wednesday: { open: "09:00", close: "17:00", isOpen: true },
+          thursday: { open: "09:00", close: "17:00", isOpen: true },
+          friday: { open: "09:00", close: "17:00", isOpen: true },
+          saturday: { open: "10:00", close: "15:00", isOpen: true },
+          sunday: { open: "10:00", close: "15:00", isOpen: false },
+        }
+      );
       setBlockedDates(availability.blockedDates || []);
-      setTimezone(availability.timezone);
+      setTimezone(availability.timezone || "America/New_York");
     }
   }, [availability]);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Only include blockedDates if it's not empty to avoid validation issues with empty arrays
+      const payload: Partial<AvailabilitySettings> = {
+        businessHours,
+        timezone,
+      };
+      if (blockedDates.length > 0) {
+        payload.blockedDates = blockedDates;
+      }
+
       await dispatch(
-        updateAvailability({
-          businessHours,
-          blockedDates,
-          timezone,
-        })
+        updateAvailability(payload as AvailabilitySettings)
       ).unwrap();
-      alert('Availability settings saved successfully!');
+      alert("Availability settings saved successfully!");
     } catch (error) {
-      console.error('Failed to save availability:', error);
-      alert('Failed to save settings. Please try again.');
+      console.error("Failed to save availability:", error);
+      alert("Failed to save settings. Please try again.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const updateDayHours = (day: string, field: 'open' | 'close' | 'isOpen', value: any) => {
+  const updateDayHours = (
+    day: string,
+    field: "open" | "close" | "isOpen",
+    value: any
+  ) => {
     setBusinessHours({
       ...businessHours,
       [day]: {
@@ -68,7 +92,7 @@ const AvailabilityPage: React.FC = () => {
   const addBlockedDate = () => {
     if (newBlockedDate && !blockedDates.includes(newBlockedDate)) {
       setBlockedDates([...blockedDates, newBlockedDate]);
-      setNewBlockedDate('');
+      setNewBlockedDate("");
     }
   };
 
@@ -76,15 +100,27 @@ const AvailabilityPage: React.FC = () => {
     setBlockedDates(blockedDates.filter((d) => d !== date));
   };
 
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const days = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Availability Settings</h1>
-          <p className="text-gray-600 mt-2">Manage your clinic's working hours and blocked dates</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Availability Settings
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Manage your clinic's working hours and blocked dates
+          </p>
         </div>
         <button
           onClick={handleSave}
@@ -92,7 +128,7 @@ const AvailabilityPage: React.FC = () => {
           className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
         >
           <Save className="w-5 h-5" />
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {isSaving ? "Saving..." : "Save Changes"}
         </button>
       </div>
 
@@ -112,10 +148,14 @@ const AvailabilityPage: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={businessHours[day]?.isOpen || false}
-                      onChange={(e) => updateDayHours(day, 'isOpen', e.target.checked)}
+                      onChange={(e) =>
+                        updateDayHours(day, "isOpen", e.target.checked)
+                      }
                       className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                     />
-                    <span className="font-medium text-gray-900 capitalize">{day}</span>
+                    <span className="font-medium text-gray-900 capitalize">
+                      {day}
+                    </span>
                   </label>
                 </div>
 
@@ -124,15 +164,19 @@ const AvailabilityPage: React.FC = () => {
                   <>
                     <input
                       type="time"
-                      value={businessHours[day]?.open || '09:00'}
-                      onChange={(e) => updateDayHours(day, 'open', e.target.value)}
+                      value={businessHours[day]?.open || "09:00"}
+                      onChange={(e) =>
+                        updateDayHours(day, "open", e.target.value)
+                      }
                       className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                     <span className="text-gray-500">to</span>
                     <input
                       type="time"
-                      value={businessHours[day]?.close || '17:00'}
-                      onChange={(e) => updateDayHours(day, 'close', e.target.value)}
+                      value={businessHours[day]?.close || "17:00"}
+                      onChange={(e) =>
+                        updateDayHours(day, "close", e.target.value)
+                      }
                       className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </>
@@ -145,7 +189,9 @@ const AvailabilityPage: React.FC = () => {
 
           {/* Timezone */}
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Timezone
+            </label>
             <select
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
@@ -171,7 +217,9 @@ const AvailabilityPage: React.FC = () => {
 
           {/* Add Blocked Date */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Add Blocked Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Add Blocked Date
+            </label>
             <div className="flex gap-2">
               <input
                 type="date"
@@ -192,7 +240,9 @@ const AvailabilityPage: React.FC = () => {
           {/* Blocked Dates List */}
           <div className="space-y-2">
             {blockedDates.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">No blocked dates</p>
+              <p className="text-sm text-gray-500 text-center py-4">
+                No blocked dates
+              </p>
             ) : (
               blockedDates.sort().map((date) => (
                 <div
@@ -200,11 +250,11 @@ const AvailabilityPage: React.FC = () => {
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                 >
                   <span className="text-sm font-medium text-gray-900">
-                    {new Date(date).toLocaleDateString('en-US', {
-                      weekday: 'short',
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
+                    {new Date(date).toLocaleDateString("en-US", {
+                      weekday: "short",
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
                     })}
                   </span>
                   <button

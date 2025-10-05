@@ -69,7 +69,7 @@ export const Availability: React.FC = () => {
       <Button onClick={handleUpdateAvailability} disabled={isLoading}>
         Update Availability
       </Button>
-      {availability.length > 0 && (
+      {availability?.length > 0 && (
         <div className="mt-4">
           <h3>Current Availability</h3>
           <ul>

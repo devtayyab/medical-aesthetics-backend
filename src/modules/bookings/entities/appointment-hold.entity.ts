@@ -17,7 +17,7 @@ export class AppointmentHold {
   serviceId: string;
 
   @Column()
-  providerId: string;
+  providerId?: string;
 
   @Column({ type: 'timestamptz' })
   startTime: Date;

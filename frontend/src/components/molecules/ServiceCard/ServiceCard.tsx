@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { css } from "@emotion/css";
-import { Clock, Plus, Check } from "lucide-react";
+import { Plus, Check } from "lucide-react";
 import { Card } from "@/components/atoms/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
 import type { Service } from "@/types";
@@ -28,7 +28,6 @@ const headerStyle = css`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  // margin-bottom: var(--spacing-sm);
 `;
 
 const titleStyle = css`
@@ -42,15 +41,31 @@ const titleStyle = css`
 const priceStyle = css`
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-medium);
-  // color: var(--color-primary);
   color: #000000;
+`;
+
+const descriptionWrapper = css`
+  overflow: hidden;
+  transition:
+    max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.4s ease,
+    transform 0.4s ease;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-5px);
+
+  &.open {
+    max-height: 500px;
+    opacity: 1;
+    transform: translateY(0);
+  }
 `;
 
 const descriptionStyle = css`
   color: var(--color-gray-600);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
-  margin-bottom: var(--spacing-md);
+  margin-top: var(--spacing-md);
 `;
 
 const metaStyle = css`
@@ -58,7 +73,6 @@ const metaStyle = css`
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
-  // margin-bottom: var(--spacing-md);
 `;
 
 const durationStyle = css`
@@ -70,12 +84,12 @@ const durationStyle = css`
 `;
 
 const categoryStyle = css`
-  // background-color: var(--color-gray-100);
-  color: #000000;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  color: #357a7b;
   border-radius: var(--radius-full);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  display: inline-block;
+  margin-top: 8px;
 `;
 
 const actionsStyle = css`
@@ -89,6 +103,8 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   onAdd,
   onRemove,
 }) => {
+  const [showDetails, setShowDetails] = useState(false);
+
   const handleToggle = () => {
     if (isSelected) {
       onRemove?.(service.id);
@@ -98,9 +114,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   };
 
   const formatDuration = (minutes: number) => {
-    if (minutes < 60) {
-      return `${minutes} min`;
-    }
+    if (minutes < 60) return `${minutes} min`;
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
     return remainingMinutes > 0
@@ -111,7 +125,11 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   return (
     <Card
       variant="outlined"
-      className={`${cardStyle} ${isSelected ? selectedCardStyle : "bg-transparent rounded-none border-b-[#D7DAE0] last-of-type:border-transparent"} p-[10px]`}
+      className={`${cardStyle} ${
+        isSelected
+          ? selectedCardStyle
+          : "bg-transparent rounded-none border-b-[#D7DAE0] last-of-type:border-transparent"
+      } p-[10px]`}
     >
       <div className="flex justify-between items-center gap-6">
         <div className="w-full">
@@ -120,18 +138,15 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             <span className={priceStyle}>from ${service.price}</span>
           </div>
 
-          {service.description && (
-            <p className={descriptionStyle}>{service.description}</p>
-          )}
-
-          <div className={`${metaStyle}`}>
+          <div className={metaStyle}>
             <div className={durationStyle}>
-              {/* <Clock size={14} /> */}
               <span>{formatDuration(service.durationMinutes)}</span>
-
-              {service.category && (
-                <span className={categoryStyle}>{service.category}</span>
-              )}
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                className="text-black font-medium focus:outline-none hover:underline"
+              >
+                {showDetails ? "Hide Details" : "Show Details"}
+              </button>
             </div>
             <span className="text-[#357A7B] text-[14px]">save up to 90%</span>
           </div>
@@ -148,6 +163,16 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             {isSelected ? "Selected" : "Select"}
           </Button>
         </div>
+      </div>
+
+      {/* Smooth Animated Description */}
+      <div className={`${descriptionWrapper} ${showDetails ? "open" : ""}`}>
+        {service.description && (
+          <p className={descriptionStyle}>{service.description}</p>
+        )}
+        {service.category && (
+          <span className={categoryStyle}>{service.category}</span>
+        )}
       </div>
     </Card>
   );

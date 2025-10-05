@@ -13,6 +13,7 @@ import {
   Bell,
   Settings,
   LogOut,
+  Clock,
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -24,6 +25,7 @@ const iconMap: Record<string, React.ReactNode> = {
   Star: <Star className="w-5 h-5" />,
   Bell: <Bell className="w-5 h-5" />,
   Settings: <Settings className="w-5 h-5" />,
+  Clock: <Clock className="w-5 h-5" />,
 };
 
 const ClinicLayout: React.FC = () => {

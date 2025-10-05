@@ -39,7 +39,7 @@ export class BookingsController {
     return this.availabilityService.getAvailableSlots(
       query.clinicId,
       query.serviceId,
-      query.providerId,
+      query.providerId || null,
       query.date,
     );
   }

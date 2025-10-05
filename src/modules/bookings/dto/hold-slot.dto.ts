@@ -12,7 +12,7 @@ export class HoldSlotDto {
 
   @ApiProperty()
   @IsUUID()
-  providerId: string;
+  providerId?: string;
 
   @ApiProperty({ example: '2025-01-20T10:00:00Z' })
   @IsDateString()

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms/Button/Button";
@@ -9,8 +9,13 @@ import {
   createAppointment,
   clearBooking,
   setSelectedClinic,
+  addService,
+  removeService,
 } from "@/store/slices/bookingSlice";
-import { fetchClinicServices } from "@/store/slices/clientSlice";
+import {
+  fetchClinicServices,
+  fetchClinicById,
+} from "@/store/slices/clientSlice";
 import { RootState, AppDispatch } from "@/store";
 import type { Clinic, Service, TimeSlot } from "@/types";
 import { css } from "@emotion/css";
@@ -101,45 +106,70 @@ export const AppointmentBooking: React.FC = () => {
     selectedServices,
     selectedClinic,
   } = useSelector((state: RootState) => state.booking);
-  const { services, clinics } = useSelector((state: RootState) => state.client);
+
+  // Use more specific selectors to avoid unnecessary re-renders
+  const services = useSelector((state: RootState) => state.client.services);
+  const clinics = useSelector((state: RootState) => state.client.clinics);
+
   const clinicId = searchParams.get("clinicId");
   const serviceIds = searchParams.get("serviceIds")?.split(",") || [];
 
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
 
+  // Use refs to track what we've already processed
+  const hasProcessedServices = useRef(false);
+  const hasFetchedAvailability = useRef(false);
+
   // Use selectedClinic from Redux or find from clinics array if not set
   const clinic = selectedClinic || clinics.find((c) => c.id === clinicId);
 
+  // Effect 1: Initialize clinic data - runs only when clinicId changes
   useEffect(() => {
+    console.log("🔵 Effect 1: Initializing clinic data");
     if (clinicId) {
-      // Set selectedClinic from clinics array or fetch if not available
-      const clinicData = clinics.find((c) => c.id === clinicId);
-      if (clinicData) {
-        dispatch(setSelectedClinic(clinicData));
-      } else {
-        dispatch(fetchClinicById(clinicId)); // Fetch if not in initial state
-      }
-      if (serviceIds.length > 0) {
-        const servicesToAdd = services.filter((s) => serviceIds.includes(s.id));
-        servicesToAdd.forEach((service) => dispatch(addService(service)));
-      }
+      dispatch(fetchClinicById(clinicId));
       dispatch(fetchClinicServices(clinicId));
-    }
-  }, [dispatch, clinicId, serviceIds, clinics]);
 
-  useEffect(() => {
-    if (clinicId && serviceIds.length > 0) {
-      dispatch(
-        fetchAvailability({
-          clinicId,
-          serviceId: serviceIds[0], // Use the first service for availability
-          providerId: "provider1",
-          date: new Date().toISOString().split("T")[0],
-        })
-      );
+      // Reset flags when clinic changes
+      hasProcessedServices.current = false;
+      hasFetchedAvailability.current = false;
     }
-  }, [dispatch, clinicId, serviceIds]);
+  }, [dispatch, clinicId]);
+
+  // Effect 2: Process services and fetch availability - runs ONCE when services are loaded
+  useEffect(() => {
+    if (
+      services.length > 0 &&
+      serviceIds.length > 0 &&
+      clinicId &&
+      !hasProcessedServices.current
+    ) {
+      console.log("🟢 Effect 2: Processing services and fetching availability");
+
+      // Add services to booking
+      const servicesToAdd = services.filter((s) => serviceIds.includes(s.id));
+      servicesToAdd.forEach((service) => {
+        dispatch(addService(service));
+      });
+
+      // Fetch availability (only once)
+      if (!hasFetchedAvailability.current) {
+        dispatch(
+          fetchAvailability({
+            clinicId,
+            serviceId: serviceIds[0],
+            // providerId: "provider1",
+            date: new Date().toISOString().split("T")[0],
+          })
+        );
+        hasFetchedAvailability.current = true;
+      }
+
+      // Mark as processed
+      hasProcessedServices.current = true;
+    }
+  }, [dispatch, services, serviceIds, clinicId]);
 
   const handleHoldSlot = async () => {
     if (clinicId && serviceIds.length > 0 && selectedSlot) {
@@ -148,7 +178,7 @@ export const AppointmentBooking: React.FC = () => {
         holdTimeSlot({
           clinicId,
           serviceId: serviceIds[0],
-          providerId: "provider1",
+          // providerId: "provider1",
           startTime,
           endTime,
         })
@@ -165,7 +195,7 @@ export const AppointmentBooking: React.FC = () => {
           createAppointment({
             clinicId,
             serviceId,
-            providerId: "provider1",
+            // providerId: "provider1",
             clientId: user.id,
             startTime,
             endTime,
@@ -178,6 +208,16 @@ export const AppointmentBooking: React.FC = () => {
       navigate("/appointments");
     }
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      console.log("🟡 Cleaning up AppointmentBooking");
+      // Reset flags when component unmounts
+      hasProcessedServices.current = false;
+      hasFetchedAvailability.current = false;
+    };
+  }, []);
 
   return (
     <div className={containerStyle}>
@@ -209,17 +249,6 @@ export const AppointmentBooking: React.FC = () => {
                 </ul>
               </div>
             )}
-            {/* <p>
-              <strong>Address:</strong> {clinic.address.street},{" "}
-              {clinic.address.city}, {clinic.address.state},{" "}
-              {clinic.address.zipCode}, {clinic.address.country}
-            </p>
-            <p>
-              <strong>Phone:</strong> {clinic.phone}
-            </p>
-            <p>
-              <strong>Email:</strong> {clinic.email}
-            </p> */}
           </>
         )}
       </div>
@@ -230,7 +259,7 @@ export const AppointmentBooking: React.FC = () => {
               fetchAvailability({
                 clinicId: clinicId || "1",
                 serviceId: serviceIds[0] || "1",
-                providerId: "provider1",
+                // providerId: "provider1",
                 date: new Date().toISOString().split("T")[0],
               })
             )
@@ -298,10 +327,6 @@ export const AppointmentBooking: React.FC = () => {
           Back
         </Button>
       </div>
-      {/* <div className={waveSectionStyle}>
-        <h3>Need help with booking?</h3>
-        <p>Contact support for assistance</p>
-      </div> */}
     </div>
   );
 };

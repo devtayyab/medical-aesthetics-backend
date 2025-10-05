@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -204,7 +204,7 @@ export const ClinicDetails: React.FC = () => {
       navigate(`/login?redirect=/clinic/${id}`);
       return;
     }
-    
+
     if (selectedServices.length > 0 && clinicData) {
       const serviceIds = selectedServices.map((s) => s.id).join(",");
       navigate(

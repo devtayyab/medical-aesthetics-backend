@@ -27,7 +27,6 @@ const logoStyle = css`
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-extrabold);
   color: var(--color-primary);
-  // color: white;
   text-decoration: none;
   letter-spacing: -0.025em;
   &:hover {
@@ -201,6 +200,39 @@ export const Header: React.FC = () => {
     navigate("/");
   };
 
+  // Define clinic roles
+  const clinicRoles = ["clinic_owner", "doctor", "secretariat", "salesperson"];
+
+  // Dynamic menu items based on role
+  const getMenuItems = () => {
+    if (!user?.role) return [];
+
+    if (user.role === "admin") {
+      return [
+        { to: "/admin/dashboard", label: "Dashboard" },
+        { action: handleLogout, label: "Logout" },
+      ];
+    }
+
+    if (user.role === "client") {
+      return [
+        { to: "/search", label: "Clinics" },
+        { to: "/appointments", label: "My Appointments" },
+        { to: "/my-account", label: "My Account" },
+        { action: handleLogout, label: "Logout" },
+      ];
+    }
+
+    if (clinicRoles.includes(user.role)) {
+      return [
+        { to: "/clinic/dashboard", label: "Dashboard" },
+        { action: handleLogout, label: "Logout" },
+      ];
+    }
+
+    return [{ action: handleLogout, label: "Logout" }]; // Default case
+  };
+
   return (
     <header className="bg-[#2D3748] py-5">
       <div className={containerStyle}>
@@ -212,15 +244,6 @@ export const Header: React.FC = () => {
         </Link>
 
         <div className={searchContainerStyle}>
-          {/* <form onSubmit={handleSearch}>
-            <Input
-              placeholder="Search treatments, clinics..."
-              leftIcon={<Search size={16} />}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              fullWidth
-            />
-          </form> */}
           <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
             <li className="text-[#CBFF38] border-b-2 border-[#CBFF38] cursor-pointer">
               <Link to="/" className="no-underline text-[#CBFF38]">
@@ -271,45 +294,29 @@ export const Header: React.FC = () => {
 
                 {isUserMenuOpen && (
                   <div className={userMenuDropdownStyle}>
-                    {user?.role === "admin" ? (
-                      <Link
-                        to="/admin/dashboard"
-                        className={userMenuItemStyle}
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        Dashboard
-                      </Link>
-                    ) : (
-                      <>
+                    {getMenuItems().map((item, index) =>
+                      item.to ? (
                         <Link
-                          to="/search"
+                          key={index}
+                          to={item.to}
                           className={userMenuItemStyle}
                           onClick={() => setIsUserMenuOpen(false)}
                         >
-                          Clinics
+                          {item.label}
                         </Link>
-                        <Link
-                          to="/appointments"
+                      ) : (
+                        <button
+                          key={item.label}
                           className={userMenuItemStyle}
-                          onClick={() => setIsUserMenuOpen(false)}
+                          onClick={() => {
+                            item.action();
+                            setIsUserMenuOpen(false);
+                          }}
                         >
-                          My Appointments
-                        </Link>
-                      </>
+                          {item.label}
+                        </button>
+                      )
                     )}
-                    <Link
-                      to="/my-account"
-                      className={userMenuItemStyle}
-                      onClick={() => setIsUserMenuOpen(false)}
-                    >
-                      My Account
-                    </Link>
-                    <button
-                      className={userMenuItemStyle}
-                      onClick={handleLogout}
-                    >
-                      Logout
-                    </button>
                   </div>
                 )}
               </div>
@@ -365,42 +372,29 @@ export const Header: React.FC = () => {
                   gap: var(--spacing-md);
                 `}
               >
-                {user?.role === "admin" ? (
-                  <Link
-                    to="/admin/dashboard"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={userMenuItemStyle}
-                  >
-                    Dashboard
-                  </Link>
-                ) : (
-                  <>
+                {getMenuItems().map((item, index) =>
+                  item.to ? (
                     <Link
-                      to="/search"
+                      key={index}
+                      to={item.to}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={userMenuItemStyle}
                     >
-                      Clinics
+                      {item.label}
                     </Link>
-                    <Link
-                      to="/appointments"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                  ) : (
+                    <button
+                      key={item.label}
                       className={userMenuItemStyle}
+                      onClick={() => {
+                        item.action();
+                        setIsMobileMenuOpen(false);
+                      }}
                     >
-                      My Appointments
-                    </Link>
-                  </>
+                      {item.label}
+                    </button>
+                  )
                 )}
-                <Link
-                  to="/my-account"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={userMenuItemStyle}
-                >
-                  My Account
-                </Link>
-                <button onClick={handleLogout} className={userMenuItemStyle}>
-                  Logout
-                </button>
               </div>
             </>
           ) : (

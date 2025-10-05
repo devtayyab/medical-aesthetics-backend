@@ -91,6 +91,16 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     });
   }
 
+  // Availability Settings - for clinic owner and secretariat
+  if (hasPermission(userRole, 'canManageAvailability')) {
+    menuItems.push({
+      id: 'availability',
+      label: 'Availability Settings',
+      path: '/clinic/availability-settings',
+      icon: 'Clock',
+    });
+  }
+
   // Clients - available to all
   if (hasPermission(userRole, 'canViewClients')) {
     menuItems.push({
