@@ -296,13 +296,6 @@ export const Header: React.FC = () => {
                     Clinics
                   </Link>
                 </li>
-                <li className="hover:text-[#CBFF38] cursor-pointer">
-                  How It Works
-                </li>
-                <li className="hover:text-[#CBFF38] cursor-pointer">
-                  Features
-                </li>
-                <li className="hover:text-[#CBFF38] cursor-pointer">Support</li>
               </ul>
             </div>
 

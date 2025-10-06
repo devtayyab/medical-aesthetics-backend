@@ -16,6 +16,7 @@ import { Button } from "@/components/atoms/Button/Button";
 import { css } from "@emotion/css";
 import { Star } from "lucide-react";
 import LayeredBG from "@/assets/LayeredBG.svg";
+import BotoxImg from "@/assets/Botox.jpg";
 
 const fullWidthContainerStyle = css`
   position: relative;
@@ -263,11 +264,11 @@ export const ClinicDetails: React.FC = () => {
           <div className={`-top-[25%] -scale-x-100 left-0 ${layeredBGStyle}`} />
           <img
             src={
-              clinicData.images?.[0] ||
-              "https://images.pexels.com/photos/263201/pexels-photo-263201.jpeg"
+              clinicData.images?.[0] || BotoxImg
+              // "https://images.pexels.com/photos/263201/pexels-photo-263201.jpeg"
             }
             alt={clinicData.name}
-            className={imageStyle}
+            className={`${imageStyle}`}
           />
           <div className={infoStyle}>
             <ClinicInfo {...clinicInfoProps} />

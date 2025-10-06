@@ -3,6 +3,8 @@ import { css } from "@emotion/css";
 import { Star, MapPin } from "lucide-react";
 import { Card } from "@/components/atoms/Card/Card";
 import type { Clinic } from "@/types";
+import BotoxImg from "@/assets/Botox.jpg";
+import { FaArrowRightLong } from "react-icons/fa6";
 
 export interface ClinicCardProps {
   clinic: Clinic;
@@ -139,10 +141,13 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
   const handleClick = () => {
     onSelect?.(clinic);
   };
+  console.log("clinic", clinic);
 
-  const imageUrl =
-    clinic.images?.[0] ||
-    "https://images.pexels.com/photos/3985360/pexels-photo-3985360.jpeg?auto=compress&cs=tinysrgb&w=400";
+  const imageUrl = [
+    clinic.images?.[0] || BotoxImg,
+    clinic.images?.[1] ||
+      "https://images.pexels.com/photos/3985360/pexels-photo-3985360.jpeg?auto=compress&cs=tinysrgb&w=400",
+  ];
 
   // Example rows — these can be dynamic
   const rows = [
@@ -164,40 +169,57 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
     >
       <span className="flex gap-6">
         <div className={imageBox}>
-          <img src={imageUrl} className="w-full" alt={clinic.name} />
+          <img src={imageUrl[0]} className="w-full" alt={clinic.name} />
         </div>
 
-        <div className={`py-2 {rightContent}`}>
-          <div className="space-y-3">
-            <h3 className="text-[#221F1F] text-[18px] font-semibold">
-              {clinic.name}
-            </h3>
-            {clinic.rating && (
-              <div className="flex items-center gap-2 ">
-                <span className="ml-1">{clinic.rating.toFixed(1)}</span>
-                <div className="flex items-center gap-1 text-[14px] text-gray-700 font-medium">
-                  {[...Array(4)].map((_, i) => (
-                    <Star key={i} size={18} fill="#f59e0b" stroke="none" />
-                  ))}
-                  <Star size={18} fill="#D7DAE0" stroke="none" />
-                  {clinic.reviewCount && (
-                    <span className="ml-3 text-gray-400">
-                      {clinic.reviewCount} reviews
-                    </span>
-                  )}
+        <div className={`py-2 justify-between ${rightContent}`}>
+          <span>
+            <div className="space-y-3">
+              <h3 className="text-[#221F1F] text-[18px] font-semibold">
+                {clinic.name}
+              </h3>
+              <p className="text-sm text-gray-500">{clinic.description}</p>
+              {clinic.rating && (
+                <div className="flex items-center gap-2 ">
+                  <span className="ml-1">{clinic.rating.toFixed(1)}</span>
+                  <div className="flex items-center gap-1 text-[14px] text-gray-700 font-medium">
+                    {[...Array(4)].map((_, i) => (
+                      <Star key={i} size={18} fill="#f59e0b" stroke="none" />
+                    ))}
+                    <Star size={18} fill="#D7DAE0" stroke="none" />
+                    {clinic.reviewCount && (
+                      <span className="ml-3 text-gray-400">
+                        {clinic.reviewCount} reviews
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          <div className={location}>
-            <MapPin size={14} /> {clinic.address?.city},{" "}
-            {clinic.address?.country}
-          </div>
-          <div className={badge}>% Off peak</div>
+            <div className={location}>
+              <MapPin size={14} /> {clinic.address?.city},{" "}
+              {clinic.address?.country}
+            </div>
+            {/* <div className={badge}>% Off peak</div> */}
+          </span>
+          <span className="text-end">
+            <h3 className="text-[#221F1F] text-[18px] font-medium">
+              from € 49
+            </h3>
+            <p className="text-sm text-gray-500">save up to 99%</p>
+            <span className="w-full flex justify-end">
+              <button
+                type="submit"
+                className="!mt-5 w-fit px-6 py-2 rounded-lg font-medium text-base flex items-center justify-center gap-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 transition"
+              >
+                Book Treatment <FaArrowRightLong />
+              </button>
+            </span>
+          </span>
         </div>
       </span>
-      <div className={rowsContainer}>
+      {/* <div className={rowsContainer}>
         {rows.map((r, idx) => (
           <div key={idx} className={row}>
             <div className={leftText}>
@@ -210,7 +232,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
             </div>
           </div>
         ))}
-      </div>
+      </div> */}
     </Card>
   );
 };

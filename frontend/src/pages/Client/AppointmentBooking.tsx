@@ -355,7 +355,7 @@ export const AppointmentBooking: React.FC = () => {
         <Button
           onClick={handleBookAppointment}
           disabled={!holdId || bookingLoading}
-          className="mb-4"
+          className="mb-4 mr-5"
         >
           Confirm Booking
         </Button>
