@@ -149,7 +149,18 @@ export const fetchClients = createAsyncThunk(
   'clinic/fetchClients',
   async (params: { limit?: number; offset?: number } | undefined = undefined, { rejectWithValue }) => {
     try {
-      return await clinicApi.clients.getAll(params);
+      const response = await clinicApi.clients.getAll(params);
+      // Map raw response to Client type
+      const mappedClients: Client[] = response.clients.map((client: any) => ({
+        id: client.appointment_clientId,
+        name: client.clientname,
+        email: client.clientemail,
+        phone: client.clientphone,
+        totalVisits: parseInt(client.totalvisits, 10),
+        totalSpent: parseFloat(client.totalspent || '0') || 0,
+        lastVisit: client.lastvisit,
+      }));
+      return mappedClients;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch clients');
     }
@@ -214,6 +225,19 @@ const clinicSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Clients
+      .addCase(fetchClients.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchClients.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.clients = action.payload;
+      })
+      .addCase(fetchClients.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
       // Profile
       .addCase(fetchClinicProfile.pending, (state) => {
         state.isLoading = true;
@@ -277,10 +301,6 @@ const clinicSlice = createSlice({
         if (index !== -1) {
           state.appointments[index] = action.payload;
         }
-      })
-      // Clients
-      .addCase(fetchClients.fulfilled, (state, action) => {
-        state.clients = action.payload;
       })
       // Reviews
       .addCase(fetchReviews.fulfilled, (state, action) => {

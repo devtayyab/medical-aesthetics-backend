@@ -100,7 +100,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               </div>
               <div>
                 <p className="text-gray-600">Original Amount</p>
-                <p className="font-medium text-gray-900">${appointment.totalAmount.toFixed(2)}</p>
+                {/* <p className="font-medium text-gray-900">${appointment.totalAmount.toFixed(2)}</p> */}
               </div>
             </div>
           </div>
@@ -160,7 +160,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
             </div>
             {finalAmount !== appointment.totalAmount && (
               <p className="text-sm text-amber-600 mt-2">
-                Amount modified from original ${appointment.totalAmount.toFixed(2)}
+                {/* Amount modified from original ${appointment.totalAmount.toFixed(2)} */}
               </p>
             )}
           </div>

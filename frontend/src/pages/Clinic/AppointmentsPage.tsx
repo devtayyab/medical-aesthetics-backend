@@ -195,7 +195,8 @@ const AppointmentsPage: React.FC = () => {
                       <div>
                         <p className="text-sm text-gray-500">Service</p>
                         <p className="font-semibold text-gray-900">{appointment.service?.name}</p>
-                        <p className="text-sm text-gray-600">${appointment.totalAmount}</p>
+                        {/* <p className="text-sm text-gray-600">${appointment.totalAmount}</p> */}
+                        <p className="text-sm text-gray-600">${appointment.service?.price}</p>
                       </div>
                     </div>
                   </div>

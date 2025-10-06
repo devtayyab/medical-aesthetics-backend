@@ -1,15 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../store';
-import { fetchServices } from '../../store/slices/clinicSlice';
-import clinicApi from '../../services/api/clinicApi';
-import { hasPermission } from '../../utils/rolePermissions';
-import { Service, CreateServiceDto } from '../../types/clinic.types';
-import { Plus, Edit2, ToggleLeft, ToggleRight, DollarSign, Clock, X } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../store";
+import { fetchServices } from "../../store/slices/clinicSlice";
+import clinicApi from "../../services/api/clinicApi";
+import { hasPermission } from "../../utils/rolePermissions";
+import { Service, CreateServiceDto } from "../../types/clinic.types";
+import {
+  Plus,
+  Edit2,
+  ToggleLeft,
+  ToggleRight,
+  DollarSign,
+  Clock,
+  X,
+} from "lucide-react";
 
 const ServicesPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { services, isLoading } = useSelector((state: RootState) => state.clinic);
+  const { services, isLoading } = useSelector(
+    (state: RootState) => state.clinic
+  );
   const user = useSelector((state: RootState) => state.auth.user);
 
   const [showModal, setShowModal] = useState(false);
@@ -24,19 +34,23 @@ const ServicesPage: React.FC = () => {
       await clinicApi.services.toggleStatus(id);
       dispatch(fetchServices());
     } catch (error) {
-      console.error('Failed to toggle service status:', error);
+      console.error("Failed to toggle service status:", error);
     }
   };
 
-  const canManage = hasPermission(user?.role, 'canManageServices');
+  const canManage = hasPermission(user?.role, "canManageServices");
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Services & Pricing</h1>
-          <p className="text-gray-600 mt-2">Manage your clinic's treatment menu and pricing</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Services & Pricing
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Manage your clinic's treatment menu and pricing
+          </p>
         </div>
         {canManage && (
           <button
@@ -44,7 +58,7 @@ const ServicesPage: React.FC = () => {
               setEditingService(null);
               setShowModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors"
           >
             <Plus className="w-5 h-5" />
             Add Service
@@ -60,12 +74,16 @@ const ServicesPage: React.FC = () => {
       ) : services.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           {/* <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" /> */}
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No services yet</h3>
-          <p className="text-gray-600 mb-4">Start by adding your first service or treatment</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            No services yet
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Start by adding your first service or treatment
+          </p>
           {canManage && (
             <button
               onClick={() => setShowModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors"
             >
               Add Service
             </button>
@@ -77,13 +95,15 @@ const ServicesPage: React.FC = () => {
             <div
               key={service.id}
               className={`bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 ${
-                !service.isActive ? 'opacity-60' : ''
+                !service.isActive ? "opacity-60" : ""
               }`}
             >
               {/* Service Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{service.name}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    {service.name}
+                  </h3>
                   {service.category && (
                     <span className="inline-block px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
                       {service.category}
@@ -106,7 +126,9 @@ const ServicesPage: React.FC = () => {
 
               {/* Description */}
               {service.description && (
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">{service.description}</p>
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                  {service.description}
+                </p>
               )}
 
               {/* Price & Duration */}
@@ -169,13 +191,17 @@ interface ServiceModalProps {
   onSave: () => void;
 }
 
-const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave }) => {
+const ServiceModal: React.FC<ServiceModalProps> = ({
+  service,
+  onClose,
+  onSave,
+}) => {
   const [formData, setFormData] = useState<CreateServiceDto>({
-    name: service?.name || '',
-    description: service?.description || '',
+    name: service?.name || "",
+    description: service?.description || "",
     price: service?.price || 0,
     durationMinutes: service?.durationMinutes || 60,
-    category: service?.category || '',
+    category: service?.category || "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -191,8 +217,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
       }
       onSave();
     } catch (error) {
-      console.error('Failed to save service:', error);
-      alert('Failed to save service. Please try again.');
+      console.error("Failed to save service:", error);
+      alert("Failed to save service. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -204,9 +230,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900">
-            {service ? 'Edit Service' : 'Add New Service'}
+            {service ? "Edit Service" : "Add New Service"}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -222,7 +251,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
@@ -230,10 +261,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description
+              </label>
               <textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 rows={3}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
@@ -250,7 +285,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
                   step="0.01"
                   min="0"
                   value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price: parseFloat(e.target.value),
+                    })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -264,7 +304,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
                   min="0"
                   value={formData.durationMinutes}
                   onChange={(e) =>
-                    setFormData({ ...formData, durationMinutes: parseInt(e.target.value) })
+                    setFormData({
+                      ...formData,
+                      durationMinutes: parseInt(e.target.value),
+                    })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
@@ -274,11 +317,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Category
+              </label>
               <input
                 type="text"
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
                 placeholder="e.g., Botox, Fillers, Skin Care"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -297,10 +344,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+              className="flex-1 px-6 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors font-medium disabled:opacity-50"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Saving...' : service ? 'Update Service' : 'Create Service'}
+              {isSubmitting
+                ? "Saving..."
+                : service
+                  ? "Update Service"
+                  : "Create Service"}
             </button>
           </div>
         </form>

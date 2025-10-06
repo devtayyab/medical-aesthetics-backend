@@ -1,29 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../store';
-import { fetchClients } from '../../store/slices/clinicSlice';
-import clinicApi from '../../services/api/clinicApi';
-import { Users, Search, Calendar, DollarSign, TrendingUp } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../store";
+import { fetchClients } from "../../store/slices/clinicSlice";
+import clinicApi from "../../services/api/clinicApi";
+import { Users, Search, Calendar, DollarSign, TrendingUp } from "lucide-react";
 
 const ClientsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { clients, isLoading } = useSelector((state: RootState) => state.clinic);
+  const { clients, isLoading, error } = useSelector(
+    (state: RootState) => state.clinic
+  );
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchClients());
+    const loadClients = async () => {
+      try {
+        await dispatch(fetchClients()).unwrap();
+      } catch (err) {
+        console.error("Failed to fetch clients:", err);
+      }
+    };
+    loadClients();
   }, [dispatch]);
 
   const filteredClients = clients.filter(
     (client) =>
-      searchTerm === '' ||
-      client.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      searchTerm === "" ||
+      client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  console.log("clients", clients);
+  console.log("filteredClients", filteredClients);
 
   const handleViewDetails = async (clientId: string) => {
     try {
@@ -31,7 +42,7 @@ const ClientsPage: React.FC = () => {
       setSelectedClient(details);
       setShowDetailsModal(true);
     } catch (error) {
-      console.error('Failed to fetch client details:', error);
+      console.error("Failed to fetch client details:", error);
     }
   };
 
@@ -40,8 +51,17 @@ const ClientsPage: React.FC = () => {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
-        <p className="text-gray-600 mt-2">View and manage your clinic's clients</p>
+        <p className="text-gray-600 mt-2">
+          View and manage your clinic's clients
+        </p>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-lg">
+          <p>Error: {error}</p>
+        </div>
+      )}
 
       {/* Search */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
@@ -66,7 +86,9 @@ const ClientsPage: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Total Clients</p>
-              <p className="text-2xl font-bold text-gray-900">{clients.length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {clients.length}
+              </p>
             </div>
           </div>
         </div>
@@ -78,7 +100,10 @@ const ClientsPage: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600">Total Revenue</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${clients.reduce((sum, c) => sum + c.lifetimeValue, 0).toFixed(0)}
+                $
+                {clients
+                  .reduce((sum, c) => sum + (c.totalSpent || 0), 0)
+                  .toFixed(2)}
               </p>
             </div>
           </div>
@@ -91,7 +116,7 @@ const ClientsPage: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600">Total Appointments</p>
               <p className="text-2xl font-bold text-gray-900">
-                {clients.reduce((sum, c) => sum + c.totalAppointments, 0)}
+                {clients.reduce((sum, c) => sum + (c.totalVisits || 0), 0)}
               </p>
             </div>
           </div>
@@ -104,7 +129,13 @@ const ClientsPage: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600">Avg Per Client</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${clients.length > 0 ? (clients.reduce((sum, c) => sum + c.lifetimeValue, 0) / clients.length).toFixed(0) : 0}
+                $
+                {clients.length > 0
+                  ? (
+                      clients.reduce((sum, c) => sum + (c.totalSpent || 0), 0) /
+                      clients.length
+                    ).toFixed(2)
+                  : "0.00"}
               </p>
             </div>
           </div>
@@ -119,7 +150,9 @@ const ClientsPage: React.FC = () => {
       ) : filteredClients.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No clients found</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            No clients found
+          </h3>
           <p className="text-gray-600">Try adjusting your search criteria</p>
         </div>
       ) : (
@@ -149,40 +182,46 @@ const ClientsPage: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredClients.map((client) => (
-                <tr key={client.id} className="hover:bg-gray-50 transition-colors">
+                <tr
+                  key={client.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                         <span className="text-blue-600 font-semibold">
-                          {client.firstName?.[0]}
-                          {client.lastName?.[0]}
+                          {client.name?.[0] || client.email?.[0] || "N/A"}
                         </span>
                       </div>
                       <div className="ml-4">
                         <p className="font-medium text-gray-900">
-                          {client.firstName} {client.lastName}
+                          {client.name || client.email || "Unknown Client"}
                         </p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <p className="text-sm text-gray-900">{client.email}</p>
-                    {client.phone && <p className="text-sm text-gray-500">{client.phone}</p>}
+                    <p className="text-sm text-gray-900">
+                      {client.email || "N/A"}
+                    </p>
+                    {client.phone && (
+                      <p className="text-sm text-gray-500">{client.phone}</p>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-medium text-gray-900">
-                      {client.totalAppointments}
+                      {client.totalVisits || 0}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-semibold text-green-600">
-                      ${client.lifetimeValue.toFixed(2)}
+                      ${(client.totalSpent || 0).toFixed(2)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {client.lastAppointment
-                      ? new Date(client.lastAppointment).toLocaleDateString()
-                      : 'Never'}
+                    {client.lastVisit
+                      ? new Date(client.lastVisit).toLocaleDateString()
+                      : "Never"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
@@ -219,76 +258,98 @@ interface ClientDetailsModalProps {
   onClose: () => void;
 }
 
-const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose }) => {
+const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
+  client,
+  onClose,
+}) => {
+  const clientName = client.client?.name || client.name || "Unknown Client";
+  const clientEmail = client.client?.email || client.email || "N/A";
+  const clientPhone = client.client?.phone || client.phone || "N/A";
+  const totalVisits = client.summary?.totalVisits || client.totalVisits || 0;
+  const totalSpent = client.summary?.totalSpent || client.totalSpent || 0;
+
+  // Convert to number to ensure .toFixed() works
+  const totalSpentNumber =
+    typeof totalSpent === "string"
+      ? parseFloat(totalSpent)
+      : Number(totalSpent);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {client.firstName} {client.lastName}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h2 className="text-2xl font-bold text-gray-900">{clientName}</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
             <span className="text-2xl">&times;</span>
           </button>
         </div>
-
-        {/* Content */}
         <div className="p-6">
-          {/* Client Info */}
           <div className="grid grid-cols-2 gap-6 mb-6">
             <div>
               <p className="text-sm text-gray-600">Email</p>
-              <p className="font-medium text-gray-900">{client.email}</p>
+              <p className="font-medium text-gray-900">{clientEmail}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Phone</p>
-              <p className="font-medium text-gray-900">{client.phone || 'N/A'}</p>
+              <p className="font-medium text-gray-900">{clientPhone}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Total Appointments</p>
-              <p className="font-medium text-gray-900">{client.totalAppointments}</p>
+              <p className="font-medium text-gray-900">{totalVisits}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Lifetime Value</p>
-              <p className="font-medium text-green-600">${client.lifetimeValue.toFixed(2)}</p>
+              <p className="font-medium text-green-600">
+                ${totalSpentNumber.toFixed(2)}
+              </p>
             </div>
           </div>
-
-          {/* Appointment History */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Appointment History</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Appointment History
+            </h3>
             <div className="space-y-3">
               {client.appointments?.map((apt: any) => (
                 <div key={apt.id} className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">{apt.serviceName}</p>
+                      <p className="font-medium text-gray-900">
+                        {apt.serviceName || "Unknown Service"}
+                      </p>
                       <p className="text-sm text-gray-600">
-                        {new Date(apt.startTime).toLocaleDateString()} at{' '}
-                        {new Date(apt.startTime).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
+                        {new Date(apt.startTime).toLocaleDateString()} at{" "}
+                        {new Date(apt.startTime).toLocaleTimeString("en-US", {
+                          hour: "2-digit",
+                          minute: "2-digit",
                         })}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900">${apt.totalAmount.toFixed(2)}</p>
+                      <p className="font-semibold text-gray-900">
+                        ${(apt.totalAmount || 0).toFixed(2)}asdasdas
+                      </p>
                       <span
                         className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                          apt.status === 'completed'
-                            ? 'bg-green-100 text-green-800'
-                            : apt.status === 'cancelled'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-blue-100 text-blue-800'
+                          apt.status === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : apt.status === "cancelled"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {apt.status}
+                        {apt.status || "Unknown"}
                       </span>
                     </div>
                   </div>
                 </div>
-              ))}
+              )) || (
+                <p className="text-gray-600">
+                  No appointment history available.
+                </p>
+              )}
             </div>
           </div>
         </div>

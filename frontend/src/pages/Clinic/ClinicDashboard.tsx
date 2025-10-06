@@ -1,10 +1,16 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../store';
-import { fetchClinicProfile, fetchAppointments } from '../../store/slices/clinicSlice';
-import { canAccessClinicDashboard, hasPermission } from '../../utils/rolePermissions';
-import { UserRole, AppointmentStatus } from '../../types/clinic.types';
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../store";
+import {
+  fetchClinicProfile,
+  fetchAppointments,
+} from "../../store/slices/clinicSlice";
+import {
+  canAccessClinicDashboard,
+  hasPermission,
+} from "../../utils/rolePermissions";
+import { UserRole, AppointmentStatus } from "../../types/clinic.types";
 import {
   Calendar,
   Users,
@@ -14,19 +20,21 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-} from 'lucide-react';
+} from "lucide-react";
 
 const ClinicDashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  
-  const { profile, appointments, isLoading } = useSelector((state: RootState) => state.clinic);
+
+  const { profile, appointments, isLoading } = useSelector(
+    (state: RootState) => state.clinic
+  );
   const user = useSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
     // Check if user has access
     if (!user || !canAccessClinicDashboard(user.role)) {
-      navigate('/');
+      navigate("/");
       return;
     }
 
@@ -37,21 +45,29 @@ const ClinicDashboard: React.FC = () => {
 
   // Calculate statistics
   const stats = React.useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     const todayAppointments = appointments.filter(
-      (apt) => apt.startTime.split('T')[0] === today
+      (apt) => apt.startTime.split("T")[0] === today
     );
 
     return {
       totalToday: todayAppointments.length,
-      pending: appointments.filter((apt) => apt.status === AppointmentStatus.PENDING).length,
-      confirmed: appointments.filter((apt) => apt.status === AppointmentStatus.CONFIRMED).length,
-      completed: appointments.filter((apt) => apt.status === AppointmentStatus.COMPLETED).length,
+      pending: appointments.filter(
+        (apt) => apt.status === AppointmentStatus.PENDING
+      ).length,
+      confirmed: appointments.filter(
+        (apt) => apt.status === AppointmentStatus.CONFIRMED
+      ).length,
+      completed: appointments.filter(
+        (apt) => apt.status === AppointmentStatus.COMPLETED
+      ).length,
       totalRevenue: appointments
         .filter((apt) => apt.status === AppointmentStatus.COMPLETED)
         .reduce((sum, apt) => sum + apt.totalAmount, 0),
     };
   }, [appointments]);
+
+  console.log("stats", stats);
 
   if (isLoading) {
     return (
@@ -66,7 +82,7 @@ const ClinicDashboard: React.FC = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">
-          Welcome back, {profile?.name || 'Clinic'}
+          Welcome back, {profile?.name || "Clinic"}
         </h1>
         <p className="text-gray-600 mt-2">Here's what's happening today</p>
       </div>
@@ -93,7 +109,7 @@ const ClinicDashboard: React.FC = () => {
         />
         <StatCard
           title="Total Revenue"
-          value={`$${stats.totalRevenue.toFixed(2)}`}
+          value={`$${parseFloat(stats.totalRevenue).toFixed(2)}`}
           icon={<DollarSign className="w-6 h-6" />}
           color="purple"
         />
@@ -104,9 +120,11 @@ const ClinicDashboard: React.FC = () => {
         {/* Today's Appointments */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Today's Appointments</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Today's Appointments
+            </h2>
             <button
-              onClick={() => navigate('/clinic/appointments')}
+              onClick={() => navigate("/clinic/appointments")}
               className="text-blue-600 hover:text-blue-700 text-sm font-medium"
             >
               View All
@@ -114,49 +132,62 @@ const ClinicDashboard: React.FC = () => {
           </div>
           <div className="space-y-3">
             {appointments
-              .filter((apt) => apt.startTime.split('T')[0] === new Date().toISOString().split('T')[0])
+              .filter(
+                (apt) =>
+                  apt.startTime.split("T")[0] ===
+                  new Date().toISOString().split("T")[0]
+              )
               .slice(0, 5)
               .map((appointment) => (
-                <AppointmentItem key={appointment.id} appointment={appointment} />
+                <AppointmentItem
+                  key={appointment.id}
+                  appointment={appointment}
+                />
               ))}
             {appointments.filter(
-              (apt) => apt.startTime.split('T')[0] === new Date().toISOString().split('T')[0]
+              (apt) =>
+                apt.startTime.split("T")[0] ===
+                new Date().toISOString().split("T")[0]
             ).length === 0 && (
-              <p className="text-gray-500 text-center py-4">No appointments today</p>
+              <p className="text-gray-500 text-center py-4">
+                No appointments today
+              </p>
             )}
           </div>
         </div>
 
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Quick Actions
+          </h2>
           <div className="grid grid-cols-2 gap-4">
-            {hasPermission(user?.role as UserRole, 'canViewAppointments') && (
+            {hasPermission(user?.role as UserRole, "canViewAppointments") && (
               <ActionButton
                 label="Appointments"
                 icon={<Calendar />}
-                onClick={() => navigate('/clinic/appointments')}
+                onClick={() => navigate("/clinic/appointments")}
               />
             )}
-            {hasPermission(user?.role as UserRole, 'canViewClients') && (
+            {hasPermission(user?.role as UserRole, "canViewClients") && (
               <ActionButton
                 label="Clients"
                 icon={<Users />}
-                onClick={() => navigate('/clinic/clients')}
+                onClick={() => navigate("/clinic/clients")}
               />
             )}
-            {hasPermission(user?.role as UserRole, 'canViewServices') && (
+            {hasPermission(user?.role as UserRole, "canViewServices") && (
               <ActionButton
                 label="Services"
                 icon={<DollarSign />}
-                onClick={() => navigate('/clinic/services')}
+                onClick={() => navigate("/clinic/services")}
               />
             )}
-            {hasPermission(user?.role as UserRole, 'canViewAnalytics') && (
+            {hasPermission(user?.role as UserRole, "canViewAnalytics") && (
               <ActionButton
                 label="Analytics"
                 icon={<TrendingUp />}
-                onClick={() => navigate('/clinic/analytics')}
+                onClick={() => navigate("/clinic/analytics")}
               />
             )}
           </div>
@@ -168,12 +199,15 @@ const ClinicDashboard: React.FC = () => {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start">
           <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3" />
           <div>
-            <h3 className="font-semibold text-yellow-900">Pending Confirmations</h3>
+            <h3 className="font-semibold text-yellow-900">
+              Pending Confirmations
+            </h3>
             <p className="text-yellow-700 text-sm mt-1">
-              You have {stats.pending} appointment{stats.pending > 1 ? 's' : ''} waiting for confirmation
+              You have {stats.pending} appointment{stats.pending > 1 ? "s" : ""}{" "}
+              waiting for confirmation
             </p>
             <button
-              onClick={() => navigate('/clinic/appointments?status=pending')}
+              onClick={() => navigate("/clinic/appointments?status=pending")}
               className="mt-2 text-sm font-medium text-yellow-600 hover:text-yellow-700"
             >
               Review Now →
@@ -190,15 +224,15 @@ interface StatCardProps {
   title: string;
   value: string | number;
   icon: React.ReactNode;
-  color: 'blue' | 'yellow' | 'green' | 'purple';
+  color: "blue" | "yellow" | "green" | "purple";
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
   const colorClasses = {
-    blue: 'bg-blue-100 text-blue-600',
-    yellow: 'bg-yellow-100 text-yellow-600',
-    green: 'bg-green-100 text-green-600',
-    purple: 'bg-purple-100 text-purple-600',
+    blue: "bg-blue-100 text-blue-600",
+    yellow: "bg-yellow-100 text-yellow-600",
+    green: "bg-green-100 text-green-600",
+    purple: "bg-purple-100 text-purple-600",
   };
 
   return (
@@ -221,11 +255,11 @@ interface AppointmentItemProps {
 
 const AppointmentItem: React.FC<AppointmentItemProps> = ({ appointment }) => {
   const statusColors = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    confirmed: 'bg-blue-100 text-blue-800',
-    completed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
-    no_show: 'bg-gray-100 text-gray-800',
+    pending: "bg-yellow-100 text-yellow-800",
+    confirmed: "bg-blue-100 text-blue-800",
+    completed: "bg-green-100 text-green-800",
+    cancelled: "bg-red-100 text-red-800",
+    no_show: "bg-gray-100 text-gray-800",
   };
 
   return (
@@ -236,9 +270,9 @@ const AppointmentItem: React.FC<AppointmentItemProps> = ({ appointment }) => {
         </p>
         <p className="text-sm text-gray-600">{appointment.service?.name}</p>
         <p className="text-xs text-gray-500">
-          {new Date(appointment.startTime).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
+          {new Date(appointment.startTime).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
           })}
         </p>
       </div>
@@ -260,7 +294,11 @@ interface ActionButtonProps {
   onClick: () => void;
 }
 
-const ActionButton: React.FC<ActionButtonProps> = ({ label, icon, onClick }) => {
+const ActionButton: React.FC<ActionButtonProps> = ({
+  label,
+  icon,
+  onClick,
+}) => {
   return (
     <button
       onClick={onClick}

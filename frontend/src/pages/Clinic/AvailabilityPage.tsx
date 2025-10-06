@@ -125,7 +125,7 @@ const AvailabilityPage: React.FC = () => {
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors disabled:opacity-50"
         >
           <Save className="w-5 h-5" />
           {isSaving ? "Saving..." : "Save Changes"}
@@ -151,7 +151,7 @@ const AvailabilityPage: React.FC = () => {
                       onChange={(e) =>
                         updateDayHours(day, "isOpen", e.target.checked)
                       }
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-[#CBFF38] rounded focus:ring-lime-300"
                     />
                     <span className="font-medium text-gray-900 capitalize">
                       {day}
@@ -225,12 +225,12 @@ const AvailabilityPage: React.FC = () => {
                 type="date"
                 value={newBlockedDate}
                 onChange={(e) => setNewBlockedDate(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-300 outline-none"
               />
               <button
                 type="button"
                 onClick={addBlockedDate}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors"
               >
                 Add
               </button>

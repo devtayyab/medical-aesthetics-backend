@@ -453,55 +453,55 @@ export class BookingsService {
     };
   }
 
-  async getClinicClients(
-    userId: string,
-    userRole: string,
+async getClinicClients(
+  userId: string,
+  userRole: string,
     query: { search?: string; limit?: number; offset?: number },
-  ): Promise<any> {
-    let baseQuery = this.appointmentsRepository.createQueryBuilder('appointment')
-      .select([
-        'appointment.clientId',
-        'client.name as clientName',
-        'client.email as clientEmail',
-        'client.phone as clientPhone',
-        'COUNT(appointment.id) as totalVisits',
-        'SUM(appointment.totalAmount) as totalSpent',
-        'MAX(appointment.startTime) as lastVisit',
-      ])
-      .leftJoin('appointment.client', 'client')
-      .groupBy('appointment.clientId, client.name, client.email, client.phone');
+): Promise<any> {
+  let baseQuery = this.appointmentsRepository.createQueryBuilder('appointment')
+    .select([
+      'appointment.clientId',
+      'CONCAT(client.firstName, \' \', client.lastName) as clientName', // Concatenate firstName and lastName
+      'client.email as clientEmail',
+      'client.phone as clientPhone',
+      'COUNT(appointment.id) as totalVisits',
+      'SUM(appointment.totalAmount) as totalSpent',
+      'MAX(appointment.startTime) as lastVisit',
+    ])
+    .leftJoin('appointment.client', 'client')
+    .groupBy('appointment.clientId, client.firstName, client.lastName, client.email, client.phone');
 
     if (userRole === 'clinic_owner') {
       baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
         .where('clinic.ownerId = :userId', { userId });
     } else {
       baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
-    }
-
-    if (query.search) {
-      baseQuery = baseQuery.andWhere(
-        '(client.name ILIKE :search OR client.email ILIKE :search)',
-        { search: `%${query.search}%` }
-      );
-    }
-
-    if (query.limit) {
-      baseQuery = baseQuery.limit(query.limit);
-    }
-
-    if (query.offset) {
-      baseQuery = baseQuery.offset(query.offset);
-    }
-
-    const clients = await baseQuery.getRawMany();
-
-    return {
-      clients,
-      total: clients.length,
-      limit: query.limit || clients.length,
-      offset: query.offset || 0,
-    };
   }
+
+  if (query.search) {
+    baseQuery = baseQuery.andWhere(
+      '(CONCAT(client.firstName, \' \', client.lastName) ILIKE :search OR client.email ILIKE :search)',
+      { search: `%${query.search}%` }
+    );
+  }
+
+  if (query.limit) {
+    baseQuery = baseQuery.limit(query.limit);
+  }
+
+  if (query.offset) {
+    baseQuery = baseQuery.offset(query.offset);
+  }
+
+  const clients = await baseQuery.getRawMany();
+
+  return {
+      clients,
+    total: clients.length,
+    limit: query.limit || clients.length,
+    offset: query.offset || 0,
+  };
+}
 
   async getClientDetails(
     clientId: string,

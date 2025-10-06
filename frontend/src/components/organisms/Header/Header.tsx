@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { css } from "@emotion/css";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, User, Bell, Menu, X } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { Button } from "@/components/atoms/Button/Button";
@@ -42,15 +42,6 @@ const searchContainerStyle = css`
     display: none;
   }
 `;
-
-// const navStyle = css`
-//   display: flex;
-//   align-items: center;
-//   gap: var(--spacing-md);
-//   @media (max-width: 768px) {
-//     display: none;
-//   }
-// `;
 
 const mobileMenuButtonStyle = css`
   display: none;
@@ -179,6 +170,7 @@ export const Header: React.FC = () => {
   const { unreadCount } = useSelector(
     (state: RootState) => state.notifications
   );
+  const location = useLocation();
 
   console.log("Header - user:", user);
   console.log("Header - isAuthenticated:", isAuthenticated);
@@ -191,11 +183,13 @@ export const Header: React.FC = () => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setIsMobileMenuOpen(false);
     }
   };
 
   const handleLogout = async () => {
     setIsUserMenuOpen(false);
+    setIsMobileMenuOpen(false);
     await dispatch(logout());
     navigate("/");
   };
@@ -226,6 +220,13 @@ export const Header: React.FC = () => {
     if (clinicRoles.includes(user.role)) {
       return [
         { to: "/clinic/dashboard", label: "Dashboard" },
+        { to: "/clinic/appointments", label: "Appointments" },
+        { to: "/clinic/clients", label: "Clients" },
+        { to: "/clinic/services", label: "Services" },
+        { to: "/clinic/analytics", label: "Analytics" },
+        { to: "/clinic/reviews", label: "Reviews" },
+        { to: "/clinic/notifications", label: "Notifications" },
+        { to: "/clinic/settings", label: "Settings" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -235,114 +236,155 @@ export const Header: React.FC = () => {
 
   return (
     <header className="bg-[#2D3748] py-5">
-      <div className={containerStyle}>
+      <div
+        className={css`
+          ${containerStyle};
+          ${clinicRoles.includes(user?.role || "")
+            ? "justify-content: center;"
+            : ""}
+        `}
+      >
         <Link
-          to="/"
-          className="text-[#CBFF38] text-2xl font-bold flex items-center"
+          to={
+            clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : "/"
+          }
+          className={`text-[#CBFF38] text-2xl font-bold flex items-center ${
+            clinicRoles.includes(user?.role || "") ? "justify-center" : ""
+          }`}
         >
           <img src={SiteLogo} alt="Site Logo" className="w-[200px]" />
         </Link>
 
-        <div className={searchContainerStyle}>
-          <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
-            <li className="text-[#CBFF38] border-b-2 border-[#CBFF38] cursor-pointer">
-              <Link to="/" className="no-underline text-[#CBFF38]">
-                Home
-              </Link>
-            </li>
-            <li className="hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38] cursor-pointer">
-              <Link
-                to="/search"
-                className="no-underline text-white hover:text-[#CBFF38]"
-              >
-                Clinics
-              </Link>
-            </li>
-            <li className="hover:text-[#CBFF38] cursor-pointer">
-              How It Works
-            </li>
-            <li className="hover:text-[#CBFF38] cursor-pointer">Features</li>
-            <li className="hover:text-[#CBFF38] cursor-pointer">Support</li>
-          </ul>
-        </div>
-
-        <nav className="hidden md:flex items-center gap-4">
-          {isAuthenticated ? (
-            <>
-              <button className={`group ${notificationButtonStyle}`}>
-                <Bell size={20} className="text-white group-hover:text-black" />
-                {unreadCount > 0 && (
-                  <span className={notificationBadgeStyle}>
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
-              </button>
-
-              <div className={userMenuStyle}>
-                <button
-                  className={userMenuButtonStyle}
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+        {/* Desktop Navigation for Non-Clinic Roles */}
+        {!clinicRoles.includes(user?.role || "") && (
+          <>
+            <div className={searchContainerStyle}>
+              <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
+                <li
+                  className={`cursor-pointer ${
+                    location.pathname === "/"
+                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                  }`}
                 >
-                  <User size={20} />
-                  <span>
-                    {(user?.firstName || "User")
-                      .split(" ")
-                      .slice(0, 1)
-                      .join(" ")}
-                  </span>
-                </button>
+                  <Link
+                    to="/"
+                    className={`no-underline ${
+                      location.pathname === "/"
+                        ? "text-[#CBFF38]"
+                        : "text-white"
+                    }`}
+                  >
+                    Home
+                  </Link>
+                </li>
+                <li
+                  className={`cursor-pointer ${
+                    location.pathname.startsWith("/search")
+                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                  }`}
+                >
+                  <Link
+                    to="/search"
+                    className={`no-underline ${
+                      location.pathname.startsWith("/search")
+                        ? "text-[#CBFF38]"
+                        : "text-white"
+                    }`}
+                  >
+                    Clinics
+                  </Link>
+                </li>
+                <li className="hover:text-[#CBFF38] cursor-pointer">
+                  How It Works
+                </li>
+                <li className="hover:text-[#CBFF38] cursor-pointer">
+                  Features
+                </li>
+                <li className="hover:text-[#CBFF38] cursor-pointer">Support</li>
+              </ul>
+            </div>
 
-                {isUserMenuOpen && (
-                  <div className={userMenuDropdownStyle}>
-                    {getMenuItems().map((item, index) =>
-                      item.to ? (
-                        <Link
-                          key={index}
-                          to={item.to}
-                          className={userMenuItemStyle}
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          {item.label}
-                        </Link>
-                      ) : (
-                        <button
-                          key={item.label}
-                          className={userMenuItemStyle}
-                          onClick={() => {
-                            item.action();
-                            setIsUserMenuOpen(false);
-                          }}
-                        >
-                          {item.label}
-                        </button>
-                      )
+            <nav className="hidden md:flex items-center gap-4">
+              {isAuthenticated ? (
+                <>
+                  <button className={`group ${notificationButtonStyle}`}>
+                    <Bell
+                      size={20}
+                      className="text-white group-hover:text-black"
+                    />
+                    {unreadCount > 0 && (
+                      <span className={notificationBadgeStyle}>
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  <div className={userMenuStyle}>
+                    <button
+                      className={userMenuButtonStyle}
+                      onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    >
+                      <User size={20} />
+                      <span>{(user?.firstName || "User").split(" ")[0]}</span>
+                    </button>
+
+                    {isUserMenuOpen && (
+                      <div className={userMenuDropdownStyle}>
+                        {getMenuItems().map((item, index) =>
+                          item.to ? (
+                            <Link
+                              key={index}
+                              to={item.to}
+                              className={userMenuItemStyle}
+                              onClick={() => setIsUserMenuOpen(false)}
+                            >
+                              {item.label}
+                            </Link>
+                          ) : (
+                            <button
+                              key={item.label}
+                              className={userMenuItemStyle}
+                              onClick={() => {
+                                item.action();
+                                setIsUserMenuOpen(false);
+                              }}
+                            >
+                              {item.label}
+                            </button>
+                          )
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="ghost"
-                className="text-white hover:text-black"
-                onClick={() => navigate("/login")}
-              >
-                Sign In
-              </Button>
-              <Button onClick={() => navigate("/register")}>Sign Up</Button>
-            </>
-          )}
-        </nav>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    className="text-white hover:text-black"
+                    onClick={() => navigate("/login")}
+                  >
+                    Sign In
+                  </Button>
+                  <Button onClick={() => navigate("/register")}>Sign Up</Button>
+                </>
+              )}
+            </nav>
+          </>
+        )}
 
+        {/* Mobile Menu Button for All Roles */}
         <button
           className={mobileMenuButtonStyle}
           onClick={() => setIsMobileMenuOpen(true)}
         >
-          <Menu size={24} />
+          <Menu size={24} className="text-white" />
         </button>
       </div>
 
+      {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className={mobileMenuStyle}>
           <div className={mobileMenuHeaderStyle}>
@@ -372,6 +414,44 @@ export const Header: React.FC = () => {
                   gap: var(--spacing-md);
                 `}
               >
+                {/* Common Links for Non-Clinic Roles */}
+                {!clinicRoles.includes(user?.role || "") && (
+                  <>
+                    <Link
+                      to="/"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={userMenuItemStyle}
+                    >
+                      Home
+                    </Link>
+                    <Link
+                      to="/search"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={userMenuItemStyle}
+                    >
+                      Clinics
+                    </Link>
+                    <button
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={userMenuItemStyle}
+                    >
+                      How It Works
+                    </button>
+                    <button
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={userMenuItemStyle}
+                    >
+                      Features
+                    </button>
+                    <button
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={userMenuItemStyle}
+                    >
+                      Support
+                    </button>
+                  </>
+                )}
+                {/* Role-Based Menu Items */}
                 {getMenuItems().map((item, index) =>
                   item.to ? (
                     <Link
