@@ -101,15 +101,22 @@ export const AppointmentBooking: React.FC = () => {
   const {
     availableSlots,
     holdId,
-    isLoading,
+    isLoading: bookingLoading,
     error,
     selectedServices,
     selectedClinic,
   } = useSelector((state: RootState) => state.booking);
 
   // Use more specific selectors to avoid unnecessary re-renders
-  const services = useSelector((state: RootState) => state.client.services);
-  const clinics = useSelector((state: RootState) => state.client.clinics);
+  const {
+    services,
+    clinics,
+    isLoading: clientLoading,
+  } = useSelector((state: RootState) => ({
+    services: state.client.services,
+    clinics: state.client.clinics,
+    isLoading: state.client.isLoading, // Assume client slice has isLoading
+  }));
 
   const clinicId = searchParams.get("clinicId");
   const serviceIds = searchParams.get("serviceIds")?.split(",") || [];
@@ -124,6 +131,9 @@ export const AppointmentBooking: React.FC = () => {
   // Use selectedClinic from Redux or find from clinics array if not set
   const clinic = selectedClinic || clinics.find((c) => c.id === clinicId);
 
+  // Combined loading for UI (hides flicker)
+  const isLoading = bookingLoading || clientLoading || !clinicId;
+
   // Effect 1: Initialize clinic data - runs only when clinicId changes
   useEffect(() => {
     console.log("🔵 Effect 1: Initializing clinic data");
@@ -137,7 +147,17 @@ export const AppointmentBooking: React.FC = () => {
     }
   }, [dispatch, clinicId]);
 
-  // Effect 2: Process services and fetch availability - runs ONCE when services are loaded
+  // Effect 3: Set selectedClinic when clinics update (fixes refresh reset)
+  useEffect(() => {
+    if (clinicId && clinics.length > 0 && !selectedClinic) {
+      const clinicData = clinics.find((c) => c.id === clinicId);
+      if (clinicData) {
+        dispatch(setSelectedClinic(clinicData));
+      }
+    }
+  }, [dispatch, clinicId, clinics, selectedClinic]);
+
+  // Effect 2: Add services when they load (runs on services change, not full cond)
   useEffect(() => {
     if (
       services.length > 0 &&
@@ -149,9 +169,11 @@ export const AppointmentBooking: React.FC = () => {
 
       // Add services to booking
       const servicesToAdd = services.filter((s) => serviceIds.includes(s.id));
-      servicesToAdd.forEach((service) => {
-        dispatch(addService(service));
-      });
+      if (servicesToAdd.length > 0) {
+        servicesToAdd.forEach((service) => {
+          dispatch(addService(service));
+        });
+      }
 
       // Fetch availability (only once)
       if (!hasFetchedAvailability.current) {
@@ -159,7 +181,6 @@ export const AppointmentBooking: React.FC = () => {
           fetchAvailability({
             clinicId,
             serviceId: serviceIds[0],
-            // providerId: "provider1",
             date: new Date().toISOString().split("T")[0],
           })
         );
@@ -169,16 +190,17 @@ export const AppointmentBooking: React.FC = () => {
       // Mark as processed
       hasProcessedServices.current = true;
     }
-  }, [dispatch, services, serviceIds, clinicId]);
+  }, [dispatch, services, serviceIds, clinicId]); // Depend on services for prompt trigger
 
   const handleHoldSlot = async () => {
-    if (clinicId && serviceIds.length > 0 && selectedSlot) {
+    if (clinicId && serviceIds.length > 0 && selectedSlot && user?.id) {
       const [startTime, endTime] = selectedSlot.split(" - ");
       const response = await dispatch(
         holdTimeSlot({
           clinicId,
           serviceId: serviceIds[0],
-          // providerId: "provider1",
+          providerId: clinic.ownerId,
+          // clientId: user.id,
           startTime,
           endTime,
         })
@@ -195,7 +217,7 @@ export const AppointmentBooking: React.FC = () => {
           createAppointment({
             clinicId,
             serviceId,
-            // providerId: "provider1",
+            providerId: clinic.ownerId,
             clientId: user.id,
             startTime,
             endTime,
@@ -219,6 +241,21 @@ export const AppointmentBooking: React.FC = () => {
     };
   }, []);
 
+  // Loading skeleton (prevents hide during fetch)
+  if (isLoading) {
+    return (
+      <div className={containerStyle}>
+        <div className="p-4">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-300 rounded w-1/3"></div>
+            <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={containerStyle}>
       <div className={layeredBGStyle} />
@@ -231,12 +268,12 @@ export const AppointmentBooking: React.FC = () => {
       </div>
       {error && <p className="text-red-500 mb-4">{error}</p>}
       <div className={sectionStyle}>
-        {clinic && (
+        {clinic ? (
           <>
             <p>
               <strong>Clinic:</strong> {clinic.name}
             </p>
-            {selectedServices.length > 0 && (
+            {selectedServices.length > 0 ? (
               <div>
                 <strong>Selected Services:</strong>
                 <ul className="list-disc pl-5 mt-2">
@@ -248,8 +285,12 @@ export const AppointmentBooking: React.FC = () => {
                   ))}
                 </ul>
               </div>
+            ) : (
+              <p className="text-gray-500">Loading services...</p>
             )}
           </>
+        ) : (
+          <p className="text-gray-500">Loading clinic...</p>
         )}
       </div>
       <div className={sectionStyle}>
@@ -259,7 +300,6 @@ export const AppointmentBooking: React.FC = () => {
               fetchAvailability({
                 clinicId: clinicId || "1",
                 serviceId: serviceIds[0] || "1",
-                // providerId: "provider1",
                 date: new Date().toISOString().split("T")[0],
               })
             )
@@ -269,7 +309,7 @@ export const AppointmentBooking: React.FC = () => {
         >
           Check Availability
         </Button>
-        {availableSlots.length > 0 || !isLoading ? (
+        {availableSlots.length > 0 || !bookingLoading ? (
           <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700">
               Select Time Slot
@@ -297,7 +337,7 @@ export const AppointmentBooking: React.FC = () => {
             </select>
             <Button
               onClick={handleHoldSlot}
-              disabled={!selectedSlot || isLoading}
+              disabled={!selectedSlot || bookingLoading}
               className="mt-4 mb-4"
             >
               Hold Slot
@@ -314,7 +354,7 @@ export const AppointmentBooking: React.FC = () => {
         />
         <Button
           onClick={handleBookAppointment}
-          disabled={!holdId || isLoading}
+          disabled={!holdId || bookingLoading}
           className="mb-4"
         >
           Confirm Booking
