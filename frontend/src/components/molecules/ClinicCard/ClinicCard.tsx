@@ -146,7 +146,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
   const imageUrl = [
     clinic.images?.[0] || BotoxImg,
     clinic.images?.[1] ||
-      "https://images.pexels.com/photos/3985360/pexels-photo-3985360.jpeg?auto=compress&cs=tinysrgb&w=400",
+    "https://images.pexels.com/photos/3985360/pexels-photo-3985360.jpeg?auto=compress&cs=tinysrgb&w=400",
   ];
 
   // Example rows — these can be dynamic
@@ -197,6 +197,11 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
               )}
             </div>
 
+
+
+
+
+
             <div className={location}>
               <MapPin size={14} /> {clinic.address?.city},{" "}
               {clinic.address?.country}
@@ -211,7 +216,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
             <span className="w-full flex justify-end">
               <button
                 type="submit"
-                className="!mt-5 w-fit px-6 py-2 rounded-lg font-medium text-base flex items-center justify-center gap-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 transition"
+                className="!mt-5 w-fit px-6 py-2 rounded-lg font-medium text-base flex items-center justify-center gap-2 bg-[#CBFF38] text-</div>[#33373F] hover:bg-lime-300 transition"
               >
                 Book Treatment <FaArrowRightLong />
               </button>

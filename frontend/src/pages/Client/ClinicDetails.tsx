@@ -118,7 +118,7 @@ const serviceCardsStyle = css`
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-left: 1rem;
+   padding-left: 1rem;
 `;
 
 const waveSectionStyle = css`
@@ -220,25 +220,37 @@ export const ClinicDetails: React.FC = () => {
   return (
     <div className={fullWidthContainerStyle}>
       <div className={detailContainerStyle}>
-        <div className={headerStyle}>
-          <div className={titleContainerStyle}>
-            <h2 className={titleStyle}>{clinicData.name}</h2>
-          </div>
-          <div className={tabsStyle}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 mb-6">
+          {/* Clinic Name */}
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
+            {clinicData.name}
+          </h2>
+
+          {/* Tabs / Buttons */}
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <Button
               onClick={handleBookNow}
-              className={`bg-[#2d3748] hover:!bg-white text-white hover:!text-[#2d3748] ${tabButtonStyle}`}
+              className="bg-[#2d3748] text-white border border-[#2d3748] hover:bg-white hover:text-[#2d3748] px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition"
             >
               Book Now
             </Button>
-            <a href="#reviews" className={tabButtonStyle}>
+
+            <a
+              href="#reviews"
+              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm sm:text-base hover:bg-gray-100 transition"
+            >
               Reviews
             </a>
-            <a href="#about" className={tabButtonStyle}>
+
+            <a
+              href="#about"
+              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm sm:text-base hover:bg-gray-100 transition"
+            >
               About
             </a>
           </div>
         </div>
+
         {rating > 0 && (
           <div className={ratingStyle}>
             <span className="text-[18px] mr-1">{rating.toFixed(1)}</span>
@@ -274,7 +286,7 @@ export const ClinicDetails: React.FC = () => {
             <ClinicInfo {...clinicInfoProps} />
           </div>
           <div className={servicesStyle}>
-            <h3 className={serviceHeaderStyle}>Available Treatments</h3>
+            <h3 className={serviceHeaderStyle}>Your Treatment Options</h3>
             <div className={serviceCardsStyle}>
               {serviceData.map((service: Service) => (
                 <ServiceCard
@@ -297,8 +309,9 @@ export const ClinicDetails: React.FC = () => {
             className={`top-[15%] ${layeredBGStyle}`}
             style={{ backgroundSize: "contain" }}
           />
-          <ClinicReviews clinicId={clinicData.id} />
+          <ClinicReviews clinicId={clinicData.id} ServiceData={serviceData} handleAddService={handleAddService} handleRemoveService={handleRemoveService} />
         </div>
+
       </div>
     </div>
   );

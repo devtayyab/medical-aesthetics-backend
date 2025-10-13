@@ -45,7 +45,7 @@ const inputStyle = css`
 
   &:focus {
     outline: none;
-    border-color: var(--color-primary);
+    border-color:cornflowerblue;
     box-shadow: 0 0 0 3px rgba(124, 179, 66, 0.1);
   }
 

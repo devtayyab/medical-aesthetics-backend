@@ -4,9 +4,13 @@ import { Link } from "react-router-dom";
 import { MoveUpRight } from "lucide-react";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
-import type { Clinic } from "@/types";
 import location from "@/assets/location.png";
 import ClinicImg1 from "@/assets/TopRatedClinicImg.svg";
+import { FaArrowRightLong } from "react-icons/fa6";
+import Certification from "@/assets/Icons/Certification.png";
+import Duration from "@/assets/Icons/Duration.png";
+import Technology from "@/assets/Icons/Tecnology.png";
+import Downtime from "@/assets/Icons/Downtime.png";
 // import { MapPin, Phone, Mail } from "lucide-react";
 
 type FilterOption = {
@@ -22,20 +26,21 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
   const { selectedClinic, clinics } = useSelector(
     (state: RootState) => state.client
   );
+
   const clinicData = selectedClinic ||
     clinics.find((c) => c.id === clinicId) || {
-      id: clinicId,
-      name: "Default Clinic",
-      address: {
-        street: "",
-        city: "",
-        state: "",
-        zipCode: "",
-        country: "",
-      },
-      phone: "",
-      email: "",
-    };
+    id: clinicId,
+    name: "Default Clinic",
+    address: {
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "",
+    },
+    phone: "",
+    email: "",
+  };
 
   const filters: FilterOption[] = [
     { stars: 5, count: 409 },
@@ -85,107 +90,229 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
 
   return (
     <div>
-      <div id="reviews" className="flex flex-col p-4 pl-0 space-y-1">
-        <h2 className="text-xl text-black font-bold">Venue Reviews</h2>
-        <div className="flex flex-row">
-          <p className="flex text-6xl">4.0</p>
-          <p className="text-yellow-500 text-lg flex flex-col ml-2">
-            ★★★★☆
-            <span className="text-sm text-gray-400 ml-18">432 reviews</span>
-          </p>
+
+      <div className="px-4">
+        <div>
+          <h2 className="font-bold text-black text-2xl mb-6 text-center sm:text-left">
+            Quick Medical Facts
+          </h2>
+        </div>
+
+        {/* Responsive grid layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-center mb-20">
+          <div className="bg-[#EDEEF1] p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
+            <img src={Duration} alt="Duration" className="mb-2 mx-auto w-14 h-14 object-contain" />
+            <h3 className="font-semibold text-gray-700 text-xl mb-3">Duration</h3>
+            <p className="text-gray-600 text-sm sm:text-base">30–60 minutes per session</p>
+          </div>
+
+          <div className="bg-[#EDEEF1] p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
+            <img src={Technology} alt="Technology Used" className="mb-2 mx-auto w-14 h-14 object-contain" />
+            <h3 className="font-semibold text-gray-700 text-xl mb-3">Technology Used</h3>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Alexandrite Laser (755 nm wavelength)
+            </p>
+          </div>
+
+          <div className="bg-[#EDEEF1] p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
+            <img src={Certification} alt="Certification" className="mb-2 mx-auto w-14 h-14 object-contain" />
+            <h3 className="font-semibold text-gray-700 text-xl mb-3">Certification</h3>
+            <p className="text-gray-600 text-sm sm:text-base">Approved by beauty doctors</p>
+          </div>
+
+          <div className="bg-[#EDEEF1] p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
+            <img src={Downtime} alt="Downtime" className="mb-2 mx-auto w-14 h-14 object-contain" />
+            <h3 className="font-semibold text-gray-700 text-xl mb-3">Downtime</h3>
+            <p className="text-gray-600 text-sm sm:text-base">
+              None, minor redness for few hours
+            </p>
+          </div>
+        </div>
+      </div>
+
+
+
+      <div className="bg-white  h-max shadow rounded-lg p-4">
+
+        <div id="reviews" className="flex flex-col pl-0 space-y-1">
+          <h2 className="text-xl text-black font-bold">What Patient Say About {clinicData.name} </h2>
+          <div className="flex flex-row">
+            <p className="flex text-5xl">4.0</p>
+            <p className="text-yellow-500 text-lg flex flex-col ml-2">
+              ★★★★☆
+              <span className="text-sm text-gray-400 ml-18">432 reviews</span>
+            </p>
+          </div>
         </div>
       </div>
       <hr className="my-6" />
 
       <div>
-        <div className="mt-2 flex justify-between gap-3 py-6">
+        <div className="mt-2 flex flex-col md:flex-row justify-between gap-4 md:gap-6 py-6">
+
           {/* Filters Section */}
-          <div className="bg-white w-1/4 h-max shadow rounded-lg p-4">
-            <h3 className="font-semibold mb-2">Filter by treatment</h3>
-            <select className="w-full border rounded p-2 mb-4">
-              <option>All Treatments</option>
-              <option>Hair Transplant</option>
-              <option>Facial Treatment</option>
-            </select>
-            <h3 className="font-semibold mb-2">Filter by rating</h3>
+          <div className="bg-white w-full md:w-1/4 h-max shadow rounded-lg p-4">
+            <h3 className="font-semibold mb-2 text-gray-600">Filter by treatment</h3>
+            <div className="relative w-full">
+              <select
+                className="appearance-none bg-white w-full border border-gray-300 rounded-lg p-2 mt-1 
+       focus:outline-none text-gray-600 pr-10"
+              >
+                <option>All Treatments</option>
+                <option>Hair Transplant</option>
+                <option>Facial Treatment</option>
+              </select>
+
+              {/* Custom arrow */}
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </span>
+            </div>
+
+            <h3 className="font-semibold mb-2 mt-4 text-gray-600">Filter by rating</h3>
             <div className="space-y-2">
               {filters.map((filter) => (
-                <label key={filter.stars} className="flex items-center gap-2">
-                  <input type="checkbox" className="form-checkbox" />
-                  <span>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <span
-                        key={i}
-                        className={`text-yellow-400 ${
-                          i < filter.stars ? "opacity-100" : "opacity-30"
-                        }`}
-                      >
-                        ★
-                      </span>
-                    ))}
-                  </span>
-                  <span className="text-sm text-gray-600">{filter.count}</span>
+                <label
+                  key={filter.stars}
+                  className="flex items-center gap-2 justify-between text-sm sm:text-base"
+                >
+                  <div className="flex items-center gap-1">
+                    <input type="checkbox" className="form-checkbox" />
+                    <span>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <span
+                          key={i}
+                          className={`text-yellow-400 ${i < filter.stars ? "opacity-100" : "opacity-30"}`}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                  <span className="text-gray-600">{filter.count}</span>
                 </label>
               ))}
             </div>
           </div>
 
           {/* Reviews Section */}
-          <div className="w-3/4 rounded-lg">
+          <div className="w-full md:w-3/4 rounded-lg">
             {reviews.map((review, index) => (
               <ClinicReviewsCard key={index} {...review} />
             ))}
 
             <div className="flex justify-center mt-6">
-              <button className="px-6 py-2 rounded-lg border text-green-600 border-green-600 bg-white-200 transition">
-                Read More
+              <button className="px-6 py-2 rounded-lg border text-green-600 border-green-600 bg-white transition hover:bg-green-50">
+                View ALL
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div id="about" className="pt-10 ">
+        <h2 className="font-bold text-2xl mb-6 text-center sm:text-left">
+          Availability at these clinics
+        </h2>
+
+        {/* Container */}
+        <div className="flex flex-col lg:flex-row items-center lg:items-start  mb-16">
+          {/* Image */}
+
+
+          <div>
+            {/* <div className="w-1/2">
+<img
+src="https://via.placeholder.com/400x300"
+alt="Map Preview"
+className="w-full h-[300px] object-cover rounded-lg"
+/>
+</div>
+<div className="w-1/2 flex flex-col gap-4">
+<div className="flex items-center gap-2">
+<MapPin className="text-gray-600" size={20} />
+<span className="text-lg font-semibold text-gray-800">
+{clinicData.name}
+</span>
+</div>
+<div className="flex items-center gap-2">
+<MapPin className="text-gray-600" size={20} />
+<span className="text-gray-700">
+{clinicData.address.street}, {clinicData.address.city},{" "}
+{clinicData.address.state}, {clinicData.address.zipCode},{" "}
+{clinicData.address.country}
+</span>
+</div>
+<div className="flex items-center gap-2">
+<Phone className="text-gray-600" size={20} />
+<span className="text-gray-700">{clinicData.phone}</span>
+</div>
+<div className="flex items-center gap-2">
+<Mail className="text-gray-600" size={20} />
+<span className="text-gray-700">{clinicData.email}</span>
+</div>
+</div> */}
+          </div>
+
+          <img
+            src={location}
+            alt="Clinic Location"
+            className=""
+          />
+
+
+          {/* Clinic Info Section */}
+          <div className="flex flex-col gap-4 w-full px-4">
+            <h3 className="text-black text-center  lg:text-left font-bold text-xl">
+              Availability for {clinicData.name}
+            </h3>
+
+            {/* Card 1 */}
+            <div className="flex flex-col sm:flex-row bg-white shadow rounded-lg p-4 justify-between items-center gap-4">
+              <div className="flex flex-col gap-2 text-center sm:text-left">
+                <span className="text-black font-semibold">{clinicData.name}</span>
+                <span className="text-gray-600">
+                  {clinicData.address.street}, {clinicData.address.city}
+                </span>
+                <span className="text-gray-600">Mon–Fri 9 AM – 4 PM</span>
+              </div>
+              <button
+                type="button"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg font-medium text-base flex items-center justify-center gap-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 transition"
+              >
+                Book Treatment <FaArrowRightLong />
+              </button>
+            </div>
+
+            {/* Card 2 */}
+            <div className="flex flex-col sm:flex-row bg-white shadow rounded-lg p-4 justify-between items-center gap-4">
+              <div className="flex flex-col gap-2 text-center sm:text-left">
+                <span className="text-black font-semibold">{clinicData.name}</span>
+                <span className="text-gray-600">
+                  {clinicData.address.street}, {clinicData.address.city}
+                </span>
+                <span className="text-gray-600">Mon–Fri 9 AM – 4 PM</span>
+              </div>
+              <button
+                type="submit"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg font-medium text-base flex items-center justify-center gap-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 transition"
+              >
+                Book Treatment <FaArrowRightLong />
               </button>
             </div>
           </div>
         </div>
-      </div>
 
-      <div id="about" className="pt-10">
-        <h2 className="font-bold text-2xl mb-3">About</h2>
-        <div className="flex gap-6 mb-16">
-          {/* <div className="w-1/2">
-            <img
-              src="https://via.placeholder.com/400x300"
-              alt="Map Preview"
-              className="w-full h-[300px] object-cover rounded-lg"
-            />
-          </div>
-          <div className="w-1/2 flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <MapPin className="text-gray-600" size={20} />
-              <span className="text-lg font-semibold text-gray-800">
-                {clinicData.name}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="text-gray-600" size={20} />
-              <span className="text-gray-700">
-                {clinicData.address.street}, {clinicData.address.city},{" "}
-                {clinicData.address.state}, {clinicData.address.zipCode},{" "}
-                {clinicData.address.country}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Phone className="text-gray-600" size={20} />
-              <span className="text-gray-700">{clinicData.phone}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Mail className="text-gray-600" size={20} />
-              <span className="text-gray-700">{clinicData.email}</span>
-            </div>
-          </div> */}
-          <img src={location} className="w-full" />
-        </div>
-        <div className="w-full flex mt-16 mb-16 gap-9">
+
+        {/* <div className="w-full flex mt-16 mb-16 gap-9">
           <div className="flex flex-col">
             <p className="w-full text-lg">
-              {/* {clinicData.description ||
-                "Lorem ipsum dolor sit amet consectetur. Arcu dui vivamus vel consectetur a. Sit mauris diam turpis libero maecenas consectetur lacus. Cras amet at feugiat at a leo. Consectetur nulla vestibulum sit fringilla lacinia cursus tupis. Lorem ipsum doolor sit amet consectetur. Arcu dui vivamus vel consectetur a. Sit mauris diam turpis libero maecenas consectetur lacus. Cras amet at feugiat at a leo. Consectetur nulla vestibulum sit fringilla lacinia cursus tupis. Lorem ipsum dolor sit amet consectetur. Arcu dui vivamus vel consectetur a. Sit mauris diam turpis libero maecenas consectetur lacus. Cras amet at feugiat at a leo. Consectetur nulla vestibulum sit fringilla lacinia cursus tupis."} */}
+              {clinicData.description ||
+                "Lorem ipsum dolor sit amet consectetur. Arcu dui vivamus vel consectetur a. Sit mauris diam turpis libero maecenas consectetur lacus. Cras amet at feugiat at a leo. Consectetur nulla vestibulum sit fringilla lacinia cursus tupis. Lorem ipsum doolor sit amet consectetur. Arcu dui vivamus vel consectetur a. Sit mauris diam turpis libero maecenas consectetur lacus. Cras amet at feugiat at a leo. Consectetur nulla vestibulum sit fringilla lacinia cursus tupis. Lorem ipsum dolor sit amet consectetur. Arcu dui vivamus vel consectetur a. Sit mauris diam turpis libero maecenas consectetur lacus. Cras amet at feugiat at a leo. Consectetur nulla vestibulum sit fringilla lacinia cursus tupis."} 
               Lorem ipsum dolor sit amet consectetur. Arcu dui vivamus vel
               consectetur a. Sit mauris diam turpis libero maecenas consectetur
               lacus. Cras amet at feugiat at a leo. Consectetur nulla vestibulum
@@ -253,7 +380,7 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
               </h4>
             </div>
           </div>
-        </div>
+        </div > */}
         <div className="border-2 p-5 border-gray-200 rounded-[16px]">
           <h2 className="font-bold text-[20px] mb-5">Clinics nearby</h2>
           {nearbyClinics.length > 0 ? (
@@ -279,11 +406,10 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
                       {Array.from({ length: 5 }).map((_, i) => (
                         <span
                           key={i}
-                          className={`text-yellow-400 ${
-                            i < Math.round(clinic.rating || 0)
-                              ? "opacity-100"
-                              : "opacity-30"
-                          }`}
+                          className={`text-yellow-400 ${i < Math.round(clinic.rating || 0)
+                            ? "opacity-100"
+                            : "opacity-30"
+                            }`}
                         >
                           ★
                         </span>
@@ -316,8 +442,8 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
             </span>
           </Link>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

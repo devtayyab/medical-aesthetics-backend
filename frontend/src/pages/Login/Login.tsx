@@ -135,7 +135,14 @@ export const Login: React.FC = () => {
             {emailError && <p className={errorStyle}>{emailError}</p>}
           </div>
           <div>
+            <div className="flex justify-between">
             <label htmlFor="password">Password</label>
+           
+            <Link to="/forgot-password" className={linkStyle}  style={{ color: "cornflowerblue" }} >
+              Forgot?
+            </Link>
+            </div>
+            
             <Input
               type="password"
               placeholder="Enter Your Password"
@@ -166,7 +173,7 @@ export const Login: React.FC = () => {
           <Link
             to="/register"
             className={linkStyle}
-            style={{ color: "#7CB342" }}
+            style={{ color: "cornflowerblue" }}
           >
             Sign Up
           </Link>
