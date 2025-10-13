@@ -19,7 +19,7 @@ import {
 import { RootState, AppDispatch } from "@/store";
 import type { Clinic, Service, TimeSlot } from "@/types";
 import { css } from "@emotion/css";
-import LayeredBG from "@/assets/LayeredBG.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
 
 const containerStyle = css`
   max-width: 1200px;

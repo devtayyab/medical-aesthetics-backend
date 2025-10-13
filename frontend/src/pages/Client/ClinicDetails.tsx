@@ -15,7 +15,7 @@ import type { Clinic, Service } from "@/types";
 import { Button } from "@/components/atoms/Button/Button";
 import { css } from "@emotion/css";
 import { Star } from "lucide-react";
-import LayeredBG from "@/assets/LayeredBG.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
 import BotoxImg from "@/assets/Botox.jpg";
 
 const fullWidthContainerStyle = css`

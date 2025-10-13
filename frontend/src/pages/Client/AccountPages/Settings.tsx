@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { css } from "@emotion/css";
-import LayeredBG from "@/assets/LayeredBG.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
 import { FaChevronRight } from "react-icons/fa6";
 
 const containerStyle = css`

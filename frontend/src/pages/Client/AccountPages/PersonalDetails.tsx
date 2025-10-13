@@ -5,7 +5,7 @@ import { Button } from "@/components/atoms/Button/Button";
 import axios from "axios";
 import type { RootState, AppDispatch } from "@/store";
 import { css } from "@emotion/css";
-import LayeredBG from "@/assets/LayeredBG.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
 import { setTokens } from "@/store/slices/authSlice";
 import { FaChevronRight } from "react-icons/fa6";
 
