@@ -133,7 +133,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/booking" element={<Booking />} />
-          <Route path="/clinicpage" element={<Clinic />} />
+          <Route path="/clinic/:id" element={<Clinic/>} />
           <Route
             path="/login"
             element={

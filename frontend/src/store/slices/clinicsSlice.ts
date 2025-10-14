@@ -1,9 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { clinicsAPI } from '@/services/api';
-import type { Clinic, Service, SearchFilters } from '@/types';
+import type { Clinic, Service, SearchFilters, NewClinics } from '@/types';
 
 interface ClinicsState {
   clinics: Clinic[];
+  clinic:NewClinics[];
   featuredClinics: Clinic[];
   selectedClinic: Clinic | null;
   services: Service[];
@@ -16,6 +17,8 @@ interface ClinicsState {
 
 const initialState: ClinicsState = {
   clinics: [],
+   clinic: [{ id: "1", name: "Botox Treatment", location: "Lahore, Pakistan", amount: 1, },
+  { id: "2", name: "Hyalouronic Acid", location: "Lahore, Pakistan", amount: 1, }, ],
   featuredClinics: [],
   selectedClinic: null,
   services: [],
@@ -47,6 +50,13 @@ export const fetchFeaturedClinics = createAsyncThunk(
     return response.data;
   }
 );
+// export const fetchClinics = createAsyncThunk(
+//   'clinics/fetchFeatured',
+//   async () => {
+//     const response = await clinicsAPI.getFeatured();
+//     return response.data;
+//   }
+// );
 
 export const fetchClinicById = createAsyncThunk(
   'clinics/fetchById',

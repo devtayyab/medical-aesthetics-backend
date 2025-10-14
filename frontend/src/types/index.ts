@@ -12,6 +12,13 @@ export interface User {
   createdAt: string;
   updatedAt: string;
 }
+export interface NewClinics{
+  id:string;
+  name:string;
+  location:string;
+  amount:number;
+
+}
 
 export interface Clinic {
   id: string;

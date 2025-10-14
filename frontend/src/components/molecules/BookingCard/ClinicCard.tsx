@@ -2,11 +2,11 @@
 
 type ClinicCardProps = {
   name: string;
-  price: number;
+  amount: number;
   location: string;
 };
 
-const ClinicCard: React.FC<ClinicCardProps> = ({ name, price, location }) => {
+const ClinicCard: React.FC<ClinicCardProps> = ({ name,amount, location }) => {
   return (  
   // Main container
   <div className=" w-full h-auto max-w-7xl mx-auto p-2 flex flex-col  gap-6">
@@ -51,7 +51,7 @@ const ClinicCard: React.FC<ClinicCardProps> = ({ name, price, location }) => {
       <div className="flex flex-col items-end md:mt-0">
         <div className="flex items-center gap-1">
           <p className="text-base text-black font-semibold">from</p>
-          <p className="text-base font-bold text-black">${price}</p>
+          <p className="text-base font-bold text-black">${amount}</p>
         </div>
         <p className="text-base whitespace-nowrap  text-blue-500">save up to 99%</p>
       </div>

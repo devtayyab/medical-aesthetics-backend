@@ -11,17 +11,20 @@ import { logout } from "@/store/slices/authSlice";
 import SiteLogo from "@/assets/SiteLogo.png";
 
 const containerStyle = css`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-md);
+  width:100%;
+  max-width:1440px;
+  height: 106px;
+  padding: 18px 156px; 
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 4rem;
-  @media (min-width: 768px) {
-    padding: 0 var(--spacing-xl);
+  gap: 10px;
+  @media (max-width: 768px) {
+    padding: 10px 20px;
   }
+   
 `;
+
 
 const logoStyle = css`
   font-size: var(--font-size-xl);
@@ -35,13 +38,18 @@ const logoStyle = css`
 `;
 
 const searchContainerStyle = css`
-  flex: 1;
-  max-width: 400px;
-  margin: 0 var(--spacing-xl);
+  width: 100%;
+  max-width:1440px;     
+  height: 56px;       
+  display: flex;            
+  justify-content: space-between;  
+  flex-direction:column;      
+  padding: 16px 156px ;   
   @media (max-width: 768px) {
     display: none;
   }
 `;
+
 
 const mobileMenuButtonStyle = css`
   display: none;
@@ -83,6 +91,7 @@ const userMenuButtonStyle = css`
   gap: var(--spacing-sm);
   padding: var(--spacing-sm);
   border: none;
+  
   background: none;
   cursor: pointer;
   border-radius: var(--radius-lg);
@@ -235,7 +244,7 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-[#2D3748] py-5">
+    <header className="bg-[#2D3748] ">
       <div
         className={css`
           ${containerStyle};
@@ -248,57 +257,13 @@ export const Header: React.FC = () => {
           to={
             clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : "/"
           }
-          className={`text-[#CBFF38] text-2xl font-bold flex items-center ${
+          className={`text-[#CBFF38] text-2xl font-bold flex   items-center ${
             clinicRoles.includes(user?.role || "") ? "justify-center" : ""
           }`}
         >
-          <img src={SiteLogo} alt="Site Logo" className="w-[200px]" />
+          <img src={SiteLogo} alt="Site Logo" className="w-[200px] " />
         </Link>
-
-        {/* Desktop Navigation for Non-Clinic Roles */}
-        {!clinicRoles.includes(user?.role || "") && (
           <>
-            <div className={searchContainerStyle}>
-              <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
-                <li
-                  className={`cursor-pointer ${
-                    location.pathname === "/"
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                  }`}
-                >
-                  <Link
-                    to="/"
-                    className={`no-underline ${
-                      location.pathname === "/"
-                        ? "text-[#CBFF38]"
-                        : "text-white"
-                    }`}
-                  >
-                    Home
-                  </Link>
-                </li>
-                <li
-                  className={`cursor-pointer ${
-                    location.pathname.startsWith("/search")
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                  }`}
-                >
-                  <Link
-                    to="/search"
-                    className={`no-underline ${
-                      location.pathname.startsWith("/search")
-                        ? "text-[#CBFF38]"
-                        : "text-white"
-                    }`}
-                  >
-                    Clinics
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
             <nav className="hidden md:flex items-center gap-4">
               {isAuthenticated ? (
                 <>
@@ -352,7 +317,7 @@ export const Header: React.FC = () => {
                     )}
                   </div>
                 </>
-              ) : (
+               ) : (
                 <>
                   <Button
                     variant="ghost"
@@ -362,11 +327,11 @@ export const Header: React.FC = () => {
                     Sign In
                   </Button>
                   <Button onClick={() => navigate("/register")}>Sign Up</Button>
-                </>
+                </> 
               )}
             </nav>
-          </>
-        )}
+           </> 
+       
 
         {/* Mobile Menu Button for All Roles */}
         <button
@@ -376,6 +341,124 @@ export const Header: React.FC = () => {
           <Menu size={24} className="text-white" />
         </button>
       </div>
+      
+        {/* Desktop Navigation for Non-Clinic Roles */}
+        {!clinicRoles.includes(user?.role || "") && (
+            <div className={searchContainerStyle}>
+              <ul className="flex gap-10 w-full h-auto text-white font-normal whitespace-nowrap">
+                <li
+                  className={`cursor-pointer  ${
+                    location.pathname === "/"
+                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                  }`}
+                >
+                  <Link
+                    to="/"
+                    className={`no-underline ${
+                      location.pathname === "/"
+                        ? "text-[#CBFF38]"
+                        : "text-white"
+                    }`}
+                  >
+                    Home
+                  </Link>
+                </li>
+                <li
+                  className={`cursor-pointer  ${
+                    location.pathname.startsWith("/search")
+                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                  }`}
+                >
+                  <Link
+                    to="/search"
+                    className={`no-underline ${
+                      location.pathname.startsWith("/search")
+                        ? "text-[#CBFF38]"
+                        : "text-white"
+                    }`}
+                  >
+                   Face And Body Medical Aesthetic
+                  </Link> 
+                </li>
+                 <li
+                  className={`cursor-pointer ${
+                    location.pathname.startsWith("/search")
+                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                  }`}
+                >
+                  <Link
+                    to="/search"
+                    className={`no-underline ${
+                      location.pathname.startsWith("/search")
+                        ? "text-[#CBFF38]"
+                        : "text-white"
+                    }`}
+                  >
+                    Aesthetic Gynecology
+                  </Link> 
+                </li>
+                 <li
+                  className={`cursor-pointer ${
+                    location.pathname.startsWith("/search")
+                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                  }`}
+                >
+                  <Link
+                    to="/search"
+                    className={`no-underline ${
+                      location.pathname.startsWith("/search")
+                        ? "text-[#CBFF38]"
+                        : "text-white"
+                    }`}
+                  >
+                   Prosthetic Dentistry
+                  </Link> 
+                </li>
+                 <li
+                  className={`cursor-pointer ${
+                    location.pathname.startsWith("/search")
+                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                  }`}
+                >
+                  <Link
+                    to="/search"
+                    className={`no-underline ${
+                      location.pathname.startsWith("/search")
+                        ? "text-[#CBFF38]"
+                        : "text-white"
+                    }`}
+                  >
+                    Plastic Surgery
+                  </Link> 
+                </li>
+                   <li
+                  className={`cursor-pointer ${
+                    location.pathname.startsWith("/search")
+                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                  }`}
+                >
+                  <Link
+                    to="/search"
+                    className={`no-underline ${
+                      location.pathname.startsWith("/search")
+                        ? "text-[#CBFF38]"
+                        : "text-white"
+                    }`}
+                  >
+                    Hair Removal-Laser
+                  </Link> 
+                </li>
+             </ul> 
+             
+            </div>
+             )}
+             
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
@@ -499,6 +582,7 @@ export const Header: React.FC = () => {
               </Button>
             </div>
           )}
+          
         </div>
       )}
     </header>
