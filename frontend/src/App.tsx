@@ -102,17 +102,6 @@ function AppContent() {
     }
   }, [isAuthenticated, isLoading, location, navigate, hasRestoredSession]);
 
-  console.log(
-    "App: Rendering, isLoading:",
-    isLoading,
-    "isAuthenticated:",
-    isAuthenticated,
-    "user:",
-    user,
-    "refreshToken:",
-    refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
-  );
-
   // Show loader until session is restored
   if (!hasRestoredSession || isLoading) {
     return (
@@ -157,7 +146,7 @@ function AppContent() {
           {/* Client Routes - Public clinic browsing */}
           <Route path="/search" element={<Search />} />
           <Route path="/clinic/:id" element={<ClinicDetails />} />
-          
+
           {/* Protected booking route - requires login */}
           <Route
             path="/appointment/booking"
@@ -309,7 +298,7 @@ function AppContent() {
               }
             />
           </Route>
-          
+
           {/* Old Clinic Routes - Keep for backward compatibility */}
           <Route
             path="/clinic/profile"
