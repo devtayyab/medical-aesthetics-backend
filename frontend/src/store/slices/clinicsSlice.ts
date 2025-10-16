@@ -50,13 +50,6 @@ export const fetchFeaturedClinics = createAsyncThunk(
     return response.data;
   }
 );
-// export const fetchClinics = createAsyncThunk(
-//   'clinics/fetchFeatured',
-//   async () => {
-//     const response = await clinicsAPI.getFeatured();
-//     return response.data;
-//   }
-// );
 
 export const fetchClinicById = createAsyncThunk(
   'clinics/fetchById',

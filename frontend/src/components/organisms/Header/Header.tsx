@@ -7,23 +7,67 @@ import { Button } from "@/components/atoms/Button/Button";
 import { Input } from "@/components/atoms/Input/Input";
 import type { RootState, AppDispatch } from "@/store";
 import { logout } from "@/store/slices/authSlice";
+import { IoMdArrowDropdown } from "react-icons/io";
 
 import SiteLogo from "@/assets/SiteLogo.png";
+import { useTranslation } from "react-i18next";
+import i18next from "i18next";
 
 const containerStyle = css`
-  width:100%;
-  max-width:1440px;
-  height: 106px;
-  padding: 18px 156px; 
+  width: 100%;
+  max-width: 1440px;
+  height: auto; 
+  padding: 18px 8%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  @media (max-width: 768px) {
-    padding: 10px 20px;
+  box-sizing: border-box;
+
+  @media (max-width: 1024px) {
+    padding: 16px 5%;
   }
-   
+
+  @media (max-width: 768px) {
+     flex-direction: column; 
+    padding: 10px 20px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 500px) {    
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 8px 16px;
+  }
 `;
+
+const searchContainerStyle = css`
+  width: 100%;
+  max-width: 1440px;
+  display: flex;
+  align-items:center;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 16px 8%;
+  gap: 12px;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    padding: 12px 20px;
+    justify-content: flex-start;
+
+    ul {
+      flex-direction: column; /* mobile: one by one */
+      gap: 10px;
+      align-items: flex-start;
+}
+   
+  }
+`;
+
+
 
 
 const logoStyle = css`
@@ -34,19 +78,6 @@ const logoStyle = css`
   letter-spacing: -0.025em;
   &:hover {
     color: var(--color-primary-dark);
-  }
-`;
-
-const searchContainerStyle = css`
-  width: 100%;
-  max-width:1440px;     
-  height: 56px;       
-  display: flex;            
-  justify-content: space-between;  
-  flex-direction:column;      
-  padding: 16px 156px ;   
-  @media (max-width: 768px) {
-    display: none;
   }
 `;
 
@@ -176,10 +207,16 @@ export const Header: React.FC = () => {
   const { isAuthenticated, user, refreshToken } = useSelector(
     (state: RootState) => state.auth
   );
+  
   const { unreadCount } = useSelector(
     (state: RootState) => state.notifications
   );
   const location = useLocation();
+  const {i18n}=useTranslation();
+  const changeLanguage=(lang:string)=>{
+    i18n.changeLanguage(lang);
+
+  }
 
   console.log("Header - user:", user);
   console.log("Header - isAuthenticated:", isAuthenticated);
@@ -265,7 +302,7 @@ export const Header: React.FC = () => {
         </Link>
           <>
             <nav className="hidden md:flex items-center gap-4">
-              {isAuthenticated ? (
+              {/* {isAuthenticated ? (
                 <>
                   <button className={`group ${notificationButtonStyle}`}>
                     <Bell
@@ -328,11 +365,21 @@ export const Header: React.FC = () => {
                   </Button>
                   <Button onClick={() => navigate("/register")}>Sign Up</Button>
                 </> 
-              )}
+          
+            )} */}
+            <div className="flex gap-[24px] items-center">
+<div className=" flex  items-center w-auto h-auto  text-[#FFFFFF] font-poppins font-normal px-4 text-[14px] gap-2 leading-[24px] tracking-[0px] ">
+           <h2>English</h2> 
+      <IoMdArrowDropdown  />
+      </div>
+              <Link to="/"  className="font-poppins font-normal  text-[#FFFFFF]
+                 text-[14px] leading-[20px] tracking-[2%]">For Your Business</Link>
+               <Button className="w-auto h-auto bg-[#CBFF38]  py-2 px-6  gap-[5.4px] rounded-[12px] border-[0.45px] opacity-100 text-black"
+              onClick={() => navigate("/login")}>Login</Button> 
+              </div>
             </nav>
            </> 
        
-
         {/* Mobile Menu Button for All Roles */}
         <button
           className={mobileMenuButtonStyle}
@@ -343,40 +390,37 @@ export const Header: React.FC = () => {
       </div>
       
         {/* Desktop Navigation for Non-Clinic Roles */}
-        {!clinicRoles.includes(user?.role || "") && (
+        {!clinicRoles.includes(user?.role || "") && location.pathname === "/" && (
             <div className={searchContainerStyle}>
-              <ul className="flex gap-10 w-full h-auto text-white font-normal whitespace-nowrap">
-                <li
-                  className={`cursor-pointer  ${
-                    location.pathname === "/"
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                  }`}
-                >
+             <ul className="flex flex-wrap gap-10 w-auto  text-white font-normal">
+  <li
+  className={`cursor-pointer  ${
+    location.pathname === "/"
+      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+  }`}
+>
+
                   <Link
                     to="/"
-                    className={`no-underline ${
+                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]"> ${
                       location.pathname === "/"
                         ? "text-[#CBFF38]"
-                        : "text-white"
+                        : "text-[#F5F6F7]"
+
                     }`}
                   >
                     Home
                   </Link>
                 </li>
                 <li
-                  className={`cursor-pointer  ${
-                    location.pathname.startsWith("/search")
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                  }`}
-                >
+                  >
                   <Link
                     to="/search"
-                    className={`no-underline ${
+                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]">${
                       location.pathname.startsWith("/search")
                         ? "text-[#CBFF38]"
-                        : "text-white"
+                        : "text-[#F5F6F7]"
                     }`}
                   >
                    Face And Body Medical Aesthetic
@@ -391,10 +435,10 @@ export const Header: React.FC = () => {
                 >
                   <Link
                     to="/search"
-                    className={`no-underline ${
+                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]"> ${
                       location.pathname.startsWith("/search")
                         ? "text-[#CBFF38]"
-                        : "text-white"
+                        : "text-[#F5F6F7]"
                     }`}
                   >
                     Aesthetic Gynecology
@@ -409,10 +453,10 @@ export const Header: React.FC = () => {
                 >
                   <Link
                     to="/search"
-                    className={`no-underline ${
+                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]"> ${
                       location.pathname.startsWith("/search")
                         ? "text-[#CBFF38]"
-                        : "text-white"
+                        : "text-[#F5F6F7]"
                     }`}
                   >
                    Prosthetic Dentistry
@@ -427,10 +471,10 @@ export const Header: React.FC = () => {
                 >
                   <Link
                     to="/search"
-                    className={`no-underline ${
+                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]"> ${
                       location.pathname.startsWith("/search")
                         ? "text-[#CBFF38]"
-                        : "text-white"
+                        : "text-[#F5F6F7]"
                     }`}
                   >
                     Plastic Surgery
@@ -445,10 +489,11 @@ export const Header: React.FC = () => {
                 >
                   <Link
                     to="/search"
-                    className={`no-underline ${
+                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]"
+                      ${
                       location.pathname.startsWith("/search")
                         ? "text-[#CBFF38]"
-                        : "text-white"
+                        : "text-[#F5F6F7]"
                     }`}
                   >
                     Hair Removal-Laser
