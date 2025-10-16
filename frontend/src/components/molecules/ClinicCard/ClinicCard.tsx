@@ -5,7 +5,7 @@ import { Card } from "@/components/atoms/Card/Card";
 import type { Clinic } from "@/types";
 import BotoxImg from "@/assets/Botox.jpg";
 import { FaArrowRightLong } from "react-icons/fa6";
-
+import MapPinIcon from "@/assets/Icons/MapPin.png";
 export interface ClinicCardProps {
   clinic: Clinic;
   onSelect?: (clinic: Clinic) => void;
@@ -74,14 +74,14 @@ const rating = css`
   font-weight: 500;
 `;
 
-const location = css`
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  color: #221f1f;
-`;
+// const location = css`
+//   margin-top: 12px;
+//   display: flex;
+//   align-items: center;
+//   gap: 4px;
+//   font-size: 14px;
+//   color: #221f1f;
+// `;
 
 const badge = css`
   margin-top: 12px;
@@ -202,26 +202,53 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
 
 
 
-            <div className={location}>
-              <MapPin size={14} /> {clinic.address?.city},{" "}
-              {clinic.address?.country}
-            </div>
+
+
             {/* <div className={badge}>% Off peak</div> */}
           </span>
-          <span className="text-end">
-            <h3 className="text-[#221F1F] text-[18px] font-medium">
-              from € 49
-            </h3>
-            <p className="text-sm text-gray-500">save up to 99%</p>
-            <span className="w-full flex justify-end">
-              <button
-                type="submit"
-                className="!mt-5 w-fit px-6 py-2 rounded-lg font-medium text-base flex items-center justify-center gap-2 bg-[#CBFF38] text-</div>[#33373F] hover:bg-lime-300 transition"
-              >
-                Book Treatment <FaArrowRightLong />
-              </button>
-            </span>
-          </span>
+
+
+          <div className="flex flex-row justify-between ">
+
+
+
+            <div className="flex flex-row items-center gap-2">
+              <div className="">
+                <img src={MapPinIcon} alt="" className="w-5 h-5" />
+
+              </div>
+
+              <div className="flex flex-col">
+                <span className="text-[#221F1F] text-[18px] font-medium">
+                  Available in:
+                </span>
+                <span className="text-[#555] text-[16px]">
+                  {clinic.address?.city}, {clinic.address?.country}
+                </span>
+              </div>
+
+            </div>
+            <div>
+
+              <span className="text-end">
+
+
+
+                <h3 className="text-[#221F1F] text-[18px] font-medium">
+                  from € 49
+                </h3>
+                <p className="text-sm text-sky-600">save up to 99%</p>
+                <span className="w-full flex justify-end">
+                  <button
+                    type="submit"
+                    className="!mt-5 w-fit px-6 py-2 rounded-lg font-medium text-base flex items-center justify-center gap-2 bg-[#CBFF38] text-</div>[#33373F] hover:bg-lime-300 transition"
+                  >
+                    Book Treatment <FaArrowRightLong />
+                  </button>
+                </span>
+              </span>
+            </div>
+          </div>
         </div>
       </span>
       {/* <div className={rowsContainer}>
