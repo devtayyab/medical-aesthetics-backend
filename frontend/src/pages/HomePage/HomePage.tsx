@@ -1,323 +1,117 @@
-import React, { useEffect } from 'react';
-import { css } from '@emotion/css';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { Search, MapPin, Star, TrendingUp, CheckCircle, Calendar, UserCheck } from 'lucide-react';
-import { Button } from '@/components/atoms/Button/Button';
-import { Input } from '@/components/atoms/Input/Input';
-import { Card } from '@/components/atoms/Card/Card';
-import { ClinicCard } from '@/components/molecules/ClinicCard/ClinicCard';
-import { fetchFeaturedClinics } from '@/store/slices/clinicsSlice';
-import type { RootState, AppDispatch } from '@/store';
-import type { Clinic } from '@/types';
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  FaStethoscope,
+  FaHospital,
+  FaSearch,
+  FaMapMarkerAlt,
+  FaCalendarAlt,
+  FaApple,
+  FaGooglePlay,
+} from "react-icons/fa";
 
-const heroStyle = css`
-  background: linear-gradient(135deg, rgba(248, 249, 250, 0.9) 0%, rgba(255, 255, 255, 0.95) 100%),
-              url('https://images.pexels.com/photos/4173251/pexels-photo-4173251.jpeg?auto=compress&cs=tinysrgb&w=1200') center/cover;
-  color: var(--color-medical-text);
-  padding: var(--spacing-4xl) 0;
-  min-height: 70vh;
-  display: flex;
-  align-items: center;
-  text-align: center;
-  position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.85);
-    z-index: 1;
-  }
-`;
+// import { Button } from "@/components/atoms/Button/Button";
+// import { Input } from "@/components/atoms/Input/Input";
+import { fetchFeaturedClinics } from "@/store/slices/clinicsSlice";
+import type { RootState, AppDispatch } from "@/store";
+import type { Clinic } from "@/types";
 
-const heroContentStyle = css`
-  position: relative;
-  z-index: 2;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-md);
-`;
-
-const heroTitleStyle = css`
-  font-size: var(--font-size-5xl);
-  font-weight: var(--font-weight-extrabold);
-  margin-bottom: var(--spacing-lg);
-  line-height: var(--line-height-tight);
-  color: var(--color-medical-text);
-  
-  @media (max-width: 768px) {
-    font-size: var(--font-size-4xl);
-  }
-`;
-
-const heroSubtitleStyle = css`
-  font-size: var(--font-size-xl);
-  margin-bottom: var(--spacing-2xl);
-  color: var(--color-medical-text-light);
-  line-height: var(--line-height-normal);
-  font-weight: var(--font-weight-normal);
-  
-  @media (max-width: 768px) {
-    font-size: var(--font-size-lg);
-  }
-`;
-
-const searchBoxStyle = css`
-  background-color: var(--color-white);
-  border-radius: var(--radius-3xl);
-  padding: var(--spacing-lg);
-  box-shadow: var(--shadow-2xl);
-  max-width: 600px;
-  margin: 0 auto;
-  border: 1px solid var(--color-medical-border);
-`;
-
-const searchFormStyle = css`
-  display: flex;
-  gap: var(--spacing-md);
-  
-  @media (max-width: 768px) {
-    flex-direction: column;
-  }
-`;
-
-const sectionStyle = css`
-  padding: var(--spacing-4xl) 0;
-  background-color: var(--color-medical-bg);
-`;
-
-const containerStyle = css`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-md);
-  
-  @media (min-width: 768px) {
-    padding: 0 var(--spacing-xl);
-  }
-`;
-
-const sectionHeaderStyle = css`
-  text-align: center;
-  margin-bottom: var(--spacing-2xl);
-`;
-
-const sectionTitleStyle = css`
-  font-size: var(--font-size-4xl);
-  font-weight: var(--font-weight-extrabold);
-  color: var(--color-medical-text);
-  margin-bottom: var(--spacing-md);
-`;
-
-const sectionSubtitleStyle = css`
-  font-size: var(--font-size-lg);
-  color: var(--color-medical-text-light);
-  max-width: 600px;
-  margin: 0 auto;
-  font-weight: var(--font-weight-normal);
-`;
-
-const stepsStyle = css`
-  background-color: var(--color-white);
-  padding: var(--spacing-4xl) 0;
-`;
-
-const stepsGridStyle = css`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--spacing-2xl);
-  margin-top: var(--spacing-2xl);
-`;
-
-const stepCardStyle = css`
-  text-align: center;
-  padding: var(--spacing-2xl);
-  background: var(--color-white);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-card);
-  border: 1px solid var(--color-medical-border);
-  transition: all var(--transition-normal);
-  
-  &:hover {
-    transform: translateY(-8px);
-    box-shadow: var(--shadow-xl);
-  }
-`;
-
-const stepIconStyle = css`
-  width: 80px;
-  height: 80px;
-  background: var(--color-primary);
-  border-radius: var(--radius-2xl);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto var(--spacing-lg);
-  color: var(--color-white);
-  box-shadow: var(--shadow-button);
-`;
-
-const stepTitleStyle = css`
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-medical-text);
-  margin-bottom: var(--spacing-sm);
-`;
-
-const stepDescriptionStyle = css`
-  font-size: var(--font-size-base);
-  color: var(--color-medical-text-light);
-  line-height: var(--line-height-relaxed);
-`;
-
-const categoriesGridStyle = css`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-2xl);
-`;
-
-const categoryCardStyle = css`
-  text-align: center;
-  padding: var(--spacing-xl);
-  cursor: pointer;
-  transition: transform var(--transition-fast);
-  background: var(--color-white);
-  border-radius: var(--radius-2xl);
-  border: 1px solid var(--color-medical-border);
-  
-  &:hover {
-    transform: translateY(-8px);
-    box-shadow: var(--shadow-lg);
-  }
-`;
-
-const categoryIconStyle = css`
-  width: 60px;
-  height: 60px;
-  background: var(--color-primary);
-  border-radius: var(--radius-2xl);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto var(--spacing-md);
-  color: var(--color-white);
-  box-shadow: var(--shadow-button);
-`;
-
-const categoryTitleStyle = css`
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-medical-text);
-  margin-bottom: var(--spacing-sm);
-`;
-
-const categoryDescriptionStyle = css`
-  font-size: var(--font-size-sm);
-  color: var(--color-medical-text-light);
-`;
-
-const clinicsGridStyle = css`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-xl);
-`;
-
-const statsStyle = css`
-  background: var(--color-primary);
-  padding: var(--spacing-4xl) 0;
-  color: var(--color-white);
-`;
-
-const statsGridStyle = css`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-xl);
-  text-align: center;
-`;
-
-const statNumberStyle = css`
-  font-size: var(--font-size-4xl);
-  font-weight: var(--font-weight-extrabold);
-  color: var(--color-white);
-  margin-bottom: var(--spacing-sm);
-`;
-
-const statLabelStyle = css`
-  font-size: var(--font-size-lg);
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: var(--font-weight-medium);
-`;
+// Images
+import HeaderBanner from "@/assets/HeaderBanner.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
+import PlusIcon from "@/assets/Icons/PlusIcon.svg";
+import CalendarIcon from "@/assets/Icons/CalendarIcon.svg";
+import TickIcon from "@/assets/Icons/TickIcon.svg";
+import GiftConfidenceImg from "@/assets/GiftConfidenceImg.svg";
+import TopRatedClinicImg from "@/assets/TopRatedClinicImg.svg";
+import OnlineClinicHome from "@/assets/OnlineClinicHome.svg";
+import DermaIcon from "@/assets/Icons/TreatmentIcons/DermaIcon.svg";
+import CosmeticIcon from "@/assets/Icons/TreatmentIcons/CosmeticIcon.svg";
+import BodyIcon from "@/assets/Icons/TreatmentIcons/BodyIcon.svg";
+import HairIcon from "@/assets/Icons/TreatmentIcons/HairIcon.svg";
+import DentistIcon from "@/assets/Icons/TreatmentIcons/Dentisticon.svg";
+import HomeMobAppImg from "@/assets/HomeMobAppImg.svg";
 
 const treatmentSteps = [
   {
-    id: 'choose',
-    name: 'Choose a Category',
-    description: 'Dermatology, Plastic Surgery, Skin Treatments, or Aesthetics',
-    icon: <Search size={32} />,
+    id: "choose",
+    name: "Choose a Treatment",
+    description: "Dermatology, Plastic Surgery, Skin Treatments, or Aesthetics",
+    icon: PlusIcon,
   },
   {
-    id: 'schedule',
-    name: 'Pick Date & Time',
-    description: 'Select the day and time that works best for you',
-    icon: <Calendar size={32} />,
+    id: "schedule",
+    name: "Pick Date & Time",
+    description: "Select the day and time that works best for you",
+    icon: CalendarIcon,
   },
   {
-    id: 'confirm',
-    name: 'Confirm Your Appointment',
-    description: 'Book your consultation or treatment with a certified clinic',
-    icon: <CheckCircle size={32} />,
+    id: "confirm",
+    name: "Confirm Your Appointment",
+    description: "Book your consultation or treatment with a certified clinic",
+    icon: TickIcon,
   },
 ];
 
-const categories = [
-  {
-    id: 'dermatology',
-    name: 'Dermatology',
-    description: 'Skin health and medical treatments',
-    icon: '🔬',
-  },
-  {
-    id: 'plastic-surgery',
-    name: 'Plastic Surgery',
-    description: 'Cosmetic and reconstructive procedures',
-    icon: '✨',
-  },
-  {
-    id: 'aesthetics',
-    name: 'Aesthetics',
-    description: 'Non-surgical beauty treatments',
-    icon: '💫',
-  },
-  {
-    id: 'wellness',
-    name: 'Wellness',
-    description: 'Holistic health and wellness',
-    icon: '🌿',
-  },
-];
+// const categories = [
+//   {
+//     id: "dermatology",
+//     name: "Dermatology",
+//     description: "Skin health and medical treatments",
+//     icon: "🔬",
+//   },
+//   {
+//     id: "plastic-surgery",
+//     name: "Plastic Surgery",
+//     description: "Cosmetic and reconstructive procedures",
+//     icon: "✨",
+//   },
+//   {
+//     id: "aesthetics",
+//     name: "Aesthetics",
+//     description: "Non-surgical beauty treatments",
+//     icon: "💫",
+//   },
+//   {
+//     id: "wellness",
+//     name: "Wellness",
+//     description: "Holistic health and wellness",
+//     icon: "🌿",
+//   },
+// ];
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  
-  const { featuredClinics, isLoading } = useSelector((state: RootState) => state.clinics);
-  
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [location, setLocation] = React.useState('');
+
+  const { featuredClinics, isLoading } = useSelector(
+    (state: RootState) => state.clinics
+  );
+
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [location, setLocation] = React.useState("");
+
+  // useEffect(() => {
+  //   dispatch(fetchFeaturedClinics());
+  // }, [dispatch]);
+
+  const { isAuthenticated, isLoading: authLoading } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   useEffect(() => {
-    dispatch(fetchFeaturedClinics());
-  }, [dispatch]);
+    if (isAuthenticated && !authLoading) {
+      console.log("HomePage: Dispatching fetchFeaturedClinics");
+      dispatch(fetchFeaturedClinics());
+    }
+  }, [dispatch, isAuthenticated, authLoading]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
-    if (searchQuery) params.set('q', searchQuery);
-    if (location) params.set('location', location);
+    if (searchQuery) params.set("q", searchQuery);
+    if (location) params.set("location", location);
     navigate(`/search?${params.toString()}`);
   };
 
@@ -332,154 +126,313 @@ export const HomePage: React.FC = () => {
   return (
     <div>
       {/* Hero Section */}
-      <section className={heroStyle}>
-        <div className={heroContentStyle}>
-          <h1 className={heroTitleStyle}>
-            Your Skin. Your Confidence. Your Clinic.
-          </h1>
-          <p className={heroSubtitleStyle}>
-            Find Trusted Dermatologists & Aesthetic Clinics Near You
-          </p>
-          
-          <div className={searchBoxStyle}>
-            <form onSubmit={handleSearch} className={searchFormStyle}>
-              <Input
-                placeholder="Services"
-                leftIcon={<Search size={16} />}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                fullWidth
-              />
-              <Input
-                placeholder="Location"
-                leftIcon={<MapPin size={16} />}
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                fullWidth
-              />
-              <Button
-              type="submit"
-              size="lg"
-              style={{ backgroundColor: "var(--color-primary)" }}
-        >
-          Search
-          </Button>
-  
+      <section
+        className="relative bg-cover bg-center min-h-[550px]"
+        style={{
+          backgroundImage: `url(${HeaderBanner})`,
+          alignContent: "center",
+        }}
+      >
+        {/* Container with max-width */}
+        <div className="max-w-[1200px] mx-auto grid grid-cols-1 gap-8 items-center h-full px-6">
+          {/* Left: White search box */}
+          <div className="w-[55%] mx-auto bg-white shadow-lg rounded-xl px-6 py-7">
+            {/* Tabs */}
+            {/* <div className="flex border border-[#2D3748] rounded-[16px] overflow-hidden mb-6">
+              <button className="flex-1 flex items-center justify-center gap-2 py-[10px] bg-[#2D3748] text-white font-medium">
+                <FaStethoscope /> Treatments
+              </button>
+              <button className="flex-1 flex items-center justify-center gap-2 py-[10px] bg-white text-gray-700 font-medium border-l">
+                <FaHospital /> Clinics
+              </button>
+            </div> */}
+            <h2 className="text-[#33373F] text-[32px] font-semibold text-center mb-7">What would you like to improve?</h2>
+
+            {/* Search form */}
+            <form onSubmit={handleSearch} className="space-y-4">
+              {/* Services */}
+              <div className="flex items-center border rounded-lg px-3 py-4">
+                <FaSearch className="text-gray-500 mr-2" />
+                <input
+                  type="text"
+                  placeholder="Find Treatments"
+                  className="w-full outline-none text-gray-700"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Location */}
+              <div className="flex items-center border rounded-lg px-3 py-4">
+                <FaMapMarkerAlt className="text-gray-500 mr-2" />
+                <input
+                  type="text"
+                  placeholder="Find Cliinic"
+                  className="w-full outline-none text-gray-700"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                />
+              </div>
+
+              {/* Date */}
+              {/* <div className="flex items-center border rounded-lg px-3 py-4">
+                <FaCalendarAlt className="text-gray-500 mr-2" />
+                <input
+                  type="date"
+                  className="w-full outline-none text-gray-700"
+                />
+              </div> */}
+
+              {/* Search button */}
+              <button
+                type="submit"
+                className="!mt-7 w-full py-3 rounded-lg font-medium text-lg flex items-center justify-center gap-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 transition"
+              >
+                <FaSearch /> Search
+              </button>
             </form>
           </div>
+
+          {/* Right: Doctor image full height */}
+          {/* <div className="flex justify-center"></div> */}
         </div>
       </section>
 
       {/* How It Works Section */}
-      <section className={stepsStyle}>
-        <div className={containerStyle}>
-          <div className={sectionHeaderStyle}>
-            <h2 className={sectionTitleStyle}>How It Works</h2>
-            <h3 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-medical-text)', marginBottom: 'var(--spacing-md)' }}>
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-[#586271] text-xl">How It Works</h2>
+            <h3 className="text-[#33373F] text-2xl font-semibold mb-2">
               3 Steps to Your Treatment
             </h3>
           </div>
-          
-          <div className={stepsGridStyle}>
-            {treatmentSteps.map((step) => (
-              <div key={step.id} className={stepCardStyle}>
-                <div className={stepIconStyle}>
-                  {step.icon}
+
+          <div className="flex justify-center items-start flex-wrap gap-8 mt-10">
+            {treatmentSteps.map((step, index) => (
+              <React.Fragment key={index}>
+                {/* Box */}
+                <div className="w-full lg:w-[240px] text-center group hover:-translate-y-2 transition-all duration-300">
+                  <div className="w-fit bg-white rounded-[24px] flex items-center justify-center mx-auto mb-6 px-[30px] py-[26px] text-white shadow-lg group-hover:border-[1px] group-hover:border-[#5F8B00]">
+                    <img src={step.icon} alt={step.name} className="w-[48px]" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    {step.name}
+                  </h3>
+                  <p className="text-base text-gray-600 leading-relaxed">
+                    {step.description}
+                  </p>
                 </div>
-                <h3 className={stepTitleStyle}>{step.name}</h3>
-                <p className={stepDescriptionStyle}>{step.description}</p>
+
+                {/* Divider (only between boxes) */}
+                {index < treatmentSteps.length - 1 && (
+                  <div
+                    className="hidden lg:block w-[100px] h-[2px] self-start mt-[52px]"
+                    style={{
+                      backgroundImage:
+                        "repeating-linear-gradient(to right, #9CA3AF 0 10px, transparent 10px 15px)",
+                    }}
+                  ></div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="relative bg-cover bg-center min-h-[550px] flex items-center justify-center px-4 -scale-x-100"
+        style={{ backgroundImage: `url(${LayeredBG})` }}
+      >
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-5 lg:px-6 w-full grid grid-cols-1 md:grid-cols-2 gap-12 -scale-x-100 mb-12 md:mb-0">
+          {/* Card 1 */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+            <img
+              src={GiftConfidenceImg}
+              alt="Gift Confidence"
+              className="w-full h-[241px] object-cover"
+            />
+            <div className="p-6 flex flex-col flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Gift Confidence, Not Just Care
+              </h3>
+              <p className="mt-2 text-gray-600 text-sm flex-1">
+                Give the gift of expert medical beauty treatments — from
+                dermatology to aesthetic enhancements — and help your loved ones
+                feel their best.
+              </p>
+              <button className="mt-4 w-fit inline-flex items-center justify-center border border-green-600 text-green-700 hover:bg-green-50 font-medium px-4 py-2 rounded-md text-sm">
+                Send a Treatment Gift Card
+                <span className="ml-2">→</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2 */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+            <img
+              src={TopRatedClinicImg}
+              alt="Find Clinics"
+              className="w-full h-[241px] object-cover"
+            />
+            <div className="p-6 flex flex-col flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Find Trusted, Top-Rated Clinics
+              </h3>
+              <p className="mt-2 text-gray-600 text-sm flex-1">
+                Discover clinics recognized for their excellence in dermatology,
+                plastic surgery, and aesthetic medicine. Backed by real patient
+                reviews, so you can book with confidence.
+              </p>
+              <button className="mt-4 w-fit inline-flex items-center justify-center border border-green-600 text-green-700 hover:bg-green-50 font-medium px-4 py-2 rounded-md text-sm">
+                Explore Top Clinics
+                <span className="ml-2">→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Online Clinic Dashboard Section */}
+      <section className="bg-[#71809633] text-white py-12 sm:pt-12 sm:pb-0 lg:pt-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 sm:gap-6">
+          <div className="w-full lg:w-[585px] ml-auto px-5  sm:pl-10 sm:pr-0 lg:pl-5 flex flex-col justify-center space-y-6">
+            <h2 className="text-[27px] sm:text-[32px] md:text-4xl font-bold text-[#33373F]">
+              Own a medical aesthetics clinic? <br /> Bring it online.
+            </h2>
+            <p className="text-[#33373F] text-md leading-[22px] max-w-lg">
+              We’ll help you grow your practice (and attract more patients) with
+              our easy-to-use booking platform for dermatology, plastic surgery,
+              and aesthetic treatments.
+            </p>
+            <button className="w-fit bg-[#2D3748] text-white px-6 py-3 rounded-[12px] font-medium hover:bg-gray-800 transition">
+              Partner With Us
+            </button>
+          </div>
+          <div className="w-0 sm:w-full">
+            <img
+              src={OnlineClinicHome}
+              alt="Online Clinic Dashboard"
+              className="w-full"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Browse By Treatment & Download our App*/}
+      <section className="pt-16 bg-gray-50 relative overflow-hidden">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Browse By Treatment */}
+          <div className="pb-12">
+            {/* Section Title */}
+            <div className="text-center mb-12">
+              <h2 className="text-[#33373F] text-2xl font-semibold">
+                Browse by treatment
+              </h2>
+            </div>
+
+            {/* Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+              {[
+                { icon: DermaIcon, title: "Dermatology" },
+                { icon: CosmeticIcon, title: "Cosmetic Surgery" },
+                { icon: BodyIcon, title: "Body Contouring" },
+                { icon: HairIcon, title: "Hair Treatments" },
+                { icon: DentistIcon, title: "Dental Aesthetics" },
+                { icon: BodyIcon, title: "Body Contouring" },
+              ].map((item, idx) => (
+                <div key={idx} className="space-y-3">
+                  {/* Title with Icon */}
+                  <div className="flex items-center gap-3 border-b border-gray-200 pb-2">
+                    <div className="size-[56px] bg-[#CBFF38] rounded-sm flex items-center justify-center">
+                      <img src={item.icon} alt={item.title} className="p-1" />
+                    </div>
+                    <h3 className="text-gray-800 font-semibold">
+                      {item.title}
+                    </h3>
+                  </div>
+                  {/* Cities */}
+                  <ul className="space-y-1 text-gray-700">
+                    {[
+                      "London",
+                      "Edinburgh",
+                      "Leeds",
+                      "Liverpool",
+                      "Bristol",
+                      "Glasgow",
+                      "Manchester",
+                    ].map((city, i) => (
+                      <li key={i}>{city}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            {/* Button */}
+            <div className="text-center mt-12">
+              <button className="border border-lime-600 text-lime-700 px-6 py-2 rounded-md text-sm font-medium hover:bg-lime-50 transition flex items-center justify-center mx-auto gap-2">
+                View More <span className="text-lg">→</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Download App */}
+          <div className="pt-12 grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
+            {/* Left Content */}
+            <div className="text-center lg:text-left">
+              <h2 className="text-2xl lg:text-3xl font-semibold text-[#33373F] mb-2">
+                Download our app
+              </h2>
+              <p className="text-[#33373F] mb-10 max-w-md mx-auto lg:mx-0">
+                Book treatments and find the best clinic near you with a quick
+                swipe or two.
+              </p>
+
+              {/* Store Buttons */}
+              <div className="flex justify-center lg:justify-start gap-4">
+                <a
+                  href="#"
+                  className="bg-black text-white flex items-center rounded-[8px] px-4 py-2 gap-2"
+                  aria-label="Download on App Store"
+                >
+                  <FaApple size={28} />
+                  <span className="text-left leading-tight text-[10px] tracking-wider">
+                    Download on the <br />
+                    <span className="font-semibold text-[20px]">App Store</span>
+                  </span>
+                </a>
+                <a
+                  href="#"
+                  className="bg-black text-white flex items-center rounded-[8px] px-4 py-2 gap-2"
+                  aria-label="Get it on Google Play"
+                >
+                  <FaGooglePlay size={26} />
+                  <span className="text-left leading-tight text-[10px] tracking-wider">
+                    GET IT ON <br />
+                    <span className="font-semibold text-[20px]">Google Play</span>
+                  </span>
+                </a>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
 
-      {/* Categories Section */}
-      <section className={sectionStyle}>
-        <div className={containerStyle}>
-          <div className={sectionHeaderStyle}>
-            <h2 className={sectionTitleStyle}>Popular Categories</h2>
-            <p className={sectionSubtitleStyle}>
-              Explore our wide range of beauty and wellness services
-            </p>
-          </div>
-          
-          <div className={categoriesGridStyle}>
-            {categories.map((category) => (
-              <Card
-                key={category.id}
-                variant="default"
-                hoverable
-                className={categoryCardStyle}
-                onClick={() => handleCategoryClick(category.id)}
-              >
-                <div className={categoryIconStyle}>
-                  <span style={{ fontSize: '24px' }}>{category.icon}</span>
-                </div>
-                <h3 className={categoryTitleStyle}>{category.name}</h3>
-                <p className={categoryDescriptionStyle}>{category.description}</p>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Clinics Section */}
-      <section className={sectionStyle}>
-        <div className={containerStyle}>
-          <div className={sectionHeaderStyle}>
-            <h2 className={sectionTitleStyle}>Featured Clinics</h2>
-            <p className={sectionSubtitleStyle}>
-              Discover top-rated medical aesthetic clinics and dermatology centers
-            </p>
-          </div>
-          
-          <div className={clinicsGridStyle}>
-            {featuredClinics.map((clinic) => (
-              <ClinicCard
-                key={clinic.id}
-                clinic={clinic}
-                onSelect={handleClinicSelect}
+            {/* Right Content - Mobile Image */}
+            <div className="flex justify-center lg:justify-end">
+              <img
+                src={HomeMobAppImg}
+                alt="Mobile App"
+                className="w-fit"
               />
-            ))}
-          </div>
-          
-          {featuredClinics.length > 0 && (
-            <div style={{ textAlign: 'center', marginTop: 'var(--spacing-2xl)' }}>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => navigate('/search')}
-              >
-                View All Clinics
-              </Button>
             </div>
-          )}
+          </div>
         </div>
-      </section>
 
-      {/* Stats Section */}
-      <section className={statsStyle}>
-        <div className={containerStyle}>
-          <div className={statsGridStyle}>
-            <div>
-              <div className={statNumberStyle}>25,000+</div>
-              <div className={statLabelStyle}>Happy Patients</div>
-            </div>
-            <div>
-              <div className={statNumberStyle}>1,200+</div>
-              <div className={statLabelStyle}>Certified Clinics</div>
-            </div>
-            <div>
-              <div className={statNumberStyle}>150+</div>
-              <div className={statLabelStyle}>Medical Procedures</div>
-            </div>
-            <div>
-              <div className={statNumberStyle}>4.9</div>
-              <div className={statLabelStyle}>Patient Satisfaction</div>
-            </div>
-          </div>
-        </div>
+        {/* Background Layered SVG only at bottom */}
+        <img
+          src={LayeredBG}
+          alt="Background"
+          className="absolute bottom-0 left-0 w-full pointer-events-none select-none"
+        />
       </section>
     </div>
   );

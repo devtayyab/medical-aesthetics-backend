@@ -21,7 +21,7 @@ export class CreateAppointmentDto {
 
   @ApiProperty()
   @IsUUID()
-  providerId: string;
+  providerId?: string;
 
   @ApiProperty()
   @IsUUID()

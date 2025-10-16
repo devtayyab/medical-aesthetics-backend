@@ -15,7 +15,8 @@ import { AvailabilityService } from './availability.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { HoldSlotDto } from './dto/hold-slot.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
+import { AppointmentStatus } from '@/common/enums/appointment-status.enum';
+import { Public } from '@/common/decorators/public.decorator';
 
 @ApiTags('Bookings')
 @Controller()
@@ -27,8 +28,9 @@ export class BookingsController {
     private readonly availabilityService: AvailabilityService,
   ) {}
 
+  @Public()
   @Get('availability')
-  @ApiOperation({ summary: 'Get available slots' })
+  @ApiOperation({ summary: 'Get available slots (public)' })
   @ApiQuery({ name: 'clinicId', required: true })
   @ApiQuery({ name: 'serviceId', required: true })
   @ApiQuery({ name: 'providerId', required: true })
@@ -37,7 +39,7 @@ export class BookingsController {
     return this.availabilityService.getAvailableSlots(
       query.clinicId,
       query.serviceId,
-      query.providerId,
+      query.providerId || null,
       query.date,
     );
   }

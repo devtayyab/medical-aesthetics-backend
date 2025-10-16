@@ -10,10 +10,23 @@ import { UsersModule } from '../users/users.module';
 import { ClinicsModule } from '../clinics/clinics.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { User } from '../users/entities/user.entity';
+import { Clinic } from '../clinics/entities/clinic.entity';
+import { Appointment } from '../bookings/entities/appointment.entity';
+import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Tag, Offer, Reward, PlatformSettings]),
+    TypeOrmModule.forFeature([
+      Tag,
+      Offer,
+      Reward,
+      PlatformSettings,
+      User,
+      Clinic,
+      Appointment,
+      LoyaltyLedger,
+    ]),
     UsersModule,
     ClinicsModule,
     BookingsModule,

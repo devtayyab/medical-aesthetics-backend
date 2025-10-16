@@ -1,7 +1,8 @@
-import React from 'react';
-import { css } from '@emotion/css';
+import React from "react";
+import { css } from "@emotion/css";
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   helperText?: string;
@@ -41,19 +42,19 @@ const inputStyle = css`
   transition: all var(--transition-fast);
   background-color: var(--color-white);
   color: var(--color-medical-text);
-  
+
   &:focus {
     outline: none;
-    border-color: var(--color-primary);
+    border-color:cornflowerblue;
     box-shadow: 0 0 0 3px rgba(124, 179, 66, 0.1);
   }
-  
+
   &:disabled {
     background-color: var(--color-medical-bg);
     color: var(--color-medical-text-light);
     cursor: not-allowed;
   }
-  
+
   &::placeholder {
     color: var(--color-medical-text-light);
   }
@@ -69,7 +70,7 @@ const inputWithRightIconStyle = css`
 
 const inputErrorStyle = css`
   border-color: var(--color-error);
-  
+
   &:focus {
     border-color: var(--color-error);
     box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
@@ -115,24 +116,28 @@ export const Input: React.FC<InputProps> = ({
   ...props
 }) => {
   return (
-    <div className={`${containerStyle} ${fullWidth ? fullWidthStyle : ''} ${className || ''}`}>
+    <div
+      className={`${containerStyle} ${fullWidth ? fullWidthStyle : ""} ${className || ""}`}
+    >
       {label && <label className={labelStyle}>{label}</label>}
-      
+
       <div className={inputWrapperStyle}>
         {leftIcon && <div className={leftIconStyle}>{leftIcon}</div>}
-        
+
         <input
-          className={`${inputStyle} ${leftIcon ? inputWithLeftIconStyle : ''} ${
-            rightIcon ? inputWithRightIconStyle : ''
-          } ${error ? inputErrorStyle : ''}`}
+          className={`p-3 rounded-[12px] bg-white ${inputStyle} ${leftIcon ? inputWithLeftIconStyle : ""} ${
+            rightIcon ? inputWithRightIconStyle : ""
+          } ${error ? inputErrorStyle : ""}`}
           {...props}
         />
-        
+
         {rightIcon && <div className={rightIconStyle}>{rightIcon}</div>}
       </div>
-      
+
       {error && <span className={errorTextStyle}>{error}</span>}
-      {!error && helperText && <span className={helperTextStyle}>{helperText}</span>}
+      {!error && helperText && (
+        <span className={helperTextStyle}>{helperText}</span>
+      )}
     </div>
   );
 };

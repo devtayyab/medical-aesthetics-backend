@@ -1,4 +1,8 @@
 /* Reset and base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 *,
 *::before,
 *::after {
@@ -14,10 +18,12 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
+  scroll-behavior: smooth;
 }
 
 body {
-  background-color: #fafafa;
+  /* background-color: #fafafa; */
+  background-color: #F5F6F7;
   color: #333;
   font-size: 16px;
 }

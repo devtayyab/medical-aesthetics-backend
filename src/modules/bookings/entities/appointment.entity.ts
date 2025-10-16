@@ -24,7 +24,7 @@ export class Appointment {
   serviceId: string;
 
   @Column()
-  providerId: string; // Doctor/Practitioner
+  providerId?: string; // Doctor/Practitioner
 
   @Column()
   clientId: string;

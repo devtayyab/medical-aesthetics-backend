@@ -71,11 +71,22 @@ export const Register: React.FC = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [role, setRole] = useState("client");
+  
+  // Clinic fields (only for clinic_owner)
+  const [clinicName, setClinicName] = useState("");
+  const [clinicPhone, setClinicPhone] = useState("");
+  const [clinicEmail, setClinicEmail] = useState("");
+  const [clinicAddress, setClinicAddress] = useState("");
+  const [clinicCity, setClinicCity] = useState("");
+  
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [firstNameError, setFirstNameError] = useState("");
   const [lastNameError, setLastNameError] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [roleError, setRoleError] = useState("");
+  const [clinicNameError, setClinicNameError] = useState("");
 
   const validateForm = () => {
     let isValid = true;
@@ -84,6 +95,8 @@ export const Register: React.FC = () => {
     setFirstNameError("");
     setLastNameError("");
     setPhoneError("");
+    setRoleError("");
+    setClinicNameError("");
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEmailError("Please enter a valid email address");
@@ -105,6 +118,15 @@ export const Register: React.FC = () => {
       setPhoneError("Please enter a valid phone number");
       isValid = false;
     }
+    if (!role) {
+      setRoleError("Please select a role");
+      isValid = false;
+    }
+    // Validate clinic fields if role is clinic_owner
+    if (role === "clinic_owner" && !clinicName) {
+      setClinicNameError("Clinic name is required for clinic owners");
+      isValid = false;
+    }
     return isValid;
   };
 
@@ -113,16 +135,45 @@ export const Register: React.FC = () => {
     if (!validateForm()) return;
 
     try {
-      await dispatch(
-        register({
-          email,
-          password,
-          firstName,
-          lastName,
-          phone: phone || undefined,
-        })
-      ).unwrap();
-      navigate("/");
+      const userData: any = {
+        email,
+        password,
+        firstName,
+        lastName,
+        phone: phone || undefined,
+        role,
+      };
+
+      // Add clinic data if role is clinic_owner
+      if (role === "clinic_owner") {
+        userData.clinicData = {
+          name: clinicName,
+          phone: clinicPhone || phone,
+          email: clinicEmail || email,
+          address: {
+            street: clinicAddress || "",
+            city: clinicCity || "",
+            state: "",
+            zipCode: "",
+            country: "",
+          },
+        };
+      }
+
+      const result = await dispatch(register(userData)).unwrap();
+      
+      // Redirect based on role
+      const clinicRoles = ['clinic_owner', 'doctor', 'secretariat', 'salesperson'];
+      
+      if (clinicRoles.includes(result.user.role)) {
+        navigate("/clinic/dashboard", { replace: true });
+      } else if (result.user.role === 'admin') {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (result.user.role === 'client') {
+        navigate("/my-account", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (err) {
       // Error handled in Redux
     }
@@ -187,11 +238,106 @@ export const Register: React.FC = () => {
             />
             {phoneError && <p className={errorStyle}>{phoneError}</p>}
           </div>
+          
+          {/* Role Selection */}
+          <div>
+            <label style={{ display: "block", marginBottom: "8px", fontWeight: 500 }}>
+              Register as <span style={{ color: "red" }}>*</span>
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "8px",
+                border: "1px solid #e5e7eb",
+                fontSize: "15px",
+                backgroundColor: "white",
+              }}
+            >
+              <option value="client">Client (Book Appointments)</option>
+              <option value="clinic_owner">Clinic Owner (Manage Clinic)</option>
+              <option value="doctor">Doctor (Provide Services)</option>
+              <option value="secretariat">Secretariat (Admin Support)</option>
+              <option value="salesperson">Salesperson (CRM & Sales)</option>
+            </select>
+            {roleError && <p className={errorStyle}>{roleError}</p>}
+          </div>
+
+          {/* Clinic Fields - Only show for clinic_owner */}
+          {role === "clinic_owner" && (
+            <div style={{ 
+              padding: "16px", 
+              backgroundColor: "#f3f4f6", 
+              borderRadius: "8px",
+              marginTop: "8px"
+            }}>
+              <h3 style={{ 
+                fontSize: "16px", 
+                fontWeight: 600, 
+                marginBottom: "12px",
+                color: "#374151"
+              }}>
+                Clinic Information
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div>
+                  <Input
+                    placeholder="Clinic Name *"
+                    value={clinicName}
+                    onChange={(e) => setClinicName(e.target.value)}
+                    fullWidth
+                  />
+                  {clinicNameError && <p className={errorStyle}>{clinicNameError}</p>}
+                </div>
+                <div>
+                  <Input
+                    placeholder="Clinic Phone (optional)"
+                    value={clinicPhone}
+                    onChange={(e) => setClinicPhone(e.target.value)}
+                    fullWidth
+                  />
+                </div>
+                <div>
+                  <Input
+                    type="email"
+                    placeholder="Clinic Email (optional)"
+                    value={clinicEmail}
+                    onChange={(e) => setClinicEmail(e.target.value)}
+                    fullWidth
+                  />
+                </div>
+                <div>
+                  <Input
+                    placeholder="Clinic Address (optional)"
+                    value={clinicAddress}
+                    onChange={(e) => setClinicAddress(e.target.value)}
+                    fullWidth
+                  />
+                </div>
+                <div>
+                  <Input
+                    placeholder="City (optional)"
+                    value={clinicCity}
+                    onChange={(e) => setClinicCity(e.target.value)}
+                    fullWidth
+                  />
+                </div>
+              </div>
+            </div>
+          )}
           <Button
             type="submit"
             fullWidth
             disabled={isLoading}
-            style={{ backgroundColor: "var(--color-primary)" }}
+            style={{
+              color: "#33373F",
+              backgroundColor: "#CBFF38",
+              paddingTop: "12px",
+              paddingBottom: "12px",
+            }}
+            className="mt-5"
           >
             {isLoading ? "Registering..." : "Register"}
           </Button>

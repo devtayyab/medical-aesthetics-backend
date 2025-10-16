@@ -1,0 +1,11 @@
+// Export all clinic pages for easy importing
+export { default as ClinicLayout } from './ClinicLayout';
+export { default as ClinicDashboard } from './ClinicDashboard';
+export { default as AppointmentsPage } from './AppointmentsPage';
+export { default as ServicesPage } from './ServicesPage';
+export { default as AvailabilityPage } from './AvailabilityPage';
+export { default as AnalyticsPage } from './AnalyticsPage';
+export { default as ClientsPage } from './ClientsPage';
+export { default as ReviewsPage } from './ReviewsPage';
+export { default as NotificationsPage } from './NotificationsPage';
+export { default as SettingsPage } from './SettingsPage';

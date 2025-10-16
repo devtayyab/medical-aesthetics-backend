@@ -158,10 +158,10 @@ export class AvailabilitySettingsDto {
     };
   };
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
-  @IsString()
+  @IsString({ each: true })
   blockedDates?: string[];
 
   @ApiPropertyOptional()

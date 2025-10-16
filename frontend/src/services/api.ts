@@ -1,48 +1,98 @@
-import axios, { AxiosError } from 'axios';
-import { store } from '@/store';
-import { setTokens, logout } from '@/store/slices/authSlice';
-import type { User, Clinic, Service, Appointment, TimeSlot, LoyaltyBalance, Notification } from '@/types';
+import axios, { AxiosError } from "axios";
+import { store } from "@/store";
+import { setTokens, logout } from "@/store/slices/authSlice";
+import type { User, Lead, Task } from "@/types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
-// Request interceptor to add auth token
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+const subscribeTokenRefresh = (cb: (token: string) => void) => {
+  refreshSubscribers.push(cb);
+};
+
+const onRefreshed = (token: string) => {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+};
+
 api.interceptors.request.use((config) => {
   const state = store.getState();
-  const token = state.auth.accessToken || localStorage.getItem('accessToken');
+  const token = state.auth.accessToken;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Response interceptor to handle token refresh
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as any;
     if (error.response?.status === 401 && !originalRequest._retry) {
+      console.log(
+        "401 detected, isRefreshing:",
+        isRefreshing,
+        "originalRequest:",
+        {
+          url: originalRequest.url,
+          method: originalRequest.method,
+          headers: originalRequest.headers,
+        }
+      );
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
       const state = store.getState();
-      const refreshToken = state.auth.refreshToken || localStorage.getItem('refreshToken');
+      const refreshToken =
+        state.auth.refreshToken || localStorage.getItem("refreshToken");
       if (refreshToken) {
         try {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken,
+          });
           const { accessToken, refreshToken: newRefreshToken } = response.data;
-          store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken }));
+          store.dispatch(
+            setTokens({ accessToken, refreshToken: newRefreshToken })
+          );
+          onRefreshed(accessToken);
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
-        } catch (refreshError) {
+        } catch (refreshError: any) {
+          console.error("Refresh failed:", {
+            message: refreshError.response?.data || refreshError.message,
+            status: refreshError.response?.status,
+          });
           store.dispatch(logout());
-          window.location.href = '/login';
+          window.location.href = "/login";
           return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
         }
+      } else {
+        store.dispatch(logout());
+        window.location.href = "/login";
       }
     }
     return Promise.reject(error);
@@ -51,20 +101,28 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
-  
+    api.post("/auth/login", { email, password }),
   register: (userData: {
     email: string;
     password: string;
     firstName: string;
     lastName: string;
     phone?: string;
-  }) => api.post('/auth/register', userData),
-  
-  logout: () => api.post('/auth/logout'),
-  
+  }) => api.post("/auth/register", userData),
+  logout: () => {
+    const state = store.getState();
+    const token = state.auth.accessToken;
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    return api.post("/auth/logout", {}, { headers }).catch((error) => {
+      console.log(
+        "Logout API failed, clearing state:",
+        error.response?.data || error.message
+      );
+      return Promise.resolve({ data: { message: "Logged out" } });
+    });
+  },
   refreshToken: (refreshToken: string) =>
-    api.post('/auth/refresh', { refreshToken }),
+    axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }),
 };
 
 export const clinicsAPI = {
@@ -74,35 +132,30 @@ export const clinicsAPI = {
     search?: string;
     limit?: number;
     offset?: number;
-  }) => api.get('/clinics', { params }),
-  
+  }) => api.get("/clinics", { params }),
   getById: (id: string) => api.get(`/clinics/${id}`),
-  
   getServices: (clinicId: string) => api.get(`/clinics/${clinicId}/services`),
-  
-  getFeatured: () => api.get('/clinics/featured'),
+  getFeatured: () => api.get("/clinics/featured"),
 };
 
 export const bookingAPI = {
   getAvailability: (params: {
     clinicId: string;
     serviceId: string;
-    providerId: string;
+    providerId?: string;
     date: string;
-  }) => api.get('/availability', { params }),
-  
+  }) => api.get("/availability", { params }),
   holdSlot: (data: {
     clinicId: string;
     serviceId: string;
-    providerId: string;
+    providerId?: string;
     startTime: string;
     endTime: string;
-  }) => api.post('/appointments/hold', data),
-  
+  }) => api.post("/appointments/hold", data),
   createAppointment: (data: {
     clinicId: string;
     serviceId: string;
-    providerId: string;
+    providerId?: string;
     clientId: string;
     startTime: string;
     endTime: string;
@@ -110,30 +163,21 @@ export const bookingAPI = {
     paymentMethod?: string;
     advancePaymentAmount?: number;
     holdId?: string;
-  }) => api.post('/appointments', data),
-  
-  getUserAppointments: () => api.get('/appointments'),
-  
+  }) => api.post("/appointments", data),
+  getUserAppointments: () => api.get("/appointments"),
   getAppointment: (id: string) => api.get(`/appointments/${id}`),
-  
   reschedule: (id: string, startTime: string, endTime: string) =>
     api.patch(`/appointments/${id}/reschedule`, { startTime, endTime }),
-  
   cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
 };
 
 export const userAPI = {
-  getProfile: () => api.get('/users/me'),
-  
-  updateProfile: (data: Partial<User>) => api.patch('/users/me/profile', data),
-  
-  exportData: () => api.get('/users/me/export'),
-  
-  deleteData: () => api.post('/users/me/delete'),
-  
-  // New endpoint to fetch all users (for admin use)
+  getProfile: () => api.get("/users/me"),
+  updateProfile: (data: Partial<User>) => api.patch("/users/me/profile", data),
+  exportData: () => api.get("/users/me/export"),
+  deleteData: () => api.post("/users/me/delete"),
   getAllUsers: (params: { limit?: number; offset?: number; role?: string }) =>
-    api.get('/users', { params }),
+    api.get("/users", { params }),
 };
 
 export const loyaltyAPI = {
@@ -141,29 +185,68 @@ export const loyaltyAPI = {
     const params = clinicId ? { clinicId } : {};
     return api.get(`/loyalty/${clientId}`, { params });
   },
-  
   getHistory: (clientId: string, clinicId?: string) => {
     const params = clinicId ? { clinicId } : {};
     return api.get(`/loyalty/${clientId}/history`, { params });
   },
-  
   redeemPoints: (data: {
     clientId: string;
     clinicId: string;
     points: number;
     description: string;
-  }) => api.post('/loyalty/redeem', data),
+  }) => api.post("/loyalty/redeem", data),
 };
 
 export const notificationsAPI = {
   getNotifications: (limit?: number) => {
     const params = limit ? { limit } : {};
-    return api.get('/notifications', { params });
+    return api.get("/notifications", { params });
   },
-  
-  getUnreadCount: () => api.get('/notifications/unread-count'),
-  
+  getUnreadCount: () => api.get("/notifications/unread-count"),
   markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+};
+
+export const crmAPI = {
+  createLead: (data: {
+    name: string;
+    email: string;
+    phone?: string;
+    tags?: string[];
+    status: string;
+  }) => api.post("/crm/leads", data),
+  getLeads: () => api.get("/crm/leads"),
+  getLead: (id: string) => api.get(`/crm/leads/${id}`),
+  updateLead: (id: string, data: Partial<Lead>) =>
+    api.patch(`/crm/leads/${id}`, data),
+  logAction: (customerId: string, data: { type: string; notes: string }) =>
+    api.post("/crm/actions", { customerId, ...data }),
+  createTask: (data: {
+    customerId: string;
+    description: string;
+    type: string;
+    dueDate: string;
+    assignedTo: string;
+  }) => api.post("/crm/tasks", data),
+  getTasks: (salespersonId: string) => api.get(`/crm/tasks/${salespersonId}`),
+  updateTask: (id: string, data: Partial<Task>) =>
+    api.patch(`/crm/tasks/${id}`, data),
+  scheduleRecurring: (data: {
+    customerId: string;
+    serviceId: string;
+    frequency: string;
+    startDate: string;
+  }) => api.post("/crm/recurring", data),
+};
+
+export const adminAPI = {
+  getMetrics: () => api.get("/admin/metrics"),
+  getUsers: () => api.get("/admin/users"),
+  updateRole: (id: string, role: string) =>
+    api.patch(`/admin/users/${id}/role`, { role }),
+  updateLoyalty: (data: {
+    tiers: { name: string; points: number; rewards: string[] }[];
+  }) => api.patch("/admin/loyalty", data),
+  getLogs: () => api.get("/admin/monitor"),
 };
 
 export default api;

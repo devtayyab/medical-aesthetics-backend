@@ -62,7 +62,7 @@ export interface Appointment {
   id: string;
   clinicId: string;
   serviceId: string;
-  providerId: string;
+  providerId?: string;
   clientId: string;
   startTime: string;
   endTime: string;
@@ -90,8 +90,10 @@ export interface TimeSlot {
 export interface LoyaltyBalance {
   clientId: string;
   clinicId?: string;
-  totalPoints: number;
+  // totalPoints: number;
+  points: number;
   tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+  rewards: string[];
 }
 
 export interface Notification {
@@ -124,4 +126,56 @@ export interface SearchFilters {
   rating?: number;
   distance?: number;
   sortBy?: 'rating' | 'price' | 'distance' | 'popularity';
+}
+
+export interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+  tags?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Task {
+  id: string;
+  description: string;
+  type: 'phone' | 'email' | 'meeting';
+  dueDate: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  assignedTo: string;
+  customerId?: string;
+  createdAt: string;
+}
+
+export interface ActionLog {
+  id: string;
+  customerId: string;
+  type: 'call' | 'email' | 'note' | 'meeting';
+  notes: string;
+  createdAt: string;
+}
+
+export interface LoyaltyTier {
+  name: string;
+  points: number;
+  rewards: string[];
+}
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  action: string;
+  timestamp: string;
+  details?: any;
+}
+
+export interface ConsentRecord {
+  id: string;
+  userId: string;
+  type: 'terms' | 'privacy' | 'marketing';
+  granted: boolean;
+  timestamp: string;
 }

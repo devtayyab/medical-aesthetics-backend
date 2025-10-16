@@ -71,6 +71,11 @@ export const Login: React.FC = () => {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  if (isAuthenticated) {
+    navigate("/", { replace: true });
+    return null;
+  }
+
   const validateForm = () => {
     let isValid = true;
     setEmailError("");
@@ -92,17 +97,24 @@ export const Login: React.FC = () => {
     if (!validateForm()) return;
 
     try {
-      await dispatch(login({ email, password })).unwrap();
-      navigate("/");
+      const result = await dispatch(login({ email, password })).unwrap();
+      
+      // Redirect based on user role
+      const clinicRoles = ['clinic_owner', 'doctor', 'secretariat', 'salesperson'];
+      
+      if (clinicRoles.includes(result.user.role)) {
+        navigate("/clinic/dashboard", { replace: true });
+      } else if (result.user.role === 'admin') {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (result.user.role === 'client') {
+        navigate("/my-account", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (err) {
-      // Error handled in Redux
+      console.log("Login error:", err);
     }
   };
-
-  if (isAuthenticated) {
-    navigate("/");
-    return null;
-  }
 
   return (
     <div className={loginContainerStyle}>
@@ -111,22 +123,33 @@ export const Login: React.FC = () => {
         {error && <p className={errorStyle}>{error}</p>}
         <form onSubmit={handleSubmit} className={formStyle}>
           <div>
+            <label htmlFor="email">Email</label>
             <Input
               type="email"
-              placeholder="Email"
+              placeholder="abc@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               fullWidth
+              className="bg-white text-[15px] mt-1"
             />
             {emailError && <p className={errorStyle}>{emailError}</p>}
           </div>
           <div>
+            <div className="flex justify-between">
+            <label htmlFor="password">Password</label>
+           
+            <Link to="/forgot-password" className={linkStyle}  style={{ color: "cornflowerblue" }} >
+              Forgot?
+            </Link>
+            </div>
+            
             <Input
               type="password"
-              placeholder="Password"
+              placeholder="Enter Your Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               fullWidth
+              className="bg-white text-[15px] mt-1"
             />
             {passwordError && <p className={errorStyle}>{passwordError}</p>}
           </div>
@@ -134,7 +157,13 @@ export const Login: React.FC = () => {
             type="submit"
             fullWidth
             disabled={isLoading}
-            style={{ backgroundColor: "var(--color-primary)" }}
+            style={{
+              color: "#33373F",
+              backgroundColor: "#CBFF38",
+              paddingTop: "12px",
+              paddingBottom: "12px",
+            }}
+            className="mt-5"
           >
             {isLoading ? "Logging in..." : "Login"}
           </Button>
@@ -144,7 +173,7 @@ export const Login: React.FC = () => {
           <Link
             to="/register"
             className={linkStyle}
-            style={{ color: "#1570EF" }}
+            style={{ color: "cornflowerblue" }}
           >
             Sign Up
           </Link>
