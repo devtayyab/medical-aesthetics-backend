@@ -42,8 +42,6 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         AuditLog,
         ConsentRecord,
       ],
-      synchronize: this.configService.get('NODE_ENV') !== 'production',
-      logging: this.configService.get('NODE_ENV') === 'development',
       ssl: this.configService.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
       migrations: ['dist/migrations/*.js'],
       migrationsRun: true,
