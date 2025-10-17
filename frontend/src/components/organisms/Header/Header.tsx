@@ -254,15 +254,15 @@ export const Header: React.FC = () => {
               <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
                 <li
                   className={`cursor-pointer ${location.pathname === "/"
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
                     }`}
                 >
                   <Link
                     to="/"
                     className={`no-underline ${location.pathname === "/"
-                        ? "text-[#CBFF38]"
-                        : "text-white"
+                      ? "text-[#CBFF38]"
+                      : "text-white"
                       }`}
                   >
                     Home
@@ -270,15 +270,15 @@ export const Header: React.FC = () => {
                 </li>
                 <li
                   className={`cursor-pointer ${location.pathname.startsWith("/search")
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
                     }`}
                 >
                   <Link
                     to="/search"
                     className={`no-underline ${location.pathname.startsWith("/search")
-                        ? "text-[#CBFF38]"
-                        : "text-white"
+                      ? "text-[#CBFF38]"
+                      : "text-white"
                       }`}
                   >
                     Clinics

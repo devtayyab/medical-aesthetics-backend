@@ -61,10 +61,9 @@ const ClinicLayout: React.FC = () => {
                 <NavLink
                   to={item.path}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-[#CBFF38] text-[#33373F] font-medium'
-                        : 'text-gray-700 hover:bg-lime-200'
+                    `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                      ? 'bg-[#CBFF38] text-[#33373F] font-medium'
+                      : 'text-gray-700 hover:bg-lime-200'
                     }`
                   }
                 >
