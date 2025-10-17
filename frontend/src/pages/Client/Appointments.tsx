@@ -8,6 +8,11 @@ import { RootState, AppDispatch } from "@/store";
 import type { Appointment } from "@/types";
 import { Card } from "@/components/atoms/Card/Card";
 import LayeredBG from "@/assets/LayeredBg.svg";
+import { Link } from "react-router-dom";
+import { FaChevronRight } from "react-icons/fa6";
+import EmptyIcon from "@/assets/Icons/Rectangle.png";
+import { Button } from "@/components/atoms/Button/Button";
+import { useNavigate } from "react-router-dom";
 
 const container = css`
   min-height: 100vh;
@@ -91,8 +96,7 @@ const statusBadge = css`
 const emptyState = css`
   text-align: center;
   color: #717171;
-  font-size: 18px;
-  margin-top: 40px;
+  font-size: 16px;
 `;
 
 export const Appointments: React.FC = () => {
@@ -125,12 +129,35 @@ export const Appointments: React.FC = () => {
   return (
     <section className={container}>
       <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8">
-        <h2 className={heading}>My Appointments</h2>
+
+        <div className="flex items-center text-[#33373F] text-[15px] font-medium mb-1">
+          <Link
+            to="/my-account"
+            className="hover:text-[#405C0B] transition-colors"
+          >
+            Account
+          </Link>
+          <span className="px-3">
+            <FaChevronRight size={11} className="pt-[1px] text-[#767676]" />
+          </span>
+          Booking
+        </div>
+
+        {/* Title */}
+        <h2 className="text-[#33373F] text-[30px] font-semibold mb-8">
+          Bookings
+        </h2>
+
 
         {appointments.length === 0 ? (
-          <p className={emptyState}>
-            You currently have no appointments booked.
-          </p>
+          <div className="flex flex-col items-center justify-center">
+            <img src={EmptyIcon} alt="" className="mb-6" />
+            <p className="text-[#33373F] text-[22px] font-semibold text-center mb-2">You have no upcoming bookings</p>
+            <p className={emptyState}>
+              Get treated. Why not book something now?
+            </p>
+          </div>
+
         ) : (
           <div className={cardGrid}>
             {appointments.map((apt: Appointment) => (
