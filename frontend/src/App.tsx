@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -83,12 +83,18 @@ function AppContent() {
   );
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
 
+  const restoreStartedRef = useRef(false);
+
   useEffect(() => {
-    // Always attempt to restore session on initial load, regardless of path
-    if (!hasRestoredSession) {
+    // Attempt to restore session once on initial load. React StrictMode in
+    // development mounts components twice; guard with a ref so we don't
+    // dispatch duplicate restoreSession actions which would trigger two
+    // refresh requests.
+    if (!restoreStartedRef.current) {
+      restoreStartedRef.current = true;
       dispatch(restoreSession()).finally(() => setHasRestoredSession(true));
     }
-  }, [dispatch, hasRestoredSession]);
+  }, [dispatch]);
 
   // Only redirect to /my-account from /login or /register after session is restored
   useEffect(() => {
@@ -157,7 +163,7 @@ function AppContent() {
           {/* Client Routes - Public clinic browsing */}
           <Route path="/search" element={<Search />} />
           <Route path="/clinic/:id" element={<ClinicDetails />} />
-          
+
           {/* Protected booking route - requires login */}
           <Route
             path="/appointment/booking"
@@ -251,12 +257,22 @@ function AppContent() {
           <Route
             path="/clinic"
             element={
-              <ProtectedLayout allowedRoles={["clinic_owner", "doctor", "secretariat", "salesperson"]}>
+              <ProtectedLayout
+                allowedRoles={[
+                  "clinic_owner",
+                  "doctor",
+                  "secretariat",
+                  "salesperson",
+                ]}
+              >
                 <ClinicLayout />
               </ProtectedLayout>
             }
           >
-            <Route index element={<Navigate to="/clinic/dashboard" replace />} />
+            <Route
+              index
+              element={<Navigate to="/clinic/dashboard" replace />}
+            />
             <Route path="dashboard" element={<ClinicDashboard />} />
             <Route path="appointments" element={<AppointmentsPage />} />
             <Route
@@ -309,7 +325,7 @@ function AppContent() {
               }
             />
           </Route>
-          
+
           {/* Old Clinic Routes - Keep for backward compatibility */}
           <Route
             path="/clinic/profile"
