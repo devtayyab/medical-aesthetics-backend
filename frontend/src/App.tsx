@@ -8,8 +8,9 @@ import {
   Link,
   Navigate,
 } from "react-router-dom";
+import { PersistGate } from 'redux-persist/integration/react';
 import { Provider, useDispatch, useSelector } from "react-redux";
-import { store, AppDispatch } from "@/store";
+import { store, persistor, AppDispatch } from "@/store";
 import { restoreSession } from "@/store/slices/authSlice";
 import { Header } from "@/components/organisms/Header/Header";
 import { Footer } from "@/components/organisms/Footer/Footer";
@@ -78,17 +79,41 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { isLoading, isAuthenticated, user, refreshToken } = useSelector(
+  const { isLoading, isAuthenticated } = useSelector(
     (state: RootState) => state.auth
   );
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
+  const isRestoring = React.useRef(false); // Prevent double execution in React 18 StrictMode
 
   useEffect(() => {
-    // Always attempt to restore session on initial load, regardless of path
-    if (!hasRestoredSession) {
-      dispatch(restoreSession()).finally(() => setHasRestoredSession(true));
+    // Skip if already restoring or already restored
+    if (hasRestoredSession || isRestoring.current) {
+      return;
     }
+
+    // Mark as restoring
+    isRestoring.current = true;
+    console.log("🚀 Starting session restore...");
+
+    dispatch(restoreSession())
+      .unwrap()
+      .then((result) => {
+        console.log("✅ Session restored successfully:", result);
+      })
+      .catch((error) => {
+        console.log("❌ Session restore failed:", error);
+      })
+      .finally(() => {
+        console.log("✅ Session restore attempt finished.");
+        console.log("📦 Final tokens:", {
+          accessToken: localStorage.getItem("accessToken")?.substring(0, 30) + "...",
+          refreshToken: localStorage.getItem("refreshToken")?.substring(0, 30) + "...",
+        });
+        setHasRestoredSession(true);
+        isRestoring.current = false;
+      });
   }, [dispatch, hasRestoredSession]);
+
 
   // Only redirect to /my-account from /login or /register after session is restored
   useEffect(() => {
@@ -426,10 +451,12 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
-      <Router>
-        <AppContent />
-      </Router>
-    </Provider>
+      <PersistGate loading={null} persistor={persistor}>
+        <Router>
+          <AppContent />
+        </Router>
+      </PersistGate>
+    </Provider >
   );
 }
 

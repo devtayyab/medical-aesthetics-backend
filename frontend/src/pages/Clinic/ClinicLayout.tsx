@@ -1,7 +1,8 @@
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../store';
+import { logout } from '../../store/slices/authSlice';
 import { getMenuItemsForRole } from '../../utils/rolePermissions';
 import {
   LayoutDashboard,
@@ -30,14 +31,14 @@ const iconMap: Record<string, React.ReactNode> = {
 
 const ClinicLayout: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
   const user = useSelector((state: RootState) => state.auth.user);
   const { profile } = useSelector((state: RootState) => state.clinic);
 
   const menuItems = getMenuItemsForRole(user?.role || '');
 
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+  const handleLogout = async () => {
+    await dispatch(logout());
     navigate('/login');
   };
 

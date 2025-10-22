@@ -9,7 +9,7 @@ import type {
   SearchFilters,
 } from "@/types";
 
-interface ClientState {
+export interface ClientState {
   clinics: Clinic[];
   featuredClinics: Clinic[];
   selectedClinic: Clinic | null;

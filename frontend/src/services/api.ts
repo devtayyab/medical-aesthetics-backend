@@ -15,86 +15,107 @@ export const api = axios.create({
 });
 
 let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+let refreshPromise: Promise<any> | null = null;
+let isLoggingOut = false; // Prevent multiple logout calls
 
-const subscribeTokenRefresh = (cb: (token: string) => void) => {
-  refreshSubscribers.push(cb);
-};
+// Request interceptor to attach Authorization header
+api.interceptors.request.use(
+  (config) => {
+    const state = store.getState();
+    const accessToken = state.auth.accessToken || localStorage.getItem("accessToken");
 
-const onRefreshed = (token: string) => {
-  refreshSubscribers.forEach((cb) => cb(token));
-  refreshSubscribers = [];
-};
+    // Debug logging for every request
+    if (config.url && !config.url.includes('/auth/')) {
+      console.log("🌐 API Request:", {
+        url: config.url,
+        method: config.method,
+        hasToken: !!accessToken,
+        tokenPreview: accessToken ? accessToken.substring(0, 30) + "..." : "NONE",
+        fromRedux: !!state.auth.accessToken,
+        fromLocalStorage: !!localStorage.getItem("accessToken"),
+      });
+    }
+    console.log("🛠️ Request URL:", config.url, "Token:", accessToken);
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    } else {
+      console.warn("⚠️ No access token found for request:", config.url);
+    }
 
-api.interceptors.request.use((config) => {
-  const state = store.getState();
-  const token = state.auth.accessToken;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => {
-    return response;
+    return config;
   },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for handling 401 and refreshing tokens
+api.interceptors.response.use(
+  (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as any;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log(
-        "401 detected, isRefreshing:",
-        isRefreshing,
-        "originalRequest:",
-        {
-          url: originalRequest.url,
-          method: originalRequest.method,
-          headers: originalRequest.headers,
+
+    // Only handle 401s, skip refresh endpoint and already retried requests
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes("/auth/refresh")
+    ) {
+      originalRequest._retry = true;
+
+      // If a refresh is already in progress, wait for it
+      if (isRefreshing && refreshPromise) {
+        try {
+          const accessToken = await refreshPromise;
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          return api(originalRequest);
+        } catch {
+          return Promise.reject(error);
         }
-      );
-      if (isRefreshing) {
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            resolve(api(originalRequest));
-          });
-        });
       }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
-
+      // Get refresh token from Redux or localStorage
       const state = store.getState();
       const refreshToken =
         state.auth.refreshToken || localStorage.getItem("refreshToken");
-      if (refreshToken) {
+
+      if (!refreshToken) {
+        return (error);
+      }
+
+      // Start refresh
+      isRefreshing = true;
+      refreshPromise = (async () => {
         try {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
-          const { accessToken, refreshToken: newRefreshToken } = response.data;
-          store.dispatch(
-            setTokens({ accessToken, refreshToken: newRefreshToken })
+          const response = await axios.post(
+            `${API_BASE_URL}/auth/refresh`,
+            { refreshToken },
+            { headers: { "Content-Type": "application/json" } }
           );
-          onRefreshed(accessToken);
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        } catch (refreshError: any) {
-          console.error("Refresh failed:", {
-            message: refreshError.response?.data || refreshError.message,
-            status: refreshError.response?.status,
-          });
-          store.dispatch(logout());
-          window.location.href = "/login";
-          return Promise.reject(refreshError);
+
+          const { accessToken, refreshToken: newRefreshToken } = response.data;
+
+          // Update Redux store
+          store.dispatch(setTokens({ accessToken, refreshToken: newRefreshToken }));
+
+          return accessToken;
+        } catch (refreshError) {
+          return (refreshError);
         } finally {
           isRefreshing = false;
+          refreshPromise = null;
         }
-      } else {
-        store.dispatch(logout());
-        window.location.href = "/login";
+      })();
+
+      try {
+        const accessToken = await refreshPromise;
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        return Promise.reject(refreshError);
       }
     }
+
     return Promise.reject(error);
   }
 );

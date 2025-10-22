@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { crmAPI } from "@/services/api";
 import type { Lead, Task, ActionLog } from "@/types";
 
-interface CrmState {
+export interface CrmState {
   leads: Lead[];
   selectedLead: Lead | null;
   tasks: Task[];
