@@ -67,38 +67,59 @@ export class AuthService {
       const payload = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
       });
+
       const user = await this.usersService.findById(payload.sub);
-      if (!user || user.refreshToken !== refreshToken) {
+      if (!user) {
+        throw new UnauthorizedException("User not found");
+      }
+
+      if (!user.refreshToken) {
         console.log(
-          "[AuthService] Invalid refresh token for user:",
+          "[AuthService] No refresh token stored for user:",
           payload.email
         );
         throw new UnauthorizedException("Invalid refresh token");
       }
+
+      // Stored refreshToken is hashed. Compare using bcrypt
+      const isMatch = await bcrypt.compare(refreshToken, user.refreshToken);
+      if (!isMatch) {
+        console.log(
+          "[AuthService] Refresh token hash mismatch for user:",
+          payload.email
+        );
+        throw new UnauthorizedException("Invalid refresh token");
+      }
+
+      // Issue a new access token but do NOT rotate the refresh token here.
+      // Rotating the refresh token on every refresh causes a race condition
+      // when multiple refresh requests happen in parallel (the first one
+      // updates the stored hash and the others fail to match the old token).
+      // Keeping the refresh token stable for its lifetime is a minimal change
+      // that avoids unexpected 401s. If you'd like rotation later, implement
+      // a refresh token store that supports multiple valid tokens per user.
       const newPayload = { email: user.email, sub: user.id, role: user.role };
       const accessToken = this.jwtService.sign(newPayload, {
         secret: this.configService.get<string>("JWT_ACCESS_SECRET"),
         expiresIn: "15m",
       });
-      const newRefreshToken = this.jwtService.sign(newPayload, {
-        secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
-        expiresIn: "7d",
-      });
-      await this.usersService.updateRefreshToken(user.id, newRefreshToken);
+
       const {
         passwordHash,
         refreshToken: storedRefreshToken,
         ...userData
       } = user;
+
       console.log(
-        "[AuthService] Token refreshed for user:",
-        user.email,
-        "new refreshToken:",
-        newRefreshToken.substring(0, 20) + "..."
+        "[AuthService] Access token issued for user:",
+        user.email
       );
+
+      // Return the same refresh token back to the client so the client
+      // can keep using it until it expires or the user logs out.
       return {
         accessToken,
-        refreshToken: newRefreshToken,
+        refreshToken,
         user: userData,
       };
     } catch (error) {

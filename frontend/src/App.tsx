@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -83,12 +83,18 @@ function AppContent() {
   );
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
 
+  const restoreStartedRef = useRef(false);
+
   useEffect(() => {
-    // Always attempt to restore session on initial load, regardless of path
-    if (!hasRestoredSession) {
+    // Attempt to restore session once on initial load. React StrictMode in
+    // development mounts components twice; guard with a ref so we don't
+    // dispatch duplicate restoreSession actions which would trigger two
+    // refresh requests.
+    if (!restoreStartedRef.current) {
+      restoreStartedRef.current = true;
       dispatch(restoreSession()).finally(() => setHasRestoredSession(true));
     }
-  }, [dispatch, hasRestoredSession]);
+  }, [dispatch]);
 
   // Only redirect to /my-account from /login or /register after session is restored
   useEffect(() => {

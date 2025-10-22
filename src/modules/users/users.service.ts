@@ -5,6 +5,7 @@ import { User } from './entities/user.entity';
 import { ConsentRecord } from './entities/consent-record.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -50,7 +51,25 @@ export class UsersService {
   }
 
   async updateRefreshToken(id: string, refreshToken: string): Promise<void> {
-    await this.usersRepository.update(id, { refreshToken });
+    // If refreshToken is null/undefined, clear it
+    if (!refreshToken) {
+      console.log(`[UsersService] Clearing refreshToken for user: ${id}`);
+      await this.usersRepository.update(id, { refreshToken: null });
+      return;
+    }
+
+    // Hash the refresh token before storing to avoid storing raw JWTs and
+    // to avoid issues with column length/truncation.
+    // Log a short prefix for debugging (do NOT log full tokens in prod)
+    try {
+      console.log(
+        `[UsersService] Storing refreshToken for user: ${id}, tokenPrefix: ${refreshToken.substring(0, 20)}...`
+      );
+    } catch (e) {
+      // ignore
+    }
+    const hashed = await bcrypt.hash(refreshToken, 12);
+    await this.usersRepository.update(id, { refreshToken: hashed });
   }
 
   async updateLastLogin(id: string): Promise<void> {
