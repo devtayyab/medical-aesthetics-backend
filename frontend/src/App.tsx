@@ -60,6 +60,7 @@ import type { RootState } from "@/store";
 import "@/styles/globals.css";
 
 import SiteLogo from "@/assets/SiteLogo.png";
+import AccountInfo from "./pages/AccountInfo/AccountInfo";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -134,6 +135,7 @@ function AppContent() {
           <Route path="/" element={<HomePage />} />
           <Route path="/booking" element={<Booking />} />
           <Route path="/clinic/:id" element={<Clinic/>} />
+          <Route path="/account" element={<AccountInfo/>}/>
           <Route
             path="/login"
             element={
