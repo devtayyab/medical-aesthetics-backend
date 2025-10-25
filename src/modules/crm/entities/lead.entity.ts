@@ -34,12 +34,31 @@ export class Lead {
   email: string;
 
   @Column({ nullable: true })
+  facebookLeadId: string; // Facebook's unique lead ID
+
+  @Column({ nullable: true })
+  facebookFormId: string; // Facebook form ID
+
+  @Column({ nullable: true })
+  facebookCampaignId: string; // Facebook campaign ID
+
+  @Column({ nullable: true })
+  facebookAdSetId: string; // Facebook ad set ID
+
+  @Column({ nullable: true })
+  facebookAdId: string; // Facebook ad ID
+
+  @Column('json', { nullable: true })
+  facebookLeadData: any; // Raw lead data from Facebook
+
+  @Column({ nullable: true })
   phone: string;
 
   @Column({
     type: 'enum',
     enum: LeadStatus,
     default: LeadStatus.NEW,
+    nullable: false,
   })
   status: LeadStatus;
 

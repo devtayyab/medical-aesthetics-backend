@@ -6,7 +6,6 @@
   "scripts": {
     "build": "nest build",
     "start": "node dist/main.js",
-
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "prestart:prod": "npm run build",
@@ -27,6 +26,7 @@
     "@nestjs/schedule": "^6.0.0",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/typeorm": "^11.0.0",
+    "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bull": "^4.16.5",
     "class-transformer": "^0.5.1",
@@ -44,6 +44,8 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@nestjs/cli": "^10.0.0",
+    "@nestjs/schematics": "^10.0.0",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^24.2.1",
     "@types/passport-jwt": "^4.0.1",
@@ -51,9 +53,7 @@
     "@types/uuid": "^10.0.0",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.2",
-    "@nestjs/cli": "^10.0.0",
-    "@nestjs/schematics": "^10.0.0"
+    "typescript": "^5.9.2"
   },
   "keywords": [],
   "author": "",
