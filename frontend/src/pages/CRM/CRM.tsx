@@ -91,35 +91,46 @@ export const CRM: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">CRM Dashboard</h1>
-          <p className="text-gray-600">Manage leads, customers, and sales activities</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleRunAutomation}>
-            <Target className="h-4 w-4 mr-2" />
-            Run Automation
-          </Button>
-          <Button variant="primary">
-            <Plus className="h-4 w-4 mr-2" />
-            Quick Actions
-          </Button>
-        </div>
-      </div>
+      <Card>
+        <div className="flex items-center justify-between p-4 ">
+          {/* Title & Subtitle */}
+          <div>
+            <h1 className="text-3xl font-semibold text-gray-800">CRM Dashboard</h1>
+            <p className="text-gray-500 mt-1">
+              Manage leads, customers, and sales activities
+            </p>
+          </div>
 
+          {/* Action Buttons */}
+          <div className="flex gap-2 mt-4 md:mt-0">
+            <Button
+              variant="outline"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 transition-all"
+              onClick={handleRunAutomation}
+            >
+              <Target className="h-4 w-4 mr-2 text-blue-600" />
+              Run Automation
+            </Button>
+
+            <Button
+              variant="primary"
+              className="bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-md"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Quick Actions
+            </Button>
+          </div>
+        </div>
+      </Card>
       {/* Main Navigation Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="leads">Leads</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="customers">Customers</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full p-4 md:p-6 bg-gray-50 rounded-2xl shadow-sm'>
+        <Card>
+          <TabsList className="grid w-full grid-cols-5"> <TabsTrigger value="dashboard">Dashboard</TabsTrigger> <TabsTrigger value="leads">Leads</TabsTrigger> <TabsTrigger value="tasks">Tasks</TabsTrigger> <TabsTrigger value="customers">Customers</TabsTrigger> <TabsTrigger value="analytics">Analytics</TabsTrigger> </TabsList>
+        </Card>
 
         {/* Dashboard Tab */}
-        <TabsContent value="dashboard" className="space-y-6">
+        <TabsContent value="dashboard" className="space-y-4">
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
@@ -178,7 +189,7 @@ export const CRM: React.FC = () => {
             {/* Quick Actions */}
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle className="text-lg font-semibold pb-4">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -205,7 +216,7 @@ export const CRM: React.FC = () => {
             {/* Recent Leads */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent Leads</CardTitle>
+                <CardTitle className="text-lg font-semibold pb-4">Recent Leads</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -230,7 +241,7 @@ export const CRM: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                  <AlertTriangle className="h-5 w-5 text-red-600 " />
                   Overdue Tasks
                 </CardTitle>
               </CardHeader>

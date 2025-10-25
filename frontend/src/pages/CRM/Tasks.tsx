@@ -244,22 +244,24 @@ export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) =
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Task Management</h2>
-          <p className="text-gray-600">Manage your tasks and follow-ups</p>
+      <Card>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Task Management</h2>
+            <p className="text-gray-500 mt-1">Manage your tasks and follow-ups</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleRunAutomation}>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Run Automation
+            </Button>
+            <Button variant="primary" onClick={() => setShowCreateForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Task
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleRunAutomation}>
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Run Automation
-          </Button>
-          <Button variant="primary" onClick={() => setShowCreateForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Task
-          </Button>
-        </div>
-      </div>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -355,31 +357,28 @@ export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) =
       {/* Task Tabs */}
       <div className="flex border-b">
         <button
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'all'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={`px-4 py-2 font-medium ${activeTab === 'all'
+            ? 'border-b-2 border-blue-500 text-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+            }`}
           onClick={() => setActiveTab('all')}
         >
           All Tasks ({tasks.length})
         </button>
         <button
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'pending'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={`px-4 py-2 font-medium ${activeTab === 'pending'
+            ? 'border-b-2 border-blue-500 text-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+            }`}
           onClick={() => setActiveTab('pending')}
         >
           Pending ({pendingTasks.length})
         </button>
         <button
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'overdue'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={`px-4 py-2 font-medium ${activeTab === 'overdue'
+            ? 'border-b-2 border-blue-500 text-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+            }`}
           onClick={() => setActiveTab('overdue')}
         >
           Overdue ({overdueTasks.length})
@@ -391,8 +390,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) =
         <CardHeader>
           <CardTitle>
             {activeTab === 'all' ? 'All Tasks' :
-             activeTab === 'pending' ? 'Pending Tasks' :
-             'Overdue Tasks'} ({filteredTasks.length})
+              activeTab === 'pending' ? 'Pending Tasks' :
+                'Overdue Tasks'} ({filteredTasks.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -409,18 +408,16 @@ export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) =
               {filteredTasks.map((task) => (
                 <div
                   key={task.id}
-                  className={`flex items-start gap-4 p-4 border rounded-lg ${
-                    task.status === 'overdue' ? 'border-red-200 bg-red-50' :
+                  className={`flex items-start gap-4 p-4 border rounded-lg ${task.status === 'overdue' ? 'border-red-200 bg-red-50' :
                     task.status === 'completed' ? 'border-green-200 bg-green-50' :
-                    'border-gray-200'
-                  }`}
+                      'border-gray-200'
+                    }`}
                 >
                   <div className="flex-shrink-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      task.status === 'completed' ? 'bg-green-100' :
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${task.status === 'completed' ? 'bg-green-100' :
                       task.status === 'overdue' ? 'bg-red-100' :
-                      'bg-blue-100'
-                    }`}>
+                        'bg-blue-100'
+                      }`}>
                       {task.status === 'completed' ? (
                         <CheckCircle className="h-5 w-5 text-green-600" />
                       ) : isOverdue(task.dueDate || '') && task.status === 'pending' ? (
@@ -524,13 +521,13 @@ export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) =
               <Input
                 label="Title"
                 value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 required
               />
               <Select
                 label="Action Type"
                 value={formData.actionType}
-                onChange={(value: 'phone_call' | 'email' | 'follow_up' | 'appointment_confirmation' | 'treatment_reminder' | 'meeting') => setFormData({...formData, actionType: value})}
+                onChange={(value: 'phone_call' | 'email' | 'follow_up' | 'appointment_confirmation' | 'treatment_reminder' | 'meeting') => setFormData({ ...formData, actionType: value })}
                 options={[
                   { value: 'phone_call', label: 'Phone Call' },
                   { value: 'email', label: 'Email' },
@@ -548,7 +545,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) =
               <Select
                 label="Priority"
                 value={formData.priority}
-                onChange={(value: 'low' | 'medium' | 'high' | 'urgent') => setFormData({...formData, priority: value})}
+                onChange={(value: 'low' | 'medium' | 'high' | 'urgent') => setFormData({ ...formData, priority: value })}
                 options={[
                   { value: 'low', label: 'Low' },
                   { value: 'medium', label: 'Medium' },
@@ -560,12 +557,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) =
                 label="Due Date"
                 type="datetime-local"
                 value={formData.dueDate}
-                onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
               />
               <Input
                 label="Description"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
             <div className="flex gap-2 mt-6">

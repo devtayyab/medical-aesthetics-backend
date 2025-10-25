@@ -60,6 +60,7 @@ import type { RootState } from "@/store";
 import "@/styles/globals.css";
 
 import SiteLogo from "@/assets/SiteLogo.png";
+import { CRM } from "./pages/CRM/CRM";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -160,6 +161,8 @@ function AppContent() {
               )
             }
           />
+
+
           {/* Client Routes - Public clinic browsing */}
           <Route path="/search" element={<Search />} />
           <Route path="/clinic/:id" element={<ClinicDetails />} />
@@ -181,6 +184,7 @@ function AppContent() {
               </ProtectedLayout>
             }
           />
+
           <Route
             path="/history"
             element={
@@ -405,6 +409,14 @@ function AppContent() {
             element={
               <ProtectedLayout allowedRoles={["salesperson"]}>
                 <RepeatManagement />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/crm"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                <CRM />
               </ProtectedLayout>
             }
           />

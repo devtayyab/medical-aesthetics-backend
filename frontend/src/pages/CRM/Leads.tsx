@@ -59,13 +59,16 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [formData, setFormData] = useState({
-    source: 'manual',
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    status: 'new',
-    priority: 'medium'
+    source: "facebook_ads",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    status: "new",
+    notes: "",
+    assignedSalesId: "",
+    metadata: {},
+    estimatedValue: 0,
   });
 
   useEffect(() => {
@@ -90,13 +93,16 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
       await dispatch(createLead(formData)).unwrap();
       setShowCreateForm(false);
       setFormData({
-        source: 'manual',
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        status: 'new',
-        priority: 'medium'
+        source: "facebook_ads",
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        status: "new",
+        notes: "",
+        assignedSalesId: "",
+        metadata: {},
+        estimatedValue: 0,
       });
     } catch (error) {
       console.error('Failed to create lead:', error);
@@ -173,23 +179,24 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Lead Management</h1>
-          <p className="text-gray-600">Manage and track your sales leads</p>
+      <Card>
+        <div className="flex items-center justify-between  ">
+          <div>
+            <h1 className="text-2xl font-bold">Lead Management</h1>
+            <p className="text-gray-500 mt-1">Manage and track your sales leads</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="h-4 w-4 mr-2" />
+              Filters
+            </Button>
+            <Button variant="primary" onClick={() => setShowCreateForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Lead
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-          </Button>
-          <Button variant="primary" onClick={() => setShowCreateForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Lead
-          </Button>
-        </div>
-      </div>
-
+      </Card>
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -555,13 +562,13 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
                 <Input
                   label="First Name"
                   value={formData.firstName}
-                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   required
                 />
                 <Input
                   label="Last Name"
                   value={formData.lastName}
-                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   required
                 />
               </div>
@@ -569,19 +576,19 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
                 label="Email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
               />
               <Input
                 label="Phone"
                 value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
               <div className="grid grid-cols-2 gap-4">
                 <Select
                   label="Status"
                   value={formData.status}
-                  onChange={(value) => setFormData({...formData, status: value})}
+                  onChange={(value) => setFormData({ ...formData, status: value })}
                   options={[
                     { value: 'new', label: 'New' },
                     { value: 'contacted', label: 'Contacted' },
@@ -591,7 +598,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
                 <Select
                   label="Priority"
                   value={formData.priority}
-                  onChange={(value) => setFormData({...formData, priority: value})}
+                  onChange={(value) => setFormData({ ...formData, priority: value })}
                   options={[
                     { value: 'low', label: 'Low' },
                     { value: 'medium', label: 'Medium' },
