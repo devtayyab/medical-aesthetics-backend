@@ -52,11 +52,13 @@ import { Users as AdminUsers } from "@/pages/Admin/Users";
 import { LoyaltyManagement } from "@/pages/Admin/LoyaltyManagement";
 import { Monitor } from "@/pages/Admin/Monitor";
 import { MyAccount } from "@/pages/Client/MyAccount";
+import Customerleadform from "@/pages/CRM/Cutomerleadform";
 import { PersonalDetails } from "@/pages/Client/AccountPages/PersonalDetails";
 import { Rewards } from "@/pages/Client/AccountPages/Rewards";
 import { Wallet } from "@/pages/Client/AccountPages/Wallet";
 import { InviteFriend } from "@/pages/Client/AccountPages/InviteFriend";
 import { Settings } from "@/pages/Client/AccountPages/Settings";
+import { RoleDebugger } from "@/components/organisms/RoleDebugger";
 import type { RootState } from "@/store";
 import "@/styles/globals.css";
 
@@ -143,6 +145,8 @@ function AppContent() {
       ) : (
         <Header />
       )}
+      {/* Debug Tool - Remove in production */}
+      {isAuthenticated && <RoleDebugger />}
       <main>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -383,6 +387,14 @@ function AppContent() {
             }
           />
           <Route
+            path="/crm/customer-lead-form"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                <Customerleadform />
+              </ProtectedLayout>
+            }
+          />
+          <Route
             path="/crm/tasks"
             element={
               <ProtectedLayout allowedRoles={["salesperson"]}>
@@ -406,6 +418,7 @@ function AppContent() {
               </ProtectedLayout>
             }
           />
+
           {/* Admin Routes */}
           <Route
             path="/admin/dashboard"

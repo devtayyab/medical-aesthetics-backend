@@ -7,12 +7,12 @@ import { CustomerRecord } from './entities/customer-record.entity';
 import { CommunicationLog } from './entities/communication-log.entity';
 import { CrmAction } from './entities/crm-action.entity';
 import { CustomerTag } from './entities/customer-tag.entity';
-import { TasksModule } from '../tasks/tasks.module';
-import { BookingsModule } from '../bookings/bookings.module';
+import { FormSubmission } from './entities/form-submission.entity';
+import { User } from '../users/entities/user.entity';
+import { Appointment } from '../bookings/entities/appointment.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
-import { Appointment } from '../bookings/entities/appointment.entity';
-import { User } from '../users/entities/user.entity';
+import { BookingsModule } from '../bookings/bookings.module';
 
 @Module({
   imports: [
@@ -22,10 +22,10 @@ import { User } from '../users/entities/user.entity';
       CommunicationLog,
       CrmAction,
       CustomerTag,
-      Appointment,
+      FormSubmission,
       User,
+      Appointment,
     ]),
-    TasksModule,
     BookingsModule,
     NotificationsModule,
     UsersModule,

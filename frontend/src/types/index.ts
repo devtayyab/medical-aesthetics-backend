@@ -13,6 +13,15 @@ export interface User {
   updatedAt: string;
 }
 
+export interface Communication {
+  id: string;
+  customerId: string;
+  salespersonId: string;
+  type: string;
+  title: string;
+  description?: string;
+}
+
 export interface Clinic {
   id: string;
   name: string;
@@ -150,7 +159,7 @@ export interface Task {
   createdAt: string;
 }
 
-export interface ActionLog {
+export interface ActionsLog {
   id: string;
   customerId: string;
   type: 'call' | 'email' | 'note' | 'meeting';
@@ -178,4 +187,27 @@ export interface ConsentRecord {
   type: 'terms' | 'privacy' | 'marketing';
   granted: boolean;
   timestamp: string;
+}
+
+export interface FormSubmission {
+  id: string;
+  source: string; // 'facebook_ads', 'google_ads', 'website'
+  formType: string; // 'interest', 'booking', 'callback'
+  mergedCustomerId?: string;
+  leadId?: string;
+  rawName: string;
+  rawEmail: string;
+  rawPhone?: string;
+  formData: any;
+  submittedAt: string;
+  isDuplicate: boolean;
+  duplicateMatchedBy?: 'email' | 'phone' | 'both';
+  createdAt: string;
+}
+
+export interface FormSubmissionStats {
+  total: number;
+  duplicates: number;
+  newLeads: number;
+  duplicateRate: string;
 }

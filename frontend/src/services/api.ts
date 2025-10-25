@@ -4,7 +4,7 @@ import { setTokens, logout } from "@/store/slices/authSlice";
 import type { User, Lead, Task } from "@/types";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+  import.meta.env.VITE_API_BASE_URL || "https://51.20.72.67/";
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export const api = axios.create({
@@ -228,6 +228,7 @@ export const notificationsAPI = {
 };
 
 export const crmAPI = {
+  // ---- Leads ----
   createLead: (data: {
     name: string;
     email: string;
@@ -235,12 +236,24 @@ export const crmAPI = {
     tags?: string[];
     status: string;
   }) => api.post("/crm/leads", data),
+
   getLeads: () => api.get("/crm/leads"),
   getLead: (id: string) => api.get(`/crm/leads/${id}`),
   updateLead: (id: string, data: Partial<Lead>) =>
     api.patch(`/crm/leads/${id}`, data),
-  logAction: (customerId: string, data: { type: string; notes: string }) =>
-    api.post("/crm/actions", { customerId, ...data }),
+
+  // ---- Actions ----
+  logAction: (data: {
+    customerId: string;
+    salespersonId: string;
+    actionType: string;
+    title: string;
+    description?: string;
+  }) => api.post("/crm/actions", data),
+
+  getActions: () => api.get("/crm/actions"),
+
+  // ---- Tasks ----
   createTask: (data: {
     customerId: string;
     description: string;
@@ -248,16 +261,41 @@ export const crmAPI = {
     dueDate: string;
     assignedTo: string;
   }) => api.post("/crm/tasks", data),
+
   getTasks: (salespersonId: string) => api.get(`/crm/tasks/${salespersonId}`),
   updateTask: (id: string, data: Partial<Task>) =>
     api.patch(`/crm/tasks/${id}`, data),
+
   scheduleRecurring: (data: {
     customerId: string;
     serviceId: string;
     frequency: string;
     startDate: string;
   }) => api.post("/crm/recurring", data),
+
+  // ---- Facebook / Form Submissions ----
+  getCustomerFormSubmissions: (customerId: string) =>
+    api.get(`/crm/customers/${customerId}/form-submissions`),
+  getFormSubmissionStats: (params?: {
+    startDate?: string;
+    endDate?: string;
+    source?: string;
+  }) => api.get("/crm/analytics/form-submissions", { params }),
+  getCustomerRecord: (customerId: string) =>
+    api.get(`/crm/customers/${customerId}/record`),
+  updateCustomerRecord: (customerId: string, data: any) =>
+    api.put(`/crm/customers/${customerId}/record`, data),
+  logCommunication: (data: {
+    customerId: string;
+    salespersonId: string;
+    type: string;
+    title: string;
+    description?: string;
+  }) => api.post("/crm/communications", data),
+  getCustomerCommunications: (customerId: string) =>
+    api.get(`/crm/customers/${customerId}/communications`),
 };
+
 
 export const adminAPI = {
   getMetrics: () => api.get("/admin/metrics"),
