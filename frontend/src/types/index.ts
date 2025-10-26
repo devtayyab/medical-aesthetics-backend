@@ -172,10 +172,4 @@ export interface AuditLog {
   details?: any;
 }
 
-export interface ConsentRecord {
-  id: string;
-  userId: string;
-  type: 'terms' | 'privacy' | 'marketing';
-  granted: boolean;
-  timestamp: string;
-}
+export * from './crm.types';

@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  OneToOne,
   BeforeInsert,
   BeforeUpdate,
 } from 'typeorm';
@@ -16,6 +17,7 @@ import { Task } from '../../tasks/entities/task.entity';
 import { Appointment } from '../../bookings/entities/appointment.entity';
 import { LoyaltyLedger } from '../../loyalty/entities/loyalty-ledger.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
+import { CustomerRecord } from '../../crm/entities/customer-record.entity';
 import { Clinic } from '../../clinics/entities/clinic.entity';
 
 @Entity('users')

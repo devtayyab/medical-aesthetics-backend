@@ -19,6 +19,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
+import { CommunicationLog } from './entities/communication-log.entity';
+import { CrmAction } from './entities/crm-action.entity';
 
 @ApiTags('CRM')
 @Controller('crm')
@@ -222,7 +225,115 @@ export class CrmController {
           endDate: new Date(query.endDate),
         }
       : undefined;
-    
     return this.crmService.getSalespersonAnalytics(req.user.id, dateRange);
+  }
+  // Facebook Integration Endpoints
+  @Post('facebook/webhook')
+  @ApiOperation({ summary: 'Handle Facebook webhook for lead generation' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  handleFacebookWebhook(@Body() webhookData: FacebookWebhookDto) {
+    return this.crmService.handleFacebookWebhook(webhookData);
+  }
+
+  @Post('facebook/import/:formId')
+  @ApiOperation({ summary: 'Import leads from Facebook form' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  importFacebookLeads(
+    @Param('formId') formId: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.crmService.importFacebookLeads(formId, limit);
+  }
+
+  @Get('facebook/test')
+  @ApiOperation({ summary: 'Test Facebook API connection' })
+  @Roles(UserRole.ADMIN)
+  @UseGuards(RolesGuard)
+  testFacebookConnection() {
+    return this.crmService.testFacebookConnection();
+  }
+
+  @Get('duplicates/check')
+  @ApiOperation({ summary: 'Check for potential duplicates' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  checkForDuplicates(@Query() query: { email?: string; phone?: string; firstName?: string; lastName?: string }) {
+    return this.crmService.checkForDuplicates(
+      query.email,
+      query.phone,
+      query.firstName,
+      query.lastName,
+    );
+  }
+
+  @Get('duplicates/suggestions')
+  @ApiOperation({ summary: 'Get duplicate suggestions' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  getDuplicateSuggestions(@Query() query: { email?: string; phone?: string; firstName?: string; lastName?: string }) {
+    return this.crmService.getDuplicateSuggestions(
+      query.email,
+      query.phone,
+      query.firstName,
+      query.lastName,
+    );
+  }
+
+  @Get('validation/required-fields/call')
+  @ApiOperation({ summary: 'Get required fields for call communications' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  getRequiredFieldsForCall() {
+    return this.crmService.getRequiredFieldsForCall();
+  }
+
+  @Get('validation/required-fields/action/:actionType')
+  @ApiOperation({ summary: 'Get required fields for action type' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  getRequiredFieldsForAction(@Param('actionType') actionType: string) {
+    return this.crmService.getRequiredFieldsForAction(actionType);
+  }
+
+  @Post('validation/validate-communication')
+  @ApiOperation({ summary: 'Validate communication data' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  validateCommunication(@Body() data: { customerId: string; communicationData: Partial<CommunicationLog> }) {
+    return this.crmService.validateCommunicationFields(data.customerId, data.communicationData);
+  }
+
+  @Post('validation/validate-action')
+  @ApiOperation({ summary: 'Validate action data' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  validateAction(@Body() data: { customerId: string; actionData: Partial<CrmAction> }) {
+    return this.crmService.validateActionFields(data.customerId, data.actionData);
+  }
+
+  @Get('tasks/overdue')
+  @ApiOperation({ summary: 'Get overdue tasks' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  getOverdueTasks(@Query('salespersonId') salespersonId?: string) {
+    return this.crmService.getOverdueTasks(salespersonId);
+  }
+
+  @Get('automation/rules')
+  @ApiOperation({ summary: 'Get automation rules' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  getAutomationRules() {
+    return this.crmService.getAutomationRules();
+  }
+
+  @Post('automation/run-check')
+  @ApiOperation({ summary: 'Run task automation check' })
+  @Roles(UserRole.ADMIN)
+  @UseGuards(RolesGuard)
+  runTaskAutomationCheck() {
+    return this.crmService.runTaskAutomationCheck();
   }
 }

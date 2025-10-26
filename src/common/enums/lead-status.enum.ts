@@ -6,4 +6,5 @@ export enum LeadStatus {
   CONVERTED = 'converted',
   LOST = 'lost',
   FOLLOW_UP = 'follow_up',
+  Merged = 'merged'
 }

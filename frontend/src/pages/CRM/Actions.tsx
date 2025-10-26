@@ -12,7 +12,7 @@ export const Actions: React.FC = () => {
   );
 
   useEffect(() => {
-    dispatch(fetchLeads()); // Fetch leads to get associated actions
+    dispatch(fetchLeads(id)); // Fetch leads to get associated actions
   }, [dispatch]);
 
   return (

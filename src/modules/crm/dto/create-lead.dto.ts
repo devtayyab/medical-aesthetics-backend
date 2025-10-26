@@ -32,10 +32,35 @@ export class CreateLeadDto {
   @IsPhoneNumber()
   phone?: string;
 
-  @ApiProperty({ enum: LeadStatus, required: false })
+  @ApiProperty({ required: false })
   @IsOptional()
-  @IsEnum(LeadStatus)
-  status?: LeadStatus;
+  @IsString()
+  facebookLeadId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  facebookFormId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  facebookCampaignId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  facebookAdSetId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  facebookAdId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsObject()
+  facebookLeadData?: any;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -56,4 +81,14 @@ export class CreateLeadDto {
   @IsOptional()
   @IsNumber()
   estimatedValue?: number;
+
+  @ApiProperty({
+    enum: LeadStatus,
+    required: false,
+    default: LeadStatus.NEW,
+    example: LeadStatus.NEW
+  })
+  @IsOptional()
+  @IsEnum(LeadStatus)
+  status?: LeadStatus;
 }

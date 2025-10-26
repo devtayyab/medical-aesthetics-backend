@@ -55,20 +55,41 @@ export class CustomerRecord {
   @Column('int', { nullable: true })
   averageDaysBetweenVisits: number;
 
-  @Column('text', { nullable: true })
-  notes: string;
-
   @Column('json', { nullable: true })
   preferences: any; // Preferred services, times, etc.
 
   @Column('json', { nullable: true })
   treatmentHistory: any[]; // Summary of treatments received
 
+  @Column({ nullable: true })
+  preferredClinicId: string;
+
+  @Column({ nullable: true })
+  preferredDoctorId: string;
+
+  @Column('json', { nullable: true })
+  clinicHistory: any[]; // Array of clinic affiliations with treatment details
+
+  @Column('json', { nullable: true })
+  doctorHistory: any[]; // Array of doctor affiliations with treatment details
+
+  @Column({ nullable: true })
+  lastClinicId: string; // Most recent clinic visited
+
+  @Column({ nullable: true })
+  lastDoctorId: string; // Most recent doctor seen
+
+  @Column('json', { nullable: true })
+  treatmentPreferences: any; // Preferred treatments per clinic/doctor
+
   @Column({ default: false })
   isRepeatCustomer: boolean;
 
-  @Column('int', { default: 0 })
-  repeatCount: number;
+  @Column({ nullable: true })
+  notes: string;
+
+  @Column({ nullable: true })
+  repeatCount: string
 
   @Column({ type: 'date', nullable: true })
   expectedNextVisit: Date; // Predicted next visit based on patterns
@@ -78,6 +99,7 @@ export class CustomerRecord {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'customerId' })
@@ -95,4 +117,6 @@ export class CustomerRecord {
 
   @OneToMany(() => CustomerTag, (tag) => tag.customer)
   tags: CustomerTag[];
+
+
 }
