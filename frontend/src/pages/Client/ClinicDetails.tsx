@@ -230,7 +230,7 @@ export const ClinicDetails: React.FC = () => {
           <div className="flex flex-wrap gap-2 sm:gap-3">
             <Button
               onClick={handleBookNow}
-              className="bg-[#2d3748] text-white border border-[#2d3748] hover:bg-white hover:text-[#2d3748] px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition"
+              className="bg-[#2d3748] text-white border border-[#2d3748] hover:!bg-transparent hover:text-[#2d3748] px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition"
             >
               Book Now
             </Button>
