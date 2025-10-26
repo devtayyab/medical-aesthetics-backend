@@ -97,10 +97,17 @@ const AccountInfo:React.FC = () => {
     } catch (err) {
       console.error(" Error fetching user data:", err);
     
-    }
+
   };
-   
-const updateProfile = async () => {
+};
+//    const token = localStorage.getItem("accessToken");
+// if (token) {
+//   const payload = JSON.parse(atob(token.split('.')[1]));
+//   console.log("⏰ Expiry:", new Date(payload.exp * 1000));
+// }
+
+
+const updateProfile = async (updatedFields:any) => {
   try {
     const token = localStorage.getItem("accessToken");
     const res = await fetch("https://51.20.72.67/users/me/profile", {
@@ -109,11 +116,9 @@ const updateProfile = async () => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        firstName,
-        
-      }),
-    });
+      
+        body: JSON.stringify(updatedFields) })
+    
 
     if (!res.ok) {
       throw new Error(`HTTP error! Status: ${res.status}`);
@@ -126,10 +131,19 @@ const updateProfile = async () => {
   }
 };
 
-useEffect(()=>{
-  fetchUserData(); 
-  updateProfile();
-},[])
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (firstName || lastName || email ||role ) {
+        updateProfile({ firstName, lastName, email,role});
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [firstName, lastName, email, id, role]);
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
   return (
     <div className="w-full h-auto bg-gray-50 flex flex-col items-center py-10 px-4 sm:px-6 md:px-10 lg:justify-between">
       {/* Top Section */}
@@ -148,7 +162,10 @@ useEffect(()=>{
             className="w-24 h-24 justify-center object-cover rounded-full p-6 border"
           />
           <div>
-            <h2 className="text-xl font-semibold text-gray-800">{firstName}</h2>
+            <h2 className="text-xl font-semibold  text-gray-800">{firstName}
+             <span className="text-xl font-semibold text-gray-800">{lastName}</span>
+             </h2>
+            
             <p className="text-gray-500">{email}</p>
           </div>
         </div>
