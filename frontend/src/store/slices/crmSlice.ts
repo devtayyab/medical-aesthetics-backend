@@ -132,10 +132,16 @@ export const fetchLead = createAsyncThunk(
     return response.data;
   }
 );
-
+interface UpdateLeadPayload {
+  id: string;
+  updates: Partial<Lead>;
+}
 export const updateLead = createAsyncThunk(
   "crm/updateLead",
-  async (data: { id: string; updates: Partial<Lead> }) => {
+  async (data: UpdateLeadPayload) => {
+    if (data.updates.status) {
+      data.updates.status = data.updates.status as Lead["status"];
+    }
     const response = await crmAPI.updateLead(data.id, data.updates);
     return response.data;
   }
@@ -399,7 +405,7 @@ const crmSlice = createSlice({
     clearFieldValidation: (state) => {
       state.fieldValidation = null;
     },
-    
+
     // Filter management
     setLeadFilters: (state, action: PayloadAction<CrmFilters>) => {
       state.leadFilters = action.payload;
@@ -407,14 +413,14 @@ const crmSlice = createSlice({
     setCustomerFilters: (state, action: PayloadAction<CrmFilters>) => {
       state.customerFilters = action.payload;
     },
-    setCommunicationFilters: (state, action: PayloadAction<{ 
-      type?: string; 
-      startDate?: string; 
+    setCommunicationFilters: (state, action: PayloadAction<{
+      type?: string;
+      startDate?: string;
       endDate?: string;
     }>) => {
       state.communicationFilters = action.payload;
     },
-    
+
     // Batch operations
     clearAllFilters: (state) => {
       state.leadFilters = {};
@@ -423,7 +429,7 @@ const crmSlice = createSlice({
     },
     resetState: () => initialState,
   },
-  
+
   extraReducers: (builder) => {
     // Lead Management
     builder
@@ -485,7 +491,7 @@ const crmSlice = createSlice({
         if (taskIndex !== -1) {
           state.tasks[taskIndex] = action.payload;
         }
-        
+
         if (state.customerRecord) {
           const actionIndex = state.customerRecord.actions.findIndex(
             (a) => a.id === action.payload.id
@@ -494,13 +500,13 @@ const crmSlice = createSlice({
             state.customerRecord.actions[actionIndex] = action.payload;
           }
         }
-        
+
         // Update pending/overdue task lists
         const pendingIndex = state.pendingTasks.findIndex((t) => t.id === action.payload.id);
         if (pendingIndex !== -1) {
           state.pendingTasks[pendingIndex] = action.payload;
         }
-        
+
         const overdueIndex = state.overdueTasks.findIndex((t) => t.id === action.payload.id);
         if (overdueIndex !== -1) {
           state.overdueTasks[overdueIndex] = action.payload;
@@ -510,7 +516,7 @@ const crmSlice = createSlice({
         state.tasks = state.tasks.filter((t) => t.id !== action.payload);
         state.pendingTasks = state.pendingTasks.filter((t) => t.id !== action.payload);
         state.overdueTasks = state.overdueTasks.filter((t) => t.id !== action.payload);
-        
+
         if (state.customerRecord) {
           state.customerRecord.actions = state.customerRecord.actions.filter(
             (a) => a.id !== action.payload

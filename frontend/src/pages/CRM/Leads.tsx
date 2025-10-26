@@ -40,10 +40,9 @@ import type { Lead } from '@/types/crm.types';
 
 interface LeadsPageProps {
   onViewLead?: (lead: Lead) => void;
-  onEditLead?: (lead: Lead) => void;
 }
 
-export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) => {
+export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead }) => {
   const dispatch = useDispatch<AppDispatch>();
   const {
     leads,
@@ -54,10 +53,15 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
     error
   } = useSelector((state: RootState) => state.crm);
 
+  const { user } = useSelector((state: RootState) => state.auth);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [showDuplicateResults, setShowDuplicateResults] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [formData, setFormData] = useState({
     source: "facebook_ads",
     firstName: "",
@@ -66,11 +70,15 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
     phone: "",
     status: "new",
     notes: "",
-    assignedSalesId: "",
+    assignedSalesId: user?.id || null,
     metadata: {},
     estimatedValue: 0,
   });
 
+  const handleEditLead = (lead: Lead) => {
+    setEditingLead(lead);
+    setShowModal(true);
+  };
   useEffect(() => {
     dispatch(fetchLeads(leadFilters));
   }, [dispatch, leadFilters]);
@@ -100,7 +108,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
         phone: "",
         status: "new",
         notes: "",
-        assignedSalesId: "",
+        assignedSalesId: user?.id || null,
+
         metadata: {},
         estimatedValue: 0,
       });
@@ -109,6 +118,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
     }
   };
 
+
   const handleCheckDuplicates = async (lead: Lead) => {
     await dispatch(checkForDuplicates({
       email: lead.email,
@@ -116,6 +126,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
       firstName: lead.firstName,
       lastName: lead.lastName
     }));
+    setShowDuplicateResults(true); // ✅ Show results only after click
+
   };
 
   const handleBulkAction = async (action: string) => {
@@ -224,7 +236,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
@@ -276,18 +287,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
                 ]}
               />
 
-              <Select
-                label="Priority"
-                value={leadFilters.priority || ''}
-                onChange={(value) => handleFilterChange('priority', value)}
-                options={[
-                  { value: '', label: 'All Priorities' },
-                  { value: 'urgent', label: 'Urgent' },
-                  { value: 'high', label: 'High' },
-                  { value: 'medium', label: 'Medium' },
-                  { value: 'low', label: 'Low' }
-                ]}
-              />
 
               <Select
                 label="Source"
@@ -386,7 +385,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
                   <TableHead>Name</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Actions</TableHead>
@@ -413,9 +411,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
                         <div className="font-medium">
                           {lead.firstName} {lead.lastName}
                         </div>
-                        {lead.facebookLeadId && (
-                          <div className="text-xs text-blue-600">Facebook Lead</div>
-                        )}
+
                       </div>
                     </TableCell>
                     <TableCell>
@@ -438,11 +434,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getPriorityColor(lead.priority || 'medium')}>
-                        {lead.priority || 'medium'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
                       <Badge variant="outline">
                         {lead.source}
                       </Badge>
@@ -462,7 +453,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onEditLead?.(lead)}
+                          onClick={() => handleEditLead(lead)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -491,134 +482,247 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, onEditLead }) 
       </Card>
 
       {/* Duplicate Check Results */}
-      {duplicateCheck && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-600" />
-              Duplicate Check Results
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {duplicateCheck.isDuplicate ? (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-yellow-800 mb-2">
-                    <AlertTriangle className="h-5 w-5" />
-                    <span className="font-medium">Potential Duplicate Found</span>
-                    <Badge variant="warning">
-                      {duplicateCheck.confidence}% confidence
-                    </Badge>
-                  </div>
-                  {duplicateCheck.existingCustomer && (
-                    <div className="text-sm text-yellow-700">
-                      Matches existing customer: {duplicateCheck.existingCustomer.firstName} {duplicateCheck.existingCustomer.lastName}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-green-800">
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="font-medium">No duplicates found</span>
-                  </div>
-                </div>
-              )}
+      {
+        showDuplicateResults && duplicateCheck && (
+          <Card className="">
+            {/* Close (X) button */}
+            <Button
+              variant='outline'
+              onClick={() => setShowDuplicateResults(false)}
+              className="rounded-[100%] pt-4"
+            >
+              ✕
+            </Button>
 
-              {duplicateCheck.suggestions.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Similar Customers:</h4>
-                  <div className="space-y-2">
-                    {duplicateCheck.suggestions.map((suggestion, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <div className="font-medium">
-                            {suggestion.customer.firstName} {suggestion.customer.lastName}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {suggestion.customer.email} • {suggestion.matchReason}
-                          </div>
-                        </div>
-                        <Badge variant="info">
-                          {suggestion.confidence}% match
-                        </Badge>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 mb-8">
+                <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                Duplicate Check Results
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent>
+              <div className="space-y-4">
+                {duplicateCheck.isDuplicate ? (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-yellow-800 mb-2">
+                      <AlertTriangle className="h-5 w-5" />
+                      <span className="font-medium">Potential Duplicate Found</span>
+                      <Badge variant="warning">
+                        {duplicateCheck.confidence}% confidence
+                      </Badge>
+                    </div>
+                    {duplicateCheck.existingCustomer && (
+                      <div className="text-sm text-yellow-700">
+                        Matches existing customer:{" "}
+                        {duplicateCheck.existingCustomer.firstName}{" "}
+                        {duplicateCheck.existingCustomer.lastName}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ) : (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-green-800">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">No duplicates found</span>
+                    </div>
+                  </div>
+                )}
+
+                {duplicateCheck?.suggestions?.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2">Similar Customers:</h4>
+                    <div className="space-y-2">
+                      {duplicateCheck.suggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        >
+                          <div>
+                            <div className="font-medium">
+                              {suggestion.customer.firstName}{" "}
+                              {suggestion.customer.lastName}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {suggestion.customer.email} •{" "}
+                              {suggestion.matchReason}
+                            </div>
+                          </div>
+                          <Badge variant="info">
+                            {suggestion.confidence}% match
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
+
 
       {/* Create Lead Modal */}
-      {showCreateForm && (
+      {
+        showCreateForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Create New Lead</h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="First Name"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    required
+                  />
+                  <Input
+                    label="Last Name"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    required
+                  />
+                </div>
+                <Input
+                  label="Email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Select
+                    label="Status"
+                    value={formData.status}
+                    onChange={(value) => setFormData({ ...formData, status: value })}
+                    options={[
+                      { value: '', label: 'All Statuses' },
+                      { value: 'new', label: 'New' },
+                      { value: 'contacted', label: 'Contacted' },
+                      { value: 'qualified', label: 'Qualified' },
+                      { value: 'converted', label: 'Converted' },
+                      { value: 'lost', label: 'Lost' }
+                    ]}
+
+                  />
+
+                  <Select label="Source" value={formData.source || ''} onChange={(value) => setFormData({ ...formData, source: value })} options={[{ value: '', label: 'All Sources' }, { value: 'facebook_ads', label: 'Facebook Ads' }, { value: 'google_ads', label: 'Google Ads' }, { value: 'referral', label: 'Referral' }, { value: 'manual', label: 'Manual' }, { value: 'website', label: 'Website' }]} />
+
+                </div>
+              </div>
+              <div className="flex gap-2 mt-6">
+                <Button variant="primary" onClick={handleCreateLead}>
+                  Create Lead
+                </Button>
+                <Button variant="outline" onClick={() => setShowCreateForm(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+      {showModal && editingLead && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Create New Lead</h2>
+            <h2 className="text-xl font-bold mb-4">Edit Lead</h2>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <Input
                   label="First Name"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  required
+                  value={editingLead.firstName}
+                  onChange={(e) => setEditingLead({ ...editingLead, firstName: e.target.value })}
                 />
                 <Input
                   label="Last Name"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  required
+                  value={editingLead.lastName}
+                  onChange={(e) => setEditingLead({ ...editingLead, lastName: e.target.value })}
                 />
               </div>
               <Input
                 label="Email"
                 type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
+                value={editingLead.email}
+                onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })}
               />
               <Input
                 label="Phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                value={editingLead.phone || ""}
+                onChange={(e) => setEditingLead({ ...editingLead, phone: e.target.value })}
               />
               <div className="grid grid-cols-2 gap-4">
                 <Select
                   label="Status"
-                  value={formData.status}
-                  onChange={(value) => setFormData({ ...formData, status: value })}
+                  value={editingLead.status}
+                  onChange={(value) =>
+                    setEditingLead({ ...editingLead, status: value as Lead["status"] })
+                  }
                   options={[
                     { value: 'new', label: 'New' },
                     { value: 'contacted', label: 'Contacted' },
-                    { value: 'qualified', label: 'Qualified' }
+                    { value: 'qualified', label: 'Qualified' },
+                    { value: 'converted', label: 'Converted' },
+                    { value: 'lost', label: 'Lost' }
                   ]}
                 />
                 <Select
-                  label="Priority"
-                  value={formData.priority}
-                  onChange={(value) => setFormData({ ...formData, priority: value })}
+                  label="Source"
+                  value={editingLead.source}
+                  onChange={(value) => setEditingLead({ ...editingLead, source: value })}
                   options={[
-                    { value: 'low', label: 'Low' },
-                    { value: 'medium', label: 'Medium' },
-                    { value: 'high', label: 'High' },
-                    { value: 'urgent', label: 'Urgent' }
+                    { value: 'facebook_ads', label: 'Facebook Ads' },
+                    { value: 'google_ads', label: 'Google Ads' },
+                    { value: 'referral', label: 'Referral' },
+                    { value: 'manual', label: 'Manual' },
+                    { value: 'website', label: 'Website' }
                   ]}
                 />
               </div>
             </div>
             <div className="flex gap-2 mt-6">
-              <Button variant="primary" onClick={handleCreateLead}>
-                Create Lead
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  if (!editingLead) return;
+                  try {
+                    const updates = {
+                      firstName: editingLead.firstName,
+                      lastName: editingLead.lastName,
+                      email: editingLead.email,
+                      phone: editingLead.phone,
+                      status: editingLead.status,
+                      source: editingLead.source,
+                    };
+                    await dispatch(updateLead({ id: editingLead.id, updates })).unwrap();
+                    setShowModal(false);
+                    setEditingLead(null);
+                    dispatch(fetchLeads(leadFilters)); // ✅ Refresh list after save
+                  } catch (error) {
+                    console.error("Update failed:", error);
+                  }
+                }}
+              >
+                Save
               </Button>
-              <Button variant="outline" onClick={() => setShowCreateForm(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowModal(false);
+                  setEditingLead(null);
+                }}
+              >
                 Cancel
               </Button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </div >
   );
 };

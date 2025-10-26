@@ -409,20 +409,29 @@ export const CRM: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Customer Details Modal/Tab */}
+      {/* s Modal/Tab */}
       {selectedCustomer && activeTab === 'customer' && (
+
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="outline" onClick={() => setActiveTab('leads')}>
-                ← Back to Leads
-              </Button>
-              <h2 className="text-xl font-bold">Customer Details</h2>
+          <Card>
+            <div className="p-2">
+
+              <div className="flex bg-gray-50  justify-between">
+                <div>
+                  <h2 className="text-xl font-bold mt-1">Customer Details</h2></div>
+                <div>
+                  <Button variant="outline" onClick={() => setActiveTab('leads')}>
+                    ← Back to Leads
+                  </Button>
+                </div>
+              </div>
+
             </div>
-          </div>
+          </Card>
           <CustomerDetails />
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 };
