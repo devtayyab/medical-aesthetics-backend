@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/molecules/Tabs';
 import { LeadsPage } from '@/pages/CRM/Leads';
 import { Tasks } from '@/pages/CRM/Tasks';
-import { CustomerDetails } from '@/pages/CRM/CustomerDetails';
+import { OneCustomerDetail } from '@/pages/CRM/OneCustomerDetail';
 import {
   fetchLeads,
   fetchActions,
@@ -414,11 +414,13 @@ export const CRM: React.FC = () => {
 
         <div className="space-y-6">
           <Card>
-            <div className="p-2">
+            <div className="px-8">
 
-              <div className="flex bg-gray-50  justify-between">
+              <div className="flex  justify-between">
                 <div>
-                  <h2 className="text-xl font-bold mt-1">Customer Details</h2></div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                    Customer Details
+                  </h2></div>
                 <div>
                   <Button variant="outline" onClick={() => setActiveTab('leads')}>
                     ← Back to Leads
@@ -427,8 +429,13 @@ export const CRM: React.FC = () => {
               </div>
 
             </div>
+            <OneCustomerDetail
+              SelectedCustomer={selectedCustomer}
+
+
+            />
           </Card>
-          <CustomerDetails />
+
         </div>
       )
       }

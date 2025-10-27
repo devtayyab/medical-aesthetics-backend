@@ -269,7 +269,9 @@ export const crmAPI = {
 
   // Customer Records
   getCustomerRecord: (customerId: string, salespersonId?: string) =>
-    api.get(`/crm/customers/${customerId}`, { params: { salespersonId } }),
+    api.get(`/crm/customer/${customerId}`, { params: { salespersonId } }),
+  getCustomer: (id?: string) =>
+    api.get(`/crm/customer/${id}`),
   updateCustomerRecord: (customerId: string, data: Partial<CustomerRecord>) =>
     api.patch(`/crm/customers/${customerId}`, data),
 

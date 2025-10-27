@@ -16,20 +16,20 @@ import type { CustomerSummary } from "@/types";
 export const CustomerDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch<AppDispatch>();
-  const { customerRecord, isLoading, error } = useSelector(
+  const { customerRecord, isLoading, error, customer } = useSelector(
     (state: RootState) => state.crm
   );
   const { user } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
-    if (id && user) {
-      dispatch(fetchCustomerRecord({ customerId: id, salespersonId: user.id }));
+    if (user) {
+      dispatch(fetchCustomerRecord({ salespersonId: user.id }));
     }
-  }, [dispatch, id, user]);
+  }, [dispatch, user]);
 
   const handleUpdate = () => {
     if (id && user) {
-      dispatch(fetchCustomerRecord({ customerId: id, salespersonId: user.id }));
+      dispatch(fetchCustomerRecord({ salespersonId: user.id }));
     }
   };
 
@@ -61,6 +61,8 @@ export const CustomerDetails: React.FC = () => {
   }
 
   return (
+
+
     <CustomerDetailsComponent
       customerData={customerRecord}
       onUpdate={handleUpdate}

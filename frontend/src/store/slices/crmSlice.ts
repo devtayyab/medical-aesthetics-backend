@@ -13,13 +13,13 @@ import type {
   CrmFilters,
   CrmAnalytics
 } from "@/types";
-
+import type { Customer } from "@/types/crm.types";
 interface CrmState {
   // Lead Management
   leads: Lead[];
   selectedLead: Lead | null;
   leadFilters: CrmFilters;
-
+  customer: Customer | null;
   // Customer Management
   customerRecord: CustomerSummary | null;
   customerFilters: CrmFilters;
@@ -75,7 +75,7 @@ const initialState: CrmState = {
   repeatCustomers: [],
   followUpCustomers: [],
   recurringSchedule: null,
-
+  customer: null,
   communications: [],
   communicationFilters: {},
   tasks: [],
@@ -158,11 +158,20 @@ export const deleteLead = createAsyncThunk(
 // Customer Management
 export const fetchCustomerRecord = createAsyncThunk(
   "crm/fetchCustomerRecord",
-  async (data: { customerId: string; salespersonId?: string }) => {
-    const response = await crmAPI.getCustomerRecord(data.customerId, data.salespersonId);
+  async (data: { salespersonId?: string }) => {
+    const response = await crmAPI.getCustomerRecord(data.salespersonId);
     return response.data;
   }
 );
+
+export const fetchCustomer = createAsyncThunk(
+  "crm/fetchCustomer",
+  async (data: { id: string }) => {
+    const response = await crmAPI.getCustomer(data.id);
+    return response.data;
+  }
+);
+
 
 export const updateCustomerRecord = createAsyncThunk(
   "crm/updateCustomerRecord",
@@ -438,6 +447,9 @@ const crmSlice = createSlice({
       })
       .addCase(fetchLeads.fulfilled, (state, action) => {
         state.leads = action.payload;
+      })
+      .addCase(fetchCustomer.fulfilled, (state, action) => {
+        state.customer = action.payload;
       })
       .addCase(fetchLead.fulfilled, (state, action) => {
         state.selectedLead = action.payload;

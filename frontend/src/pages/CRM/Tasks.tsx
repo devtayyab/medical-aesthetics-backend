@@ -538,10 +538,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) =
                 ]}
                 required
               />
-              <Input
-                label="Customer ID"
-                value={formData.customerId}
-              />
+
               <Select
                 label="Priority"
                 value={formData.priority}

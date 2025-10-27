@@ -29,6 +29,7 @@ import type { CustomerSummary } from '@/types';
 
 interface CustomerDetailsProps {
   customerData: CustomerSummary;
+
   onUpdate?: () => void;
 }
 
