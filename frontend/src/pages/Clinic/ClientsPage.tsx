@@ -132,9 +132,9 @@ const ClientsPage: React.FC = () => {
                 $
                 {clients.length > 0
                   ? (
-                    clients.reduce((sum, c) => sum + (c.totalSpent || 0), 0) /
-                    clients.length
-                  ).toFixed(2)
+                      clients.reduce((sum, c) => sum + (c.totalSpent || 0), 0) /
+                      clients.length
+                    ).toFixed(2)
                   : "0.00"}
               </p>
             </div>
@@ -332,12 +332,13 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
                         ${(apt.totalAmount || 0).toFixed(2)}asdasdas
                       </p>
                       <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${apt.status === "completed"
-                          ? "bg-green-100 text-green-800"
-                          : apt.status === "cancelled"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-blue-100 text-blue-800"
-                          }`}
+                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                          apt.status === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : apt.status === "cancelled"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800"
+                        }`}
                       >
                         {apt.status || "Unknown"}
                       </span>
@@ -345,10 +346,10 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
                   </div>
                 </div>
               )) || (
-                  <p className="text-gray-600">
-                    No appointment history available.
-                  </p>
-                )}
+                <p className="text-gray-600">
+                  No appointment history available.
+                </p>
+              )}
             </div>
           </div>
         </div>

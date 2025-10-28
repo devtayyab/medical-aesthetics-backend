@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { clinicsAPI } from '@/services/api';
 import type { Clinic, Service, SearchFilters } from '@/types';
 
-export interface ClinicsState {
+interface ClinicsState {
   clinics: Clinic[];
   featuredClinics: Clinic[];
   selectedClinic: Clinic | null;

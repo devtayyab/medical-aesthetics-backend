@@ -14,7 +14,7 @@ import {
   AppointmentStatus,
 } from '../../types/clinic.types';
 
-export interface ClinicState {
+interface ClinicState {
   profile: ClinicProfile | null;
   services: Service[];
   appointments: Appointment[];

@@ -1,8 +1,8 @@
 import React from "react";
-import type { ActionsLog } from "@/types";
+import type { ActionLog } from "@/types";
 
 interface ActionLogProps {
-  actions: ActionsLog[];
+  actions: ActionLog[];
 }
 
 export const ActionLog: React.FC<ActionLogProps> = ({ actions }) => {

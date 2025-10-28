@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { userAPI, loyaltyAPI } from '@/services/api';
 import type { User, LoyaltyBalance } from '@/types';
 
-export interface UserState {
+interface UserState {
   profile: User | null;
   loyaltyBalance: LoyaltyBalance | null;
   isLoading: boolean;

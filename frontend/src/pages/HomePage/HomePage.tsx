@@ -102,6 +102,7 @@ export const HomePage: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
+      console.log("HomePage: Dispatching fetchFeaturedClinics");
       dispatch(fetchFeaturedClinics());
     }
   }, [dispatch, isAuthenticated, authLoading]);

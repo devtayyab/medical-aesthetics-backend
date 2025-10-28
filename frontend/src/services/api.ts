@@ -16,11 +16,11 @@ import type {
   ParsedFacebookLead,
   CrmFilters,
   CrmAnalytics,
-  User,
+  User
 } from "@/types";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://51.20.72.67/";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export const api = axios.create({
@@ -31,112 +31,86 @@ export const api = axios.create({
 });
 
 let isRefreshing = false;
-let refreshPromise: Promise<any> | null = null;
-let isLoggingOut = false; // Prevent multiple logout calls
+let refreshSubscribers: ((token: string) => void)[] = [];
 
-// Request interceptor to attach Authorization header
-api.interceptors.request.use(
-  (config) => {
-    const state = store.getState();
-    const accessToken =
-      state.auth.accessToken || localStorage.getItem("accessToken");
+const subscribeTokenRefresh = (cb: (token: string) => void) => {
+  refreshSubscribers.push(cb);
+};
 
-    // Debug logging for every request
-    if (config.url && !config.url.includes("/auth/")) {
-      console.log("🌐 API Request:", {
-        url: config.url,
-        method: config.method,
-        hasToken: !!accessToken,
-        tokenPreview: accessToken
-          ? accessToken.substring(0, 30) + "..."
-          : "NONE",
-        fromRedux: !!state.auth.accessToken,
-        fromLocalStorage: !!localStorage.getItem("accessToken"),
-      });
-    }
-    console.log("🛠️ Request URL:", config.url, "Token:", accessToken);
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    } else {
-      console.warn("⚠️ No access token found for request:", config.url);
-    }
+const onRefreshed = (token: string) => {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+};
 
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+api.interceptors.request.use((config) => {
+  const state = store.getState();
+  const token = state.auth.accessToken;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-);
+  return config;
+});
 
-// Response interceptor for handling 401 and refreshing tokens
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as any;
-
-    // Only handle 401s, skip refresh endpoint and already retried requests
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes("/auth/refresh")
-    ) {
-      originalRequest._retry = true;
-
-      // If a refresh is already in progress, wait for it
-      if (isRefreshing && refreshPromise) {
-        try {
-          const accessToken = await refreshPromise;
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        } catch {
-          return Promise.reject(error);
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      console.log(
+        "401 detected, isRefreshing:",
+        isRefreshing,
+        "originalRequest:",
+        {
+          url: originalRequest.url,
+          method: originalRequest.method,
+          headers: originalRequest.headers,
         }
+      );
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          });
+        });
       }
 
-      // Get refresh token from Redux or localStorage
+      originalRequest._retry = true;
+      isRefreshing = true;
+
       const state = store.getState();
       const refreshToken =
         state.auth.refreshToken || localStorage.getItem("refreshToken");
-
-      if (!refreshToken) {
-        return error;
-      }
-
-      // Start refresh
-      isRefreshing = true;
-      refreshPromise = (async () => {
+      if (refreshToken) {
         try {
-          const response = await axios.post(
-            `${API_BASE_URL}/auth/refresh`,
-            { refreshToken },
-            { headers: { "Content-Type": "application/json" } }
-          );
-
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken,
+          });
           const { accessToken, refreshToken: newRefreshToken } = response.data;
-
-          // Update Redux store
           store.dispatch(
             setTokens({ accessToken, refreshToken: newRefreshToken })
           );
-
-          return accessToken;
-        } catch (refreshError) {
-          return refreshError;
+          onRefreshed(accessToken);
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          return api(originalRequest);
+        } catch (refreshError: any) {
+          console.error("Refresh failed:", {
+            message: refreshError.response?.data || refreshError.message,
+            status: refreshError.response?.status,
+          });
+          store.dispatch(logout());
+          window.location.href = "/login";
+          return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
-          refreshPromise = null;
         }
-      })();
-
-      try {
-        const accessToken = await refreshPromise;
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        return Promise.reject(refreshError);
+      } else {
+        store.dispatch(logout());
+        window.location.href = "/login";
       }
     }
-
     return Promise.reject(error);
   }
 );
@@ -265,8 +239,7 @@ export const crmAPI = {
     status: string;
     metadata?: any;
   }) => api.post("/crm/leads", data),
-  getLeads: (filters?: CrmFilters) =>
-    api.get("/crm/leads", { params: filters }),
+  getLeads: (filters?: CrmFilters) => api.get("/crm/leads", { params: filters }),
   getLead: (id: string) => api.get(`/crm/leads/${id}`),
   updateLead: (id: string, data: Partial<Lead>) =>
     api.patch(`/crm/leads/${id}`, data),
@@ -303,28 +276,23 @@ export const crmAPI = {
   // Communication Management
   logCommunication: (data: Partial<CommunicationLog>) =>
     api.post("/crm/communications", data),
-  getCommunicationHistory: (
-    customerId: string,
-    filters?: {
-      type?: string;
-      startDate?: string;
-      endDate?: string;
-    }
-  ) => api.get(`/crm/communications/${customerId}`, { params: filters }),
+  getCommunicationHistory: (customerId: string, filters?: {
+    type?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get(`/crm/communications/${customerId}`, { params: filters }),
 
   // Action/Task Management
-  createAction: (data: Partial<CrmAction>) => api.post("/crm/actions", data),
+  createAction: (data: Partial<CrmAction>) =>
+    api.post("/crm/actions", data),
   updateAction: (id: string, data: Partial<CrmAction>) =>
     api.patch(`/crm/actions/${id}`, data),
   deleteAction: (id: string) => api.delete(`/crm/actions/${id}`),
-  getActions: (
-    salespersonId: string,
-    filters?: {
-      status?: string;
-      priority?: string;
-      customerId?: string;
-    }
-  ) => api.get(`/crm/actions/${salespersonId}`, { params: filters }),
+  getActions: (salespersonId: string, filters?: {
+    status?: string;
+    priority?: string;
+    customerId?: string;
+  }) => api.get(`/crm/actions/${salespersonId}`, { params: filters }),
   getPendingActions: (salespersonId: string) =>
     api.get(`/crm/actions/${salespersonId}/pending`),
   getOverdueTasks: (salespersonId?: string) =>
@@ -347,8 +315,7 @@ export const crmAPI = {
   createAutomatedTasks: () => api.post("/crm/automation/create-tasks"),
 
   // Field Validation
-  getRequiredFieldsForCall: () =>
-    api.get("/crm/validation/required-fields/call"),
+  getRequiredFieldsForCall: () => api.get("/crm/validation/required-fields/call"),
   getRequiredFieldsForAction: (actionType: string) =>
     api.get(`/crm/validation/required-fields/action/${actionType}`),
   validateCommunication: (data: {
@@ -361,22 +328,17 @@ export const crmAPI = {
   }) => api.post("/crm/validation/validate-action", data),
 
   // Analytics
-  getSalespersonAnalytics: (
-    salespersonId: string,
-    dateRange?: {
-      startDate: string;
-      endDate: string;
-    }
-  ) => api.get(`/crm/analytics/${salespersonId}`, { params: dateRange }),
+  getSalespersonAnalytics: (salespersonId: string, dateRange?: {
+    startDate: string;
+    endDate: string;
+  }) => api.get(`/crm/analytics/${salespersonId}`, { params: dateRange }),
   getCrmMetrics: () => api.get("/crm/metrics"),
 
   // Repeat Customer Management
   identifyRepeatCustomers: (salespersonId?: string) =>
     api.get("/crm/repeat-customers", { params: { salespersonId } }),
-  getCustomersDueForFollowUp: (
-    salespersonId?: string,
-    daysThreshold?: number
-  ) => api.get("/crm/follow-up", { params: { salespersonId, daysThreshold } }),
+  getCustomersDueForFollowUp: (salespersonId?: string, daysThreshold?: number) =>
+    api.get("/crm/follow-up", { params: { salespersonId, daysThreshold } }),
 
   // Legacy methods (keeping for backward compatibility)
   logAction: (customerId: string, data: { type: string; notes: string }) =>
@@ -388,39 +350,15 @@ export const crmAPI = {
     dueDate: string;
     assignedTo: string;
   }) => api.post("/crm/tasks", data),
-
   getTasks: (salespersonId: string) => api.get(`/crm/tasks/${salespersonId}`),
   updateTask: (id: string, data: Partial<CrmAction>) =>
     api.patch(`/crm/tasks/${id}`, data),
-
   scheduleRecurring: (data: {
     customerId: string;
     serviceId: string;
     frequency: string;
     startDate: string;
   }) => api.post("/crm/recurring", data),
-
-  // ---- Facebook / Form Submissions ----
-  getCustomerFormSubmissions: (customerId: string) =>
-    api.get(`/crm/customers/${customerId}/form-submissions`),
-  getFormSubmissionStats: (params?: {
-    startDate?: string;
-    endDate?: string;
-    source?: string;
-  }) => api.get("/crm/analytics/form-submissions", { params }),
-  getCustomerRecord: (customerId: string) =>
-    api.get(`/crm/customers/${customerId}/record`),
-  updateCustomerRecord: (customerId: string, data: any) =>
-    api.put(`/crm/customers/${customerId}/record`, data),
-  logCommunication: (data: {
-    customerId: string;
-    salespersonId: string;
-    type: string;
-    title: string;
-    description?: string;
-  }) => api.post("/crm/communications", data),
-  getCustomerCommunications: (customerId: string) =>
-    api.get(`/crm/customers/${customerId}/communications`),
 };
 
 export const adminAPI = {
