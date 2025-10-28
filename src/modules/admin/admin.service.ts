@@ -29,7 +29,7 @@ export class AdminService {
     private appointmentsRepository: Repository<Appointment>,
     @InjectRepository(LoyaltyLedger)
     private loyaltyRepository: Repository<LoyaltyLedger>,
-  ) {}
+  ) { }
 
   async createTag(name: string, color?: string, description?: string): Promise<Tag> {
     const tag = this.tagsRepository.create({
@@ -478,13 +478,13 @@ export class AdminService {
 
   async updateSetting(key: string, value: any): Promise<PlatformSettings> {
     let setting = await this.settingsRepository.findOne({ where: { key } });
-    
+
     if (setting) {
       setting.value = value;
     } else {
       setting = this.settingsRepository.create({ key, value });
     }
-    
+
     return this.settingsRepository.save(setting);
   }
 

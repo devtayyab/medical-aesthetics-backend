@@ -7,11 +7,19 @@ import {
   logCommunication,
   createAction,
   addCustomerTag,
-  removeCustomerTag
+  removeCustomerTag,
 } from "@/store/slices/crmSlice";
 import { CustomerDetails as CustomerDetailsComponent } from "@/components/organisms/CustomerDetails/CustomerDetails";
 import type { RootState, AppDispatch } from "@/store";
 import type { CustomerSummary } from "@/types";
+
+import {
+  fetchLeads,
+  fetchCustomerRecord,
+  fetchCustomerCommunications,
+  logAction,
+  fetchActions,
+} from "@/store/slices/crmSlice";
 
 export const CustomerDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +29,38 @@ export const CustomerDetails: React.FC = () => {
   );
   const { user } = useSelector((state: RootState) => state.auth);
 
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [actionType, setActionType] = useState("follow_up");
+  const [activeTab, setActiveTab] = useState<"details" | "history" | "actions">(
+    "details"
+  );
+  useEffect(() => {
+    if (id) dispatch(fetchLeads());
+  }, [dispatch, id]);
+
+  const handleLogAction = () => {
+    if (selectedLead && title && description) {
+      dispatch(
+        logAction({
+          customerId: selectedLead.id,
+          salespersonId: user?.id || "N/A",
+          actionType,
+          title,
+          description,
+        })
+      );
+      setTitle("");
+      setDescription("");
+    }
+  };
+
+  const handleFetchActions = () => {
+    if (id) dispatch(fetchActions());
+  };
+  useEffect(() => {
+    handleFetchActions();
+  }, [dispatch]);
   useEffect(() => {
     if (id && user) {
       dispatch(fetchCustomerRecord({ customerId: id, salespersonId: user.id }));

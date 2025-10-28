@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { authAPI } from "@/services/api";
 import type { User } from "@/types";
 
-interface AuthState {
+export interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
@@ -13,9 +13,9 @@ interface AuthState {
 
 const initialState: AuthState = {
   user: null,
-  accessToken: null,
+  accessToken: localStorage.getItem("accessToken") || null,
   refreshToken: localStorage.getItem("refreshToken") || null,
-  isAuthenticated: false, // Changed to false to avoid assuming until restoreSession succeeds
+  isAuthenticated: false, // Will be set to true only after successful restoreSession or login
   isLoading: false,
   error: null,
 };
@@ -28,15 +28,12 @@ export const login = createAsyncThunk(
   ) => {
     try {
       const response = await authAPI.login(email, password);
-      console.log("Login success, response:", response.data);
-      localStorage.setItem("refreshToken", response.data.refreshToken);
-      console.log(
-        "Login: Stored refreshToken:",
-        response.data.refreshToken.substring(0, 20) + "..."
-      );
+      const refreshToken = response.data.refreshToken;
+      console.log("🎯 refreshToken:", refreshToken);
+      localStorage.setItem("refreshToken", refreshToken);
+      console.log("🎯 login response:", response.data);
       return response.data;
     } catch (error: any) {
-      console.error("Login failed:", error.response?.data || error.message);
       return rejectWithValue(error.response?.data?.message || "Login failed");
     }
   }
@@ -56,15 +53,9 @@ export const register = createAsyncThunk(
   ) => {
     try {
       const response = await authAPI.register(userData);
-      console.log("Register success, response:", response.data);
       localStorage.setItem("refreshToken", response.data.refreshToken);
-      console.log(
-        "Register: Stored refreshToken:",
-        response.data.refreshToken.substring(0, 20) + "..."
-      );
       return response.data;
     } catch (error: any) {
-      console.error("Register failed:", error.response?.data || error.message);
       return rejectWithValue(
         error.response?.data?.message || "Registration failed"
       );
@@ -77,76 +68,76 @@ export const logout = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       await authAPI.logout();
-      console.log("Logout success");
     } catch (error: any) {
-      console.error(
-        "Logout request failed, clearing state:",
-        error.response?.data || error.message
-      );
     }
     localStorage.removeItem("refreshToken");
-    console.log("Logout: Removed refreshToken from localStorage");
+    localStorage.removeItem("accessToken");
+
     return {};
   }
 );
 
+// Global flag to prevent concurrent restoreSession calls
+let isRestoringSession = false;
+
 export const restoreSession = createAsyncThunk(
   "auth/restoreSession",
-  async (_, { getState, dispatch, rejectWithValue }) => {
-    const state = getState() as { auth: AuthState };
-    const refreshToken =
-      state.auth.refreshToken || localStorage.getItem("refreshToken");
-    console.log(
-      "restoreSession: state.auth.refreshToken:",
-      refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
-    );
-    console.log(
-      "restoreSession: localStorage.refreshToken:",
-      localStorage.getItem("refreshToken")
-        ? `${localStorage.getItem("refreshToken")!.substring(0, 20)}...`
-        : "null"
-    );
-    console.log(
-      "restoreSession: Using refreshToken:",
-      refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
-    );
+  async (_, { rejectWithValue }) => {
+    // Prevent concurrent restore attempts
+    if (isRestoringSession) {
+      console.warn("⚠️ Restore already in progress, skipping duplicate call");
+      return rejectWithValue("Already restoring");
+    }
+
+    const refreshToken = localStorage.getItem("refreshToken");
 
     if (!refreshToken) {
-      console.log("restoreSession: No refresh token, rejecting silently");
-      return rejectWithValue(null); // Silent rejection - no error in state
+      console.warn("⚠️ No refresh token found, skipping restore.");
+      return rejectWithValue(null);
     }
+
+    isRestoringSession = true;
 
     try {
       const response = await authAPI.refreshToken(refreshToken);
-      console.log("restoreSession success, response:", response.data);
-      if (response.data.refreshToken) {
-        localStorage.setItem("refreshToken", response.data.refreshToken);
-        console.log(
-          "restoreSession: Stored new refreshToken:",
-          response.data.refreshToken.substring(0, 20) + "..."
-        );
-      } else {
-        console.log(
-          "restoreSession: No new refreshToken in response, keeping existing"
-        );
+      console.log("✅ Session restored successfully:", response.data);
+
+      const { accessToken, refreshToken: newRefreshToken, user } = response.data;
+
+      // Validate that we got a new refresh token
+      if (!newRefreshToken) {
+        console.warn("⚠️ Backend did not return new refreshToken!");
       }
-      return response.data;
+
+      const finalRefreshToken = newRefreshToken || refreshToken;
+
+      // Persist latest tokens to localStorage
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", finalRefreshToken);
+
+      console.log("🔄 Tokens updated:", {
+        oldRefreshToken: refreshToken.substring(0, 20) + "...",
+        newRefreshToken: finalRefreshToken.substring(0, 20) + "...",
+        tokensMatch: refreshToken === finalRefreshToken ? "❌ SAME" : "✅ ROTATED",
+      });
+
+      return { accessToken, refreshToken: finalRefreshToken, user };
+
     } catch (error: any) {
-      console.error(
-        "restoreSession failed:",
-        error.response?.data || error.message
-      );
-      if (error.response?.status === 401) {
-        dispatch(logout());
-        localStorage.removeItem("refreshToken");
-        console.log("restoreSession: 401 error, cleared session");
-      }
+      console.error("❌ Restore session failed:", error.response?.data || error.message);
+      // Clear localStorage on auth failure
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
       return rejectWithValue(
         error.response?.data?.message || "Session restoration failed"
       );
+    } finally {
+      isRestoringSession = false;
     }
   }
 );
+
+
 
 const authSlice = createSlice({
   name: "auth",
@@ -159,26 +150,26 @@ const authSlice = createSlice({
       state,
       action: PayloadAction<{ accessToken: string; refreshToken?: string }>
     ) => {
+      console.log("🔧 setTokens called:", {
+        oldRefreshToken: state.refreshToken?.substring(0, 20) + "...",
+        newRefreshToken: action.payload.refreshToken?.substring(0, 20) + "...",
+        hasNewToken: !!action.payload.refreshToken,
+      });
+
       state.accessToken = action.payload.accessToken;
+      localStorage.setItem("accessToken", action.payload.accessToken);
+
       if (action.payload.refreshToken) {
         state.refreshToken = action.payload.refreshToken;
         localStorage.setItem("refreshToken", action.payload.refreshToken);
-        console.log(
-          "setTokens: Stored new refreshToken:",
-          action.payload.refreshToken.substring(0, 20) + "..."
-        );
       }
+
       state.isAuthenticated = true;
-      console.log(
-        "setTokens: Updated accessToken:",
-        state.accessToken.substring(0, 20) + "...",
-        "isAuthenticated:",
-        state.isAuthenticated
-      );
     },
     setAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;
-      console.log("setAccessToken: Updated accessToken");
+      localStorage.setItem("accessToken", action.payload);
+      state.isAuthenticated = true;
     },
   },
   extraReducers: (builder) => {
@@ -186,31 +177,38 @@ const authSlice = createSlice({
       .addCase(login.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-        console.log("login.pending");
       })
       .addCase(login.fulfilled, (state, action) => {
+        console.log("🎯 Login successful, storing tokens:", {
+          hasAccessToken: !!action.payload.accessToken,
+          hasRefreshToken: !!action.payload.refreshToken,
+          user: action.payload.user?.email,
+        });
+        
         state.isLoading = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
         state.isAuthenticated = true;
         state.error = null;
-        console.log(
-          "login.fulfilled: User:",
-          state.user,
-          "refreshToken:",
-          state.refreshToken?.substring(0, 20) + "..."
-        );
+        
+        // Store in localStorage SYNCHRONOUSLY
+        localStorage.setItem("accessToken", action.payload.accessToken);
+        localStorage.setItem("refreshToken", action.payload.refreshToken);
+        
+        console.log("✅ Tokens stored in localStorage:", {
+          accessTokenStored: !!localStorage.getItem("accessToken"),
+          refreshTokenStored: !!localStorage.getItem("refreshToken"),
+        });
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
-        console.log("login.rejected: Error:", state.error);
+
       })
       .addCase(register.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-        console.log("register.pending");
       })
       .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
@@ -219,17 +217,13 @@ const authSlice = createSlice({
         state.refreshToken = action.payload.refreshToken;
         state.isAuthenticated = true;
         state.error = null;
-        console.log(
-          "register.fulfilled: User:",
-          state.user,
-          "refreshToken:",
-          state.refreshToken?.substring(0, 20) + "..."
-        );
+        localStorage.setItem("accessToken", action.payload.accessToken);
+        localStorage.setItem("refreshToken", action.payload.refreshToken);
       })
       .addCase(register.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
-        console.log("register.rejected: Error:", state.error);
+
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
@@ -237,55 +231,31 @@ const authSlice = createSlice({
         state.refreshToken = null;
         state.isAuthenticated = false;
         state.error = null;
-        console.log("logout.fulfilled: State cleared");
       })
       .addCase(restoreSession.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-        console.log("restoreSession.pending");
       })
       .addCase(restoreSession.fulfilled, (state, action) => {
+        console.log("🎯 restoreSession.fulfilled payload:", action.payload);
         state.isLoading = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken || state.refreshToken;
         state.isAuthenticated = true;
         state.error = null;
-        console.log("restoreSession.fulfilled: Updated state -", {
-          accessToken: state.accessToken
-            ? `${state.accessToken.substring(0, 20)}...`
-            : "null",
-          refreshToken: state.refreshToken
-            ? `${state.refreshToken.substring(0, 20)}...`
-            : "null",
-          isAuthenticated: state.isAuthenticated,
-        });
       })
       .addCase(restoreSession.rejected, (state, action) => {
+        console.log("❌ restoreSession.rejected reason:", action.payload);
         state.isLoading = false;
+        // Clear tokens and auth state on failed restoration
+        state.user = null;
+        state.accessToken = null;
+        state.refreshToken = null;
+        state.isAuthenticated = false;
+        // Don't set error if there was no refresh token (null payload means no token found)
         if (action.payload) {
           state.error = action.payload as string;
-          // Only clear session on 401 or invalid token errors
-          if (state.error.includes("401") || state.error.includes("Invalid")) {
-            state.user = null;
-            state.accessToken = null;
-            state.refreshToken = null;
-            state.isAuthenticated = false;
-            localStorage.removeItem("refreshToken");
-            console.log(
-              "restoreSession.rejected: 401/Invalid error, cleared session"
-            );
-          } else {
-            console.log(
-              "restoreSession.rejected: Non-critical error:",
-              state.error,
-              "Keeping session"
-            );
-          }
-        } else {
-          console.log(
-            "restoreSession.rejected: No token (silent), keeping state"
-          );
         }
       });
   },

@@ -167,16 +167,115 @@ export const Settings: React.FC = () => {
         <div className="flex gap-4 mt-10">
           <button
             onClick={handleSubmit}
-            className="px-6 py-2 rounded-[12px] bg-[#CBFF38] text-[#203400] font-medium hover:bg-[#A7E52F]"
+            className="px-6 py-2 rounded-[12px] bg-[#CBFF38] text-[#203400] font-medium hover:bg-[#A7E52F] mb-10 border-[0.5px] border-[#203400]"
           >
             Submit
           </button>
           <button
             onClick={() => navigate("/delete-account")}
-            className="px-6 py-2 rounded-[12px] bg-[#FF3347] text-white font-medium hover:bg-[#D92B3C]"
+            className="px-6 py-2 rounded-[12px] bg-[#FF3347] text-white font-medium hover:bg-[#D92B3C] mb-10"
           >
             Delete Account
           </button>
+        </div>
+        <div className="space-y-10 text-[#33373F]">
+
+          <h2 className="text-[#33373F] text-[30px] font-semibold mb-6">
+            Privacy
+          </h2>
+          <div>
+            <h3 className="font-semibold text-[20px] mb-2">
+              Profile Privacy
+            </h3>
+            <p className=" text-[14px] mb-4">
+              Determine who can follow you, see your profile, and view your workout activity.
+            </p>
+            <p className=" text-[14px] mb-2">
+              Who can follow you and view your profile:            </p>
+            <div className="space-y-3">
+              <label className="flex gap-3 items-center">
+                <input
+                  type="checkbox"
+                  checked={settings.inspirationOffers.sms}
+                  onChange={() => handleCheckbox("inspirationOffers", "sms")}
+                />
+                Make Profile Private
+              </label>
+
+            </div>
+          </div>
+          <div>
+            <h3 className="font-semibold text-[20px] mb-2">
+              Activity Feed Privacy
+            </h3>
+            <p className=" text-[14px] mb-4">
+              Determine who can see your workout history in the feed. This includes when you worked out, what you did, and how you performed.            </p>
+            <p className=" text-[14px] mb-2">
+              Who can see your workouts in the feed:            </p>
+            <div className=" flex flex-row gap-6">
+              <label className="items-center flex gap-3 ">
+                <input
+                  type="radio"
+                  checked={settings.inspirationOffers.sms}
+                  onChange={() => handleCheckbox("inspirationOffers", "sms")}
+                />
+                My followers
+              </label>
+              <label className="items-center flex gap-3 ">
+                <input
+                  type="radio"
+                  checked={settings.inspirationOffers.sms}
+                  onChange={() => handleCheckbox("inspirationOffers", "sms")}
+                />
+                Just me
+              </label>
+            </div>
+          </div>
+          <div>
+            <h3 className="font-semibold text-[20px] mb-2">
+              Running Routes
+            </h3>
+            <p className=" text-[14px] mb-4">
+              When your routes are private, only you can see them in your workout history.
+            </p>
+            <div className="space-y-3">
+              <label className="flex gap-3 items-center">
+                <input
+                  type="checkbox"
+                  checked={settings.inspirationOffers.sms}
+                  onChange={() => handleCheckbox("inspirationOffers", "sms")}
+                />
+                Make My Running Routes Private
+              </label>
+            </div>
+          </div>
+          <div>
+            <h3 className="font-semibold text-[20px] mb-2">
+              Age and Gender
+            </h3>
+            <p className=" text-[14px] mb-4">
+              This will hide your age group and gender on the Here Now sidebar from other Members in the class.
+            </p>
+            <div className="space-y-3">
+              <label className="flex gap-3 items-center">
+                <input
+                  type="checkbox"
+                  checked={settings.inspirationOffers.sms}
+                  onChange={() => handleCheckbox("inspirationOffers", "sms")}
+                />
+                Make My Age and Gender Private
+              </label>
+
+            </div>
+          </div>
+          <div>
+            <button
+              onClick={handleSubmit}
+              className="px-6 py-2 rounded-[12px] bg-[#CBFF38] text-[#203400] font-medium hover:bg-[#A7E52F] mb-10 border-[0.5px] border-[#203400]"
+            >
+              Save Changes
+            </button>
+          </div>
         </div>
       </div>
     </section>

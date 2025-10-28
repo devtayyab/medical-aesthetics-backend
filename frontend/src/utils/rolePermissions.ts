@@ -161,5 +161,45 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     });
   }
 
+  // CRM Section - only for salesperson
+  if (userRole === UserRole.SALESPERSON || userRole === 'salesperson') {
+    menuItems.push({
+      id: 'crm-customers',
+      label: 'CRM: Customers',
+      path: '/crm/customers',
+      icon: 'Users',
+    });
+    menuItems.push({
+      id: 'crm-tasks',
+      label: 'CRM: Tasks',
+      path: '/crm/tasks',
+      icon: 'Calendar',
+    });
+    menuItems.push({
+      id: 'crm-actions',
+      label: 'CRM: Actions',
+      path: '/crm/actions',
+      icon: 'LayoutDashboard',
+    });
+    menuItems.push({
+      id: 'crm-repeat',
+      label: 'CRM: Repeat Management',
+      path: '/crm/repeat-management',
+      icon: 'Clock',
+    });
+    menuItems.push({
+      id: 'crm-stats',
+      label: '📊 Form Statistics',
+      path: '/crm/form-stats',
+      icon: 'BarChart3',
+    });
+    menuItems.push({
+      id: 'crm-stats',
+      label: '📊 Customer Lead Form',
+      path: '/crm/customer-lead-form',
+      icon: 'BarChart3',
+    });
+  }
+
   return menuItems;
 };

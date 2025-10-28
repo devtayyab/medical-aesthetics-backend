@@ -22,16 +22,9 @@ export const Search: React.FC = () => {
     (state: RootState) => state.client
   );
 
-  console.log("clinics:", clinics);
-  console.log("isLoading:", isLoading, "error:", error);
 
   useEffect(() => {
-    console.log("Dispatching searchClinics");
     const state = store.getState() as RootState;
-    console.log(
-      "Current accessToken:",
-      state.auth.accessToken?.substring(0, 20) || "No token"
-    );
     const params = new URLSearchParams(location.search);
     const filters = {
       query: params.get("q") || "",
