@@ -11,6 +11,7 @@ interface OneCustomerDetailProps {
 export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     SelectedCustomer,
 }) => {
+    console.log(SelectedCustomer.assignedSales.email, 'SelectedCustomer');
     if (!SelectedCustomer) {
         return (
             <div className="text-center py-12 text-gray-600">Customer not found</div>

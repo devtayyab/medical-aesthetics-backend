@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Tag } from '../../admin/entities/tag.entity';
-
+import { CustomerRecord } from './customer-record.entity';
 @Entity('customer_tags')
 export class CustomerTag {
   @PrimaryGeneratedColumn('uuid')
@@ -29,9 +29,10 @@ export class CustomerTag {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => CustomerRecord, (record) => record.tags)
   @JoinColumn({ name: 'customerId' })
-  customer: User;
+  customer: CustomerRecord;
+
 
   @ManyToOne(() => Tag)
   @JoinColumn({ name: 'tagId' })

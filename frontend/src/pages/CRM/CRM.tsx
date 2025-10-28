@@ -32,14 +32,13 @@ import {
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
-import type { CrmAction } from '@/types';
-
+import type { CrmAction, Task } from '@/types';
+import { TaskDetails } from '@/pages/CRM/TaskDetails';
 export const CRM: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const {
     leads,
-    tasks,
     overdueTasks,
     pendingTasks,
     analytics,
@@ -47,9 +46,12 @@ export const CRM: React.FC = () => {
     isLoading
   } = useSelector((state: RootState) => state.crm);
 
+
+  const { tasks } = useSelector((state: RootState) => state.task);
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCustomer, setSelectedCustomer] = useState<Lead | null>(null);
-
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   React.useEffect(() => {
     if (user) {
       dispatch(fetchLeads());
@@ -84,9 +86,22 @@ export const CRM: React.FC = () => {
     setActiveTab('customer');
   };
 
-  const handleViewTask = (task: CrmAction) => {
-    // Handle task viewing if needed
+  const handleViewTask = (task: Task) => {
+    setSelectedTask(task);
+    setActiveTab('task');
   };
+  const updatedTasks = tasks.map(task => {
+    const dueDate = new Date(task.dueDate);
+    const now = new Date();
+
+    // Check if due date is in the past and task is not completed
+    if (dueDate < now && task.status !== 'completed') {
+      return { ...task, status: 'overdue' };
+    }
+
+    return task;
+  });
+
 
   return (
     <div className="space-y-6">
@@ -164,7 +179,7 @@ export const CRM: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-yellow-600" />
                   <div>
-                    <div className="text-2xl font-bold">{pendingTasks.length}</div>
+                    <div className="text-2xl font-bold">{tasks.filter(l => l.status === 'pending').length}</div>
                     <div className="text-sm text-gray-500">Pending Tasks</div>
                   </div>
                 </div>
@@ -176,7 +191,7 @@ export const CRM: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
                   <div>
-                    <div className="text-2xl font-bold">{overdueTasks.length}</div>
+                    <div className="text-2xl font-bold">{updatedTasks.filter(l => l.status === 'overdue').length}</div>
                     <div className="text-sm text-gray-500">Overdue</div>
                   </div>
                 </div>
@@ -240,19 +255,19 @@ export const CRM: React.FC = () => {
             {/* Overdue Tasks */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 mb-4">
                   <AlertTriangle className="h-5 w-5 text-red-600 " />
                   Overdue Tasks
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {overdueTasks.slice(0, 5).map((task) => (
+                  {updatedTasks.slice(0, 5).map((task) => (
                     <div key={task.id} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
                       <div>
                         <div className="font-medium">{task.title}</div>
                         <div className="text-sm text-gray-600">
-                          {task.customer?.firstName} {task.customer?.lastName}
+                          {task.description}
                         </div>
                       </div>
                       <div className="text-right">
@@ -263,7 +278,7 @@ export const CRM: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  {overdueTasks.length === 0 && (
+                  {tasks.length === 0 && (
                     <div className="text-center py-4 text-gray-500">
                       No overdue tasks
                     </div>
@@ -309,7 +324,7 @@ export const CRM: React.FC = () => {
 
         {/* Tasks Tab */}
         <TabsContent value="tasks">
-          <Tasks salespersonId={user?.id} onViewTask={handleViewTask} />
+          <Tasks onViewTask={handleViewTask} />
         </TabsContent>
 
         {/* Customers Tab */}
@@ -433,6 +448,35 @@ export const CRM: React.FC = () => {
               SelectedCustomer={selectedCustomer}
 
 
+            />
+          </Card>
+
+        </div>
+      )
+      }
+
+      {/* s Modal/Tab */}
+      {selectedTask && activeTab === 'task' && (
+
+        <div className="space-y-6">
+          <Card>
+            <div className="px-8">
+
+              <div className="flex  justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                    Task Details
+                  </h2></div>
+                <div>
+                  <Button variant="outline" onClick={() => setActiveTab('tasks')}>
+                    ← Back to Tasks
+                  </Button>
+                </div>
+              </div>
+
+            </div>
+            <TaskDetails
+              selectedTask={selectedTask}
             />
           </Card>
 

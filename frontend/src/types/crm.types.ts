@@ -89,6 +89,10 @@ export interface CrmAction {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   dueDate?: string;
   completedAt?: string;
+  clinic?: string;
+  proposedTreatment?: string;
+  cost?: number;
+  callOutcome?: string;
   metadata?: {
     clinic?: string;
     proposedTreatment?: string;
