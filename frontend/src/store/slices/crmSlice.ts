@@ -1,12 +1,14 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { crmAPI } from "@/services/api";
-import type { Lead, Task, ActionLog } from "@/types";
+import type { Lead, Task, ActionsLog, FormSubmission, Communication } from "@/types";
 
-interface CrmState {
+export interface CrmState {
   leads: Lead[];
   selectedLead: Lead | null;
   tasks: Task[];
-  actions: ActionLog[];
+  actions: ActionsLog[];
+  formSubmissions: FormSubmission[];
+  communications: Communication[];
   isLoading: boolean;
   error: string | null;
 }
@@ -16,9 +18,13 @@ const initialState: CrmState = {
   selectedLead: null,
   tasks: [],
   actions: [],
+  formSubmissions: [],
+  communications: [],
   isLoading: false,
   error: null,
 };
+
+
 
 export const createLead = createAsyncThunk(
   "crm/createLead",
@@ -31,18 +37,22 @@ export const createLead = createAsyncThunk(
   }) => {
     const response = await crmAPI.createLead(data);
     return response.data;
+
   }
 );
-
-export const fetchLeads = createAsyncThunk("crm/fetchLeads", async () => {
-  const response = await crmAPI.getLeads();
-  return response.data;
-});
 
 export const fetchLead = createAsyncThunk(
   "crm/fetchLead",
   async (id: string) => {
     const response = await crmAPI.getLead(id);
+    return response.data;
+  }
+);
+
+export const fetchLeads = createAsyncThunk(
+  "crm/fetchLead",
+  async () => {
+    const response = await crmAPI.getLeads();
     return response.data;
   }
 );
@@ -57,8 +67,23 @@ export const updateLead = createAsyncThunk(
 
 export const logAction = createAsyncThunk(
   "crm/logAction",
-  async (data: { customerId: string; type: string; notes: string }) => {
-    const response = await crmAPI.logAction(data.customerId, data);
+  async (data: {
+    customerId: string;
+    salespersonId: string;
+    actionType: string;
+    title: string;
+    description?: string;
+  }) => {
+    const response = await crmAPI.logAction(data);
+    return response.data;
+  }
+);
+
+
+export const fetchActions = createAsyncThunk(
+  "crm/fetchActions",
+  async () => {
+    const response = await crmAPI.getActions();
     return response.data;
   }
 );
@@ -92,6 +117,38 @@ export const updateTask = createAsyncThunk(
     return response.data;
   }
 );
+export const fetchCustomerRecord = createAsyncThunk(
+  "crm/fetchCustomerRecord",
+  async (customerId: string) => {
+    const response = await crmAPI.getCustomerRecord(customerId);
+    return response.data;
+  }
+);
+
+export const updateCustomerRecord = createAsyncThunk(
+  "crm/updateCustomerRecord",
+  async ({ customerId, data }: { customerId: string; data: any }) => {
+    const response = await crmAPI.updateCustomerRecord(customerId, data);
+    return response.data;
+  }
+);
+
+// ---- Communications ----
+export const logCommunication = createAsyncThunk(
+  "crm/logCommunication",
+  async (data: { customerId: string; salespersonId: string; type: string; title: string; description?: string }) => {
+    const response = await crmAPI.logCommunication(data);
+    return response.data;
+  }
+);
+
+export const fetchCustomerCommunications = createAsyncThunk(
+  "crm/fetchCustomerCommunications",
+  async (customerId: string) => {
+    const response = await crmAPI.getCustomerCommunications(customerId);
+    return response.data;
+  }
+);
 
 export const scheduleRecurring = createAsyncThunk(
   "crm/scheduleRecurring",
@@ -119,9 +176,7 @@ const crmSlice = createSlice({
       .addCase(createLead.fulfilled, (state, action) => {
         state.leads.push(action.payload);
       })
-      .addCase(fetchLeads.fulfilled, (state, action) => {
-        state.leads = action.payload;
-      })
+
       .addCase(fetchLead.fulfilled, (state, action) => {
         state.selectedLead = action.payload;
       })
@@ -149,6 +204,16 @@ const crmSlice = createSlice({
           state.tasks[index] = action.payload;
         }
       });
+    builder.addCase(fetchCustomerRecord.fulfilled, (state, action) => {
+      state.selectedLead = action.payload.lead;
+      state.actions = action.payload.actions;
+      state.formSubmissions = action.payload.forms;
+    });
+
+    builder.addCase(fetchCustomerCommunications.fulfilled, (state, action) => {
+      state.communications = action.payload;
+    });
+
   },
 });
 

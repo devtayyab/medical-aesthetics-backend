@@ -29,6 +29,7 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/tasks", label: "Tasks" },
   { path: "/crm/actions", label: "Actions" },
   { path: "/crm/repeat-management", label: "Repeat Management" },
+  { path: "/crm/form-stats", label: "📊 Form Statistics" },
 ];
 
 const adminLinks: SidebarItem[] = [
@@ -43,29 +44,39 @@ export const Sidebar: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const role = user?.role || "";
 
-  const links =
-    role === "client"
-      ? clientLinks
-      : role === "clinic"
-        ? clinicLinks
-        : role === "salesperson"
-          ? crmLinks
-          : role === "admin"
-            ? adminLinks
-            : [];
+  console.log("🔍 Sidebar Debug:", { role, user });
+
+  let links: SidebarItem[] = [];
+
+  if (role === "client") {
+    links = clientLinks;
+  } else if (role === "clinic_owner" || role === "doctor" || role === "secretariat") {
+    links = clinicLinks;
+  } else if (role === "salesperson") {
+    links = crmLinks;
+    console.log("✅ CRM Links Selected:", crmLinks);
+  } else if (role === "admin") {
+    links = adminLinks;
+  }
 
   return (
     <aside className="w-64 bg-gray-100 h-screen p-4 border">
       <div className="flex flex-col gap-2">
+        {/* Debug Info */}
+        <div className="text-xs text-gray-500 mb-2 p-2 bg-yellow-100 rounded">
+          Role: <strong>{role}</strong>
+          <br />
+          Links: {links.length}
+        </div>
+
         {links.map((link) => (
           <Link
             key={link.path}
             to={link.path}
-            className={`p-2 rounded ${
-              location.pathname === link.path
-                ? "bg-[#CBFF38] text-black"
-                : "hover:bg-gray-200"
-            }`}
+            className={`p-2 rounded ${location.pathname === link.path
+              ? "bg-[#CBFF38] text-black"
+              : "hover:bg-gray-200"
+              }`}
           >
             {link.label}
           </Link>

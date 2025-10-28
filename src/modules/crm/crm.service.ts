@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -7,16 +7,20 @@ import { CustomerRecord } from './entities/customer-record.entity';
 import { CommunicationLog } from './entities/communication-log.entity';
 import { CrmAction } from './entities/crm-action.entity';
 import { CustomerTag } from './entities/customer-tag.entity';
+import { FormSubmission } from './entities/form-submission.entity';
 import { User } from '../users/entities/user.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
+import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 
 @Injectable()
 export class CrmService {
+  private readonly logger = new Logger(CrmService.name);
+
   constructor(
     @InjectRepository(Lead)
     private leadsRepository: Repository<Lead>,
@@ -28,6 +32,8 @@ export class CrmService {
     private crmActionsRepository: Repository<CrmAction>,
     @InjectRepository(CustomerTag)
     private customerTagsRepository: Repository<CustomerTag>,
+    @InjectRepository(FormSubmission)
+    private formSubmissionsRepository: Repository<FormSubmission>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(Appointment)
@@ -455,6 +461,262 @@ export class CrmService {
         repeat: parseInt(customerStats.repeatCustomers) || 0,
         totalRevenue: parseFloat(customerStats.totalRevenue) || 0,
       },
+    };
+  }
+
+  // ==================== FACEBOOK LEAD INTEGRATION ====================
+
+  /**
+   * Process Facebook lead webhook and handle duplicate detection
+   */
+  async processFacebookLead(webhookData: FacebookWebhookDto): Promise<any> {
+    this.logger.log(`Processing Facebook lead: ${webhookData.leadgen_id}`);
+
+    const { field_data, created_time, form_id, ad_id, page_id } = webhookData;
+    
+    // Extract contact info
+    const email = field_data.email?.trim().toLowerCase();
+    const phone = this.normalizePhone(field_data.phone_number);
+    const firstName = field_data.first_name || field_data.full_name?.split(' ')[0] || 'Unknown';
+    const lastName = field_data.last_name || field_data.full_name?.split(' ').slice(1).join(' ') || '';
+
+    if (!email && !phone) {
+      throw new Error('Lead must have either email or phone');
+    }
+
+    // Step 1: Check for duplicate by phone or email
+    const duplicateResult = await this.findDuplicateCustomer(email, phone);
+
+    let customerId: string;
+    let leadId: string;
+    let isDuplicate = false;
+    let matchedBy: string;
+
+    if (duplicateResult.found) {
+      // DUPLICATE FOUND - Merge with existing customer
+      this.logger.log(`Duplicate found! Matched by: ${duplicateResult.matchedBy}, Customer ID: ${duplicateResult.customerId}`);
+      
+      customerId = duplicateResult.customerId;
+      isDuplicate = true;
+      matchedBy = duplicateResult.matchedBy;
+
+      // Update customer record with new form submission
+      await this.updateCustomerRecord(customerId, {
+        lastContactDate: new Date(),
+      });
+
+      // Create a note about the new form submission
+      await this.logCommunication({
+        customerId,
+        salespersonId: null, // System-generated
+        type: 'note',
+        direction: 'incoming',
+        status: 'completed',
+        subject: `New Facebook form submission (${form_id})`,
+        notes: `Customer submitted form again. Previous contact exists. Form data: ${JSON.stringify(field_data.custom_fields || {})}`,
+        metadata: {
+          source: 'facebook_webhook',
+          leadgen_id: webhookData.leadgen_id,
+          ad_id,
+          page_id,
+        },
+      });
+
+    } else {
+      // NEW LEAD - Create new customer record
+      this.logger.log('New lead - creating new record');
+
+      // Create lead first
+      const newLead = await this.create({
+        source: 'facebook_ads',
+        firstName,
+        lastName,
+        email,
+        phone,
+        status: LeadStatus.NEW,
+        notes: `Submitted form ${form_id} at ${created_time}`,
+        metadata: {
+          leadgen_id: webhookData.leadgen_id,
+          form_id,
+          ad_id,
+          page_id,
+          custom_fields: field_data.custom_fields,
+        },
+      });
+
+      leadId = newLead.id;
+
+      // Try to find if a user already exists (registered client)
+      const existingUser = await this.usersRepository.findOne({
+        where: email ? { email } : { phone },
+      });
+
+      if (existingUser) {
+        customerId = existingUser.id;
+        // Create customer record if doesn't exist
+        await this.createCustomerRecord(customerId);
+      }
+    }
+
+    // Step 2: Save form submission record
+    const formSubmission = this.formSubmissionsRepository.create({
+      source: 'facebook_ads',
+      formType: 'interest',
+      mergedCustomerId: customerId,
+      leadId,
+      rawName: `${firstName} ${lastName}`.trim(),
+      rawEmail: email,
+      rawPhone: phone,
+      formData: {
+        ...field_data,
+        form_id,
+        ad_id,
+        page_id,
+        leadgen_id: webhookData.leadgen_id,
+      },
+      submittedAt: new Date(created_time),
+      isDuplicate,
+      duplicateMatchedBy: matchedBy,
+    });
+
+    await this.formSubmissionsRepository.save(formSubmission);
+
+    // Step 3: Create task for salesperson (if customer has assigned salesperson)
+    if (customerId) {
+      const customerRecord = await this.customerRecordsRepository.findOne({
+        where: { customerId },
+      });
+
+      if (customerRecord?.assignedSalespersonId) {
+        await this.createAction({
+          customerId,
+          salespersonId: customerRecord.assignedSalespersonId,
+          actionType: 'follow_up',
+          title: isDuplicate ? 'Follow up - Repeat form submission' : 'Contact new Facebook lead',
+          description: `${isDuplicate ? 'Customer submitted form again' : 'New lead from Facebook'}. Form: ${form_id}`,
+          status: 'pending',
+          priority: 'high',
+          dueDate: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
+          metadata: {
+            formSubmissionId: formSubmission.id,
+            source: 'facebook_webhook',
+          },
+        });
+      }
+    }
+
+    return {
+      success: true,
+      isDuplicate,
+      matchedBy,
+      customerId,
+      leadId,
+      formSubmissionId: formSubmission.id,
+      message: isDuplicate 
+        ? `Duplicate found and merged with existing customer (matched by ${matchedBy})`
+        : 'New lead created successfully',
+    };
+  }
+
+  /**
+   * Find duplicate customer by email or phone
+   */
+  private async findDuplicateCustomer(
+    email: string,
+    phone: string,
+  ): Promise<{ found: boolean; customerId?: string; matchedBy?: string }> {
+    // Search in Users table (registered clients)
+    let user: User;
+
+    if (email) {
+      user = await this.usersRepository.findOne({ where: { email } });
+      if (user) {
+        return { found: true, customerId: user.id, matchedBy: 'email' };
+      }
+    }
+
+    if (phone) {
+      user = await this.usersRepository.findOne({ where: { phone } });
+      if (user) {
+        return { found: true, customerId: user.id, matchedBy: 'phone' };
+      }
+    }
+
+    // Search in Leads table
+    let lead: Lead;
+
+    if (email && phone) {
+      lead = await this.leadsRepository.findOne({
+        where: [{ email }, { phone }],
+      });
+      if (lead) {
+        // Check which field matched
+        const matchedBy = lead.email === email && lead.phone === phone ? 'both' : 
+                         lead.email === email ? 'email' : 'phone';
+        // Convert lead to user if not already
+        return { found: true, customerId: lead.id, matchedBy };
+      }
+    } else if (email) {
+      lead = await this.leadsRepository.findOne({ where: { email } });
+      if (lead) {
+        return { found: true, customerId: lead.id, matchedBy: 'email' };
+      }
+    } else if (phone) {
+      lead = await this.leadsRepository.findOne({ where: { phone } });
+      if (lead) {
+        return { found: true, customerId: lead.id, matchedBy: 'phone' };
+      }
+    }
+
+    return { found: false };
+  }
+
+  /**
+   * Normalize phone number for consistent comparison
+   */
+  private normalizePhone(phone: string): string {
+    if (!phone) return null;
+    // Remove all non-numeric characters except +
+    return phone.replace(/[^0-9+]/g, '');
+  }
+
+  /**
+   * Get all form submissions for a customer
+   */
+  async getCustomerFormSubmissions(customerId: string): Promise<FormSubmission[]> {
+    return this.formSubmissionsRepository.find({
+      where: { mergedCustomerId: customerId },
+      order: { submittedAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Get form submission statistics
+   */
+  async getFormSubmissionStats(filters?: { startDate?: Date; endDate?: Date; source?: string }): Promise<any> {
+    const queryBuilder = this.formSubmissionsRepository.createQueryBuilder('submission');
+
+    if (filters?.startDate && filters?.endDate) {
+      queryBuilder.where('submission.submittedAt BETWEEN :startDate AND :endDate', {
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+      });
+    }
+
+    if (filters?.source) {
+      queryBuilder.andWhere('submission.source = :source', { source: filters.source });
+    }
+
+    const [total, duplicates] = await Promise.all([
+      queryBuilder.getCount(),
+      queryBuilder.andWhere('submission.isDuplicate = :isDuplicate', { isDuplicate: true }).getCount(),
+    ]);
+
+    return {
+      total,
+      duplicates,
+      newLeads: total - duplicates,
+      duplicateRate: total > 0 ? ((duplicates / total) * 100).toFixed(2) + '%' : '0%',
     };
   }
 }

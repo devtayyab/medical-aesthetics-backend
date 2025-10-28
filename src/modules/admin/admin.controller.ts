@@ -23,7 +23,7 @@ import { UserRole } from '../../common/enums/user-role.enum';
 @Roles(UserRole.ADMIN)
 @ApiBearerAuth()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @Post('tags')
   @ApiOperation({ summary: 'Create CRM tag' })
