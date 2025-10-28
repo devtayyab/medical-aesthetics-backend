@@ -1,35 +1,28 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, Between } from "typeorm";
-import { EventEmitter2 } from "@nestjs/event-emitter";
-import { Lead } from "./entities/lead.entity";
-import { CustomerRecord } from "./entities/customer-record.entity";
-import { CommunicationLog } from "./entities/communication-log.entity";
-import { CrmAction } from "./entities/crm-action.entity";
-import { CustomerTag } from "./entities/customer-tag.entity";
-import { FormSubmission } from "./entities/form-submission.entity";
-import { User } from "../users/entities/user.entity";
-import { Appointment } from "../bookings/entities/appointment.entity";
-import { CreateLeadDto } from "./dto/create-lead.dto";
-import { UpdateLeadDto } from "./dto/update-lead.dto";
-import { FacebookWebhookDto } from "./dto/facebook-webhook.dto";
-import { LeadStatus } from "../../common/enums/lead-status.enum";
-import { NotificationsService } from "../notifications/notifications.service";
-import { NotificationType } from "../../common/enums/notification-type.enum";
-import { TaskAutomationService } from "./task-automation.service";
-import { FacebookService, ParsedFacebookLead } from "./facebook.service";
-import { DuplicateDetectionService } from "./duplicate-detection.service";
-import { CustomerAffiliationService } from "./customer-affiliation.service";
-import { MandatoryFieldValidationService } from "./mandatory-field-validation.service";
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Between } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Lead } from './entities/lead.entity';
+import { CustomerRecord } from './entities/customer-record.entity';
+import { CommunicationLog } from './entities/communication-log.entity';
+import { CrmAction } from './entities/crm-action.entity';
+import { CustomerTag } from './entities/customer-tag.entity';
+import { User } from '../users/entities/user.entity';
+import { Appointment } from '../bookings/entities/appointment.entity';
+import { CreateLeadDto } from './dto/create-lead.dto';
+import { UpdateLeadDto } from './dto/update-lead.dto';
+import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
+import { LeadStatus } from '../../common/enums/lead-status.enum';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../../common/enums/notification-type.enum';
+import { TaskAutomationService } from './task-automation.service';
+import { FacebookService, ParsedFacebookLead } from './facebook.service';
+import { DuplicateDetectionService } from './duplicate-detection.service';
+import { CustomerAffiliationService } from './customer-affiliation.service';
+import { MandatoryFieldValidationService } from './mandatory-field-validation.service';
 
 @Injectable()
 export class CrmService {
-  private readonly logger = new Logger(CrmService.name);
-
   constructor(
     @InjectRepository(Lead)
     private leadsRepository: Repository<Lead>,
@@ -41,8 +34,6 @@ export class CrmService {
     private crmActionsRepository: Repository<CrmAction>,
     @InjectRepository(CustomerTag)
     private customerTagsRepository: Repository<CustomerTag>,
-    @InjectRepository(FormSubmission)
-    private formSubmissionsRepository: Repository<FormSubmission>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(Appointment)
@@ -53,32 +44,28 @@ export class CrmService {
     private duplicateDetectionService: DuplicateDetectionService,
     private customerAffiliationService: CustomerAffiliationService,
     private mandatoryFieldValidationService: MandatoryFieldValidationService,
-    private taskAutomationService: TaskAutomationService
+    private taskAutomationService: TaskAutomationService,
   ) {}
 
   async create(createLeadDto: CreateLeadDto): Promise<Lead> {
     // Use enhanced duplicate detection
-    const duplicateCheck =
-      await this.duplicateDetectionService.checkForDuplicates(
-        createLeadDto.email,
-        createLeadDto.phone,
-        createLeadDto.firstName,
-        createLeadDto.lastName
-      );
+    const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+      createLeadDto.email,
+      createLeadDto.phone,
+      createLeadDto.firstName,
+      createLeadDto.lastName,
+    );
 
     if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
       // Update existing customer record instead of creating duplicate lead
-      return this.updateExistingCustomerWithNewLead(
-        duplicateCheck.existingCustomer,
-        createLeadDto
-      );
+      return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
     }
 
     const lead = this.leadsRepository.create(createLeadDto);
     const savedLead = await this.leadsRepository.save(lead);
 
     // Emit event for notifications and task creation
-    this.eventEmitter.emit("lead.created", savedLead);
+    this.eventEmitter.emit('lead.created', savedLead);
 
     return savedLead;
   }
@@ -91,20 +78,15 @@ export class CrmService {
         const parsedLead = this.facebookService.parseLeadData(leadData);
 
         // Use enhanced duplicate detection
-        const duplicateCheck =
-          await this.duplicateDetectionService.checkForDuplicates(
-            parsedLead.email,
-            parsedLead.phone,
-            parsedLead.firstName,
-            parsedLead.lastName
-          );
+        const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+          parsedLead.email,
+          parsedLead.phone,
+          parsedLead.firstName,
+          parsedLead.lastName,
+        );
 
         if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-          await this.updateExistingCustomerWithFacebookLead(
-            duplicateCheck.existingCustomer,
-            parsedLead,
-            leadData
-          );
+          await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData);
         } else {
           await this.createLeadFromFacebook(parsedLead, leadData);
         }
@@ -115,10 +97,7 @@ export class CrmService {
     }
   }
 
-  async importFacebookLeads(
-    formId: string,
-    limit: number = 50
-  ): Promise<Lead[]> {
+  async importFacebookLeads(formId: string, limit: number = 50): Promise<Lead[]> {
     const leadsData = await this.facebookService.getLeadsByForm(formId, limit);
     const createdLeads: Lead[] = [];
 
@@ -127,20 +106,15 @@ export class CrmService {
         const parsedLead = this.facebookService.parseLeadData(leadData);
 
         // Use enhanced duplicate detection
-        const duplicateCheck =
-          await this.duplicateDetectionService.checkForDuplicates(
-            parsedLead.email,
-            parsedLead.phone,
-            parsedLead.firstName,
-            parsedLead.lastName
-          );
+        const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+          parsedLead.email,
+          parsedLead.phone,
+          parsedLead.firstName,
+          parsedLead.lastName,
+        );
 
         if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-          await this.updateExistingCustomerWithFacebookLead(
-            duplicateCheck.existingCustomer,
-            parsedLead,
-            leadData
-          );
+          await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData);
         } else {
           const lead = await this.createLeadFromFacebook(parsedLead, leadData);
           createdLeads.push(lead);
@@ -153,29 +127,23 @@ export class CrmService {
     return createdLeads;
   }
 
-  private async findExistingCustomer(
-    email?: string,
-    phone?: string
-  ): Promise<User | null> {
+  private async findExistingCustomer(email?: string, phone?: string): Promise<User | null> {
     if (!email && !phone) return null;
 
-    const query = this.usersRepository.createQueryBuilder("user");
+    const query = this.usersRepository.createQueryBuilder('user');
 
     if (email) {
-      query.orWhere("user.email = :email", { email });
+      query.orWhere('user.email = :email', { email });
     }
 
     if (phone) {
-      query.orWhere("user.phone = :phone", { phone });
+      query.orWhere('user.phone = :phone', { phone });
     }
 
     return query.getOne();
   }
 
-  private async updateExistingCustomerWithNewLead(
-    existingCustomer: User,
-    leadDto: CreateLeadDto
-  ): Promise<Lead> {
+  private async updateExistingCustomerWithNewLead(existingCustomer: User, leadDto: CreateLeadDto): Promise<Lead> {
     // Get the customer record to find assigned salesperson
     const customerRecord = await this.customerRecordsRepository.findOne({
       where: { customerId: existingCustomer.id },
@@ -199,13 +167,13 @@ export class CrmService {
       await this.logCommunication({
         customerId: existingCustomer.id,
         salespersonId: customerRecord.assignedSalespersonId,
-        type: "form_submission",
-        direction: "incoming",
-        status: "completed",
-        subject: "New Form Submission",
-        notes: `New form submission received: ${leadDto.notes || "No notes"}`,
+        type: 'form_submission',
+        direction: 'incoming',
+        status: 'completed',
+        subject: 'New Form Submission',
+        notes: `New form submission received: ${leadDto.notes || 'No notes'}`,
         metadata: {
-          source: "web_form",
+          source: 'web_form',
           leadId: savedLead.id,
         },
       });
@@ -217,7 +185,7 @@ export class CrmService {
     });
 
     // Emit event for the merged lead
-    this.eventEmitter.emit("lead.created", savedLead);
+    this.eventEmitter.emit('lead.created', savedLead);
 
     return savedLead;
   }
@@ -242,13 +210,11 @@ export class CrmService {
       await this.logCommunication({
         customerId: existingCustomer.id,
         salespersonId: customerRecord.assignedSalespersonId,
-        type: "form_submission",
-        direction: "incoming",
-        status: "completed",
-        subject: "Facebook Lead Form Submission",
-        notes: `Form submitted via Facebook. Campaign: ${
-          parsedLead.facebookCampaignId || "Unknown"
-        }. Form: ${parsedLead.facebookFormId || "Unknown form"}.`,
+        type: 'form_submission',
+        direction: 'incoming',
+        status: 'completed',
+        subject: 'Facebook Lead Form Submission',
+        notes: `Form submitted via Facebook. Campaign: ${parsedLead.facebookCampaignId || 'Unknown'}. Form: ${parsedLead.facebookFormId || 'Unknown form'}.`,
         metadata: {
           facebookLeadId: parsedLead.facebookLeadId,
           facebookFormId: parsedLead.facebookFormId,
@@ -261,13 +227,13 @@ export class CrmService {
     // Create an action for the salesperson to follow up
     const action = this.crmActionsRepository.create({
       customerId: existingCustomer.id,
-      actionType: "follow_up",
-      title: "Facebook Form Submission - Follow Up",
+      actionType: 'follow_up',
+      title: 'Facebook Form Submission - Follow Up',
       description: `Customer submitted form via Facebook. Please contact them.`,
-      status: "pending",
-      priority: "high",
+      status: 'pending',
+      priority: 'high',
       metadata: {
-        source: "facebook",
+        source: 'facebook',
         facebookLeadId: parsedLead.facebookLeadId,
         originalSubmission: true, // This is the original submission, not a duplicate
       },
@@ -276,22 +242,19 @@ export class CrmService {
     await this.crmActionsRepository.save(action);
 
     // Emit event for notifications
-    this.eventEmitter.emit("facebook.lead.merged", {
+    this.eventEmitter.emit('facebook.lead.merged', {
       customer: existingCustomer,
       facebookLead: parsedLead,
       action,
     });
   }
 
-  private async createLeadFromFacebook(
-    parsedLead: ParsedFacebookLead,
-    leadData: any
-  ): Promise<Lead> {
+  private async createLeadFromFacebook(parsedLead: ParsedFacebookLead, leadData: any): Promise<Lead> {
     const leadDto: CreateLeadDto = {
-      source: "facebook_ads",
-      firstName: parsedLead.firstName || "",
-      lastName: parsedLead.lastName || "",
-      email: parsedLead.email || "",
+      source: 'facebook_ads',
+      firstName: parsedLead.firstName || '',
+      lastName: parsedLead.lastName || '',
+      email: parsedLead.email || '',
       phone: parsedLead.phone,
       facebookLeadId: parsedLead.facebookLeadId,
       facebookFormId: parsedLead.facebookFormId,
@@ -313,28 +276,18 @@ export class CrmService {
     email?: string,
     phone?: string,
     firstName?: string,
-    lastName?: string
+    lastName?: string,
   ) {
-    return this.duplicateDetectionService.checkForDuplicates(
-      email,
-      phone,
-      firstName,
-      lastName
-    );
+    return this.duplicateDetectionService.checkForDuplicates(email, phone, firstName, lastName);
   }
 
   async getDuplicateSuggestions(
     email?: string,
     phone?: string,
     firstName?: string,
-    lastName?: string
+    lastName?: string,
   ) {
-    return this.duplicateDetectionService.getDuplicateSuggestions(
-      email,
-      phone,
-      firstName,
-      lastName
-    );
+    return this.duplicateDetectionService.getDuplicateSuggestions(email, phone, firstName, lastName);
   }
 
   async getRequiredFieldsForCall() {
@@ -342,29 +295,15 @@ export class CrmService {
   }
 
   async getRequiredFieldsForAction(actionType: string) {
-    return this.mandatoryFieldValidationService.getRequiredFieldsForAction(
-      actionType
-    );
+    return this.mandatoryFieldValidationService.getRequiredFieldsForAction(actionType);
   }
 
-  async validateActionFields(
-    customerId: string,
-    actionData: Partial<CrmAction>
-  ) {
-    return this.mandatoryFieldValidationService.validateActionFields(
-      customerId,
-      actionData
-    );
+  async validateActionFields(customerId: string, actionData: Partial<CrmAction>) {
+    return this.mandatoryFieldValidationService.validateActionFields(customerId, actionData);
   }
 
-  async validateCommunicationFields(
-    customerId: string,
-    communicationData: Partial<CommunicationLog>
-  ) {
-    return this.mandatoryFieldValidationService.validateCommunicationFields(
-      customerId,
-      communicationData
-    );
+  async validateCommunicationFields(customerId: string, communicationData: Partial<CommunicationLog>) {
+    return this.mandatoryFieldValidationService.validateCommunicationFields(customerId, communicationData);
   }
 
   async getOverdueTasks(salespersonId?: string) {
@@ -380,31 +319,28 @@ export class CrmService {
   }
 
   async findAll(filters: any = {}): Promise<Lead[]> {
-    const queryBuilder = this.leadsRepository
-      .createQueryBuilder("lead")
-      .leftJoinAndSelect("lead.assignedSales", "sales")
-      .leftJoinAndSelect("lead.tags", "tags");
+    const queryBuilder = this.leadsRepository.createQueryBuilder('lead')
+      .leftJoinAndSelect('lead.assignedSales', 'sales')
+      .leftJoinAndSelect('lead.tags', 'tags');
 
     if (filters.status) {
-      queryBuilder.where("lead.status = :status", { status: filters.status });
+      queryBuilder.where('lead.status = :status', { status: filters.status });
     }
 
     if (filters.assignedSalesId) {
-      queryBuilder.andWhere("lead.assignedSalesId = :assignedSalesId", {
+      queryBuilder.andWhere('lead.assignedSalesId = :assignedSalesId', {
         assignedSalesId: filters.assignedSalesId,
       });
     }
 
     if (filters.source) {
-      queryBuilder.andWhere("lead.source = :source", {
-        source: filters.source,
-      });
+      queryBuilder.andWhere('lead.source = :source', { source: filters.source });
     }
 
     if (filters.search) {
       queryBuilder.andWhere(
-        "(lead.firstName ILIKE :search OR lead.lastName ILIKE :search OR lead.email ILIKE :search)",
-        { search: `%${filters.search}%` }
+        '(lead.firstName ILIKE :search OR lead.lastName ILIKE :search OR lead.email ILIKE :search)',
+        { search: `%${filters.search}%` },
       );
     }
 
@@ -414,26 +350,26 @@ export class CrmService {
   async findById(id: string): Promise<Lead> {
     const lead = await this.leadsRepository.findOne({
       where: { id },
-      relations: ["assignedSales", "tags", "tasks"],
+      relations: ['assignedSales', 'tags', 'tasks'],
     });
-
+    
     if (!lead) {
-      throw new NotFoundException("Lead not found");
+      throw new NotFoundException('Lead not found');
     }
-
+    
     return lead;
   }
 
   async update(id: string, updateLeadDto: UpdateLeadDto): Promise<Lead> {
     const lead = await this.findById(id);
-
+    
     // Check for status changes
     if (updateLeadDto.status && updateLeadDto.status !== lead.status) {
       if (updateLeadDto.status === LeadStatus.CONVERTED) {
-        updateLeadDto["convertedAt"] = new Date();
+        updateLeadDto['convertedAt'] = new Date();
       }
-
-      this.eventEmitter.emit("lead.status.changed", {
+      
+      this.eventEmitter.emit('lead.status.changed', {
         lead,
         oldStatus: lead.status,
         newStatus: updateLeadDto.status,
@@ -447,7 +383,7 @@ export class CrmService {
   async softDelete(id: string): Promise<void> {
     const result = await this.leadsRepository.softDelete(id);
     if (result.affected === 0) {
-      throw new NotFoundException("Lead not found");
+      throw new NotFoundException('Lead not found');
     }
   }
 
@@ -456,19 +392,10 @@ export class CrmService {
   }
 
   // Customer Record Management
-  async getCustomerRecord(
-    customerId: string,
-    salespersonId?: string
-  ): Promise<any> {
+  async getCustomerRecord(customerId: string, salespersonId?: string): Promise<any> {
     let record = await this.customerRecordsRepository.findOne({
       where: { customerId },
-      relations: [
-        "customer",
-        "assignedSalesperson",
-        "communications",
-        "actions",
-        "tags",
-      ],
+      relations: ['customer', 'assignedSalesperson', 'communications', 'actions', 'tags'],
     });
 
     if (!record) {
@@ -479,44 +406,40 @@ export class CrmService {
     // Get appointments
     const appointments = await this.appointmentsRepository.find({
       where: { clientId: customerId },
-      relations: ["service", "clinic"],
-      order: { startTime: "DESC" },
+      relations: ['service', 'clinic'],
+      order: { startTime: 'DESC' },
     });
 
     // Get communication history
     const communications = await this.communicationLogsRepository.find({
       where: { customerId },
-      relations: ["salesperson"],
-      order: { createdAt: "DESC" },
+      relations: ['salesperson'],
+      order: { createdAt: 'DESC' },
       take: 50,
     });
 
     // Get actions/tasks
     const actions = await this.crmActionsRepository.find({
       where: { customerId },
-      relations: ["salesperson"],
-      order: { createdAt: "DESC" },
+      relations: ['salesperson'],
+      order: { createdAt: 'DESC' },
     });
 
     // Get tags
     const tags = await this.customerTagsRepository.find({
       where: { customerId },
-      relations: ["tag", "addedByUser"],
+      relations: ['tag', 'addedByUser'],
     });
 
     // Get clinic and doctor affiliations
-    const clinicAffiliations =
-      await this.customerAffiliationService.getClinicAffiliations(customerId);
-    const doctorAffiliations =
-      await this.customerAffiliationService.getDoctorAffiliations(customerId);
-    const preferredClinic =
-      await this.customerAffiliationService.getPreferredClinic(customerId);
-    const preferredDoctor =
-      await this.customerAffiliationService.getPreferredDoctor(customerId);
+    const clinicAffiliations = await this.customerAffiliationService.getClinicAffiliations(customerId);
+    const doctorAffiliations = await this.customerAffiliationService.getDoctorAffiliations(customerId);
+    const preferredClinic = await this.customerAffiliationService.getPreferredClinic(customerId);
+    const preferredDoctor = await this.customerAffiliationService.getPreferredDoctor(customerId);
 
     return {
       record,
-      appointments: appointments.map((apt) => ({
+      appointments: appointments.map(apt => ({
         id: apt.id,
         serviceName: apt.service?.name,
         clinicName: apt.clinic?.name,
@@ -527,7 +450,7 @@ export class CrmService {
       })),
       communications,
       actions,
-      tags: tags.map((t) => ({
+      tags: tags.map(t => ({
         id: t.id,
         tag: t.tag,
         addedBy: t.addedByUser,
@@ -554,10 +477,7 @@ export class CrmService {
     };
   }
 
-  async createCustomerRecord(
-    customerId: string,
-    salespersonId?: string
-  ): Promise<CustomerRecord> {
+  async createCustomerRecord(customerId: string, salespersonId?: string): Promise<CustomerRecord> {
     const record = this.customerRecordsRepository.create({
       customerId,
       assignedSalespersonId: salespersonId,
@@ -565,14 +485,9 @@ export class CrmService {
     return this.customerRecordsRepository.save(record);
   }
 
-  async updateCustomerRecord(
-    customerId: string,
-    updateData: Partial<CustomerRecord>
-  ): Promise<CustomerRecord> {
-    let record = await this.customerRecordsRepository.findOne({
-      where: { customerId },
-    });
-
+  async updateCustomerRecord(customerId: string, updateData: Partial<CustomerRecord>): Promise<CustomerRecord> {
+    let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
+    
     if (!record) {
       record = await this.createCustomerRecord(customerId);
     }
@@ -582,15 +497,10 @@ export class CrmService {
   }
 
   // Communication Log Management
-  async logCommunication(
-    data: Partial<CommunicationLog>
-  ): Promise<CommunicationLog> {
+  async logCommunication(data: Partial<CommunicationLog>): Promise<CommunicationLog> {
     // Enforce mandatory field validation for call communications
-    if (data.type === "call") {
-      await this.mandatoryFieldValidationService.enforceFieldCompletion(
-        data.customerId,
-        data
-      );
+    if (data.type === 'call') {
+      await this.mandatoryFieldValidationService.enforceFieldCompletion(data.customerId, data);
     }
 
     const log = this.communicationLogsRepository.create(data);
@@ -602,7 +512,7 @@ export class CrmService {
     });
 
     // Emit event for notifications
-    this.eventEmitter.emit("communication.logged", savedLog);
+    this.eventEmitter.emit('communication.logged', savedLog);
 
     return savedLog;
   }
@@ -612,63 +522,57 @@ export class CrmService {
     filters?: { type?: string; startDate?: Date; endDate?: Date }
   ): Promise<CommunicationLog[]> {
     const queryBuilder = this.communicationLogsRepository
-      .createQueryBuilder("log")
-      .leftJoinAndSelect("log.salesperson", "salesperson")
-      .where("log.customerId = :customerId", { customerId });
+      .createQueryBuilder('log')
+      .leftJoinAndSelect('log.salesperson', 'salesperson')
+      .where('log.customerId = :customerId', { customerId });
 
     if (filters?.type) {
-      queryBuilder.andWhere("log.type = :type", { type: filters.type });
+      queryBuilder.andWhere('log.type = :type', { type: filters.type });
     }
 
     if (filters?.startDate && filters?.endDate) {
-      queryBuilder.andWhere("log.createdAt BETWEEN :startDate AND :endDate", {
+      queryBuilder.andWhere('log.createdAt BETWEEN :startDate AND :endDate', {
         startDate: filters.startDate,
         endDate: filters.endDate,
       });
     }
 
-    return queryBuilder.orderBy("log.createdAt", "DESC").getMany();
+    return queryBuilder.orderBy('log.createdAt', 'DESC').getMany();
   }
 
   // Action/Task Management
   async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
     // Enforce mandatory field validation for phone call actions
-    if (data.actionType === "phone_call") {
-      await this.mandatoryFieldValidationService.enforceActionCompletion(
-        data.customerId,
-        data
-      );
+    if (data.actionType === 'phone_call') {
+      await this.mandatoryFieldValidationService.enforceActionCompletion(data.customerId, data);
     }
 
     const action = this.crmActionsRepository.create(data);
     const savedAction = await this.crmActionsRepository.save(action);
 
     // Send notification if it's a pending task
-    if (data.status === "pending" && data.dueDate) {
+    if (data.status === 'pending' && data.dueDate) {
       await this.notificationsService.create(
         data.salespersonId,
         NotificationType.PUSH,
-        "New Task Created",
+        'New Task Created',
         `${data.title} - Due: ${data.dueDate}`,
-        { actionId: savedAction.id }
+        { actionId: savedAction.id },
       );
     }
 
-    this.eventEmitter.emit("crm.action.created", savedAction);
+    this.eventEmitter.emit('crm.action.created', savedAction);
     return savedAction;
   }
 
-  async updateAction(
-    id: string,
-    updateData: Partial<CrmAction>
-  ): Promise<CrmAction> {
+  async updateAction(id: string, updateData: Partial<CrmAction>): Promise<CrmAction> {
     const action = await this.crmActionsRepository.findOne({ where: { id } });
-
+    
     if (!action) {
-      throw new NotFoundException("Action not found");
+      throw new NotFoundException('Action not found');
     }
 
-    if (updateData.status === "completed" && action.status !== "completed") {
+    if (updateData.status === 'completed' && action.status !== 'completed') {
       updateData.completedAt = new Date();
     }
 
@@ -681,39 +585,33 @@ export class CrmService {
     filters?: { status?: string; priority?: string; customerId?: string }
   ): Promise<CrmAction[]> {
     const queryBuilder = this.crmActionsRepository
-      .createQueryBuilder("action")
-      .leftJoinAndSelect("action.customer", "customer")
-      .where("action.salespersonId = :salespersonId", { salespersonId });
+      .createQueryBuilder('action')
+      .leftJoinAndSelect('action.customer', 'customer')
+      .where('action.salespersonId = :salespersonId', { salespersonId });
 
     if (filters?.status) {
-      queryBuilder.andWhere("action.status = :status", {
-        status: filters.status,
-      });
+      queryBuilder.andWhere('action.status = :status', { status: filters.status });
     }
 
     if (filters?.priority) {
-      queryBuilder.andWhere("action.priority = :priority", {
-        priority: filters.priority,
-      });
+      queryBuilder.andWhere('action.priority = :priority', { priority: filters.priority });
     }
 
     if (filters?.customerId) {
-      queryBuilder.andWhere("action.customerId = :customerId", {
-        customerId: filters.customerId,
-      });
+      queryBuilder.andWhere('action.customerId = :customerId', { customerId: filters.customerId });
     }
 
-    return queryBuilder.orderBy("action.dueDate", "ASC").getMany();
+    return queryBuilder.orderBy('action.dueDate', 'ASC').getMany();
   }
 
   async getPendingActions(salespersonId: string): Promise<CrmAction[]> {
     return this.crmActionsRepository.find({
       where: {
         salespersonId,
-        status: "pending",
+        status: 'pending',
       },
-      relations: ["customer"],
-      order: { dueDate: "ASC" },
+      relations: ['customer'],
+      order: { dueDate: 'ASC' },
     });
   }
 
@@ -737,24 +635,19 @@ export class CrmService {
     await this.customerTagsRepository.delete(id);
   }
 
-  async getCustomersByTag(
-    tagId: string,
-    salespersonId?: string
-  ): Promise<any[]> {
+  async getCustomersByTag(tagId: string, salespersonId?: string): Promise<any[]> {
     const queryBuilder = this.customerTagsRepository
-      .createQueryBuilder("customerTag")
-      .leftJoinAndSelect("customerTag.customer", "customer")
-      .leftJoinAndSelect("customerTag.tag", "tag")
-      .where("customerTag.tagId = :tagId", { tagId });
+      .createQueryBuilder('customerTag')
+      .leftJoinAndSelect('customerTag.customer', 'customer')
+      .leftJoinAndSelect('customerTag.tag', 'tag')
+      .where('customerTag.tagId = :tagId', { tagId });
 
     if (salespersonId) {
-      queryBuilder.andWhere("customerTag.addedBy = :salespersonId", {
-        salespersonId,
-      });
+      queryBuilder.andWhere('customerTag.addedBy = :salespersonId', { salespersonId });
     }
 
     const tags = await queryBuilder.getMany();
-    return tags.map((t) => ({
+    return tags.map(t => ({
       customer: t.customer,
       tag: t.tag,
       notes: t.notes,
@@ -765,84 +658,78 @@ export class CrmService {
   // Repeat Customer Management
   async identifyRepeatCustomers(salespersonId?: string): Promise<any[]> {
     const queryBuilder = this.customerRecordsRepository
-      .createQueryBuilder("record")
-      .leftJoinAndSelect("record.customer", "customer")
-      .where("record.isRepeatCustomer = :isRepeat", { isRepeat: true });
+      .createQueryBuilder('record')
+      .leftJoinAndSelect('record.customer', 'customer')
+      .where('record.isRepeatCustomer = :isRepeat', { isRepeat: true });
 
     if (salespersonId) {
-      queryBuilder.andWhere("record.assignedSalespersonId = :salespersonId", {
-        salespersonId,
-      });
+      queryBuilder.andWhere('record.assignedSalespersonId = :salespersonId', { salespersonId });
     }
 
-    return queryBuilder.orderBy("record.repeatCount", "DESC").getMany();
+    return queryBuilder
+      .orderBy('record.repeatCount', 'DESC')
+      .getMany();
   }
 
-  async getCustomersDueForFollowUp(
-    salespersonId?: string,
-    daysThreshold: number = 30
-  ): Promise<any[]> {
+  async getCustomersDueForFollowUp(salespersonId?: string, daysThreshold: number = 30): Promise<any[]> {
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
 
     const queryBuilder = this.customerRecordsRepository
-      .createQueryBuilder("record")
-      .leftJoinAndSelect("record.customer", "customer")
-      .where("record.lastContactDate < :thresholdDate", { thresholdDate })
-      .orWhere("record.lastContactDate IS NULL");
+      .createQueryBuilder('record')
+      .leftJoinAndSelect('record.customer', 'customer')
+      .where('record.lastContactDate < :thresholdDate', { thresholdDate })
+      .orWhere('record.lastContactDate IS NULL');
 
     if (salespersonId) {
-      queryBuilder.andWhere("record.assignedSalespersonId = :salespersonId", {
-        salespersonId,
-      });
+      queryBuilder.andWhere('record.assignedSalespersonId = :salespersonId', { salespersonId });
     }
 
-    return queryBuilder.orderBy("record.lastContactDate", "ASC").getMany();
+    return queryBuilder
+      .orderBy('record.lastContactDate', 'ASC')
+      .getMany();
   }
 
   // Analytics for Salesperson
-  async getSalespersonAnalytics(
-    salespersonId: string,
-    dateRange?: { startDate: Date; endDate: Date }
-  ): Promise<any> {
+  async getSalespersonAnalytics(salespersonId: string, dateRange?: { startDate: Date; endDate: Date }): Promise<any> {
     let communicationQuery = this.communicationLogsRepository
-      .createQueryBuilder("log")
-      .where("log.salespersonId = :salespersonId", { salespersonId });
+      .createQueryBuilder('log')
+      .where('log.salespersonId = :salespersonId', { salespersonId });
 
     if (dateRange) {
       communicationQuery = communicationQuery.andWhere(
-        "log.createdAt BETWEEN :startDate AND :endDate",
+        'log.createdAt BETWEEN :startDate AND :endDate',
         dateRange
       );
     }
 
     const communicationStats = await communicationQuery
       .select([
-        "COUNT(log.id) as totalCommunications",
-        "COUNT(CASE WHEN log.type = 'call' THEN 1 END) as totalCalls",
-        "COUNT(CASE WHEN log.status = 'missed' THEN 1 END) as missedCalls",
-        "COUNT(CASE WHEN log.type = 'email' THEN 1 END) as totalEmails",
+        'COUNT(log.id) as totalCommunications',
+        'COUNT(CASE WHEN log.type = \'call\' THEN 1 END) as totalCalls',
+        'COUNT(CASE WHEN log.status = \'missed\' THEN 1 END) as missedCalls',
+        'COUNT(CASE WHEN log.type = \'email\' THEN 1 END) as totalEmails',
       ])
       .getRawOne();
 
     const actionStats = await this.crmActionsRepository
-      .createQueryBuilder("action")
-      .where("action.salespersonId = :salespersonId", { salespersonId })
+      .createQueryBuilder('action')
+      .where('action.salespersonId = :salespersonId', { salespersonId })
       .select([
-        "COUNT(action.id) as totalActions",
-        "COUNT(CASE WHEN action.status = 'pending' THEN 1 END) as pendingActions",
-        "COUNT(CASE WHEN action.status = 'completed' THEN 1 END) as completedActions",
-        "COUNT(CASE WHEN action.status = 'missed' THEN 1 END) as missedActions",
+        'COUNT(action.id) as totalActions',
+        'COUNT(CASE WHEN action.status = \'pending\' THEN 1 END) as pendingActions',
+        'COUNT(CASE WHEN action.status = \'completed\' THEN 1 END) as completedActions',
+        'COUNT(CASE WHEN action.status = \'missed\' THEN 1 END) as missedActions',
       ])
       .getRawOne();
 
     const customerStats = await this.customerRecordsRepository
-      .createQueryBuilder("record")
-      .where("record.assignedSalespersonId = :salespersonId", { salespersonId })
+      .createQueryBuilder('record')
+      .where('record.assignedSalespersonId = :salespersonId', { salespersonId })
       .select([
-        "COUNT(record.id) as totalCustomers",
-        "COUNT(CASE WHEN record.isRepeatCustomer = true THEN 1 END) as repeatCustomers",
-        "SUM(record.lifetimeValue) as totalRevenue",
+        'COUNT(record.id) as totalCustomers',
+        'COUNT(CASE WHEN record.isRepeatCustomer = true THEN 1 END) as repeatCustomers',
+        'SUM(record.lifetimeValue) as totalRevenue',
       ])
       .getRawOne();
 
@@ -853,10 +740,7 @@ export class CrmService {
     };
   }
 
-  async testFacebookConnection(): Promise<{
-    success: boolean;
-    message: string;
-  }> {
+  async testFacebookConnection(): Promise<{ success: boolean; message: string }> {
     return this.facebookService.testFacebookConnection();
   }
 }

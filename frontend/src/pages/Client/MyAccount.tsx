@@ -23,7 +23,6 @@ import { MdOutlineMarkUnreadChatAlt } from "react-icons/md";
 // Images
 import LayeredBG from "@/assets/LayeredBg.svg";
 import AvatarImg from "@/assets/Avatar.svg";
-import { FaArrowRightLong } from "react-icons/fa6";
 
 const containerStyle = css`
   display: grid;
@@ -109,7 +108,7 @@ export const MyAccount: React.FC = () => {
               </h2>
             </span>
             <p className="text-[#717171] text-[18px]">
-              Provide personal details and how we can reach you
+              View and manage your appointments
             </p>
           </div>
           <div className="w-full md:w-1/2">
@@ -119,15 +118,14 @@ export const MyAccount: React.FC = () => {
               </h2>
             </span>
             <p className="text-[#717171] text-[18px]">
-              Provide personal details and how we can reach you
+              Check your appointment history or book a new one.
             </p>
             <Link to="/appointments">
               <Button
                 className="mt-5 text-[18px] text-[#405C0B] border-[#5F8B00] hover:border-transparent rounded-[12px]"
                 variant="outline"
-                rightIcon={<FaArrowRightLong size={11} className="pt-[1px] text-[#767676]" />}
               >
-                Read More
+                View Appointments
               </Button>
             </Link>
           </div>

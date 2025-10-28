@@ -26,7 +26,7 @@ export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
     private readonly availabilityService: AvailabilityService,
-  ) { }
+  ) {}
 
   @Public()
   @Get('availability')

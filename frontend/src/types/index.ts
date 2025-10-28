@@ -4,28 +4,13 @@ export interface User {
   firstName: string;
   lastName: string;
   phone?: string;
-  role:
-    | "client"
-    | "admin"
-    | "clinic_owner"
-    | "doctor"
-    | "secretariat"
-    | "salesperson";
+  role: 'client' | 'admin' | 'clinic_owner' | 'doctor' | 'secretariat' | 'salesperson';
   profile?: any;
   profilePictureUrl?: string;
   lastLoginAt?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface Communication {
-  id: string;
-  customerId: string;
-  salespersonId: string;
-  type: string;
-  title: string;
-  description?: string;
 }
 
 export interface Clinic {
@@ -81,13 +66,7 @@ export interface Appointment {
   clientId: string;
   startTime: string;
   endTime: string;
-  status:
-    | "pending"
-    | "confirmed"
-    | "in_progress"
-    | "completed"
-    | "cancelled"
-    | "no_show";
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
   notes?: string;
   paymentMethod?: string;
   advancePaymentAmount?: number;
@@ -113,14 +92,14 @@ export interface LoyaltyBalance {
   clinicId?: string;
   // totalPoints: number;
   points: number;
-  tier: "bronze" | "silver" | "gold" | "platinum";
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
   rewards: string[];
 }
 
 export interface Notification {
   id: string;
   recipientId: string;
-  type: "push" | "sms" | "viber" | "email";
+  type: 'push' | 'sms' | 'viber' | 'email';
   title: string;
   message: string;
   data?: any;
@@ -137,7 +116,7 @@ export interface BookingFlow {
   selectedDate?: string;
   selectedTimeSlot?: TimeSlot;
   totalAmount: number;
-  step: "services" | "datetime" | "details" | "confirmation";
+  step: 'services' | 'datetime' | 'details' | 'confirmation';
 }
 
 export interface SearchFilters {
@@ -146,7 +125,7 @@ export interface SearchFilters {
   priceRange?: [number, number];
   rating?: number;
   distance?: number;
-  sortBy?: "rating" | "price" | "distance" | "popularity";
+  sortBy?: 'rating' | 'price' | 'distance' | 'popularity';
 }
 
 export interface Lead {
@@ -154,7 +133,7 @@ export interface Lead {
   name: string;
   email: string;
   phone?: string;
-  status: "new" | "contacted" | "qualified" | "converted" | "lost";
+  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
   tags?: string[];
   createdAt: string;
   updatedAt: string;
@@ -163,18 +142,18 @@ export interface Lead {
 export interface Task {
   id: string;
   description: string;
-  type: "phone" | "email" | "meeting";
+  type: 'phone' | 'email' | 'meeting';
   dueDate: string;
-  status: "pending" | "in_progress" | "completed";
+  status: 'pending' | 'in_progress' | 'completed';
   assignedTo: string;
   customerId?: string;
   createdAt: string;
 }
 
-export interface ActionsLog {
+export interface ActionLog {
   id: string;
   customerId: string;
-  type: "call" | "email" | "note" | "meeting";
+  type: 'call' | 'email' | 'note' | 'meeting';
   notes: string;
   createdAt: string;
 }
@@ -193,4 +172,4 @@ export interface AuditLog {
   details?: any;
 }
 
-export * from "./crm.types";
+export * from './crm.types';
