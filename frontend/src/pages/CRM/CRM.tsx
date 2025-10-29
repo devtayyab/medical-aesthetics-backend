@@ -13,7 +13,8 @@ import {
   Building,
   Target,
   Award,
-  Clock
+  Clock,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
@@ -28,12 +29,14 @@ import {
   fetchActions,
   fetchOverdueTasks,
   fetchAutomationRules,
-  runTaskAutomationCheck
+  runTaskAutomationCheck,
+  createLead
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
 import type { CrmAction, Task } from '@/types';
 import { TaskDetails } from '@/pages/CRM/TaskDetails';
+import { fetchTasks } from "@/store/slices/TaskSlice"
 export const CRM: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
@@ -43,18 +46,30 @@ export const CRM: React.FC = () => {
     pendingTasks,
     analytics,
     automationRules,
-    isLoading
+    isLoading,
+    error
   } = useSelector((state: RootState) => state.crm);
-
+  ``
 
   const { tasks } = useSelector((state: RootState) => state.task);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCustomer, setSelectedCustomer] = useState<Lead | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [forceShowCreateForm, setForceShowCreateForm] = useState(false);
+
+  const handleAddNewLead = () => {
+    setForceShowCreateForm(true);
+    setActiveTab('leads');
+  };
+
+  const handleFormShown = () => {
+    setForceShowCreateForm(false);
+  };
   React.useEffect(() => {
     if (user) {
       dispatch(fetchLeads());
+      dispatch(fetchTasks());
       dispatch(fetchActions({ salespersonId: user.id }));
       dispatch(fetchOverdueTasks(user.id));
       dispatch(fetchAutomationRules());
@@ -139,9 +154,20 @@ export const CRM: React.FC = () => {
       </Card>
       {/* Main Navigation Tabs */}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full p-4 md:p-6 bg-gray-50 rounded-2xl shadow-sm'>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        defaultValue="dashboard"
+        className='w-full p-4 md:p-6 bg-gray-50 rounded-2xl shadow-sm'
+      >
         <Card>
-          <TabsList className="grid w-full grid-cols-5"> <TabsTrigger value="dashboard">Dashboard</TabsTrigger> <TabsTrigger value="leads">Leads</TabsTrigger> <TabsTrigger value="tasks">Tasks</TabsTrigger> <TabsTrigger value="customers">Customers</TabsTrigger> <TabsTrigger value="analytics">Analytics</TabsTrigger> </TabsList>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="leads">Leads</TabsTrigger>
+            <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="customers">Customers</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          </TabsList>
         </Card>
 
         {/* Dashboard Tab */}
@@ -208,7 +234,11 @@ export const CRM: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={handleAddNewLead}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Add New Lead
                   </Button>
@@ -319,7 +349,11 @@ export const CRM: React.FC = () => {
 
         {/* Leads Tab */}
         <TabsContent value="leads">
-          <LeadsPage onViewLead={handleViewCustomer} />
+          <LeadsPage
+            onViewLead={handleViewCustomer}
+            forceShowCreateForm={forceShowCreateForm}
+            onFormShown={handleFormShown}
+          />
         </TabsContent>
 
         {/* Tasks Tab */}
@@ -446,6 +480,8 @@ export const CRM: React.FC = () => {
             </div>
             <OneCustomerDetail
               SelectedCustomer={selectedCustomer}
+              isLoading={isLoading}
+              error={error}
 
 
             />

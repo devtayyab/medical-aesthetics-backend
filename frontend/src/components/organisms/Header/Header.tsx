@@ -260,7 +260,7 @@ export const Header: React.FC = () => {
           <>
             <div className={searchContainerStyle}>
               <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
-                <li
+                {/* <li
                   className={`cursor-pointer ${location.pathname === "/"
                     ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
                     : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
@@ -275,7 +275,7 @@ export const Header: React.FC = () => {
                   >
                     Home
                   </Link>
-                </li>
+                </li> */}
                 <li
                   className={`cursor-pointer ${location.pathname === "/crm"
                     ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
