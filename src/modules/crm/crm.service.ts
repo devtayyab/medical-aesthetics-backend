@@ -20,6 +20,7 @@ import { FacebookService, ParsedFacebookLead } from './facebook.service';
 import { DuplicateDetectionService } from './duplicate-detection.service';
 import { CustomerAffiliationService } from './customer-affiliation.service';
 import { MandatoryFieldValidationService } from './mandatory-field-validation.service';
+import { promises } from 'node:dns';
 
 @Injectable()
 export class CrmService {
@@ -45,7 +46,7 @@ export class CrmService {
     private customerAffiliationService: CustomerAffiliationService,
     private mandatoryFieldValidationService: MandatoryFieldValidationService,
     private taskAutomationService: TaskAutomationService,
-  ) {}
+  ) { }
 
   async create(createLeadDto: CreateLeadDto): Promise<Lead> {
     // Use enhanced duplicate detection
@@ -352,23 +353,23 @@ export class CrmService {
       where: { id },
       relations: ['assignedSales', 'tags', 'tasks'],
     });
-    
+
     if (!lead) {
       throw new NotFoundException('Lead not found');
     }
-    
+
     return lead;
   }
 
   async update(id: string, updateLeadDto: UpdateLeadDto): Promise<Lead> {
     const lead = await this.findById(id);
-    
+
     // Check for status changes
     if (updateLeadDto.status && updateLeadDto.status !== lead.status) {
       if (updateLeadDto.status === LeadStatus.CONVERTED) {
         updateLeadDto['convertedAt'] = new Date();
       }
-      
+
       this.eventEmitter.emit('lead.status.changed', {
         lead,
         oldStatus: lead.status,
@@ -389,6 +390,14 @@ export class CrmService {
 
   async updateLastContacted(id: string): Promise<void> {
     await this.leadsRepository.update(id, { lastContactedAt: new Date() });
+  }
+
+  async getCustomer(id: string): Promise<any> {
+    const customer = await this.usersRepository.findOne({ where: { id } });
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+    return customer;
   }
 
   // Customer Record Management
@@ -487,7 +496,7 @@ export class CrmService {
 
   async updateCustomerRecord(customerId: string, updateData: Partial<CustomerRecord>): Promise<CustomerRecord> {
     let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
-    
+
     if (!record) {
       record = await this.createCustomerRecord(customerId);
     }
@@ -567,7 +576,7 @@ export class CrmService {
 
   async updateAction(id: string, updateData: Partial<CrmAction>): Promise<CrmAction> {
     const action = await this.crmActionsRepository.findOne({ where: { id } });
-    
+
     if (!action) {
       throw new NotFoundException('Action not found');
     }

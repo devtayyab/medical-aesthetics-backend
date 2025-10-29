@@ -10,7 +10,9 @@ import {
   Query,
   UseGuards,
   Request,
+  UsePipes,
 } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CrmService } from './crm.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -21,14 +23,13 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
 import { CommunicationLog } from './entities/communication-log.entity';
-import { CrmAction } from './entities/crm-action.entity';
-
+import { CrmAction } from './entities';
 @ApiTags('CRM')
 @Controller('crm')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class CrmController {
-  constructor(private readonly crmService: CrmService) {}
+  constructor(private readonly crmService: CrmService) { }
 
   @Post('leads')
   @ApiOperation({ summary: 'Create a new lead' })
@@ -121,13 +122,24 @@ export class CrmController {
   @Post('actions')
   @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
   @UseGuards(RolesGuard)
+  @UsePipes(new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    transformOptions: {
+      enableImplicitConversion: true,
+    },
+  }))
   @ApiOperation({ summary: 'Create action/task (phone call, follow-up, etc.)' })
-  createAction(@Body() actionData: any, @Request() req) {
-    return this.crmService.createAction({
-      ...actionData,
-      salespersonId: req.user.id,
+  async createAction(@Body() createActionDto: any, @Request() req) {
+    const action = await this.crmService.createAction({
+      ...createActionDto,
+      salespersonId: req.user.id, // attach logged-in user
     });
+    return action;
   }
+
+
+
 
   @Put('actions/:id')
   @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
@@ -152,6 +164,7 @@ export class CrmController {
   getPendingActions(@Request() req) {
     return this.crmService.getPendingActions(req.user.id);
   }
+
 
   // Customer Tag Management
   @Post('customers/:id/tags')
@@ -221,9 +234,9 @@ export class CrmController {
   ) {
     const dateRange = query.startDate && query.endDate
       ? {
-          startDate: new Date(query.startDate),
-          endDate: new Date(query.endDate),
-        }
+        startDate: new Date(query.startDate),
+        endDate: new Date(query.endDate),
+      }
       : undefined;
     return this.crmService.getSalespersonAnalytics(req.user.id, dateRange);
   }
@@ -254,6 +267,16 @@ export class CrmController {
   testFacebookConnection() {
     return this.crmService.testFacebookConnection();
   }
+
+  @Get('customer/:id')
+  @ApiOperation({ summary: 'Get customer details' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @UseGuards(RolesGuard)
+  getCustomer(@Param('id') id: string) {
+    return this.crmService.getCustomer(id);
+  }
+
+
 
   @Get('duplicates/check')
   @ApiOperation({ summary: 'Check for potential duplicates' })

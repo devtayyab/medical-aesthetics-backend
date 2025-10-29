@@ -413,7 +413,7 @@ function AppContent() {
             }
           />
           <Route
-            path="admin/crm"
+            path="/crm"
             element={
               <ProtectedLayout allowedRoles={["admin"]}>
                 <CRM />

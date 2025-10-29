@@ -1,277 +1,159 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  CheckCircle,
-  Clock,
-  AlertTriangle,
-  Plus,
-  Search,
-  Filter,
-  Calendar,
-  User,
-  Building,
-  MessageSquare,
-  Phone,
-  Mail,
-  Eye,
-  Edit,
-  Trash2,
-  MoreVertical
-} from 'lucide-react';
+import { Eye, Trash2, Plus, Edit } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Select } from '@/components/atoms/Select/Select';
-import { Badge } from '@/components/atoms/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
-import {
-  fetchActions,
-  fetchPendingActions,
-  fetchOverdueTasks,
-  updateAction,
-  deleteAction,
-  createAction,
-  runTaskAutomationCheck
-} from '@/store/slices/crmSlice';
+
 import type { RootState, AppDispatch } from '@/store';
 import type { CrmAction } from '@/types';
-
+import { createTask, DeleteTask, UpdateTask, fetchTasks } from '@/store/slices/TaskSlice';
+import type { Task } from '@/types';
+import { CheckCircle, Clock, AlertTriangle, Users } from 'lucide-react';
 interface TasksPageProps {
-  salespersonId?: string;
   onViewTask?: (task: CrmAction) => void;
 }
-
-type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'overdue' | 'cancelled';
 
 type TaskFormData = {
   title: string;
   description: string;
-  actionType: 'phone_call' | 'email' | 'follow_up' | 'appointment_confirmation' | 'treatment_reminder' | 'meeting';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'in_progress' | 'completed' | 'overdue' | 'cancelled';
+  type:
+  | 'treatment_follow_up'
+  | 'email_follow_up'
+  | 'follow_up_call'
+  | 'loyalty_reward'
+  | 'appointment_reminder'
+  | 'general';
+  status: 'pending' | 'completed' | 'cancelled' | 'in_progress';
   dueDate: string;
-  customerId: string;
+  assigneeId: string;
+  metadata: Record<string, any>;
 };
 
-export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) => {
+export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
+  const { tasks, isLoading } = useSelector((state: RootState) => state.task);
+  const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
-  const {
-    tasks,
-    pendingTasks,
-    overdueTasks,
-    automationRules,
-    isLoading,
-    error
-  } = useSelector((state: RootState) => state.crm);
-
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'overdue'>('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('');
+  console.log(tasks)
+  const currentUserId = user?.id;
+  console.log(currentUserId, 'currentUserId')
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formData, setFormData] = useState<TaskFormData>({
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const [taskFormData, setTaskFormData] = useState<TaskFormData>({
     title: '',
     description: '',
-    actionType: 'follow_up',
-    priority: 'medium',
+    type: 'follow_up_call',
     status: 'pending',
-    dueDate: '',
-    customerId: ''
+    dueDate: new Date().toISOString().slice(0, 16),
+    assigneeId: user?.id || '',
+    metadata: {},
   });
-
-  const { user } = useSelector((state: RootState) => state.auth);
-  const currentUserId = salespersonId || user?.id;
 
   useEffect(() => {
     if (currentUserId) {
-      dispatch(fetchActions({ salespersonId: currentUserId }));
-      dispatch(fetchPendingActions(currentUserId));
-      dispatch(fetchOverdueTasks(currentUserId));
+      dispatch(fetchTasks());
     }
   }, [dispatch, currentUserId]);
 
+  const resetForm = () => {
+    setShowCreateForm(false);
+    setIsEditing(false);
+    setSelectedTask(null);
+    setTaskFormData({
+      title: '',
+      description: '',
+      type: 'follow_up_call',
+      status: 'pending',
+      dueDate: new Date().toISOString().slice(0, 16),
+      assigneeId: user?.id || '',
+      metadata: {},
+    });
+  };
+
   const handleCreateTask = async () => {
-    if (!formData.title || !formData.customerId || !formData.actionType) {
+    if (!taskFormData.title || !taskFormData.type) {
       alert('Please fill in required fields');
       return;
     }
-
     try {
-      await dispatch(createAction({
-        ...formData,
-        salespersonId: currentUserId
-      })).unwrap();
-      setShowCreateForm(false);
-      setFormData({
-        title: '',
-        description: '',
-        actionType: 'follow_up',
-        priority: 'medium',
-        status: 'pending',
-        dueDate: '',
-        customerId: ''
-      });
+      const payload = {
+        ...taskFormData,
+      };
+      await dispatch(createTask(payload)).unwrap();
+      resetForm();
     } catch (error) {
       console.error('Failed to create task:', error);
     }
   };
 
-  const handleUpdateTaskStatus = async (taskId: string, status: TaskStatus) => {
+  const handleDeleteTask = async (id: string) => {
     try {
-      await dispatch(updateAction({
-        id: taskId,
-        updates: { status }
-      })).unwrap();
+      await dispatch(DeleteTask(id)).unwrap();
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+    }
+  };
+
+  const handleUpdateTask = async (task: Task) => {
+    if (!taskFormData.title || !taskFormData.type) {
+      alert('Please fill in required fields');
+      return;
+    }
+
+    try {
+      const updates = { ...taskFormData };
+      await dispatch(UpdateTask({ id: task.id, updates })).unwrap();
+      resetForm();
     } catch (error) {
       console.error('Failed to update task:', error);
     }
   };
 
-  const handleRunAutomation = async () => {
-    try {
-      await dispatch(runTaskAutomationCheck()).unwrap();
-      // Refresh tasks after automation run
-      if (currentUserId) {
-        dispatch(fetchActions({ salespersonId: currentUserId }));
-        dispatch(fetchPendingActions(currentUserId));
-        dispatch(fetchOverdueTasks(currentUserId));
-      }
-    } catch (error) {
-      console.error('Failed to run automation:', error);
-    }
-  };
+  const filteredTasks = tasks.filter(
+    (task) =>
+      task.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const getCurrentTasks = () => {
-    switch (activeTab) {
-      case 'pending':
-        return pendingTasks;
-      case 'overdue':
-        return overdueTasks;
-      default:
-        return tasks;
-    }
-  };
-
-  const getFilteredTasks = () => {
-    let filtered = getCurrentTasks();
-
-    if (searchTerm) {
-      filtered = filtered.filter(task =>
-        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.customer?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.customer?.lastName?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (statusFilter) {
-      filtered = filtered.filter(task => task.status === statusFilter);
-    }
-
-    if (priorityFilter) {
-      filtered = filtered.filter(task => task.priority === priorityFilter);
-    }
-
-    return filtered;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'success';
-      case 'in_progress':
-        return 'info';
-      case 'pending':
-        return 'warning';
-      case 'overdue':
-        return 'error';
-      case 'cancelled':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'error';
-      case 'high':
-        return 'warning';
-      case 'medium':
-        return 'info';
-      case 'low':
-        return 'success';
-      default:
-        return 'default';
-    }
-  };
-
-  const getActionIcon = (actionType: string) => {
-    switch (actionType) {
-      case 'phone_call':
-        return <Phone className="h-4 w-4" />;
-      case 'email':
-        return <Mail className="h-4 w-4" />;
-      case 'meeting':
-        return <Calendar className="h-4 w-4" />;
-      case 'follow_up':
-        return <MessageSquare className="h-4 w-4" />;
-      case 'appointment_confirmation':
-        return <CheckCircle className="h-4 w-4" />;
-      case 'treatment_reminder':
-        return <Clock className="h-4 w-4" />;
-      default:
-        return <CheckCircle className="h-4 w-4" />;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const isOverdue = (dueDate: string) => {
-    return new Date(dueDate) < new Date();
-  };
-
-  const filteredTasks = getFilteredTasks();
+  const formatDate = (date?: string) =>
+    date
+      ? new Date(date).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+      : '-';
 
   return (
     <div className="space-y-6">
+
+
       {/* Header */}
       <Card>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between p-4">
           <div>
             <h2 className="text-2xl font-bold">Task Management</h2>
             <p className="text-gray-500 mt-1">Manage your tasks and follow-ups</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleRunAutomation}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Run Automation
-            </Button>
-            <Button variant="primary" onClick={() => setShowCreateForm(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Task
-            </Button>
-          </div>
+          <Button variant="primary" onClick={() => setShowCreateForm(true)}>
+            <Plus className="h-4 w-4 mr-2" /> New Task
+          </Button>
         </div>
       </Card>
-
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-blue-600" />
+              <Users className="h-5 w-5 text-blue-600" />
               <div>
                 <div className="text-2xl font-bold">{tasks.length}</div>
-                <div className="text-sm text-gray-500">Total Tasks</div>
+                <div className="text-sm text-gray-500">Total tasks</div>
               </div>
             </div>
           </CardContent>
@@ -280,228 +162,96 @@ export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) =
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-yellow-600" />
-              <div>
-                <div className="text-2xl font-bold">{pendingTasks.length}</div>
-                <div className="text-sm text-gray-500">Pending</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <div>
-                <div className="text-2xl font-bold">{overdueTasks.length}</div>
-                <div className="text-sm text-gray-500">Overdue</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
               <div>
                 <div className="text-2xl font-bold">
-                  {tasks.filter(t => t.status === 'completed').length}
+                  {tasks.filter(l => l.status === 'pending').length}
                 </div>
-                <div className="text-sm text-gray-500">Completed</div>
+                <div className="text-sm text-gray-500">pending Tasks</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-green-600" />
+              <div>
+                <div className="text-2xl font-bold">
+                  {tasks.filter(l => l.status === 'in_progress').length}
+                </div>
+                <div className="text-sm text-gray-500">In Progress Tasks</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-orange-600" />
+              <div>
+                <div className="text-2xl font-bold">
+                  {tasks.filter(l => l.status === 'completed').length}
+                </div>
+                <div className="text-sm text-gray-500">completed Tasks</div>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Search tasks..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select
-              value={statusFilter}
-              onChange={setStatusFilter}
-              options={[
-                { value: '', label: 'All Statuses' },
-                { value: 'pending', label: 'Pending' },
-                { value: 'in_progress', label: 'In Progress' },
-                { value: 'completed', label: 'Completed' },
-                { value: 'overdue', label: 'Overdue' },
-                { value: 'cancelled', label: 'Cancelled' }
-              ]}
-            />
-            <Select
-              value={priorityFilter}
-              onChange={setPriorityFilter}
-              options={[
-                { value: '', label: 'All Priorities' },
-                { value: 'urgent', label: 'Urgent' },
-                { value: 'high', label: 'High' },
-                { value: 'medium', label: 'Medium' },
-                { value: 'low', label: 'Low' }
-              ]}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Task Tabs */}
-      <div className="flex border-b">
-        <button
-          className={`px-4 py-2 font-medium ${activeTab === 'all'
-            ? 'border-b-2 border-blue-500 text-blue-600'
-            : 'text-gray-500 hover:text-gray-700'
-            }`}
-          onClick={() => setActiveTab('all')}
-        >
-          All Tasks ({tasks.length})
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${activeTab === 'pending'
-            ? 'border-b-2 border-blue-500 text-blue-600'
-            : 'text-gray-500 hover:text-gray-700'
-            }`}
-          onClick={() => setActiveTab('pending')}
-        >
-          Pending ({pendingTasks.length})
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${activeTab === 'overdue'
-            ? 'border-b-2 border-blue-500 text-blue-600'
-            : 'text-gray-500 hover:text-gray-700'
-            }`}
-          onClick={() => setActiveTab('overdue')}
-        >
-          Overdue ({overdueTasks.length})
-        </button>
-      </div>
-
-      {/* Tasks List */}
+      {/* Task List */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            {activeTab === 'all' ? 'All Tasks' :
-              activeTab === 'pending' ? 'Pending Tasks' :
-                'Overdue Tasks'} ({filteredTasks.length})
-          </CardTitle>
+          <CardTitle>Tasks ({filteredTasks.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading tasks...</div>
-          ) : error ? (
-            <div className="text-center py-8 text-red-600">{error}</div>
+            <div className="text-center py-8">Loading...</div>
           ) : filteredTasks.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No tasks found
-            </div>
+            <div className="text-center py-8 text-gray-500">No tasks found</div>
           ) : (
             <div className="space-y-4">
               {filteredTasks.map((task) => (
                 <div
                   key={task.id}
-                  className={`flex items-start gap-4 p-4 border rounded-lg ${task.status === 'overdue' ? 'border-red-200 bg-red-50' :
-                    task.status === 'completed' ? 'border-green-200 bg-green-50' :
-                      'border-gray-200'
-                    }`}
+                  className="p-4 border rounded-lg flex justify-between items-center"
                 >
-                  <div className="flex-shrink-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${task.status === 'completed' ? 'bg-green-100' :
-                      task.status === 'overdue' ? 'bg-red-100' :
-                        'bg-blue-100'
-                      }`}>
-                      {task.status === 'completed' ? (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      ) : isOverdue(task.dueDate || '') && task.status === 'pending' ? (
-                        <AlertTriangle className="h-5 w-5 text-red-600" />
-                      ) : (
-                        getActionIcon(task.actionType)
-                      )}
-                    </div>
+                  <div>
+                    <h3 className="font-medium capitalize">{task.title}</h3>
+                    <p className="text-sm text-gray-500">{task.description}</p>
+                    <p className="text-xs text-gray-400">Type: {task.type}</p>
+                    <p className="text-xs text-gray-400">Due: {formatDate(task.dueDate)}</p>
+                    <p className="text-xs text-gray-400">Status: {task.status}</p>
                   </div>
+                  <div className="flex gap-2">
 
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-medium">{task.title}</h3>
-                      <Badge variant={getStatusColor(task.status)} size="sm">
-                        {task.status}
-                      </Badge>
-                      <Badge variant={getPriorityColor(task.priority)} size="sm">
-                        {task.priority}
-                      </Badge>
-                      {task.status === 'overdue' && (
-                        <Badge variant="error" size="sm">
-                          OVERDUE
-                        </Badge>
-                      )}
-                    </div>
-
-                    {task.description && (
-                      <p className="text-gray-600 text-sm mb-2">{task.description}</p>
-                    )}
-
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {task.customer?.firstName} {task.customer?.lastName}
-                      </div>
-                      {task.metadata?.clinic && (
-                        <div className="flex items-center gap-1">
-                          <Building className="h-3 w-3" />
-                          {task.metadata.clinic}
-                        </div>
-                      )}
-                      <div>Created: {formatDate(task.createdAt)}</div>
-                      {task.dueDate && (
-                        <div className={isOverdue(task.dueDate) && task.status === 'pending' ? 'text-red-600 font-medium' : ''}>
-                          Due: {formatDate(task.dueDate)}
-                        </div>
-                      )}
-                      {task.completedAt && (
-                        <div>Completed: {formatDate(task.completedAt)}</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    {task.status === 'pending' && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleUpdateTaskStatus(task.id, 'in_progress')}
-                        >
-                          Start
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleUpdateTaskStatus(task.id, 'completed')}
-                        >
-                          Complete
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onViewTask?.(task)}
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => onViewTask?.(task)} >
                       <Eye className="h-4 w-4" />
                     </Button>
+
                     <Button
-                      variant="ghost"
                       size="sm"
-                      onClick={() => dispatch(deleteAction(task.id))}
+                      variant="ghost"
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setTaskFormData({
+                          title: task.title || '',
+                          description: task.description,
+                          type: task.type,
+                          status: task.status,
+                          dueDate: task.dueDate
+                            ? new Date(task.dueDate).toISOString().slice(0, 16)
+                            : new Date().toISOString().slice(0, 16),
+                        });
+                        setIsEditing(true);
+                      }}
                     >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleDeleteTask(task.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -514,66 +264,153 @@ export const Tasks: React.FC<TasksPageProps> = ({ salespersonId, onViewTask }) =
 
       {/* Create Task Modal */}
       {showCreateForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Create New Task</h2>
-            <div className="space-y-4">
-              <Input
-                label="Title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
+        <div className="bg-black bg-opacity-50 fixed inset-0 flex items-center justify-center p-4 z-50">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreateTask();
+            }}
+            className="bg-white rounded-lg p-6 w-full max-w-md"
+          >
+            <h2 className="text-xl font-bold mb-4">Create Task</h2>
+
+            <Input
+              label="Title"
+              value={taskFormData.title}
+              onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
+              required
+            />
+
+            <Input
+              label="Description"
+              value={taskFormData.description}
+              onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
+            />
+
+            <Input
+              type="datetime-local"
+              label="Due Date"
+              value={taskFormData.dueDate}
+              onChange={(e) => setTaskFormData({ ...taskFormData, dueDate: e.target.value })}
+              required
+            />
+            <div className='grid grid-cols-2 gap-4 mt-4'>
+              <Select
+                label="Status"
+                value={taskFormData.status}
+                onChange={(v) =>
+                  setTaskFormData({ ...taskFormData, status: v as TaskFormData['status'] })
+                }
+                options={[
+                  { value: 'pending', label: 'Pending' },
+                  { value: 'in_progress', label: 'In Progress' },
+                  { value: 'completed', label: 'Completed' },
+                  { value: 'cancelled', label: 'Cancelled' },
+                ]}
               />
               <Select
-                label="Action Type"
-                value={formData.actionType}
-                onChange={(value: 'phone_call' | 'email' | 'follow_up' | 'appointment_confirmation' | 'treatment_reminder' | 'meeting') => setFormData({ ...formData, actionType: value })}
+                label="Type"
+                value={taskFormData.type}
+                onChange={(v) =>
+                  setTaskFormData({ ...taskFormData, type: v as TaskFormData['type'] })
+                }
                 options={[
-                  { value: 'phone_call', label: 'Phone Call' },
-                  { value: 'email', label: 'Email' },
-                  { value: 'meeting', label: 'Meeting' },
-                  { value: 'follow_up', label: 'Follow Up' },
-                  { value: 'appointment_confirmation', label: 'Appointment Confirmation' },
-                  { value: 'treatment_reminder', label: 'Treatment Reminder' }
+                  { value: 'follow_up_call', label: 'Follow Up Call' },
+                  { value: 'email_follow_up', label: 'Email Follow Up' },
+                  { value: 'appointment_reminder', label: 'Appointment Reminder' },
+                  { value: 'treatment_follow_up', label: 'Treatment Follow Up' },
+                  { value: 'loyalty_reward', label: 'Loyalty Reward' },
+                  { value: 'general', label: 'General' },
                 ]}
-                required
-              />
-              <Input
-                label="Customer ID"
-                value={formData.customerId}
-              />
-              <Select
-                label="Priority"
-                value={formData.priority}
-                onChange={(value: 'low' | 'medium' | 'high' | 'urgent') => setFormData({ ...formData, priority: value })}
-                options={[
-                  { value: 'low', label: 'Low' },
-                  { value: 'medium', label: 'Medium' },
-                  { value: 'high', label: 'High' },
-                  { value: 'urgent', label: 'Urgent' }
-                ]}
-              />
-              <Input
-                label="Due Date"
-                type="datetime-local"
-                value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-              />
-              <Input
-                label="Description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
-            <div className="flex gap-2 mt-6">
-              <Button variant="primary" onClick={handleCreateTask}>
-                Create Task
-              </Button>
-              <Button variant="outline" onClick={() => setShowCreateForm(false)}>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button type="button" variant="outline" onClick={resetForm}>
                 Cancel
               </Button>
+              <Button type="submit" variant="primary">
+                Create
+              </Button>
             </div>
-          </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Task Modal */}
+      {isEditing && selectedTask && (
+        <div className="bg-black bg-opacity-50 fixed inset-0 flex items-center justify-center p-4 z-50">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleUpdateTask(selectedTask);
+            }}
+            className="bg-white rounded-lg p-6 w-full max-w-md"
+          >
+            <h2 className="text-xl font-bold mb-4">Edit Task</h2>
+
+            <Input
+              label="Title"
+              value={taskFormData.title}
+              onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
+              required
+            />
+
+            <Input
+              label="Description"
+              value={taskFormData.description}
+              onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
+            />
+
+
+
+            <Input
+              type="datetime-local"
+              label="Due Date"
+              value={taskFormData.dueDate}
+              onChange={(e) => setTaskFormData({ ...taskFormData, dueDate: e.target.value })}
+              required
+            />
+            <div className='grid grid-cols-2 gap-4 mt-4'>
+
+              <Select
+                label="Status"
+                value={taskFormData.status}
+                onChange={(v) =>
+                  setTaskFormData({ ...taskFormData, status: v as TaskFormData['status'] })
+                }
+                options={[
+                  { value: 'pending', label: 'Pending' },
+                  { value: 'in_progress', label: 'In Progress' },
+                  { value: 'completed', label: 'Completed' },
+                  { value: 'cancelled', label: 'Cancelled' },
+                ]}
+              />
+
+              <Select
+                label="Type"
+                value={taskFormData.type}
+                onChange={(v) =>
+                  setTaskFormData({ ...taskFormData, type: v as TaskFormData['type'] })
+                }
+                options={[
+                  { value: 'follow_up_call', label: 'Follow Up Call' },
+                  { value: 'email_follow_up', label: 'Email Follow Up' },
+                  { value: 'appointment_reminder', label: 'Appointment Reminder' },
+                  { value: 'treatment_follow_up', label: 'Treatment Follow Up' },
+                  { value: 'loyalty_reward', label: 'Loyalty Reward' },
+                  { value: 'general', label: 'General' },
+                ]}
+              />
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button type="button" variant="outline" onClick={resetForm}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary">
+                Update
+              </Button>
+            </div>
+          </form>
         </div>
       )}
     </div>

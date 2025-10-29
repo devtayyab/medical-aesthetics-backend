@@ -16,7 +16,8 @@ import type {
   ParsedFacebookLead,
   CrmFilters,
   CrmAnalytics,
-  User
+  User,
+  Task
 } from "@/types";
 
 const API_BASE_URL =
@@ -269,7 +270,9 @@ export const crmAPI = {
 
   // Customer Records
   getCustomerRecord: (customerId: string, salespersonId?: string) =>
-    api.get(`/crm/customers/${customerId}`, { params: { salespersonId } }),
+    api.get(`/crm/customer/${customerId}`, { params: { salespersonId } }),
+  getCustomer: (id?: string) =>
+    api.get(`/crm/customer/${id}`),
   updateCustomerRecord: (customerId: string, data: Partial<CustomerRecord>) =>
     api.patch(`/crm/customers/${customerId}`, data),
 
@@ -370,6 +373,21 @@ export const adminAPI = {
     tiers: { name: string; points: number; rewards: string[] }[];
   }) => api.patch("/admin/loyalty", data),
   getLogs: () => api.get("/admin/monitor"),
+};
+
+export const TaskAPI = {
+  createTask: (data: {
+    description: string;
+    type: string;
+    dueDate: string;
+    assignedTo: string;
+    metadata: Record<string, any>;
+    customerId: string;
+  }) => api.post("/tasks", data),
+  getTasks: () => api.get(`/tasks`),
+  updateTask: (id: string, data: Partial<Task>) =>
+    api.patch(`/tasks/${id}`, data),
+  deleteTask: (id: string) => api.delete(`/tasks/${id}`),
 };
 
 export default api;

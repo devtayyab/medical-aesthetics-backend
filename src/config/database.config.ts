@@ -2,26 +2,25 @@ import { Injectable } from '@nestjs/common';
 import { TypeOrmModuleOptions, TypeOrmOptionsFactory } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 
-import { CrmAction } from '../modules/crm/entities/crm-action.entity';
+
+import { User } from '../modules/users/entities/user.entity';
+import { Clinic } from '../modules/clinics/entities/clinic.entity';
+import { Service } from '../modules/clinics/entities/service.entity';
+import { Lead, CrmAction, CustomerRecord } from '../modules/crm/entities';
+import { Tag } from '../modules/admin/entities/tag.entity';
+import { AuditLog } from '../modules/audit/entities/audit-log.entity';
+import { ConsentRecord } from '../modules/users/entities/consent-record.entity';
 import { CommunicationLog } from '../modules/crm/entities/communication-log.entity';
-import { CustomerRecord } from '../modules/crm/entities/customer-record.entity';
 import { CustomerTag } from '../modules/crm/entities/customer-tag.entity';
 import { Task } from '@/modules/tasks/entities/task.entity';
 import { Appointment } from '@/modules/bookings/entities/appointment.entity';
 import { AppointmentHold } from '@/modules/bookings/entities/appointment-hold.entity';
 import { LoyaltyLedger } from '@/modules/loyalty/entities/loyalty-ledger.entity';
 import { Notification } from '@/modules/notifications/entities/notification.entity';
-import { User } from '@/modules/users/entities/user.entity';
-import { Clinic } from '@/modules/clinics/entities/clinic.entity';
-import { Tag } from '@/modules/admin/entities/tag.entity';
-import { AuditLog } from '@/modules/audit/entities/audit-log.entity';
-import { ConsentRecord } from '@/modules/users/entities/consent-record.entity';
-import { Service } from '@/modules/clinics/entities/service.entity';
-import { Lead } from '@/modules/crm/entities/lead.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService) { }
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
     return {
@@ -36,9 +35,9 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         Clinic,
         Service,
         Lead,
-        CrmAction,
         CommunicationLog,
         CustomerRecord,
+        CrmAction,
         CustomerTag,
         Task,
         Appointment,
