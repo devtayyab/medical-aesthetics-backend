@@ -21,7 +21,7 @@ import { FaBalanceScale } from "react-icons/fa";
 import { MdOutlineSupportAgent } from "react-icons/md";
 import { MdOutlineMarkUnreadChatAlt } from "react-icons/md";
 // Images
-import LayeredBG from "@/assets/LayeredBG.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
 import AvatarImg from "@/assets/Avatar.svg";
 
 const containerStyle = css`

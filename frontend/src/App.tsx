@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -61,6 +61,7 @@ import "@/styles/globals.css";
 
 import SiteLogo from "@/assets/SiteLogo.png";
 import AccountInfo from "./pages/AccountInfo/AccountInfo";
+import { CRM } from "./pages/CRM/CRM";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -84,12 +85,18 @@ function AppContent() {
   );
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
 
+  const restoreStartedRef = useRef(false);
+
   useEffect(() => {
-    // Always attempt to restore session on initial load, regardless of path
-    if (!hasRestoredSession) {
+    // Attempt to restore session once on initial load. React StrictMode in
+    // development mounts components twice; guard with a ref so we don't
+    // dispatch duplicate restoreSession actions which would trigger two
+    // refresh requests.
+    if (!restoreStartedRef.current) {
+      restoreStartedRef.current = true;
       dispatch(restoreSession()).finally(() => setHasRestoredSession(true));
     }
-  }, [dispatch, hasRestoredSession]);
+  }, [dispatch]);
 
   // Only redirect to /my-account from /login or /register after session is restored
   useEffect(() => {
@@ -156,10 +163,12 @@ function AppContent() {
               )
             }
           />
+
+
           {/* Client Routes - Public clinic browsing */}
           <Route path="/search" element={<Search />} />
           <Route path="/clinic/:id" element={<ClinicDetails />} />
-          
+
           {/* Protected booking route - requires login */}
           <Route
             path="/appointment/booking"
@@ -177,6 +186,7 @@ function AppContent() {
               </ProtectedLayout>
             }
           />
+
           <Route
             path="/history"
             element={
@@ -253,12 +263,22 @@ function AppContent() {
           <Route
             path="/clinic"
             element={
-              <ProtectedLayout allowedRoles={["clinic_owner", "doctor", "secretariat", "salesperson"]}>
+              <ProtectedLayout
+                allowedRoles={[
+                  "clinic_owner",
+                  "doctor",
+                  "secretariat",
+                  "salesperson",
+                ]}
+              >
                 <ClinicLayout />
               </ProtectedLayout>
             }
           >
-            <Route index element={<Navigate to="/clinic/dashboard" replace />} />
+            <Route
+              index
+              element={<Navigate to="/clinic/dashboard" replace />}
+            />
             <Route path="dashboard" element={<ClinicDashboard />} />
             <Route path="appointments" element={<AppointmentsPage />} />
             <Route
@@ -311,7 +331,7 @@ function AppContent() {
               }
             />
           </Route>
-          
+
           {/* Old Clinic Routes - Keep for backward compatibility */}
           <Route
             path="/clinic/profile"
@@ -391,6 +411,14 @@ function AppContent() {
             element={
               <ProtectedLayout allowedRoles={["salesperson"]}>
                 <RepeatManagement />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/crm"
+            element={
+              <ProtectedLayout allowedRoles={["admin"]}>
+                <CRM />
               </ProtectedLayout>
             }
           />

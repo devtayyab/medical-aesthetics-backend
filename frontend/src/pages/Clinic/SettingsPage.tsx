@@ -1,26 +1,31 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../store';
-import { fetchClinicProfile, updateClinicProfile } from '../../store/slices/clinicSlice';
-import { ClinicProfile } from '../../types/clinic.types';
-import { Building2, Mail, Phone, Globe, MapPin, Save } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../store";
+import {
+  fetchClinicProfile,
+  updateClinicProfile,
+} from "../../store/slices/clinicSlice";
+import { ClinicProfile } from "../../types/clinic.types";
+import { Building2, Mail, Phone, Globe, MapPin, Save } from "lucide-react";
 
 const SettingsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { profile, isLoading } = useSelector((state: RootState) => state.clinic);
+  const { profile, isLoading } = useSelector(
+    (state: RootState) => state.clinic
+  );
 
   const [formData, setFormData] = useState<Partial<ClinicProfile>>({
-    name: '',
-    description: '',
-    phone: '',
-    email: '',
-    website: '',
+    name: "",
+    description: "",
+    phone: "",
+    email: "",
+    website: "",
     address: {
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: '',
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "",
     },
   });
 
@@ -49,10 +54,10 @@ const SettingsPage: React.FC = () => {
 
     try {
       await dispatch(updateClinicProfile(formData)).unwrap();
-      alert('Profile updated successfully!');
+      alert("Profile updated successfully!");
     } catch (error) {
-      console.error('Failed to update profile:', error);
-      alert('Failed to update profile. Please try again.');
+      console.error("Failed to update profile:", error);
+      alert("Failed to update profile. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -64,15 +69,17 @@ const SettingsPage: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Clinic Settings</h1>
-          <p className="text-gray-600 mt-2">Manage your clinic profile and information</p>
+          <p className="text-gray-600 mt-2">
+            Manage your clinic profile and information
+          </p>
         </div>
         <button
           onClick={handleSubmit}
           disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors duration-100"
         >
           <Save className="w-5 h-5" />
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {isSaving ? "Saving..." : "Save Changes"}
         </button>
       </div>
 
@@ -96,7 +103,9 @@ const SettingsPage: React.FC = () => {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -108,7 +117,9 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 />
@@ -130,7 +141,9 @@ const SettingsPage: React.FC = () => {
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -143,18 +156,24 @@ const SettingsPage: React.FC = () => {
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Website
+                </label>
                 <input
                   type="url"
                   value={formData.website}
-                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, website: e.target.value })
+                  }
                   placeholder="https://www.example.com"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -187,7 +206,9 @@ const SettingsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  City
+                </label>
                 <input
                   type="text"
                   value={formData.address?.city}
@@ -202,7 +223,9 @@ const SettingsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  State
+                </label>
                 <input
                   type="text"
                   value={formData.address?.state}
@@ -217,14 +240,19 @@ const SettingsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Zip Code</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Zip Code
+                </label>
                 <input
                   type="text"
                   value={formData.address?.zipCode}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      address: { ...formData.address!, zipCode: e.target.value },
+                      address: {
+                        ...formData.address!,
+                        zipCode: e.target.value,
+                      },
                     })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -232,14 +260,19 @@ const SettingsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Country
+                </label>
                 <input
                   type="text"
                   value={formData.address?.country}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      address: { ...formData.address!, country: e.target.value },
+                      address: {
+                        ...formData.address!,
+                        country: e.target.value,
+                      },
                     })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

@@ -7,7 +7,7 @@ import { fetchUserAppointments } from "@/store/slices/bookingSlice";
 import { RootState, AppDispatch } from "@/store";
 import type { Appointment } from "@/types";
 import { Card } from "@/components/atoms/Card/Card";
-import LayeredBG from "@/assets/LayeredBG.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
 
 const container = css`
   min-height: 100vh;

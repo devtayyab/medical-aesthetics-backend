@@ -148,6 +148,7 @@ export interface Lead {
 
 export interface Task {
   id: string;
+  title: string;
   description: string;
   type: 'phone' | 'email' | 'meeting';
   dueDate: string;
@@ -155,8 +156,41 @@ export interface Task {
   assignedTo: string;
   customerId?: string;
   createdAt: string;
+  updatedAt: string;
+  selectedTask: boolean;
+  customer?: Customer;
+  assignee?: User;
 }
-
+export interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  assignedSalespersonId?: string;
+  assignedSales?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    role?: string;
+    email: string;
+    phone: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  isRepeatCustomer: boolean;
+  createdAt: string;
+  updatedAt: string;
+  source: string;
+  summary: {
+    totalAppointments: number;
+    completedAppointments: number;
+    lifetimeValue: number;
+    repeatCount: number;
+  };
+}
 export interface ActionLog {
   id: string;
   customerId: string;
@@ -179,10 +213,4 @@ export interface AuditLog {
   details?: any;
 }
 
-export interface ConsentRecord {
-  id: string;
-  userId: string;
-  type: 'terms' | 'privacy' | 'marketing';
-  granted: boolean;
-  timestamp: string;
-}
+export * from './crm.types';

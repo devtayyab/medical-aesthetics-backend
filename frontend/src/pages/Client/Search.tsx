@@ -11,7 +11,7 @@ import {
 import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 import LinedBg from "@/assets/LinedBg.svg";
-import LayeredBG from "@/assets/LayeredBG.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
 import { store } from "@/store"; // Import the store here
 
 export const Search: React.FC = () => {

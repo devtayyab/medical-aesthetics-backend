@@ -24,13 +24,13 @@ const ClinicInfo: React.FC<ClinicInfoProps> = ({
     <div className="w-full flex justify-between gap-6 items-end mt-2">
       <div className="flex flex-col gap-2">
         <div className="flex flex-row gap-6">
-          <p className="font-semibold">{title}</p>
+          {/* <p className="font-semibold">{title}</p> */}
           {/* <p className="font-semibold">{price}</p> */}
         </div>
         <div className="flex flex-row gap-6">
-          <p className="text-sm text-gray-600">{duration}</p>
+          {/* <p className="text-sm text-gray-600">{duration}</p> */}
           <p className="text-sm font-bold text-gray-600">{description}</p>
-          <p className="text-green-600 text-sm">{discount}</p>
+          {/* <p className="text-green-600 text-sm">{discount}</p> */}
         </div>
         <hr />
       </div>

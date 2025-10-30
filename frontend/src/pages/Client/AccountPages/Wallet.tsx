@@ -4,7 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/atoms/Button/Button";
 import type { RootState, AppDispatch } from "@/store";
 import { css } from "@emotion/css";
-import LayeredBG from "@/assets/LayeredBG.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
 import { FaChevronRight, FaGift } from "react-icons/fa6";
 import { MdDiscount } from "react-icons/md";
 import { BiSolidDiscount } from "react-icons/bi";
@@ -20,9 +20,7 @@ export const Wallet: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
-
   const [giftCard, setGiftCard] = React.useState("");
-
   const handleAddGiftCard = () => {
     if (!giftCard) return;
     console.log("Adding gift card:", giftCard);

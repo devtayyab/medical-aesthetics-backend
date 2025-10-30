@@ -19,7 +19,7 @@ import type { Clinic } from "@/types";
 
 // Images
 import HeaderBanner from "@/assets/HeaderBanner.svg";
-import LayeredBG from "@/assets/LayeredBG.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
 import PlusIcon from "@/assets/Icons/PlusIcon.svg";
 import CalendarIcon from "@/assets/Icons/CalendarIcon.svg";
 import TickIcon from "@/assets/Icons/TickIcon.svg";
@@ -30,7 +30,7 @@ import DermaIcon from "@/assets/Icons/TreatmentIcons/DermaIcon.svg";
 import CosmeticIcon from "@/assets/Icons/TreatmentIcons/CosmeticIcon.svg";
 import BodyIcon from "@/assets/Icons/TreatmentIcons/BodyIcon.svg";
 import HairIcon from "@/assets/Icons/TreatmentIcons/HairIcon.svg";
-import DentistIcon from "@/assets/Icons/TreatmentIcons/DentistIcon.svg";
+import DentistIcon from "@/assets/Icons/TreatmentIcons/Dentisticon.svg";
 import HomeMobAppImg from "@/assets/HomeMobAppImg.svg";
 
 const treatmentSteps = [

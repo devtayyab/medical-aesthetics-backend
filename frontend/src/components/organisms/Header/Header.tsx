@@ -260,6 +260,7 @@ export const Header: React.FC = () => {
         { to: "/appointments", label: "My Appointments" },
         { to: "/my-account", label: "My Account" },
         { action: handleLogout, label: "Logout" },
+        { to: "/crm", label: "CRM" },
       ];
     }
 
@@ -294,12 +295,71 @@ export const Header: React.FC = () => {
           to={
             clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : "/"
           }
+          className={`text-[#CBFF38] text-2xl font-bold flex items-center ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
+            }`}
           className={`text-[#CBFF38] text-2xl font-bold flex   items-center ${
             clinicRoles.includes(user?.role || "") ? "justify-center" : ""
           }`}
         >
           <img src={SiteLogo} alt="Site Logo" className="w-[200px] " />
         </Link>
+
+        {/* Desktop Navigation for Non-Clinic Roles */}
+        {!clinicRoles.includes(user?.role || "") && (
+          <>
+            <div className={searchContainerStyle}>
+              <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
+                <li
+                  className={`cursor-pointer ${location.pathname === "/"
+                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                    }`}
+                >
+                  <Link
+                    to="/"
+                    className={`no-underline ${location.pathname === "/"
+                      ? "text-[#CBFF38]"
+                      : "text-white"
+                      }`}
+                  >
+                    Home
+                  </Link>
+                </li>
+                <li
+                  className={`cursor-pointer ${location.pathname === "/crm"
+                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                    }`}
+                >
+                  <Link
+                    to="/crm"
+                    className={`no-underline ${location.pathname === "/crm"
+                      ? "text-[#CBFF38]"
+                      : "text-white"
+                      }`}
+                  >
+                    CRM
+                  </Link>
+                </li>
+                <li
+                  className={`cursor-pointer ${location.pathname.startsWith("/search")
+                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+                    }`}
+                >
+                  <Link
+                    to="/search"
+                    className={`no-underline ${location.pathname.startsWith("/search")
+                      ? "text-[#CBFF38]"
+                      : "text-white"
+                      }`}
+                  >
+                    Clinics
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
           <>
             <nav className="hidden md:flex items-center gap-4">
               {/* {isAuthenticated ? (
@@ -552,6 +612,7 @@ export const Header: React.FC = () => {
                     >
                       Clinics
                     </Link>
+
                     <button
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={userMenuItemStyle}

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -11,9 +11,16 @@ import { User } from '../users/entities/user.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
+import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
+import { TaskAutomationService } from './task-automation.service';
+import { FacebookService, ParsedFacebookLead } from './facebook.service';
+import { DuplicateDetectionService } from './duplicate-detection.service';
+import { CustomerAffiliationService } from './customer-affiliation.service';
+import { MandatoryFieldValidationService } from './mandatory-field-validation.service';
+import { promises } from 'node:dns';
 
 @Injectable()
 export class CrmService {
@@ -34,9 +41,27 @@ export class CrmService {
     private appointmentsRepository: Repository<Appointment>,
     private eventEmitter: EventEmitter2,
     private notificationsService: NotificationsService,
-  ) {}
+    private facebookService: FacebookService,
+    private duplicateDetectionService: DuplicateDetectionService,
+    private customerAffiliationService: CustomerAffiliationService,
+    private mandatoryFieldValidationService: MandatoryFieldValidationService,
+    private taskAutomationService: TaskAutomationService,
+  ) { }
 
   async create(createLeadDto: CreateLeadDto): Promise<Lead> {
+    // Use enhanced duplicate detection
+    const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+      createLeadDto.email,
+      createLeadDto.phone,
+      createLeadDto.firstName,
+      createLeadDto.lastName,
+    );
+
+    if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
+      // Update existing customer record instead of creating duplicate lead
+      return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
+    }
+
     const lead = this.leadsRepository.create(createLeadDto);
     const savedLead = await this.leadsRepository.save(lead);
 
@@ -44,6 +69,254 @@ export class CrmService {
     this.eventEmitter.emit('lead.created', savedLead);
 
     return savedLead;
+  }
+
+  async handleFacebookWebhook(webhookData: FacebookWebhookDto): Promise<void> {
+    for (const entry of webhookData.entry) {
+      try {
+        // Get full lead data from Facebook
+        const leadData = await this.facebookService.getLead(entry.id);
+        const parsedLead = this.facebookService.parseLeadData(leadData);
+
+        // Use enhanced duplicate detection
+        const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+          parsedLead.email,
+          parsedLead.phone,
+          parsedLead.firstName,
+          parsedLead.lastName,
+        );
+
+        if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
+          await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData);
+        } else {
+          await this.createLeadFromFacebook(parsedLead, leadData);
+        }
+      } catch (error) {
+        console.error(`Error processing Facebook lead ${entry.id}:`, error);
+        // Continue processing other leads even if one fails
+      }
+    }
+  }
+
+  async importFacebookLeads(formId: string, limit: number = 50): Promise<Lead[]> {
+    const leadsData = await this.facebookService.getLeadsByForm(formId, limit);
+    const createdLeads: Lead[] = [];
+
+    for (const leadData of leadsData) {
+      try {
+        const parsedLead = this.facebookService.parseLeadData(leadData);
+
+        // Use enhanced duplicate detection
+        const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+          parsedLead.email,
+          parsedLead.phone,
+          parsedLead.firstName,
+          parsedLead.lastName,
+        );
+
+        if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
+          await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData);
+        } else {
+          const lead = await this.createLeadFromFacebook(parsedLead, leadData);
+          createdLeads.push(lead);
+        }
+      } catch (error) {
+        console.error(`Error processing Facebook lead ${leadData.id}:`, error);
+      }
+    }
+
+    return createdLeads;
+  }
+
+  private async findExistingCustomer(email?: string, phone?: string): Promise<User | null> {
+    if (!email && !phone) return null;
+
+    const query = this.usersRepository.createQueryBuilder('user');
+
+    if (email) {
+      query.orWhere('user.email = :email', { email });
+    }
+
+    if (phone) {
+      query.orWhere('user.phone = :phone', { phone });
+    }
+
+    return query.getOne();
+  }
+
+  private async updateExistingCustomerWithNewLead(existingCustomer: User, leadDto: CreateLeadDto): Promise<Lead> {
+    // Get the customer record to find assigned salesperson
+    const customerRecord = await this.customerRecordsRepository.findOne({
+      where: { customerId: existingCustomer.id },
+    });
+
+    // Create a new lead but link it to the existing customer
+    const lead = this.leadsRepository.create({
+      ...leadDto,
+      status: LeadStatus.CONTACTED, // Mark as contacted since they already exist
+      metadata: {
+        ...leadDto.metadata,
+        existingCustomerId: existingCustomer.id,
+        mergedLead: true,
+      },
+    });
+
+    const savedLead = await this.leadsRepository.save(lead);
+
+    // Create communication log instead of trying to update CustomerRecord with notes
+    if (customerRecord?.assignedSalespersonId) {
+      await this.logCommunication({
+        customerId: existingCustomer.id,
+        salespersonId: customerRecord.assignedSalespersonId,
+        type: 'form_submission',
+        direction: 'incoming',
+        status: 'completed',
+        subject: 'New Form Submission',
+        notes: `New form submission received: ${leadDto.notes || 'No notes'}`,
+        metadata: {
+          source: 'web_form',
+          leadId: savedLead.id,
+        },
+      });
+    }
+
+    // Update customer record with last contact date only
+    await this.updateCustomerRecord(existingCustomer.id, {
+      lastContactDate: new Date(),
+    });
+
+    // Emit event for the merged lead
+    this.eventEmitter.emit('lead.created', savedLead);
+
+    return savedLead;
+  }
+
+  private async updateExistingCustomerWithFacebookLead(
+    existingCustomer: User,
+    parsedLead: ParsedFacebookLead,
+    leadData: any
+  ): Promise<void> {
+    // Get the customer record to find assigned salesperson
+    const customerRecord = await this.customerRecordsRepository.findOne({
+      where: { customerId: existingCustomer.id },
+    });
+
+    // Update customer record with last contact date only
+    await this.updateCustomerRecord(existingCustomer.id, {
+      lastContactDate: new Date(),
+    });
+
+    // Create a communication log entry for the Facebook form submission
+    if (customerRecord?.assignedSalespersonId) {
+      await this.logCommunication({
+        customerId: existingCustomer.id,
+        salespersonId: customerRecord.assignedSalespersonId,
+        type: 'form_submission',
+        direction: 'incoming',
+        status: 'completed',
+        subject: 'Facebook Lead Form Submission',
+        notes: `Form submitted via Facebook. Campaign: ${parsedLead.facebookCampaignId || 'Unknown'}. Form: ${parsedLead.facebookFormId || 'Unknown form'}.`,
+        metadata: {
+          facebookLeadId: parsedLead.facebookLeadId,
+          facebookFormId: parsedLead.facebookFormId,
+          facebookCampaignId: parsedLead.facebookCampaignId,
+          leadData: leadData,
+        },
+      });
+    }
+
+    // Create an action for the salesperson to follow up
+    const action = this.crmActionsRepository.create({
+      customerId: existingCustomer.id,
+      actionType: 'follow_up',
+      title: 'Facebook Form Submission - Follow Up',
+      description: `Customer submitted form via Facebook. Please contact them.`,
+      status: 'pending',
+      priority: 'high',
+      metadata: {
+        source: 'facebook',
+        facebookLeadId: parsedLead.facebookLeadId,
+        originalSubmission: true, // This is the original submission, not a duplicate
+      },
+    });
+
+    await this.crmActionsRepository.save(action);
+
+    // Emit event for notifications
+    this.eventEmitter.emit('facebook.lead.merged', {
+      customer: existingCustomer,
+      facebookLead: parsedLead,
+      action,
+    });
+  }
+
+  private async createLeadFromFacebook(parsedLead: ParsedFacebookLead, leadData: any): Promise<Lead> {
+    const leadDto: CreateLeadDto = {
+      source: 'facebook_ads',
+      firstName: parsedLead.firstName || '',
+      lastName: parsedLead.lastName || '',
+      email: parsedLead.email || '',
+      phone: parsedLead.phone,
+      facebookLeadId: parsedLead.facebookLeadId,
+      facebookFormId: parsedLead.facebookFormId,
+      facebookCampaignId: parsedLead.facebookCampaignId,
+      facebookAdSetId: parsedLead.facebookAdSetId,
+      facebookAdId: parsedLead.facebookAdId,
+      facebookLeadData: parsedLead.facebookLeadData,
+      status: LeadStatus.NEW,
+      metadata: {
+        importedFromFacebook: true,
+        importDate: new Date(),
+      },
+    };
+
+    return this.create(leadDto);
+  }
+
+  async checkForDuplicates(
+    email?: string,
+    phone?: string,
+    firstName?: string,
+    lastName?: string,
+  ) {
+    return this.duplicateDetectionService.checkForDuplicates(email, phone, firstName, lastName);
+  }
+
+  async getDuplicateSuggestions(
+    email?: string,
+    phone?: string,
+    firstName?: string,
+    lastName?: string,
+  ) {
+    return this.duplicateDetectionService.getDuplicateSuggestions(email, phone, firstName, lastName);
+  }
+
+  async getRequiredFieldsForCall() {
+    return this.mandatoryFieldValidationService.getRequiredFieldsForCall();
+  }
+
+  async getRequiredFieldsForAction(actionType: string) {
+    return this.mandatoryFieldValidationService.getRequiredFieldsForAction(actionType);
+  }
+
+  async validateActionFields(customerId: string, actionData: Partial<CrmAction>) {
+    return this.mandatoryFieldValidationService.validateActionFields(customerId, actionData);
+  }
+
+  async validateCommunicationFields(customerId: string, communicationData: Partial<CommunicationLog>) {
+    return this.mandatoryFieldValidationService.validateCommunicationFields(customerId, communicationData);
+  }
+
+  async getOverdueTasks(salespersonId?: string) {
+    return this.taskAutomationService.getOverdueTasks(salespersonId);
+  }
+
+  async getAutomationRules() {
+    return this.taskAutomationService.getAutomationRules();
+  }
+
+  async runTaskAutomationCheck() {
+    return this.taskAutomationService.runTaskAutomationCheck();
   }
 
   async findAll(filters: any = {}): Promise<Lead[]> {
@@ -80,23 +353,23 @@ export class CrmService {
       where: { id },
       relations: ['assignedSales', 'tags', 'tasks'],
     });
-    
+
     if (!lead) {
       throw new NotFoundException('Lead not found');
     }
-    
+
     return lead;
   }
 
   async update(id: string, updateLeadDto: UpdateLeadDto): Promise<Lead> {
     const lead = await this.findById(id);
-    
+
     // Check for status changes
     if (updateLeadDto.status && updateLeadDto.status !== lead.status) {
       if (updateLeadDto.status === LeadStatus.CONVERTED) {
         updateLeadDto['convertedAt'] = new Date();
       }
-      
+
       this.eventEmitter.emit('lead.status.changed', {
         lead,
         oldStatus: lead.status,
@@ -117,6 +390,14 @@ export class CrmService {
 
   async updateLastContacted(id: string): Promise<void> {
     await this.leadsRepository.update(id, { lastContactedAt: new Date() });
+  }
+
+  async getCustomer(id: string): Promise<any> {
+    const customer = await this.usersRepository.findOne({ where: { id } });
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+    return customer;
   }
 
   // Customer Record Management
@@ -159,6 +440,12 @@ export class CrmService {
       relations: ['tag', 'addedByUser'],
     });
 
+    // Get clinic and doctor affiliations
+    const clinicAffiliations = await this.customerAffiliationService.getClinicAffiliations(customerId);
+    const doctorAffiliations = await this.customerAffiliationService.getDoctorAffiliations(customerId);
+    const preferredClinic = await this.customerAffiliationService.getPreferredClinic(customerId);
+    const preferredDoctor = await this.customerAffiliationService.getPreferredDoctor(customerId);
+
     return {
       record,
       appointments: appointments.map(apt => ({
@@ -179,6 +466,12 @@ export class CrmService {
         notes: t.notes,
         createdAt: t.createdAt,
       })),
+      affiliations: {
+        clinics: clinicAffiliations,
+        doctors: doctorAffiliations,
+        preferredClinic,
+        preferredDoctor,
+      },
       summary: {
         totalAppointments: record.totalAppointments,
         completedAppointments: record.completedAppointments,
@@ -187,6 +480,8 @@ export class CrmService {
         nextAppointment: record.nextAppointmentDate,
         isRepeatCustomer: record.isRepeatCustomer,
         repeatCount: record.repeatCount,
+        preferredClinic: preferredClinic?.clinicName,
+        preferredDoctor: preferredDoctor?.doctorName,
       },
     };
   }
@@ -201,7 +496,7 @@ export class CrmService {
 
   async updateCustomerRecord(customerId: string, updateData: Partial<CustomerRecord>): Promise<CustomerRecord> {
     let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
-    
+
     if (!record) {
       record = await this.createCustomerRecord(customerId);
     }
@@ -212,6 +507,11 @@ export class CrmService {
 
   // Communication Log Management
   async logCommunication(data: Partial<CommunicationLog>): Promise<CommunicationLog> {
+    // Enforce mandatory field validation for call communications
+    if (data.type === 'call') {
+      await this.mandatoryFieldValidationService.enforceFieldCompletion(data.customerId, data);
+    }
+
     const log = this.communicationLogsRepository.create(data);
     const savedLog = await this.communicationLogsRepository.save(log);
 
@@ -251,6 +551,11 @@ export class CrmService {
 
   // Action/Task Management
   async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
+    // Enforce mandatory field validation for phone call actions
+    if (data.actionType === 'phone_call') {
+      await this.mandatoryFieldValidationService.enforceActionCompletion(data.customerId, data);
+    }
+
     const action = this.crmActionsRepository.create(data);
     const savedAction = await this.crmActionsRepository.save(action);
 
@@ -271,7 +576,7 @@ export class CrmService {
 
   async updateAction(id: string, updateData: Partial<CrmAction>): Promise<CrmAction> {
     const action = await this.crmActionsRepository.findOne({ where: { id } });
-    
+
     if (!action) {
       throw new NotFoundException('Action not found');
     }
@@ -438,23 +743,13 @@ export class CrmService {
       .getRawOne();
 
     return {
-      communications: {
-        total: parseInt(communicationStats.totalCommunications) || 0,
-        calls: parseInt(communicationStats.totalCalls) || 0,
-        missedCalls: parseInt(communicationStats.missedCalls) || 0,
-        emails: parseInt(communicationStats.totalEmails) || 0,
-      },
-      actions: {
-        total: parseInt(actionStats.totalActions) || 0,
-        pending: parseInt(actionStats.pendingActions) || 0,
-        completed: parseInt(actionStats.completedActions) || 0,
-        missed: parseInt(actionStats.missedActions) || 0,
-      },
-      customers: {
-        total: parseInt(customerStats.totalCustomers) || 0,
-        repeat: parseInt(customerStats.repeatCustomers) || 0,
-        totalRevenue: parseFloat(customerStats.totalRevenue) || 0,
-      },
+      communicationStats,
+      actionStats,
+      customerStats,
     };
+  }
+
+  async testFacebookConnection(): Promise<{ success: boolean; message: string }> {
+    return this.facebookService.testFacebookConnection();
   }
 }

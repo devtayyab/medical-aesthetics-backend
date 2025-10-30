@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { css } from "@emotion/css";
-import LayeredBG from "@/assets/LayeredBG.svg";
+import LayeredBG from "@/assets/LayeredBg.svg";
 import HeroImage from "@/assets/ReferralHeaderImg.jpg";
 import { FaChevronRight, FaChevronDown, FaChevronUp } from "react-icons/fa6";
 import type { RootState } from "@/store";

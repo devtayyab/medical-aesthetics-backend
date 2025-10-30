@@ -1,7 +1,24 @@
 import axios, { AxiosError } from "axios";
 import { store } from "@/store";
 import { setTokens, logout } from "@/store/slices/authSlice";
-import type { User, Lead, Task } from "@/types";
+import type {
+  Lead,
+  CustomerRecord,
+  CommunicationLog,
+  CrmAction,
+  CustomerTag,
+  CustomerSummary,
+  DuplicateCheckResult,
+  TaskAutomationRule,
+  ValidationResult,
+  RequiredFields,
+  FacebookLeadData,
+  ParsedFacebookLead,
+  CrmFilters,
+  CrmAnalytics,
+  User,
+  Task
+} from "@/types";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
@@ -207,17 +224,126 @@ export const notificationsAPI = {
 };
 
 export const crmAPI = {
+  // Lead Management
   createLead: (data: {
-    name: string;
+    source: string;
+    firstName: string;
+    lastName: string;
     email: string;
     phone?: string;
-    tags?: string[];
+    facebookLeadId?: string;
+    facebookFormId?: string;
+    facebookCampaignId?: string;
+    facebookAdSetId?: string;
+    facebookAdId?: string;
+    facebookLeadData?: any;
     status: string;
+    metadata?: any;
   }) => api.post("/crm/leads", data),
-  getLeads: () => api.get("/crm/leads"),
+  getLeads: (filters?: CrmFilters) => api.get("/crm/leads", { params: filters }),
   getLead: (id: string) => api.get(`/crm/leads/${id}`),
   updateLead: (id: string, data: Partial<Lead>) =>
     api.patch(`/crm/leads/${id}`, data),
+  deleteLead: (id: string) => api.delete(`/crm/leads/${id}`),
+
+  // Facebook Integration
+  handleFacebookWebhook: (data: any) => api.post("/crm/facebook/webhook", data),
+  importFacebookLeads: (formId: string, limit?: number) =>
+    api.post(`/crm/facebook/import/${formId}`, { limit }),
+  getFacebookForms: () => api.get("/crm/facebook/forms"),
+
+  // Duplicate Detection
+  checkForDuplicates: (data: {
+    email?: string;
+    phone?: string;
+    firstName?: string;
+    lastName?: string;
+  }) => api.get("/crm/duplicates/check", { params: data }),
+  getDuplicateSuggestions: (data: {
+    email?: string;
+    phone?: string;
+    firstName?: string;
+    lastName?: string;
+  }) => api.get("/crm/duplicates/suggestions", { params: data }),
+  mergeDuplicates: (targetId: string, sourceId: string) =>
+    api.post(`/crm/duplicates/merge`, { targetId, sourceId }),
+
+  // Customer Records
+  getCustomerRecord: (customerId: string, salespersonId?: string) =>
+    api.get(`/crm/customer/${customerId}`, { params: { salespersonId } }),
+  getCustomer: (id?: string) =>
+    api.get(`/crm/customer/${id}`),
+  updateCustomerRecord: (customerId: string, data: Partial<CustomerRecord>) =>
+    api.patch(`/crm/customers/${customerId}`, data),
+
+  // Communication Management
+  logCommunication: (data: Partial<CommunicationLog>) =>
+    api.post("/crm/communications", data),
+  getCommunicationHistory: (customerId: string, filters?: {
+    type?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get(`/crm/communications/${customerId}`, { params: filters }),
+
+  // Action/Task Management
+  createAction: (data: Partial<CrmAction>) =>
+    api.post("/crm/actions", data),
+  updateAction: (id: string, data: Partial<CrmAction>) =>
+    api.patch(`/crm/actions/${id}`, data),
+  deleteAction: (id: string) => api.delete(`/crm/actions/${id}`),
+  getActions: (salespersonId: string, filters?: {
+    status?: string;
+    priority?: string;
+    customerId?: string;
+  }) => api.get(`/crm/actions/${salespersonId}`, { params: filters }),
+  getPendingActions: (salespersonId: string) =>
+    api.get(`/crm/actions/${salespersonId}/pending`),
+  getOverdueTasks: (salespersonId?: string) =>
+    api.get("/crm/tasks/overdue", { params: { salespersonId } }),
+
+  // Tag Management
+  addCustomerTag: (data: {
+    customerId: string;
+    tagId: string;
+    addedBy: string;
+    notes?: string;
+  }) => api.post("/crm/tags", data),
+  removeCustomerTag: (id: string) => api.delete(`/crm/tags/${id}`),
+  getCustomersByTag: (tagId: string, salespersonId?: string) =>
+    api.get(`/crm/tags/${tagId}/customers`, { params: { salespersonId } }),
+
+  // Task Automation
+  getAutomationRules: () => api.get("/crm/automation/rules"),
+  runTaskAutomationCheck: () => api.post("/crm/automation/run-check"),
+  createAutomatedTasks: () => api.post("/crm/automation/create-tasks"),
+
+  // Field Validation
+  getRequiredFieldsForCall: () => api.get("/crm/validation/required-fields/call"),
+  getRequiredFieldsForAction: (actionType: string) =>
+    api.get(`/crm/validation/required-fields/action/${actionType}`),
+  validateCommunication: (data: {
+    customerId: string;
+    communicationData: Partial<CommunicationLog>;
+  }) => api.post("/crm/validation/validate-communication", data),
+  validateAction: (data: {
+    customerId: string;
+    actionData: Partial<CrmAction>;
+  }) => api.post("/crm/validation/validate-action", data),
+
+  // Analytics
+  getSalespersonAnalytics: (salespersonId: string, dateRange?: {
+    startDate: string;
+    endDate: string;
+  }) => api.get(`/crm/analytics/${salespersonId}`, { params: dateRange }),
+  getCrmMetrics: () => api.get("/crm/metrics"),
+
+  // Repeat Customer Management
+  identifyRepeatCustomers: (salespersonId?: string) =>
+    api.get("/crm/repeat-customers", { params: { salespersonId } }),
+  getCustomersDueForFollowUp: (salespersonId?: string, daysThreshold?: number) =>
+    api.get("/crm/follow-up", { params: { salespersonId, daysThreshold } }),
+
+  // Legacy methods (keeping for backward compatibility)
   logAction: (customerId: string, data: { type: string; notes: string }) =>
     api.post("/crm/actions", { customerId, ...data }),
   createTask: (data: {
@@ -228,7 +354,7 @@ export const crmAPI = {
     assignedTo: string;
   }) => api.post("/crm/tasks", data),
   getTasks: (salespersonId: string) => api.get(`/crm/tasks/${salespersonId}`),
-  updateTask: (id: string, data: Partial<Task>) =>
+  updateTask: (id: string, data: Partial<CrmAction>) =>
     api.patch(`/crm/tasks/${id}`, data),
   scheduleRecurring: (data: {
     customerId: string;
@@ -247,6 +373,21 @@ export const adminAPI = {
     tiers: { name: string; points: number; rewards: string[] }[];
   }) => api.patch("/admin/loyalty", data),
   getLogs: () => api.get("/admin/monitor"),
+};
+
+export const TaskAPI = {
+  createTask: (data: {
+    description: string;
+    type: string;
+    dueDate: string;
+    assignedTo: string;
+    metadata: Record<string, any>;
+    customerId: string;
+  }) => api.post("/tasks", data),
+  getTasks: () => api.get(`/tasks`),
+  updateTask: (id: string, data: Partial<Task>) =>
+    api.patch(`/tasks/${id}`, data),
+  deleteTask: (id: string) => api.delete(`/tasks/${id}`),
 };
 
 export default api;

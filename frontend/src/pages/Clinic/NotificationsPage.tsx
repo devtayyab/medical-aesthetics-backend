@@ -107,16 +107,16 @@ const NotificationsPage: React.FC = () => {
                   onClick={() => setNotificationType(type.value)}
                   className={`flex items-center justify-center gap-2 p-4 border-2 rounded-lg transition-all ${
                     notificationType === type.value
-                      ? 'border-blue-600 bg-blue-50'
+                      ? 'border-lime-300 bg-[#CBFF38]'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <div className={notificationType === type.value ? 'text-blue-600' : 'text-gray-400'}>
+                  <div className={notificationType === type.value ? 'text-[#33373F]' : 'text-gray-400'}>
                     {type.icon}
                   </div>
                   <span
                     className={`text-sm font-medium ${
-                      notificationType === type.value ? 'text-blue-900' : 'text-gray-700'
+                      notificationType === type.value ? 'text-[#33373F]' : 'text-gray-700'
                     }`}
                   >
                     {type.label}
@@ -161,7 +161,7 @@ const NotificationsPage: React.FC = () => {
           <button
             onClick={handleSend}
             disabled={isSending || selectedClients.length === 0}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#CBFF38] text-[#33373F] rounded-lg hover:bg-lime-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5" />
             {isSending ? 'Sending...' : `Send to ${selectedClients.length} recipient(s)`}

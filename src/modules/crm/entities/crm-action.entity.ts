@@ -2,36 +2,49 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { CustomerRecord } from './customer-record.entity';
 
 @Entity('crm_actions')
 export class CrmAction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  // Customer relation
+  @Column({ type: 'uuid' })
   customerId: string;
 
-  @Column()
+
+
+  // Salesperson relation
+  @Column({ type: 'uuid' })
   salespersonId: string;
 
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'salespersonId' })
+  salesperson: User;
+
+  // Action type
   @Column({
     type: 'enum',
-    enum: ['phone_call', 'follow_up', 'appointment_scheduled', 'email_sent', 'meeting', 'update', 'other'],
+    enum: ['phone_call', 'email', 'follow_up', 'appointment_confirmation', 'meeting', 'treatment_reminder'],
   })
   actionType: string;
 
+  // Title
   @Column()
   title: string;
 
-  @Column('text', { nullable: true })
-  description: string;
+  // Optional description
+  @Column({ type: 'text', nullable: true })
+  description?: string;
 
+  // Status
   @Column({
     type: 'enum',
     enum: ['pending', 'completed', 'cancelled', 'missed'],
@@ -39,6 +52,7 @@ export class CrmAction {
   })
   status: string;
 
+  // Priority
   @Column({
     type: 'enum',
     enum: ['low', 'medium', 'high', 'urgent'],
@@ -46,32 +60,46 @@ export class CrmAction {
   })
   priority: string;
 
+  // Optional timestamps
   @Column({ type: 'timestamptz', nullable: true })
-  dueDate: Date;
+  dueDate?: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
-  completedAt: Date;
+  completedAt?: Date;
+
+  // Optional relations
+  @Column({ type: 'uuid', nullable: true })
+  relatedAppointmentId?: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  relatedLeadId?: string;
+
+  // Mandatory fields for phone_call actions
+  @Column({ nullable: true })
+  clinic?: string;
 
   @Column({ nullable: true })
-  relatedAppointmentId: string;
+  proposedTreatment?: string;
 
-  @Column({ nullable: true })
-  relatedLeadId: string;
+  @Column({
+    type: 'enum',
+    enum: ['successful', 'failed', 'pending'],
+    nullable: true,
+  })
+  callOutcome?: string;
 
-  @Column('json', { nullable: true })
-  metadata: any; // Call outcome, notes, etc.
+  // Optional cost
+  @Column({ type: 'numeric', nullable: true })
+  cost?: number;
 
+  // Optional metadata
+  @Column({ type: 'jsonb', nullable: true })
+  metadata?: Record<string, any>;
+
+  // Timestamps
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'customerId' })
-  customer: User;
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'salespersonId' })
-  salesperson: User;
 }
