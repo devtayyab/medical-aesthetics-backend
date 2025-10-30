@@ -100,11 +100,11 @@ const AccountInfo:React.FC = () => {
 
   };
 };
-//    const token = localStorage.getItem("accessToken");
-// if (token) {
-//   const payload = JSON.parse(atob(token.split('.')[1]));
-//   console.log("⏰ Expiry:", new Date(payload.exp * 1000));
-// }
+   const token = localStorage.getItem("accessToken");
+if (token) {
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  console.log("⏰ Expiry:", new Date(payload.exp * 1000));
+}
 
 
 const updateProfile = async (updatedFields:any) => {

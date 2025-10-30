@@ -98,9 +98,9 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
       <hr className="my-6" />
 
       <div>
-        <div className="mt-2 flex justify-between gap-3 py-6">
+        <div className="mt-2 flex justify-between gap-3 py-6 ">
           {/* Filters Section */}
-          <div className="bg-white w-1/4 h-max shadow rounded-lg p-4">
+           <div className="bg-white w-full md:w-1/4 h-max shadow rounded-lg p-2">
             <h3 className="font-semibold mb-2">Filter by treatment</h3>
             <select className="w-full border rounded p-2 mb-4">
               <option>All Treatments</option>
@@ -221,7 +221,7 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
               <li>Saturday</li>
               <li className="text-gray-500">Sunday</li>
             </ul>
-            <div className="flex flex-col">
+            {/* <div className="flex flex-col">
               <h4 className="w-full whitespace-nowrap">
                 {clinicData.businessHours?.monday.open || "8:00 AM"} -{" "}
                 {clinicData.businessHours?.monday.close || "8:00 PM"}
@@ -251,7 +251,7 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
                   ? `${clinicData.businessHours.sunday.open} - ${clinicData.businessHours.sunday.close}`
                   : "Closed"}
               </h4>
-            </div>
+            </div> */}
           </div>
         </div>
         <div className="border-2 p-5 border-gray-200 rounded-[16px]">
@@ -272,9 +272,9 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
                     <h3 className="text-lg font-semibold text-gray-800">
                       {clinic.name}
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {calculateDistance(clinic.address.city)} km away
-                    </p>
+                    {/* <p className="text-sm text-gray-600 mt-1">
+                      {/* {calculateDistance(clinic.address.city)} km away */}
+                    {/* </p> */} 
                     <div className="flex items-center mt-1">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <span
@@ -324,11 +324,11 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
 // Placeholder function to calculate distance (replace with actual geolocation logic)
 const calculateDistance = (city: string) => {
   // Simple hardcoded distances based on city (replace with real calculation)
-  const distances = {
-    Barnes: 5,
-    "Los Angeles": 10,
-  };
-  return distances[city] || 0;
+  // const distances = {
+  //   Barnes: 5,
+  //   "Los Angeles": 10,
+  // };
+  // // return distances[city] || 0;
 };
 
 export default ClinicReviews;

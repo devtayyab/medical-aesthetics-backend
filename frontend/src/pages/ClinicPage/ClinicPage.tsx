@@ -86,7 +86,7 @@ import ClinicReviews from '@/components/molecules/ClinicReviews'
   </div>
 
   {/* Services list */}
-  <div className="flex flex-col md:flex-col md:flex-wrap justify-between gap-2">
+  <div className="flex md:flex-col md:flex-wrap justify-between gap-2">
     {services.map((service) => (
       <ClinicInfo
         key={service.id}
