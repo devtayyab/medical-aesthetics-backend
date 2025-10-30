@@ -283,14 +283,15 @@ export const Header: React.FC = () => {
 
   return (
     <header className="bg-[#2D3748] ">
-      <div
+      {/* <div
         className={css`
           ${containerStyle};
           ${clinicRoles.includes(user?.role || "")
             ? "justify-content: center;"
             : ""}
         `}
-      >
+      > */}
+{/*         
         <Link
           to={
             clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : "/"
@@ -300,68 +301,29 @@ export const Header: React.FC = () => {
           className={`text-[#CBFF38] text-2xl font-bold flex   items-center ${
             clinicRoles.includes(user?.role || "") ? "justify-center" : ""
           }`}
-        >
+        > */}
+        <div className={css`
+          ${containerStyle}`}> 
           <img src={SiteLogo} alt="Site Logo" className="w-[200px] " />
-        </Link>
-
-        {/* Desktop Navigation for Non-Clinic Roles */}
-        {!clinicRoles.includes(user?.role || "") && (
+          
+                     <div className="flex  gap-[24px] items-center">
+<div className=" flex  items-center w-auto h-auto  text-[#FFFFFF] font-poppins font-normal px-4 text-[14px] gap-2 leading-[24px] tracking-[0px] ">
+           <h2>English</h2> 
+      <IoMdArrowDropdown  />
+              <Link to="/"  className="font-poppins font-normal  text-[#FFFFFF]
+                 text-[14px] leading-[20px] tracking-[2%]">For Your Business</Link>
+               <Button className="w-auto h-auto bg-[#CBFF38]  py-2 px-6  gap-[5.4px] rounded-[12px] border-[0.45px] opacity-100 text-black"
+              onClick={() => navigate("/login")}>Login</Button> 
+      {/* </Link> */}
+      </div>
+          </div>
+          </div>
+        
+        
+     
+       
           <>
-            <div className={searchContainerStyle}>
-              <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
-                <li
-                  className={`cursor-pointer ${location.pathname === "/"
-                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                    }`}
-                >
-                  <Link
-                    to="/"
-                    className={`no-underline ${location.pathname === "/"
-                      ? "text-[#CBFF38]"
-                      : "text-white"
-                      }`}
-                  >
-                    Home
-                  </Link>
-                </li>
-                <li
-                  className={`cursor-pointer ${location.pathname === "/crm"
-                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                    }`}
-                >
-                  <Link
-                    to="/crm"
-                    className={`no-underline ${location.pathname === "/crm"
-                      ? "text-[#CBFF38]"
-                      : "text-white"
-                      }`}
-                  >
-                    CRM
-                  </Link>
-                </li>
-                <li
-                  className={`cursor-pointer ${location.pathname.startsWith("/search")
-                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                    }`}
-                >
-                  <Link
-                    to="/search"
-                    className={`no-underline ${location.pathname.startsWith("/search")
-                      ? "text-[#CBFF38]"
-                      : "text-white"
-                      }`}
-                  >
-                    Clinics
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-          <>
-            <nav className="hidden md:flex items-center gap-4">
+            {/* <nav className="hidden md:flex items-center gap-4"> */}
               {/* {isAuthenticated ? (
                 <>
                   <button className={`group ${notificationButtonStyle}`}>
@@ -427,7 +389,7 @@ export const Header: React.FC = () => {
                 </> 
           
             )} */}
-            <div className="flex gap-[24px] items-center">
+            {/* <div className="flex  gap-[24px] items-center">
 <div className=" flex  items-center w-auto h-auto  text-[#FFFFFF] font-poppins font-normal px-4 text-[14px] gap-2 leading-[24px] tracking-[0px] ">
            <h2>English</h2> 
       <IoMdArrowDropdown  />
@@ -437,7 +399,7 @@ export const Header: React.FC = () => {
                <Button className="w-auto h-auto bg-[#CBFF38]  py-2 px-6  gap-[5.4px] rounded-[12px] border-[0.45px] opacity-100 text-black"
               onClick={() => navigate("/login")}>Login</Button> 
               </div>
-            </nav>
+            </nav> */}
            </> 
        
         {/* Mobile Menu Button for All Roles */}
@@ -447,122 +409,123 @@ export const Header: React.FC = () => {
         >
           <Menu size={24} className="text-white" />
         </button>
-      </div>
+     
       
         {/* Desktop Navigation for Non-Clinic Roles */}
-        {!clinicRoles.includes(user?.role || "") && location.pathname === "/" && (
-            <div className={searchContainerStyle}>
-             <ul className="flex flex-wrap gap-10 w-auto  text-white font-normal">
-  <li
-  className={`cursor-pointer  ${
-    location.pathname === "/"
-      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-  }`}
->
+    
+              {!clinicRoles.includes(user?.role || "") && location.pathname === "/" && (
+  <div className={searchContainerStyle}>
+    <ul className="flex flex-wrap gap-10 w-auto text-white font-normal">
+      <li
+        className={`cursor-pointer ${
+          location.pathname === "/"
+            ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+            : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+        }`}
+      >
+        <Link
+          to="/"
+          className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%] ${
+            location.pathname === "/"
+              ? "text-[#CBFF38]"
+              : "text-[#F5F6F7]"
+          }`}
+        >
+          Home
+        </Link>
+      </li>
 
-                  <Link
-                    to="/"
-                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]"> ${
-                      location.pathname === "/"
-                        ? "text-[#CBFF38]"
-                        : "text-[#F5F6F7]"
+      <li>
+        <Link
+          to="/search"
+          className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%] ${
+            location.pathname.startsWith("/search")
+              ? "text-[#CBFF38]"
+              : "text-[#F5F6F7]"
+          }`}
+        >
+          Face And Body Medical Aesthetic
+        </Link>
+      </li>
 
-                    }`}
-                  >
-                    Home
-                  </Link>
-                </li>
-                <li
-                  >
-                  <Link
-                    to="/search"
-                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]">${
-                      location.pathname.startsWith("/search")
-                        ? "text-[#CBFF38]"
-                        : "text-[#F5F6F7]"
-                    }`}
-                  >
-                   Face And Body Medical Aesthetic
-                  </Link> 
-                </li>
-                 <li
-                  className={`cursor-pointer ${
-                    location.pathname.startsWith("/search")
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                  }`}
-                >
-                  <Link
-                    to="/search"
-                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]"> ${
-                      location.pathname.startsWith("/search")
-                        ? "text-[#CBFF38]"
-                        : "text-[#F5F6F7]"
-                    }`}
-                  >
-                    Aesthetic Gynecology
-                  </Link> 
-                </li>
-                 <li
-                  className={`cursor-pointer ${
-                    location.pathname.startsWith("/search")
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                  }`}
-                >
-                  <Link
-                    to="/search"
-                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]"> ${
-                      location.pathname.startsWith("/search")
-                        ? "text-[#CBFF38]"
-                        : "text-[#F5F6F7]"
-                    }`}
-                  >
-                   Prosthetic Dentistry
-                  </Link> 
-                </li>
-                 <li
-                  className={`cursor-pointer ${
-                    location.pathname.startsWith("/search")
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                  }`}
-                >
-                  <Link
-                    to="/search"
-                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]"> ${
-                      location.pathname.startsWith("/search")
-                        ? "text-[#CBFF38]"
-                        : "text-[#F5F6F7]"
-                    }`}
-                  >
-                    Plastic Surgery
-                  </Link> 
-                </li>
-                   <li
-                  className={`cursor-pointer ${
-                    location.pathname.startsWith("/search")
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                  }`}
-                >
-                  <Link
-                    to="/search"
-                    className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%]"
-                      ${
-                      location.pathname.startsWith("/search")
-                        ? "text-[#CBFF38]"
-                        : "text-[#F5F6F7]"
-                    }`}
-                  >
-                    Hair Removal-Laser
-                  </Link> 
-                </li>
-             </ul> 
-             
-            </div>
-             )}
+      <li
+        className={`cursor-pointer ${
+          location.pathname.startsWith("/search")
+            ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+            : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+        }`}
+      >
+        <Link
+          to="/search"
+          className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%] ${
+            location.pathname.startsWith("/search")
+              ? "text-[#CBFF38]"
+              : "text-[#F5F6F7]"
+          }`}
+        >
+          Aesthetic Gynecology
+        </Link>
+      </li>
+
+      <li
+        className={`cursor-pointer ${
+          location.pathname.startsWith("/search")
+            ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+            : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+        }`}
+      >
+        <Link
+          to="/search"
+          className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%] ${
+            location.pathname.startsWith("/search")
+              ? "text-[#CBFF38]"
+              : "text-[#F5F6F7]"
+          }`}
+        >
+          Prosthetic Dentistry
+        </Link>
+      </li>
+
+      <li
+        className={`cursor-pointer ${
+          location.pathname.startsWith("/search")
+            ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+            : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+        }`}
+      >
+        <Link
+          to="/search"
+          className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%] ${
+            location.pathname.startsWith("/search")
+              ? "text-[#CBFF38]"
+              : "text-[#F5F6F7]"
+          }`}
+        >
+          Plastic Surgery
+        </Link>
+      </li>
+
+      <li
+        className={`cursor-pointer ${
+          location.pathname.startsWith("/search")
+            ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+            : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
+        }`}
+      >
+        <Link
+          to="/search"
+          className={`no-underline font-poppins font-normal text-[14px] leading-[20px] tracking-[2%] ${
+            location.pathname.startsWith("/search")
+              ? "text-[#CBFF38]"
+              : "text-[#F5F6F7]"
+          }`}
+        >
+          Hair Removal-Laser
+        </Link>
+      </li>
+    </ul>
+  </div>
+)}            
              
 
       {/* Mobile Menu */}
@@ -691,6 +654,8 @@ export const Header: React.FC = () => {
           
         </div>
       )}
+   
     </header>
-  );
+  )
 };
+

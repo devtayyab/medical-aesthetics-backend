@@ -4,7 +4,7 @@ import clinic from "@/assets/clinic.png";
 import { FaLocationDot } from "react-icons/fa6";
 import { FaClock } from "react-icons/fa";
 import ClinicInfo from "@/components/molecules/ClinicInfo";
-import ClinicReviews from '@/components/molecules/ClinicReviews'
+import ClinicReviews from "@/components/molecules/ClinicReviews";
 
 const services = [
   {
@@ -144,28 +144,11 @@ export const Clinic: React.FC = () => {
 
 
 
+        
           <ClinicReviews />
+ 
 
 
-<<<<<<< HEAD
-  {/* Services list */}
-  <div className="flex md:flex-col md:flex-wrap justify-between gap-2">
-    {services.map((service) => (
-      <ClinicInfo
-        key={service.id}
-        id={service.id}
-        title={service.title}
-        duration={service.duration}
-        description={service.description}
-        discount={service.discount}
-        price={service.price}
-      />
-    ))}
-  </div>
-</div>
-</div>
-=======
->>>>>>> origin/main
 
         </div>
       </div>
