@@ -140,6 +140,18 @@ export const authAPI = {
   },
   refreshToken: (refreshToken: string) =>
     axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }),
+
+  resetPassword: (password: string, resetToken: string) =>
+    api.post("/auth/reset-password", { password, resetToken }),
+
+  forgotPassword: (email: string) =>
+    api.post("/auth/forget-password", { email })
+      .catch((error) => {
+        console.log("Forgot password API failed:", error.response?.data || error.message);
+        return Promise.reject(error);
+      }),
+
+
 };
 
 export const clinicsAPI = {
