@@ -20,6 +20,7 @@ import { RootState, AppDispatch } from "@/store";
 import type { Clinic, Service, TimeSlot } from "@/types";
 import { css } from "@emotion/css";
 import LayeredBG from "@/assets/LayeredBg.svg";
+import BotoxImg from "@/assets/Botox.jpg";
 
 const containerStyle = css`
   max-width: 1200px;
@@ -44,8 +45,9 @@ const layeredBGStyle = css`
 
 const headerStyle = css`
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: 24px;
+  // align-items: center;
+  // justify-content: space-between;
   margin-bottom: 1rem;
   position: relative;
   z-index: 1;
@@ -55,6 +57,7 @@ const titleStyle = css`
   font-size: 2rem;
   font-weight: bold;
   color: #333;
+  margin-bottom: 10px;
 `;
 
 const tabsStyle = css`
@@ -260,38 +263,60 @@ export const AppointmentBooking: React.FC = () => {
     <div className={containerStyle}>
       <div className={layeredBGStyle} />
       <div className={headerStyle}>
-        <h2 className={titleStyle}>Book Appointment</h2>
-        <div className={tabsStyle}>
+        <img
+          className="max-w-[380px] rounded-[16px]"
+          src={BotoxImg}
+          alt="Treatment Image"
+        />
+        <div>
+          <h2 className={titleStyle}>Laser Hair Removal – Alexandrite</h2>
+          <p className="bg-[#EDEEF1] p-3 text-[14px] text-[#33373F]">
+            <strong>Important Medical Note:</strong> For optimal and lasting
+            results, a course of 6-8 sessions is typically recommended, spaced
+            4-6 weeks apart, to target hair growth cycles effectively.
+          </p>
+        </div>
+        {/* <div className={tabsStyle}>
           <Button className={tabButtonStyle}>Availability</Button>
           <Button className={tabButtonStyle}>Confirmation</Button>
-        </div>
+        </div> */}
       </div>
       {error && <p className="text-red-500 mb-4">{error}</p>}
-      <div className={sectionStyle}>
-        {clinic ? (
-          <>
-            <p>
-              <strong>Clinic:</strong> {clinic.name}
-            </p>
-            {selectedServices.length > 0 ? (
-              <div>
-                <strong>Selected Services:</strong>
-                <ul className="list-disc pl-5 mt-2">
-                  {selectedServices.map((service) => (
-                    <li key={service.id} className="text-gray-700">
-                      {service.name} - ${service.price} (
-                      {service.durationMinutes} min)
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <p className="text-gray-500">Loading services...</p>
-            )}
-          </>
-        ) : (
-          <p className="text-gray-500">Loading clinic...</p>
-        )}
+      <div className="flex justify-end">
+        <div
+          className={`w-fit p-5 mt-2 bg-white rounded-[12px] border border-[#3C3C3C4D] ${sectionStyle}`}
+        >
+          <h3 className="text-center text-[18px] text-[#33373F] font-semibold mb-3">
+            Treatments
+          </h3>
+          {clinic ? (
+            <>
+              {selectedServices.length > 0 ? (
+                <div>
+                  <ul className="mt-2">
+                    {selectedServices.map((service) => (
+                      <li key={service.id} className="text-gray-700 space-y-3">
+                        <span className="block text-[#33373F] font-semibold">
+                          {service.name}
+                        </span>
+                        <span className="block text-[##586271]">
+                          Treatment Duration: ({service.durationMinutes} min)
+                        </span>
+                        <span className="block text-[##586271]">
+                          Price Per Session: €{service.price}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-gray-500">Loading services...</p>
+              )}
+            </>
+          ) : (
+            <p className="text-gray-500">Loading clinic...</p>
+          )}
+        </div>
       </div>
       <div className={sectionStyle}>
         <Button

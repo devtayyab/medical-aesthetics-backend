@@ -15,6 +15,9 @@ import {
   LogOut,
   Clock,
 } from 'lucide-react';
+import { useDispatch } from "react-redux";
+import type { AppDispatch } from "@/store";
+import { logout } from "@/store/slices/authSlice";
 
 const iconMap: Record<string, React.ReactNode> = {
   LayoutDashboard: <LayoutDashboard className="w-5 h-5" />,
@@ -30,14 +33,16 @@ const iconMap: Record<string, React.ReactNode> = {
 
 const ClinicLayout: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
   const user = useSelector((state: RootState) => state.auth.user);
   const { profile } = useSelector((state: RootState) => state.clinic);
 
   const menuItems = getMenuItemsForRole(user?.role || '');
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    await dispatch(logout());
     navigate('/login');
   };
 

@@ -18,6 +18,7 @@ const registerContainerStyle = css`
     var(--color-medical-bg) 0%,
     rgba(255, 255, 255, 0.9) 100%
   );
+  padding: 50px 0;
 `;
 
 const registerCardStyle = css`
