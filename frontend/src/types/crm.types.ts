@@ -16,6 +16,16 @@ export interface Lead {
   status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   assignedSalespersonId?: string;
+  assignedSalesperson: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    role?: string;
+    email: string;
+    phone: string;
+    createdAt: string;
+    updatedAt: string;
+  };
   tags?: string[];
   metadata?: any;
   createdAt: string;
@@ -79,6 +89,10 @@ export interface CrmAction {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   dueDate?: string;
   completedAt?: string;
+  clinic?: string;
+  proposedTreatment?: string;
+  cost?: number;
+  callOutcome?: string;
   metadata?: {
     clinic?: string;
     proposedTreatment?: string;
@@ -152,6 +166,38 @@ export interface CustomerAffiliations {
     visitCount: number;
   };
 }
+
+export interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  assignedSalespersonId?: string;
+  assignedSales?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    role?: string;
+    email: string;
+    phone: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  isRepeatCustomer: boolean;
+  createdAt: string;
+  updatedAt: string;
+  source: string;
+  summary: {
+    totalAppointments: number;
+    completedAppointments: number;
+    lifetimeValue: number;
+    repeatCount: number;
+  };
+}
+
 
 export interface CustomerSummary {
   record: CustomerRecord;

@@ -4,7 +4,7 @@ import clinic from "@/assets/clinic.png";
 import { FaLocationDot } from "react-icons/fa6";
 import { FaClock } from "react-icons/fa";
 import ClinicInfo from "@/components/molecules/ClinicInfo";
-import ClinicReviews from '@/components/molecules/ClinicReviews'
+import ClinicReviews from "@/components/molecules/ClinicReviews";
 
 const services = [
   {
@@ -144,7 +144,9 @@ export const Clinic: React.FC = () => {
 
 
 
+        
           <ClinicReviews />
+ 
 
 
 

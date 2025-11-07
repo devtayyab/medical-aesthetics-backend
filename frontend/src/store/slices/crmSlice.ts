@@ -1,9 +1,4 @@
-import {
-  createSlice,
-  createAsyncThunk,
-  PayloadAction,
-  Action,
-} from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction, Action } from "@reduxjs/toolkit";
 import { crmAPI } from "@/services/api";
 import type { Lead } from "@/types/crm.types";
 import type {
@@ -16,15 +11,15 @@ import type {
   TaskAutomationRule,
   ValidationResult,
   CrmFilters,
-  CrmAnalytics,
+  CrmAnalytics
 } from "@/types";
-
+import type { Customer } from "@/types/crm.types";
 interface CrmState {
   // Lead Management
   leads: Lead[];
   selectedLead: Lead | null;
   leadFilters: CrmFilters;
-
+  customer: Customer | null;
   // Customer Management
   customerRecord: CustomerSummary | null;
   customerFilters: CrmFilters;
@@ -80,7 +75,7 @@ const initialState: CrmState = {
   repeatCustomers: [],
   followUpCustomers: [],
   recurringSchedule: null,
-
+  customer: null,
   communications: [],
   communicationFilters: {},
   tasks: [],
@@ -163,22 +158,25 @@ export const deleteLead = createAsyncThunk(
 // Customer Management
 export const fetchCustomerRecord = createAsyncThunk(
   "crm/fetchCustomerRecord",
-  async (data: { customerId: string; salespersonId?: string }) => {
-    const response = await crmAPI.getCustomerRecord(
-      data.customerId,
-      data.salespersonId
-    );
+  async (data: { salespersonId?: string }) => {
+    const response = await crmAPI.getCustomerRecord(data.salespersonId);
     return response.data;
   }
 );
 
+export const fetchCustomer = createAsyncThunk(
+  "crm/fetchCustomer",
+  async (data: { id: string }) => {
+    const response = await crmAPI.getCustomer(data.id);
+    return response.data;
+  }
+);
+
+
 export const updateCustomerRecord = createAsyncThunk(
   "crm/updateCustomerRecord",
   async (data: { customerId: string; updates: Partial<CustomerRecord> }) => {
-    const response = await crmAPI.updateCustomerRecord(
-      data.customerId,
-      data.updates
-    );
+    const response = await crmAPI.updateCustomerRecord(data.customerId, data.updates);
     return response.data;
   }
 );
@@ -195,10 +193,7 @@ export const logCommunication = createAsyncThunk(
 export const fetchCommunicationHistory = createAsyncThunk(
   "crm/fetchCommunicationHistory",
   async (data: { customerId: string; filters?: any }) => {
-    const response = await crmAPI.getCommunicationHistory(
-      data.customerId,
-      data.filters
-    );
+    const response = await crmAPI.getCommunicationHistory(data.customerId, data.filters);
     return response.data;
   }
 );
@@ -255,12 +250,7 @@ export const fetchOverdueTasks = createAsyncThunk(
 // Duplicate Management
 export const checkForDuplicates = createAsyncThunk(
   "crm/checkForDuplicates",
-  async (data: {
-    email?: string;
-    phone?: string;
-    firstName?: string;
-    lastName?: string;
-  }) => {
+  async (data: { email?: string; phone?: string; firstName?: string; lastName?: string }) => {
     const response = await crmAPI.checkForDuplicates(data);
     return response.data;
   }
@@ -268,12 +258,7 @@ export const checkForDuplicates = createAsyncThunk(
 
 export const getDuplicateSuggestions = createAsyncThunk(
   "crm/getDuplicateSuggestions",
-  async (data: {
-    email?: string;
-    phone?: string;
-    firstName?: string;
-    lastName?: string;
-  }) => {
+  async (data: { email?: string; phone?: string; firstName?: string; lastName?: string }) => {
     const response = await crmAPI.getDuplicateSuggestions(data);
     return response.data;
   }
@@ -290,12 +275,7 @@ export const mergeDuplicates = createAsyncThunk(
 // Tag Management
 export const addCustomerTag = createAsyncThunk(
   "crm/addCustomerTag",
-  async (data: {
-    customerId: string;
-    tagId: string;
-    addedBy: string;
-    notes?: string;
-  }) => {
+  async (data: { customerId: string; tagId: string; addedBy: string; notes?: string }) => {
     const response = await crmAPI.addCustomerTag(data);
     return response.data;
   }
@@ -312,10 +292,7 @@ export const removeCustomerTag = createAsyncThunk(
 export const fetchCustomersByTag = createAsyncThunk(
   "crm/fetchCustomersByTag",
   async (data: { tagId: string; salespersonId?: string }) => {
-    const response = await crmAPI.getCustomersByTag(
-      data.tagId,
-      data.salespersonId
-    );
+    const response = await crmAPI.getCustomersByTag(data.tagId, data.salespersonId);
     return response.data;
   }
 );
@@ -356,10 +333,7 @@ export const getRequiredFieldsForAction = createAsyncThunk(
 
 export const validateCommunication = createAsyncThunk(
   "crm/validateCommunication",
-  async (data: {
-    customerId: string;
-    communicationData: Partial<CommunicationLog>;
-  }) => {
+  async (data: { customerId: string; communicationData: Partial<CommunicationLog> }) => {
     const response = await crmAPI.validateCommunication(data);
     return response.data;
   }
@@ -376,14 +350,8 @@ export const validateAction = createAsyncThunk(
 // Analytics
 export const fetchSalespersonAnalytics = createAsyncThunk(
   "crm/fetchSalespersonAnalytics",
-  async (data: {
-    salespersonId: string;
-    dateRange?: { startDate: string; endDate: string };
-  }) => {
-    const response = await crmAPI.getSalespersonAnalytics(
-      data.salespersonId,
-      data.dateRange
-    );
+  async (data: { salespersonId: string; dateRange?: { startDate: string; endDate: string } }) => {
+    const response = await crmAPI.getSalespersonAnalytics(data.salespersonId, data.dateRange);
     return response.data;
   }
 );
@@ -408,48 +376,7 @@ export const fetchRepeatCustomers = createAsyncThunk(
 export const fetchCustomersDueForFollowUp = createAsyncThunk(
   "crm/fetchCustomersDueForFollowUp",
   async (data: { salespersonId?: string; daysThreshold?: number }) => {
-    const response = await crmAPI.getCustomersDueForFollowUp(
-      data.salespersonId,
-      data.daysThreshold
-    );
-    return response.data;
-  }
-);
-export const fetchCustomerRecord = createAsyncThunk(
-  "crm/fetchCustomerRecord",
-  async (customerId: string) => {
-    const response = await crmAPI.getCustomerRecord(customerId);
-    return response.data;
-  }
-);
-
-export const updateCustomerRecord = createAsyncThunk(
-  "crm/updateCustomerRecord",
-  async ({ customerId, data }: { customerId: string; data: any }) => {
-    const response = await crmAPI.updateCustomerRecord(customerId, data);
-    return response.data;
-  }
-);
-
-// ---- Communications ----
-export const logCommunication = createAsyncThunk(
-  "crm/logCommunication",
-  async (data: {
-    customerId: string;
-    salespersonId: string;
-    type: string;
-    title: string;
-    description?: string;
-  }) => {
-    const response = await crmAPI.logCommunication(data);
-    return response.data;
-  }
-);
-
-export const fetchCustomerCommunications = createAsyncThunk(
-  "crm/fetchCustomerCommunications",
-  async (customerId: string) => {
-    const response = await crmAPI.getCustomerCommunications(customerId);
+    const response = await crmAPI.getCustomersDueForFollowUp(data.salespersonId, data.daysThreshold);
     return response.data;
   }
 );
@@ -495,14 +422,11 @@ const crmSlice = createSlice({
     setCustomerFilters: (state, action: PayloadAction<CrmFilters>) => {
       state.customerFilters = action.payload;
     },
-    setCommunicationFilters: (
-      state,
-      action: PayloadAction<{
-        type?: string;
-        startDate?: string;
-        endDate?: string;
-      }>
-    ) => {
+    setCommunicationFilters: (state, action: PayloadAction<{
+      type?: string;
+      startDate?: string;
+      endDate?: string;
+    }>) => {
       state.communicationFilters = action.payload;
     },
 
@@ -521,7 +445,12 @@ const crmSlice = createSlice({
       .addCase(createLead.fulfilled, (state, action) => {
         state.leads.unshift(action.payload);
       })
-
+      .addCase(fetchLeads.fulfilled, (state, action) => {
+        state.leads = action.payload;
+      })
+      .addCase(fetchCustomer.fulfilled, (state, action) => {
+        state.customer = action.payload;
+      })
       .addCase(fetchLead.fulfilled, (state, action) => {
         state.selectedLead = action.payload;
       })
@@ -546,9 +475,7 @@ const crmSlice = createSlice({
         state.customerRecord = action.payload;
       })
       .addCase(updateCustomerRecord.fulfilled, (state, action) => {
-        if (
-          state.customerRecord?.record.customerId === action.payload.customerId
-        ) {
+        if (state.customerRecord?.record.customerId === action.payload.customerId) {
           state.customerRecord.record = action.payload;
         }
       })
@@ -572,9 +499,7 @@ const crmSlice = createSlice({
         }
       })
       .addCase(updateAction.fulfilled, (state, action) => {
-        const taskIndex = state.tasks.findIndex(
-          (t) => t.id === action.payload.id
-        );
+        const taskIndex = state.tasks.findIndex((t) => t.id === action.payload.id);
         if (taskIndex !== -1) {
           state.tasks[taskIndex] = action.payload;
         }
@@ -589,28 +514,20 @@ const crmSlice = createSlice({
         }
 
         // Update pending/overdue task lists
-        const pendingIndex = state.pendingTasks.findIndex(
-          (t) => t.id === action.payload.id
-        );
+        const pendingIndex = state.pendingTasks.findIndex((t) => t.id === action.payload.id);
         if (pendingIndex !== -1) {
           state.pendingTasks[pendingIndex] = action.payload;
         }
 
-        const overdueIndex = state.overdueTasks.findIndex(
-          (t) => t.id === action.payload.id
-        );
+        const overdueIndex = state.overdueTasks.findIndex((t) => t.id === action.payload.id);
         if (overdueIndex !== -1) {
           state.overdueTasks[overdueIndex] = action.payload;
         }
       })
       .addCase(deleteAction.fulfilled, (state, action) => {
         state.tasks = state.tasks.filter((t) => t.id !== action.payload);
-        state.pendingTasks = state.pendingTasks.filter(
-          (t) => t.id !== action.payload
-        );
-        state.overdueTasks = state.overdueTasks.filter(
-          (t) => t.id !== action.payload
-        );
+        state.pendingTasks = state.pendingTasks.filter((t) => t.id !== action.payload);
+        state.overdueTasks = state.overdueTasks.filter((t) => t.id !== action.payload);
 
         if (state.customerRecord) {
           state.customerRecord.actions = state.customerRecord.actions.filter(
@@ -644,9 +561,7 @@ const crmSlice = createSlice({
         }
       })
       .addCase(removeCustomerTag.fulfilled, (state, action) => {
-        state.customerTags = state.customerTags.filter(
-          (t) => t.id !== action.payload
-        );
+        state.customerTags = state.customerTags.filter((t) => t.id !== action.payload);
         if (state.customerRecord) {
           state.customerRecord.tags = state.customerRecord.tags.filter(
             (t) => t.id !== action.payload
@@ -694,24 +609,21 @@ const crmSlice = createSlice({
 
       // Generic loading state handlers
       .addMatcher(
-        (action) =>
-          action.type.startsWith("crm/") && action.type.endsWith("/pending"),
+        (action) => action.type.startsWith('crm/') && action.type.endsWith('/pending'),
         (state) => {
           state.isLoading = true;
           state.error = null;
         }
       )
       .addMatcher(
-        (action) =>
-          action.type.startsWith("crm/") && action.type.endsWith("/rejected"),
+        (action) => action.type.startsWith('crm/') && action.type.endsWith('/rejected'),
         (state, action: Action & { error: { message: string } }) => {
           state.isLoading = false;
-          state.error = action.error?.message || "An error occurred";
+          state.error = action.error?.message || 'An error occurred';
         }
       )
       .addMatcher(
-        (action) =>
-          action.type.startsWith("crm/") && action.type.endsWith("/fulfilled"),
+        (action) => action.type.startsWith('crm/') && action.type.endsWith('/fulfilled'),
         (state) => {
           state.isLoading = false;
           state.error = null;
@@ -733,5 +645,6 @@ export const {
   clearAllFilters,
   resetState,
 } = crmSlice.actions;
+
 
 export default crmSlice.reducer;

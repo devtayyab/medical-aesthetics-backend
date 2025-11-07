@@ -9,7 +9,7 @@ import type {
   SearchFilters,
 } from "@/types";
 
-export interface ClientState {
+interface ClientState {
   clinics: Clinic[];
   featuredClinics: Clinic[];
   selectedClinic: Clinic | null;
@@ -178,12 +178,20 @@ export const fetchUserAppointments = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     try {
       const state = getState() as RootState;
-
+      console.log(
+        "fetchUserAppointments: Using accessToken:",
+        state.auth.accessToken
+          ? `${state.auth.accessToken.substring(0, 20)}...`
+          : "missing"
+      );
       const response = await bookingAPI.getUserAppointments();
-
+      console.log("fetchUserAppointments: Response:", response.data);
       return response.data;
     } catch (error: any) {
-
+      console.error(
+        "fetchUserAppointments: Error:",
+        error.response?.data || error.message
+      );
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch appointments"
       );
@@ -351,10 +359,10 @@ const clientSlice = createSlice({
         state.appointments = state.appointments.map((appointment) =>
           appointment.id === action.payload.id
             ? {
-              ...appointment,
-              startTime: action.payload.startTime,
-              endTime: action.payload.endTime,
-            }
+                ...appointment,
+                startTime: action.payload.startTime,
+                endTime: action.payload.endTime,
+              }
             : appointment
         );
       })

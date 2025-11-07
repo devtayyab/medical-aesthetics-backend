@@ -93,6 +93,7 @@ export class Lead {
   @JoinColumn({ name: 'assignedSalesId' })
   assignedSales: User;
 
+
   @ManyToMany(() => Tag)
   @JoinTable({
     name: 'lead_tags',

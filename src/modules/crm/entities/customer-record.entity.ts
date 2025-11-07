@@ -10,8 +10,8 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { CommunicationLog } from './communication-log.entity';
-import { CrmAction } from './crm-action.entity';
 import { CustomerTag } from './customer-tag.entity';
+import { CrmAction } from './crm-action.entity';
 
 @Entity('customer_records')
 export class CustomerRecord {
@@ -112,11 +112,10 @@ export class CustomerRecord {
   @OneToMany(() => CommunicationLog, (log) => log.customer)
   communications: CommunicationLog[];
 
-  @OneToMany(() => CrmAction, (action) => action.customer)
-  actions: CrmAction[];
 
   @OneToMany(() => CustomerTag, (tag) => tag.customer)
   tags: CustomerTag[];
 
 
 }
+

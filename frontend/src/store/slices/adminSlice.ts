@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { adminAPI } from "@/services/api";
 import type { User, LoyaltyTier } from "@/types";
 
-export interface AdminState {
+interface AdminState {
   metrics: { leads: number; conversions: number; revenue: number };
   users: User[];
   loyaltyTiers: LoyaltyTier[];

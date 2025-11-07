@@ -8,9 +8,8 @@ import {
   Link,
   Navigate,
 } from "react-router-dom";
-import { PersistGate } from "redux-persist/integration/react";
 import { Provider, useDispatch, useSelector } from "react-redux";
-import { store, persistor, AppDispatch } from "@/store";
+import { store, AppDispatch } from "@/store";
 import { restoreSession } from "@/store/slices/authSlice";
 import { Header } from "@/components/organisms/Header/Header";
 import { Footer } from "@/components/organisms/Footer/Footer";
@@ -52,17 +51,16 @@ import { Users as AdminUsers } from "@/pages/Admin/Users";
 import { LoyaltyManagement } from "@/pages/Admin/LoyaltyManagement";
 import { Monitor } from "@/pages/Admin/Monitor";
 import { MyAccount } from "@/pages/Client/MyAccount";
-import Customerleadform from "@/pages/CRM/Cutomerleadform";
 import { PersonalDetails } from "@/pages/Client/AccountPages/PersonalDetails";
 import { Rewards } from "@/pages/Client/AccountPages/Rewards";
 import { Wallet } from "@/pages/Client/AccountPages/Wallet";
 import { InviteFriend } from "@/pages/Client/AccountPages/InviteFriend";
 import { Settings } from "@/pages/Client/AccountPages/Settings";
-import { RoleDebugger } from "@/components/organisms/RoleDebugger";
 import type { RootState } from "@/store";
 import "@/styles/globals.css";
 
 import SiteLogo from "@/assets/SiteLogo.png";
+import AccountInfo from "./pages/AccountInfo/AccountInfo";
 import { CRM } from "./pages/CRM/CRM";
 
 const AuthHeader: React.FC = () => (
@@ -82,11 +80,10 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { isLoading, isAuthenticated } = useSelector(
+  const { isLoading, isAuthenticated, user, refreshToken } = useSelector(
     (state: RootState) => state.auth
   );
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
-  const isRestoring = React.useRef(false); // Prevent double execution in React 18 StrictMode
 
   const restoreStartedRef = useRef(false);
 
@@ -113,6 +110,17 @@ function AppContent() {
     }
   }, [isAuthenticated, isLoading, location, navigate, hasRestoredSession]);
 
+  console.log(
+    "App: Rendering, isLoading:",
+    isLoading,
+    "isAuthenticated:",
+    isAuthenticated,
+    "user:",
+    user,
+    "refreshToken:",
+    refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
+  );
+
   // Show loader until session is restored
   if (!hasRestoredSession || isLoading) {
     return (
@@ -129,13 +137,12 @@ function AppContent() {
       ) : (
         <Header />
       )}
-      {/* Debug Tool - Remove in production */}
-      {isAuthenticated && <RoleDebugger />}
       <main>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/booking" element={<Booking />} />
-          <Route path="/clinicpage" element={<Clinic />} />
+          <Route path="/clinic/:id" element={<Clinic/>} />
+          <Route path="/account" element={<AccountInfo/>}/>
           <Route
             path="/login"
             element={
@@ -156,6 +163,7 @@ function AppContent() {
               )
             }
           />
+
 
           {/* Client Routes - Public clinic browsing */}
           <Route path="/search" element={<Search />} />
@@ -383,14 +391,6 @@ function AppContent() {
             }
           />
           <Route
-            path="/crm/customer-lead-form"
-            element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
-                <Customerleadform />
-              </ProtectedLayout>
-            }
-          />
-          <Route
             path="/crm/tasks"
             element={
               <ProtectedLayout allowedRoles={["salesperson"]}>
@@ -415,7 +415,7 @@ function AppContent() {
             }
           />
           <Route
-            path="admin/crm"
+            path="/crm"
             element={
               <ProtectedLayout allowedRoles={["admin"]}>
                 <CRM />
@@ -467,11 +467,9 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <Router>
-          <AppContent />
-        </Router>
-      </PersistGate>
+      <Router>
+        <AppContent />
+      </Router>
     </Provider>
   );
 }

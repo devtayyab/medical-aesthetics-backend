@@ -98,10 +98,10 @@ export const Login: React.FC = () => {
 
     try {
       const result = await dispatch(login({ email, password })).unwrap();
-
+      
       // Redirect based on user role
       const clinicRoles = ['clinic_owner', 'doctor', 'secretariat', 'salesperson'];
-
+      
       if (clinicRoles.includes(result.user.role)) {
         navigate("/clinic/dashboard", { replace: true });
       } else if (result.user.role === 'admin') {
@@ -136,13 +136,13 @@ export const Login: React.FC = () => {
           </div>
           <div>
             <div className="flex justify-between">
-              <label htmlFor="password">Password</label>
-
-              <Link to="/forgot-password" className={linkStyle} style={{ color: "cornflowerblue" }} >
-                Forgot?
-              </Link>
+            <label htmlFor="password">Password</label>
+           
+            <Link to="/forgot-password" className={linkStyle}  style={{ color: "cornflowerblue" }} >
+              Forgot?
+            </Link>
             </div>
-
+            
             <Input
               type="password"
               placeholder="Enter Your Password"
