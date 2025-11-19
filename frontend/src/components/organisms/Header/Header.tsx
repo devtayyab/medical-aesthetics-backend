@@ -204,6 +204,7 @@ export const Header: React.FC = () => {
     if (user.role === "admin") {
       return [
         { to: "/admin/dashboard", label: "Dashboard" },
+        { to: "/crm", label: "CRM" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -214,7 +215,6 @@ export const Header: React.FC = () => {
         { to: "/appointments", label: "My Appointments" },
         { to: "/my-account", label: "My Account" },
         { action: handleLogout, label: "Logout" },
-        { to: "/crm", label: "CRM" },
       ];
     }
 
@@ -276,22 +276,24 @@ export const Header: React.FC = () => {
                     Home
                   </Link>
                 </li> */}
-                <li
-                  className={`cursor-pointer ${location.pathname === "/crm"
-                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                    }`}
-                >
-                  <Link
-                    to="/crm"
-                    className={`no-underline ${location.pathname === "/crm"
-                      ? "text-[#CBFF38]"
-                      : "text-white"
+                {user?.role === "admin" || user?.role === "salesperson" && (
+                  <li
+                    className={`cursor-pointer ${location.pathname === "/crm"
+                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
                       }`}
                   >
-                    CRM
-                  </Link>
-                </li>
+                    <Link
+                      to="/crm"
+                      className={`no-underline ${location.pathname === "/crm"
+                        ? "text-[#CBFF38]"
+                        : "text-white"
+                        }`}
+                    >
+                      CRM
+                    </Link>
+                  </li>
+                )}
                 <li
                   className={`cursor-pointer ${location.pathname.startsWith("/search")
                     ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
