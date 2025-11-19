@@ -492,7 +492,6 @@ export const Header: React.FC = () => {
               `}
             >
               <Button
-                variant="ghost"
                 fullWidth
                 onClick={() => {
                   navigate("/login");
