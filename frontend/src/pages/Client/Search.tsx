@@ -114,11 +114,14 @@ export const Search: React.FC = () => {
             </button>
           </div>
           <div className="flex flex-col justify-center items-center gap-6">
-            {clinics.map((clinic: Clinic) => (
+            {clinics.map((clinic: Clinic, clinicIndex: number) => (
               <ClinicCard
                 key={clinic.id}
                 clinic={clinic}
-                onSelect={() => navigate(`/clinic/${clinic.id}`)}
+                index={clinicIndex % (clinic.images?.length || 1)} // 
+                onSelect={() => navigate(`/clinic/${clinic.id}`
+
+                )}
               />
             ))}
           </div>
