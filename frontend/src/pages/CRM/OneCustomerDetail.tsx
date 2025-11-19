@@ -1,22 +1,58 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { User, Mail, Phone, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/molecules/Card/Card";
 import type { Lead, Customer } from "@/types";
-
 interface OneCustomerDetailProps {
-    Leads: Lead[];
+    isLoading: boolean;
+    error: string | null;
     SelectedCustomer: Customer;
 
 }
 export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
+    isLoading = false,
+    error = null,
     SelectedCustomer,
 }) => {
-    console.log(SelectedCustomer.assignedSales.email, 'SelectedCustomer');
-    if (!SelectedCustomer) {
+
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+        return () => setIsMounted(false);
+    }, []);
+
+
+    if (!isMounted || isLoading) {
+        return <div className="text-center py-12 text-gray-600">Loading customer details...</div>;
+    }
+
+    // Show error state
+    if (error) {
         return (
-            <div className="text-center py-12 text-gray-600">Customer not found</div>
+            <div className="text-center py-12">
+                <div className="text-red-500 mb-2">Error loading customer details</div>
+                <p className="text-sm text-gray-600">{error}</p>
+            </div>
         );
     }
+
+    // Show not found state
+    if (!SelectedCustomer) {
+        return (
+            <div className="text-center py-12">
+                <div className="text-gray-600">Customer not found</div>
+            </div>
+        );
+    }
+
+    // Safely access nested properties with fallbacks
+    const assignedSales = SelectedCustomer.assignedSales || {};
+    const email = assignedSales?.email || 'No email';
+    const firstName = assignedSales?.firstName || '';
+    const lastName = assignedSales?.lastName || '';
+    const createdAt = assignedSales?.createdAt
+        ? new Date(assignedSales.createdAt).toLocaleDateString()
+        : 'N/A';
 
     return (
         <div className="space-y-6">
@@ -25,7 +61,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
             {/* Assigned Salesperson Section */}
             <Card>
-                <CardContent className="pt-6">
+
+                {(assignedSales && email && email !== 'No email') && <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">
                             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
@@ -33,14 +70,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                             </div>
                             <div>
                                 <h2 className="text-[1rem] font-bold">
-                                    {SelectedCustomer.assignedSales.email}
+                                    {email}
                                 </h2>
                                 <div className="flex items-center gap-4 text-gray-600 mt-1">
                                     <div className="flex items-center gap-1">
                                         <Calendar className="h-4 w-4" />
-                                        {new Date(
-                                            SelectedCustomer.assignedSales.createdAt
-                                        ).toLocaleDateString()}
+                                        {createdAt}
                                     </div>
                                 </div>
                             </div>
@@ -48,12 +83,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                         <div className="text-right">
                             <div className="text-sm text-gray-500">Assigned to</div>
                             <div className="font-medium">
-                                {SelectedCustomer.assignedSales.firstName}{" "}
-                                {SelectedCustomer.assignedSales.lastName}
+                                {firstName}{" "}
+                                {lastName}
                             </div>
                         </div>
                     </div>
-                </CardContent>
+                </CardContent>}
+
 
                 {/* Customer Details */}
                 <Card className="shadow-md border border-gray-200 mt-6">

@@ -15,6 +15,7 @@ interface TasksPageProps {
   onViewTask?: (task: CrmAction) => void;
 }
 
+
 type TaskFormData = {
   title: string;
   description: string;

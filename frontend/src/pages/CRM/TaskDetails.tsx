@@ -14,12 +14,15 @@ export const TaskDetails: React.FC<OneCustomerDetailProps> = ({
     selectedTask,
 }) => {
 
-    const { assignee } = selectedTask;
     if (!selectedTask) {
         return (
             <div className="text-center py-12 text-gray-600">Tasks not found</div>
         );
     }
+
+
+    const assignee = selectedTask.assignee;
+    const email = assignee?.email || 'No email';
 
     return (
         <div className="space-y-8">
@@ -28,7 +31,8 @@ export const TaskDetails: React.FC<OneCustomerDetailProps> = ({
 
 
             {/* Assigned Salesperson */}
-            <Card className="border border-gray-200 shadow-md">
+
+            {assignee && assignee.email && assignee.email !== 'No email' && <Card className="border border-gray-200 shadow-md">
 
                 <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
@@ -38,7 +42,7 @@ export const TaskDetails: React.FC<OneCustomerDetailProps> = ({
                             </div>
                             <div>
                                 <h2 className="text-[1rem] font-bold">
-                                    {assignee.email}
+                                    {email}
                                 </h2>
                                 <div className="flex items-center gap-4 text-gray-600 mt-1">
                                     <div className="flex items-center gap-1">
@@ -61,7 +65,7 @@ export const TaskDetails: React.FC<OneCustomerDetailProps> = ({
                         </div>
                     </div>
                 </CardContent>
-            </Card>
+            </Card>}
 
             {/* Task Details */}
             <Card className="border border-gray-200 shadow-md">

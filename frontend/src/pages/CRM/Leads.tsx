@@ -40,9 +40,19 @@ import type { Lead } from '@/types/crm.types';
 
 interface LeadsPageProps {
   onViewLead?: (lead: Lead) => void;
+  forceShowCreateForm?: boolean;
+  onFormShown?: () => void;
 }
 
-export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead }) => {
+export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreateForm = false, onFormShown }) => {
+  // Show create form if forceShowCreateForm is true
+  useEffect(() => {
+    if (forceShowCreateForm && !showCreateForm) {
+      setShowCreateForm(true);
+      if (onFormShown) onFormShown();
+    }
+  }, [forceShowCreateForm, onFormShown]);
+
   const dispatch = useDispatch<AppDispatch>();
   const {
     leads,

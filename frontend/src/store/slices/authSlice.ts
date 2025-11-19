@@ -90,6 +90,42 @@ export const logout = createAsyncThunk(
   }
 );
 
+export const forgotPassword = createAsyncThunk(
+  "auth/forgotPassword",
+  async (
+    { email }: { email: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await authAPI.forgotPassword(email);
+      console.log("Forgot password success, response:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Forgot password failed:", error.response?.data || error.message);
+      return rejectWithValue(error.response?.data?.message || "Forgot password failed");
+    }
+  }
+);
+
+export const resetPassword = createAsyncThunk(
+  "auth/resetPassword",
+  async (
+    { password, resetToken }: { password: string; resetToken: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await authAPI.resetPassword(password, resetToken);
+      console.log("Reset password success, response:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Reset password failed:", error.response?.data || error.message);
+      return rejectWithValue(error.response?.data?.message || "Reset password failed");
+    }
+  }
+);
+
+
+
 export const restoreSession = createAsyncThunk(
   "auth/restoreSession",
   async (_, { getState, dispatch, rejectWithValue }) => {
