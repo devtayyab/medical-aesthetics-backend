@@ -9,6 +9,7 @@ export interface InputProps
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
+  passwordToggle?: boolean;
 }
 
 const containerStyle = css`
@@ -95,6 +96,23 @@ const rightIconStyle = css`
   right: var(--spacing-sm);
 `;
 
+const passwordToggleButtonStyle = css`
+  position: absolute;
+  top: 50%;
+  right: var(--spacing-sm);
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: var(--color-medical-text-light);
+`;
+
+const inputWithPasswordToggleStyle = css`
+  padding-right: 2.5rem;
+`;
+
 const helperTextStyle = css`
   font-size: var(--font-size-xs);
   color: var(--color-medical-text-light);
@@ -113,8 +131,16 @@ export const Input: React.FC<InputProps> = ({
   rightIcon,
   fullWidth = false,
   className,
+  type,
+  passwordToggle = false,
   ...props
 }) => {
+  const isPassword = type === "password";
+  const [showPassword, setShowPassword] = React.useState(false);
+  const effectiveType = isPassword && passwordToggle ? (showPassword ? "text" : "password") : type;
+  const describedById = props.id
+    ? (error ? `${props.id}-error` : helperText ? `${props.id}-helper` : undefined)
+    : undefined;
   return (
     <div
       className={`${containerStyle} ${fullWidth ? fullWidthStyle : ""} ${className || ""}`}
@@ -126,17 +152,32 @@ export const Input: React.FC<InputProps> = ({
 
         <input
           className={`p-3 rounded-[12px] bg-white ${inputStyle} ${leftIcon ? inputWithLeftIconStyle : ""} ${
-            rightIcon ? inputWithRightIconStyle : ""
+            rightIcon || (isPassword && passwordToggle) ? inputWithRightIconStyle : ""
           } ${error ? inputErrorStyle : ""}`}
+          type={effectiveType}
+          aria-invalid={!!error}
+          aria-describedby={describedById}
           {...props}
         />
 
         {rightIcon && <div className={rightIconStyle}>{rightIcon}</div>}
+        {isPassword && passwordToggle && (
+          <button
+            type="button"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            onClick={() => setShowPassword((s) => !s)}
+            className={passwordToggleButtonStyle}
+          >
+            {showPassword ? "🙈" : "👁"}
+          </button>
+        )}
       </div>
 
-      {error && <span className={errorTextStyle}>{error}</span>}
+      {error && (
+        <span id={props.id ? `${props.id}-error` : undefined} className={errorTextStyle}>{error}</span>
+      )}
       {!error && helperText && (
-        <span className={helperTextStyle}>{helperText}</span>
+        <span id={props.id ? `${props.id}-helper` : undefined} className={helperTextStyle}>{helperText}</span>
       )}
     </div>
   );

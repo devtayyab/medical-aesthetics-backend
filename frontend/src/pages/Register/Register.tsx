@@ -215,6 +215,7 @@ export const Register: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               fullWidth
+              autoComplete="email"
             />
             {emailError && <p className={errorStyle}>{emailError}</p>}
           </div>
@@ -225,6 +226,9 @@ export const Register: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               fullWidth
+              passwordToggle
+              minLength={8}
+              autoComplete="new-password"
             />
             {passwordError && <p className={errorStyle}>{passwordError}</p>}
           </div>

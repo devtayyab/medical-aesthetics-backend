@@ -329,7 +329,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-gray-900">
-                        ${(apt.totalAmount || 0).toFixed(2)}asdasdas
+                        ${(apt.totalAmount || 0).toFixed(2)}
                       </p>
                       <span
                         className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${

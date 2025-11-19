@@ -167,7 +167,7 @@ export const HomePage: React.FC = () => {
                 <FaMapMarkerAlt className="text-gray-500 mr-2" />
                 <input
                   type="text"
-                  placeholder="Find Cliinic"
+                  placeholder="Find Clinic"
                   className="w-full outline-none text-gray-700"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}

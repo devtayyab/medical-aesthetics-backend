@@ -3,6 +3,9 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { getMenuItemsForRole } from '../../utils/rolePermissions';
+import { useDispatch } from "react-redux";
+import type { AppDispatch } from "@/store";
+import { logout } from "@/store/slices/authSlice";
 import {
   LayoutDashboard,
   Calendar,
@@ -31,15 +34,21 @@ const iconMap: Record<string, React.ReactNode> = {
 const ClinicLayout: React.FC = () => {
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
+    const dispatch = useDispatch<AppDispatch>();
   const { profile } = useSelector((state: RootState) => state.clinic);
 
-  const menuItems = getMenuItemsForRole(user?.role || '');
+const menuItems = getMenuItemsForRole(user?.role || '');
 
-  const handleLogout = () => {
+const handleLogout = async () => {
+    try {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    await dispatch(logout());
     navigate('/login');
-  };
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
+};
 
   return (
     <div className="flex h-screen bg-gray-50">

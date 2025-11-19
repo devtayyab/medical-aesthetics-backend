@@ -182,6 +182,9 @@ export const Login: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               fullWidth
               className="bg-white text-[15px] mt-1"
+              passwordToggle
+              minLength={8}
+              autoComplete="new-password"
             />
             <Input
               type="password"
@@ -190,6 +193,9 @@ export const Login: React.FC = () => {
               onChange={(e) => setConfirmPassword(e.target.value)}
               fullWidth
               className="bg-white text-[15px] mt-3"
+              passwordToggle
+              minLength={8}
+              autoComplete="new-password"
             />
             {passwordError && <p className={errorStyle}>{passwordError}</p>}
 
@@ -219,6 +225,7 @@ export const Login: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 fullWidth
                 className="bg-white text-[15px] mt-1"
+                autoComplete="email"
               />
               {emailError && <p className={errorStyle}>{emailError}</p>}
             </div>
@@ -241,6 +248,9 @@ export const Login: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 fullWidth
                 className="bg-white text-[15px] mt-1"
+                passwordToggle
+                minLength={8}
+                autoComplete="current-password"
               />
               {passwordError && <p className={errorStyle}>{passwordError}</p>}
             </div>
