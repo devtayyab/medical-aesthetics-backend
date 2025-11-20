@@ -23,6 +23,7 @@ import { MdOutlineMarkUnreadChatAlt } from "react-icons/md";
 // Images
 import LayeredBG from "@/assets/LayeredBg.svg";
 import AvatarImg from "@/assets/Avatar.svg";
+import { CheckCircle } from "lucide-react";
 
 const containerStyle = css`
   display: grid;
@@ -187,7 +188,6 @@ export const MyAccount: React.FC = () => {
               </p>
             </Card>
           </Link>
-
           <Link to="/settings">
             <Card className={`bg-[#FFFFFF80] ${cardStyle}`}>
               <span className="flex items-center gap-3 mb-2">

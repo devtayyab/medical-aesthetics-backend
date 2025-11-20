@@ -8,6 +8,7 @@ import { FaArrowRightLong } from "react-icons/fa6";
 
 export interface ClinicCardProps {
   clinic: Clinic;
+  index?: number;
   onSelect?: (clinic: Clinic) => void;
 }
 
@@ -59,21 +60,6 @@ const rightContent = css`
   flex-direction: column;
 `;
 
-const title = css`
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-`;
-
-const rating = css`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  color: #374151;
-  font-weight: 500;
-`;
-
 const location = css`
   margin-top: 12px;
   display: flex;
@@ -83,73 +69,19 @@ const location = css`
   color: #221f1f;
 `;
 
-const badge = css`
-  margin-top: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #405c0b;
-`;
-
-const rowsContainer = css`
-  margin-top: 12px;
-  // border-top: 1px solid #e5e7eb;
-  display: flex;
-  flex-direction: column;
-`;
-
-const row = css`
-  display: flex;
-  justify-content: space-between;
-  padding: 12px 0;
-  font-size: 14px;
-  color: #374151;
-
-  &:not(:last-child) {
-    border-bottom: 1px solid #f1f5f9;
-  }
-`;
-
-const leftText = css`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  span:first-of-type {
-    font-weight: 600;
-    color: #111827;
-  }
-  span:last-of-type {
-    font-size: 13px;
-    color: #6b7280;
-  }
-`;
-
-const rightText = css`
-  text-align: right;
-  font-size: 14px;
-  font-weight: 600;
-  color: #111827;
-
-  .sub {
-    font-size: 12px;
-    color: #2563eb;
-    font-weight: 400;
-    margin-top: 2px;
-  }
-`;
-
-export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
+export const ClinicCard: React.FC<ClinicCardProps> = ({
+  clinic,
+  index = 0,
+  onSelect,
+}) => {
   const handleClick = () => {
     onSelect?.(clinic);
   };
-  console.log("clinic", clinic);
 
-  const imageUrl = [
-    clinic.images?.[0] || BotoxImg,
-    clinic.images?.[1] ||
-    "https://images.pexels.com/photos/3985360/pexels-photo-3985360.jpeg?auto=compress&cs=tinysrgb&w=400",
-  ];
+  const imageUrl =
+    clinic.images?.[index] || clinic.images?.[0] || BotoxImg;
 
-  // Example rows — these can be dynamic
+  // Example rows (optional)
   const rows = [
     { title: "Book now", subtitle: "15 mins" },
     {
@@ -169,7 +101,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
     >
       <span className="flex gap-6">
         <div className={imageBox}>
-          <img src={imageUrl[0]} className="w-full" alt={clinic.name} />
+          <img src={imageUrl} alt={clinic.name} />
         </div>
 
         <div className={`py-2 justify-between ${rightContent}`}>
@@ -197,17 +129,12 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
               )}
             </div>
 
-
-
-
-
-
             <div className={location}>
               <MapPin size={14} /> {clinic.address?.city},{" "}
               {clinic.address?.country}
             </div>
-            {/* <div className={badge}>% Off peak</div> */}
           </span>
+
           <span className="text-end">
             <h3 className="text-[#221F1F] text-[18px] font-medium">
               from € 49
@@ -216,7 +143,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
             <span className="w-full flex justify-end">
               <button
                 type="submit"
-                className="!mt-5 w-fit px-6 py-2 rounded-lg font-medium text-base flex items-center justify-center gap-2 bg-[#CBFF38] text-</div>[#33373F] hover:bg-lime-300 transition"
+                className="!mt-5 w-fit px-6 py-2 rounded-lg font-medium text-base flex items-center justify-center gap-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 transition"
               >
                 Book Treatment <FaArrowRightLong />
               </button>
@@ -224,20 +151,6 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({ clinic, onSelect }) => {
           </span>
         </div>
       </span>
-      {/* <div className={rowsContainer}>
-        {rows.map((r, idx) => (
-          <div key={idx} className={row}>
-            <div className={leftText}>
-              <span>{r.title}</span>
-              <span>{r.subtitle}</span>
-            </div>
-            <div className={rightText}>
-              from $1
-              <div className="sub">save up to 99%</div>
-            </div>
-          </div>
-        ))}
-      </div> */}
     </Card>
   );
 };

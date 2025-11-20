@@ -17,7 +17,7 @@ import { css } from "@emotion/css";
 import { Star } from "lucide-react";
 import LayeredBG from "@/assets/LayeredBg.svg";
 import BotoxImg from "@/assets/Botox.jpg";
-
+import { Link } from "react-router-dom";
 const fullWidthContainerStyle = css`
   position: relative;
   width: 100%;
@@ -228,13 +228,14 @@ export const ClinicDetails: React.FC = () => {
 
           {/* Tabs / Buttons */}
           <div className="flex flex-wrap gap-2 sm:gap-3">
-            <Button
-              onClick={handleBookNow}
-              className="bg-[#2d3748] text-white border border-[#2d3748] hover:!bg-transparent hover:text-[#2d3748] px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition"
-            >
-              Book Now
-            </Button>
-
+            <Link to="/checkout">
+              <Button
+                onClick={handleBookNow}
+                className="bg-[#2d3748] text-white border border-[#2d3748] hover:!bg-transparent hover:text-[#2d3748] px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition"
+              >
+                Book Now
+              </Button>
+            </Link>
             <a
               href="#reviews"
               className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm sm:text-base hover:bg-gray-100 transition"

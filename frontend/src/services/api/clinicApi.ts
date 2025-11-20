@@ -226,6 +226,8 @@ export const availabilityApi = {
     const response = await apiClient.put('/clinic/availability', data);
     return response.data;
   },
+
+
 };
 
 export default {
