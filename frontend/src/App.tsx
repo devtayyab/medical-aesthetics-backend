@@ -61,6 +61,7 @@ import "@/styles/globals.css";
 
 import SiteLogo from "@/assets/SiteLogo.png";
 import { CRM } from "./pages/CRM/CRM";
+import { CheckoutPage } from "./pages/Client/CheckoutPage";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -238,6 +239,14 @@ function AppContent() {
             element={
               <ProtectedLayout allowedRoles={["client"]}>
                 <Wallet />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/checkout"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <CheckoutPage />
               </ProtectedLayout>
             }
           />

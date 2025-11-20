@@ -118,7 +118,7 @@ export const Search: React.FC = () => {
               <ClinicCard
                 key={clinic.id}
                 clinic={clinic}
-                index={clinicIndex % (clinic.images?.length || 1)} // 
+                index={clinicIndex % (clinic.images?.length || 1)}
                 onSelect={() => navigate(`/clinic/${clinic.id}`
 
                 )}

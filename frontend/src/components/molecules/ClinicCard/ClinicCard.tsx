@@ -78,7 +78,6 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
     onSelect?.(clinic);
   };
 
-  // Fix image selection logic: show clinic image by index, fallback if missing
   const imageUrl =
     clinic.images?.[index] || clinic.images?.[0] || BotoxImg;
 
