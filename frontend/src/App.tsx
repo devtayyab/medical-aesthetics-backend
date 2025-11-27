@@ -47,6 +47,7 @@ import { Tasks } from "@/pages/CRM/Tasks";
 import { Actions } from "@/pages/CRM/Actions";
 import { RepeatManagement } from "@/pages/CRM/RepeatManagement";
 import { Dashboard as AdminDashboard } from "@/pages/Admin/Dashboard";
+import { ManagerDashboard } from "./pages/Admin/ManagerDashboard/ManagerDashboard";
 import { Users as AdminUsers } from "@/pages/Admin/Users";
 import { LoyaltyManagement } from "@/pages/Admin/LoyaltyManagement";
 import { Monitor } from "@/pages/Admin/Monitor";
@@ -62,6 +63,7 @@ import "@/styles/globals.css";
 import SiteLogo from "@/assets/SiteLogo.png";
 import { CRM } from "./pages/CRM/CRM";
 import { CheckoutPage } from "./pages/Client/CheckoutPage";
+import AdminLayout from "@/components/layouts/AdminLayout";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -110,16 +112,6 @@ function AppContent() {
     }
   }, [isAuthenticated, isLoading, location, navigate, hasRestoredSession]);
 
-  console.log(
-    "App: Rendering, isLoading:",
-    isLoading,
-    "isAuthenticated:",
-    isAuthenticated,
-    "user:",
-    user,
-    "refreshToken:",
-    refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
-  );
 
   // Show loader until session is restored
   if (!hasRestoredSession || isLoading) {
@@ -384,7 +376,7 @@ function AppContent() {
           <Route
             path="/crm/customers"
             element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
                 <Customers />
               </ProtectedLayout>
             }
@@ -392,7 +384,7 @@ function AppContent() {
           <Route
             path="/crm/customer/:id"
             element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
                 <CustomerDetails />
               </ProtectedLayout>
             }
@@ -400,7 +392,7 @@ function AppContent() {
           <Route
             path="/crm/tasks"
             element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
                 <Tasks />
               </ProtectedLayout>
             }
@@ -408,7 +400,7 @@ function AppContent() {
           <Route
             path="/crm/actions"
             element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
                 <Actions />
               </ProtectedLayout>
             }
@@ -416,7 +408,7 @@ function AppContent() {
           <Route
             path="/crm/repeat-management"
             element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
                 <RepeatManagement />
               </ProtectedLayout>
             }
@@ -424,7 +416,7 @@ function AppContent() {
           <Route
             path="/crm"
             element={
-              <ProtectedLayout allowedRoles={["admin"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner" , "SUPER_ADMIN"]}>
                 <CRM />
               </ProtectedLayout>
             }
@@ -434,31 +426,49 @@ function AppContent() {
             path="/admin/dashboard"
             element={
               <ProtectedLayout allowedRoles={["admin"]}>
-                <AdminDashboard />
+                <AdminLayout>
+                  <AdminDashboard />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manager-dashboard"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ManagerDashboard />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
           <Route
             path="/admin/users"
             element={
-              <ProtectedLayout allowedRoles={["admin"]}>
-                <AdminUsers />
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <AdminUsers />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
           <Route
             path="/admin/loyalty-management"
             element={
-              <ProtectedLayout allowedRoles={["admin"]}>
-                <LoyaltyManagement />
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <LoyaltyManagement />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
           <Route
             path="/admin/monitor"
             element={
-              <ProtectedLayout allowedRoles={["admin"]}>
-                <Monitor />
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <Monitor />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />

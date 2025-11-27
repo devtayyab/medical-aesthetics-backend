@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, In } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Lead } from './entities/lead.entity';
 import { CustomerRecord } from './entities/customer-record.entity';
@@ -9,6 +9,12 @@ import { CrmAction } from './entities/crm-action.entity';
 import { CustomerTag } from './entities/customer-tag.entity';
 import { User } from '../users/entities/user.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
+import { AgentClinicAccess } from './entities/agent-clinic-access.entity';
+import { ClinicOwnership } from './entities/clinic-ownership.entity';
+import { Clinic } from '../clinics/entities/clinic.entity';
+import { AdCampaign } from './entities/ad-campaign.entity';
+import { AdSpendLog } from './entities/ad-spend-log.entity';
+import { UserRole } from '@/common/enums/user-role.enum';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
@@ -20,7 +26,6 @@ import { FacebookService, ParsedFacebookLead } from './facebook.service';
 import { DuplicateDetectionService } from './duplicate-detection.service';
 import { CustomerAffiliationService } from './customer-affiliation.service';
 import { MandatoryFieldValidationService } from './mandatory-field-validation.service';
-import { promises } from 'node:dns';
 
 @Injectable()
 export class CrmService {
@@ -39,6 +44,16 @@ export class CrmService {
     private usersRepository: Repository<User>,
     @InjectRepository(Appointment)
     private appointmentsRepository: Repository<Appointment>,
+    @InjectRepository(AgentClinicAccess)
+    private agentClinicAccessRepository: Repository<AgentClinicAccess>,
+    @InjectRepository(ClinicOwnership)
+    private clinicOwnershipRepository: Repository<ClinicOwnership>,
+    @InjectRepository(Clinic)
+    private clinicsRepository: Repository<Clinic>,
+    @InjectRepository(AdCampaign)
+    private adCampaignsRepository: Repository<AdCampaign>,
+    @InjectRepository(AdSpendLog)
+    private adSpendLogsRepository: Repository<AdSpendLog>,
     private eventEmitter: EventEmitter2,
     private notificationsService: NotificationsService,
     private facebookService: FacebookService,
@@ -47,6 +62,32 @@ export class CrmService {
     private mandatoryFieldValidationService: MandatoryFieldValidationService,
     private taskAutomationService: TaskAutomationService,
   ) { }
+
+  private async userHasAccessToCustomer(userId: string, customerId: string): Promise<boolean> {
+    if (!userId) return false;
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) return false;
+
+    if (user.role === UserRole.SALESPERSON) {
+      const record = await this.customerRecordsRepository.findOne({ where: { customerId } });
+      return record?.assignedSalespersonId === userId;
+    }
+
+    if (user.role === UserRole.CLINIC_OWNER) {
+      const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: userId } });
+      const ownedClinicIds = ownerships.map(o => o.clinicId);
+      if (ownedClinicIds.length === 0) return false;
+      const apt = await this.appointmentsRepository.findOne({
+        where: { clientId: customerId },
+        relations: ['clinic'],
+        order: { startTime: 'DESC' },
+      });
+      return !!apt && ownedClinicIds.includes(apt.clinic?.id);
+    }
+
+    // default deny
+    return false;
+  }
 
   async create(createLeadDto: CreateLeadDto): Promise<Lead> {
     // Use enhanced duplicate detection
@@ -320,32 +361,35 @@ export class CrmService {
   }
 
   async findAll(filters: any = {}): Promise<Lead[]> {
-    const queryBuilder = this.leadsRepository.createQueryBuilder('lead')
+    const qb = this.leadsRepository.createQueryBuilder('lead')
       .leftJoinAndSelect('lead.assignedSales', 'sales')
       .leftJoinAndSelect('lead.tags', 'tags');
 
     if (filters.status) {
-      queryBuilder.where('lead.status = :status', { status: filters.status });
-    }
-
-    if (filters.assignedSalesId) {
-      queryBuilder.andWhere('lead.assignedSalesId = :assignedSalesId', {
-        assignedSalesId: filters.assignedSalesId,
-      });
+      qb.where('lead.status = :status', { status: filters.status });
     }
 
     if (filters.source) {
-      queryBuilder.andWhere('lead.source = :source', { source: filters.source });
+      qb.andWhere('lead.source = :source', { source: filters.source });
     }
 
     if (filters.search) {
-      queryBuilder.andWhere(
+      qb.andWhere(
         '(lead.firstName ILIKE :search OR lead.lastName ILIKE :search OR lead.email ILIKE :search)',
         { search: `%${filters.search}%` },
       );
     }
 
-    return queryBuilder.getMany();
+    // ACL: if requester is salesperson, only show leads assigned to them
+    if (filters._requesterId) {
+      const user = await this.usersRepository.findOne({ where: { id: filters._requesterId } });
+      if (user?.role === UserRole.SALESPERSON) {
+        qb.andWhere('lead.assignedSalesId = :sid', { sid: filters._requesterId });
+      }
+      // For clinic owners, leave as-is for now (leads may not be linked to clinics). Future: relate leads to clinic and filter.
+    }
+
+    return qb.getMany();
   }
 
   async findById(id: string): Promise<Lead> {
@@ -402,6 +446,12 @@ export class CrmService {
 
   // Customer Record Management
   async getCustomerRecord(customerId: string, salespersonId?: string): Promise<any> {
+    if (salespersonId) {
+      const access = await this.userHasAccessToCustomer(salespersonId, customerId);
+      if (!access) {
+        throw new NotFoundException('Customer not found');
+      }
+    }
     let record = await this.customerRecordsRepository.findOne({
       where: { customerId },
       relations: ['customer', 'assignedSalesperson', 'communications', 'actions', 'tags'],
@@ -507,8 +557,8 @@ export class CrmService {
 
   // Communication Log Management
   async logCommunication(data: Partial<CommunicationLog>): Promise<CommunicationLog> {
-    // Enforce mandatory field validation for call communications
-    if (data.type === 'call') {
+    // Enforce mandatory field validation for call communications, except click-only logs
+    if (data.type === 'call' && !(data.metadata && (data.metadata as any).clickOnly === true)) {
       await this.mandatoryFieldValidationService.enforceFieldCompletion(data.customerId, data);
     }
 
@@ -530,6 +580,14 @@ export class CrmService {
     customerId: string,
     filters?: { type?: string; startDate?: Date; endDate?: Date }
   ): Promise<CommunicationLog[]> {
+    // Enforce ACL when requester provided
+    const anyFilters: any = filters || {};
+    if (anyFilters._requesterId) {
+      const allowed = await this.userHasAccessToCustomer(anyFilters._requesterId, customerId);
+      if (!allowed) {
+        throw new NotFoundException('Customer not found');
+      }
+    }
     const queryBuilder = this.communicationLogsRepository
       .createQueryBuilder('log')
       .leftJoinAndSelect('log.salesperson', 'salesperson')
@@ -590,27 +648,41 @@ export class CrmService {
   }
 
   async getActions(
-    salespersonId: string,
+    requesterId: string,
     filters?: { status?: string; priority?: string; customerId?: string }
   ): Promise<CrmAction[]> {
-    const queryBuilder = this.crmActionsRepository
+    const user = await this.usersRepository.findOne({ where: { id: requesterId } });
+    const qb = this.crmActionsRepository
       .createQueryBuilder('action')
-      .leftJoinAndSelect('action.customer', 'customer')
-      .where('action.salespersonId = :salespersonId', { salespersonId });
+      .leftJoinAndSelect('action.customer', 'customer');
+
+    if (user?.role === UserRole.SALESPERSON) {
+      qb.where('action.salespersonId = :sid', { sid: requesterId });
+    } else if (user?.role === UserRole.CLINIC_OWNER) {
+      // Actions for customers in owned clinics
+      const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
+      const ownedClinicIds = ownerships.map(o => o.clinicId);
+      if (ownedClinicIds.length === 0) return [];
+      qb.leftJoin('customer.clientAppointments', 'apt')
+        .andWhere('apt.clinicId IN (:...ids)', { ids: ownedClinicIds });
+    } else {
+      // Default: nothing
+      qb.where('1=0');
+    }
 
     if (filters?.status) {
-      queryBuilder.andWhere('action.status = :status', { status: filters.status });
+      qb.andWhere('action.status = :status', { status: filters.status });
     }
 
     if (filters?.priority) {
-      queryBuilder.andWhere('action.priority = :priority', { priority: filters.priority });
+      qb.andWhere('action.priority = :priority', { priority: filters.priority });
     }
 
     if (filters?.customerId) {
-      queryBuilder.andWhere('action.customerId = :customerId', { customerId: filters.customerId });
+      qb.andWhere('action.customerId = :customerId', { customerId: filters.customerId });
     }
 
-    return queryBuilder.orderBy('action.dueDate', 'ASC').getMany();
+    return qb.orderBy('action.dueDate', 'ASC').getMany();
   }
 
   async getPendingActions(salespersonId: string): Promise<CrmAction[]> {
@@ -644,15 +716,33 @@ export class CrmService {
     await this.customerTagsRepository.delete(id);
   }
 
-  async getCustomersByTag(tagId: string, salespersonId?: string): Promise<any[]> {
+  async getCustomersByTag(tagId: string, requesterId?: string): Promise<any[]> {
+    const user = requesterId ? await this.usersRepository.findOne({ where: { id: requesterId } }) : null;
     const queryBuilder = this.customerTagsRepository
       .createQueryBuilder('customerTag')
       .leftJoinAndSelect('customerTag.customer', 'customer')
       .leftJoinAndSelect('customerTag.tag', 'tag')
       .where('customerTag.tagId = :tagId', { tagId });
 
-    if (salespersonId) {
-      queryBuilder.andWhere('customerTag.addedBy = :salespersonId', { salespersonId });
+    if (user?.role === UserRole.SALESPERSON) {
+      queryBuilder.andWhere('customerTag.addedBy = :sid', { sid: requesterId });
+    } else if (user?.role === UserRole.CLINIC_OWNER) {
+      const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
+      const ownedClinicIds = ownerships.map(o => o.clinicId);
+      if (ownedClinicIds.length > 0) {
+        const clientIds = await this.appointmentsRepository.createQueryBuilder('apt')
+          .select('DISTINCT apt.clientId', 'clientId')
+          .where('apt.clinicId IN (:...ids)', { ids: ownedClinicIds })
+          .getRawMany();
+        const ids = clientIds.map(r => r.clientId);
+        if (ids.length > 0) {
+          queryBuilder.andWhere('customerTag.customerId IN (:...ids)', { ids });
+        } else {
+          return [];
+        }
+      } else {
+        return [];
+      }
     }
 
     const tags = await queryBuilder.getMany();
@@ -665,22 +755,35 @@ export class CrmService {
   }
 
   // Repeat Customer Management
-  async identifyRepeatCustomers(salespersonId?: string): Promise<any[]> {
-    const queryBuilder = this.customerRecordsRepository
+  async identifyRepeatCustomers(requesterId?: string): Promise<any[]> {
+    const user = requesterId ? await this.usersRepository.findOne({ where: { id: requesterId } }) : null;
+    const qb = this.customerRecordsRepository
       .createQueryBuilder('record')
       .leftJoinAndSelect('record.customer', 'customer')
       .where('record.isRepeatCustomer = :isRepeat', { isRepeat: true });
 
-    if (salespersonId) {
-      queryBuilder.andWhere('record.assignedSalespersonId = :salespersonId', { salespersonId });
+    if (user?.role === UserRole.SALESPERSON) {
+      qb.andWhere('record.assignedSalespersonId = :sid', { sid: requesterId });
     }
 
-    return queryBuilder
-      .orderBy('record.repeatCount', 'DESC')
-      .getMany();
+    if (user?.role === UserRole.CLINIC_OWNER) {
+      const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
+      const ownedClinicIds = ownerships.map(o => o.clinicId);
+      if (ownedClinicIds.length === 0) return [];
+      // Filter customers who had appointments in owned clinics
+      const clientIds = await this.appointmentsRepository.createQueryBuilder('apt')
+        .select('DISTINCT apt.clientId', 'clientId')
+        .where('apt.clinicId IN (:...ids)', { ids: ownedClinicIds })
+        .getRawMany();
+      const ids = clientIds.map(r => r.clientId);
+      if (ids.length === 0) return [];
+      qb.andWhere('record.customerId IN (:...ids)', { ids });
+    }
+
+    return qb.orderBy('record.repeatCount', 'DESC').getMany();
   }
 
-  async getCustomersDueForFollowUp(salespersonId?: string, daysThreshold: number = 30): Promise<any[]> {
+  async getCustomersDueForFollowUp(requesterId?: string, daysThreshold: number = 30): Promise<any[]> {
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
 
@@ -690,8 +793,22 @@ export class CrmService {
       .where('record.lastContactDate < :thresholdDate', { thresholdDate })
       .orWhere('record.lastContactDate IS NULL');
 
-    if (salespersonId) {
-      queryBuilder.andWhere('record.assignedSalespersonId = :salespersonId', { salespersonId });
+    if (requesterId) {
+      const user = await this.usersRepository.findOne({ where: { id: requesterId } });
+      if (user?.role === UserRole.SALESPERSON) {
+        queryBuilder.andWhere('record.assignedSalespersonId = :sid', { sid: requesterId });
+      } else if (user?.role === UserRole.CLINIC_OWNER) {
+        const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
+        const ownedClinicIds = ownerships.map(o => o.clinicId);
+        if (ownedClinicIds.length === 0) return [];
+        const clientIds = await this.appointmentsRepository.createQueryBuilder('apt')
+          .select('DISTINCT apt.clientId', 'clientId')
+          .where('apt.clinicId IN (:...ids)', { ids: ownedClinicIds })
+          .getRawMany();
+        const ids = clientIds.map(r => r.clientId);
+        if (ids.length === 0) return [];
+        queryBuilder.andWhere('record.customerId IN (:...ids)', { ids });
+      }
     }
 
     return queryBuilder
@@ -751,5 +868,256 @@ export class CrmService {
 
   async testFacebookConnection(): Promise<{ success: boolean; message: string }> {
     return this.facebookService.testFacebookConnection();
+  }
+
+  // Manager analytics: aggregate KPIs across agents
+  async getManagerAgentKpis(dateRange?: { startDate: Date; endDate: Date }): Promise<any> {
+    console.log("dateRange" , dateRange)
+    Logger.log("dateRange" , dateRange)
+    // Total communications per agent (exclude no_answer)
+    let commQ = this.communicationLogsRepository
+      .createQueryBuilder('log')
+      .select('log.salespersonId', 'salespersonId')
+      .addSelect('COUNT(log.id)', 'totalCommunications')
+      .addSelect("COUNT(CASE WHEN log.type = 'call' AND (log.metadata->>'callOutcome') <> 'no_answer' THEN 1 END)", 'realCalls')
+      .groupBy('log.salespersonId');
+
+    if (dateRange) {
+      commQ = commQ.where('log.createdAt BETWEEN :startDate AND :endDate', dateRange);
+    }
+
+    const comm = await commQ.getRawMany();
+
+    // Appointments outcome per agent (booked/attended/treatments/cancel/no-show)
+    let aptQ = this.appointmentsRepository
+      .createQueryBuilder('apt')
+      .select('apt.clientId', 'salespersonId')
+      .addSelect('COUNT(apt.id)', 'totalAppointments')
+      .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'completed')
+      .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
+      .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShow')
+      .groupBy('apt.clientId');
+
+    if (dateRange) {
+      aptQ = aptQ.where('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+    }
+
+    const apts = await aptQ.getRawMany();
+
+    // Merge
+    const map = new Map<string, any>();
+    for (const r of comm) map.set(r.salespersonId, { salespersonId: r.salespersonId, ...r });
+    for (const r of apts) {
+      const prev = map.get(r.salespersonId) || { salespersonId: r.salespersonId };
+      map.set(r.salespersonId, { ...prev, ...r });
+    }
+    return Array.from(map.values());
+  }
+
+  async getServiceStats(dateRange?: { startDate: Date; endDate: Date }): Promise<any[]> {
+    let q = this.appointmentsRepository
+      .createQueryBuilder('apt')
+      .leftJoin('apt.service', 'service')
+      .select('service.name', 'serviceName')
+      .addSelect('COUNT(apt.id)', 'count')
+      .addSelect('SUM(apt.totalAmount)', 'revenue')
+      .groupBy('service.name');
+    if (dateRange) {
+      q = q.where('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+    }
+    return q.getRawMany();
+  }
+
+  async getClinicAnalytics(dateRange?: { startDate: Date; endDate: Date }): Promise<any[]> {
+    let qb = this.appointmentsRepository
+      .createQueryBuilder('apt')
+      .leftJoin('apt.clinic', 'clinic')
+      .select('clinic.id', 'clinicId')
+      .addSelect('clinic.name', 'clinicName')
+      .addSelect('COUNT(apt.id)', 'totalAppointments')
+      .addSelect('COUNT(DISTINCT apt.clientId)', 'uniqueClients')
+      .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'completed')
+      .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
+      .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShow')
+      .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'totalRevenue')
+      .groupBy('clinic.id')
+      .addGroupBy('clinic.name');
+    if (dateRange) {
+      qb = qb.where('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+    }
+    return qb.getRawMany();
+  }
+
+  async getCampaignPerformance(dateRange?: { startDate: Date; endDate: Date }): Promise<any[]> {
+    const spendQ = this.adSpendLogsRepository
+      .createQueryBuilder('s')
+      .select('s.campaignId', 'campaignId')
+      .addSelect('COALESCE(SUM(s.spend), 0)', 'totalSpend')
+      .addSelect('COALESCE(SUM(s.clicks), 0)', 'clicks')
+      .addSelect('COALESCE(SUM(s.impressions), 0)', 'impressions')
+      .addSelect('COALESCE(SUM(s.leads), 0)', 'loggedLeads');
+    if (dateRange) {
+      spendQ.where('s.date BETWEEN :startDate AND :endDate', dateRange);
+    }
+    const spendRows = await spendQ.groupBy('s.campaignId').getRawMany();
+
+    const campaigns = await this.adCampaignsRepository.createQueryBuilder('c').getMany();
+    const campaignMap = new Map<string, AdCampaign>();
+    for (const c of campaigns) campaignMap.set(c.id, c);
+
+    const externalToCampaign = new Map<string, string>();
+    for (const c of campaigns) externalToCampaign.set(c.externalId, c.id);
+
+    let leadQ = this.leadsRepository
+      .createQueryBuilder('l')
+      .select('l.facebookCampaignId', 'externalId')
+      .addSelect('COUNT(l.id)', 'leadCount');
+    if (dateRange) {
+      leadQ = leadQ.where('l.createdAt BETWEEN :startDate AND :endDate', dateRange);
+    }
+    const leadRows = await leadQ.groupBy('l.facebookCampaignId').getRawMany();
+
+    let revQ = this.appointmentsRepository
+      .createQueryBuilder('apt')
+      .leftJoin('customer_records', 'cr', 'cr.customerId = apt.clientId')
+      .select('cr.facebookCampaignId', 'externalId')
+      .addSelect('COUNT(apt.id)', 'totalAppointments')
+      .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'completedAppointments')
+      .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelledAppointments')
+      .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShowAppointments')
+      .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'revenue');
+    if (dateRange) {
+      revQ = revQ.where('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+    }
+    const revRows = await revQ.groupBy('cr.facebookCampaignId').getRawMany();
+
+    const byCampaign = new Map<string, any>();
+    for (const s of spendRows) {
+      byCampaign.set(s.campaignId, {
+        campaignId: s.campaignId,
+        totalSpend: Number(s.totalSpend) || 0,
+        clicks: Number(s.clicks) || 0,
+        impressions: Number(s.impressions) || 0,
+        loggedLeads: Number(s.loggedLeads) || 0,
+        leads: 0,
+        totalAppointments: 0,
+        completedAppointments: 0,
+        cancelledAppointments: 0,
+        noShowAppointments: 0,
+        revenue: 0,
+      });
+    }
+
+    for (const l of leadRows) {
+      const campaignId = externalToCampaign.get(l.externalId || '');
+      if (!campaignId) continue;
+      const curr = byCampaign.get(campaignId) || { campaignId };
+      byCampaign.set(campaignId, { ...curr, leads: Number(l.leadCount) || 0 });
+    }
+
+    for (const r of revRows) {
+      const campaignId = externalToCampaign.get(r.externalId || '');
+      if (!campaignId) continue;
+      const curr = byCampaign.get(campaignId) || { campaignId };
+      byCampaign.set(campaignId, {
+        ...curr,
+        totalAppointments: Number(r.totalAppointments) || 0,
+        completedAppointments: Number(r.completedAppointments) || 0,
+        cancelledAppointments: Number(r.cancelledAppointments) || 0,
+        noShowAppointments: Number(r.noShowAppointments) || 0,
+        revenue: Number(r.revenue) || 0,
+      });
+    }
+
+    const rows = Array.from(byCampaign.values()).map((row) => {
+      const meta = campaignMap.get(row.campaignId);
+      const roas = row.totalSpend > 0 ? Number((row.revenue / row.totalSpend).toFixed(2)) : 0;
+      return {
+        campaignId: row.campaignId,
+        campaignName: meta?.name || '',
+        ownerAgentId: meta?.ownerAgentId || null,
+        platform: meta?.platform || null,
+        totalSpend: row.totalSpend,
+        clicks: row.clicks,
+        impressions: row.impressions,
+        loggedLeads: row.loggedLeads,
+        leads: row.leads,
+        totalAppointments: row.totalAppointments,
+        completedAppointments: row.completedAppointments,
+        cancelledAppointments: row.cancelledAppointments,
+        noShowAppointments: row.noShowAppointments,
+        revenue: row.revenue,
+        roas,
+      };
+    });
+
+    return rows;
+  }
+
+  async sendWeeklyAgentReports(): Promise<{ sent: number }> {
+    // naive weekly window
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 7);
+    const agents = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON } });
+    let sent = 0;
+    for (const agent of agents) {
+      const kpis = await this.getSalespersonAnalytics(agent.id, { startDate, endDate });
+      await this.notificationsService.create(
+        agent.id,
+        NotificationType.EMAIL,
+        'Weekly CRM Report',
+        'Your weekly performance report is ready.',
+        { kpis }
+      );
+      sent++;
+    }
+    return { sent };
+  }
+
+  async getAccessibleClinicsForUser(userId: string) {
+    console.log("userId" , userId)
+    Logger.log("userId" , userId)
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      relations: ['clinics'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // If user is admin or super admin, return all clinics
+    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
+      return this.clinicsRepository.find();
+    }
+
+    // If user is clinic owner, get their clinics through clinic ownership
+    if (user.role === UserRole.CLINIC_OWNER) {
+      const ownerships = await this.clinicOwnershipRepository.find({
+        where: { ownerUserId: userId },
+        relations: ['clinic']
+      });
+      return ownerships.map(o => o.clinicId);
+    }
+
+    // If user is salesperson, return clinics they have access to
+    if (user.role === UserRole.SALESPERSON) {
+      const accesses = await this.agentClinicAccessRepository.find({
+        where: { agentUserId: userId },
+        relations: ['clinic']
+      });
+      
+      // Since we don't have a direct relation in the entity, we need to fetch the clinics
+      const clinicIds = accesses.map(access => access.clinicId);
+      if (clinicIds.length === 0) return [];
+      
+      return this.clinicsRepository.find({
+        where: { id: In(clinicIds) }
+      });
+    }
+
+    // For other roles, return empty array
+    return [];
   }
 }

@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { bookingAPI } from '@/services/api';
-import type { BookingFlow, Service, TimeSlot, Appointment } from '@/types';
+import type { BookingFlow, Service, TimeSlot, Appointment, Clinic } from '@/types';
+import type { RootState } from '@/types';
 
 interface BookingState extends BookingFlow {
   availableSlots: TimeSlot[];

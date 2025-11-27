@@ -12,6 +12,8 @@ import { AuditLog } from '../modules/audit/entities/audit-log.entity';
 import { ConsentRecord } from '../modules/users/entities/consent-record.entity';
 import { CommunicationLog } from '../modules/crm/entities/communication-log.entity';
 import { CustomerTag } from '../modules/crm/entities/customer-tag.entity';
+import { AdAttribution } from '../modules/crm/entities/ad-attribution.entity';
+import { AdCampaign } from '../modules/crm/entities/ad-campaign.entity';
 import { Task } from '@/modules/tasks/entities/task.entity';
 import { Appointment } from '@/modules/bookings/entities/appointment.entity';
 import { AppointmentHold } from '@/modules/bookings/entities/appointment-hold.entity';
@@ -47,6 +49,8 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         Tag,
         AuditLog,
         ConsentRecord,
+        AdAttribution,
+        AdCampaign,
       ],
       ssl: this.configService.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
       migrations: ['dist/migrations/*.js'],

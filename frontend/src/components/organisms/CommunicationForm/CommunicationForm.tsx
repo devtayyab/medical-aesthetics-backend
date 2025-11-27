@@ -13,6 +13,7 @@ import {
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { CommunicationLog } from '@/types';
+import axios from 'axios';
 
 interface CommunicationFormProps {
   customerId: string;
@@ -34,10 +35,26 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
   });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+  const [clinics, setClinics] = useState<{ value: string; label: string }[]>([]);
 
   React.useEffect(() => {
     dispatch(getRequiredFieldsForCall());
   }, [dispatch]);
+
+  const [startTime] = React.useState<number>(Date.now());
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await axios.get('/crm/accessible-clinics');
+        const options = (data || []).map((c: any) => ({ value: c.id, label: c.name }));
+        setClinics(options);
+      } catch (e) {
+        // fallback to empty list
+        setClinics([]);
+      }
+    })();
+  }, []);
 
   React.useEffect(() => {
     if (fieldValidation) {
@@ -67,20 +84,36 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
   };
 
   const handleValidate = async () => {
-    await dispatch(validateCommunication({
+    const result = await dispatch(validateCommunication({
       customerId,
       communicationData: formData
-    }));
+    })).unwrap();
+    setValidationErrors(result.missingFields || []);
+    setValidationWarnings(result.warnings || []);
+    return result;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    await handleValidate();
+    // If call and no duration provided, auto-calculate from timer
+    let payload = { ...formData };
+    if (payload.type === 'call' && !payload.durationSeconds) {
+      const secs = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+      payload = { ...payload, durationSeconds: secs };
+      setFormData(payload);
+    }
 
-    if (validationErrors.length === 0) {
+    const validation = await dispatch(validateCommunication({
+      customerId,
+      communicationData: payload
+    })).unwrap();
+    setValidationErrors(validation.missingFields || []);
+    setValidationWarnings(validation.warnings || []);
+
+    if (validation.isValid) {
       try {
-        await dispatch(logCommunication(formData)).unwrap();
+        await dispatch(logCommunication(payload)).unwrap();
         setFormData({
           customerId,
           type: 'call',
@@ -219,11 +252,7 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
                   label="Clinic"
                   value={formData.metadata?.clinic || ''}
                   onChange={(value) => handleInputChange('metadata.clinic', value)}
-                  options={[
-                    { value: 'clinic1', label: 'Downtown Clinic' },
-                    { value: 'clinic2', label: 'Westside Clinic' },
-                    { value: 'clinic3', label: 'Eastside Clinic' }
-                  ]}
+                  options={clinics}
                   required={requiredFields?.clinic}
                   error={validationErrors.includes('clinic')}
                 />

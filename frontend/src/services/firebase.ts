@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { useDispatch } from "react-redux";
-import { markNotificationAsRead } from "@/store/slices/notificationsSlice";
+import { notificationsAPI } from "./api";
 
 const firebaseConfig = {
   // Replace with your Firebase config

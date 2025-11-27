@@ -172,12 +172,6 @@ export const Header: React.FC = () => {
   );
   const location = useLocation();
 
-  console.log("Header - user:", user);
-  console.log("Header - isAuthenticated:", isAuthenticated);
-  console.log(
-    "Header - refreshToken:",
-    refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
-  );
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,13 +195,23 @@ export const Header: React.FC = () => {
   const getMenuItems = () => {
     if (!user?.role) return [];
 
-    if (user.role === "admin") {
+       if (user.role === "admin") {
       return [
         { to: "/admin/dashboard", label: "Dashboard" },
         { to: "/crm", label: "CRM" },
         { action: handleLogout, label: "Logout" },
       ];
     }
+
+    if (user.role === "SUPER_ADMIN") {
+      return [
+        { to: "/admin/manager-dashboard", label: "Dashboard" },
+        // { to: "/crm", label: "CRM" },
+        { action: handleLogout, label: "Logout" },
+      ];
+    }
+
+
 
     if (user.role === "client") {
       return [
@@ -276,7 +280,7 @@ export const Header: React.FC = () => {
                     Home
                   </Link>
                 </li> */}
-                {user?.role === "admin" || user?.role === "salesperson" && (
+                {(user?.role === "salesperson" || user?.role === "clinic_owner") && (
                   <li
                     className={`cursor-pointer ${location.pathname === "/crm"
                       ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
@@ -294,6 +298,7 @@ export const Header: React.FC = () => {
                     </Link>
                   </li>
                 )}
+                 {clinicRoles.includes(user?.role || "") && <>
                 <li
                   className={`cursor-pointer ${location.pathname.startsWith("/search")
                     ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
@@ -310,6 +315,7 @@ export const Header: React.FC = () => {
                     Clinics
                   </Link>
                 </li>
+         </>}
               </ul>
             </div>
 

@@ -31,12 +31,25 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/repeat-management", label: "Repeat Management" },
 ];
 
-const adminLinks: SidebarItem[] = [
-  { path: "/admin/dashboard", label: "Dashboard" },
-  { path: "/admin/users", label: "Users" },
-  { path: "/admin/loyalty-management", label: "Loyalty Management" },
-  { path: "/admin/monitor", label: "Monitor" },
-];
+const getAdminLinks = (role: string): SidebarItem[] => {
+  const baseLinks = [
+    { path: "/admin/users", label: "Users" },
+    { path: "/admin/loyalty-management", label: "Loyalty Management" },
+    { path: "/admin/monitor", label: "Monitor" },
+  ];
+
+  if (role === 'SUPER_ADMIN') {
+    return [
+      { path: "/admin/manager-dashboard", label: "Manager Dashboard" },
+      ...baseLinks,
+    ];
+  }
+  
+  return [
+    { path: "/admin/dashboard", label: "Dashboard" },
+    ...baseLinks,
+  ];
+};
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -46,12 +59,12 @@ export const Sidebar: React.FC = () => {
   const links =
     role === "client"
       ? clientLinks
-      : role === "clinic"
+      : role === "clinic_owner"
         ? clinicLinks
-        : role === "salesperson"
-          ? crmLinks
-          : role === "admin"
-            ? adminLinks
+        : role === "admin"
+          ? getAdminLinks(role)
+          : role === "SUPER_ADMIN"
+            ? getAdminLinks(role)
             : [];
 
   return (

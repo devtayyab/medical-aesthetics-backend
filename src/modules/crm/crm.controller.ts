@@ -33,7 +33,7 @@ export class CrmController {
 
   @Post('leads')
   @ApiOperation({ summary: 'Create a new lead' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   create(@Body() createLeadDto: CreateLeadDto) {
     return this.crmService.create(createLeadDto);
@@ -45,15 +45,15 @@ export class CrmController {
   @ApiQuery({ name: 'assignedSalesId', required: false })
   @ApiQuery({ name: 'source', required: false })
   @ApiQuery({ name: 'search', required: false })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
-  findAll(@Query() filters: any) {
-    return this.crmService.findAll(filters);
+  findAll(@Query() filters: any, @Request() req) {
+    return this.crmService.findAll({ ...filters, _requesterId: req.user.id });
   }
 
   @Get('leads/:id')
   @ApiOperation({ summary: 'Get lead details' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   findOne(@Param('id') id: string) {
     return this.crmService.findById(id);
@@ -61,7 +61,7 @@ export class CrmController {
 
   @Patch('leads/:id')
   @ApiOperation({ summary: 'Update lead information' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   update(@Param('id') id: string, @Body() updateLeadDto: UpdateLeadDto) {
     return this.crmService.update(id, updateLeadDto);
@@ -69,7 +69,7 @@ export class CrmController {
 
   @Delete('leads/:id')
   @ApiOperation({ summary: 'Soft delete lead' })
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   remove(@Param('id') id: string) {
     return this.crmService.softDelete(id);
@@ -77,7 +77,7 @@ export class CrmController {
 
   // Customer Record Management
   @Get('customers/:id/record')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get complete customer record with full history' })
   getCustomerRecord(@Param('id') customerId: string, @Request() req) {
@@ -85,7 +85,7 @@ export class CrmController {
   }
 
   @Put('customers/:id/record')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Update customer record' })
   updateCustomerRecord(
@@ -97,7 +97,7 @@ export class CrmController {
 
   // Communication Log Management
   @Post('communications')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Log communication (call, email, meeting, etc.)' })
   logCommunication(@Body() communicationData: any, @Request() req) {
@@ -108,19 +108,20 @@ export class CrmController {
   }
 
   @Get('customers/:id/communications')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get customer communication history' })
   getCommunicationHistory(
     @Param('id') customerId: string,
     @Query() filters: any,
+    @Request() req,
   ) {
-    return this.crmService.getCommunicationHistory(customerId, filters);
+    return this.crmService.getCommunicationHistory(customerId, { ...filters, _requesterId: req.user.id });
   }
 
   // Action/Task Management
   @Post('actions')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @UsePipes(new ValidationPipe({
     whitelist: true,
@@ -142,7 +143,7 @@ export class CrmController {
 
 
   @Put('actions/:id')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Update action/task' })
   updateAction(@Param('id') id: string, @Body() updateData: any) {
@@ -150,7 +151,7 @@ export class CrmController {
   }
 
   @Get('actions')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get actions/tasks with filters' })
   getActions(@Query() filters: any, @Request() req) {
@@ -158,7 +159,7 @@ export class CrmController {
   }
 
   @Get('actions/pending')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get pending actions/tasks' })
   getPendingActions(@Request() req) {
@@ -168,7 +169,7 @@ export class CrmController {
 
   // Customer Tag Management
   @Post('customers/:id/tags')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Add characterization tag to customer' })
   addCustomerTag(
@@ -185,7 +186,7 @@ export class CrmController {
   }
 
   @Delete('customer-tags/:id')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Remove customer tag' })
   removeCustomerTag(@Param('id') id: string) {
@@ -193,7 +194,7 @@ export class CrmController {
   }
 
   @Get('tags/:tagId/customers')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get customers by tag' })
   getCustomersByTag(@Param('tagId') tagId: string, @Request() req) {
@@ -202,7 +203,7 @@ export class CrmController {
 
   // Repeat Customer Management
   @Get('customers/repeat')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get repeat customers' })
   getRepeatCustomers(@Request() req) {
@@ -210,7 +211,7 @@ export class CrmController {
   }
 
   @Get('customers/follow-up')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get customers due for follow-up' })
   getCustomersDueForFollowUp(
@@ -225,7 +226,7 @@ export class CrmController {
 
   // Salesperson Analytics
   @Get('analytics/salesperson')
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get salesperson performance analytics' })
   getSalespersonAnalytics(
@@ -243,7 +244,7 @@ export class CrmController {
   // Facebook Integration Endpoints
   @Post('facebook/webhook')
   @ApiOperation({ summary: 'Handle Facebook webhook for lead generation' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   handleFacebookWebhook(@Body() webhookData: FacebookWebhookDto) {
     return this.crmService.handleFacebookWebhook(webhookData);
@@ -251,7 +252,7 @@ export class CrmController {
 
   @Post('facebook/import/:formId')
   @ApiOperation({ summary: 'Import leads from Facebook form' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   importFacebookLeads(
     @Param('formId') formId: string,
@@ -270,7 +271,7 @@ export class CrmController {
 
   @Get('customer/:id')
   @ApiOperation({ summary: 'Get customer details' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.SECRETARIAT)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   getCustomer(@Param('id') id: string) {
     return this.crmService.getCustomer(id);
@@ -280,7 +281,7 @@ export class CrmController {
 
   @Get('duplicates/check')
   @ApiOperation({ summary: 'Check for potential duplicates' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   checkForDuplicates(@Query() query: { email?: string; phone?: string; firstName?: string; lastName?: string }) {
     return this.crmService.checkForDuplicates(
@@ -293,7 +294,7 @@ export class CrmController {
 
   @Get('duplicates/suggestions')
   @ApiOperation({ summary: 'Get duplicate suggestions' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   getDuplicateSuggestions(@Query() query: { email?: string; phone?: string; firstName?: string; lastName?: string }) {
     return this.crmService.getDuplicateSuggestions(
@@ -306,7 +307,7 @@ export class CrmController {
 
   @Get('validation/required-fields/call')
   @ApiOperation({ summary: 'Get required fields for call communications' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   getRequiredFieldsForCall() {
     return this.crmService.getRequiredFieldsForCall();
@@ -314,7 +315,7 @@ export class CrmController {
 
   @Get('validation/required-fields/action/:actionType')
   @ApiOperation({ summary: 'Get required fields for action type' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   getRequiredFieldsForAction(@Param('actionType') actionType: string) {
     return this.crmService.getRequiredFieldsForAction(actionType);
@@ -322,7 +323,7 @@ export class CrmController {
 
   @Post('validation/validate-communication')
   @ApiOperation({ summary: 'Validate communication data' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   validateCommunication(@Body() data: { customerId: string; communicationData: Partial<CommunicationLog> }) {
     return this.crmService.validateCommunicationFields(data.customerId, data.communicationData);
@@ -330,7 +331,7 @@ export class CrmController {
 
   @Post('validation/validate-action')
   @ApiOperation({ summary: 'Validate action data' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   validateAction(@Body() data: { customerId: string; actionData: Partial<CrmAction> }) {
     return this.crmService.validateActionFields(data.customerId, data.actionData);
@@ -338,7 +339,7 @@ export class CrmController {
 
   @Get('tasks/overdue')
   @ApiOperation({ summary: 'Get overdue tasks' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   getOverdueTasks(@Query('salespersonId') salespersonId?: string) {
     return this.crmService.getOverdueTasks(salespersonId);
@@ -346,7 +347,7 @@ export class CrmController {
 
   @Get('automation/rules')
   @ApiOperation({ summary: 'Get automation rules' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   getAutomationRules() {
     return this.crmService.getAutomationRules();
@@ -358,5 +359,77 @@ export class CrmController {
   @UseGuards(RolesGuard)
   runTaskAutomationCheck() {
     return this.crmService.runTaskAutomationCheck();
+  }
+
+  @Get('accessible-clinics')
+  @ApiOperation({ summary: 'List clinics accessible to the current user' })
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  getAccessibleClinics(@Request() req) {
+    return this.crmService.getAccessibleClinicsForUser(req.user.id);
+  }
+
+  // Manager analytics and reports (admin/super admin only)
+  @Get('analytics/manager/agents')
+  @ApiOperation({ summary: 'Manager view: per-agent KPIs' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getManagerAgentKpis(
+    @Query() query: { startDate?: string; endDate?: string },
+    @Request() req
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getManagerAgentKpis(dateRange);
+  }
+
+  @Get('analytics/manager/services')
+  @ApiOperation({ summary: 'Manager view: per-service stats' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getServiceStats(
+    @Query() query: { startDate?: string; endDate?: string },
+    @Request() req
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getServiceStats(dateRange);
+  }
+
+  @Get('analytics/manager/clinics')
+  @ApiOperation({ summary: 'Manager view: per-clinic stats' })
+  @Roles(UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getClinicAnalytics(
+    @Query() query: { startDate?: string; endDate?: string },
+    @Request() req
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getClinicAnalytics(dateRange);
+  }
+
+  @Get('analytics/campaigns')
+  @ApiOperation({ summary: 'Campaign performance with spend and revenue' })
+  @Roles(UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getCampaignPerformance(
+    @Query() query: { startDate?: string; endDate?: string }
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getCampaignPerformance(dateRange);
+  }
+
+  @Post('reports/weekly/agents')
+  @ApiOperation({ summary: 'Send weekly reports to agents' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  sendWeeklyReports() {
+    return this.crmService.sendWeeklyAgentReports();
   }
 }
