@@ -41,7 +41,13 @@ const getAdminLinks = (role: string): SidebarItem[] => {
   if (role === 'SUPER_ADMIN') {
     return [
       { path: "/admin/manager-dashboard", label: "Manager Dashboard" },
-      ...baseLinks,
+      { path: "/admin/manager-crm/calls", label: "CRM Calls" },
+      { path: "/admin/manager-crm/reports", label: "CRM Reports" },
+      { path: "/admin/manager-crm/advertising", label: "Advertising" },
+      { path: "/admin/manager-crm/access", label: "Access Control" },
+      { path: "/admin/manager-crm/benefits", label: "Benefits" },
+      { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts" },
+      { path: "/admin/manager-crm/clinic-stats", label: "Clinic Stats" },
     ];
   }
   

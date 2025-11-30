@@ -251,7 +251,7 @@ export const Header: React.FC = () => {
       >
         <Link
           to={
-            clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : "/"
+            clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : user?.role === "SUPER_ADMIN" ? "/admin/manager-dashboard" : "/"
           }
           className={`text-[#CBFF38] text-2xl font-bold flex items-center ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
             }`}
