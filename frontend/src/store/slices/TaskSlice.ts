@@ -18,7 +18,14 @@ const initialState: TaskState = {
 // ✅ Create Task
 export const createTask = createAsyncThunk(
     "task/createTask",
-    async (data: { description: string; type: string; dueDate: string; assignedTo: string; metadata: Record<string, any>; }) => {
+    async (data: { 
+        description: string; 
+        type: string; 
+        dueDate: string; 
+        assignedTo: string; 
+        metadata: Record<string, any>;
+        customerId: string;
+    }) => {
         const response = await TaskAPI.createTask(data);
         return response.data;
     }

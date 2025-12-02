@@ -5,7 +5,7 @@ import { Appointment } from './entities/appointment.entity';
 import { AppointmentHold } from './entities/appointment-hold.entity';
 import { ClinicsService } from '../clinics/clinics.service';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 @Injectable()
 export class AvailabilityService {

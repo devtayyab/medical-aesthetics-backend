@@ -19,6 +19,14 @@ import { UsersModule } from '../users/users.module';
 import { User } from '../users/entities/user.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
+import { AgentClinicAccess } from './entities/agent-clinic-access.entity';
+import { ClinicOwnership } from './entities/clinic-ownership.entity';
+import { AdCampaign } from './entities/ad-campaign.entity';
+import { AdSpendLog } from './entities/ad-spend-log.entity';
+import { AdAttribution } from './entities/ad-attribution.entity';
+import { CrmScheduler } from './crm.scheduler';
+import { AdAttributionController } from './controllers/ad-attribution.controller';
+import { AdAttributionService } from './services/ad-attribution.service';
 
 @Module({
   imports: [
@@ -32,14 +40,36 @@ import { Appointment } from '../bookings/entities/appointment.entity';
       Appointment,
       User,
       Clinic,
+      AgentClinicAccess,
+      ClinicOwnership,
+      AdCampaign,
+      AdSpendLog,
+      AdAttribution,
     ]),
     TasksModule,
     BookingsModule,
     NotificationsModule,
     UsersModule,
   ],
-  controllers: [CrmController],
-  providers: [CrmService, FacebookService, DuplicateDetectionService, CustomerAffiliationService, MandatoryFieldValidationService, TaskAutomationService],
-  exports: [CrmService, FacebookService, DuplicateDetectionService, CustomerAffiliationService, MandatoryFieldValidationService, TaskAutomationService],
+  controllers: [CrmController, AdAttributionController],
+  providers: [
+    CrmService, 
+    FacebookService, 
+    DuplicateDetectionService, 
+    CustomerAffiliationService, 
+    MandatoryFieldValidationService, 
+    TaskAutomationService, 
+    AdAttributionService, 
+    CrmScheduler
+  ],
+  exports: [
+    CrmService, 
+    FacebookService, 
+    DuplicateDetectionService, 
+    CustomerAffiliationService, 
+    MandatoryFieldValidationService, 
+    TaskAutomationService, 
+    AdAttributionService
+  ],
 })
 export class CrmModule { }

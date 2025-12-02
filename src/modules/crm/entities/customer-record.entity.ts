@@ -12,6 +12,7 @@ import { User } from '../../users/entities/user.entity';
 import { CommunicationLog } from './communication-log.entity';
 import { CustomerTag } from './customer-tag.entity';
 import { CrmAction } from './crm-action.entity';
+import { AdAttribution } from './ad-attribution.entity';
 
 @Entity('customer_records')
 export class CustomerRecord {
@@ -94,12 +95,14 @@ export class CustomerRecord {
   @Column({ type: 'date', nullable: true })
   expectedNextVisit: Date; // Predicted next visit based on patterns
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  facebookCampaignId: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
-
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'customerId' })
@@ -112,10 +115,13 @@ export class CustomerRecord {
   @OneToMany(() => CommunicationLog, (log) => log.customer)
   communications: CommunicationLog[];
 
+  @OneToMany(() => CrmAction, (action) => action.customerRecord)
+  actions: CrmAction[];
+
+  @OneToMany(() => AdAttribution, (attribution) => attribution.customerRecord)
+  adAttributions: AdAttribution[];
 
   @OneToMany(() => CustomerTag, (tag) => tag.customer)
   tags: CustomerTag[];
-
-
 }
 

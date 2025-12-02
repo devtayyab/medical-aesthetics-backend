@@ -31,12 +31,31 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/repeat-management", label: "Repeat Management" },
 ];
 
-const adminLinks: SidebarItem[] = [
-  { path: "/admin/dashboard", label: "Dashboard" },
-  { path: "/admin/users", label: "Users" },
-  { path: "/admin/loyalty-management", label: "Loyalty Management" },
-  { path: "/admin/monitor", label: "Monitor" },
-];
+const getAdminLinks = (role: string): SidebarItem[] => {
+  const baseLinks = [
+    { path: "/admin/users", label: "Users" },
+    { path: "/admin/loyalty-management", label: "Loyalty Management" },
+    { path: "/admin/monitor", label: "Monitor" },
+  ];
+
+  if (role === 'SUPER_ADMIN') {
+    return [
+      { path: "/admin/manager-dashboard", label: "Manager Dashboard" },
+      { path: "/admin/manager-crm/calls", label: "CRM Calls" },
+      { path: "/admin/manager-crm/reports", label: "CRM Reports" },
+      { path: "/admin/manager-crm/advertising", label: "Advertising" },
+      { path: "/admin/manager-crm/access", label: "Access Control" },
+      { path: "/admin/manager-crm/benefits", label: "Benefits" },
+      { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts" },
+      { path: "/admin/manager-crm/clinic-stats", label: "Clinic Stats" },
+    ];
+  }
+  
+  return [
+    { path: "/admin/dashboard", label: "Dashboard" },
+    ...baseLinks,
+  ];
+};
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -46,12 +65,12 @@ export const Sidebar: React.FC = () => {
   const links =
     role === "client"
       ? clientLinks
-      : role === "clinic"
+      : role === "clinic_owner"
         ? clinicLinks
-        : role === "salesperson"
-          ? crmLinks
-          : role === "admin"
-            ? adminLinks
+        : role === "admin"
+          ? getAdminLinks(role)
+          : role === "SUPER_ADMIN"
+            ? getAdminLinks(role)
             : [];
 
   return (

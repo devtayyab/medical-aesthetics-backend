@@ -86,6 +86,33 @@ export class TaskAutomationService {
       priority: 'medium',
       template: 'Reminder: Customer may be due for {treatment_type} treatment (last treatment: {last_treatment_date})',
     },
+    {
+      id: 'treatment_reminder_5months',
+      name: 'Treatment Reminder (5 months)',
+      trigger: 'treatment_reminder',
+      delayDays: 150,
+      actionType: 'treatment_reminder',
+      priority: 'medium',
+      template: 'Reminder: Consider repeating {treatment_type} (last: {last_treatment_date})',
+    },
+    {
+      id: 'treatment_reminder_10months',
+      name: 'Treatment Reminder (10 months)',
+      trigger: 'treatment_reminder',
+      delayDays: 300,
+      actionType: 'treatment_reminder',
+      priority: 'medium',
+      template: 'Reminder: Consider repeating {treatment_type} (last: {last_treatment_date})',
+    },
+    {
+      id: 'no_show_alert_2days',
+      name: 'No-Show Alert (2 days after)',
+      trigger: 'appointment_completed',
+      delayDays: 2,
+      actionType: 'no_show_follow_up',
+      priority: 'urgent',
+      template: 'URGENT: Patient missed appointment on {appointment_date}. Follow up.',
+    },
   ];
 
   async createAutomatedTasks(): Promise<void> {
@@ -100,6 +127,9 @@ export class TaskAutomationService {
 
     // Create treatment reminder tasks
     await this.createTreatmentReminderTasks();
+
+    // Create no-show alerts 2 days after missed appointments
+    await this.createNoShowAlertTasks();
   }
 
   private async createAppointmentConfirmationTasks(): Promise<void> {
@@ -219,48 +249,73 @@ export class TaskAutomationService {
   }
 
   private async createTreatmentReminderTasks(): Promise<void> {
-    // This would typically be based on treatment history and types
-    // For now, create a placeholder implementation
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    // Find customers who had treatments around 6 months ago
-    // This is a simplified version - in reality, you'd want to check specific treatment types
-    const customersForReminders = await this.usersRepository.find({
-      where: {
-        role: UserRole.CLIENT,
-      },
-      relations: ['clientAppointments'],
+    // Determine reminders based on last completed appointment and treatment type
+    const clients = await this.usersRepository.find({
+      where: { role: UserRole.CLIENT },
     });
 
-    // Filter customers who have completed appointments older than 6 months
-    const filteredCustomers = customersForReminders.filter(customer => {
-      return customer.clientAppointments?.some(appointment =>
-        appointment.startTime < sixMonthsAgo && appointment.status === 'completed'
-      );
-    });
+    for (const client of clients) {
+      const lastCompleted = await this.appointmentsRepository.findOne({
+        where: { clientId: client.id, status: AppointmentStatus.COMPLETED },
+        order: { startTime: 'DESC' },
+        relations: ['service'],
+      });
 
-    for (const customer of filteredCustomers) {
-      const rule = this.defaultRules.find(r => r.id === 'treatment_reminder_6months');
-      if (rule) {
-        // Get the most recent treatment for this customer
-        const lastAppointment = await this.appointmentsRepository.findOne({
-          where: { clientId: customer.id },
-          order: { startTime: 'DESC' },
-          relations: ['service'],
-        });
+      if (!lastCompleted) continue;
 
-        if (lastAppointment) {
-          await this.createAutomatedTask(
-            customer.id,
-            rule,
-            {
-              treatment_type: lastAppointment.service?.name || 'treatment',
-              last_treatment_date: lastAppointment.startTime,
-            },
-          );
-        }
+      const serviceName = (lastCompleted.service?.name || '').toLowerCase();
+      let ruleId = 'treatment_reminder_6months';
+      if (serviceName.includes('botox')) {
+        ruleId = 'treatment_reminder_5months';
+      } else if (serviceName.includes('filler')) {
+        ruleId = 'treatment_reminder_10months';
       }
+
+      const rule = this.defaultRules.find(r => r.id === ruleId);
+      if (!rule) continue;
+
+      await this.createAutomatedTask(
+        client.id,
+        rule,
+        {
+          treatment_type: lastCompleted.service?.name || 'treatment',
+          last_treatment_date: lastCompleted.startTime,
+        },
+      );
+    }
+  }
+
+  private async createNoShowAlertTasks(): Promise<void> {
+    // two days ago range
+    const start = new Date();
+    start.setDate(start.getDate() - 2);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setDate(end.getDate() - 2);
+    end.setHours(23, 59, 59, 999);
+
+    const missed = await this.appointmentsRepository.find({
+      where: {
+        startTime: Between(start, end),
+        status: AppointmentStatus.NO_SHOW as any,
+      },
+      relations: ['client', 'clinic', 'service'],
+    });
+
+    const rule = this.defaultRules.find(r => r.id === 'no_show_alert_2days');
+    if (!rule) return;
+
+    for (const appointment of missed) {
+      await this.createAutomatedTask(
+        appointment.clientId,
+        rule,
+        {
+          appointment_id: appointment.id,
+          appointment_date: appointment.startTime,
+          clinic_name: appointment.clinic?.name,
+          service_name: appointment.service?.name,
+        },
+      );
     }
   }
 

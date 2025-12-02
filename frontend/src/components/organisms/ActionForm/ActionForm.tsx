@@ -12,6 +12,7 @@ import {
   getRequiredFieldsForAction
 } from '@/store/slices/crmSlice';
 import type { AppDispatch } from '@/store';
+import axios from 'axios';
 import type { CrmAction } from '@/types';
 
 interface ActionFormProps {
@@ -40,10 +41,23 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+  const [clinics, setClinics] = useState<{ value: string; label: string }[]>([]);
 
   React.useEffect(() => {
     dispatch(getRequiredFieldsForAction(formData.actionType));
   }, [dispatch, formData.actionType]);
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await axios.get('/crm/accessible-clinics');
+        const options = (data || []).map((c: any) => ({ value: c.id, label: c.name }));
+        setClinics(options);
+      } catch (e) {
+        setClinics([]);
+      }
+    })();
+  }, []);
 
   const handleInputChange = (field: string, value: any) => {
     if (field.startsWith('metadata.')) {
@@ -66,18 +80,21 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   };
 
   const handleValidate = async () => {
-    await dispatch(validateAction({
+    const result = await dispatch(validateAction({
       customerId,
       actionData: formData
-    }));
+    })).unwrap();
+    setValidationErrors(result.missingFields || []);
+    setValidationWarnings(result.warnings || []);
+    return result;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    await handleValidate();
+    const validation = await handleValidate();
 
-    if (validationErrors.length === 0) {
+    if (validation.isValid) {
       try {
         await dispatch(createAction(formData)).unwrap();
         setFormData({
@@ -206,11 +223,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   label="Clinic"
                   value={formData.metadata?.clinic || ''}
                   onChange={(value) => handleInputChange('metadata.clinic', value)}
-                  options={[
-                    { value: 'clinic1', label: 'Downtown Clinic' },
-                    { value: 'clinic2', label: 'Westside Clinic' },
-                    { value: 'clinic3', label: 'Eastside Clinic' }
-                  ]}
+                  options={clinics}
                 />
 
                 <Select

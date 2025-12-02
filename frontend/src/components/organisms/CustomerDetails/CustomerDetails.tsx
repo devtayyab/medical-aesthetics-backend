@@ -31,11 +31,13 @@ interface CustomerDetailsProps {
   customerData: CustomerSummary;
 
   onUpdate?: () => void;
+  onCall?: (phone: string) => void;
 }
 
 export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   customerData,
-  onUpdate
+  onUpdate,
+  onCall
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const { record, appointments, communications, actions, tags, affiliations, summary } = customerData;
@@ -104,9 +106,20 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                     <Mail className="h-4 w-4" />
                     {record.customer?.email}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
-                    {record.customer?.phone || 'No phone'}
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1">
+                      <Phone className="h-4 w-4" />
+                      {record.customer?.phone || 'No phone'}
+                    </span>
+                    {record.customer?.phone && (
+                      <a
+                        href={`tel:${record.customer.phone}`}
+                        onClick={() => onCall?.(record.customer!.phone!)}
+                        className="inline-flex items-center px-2 py-1 text-sm rounded border border-gray-300 hover:bg-gray-100"
+                      >
+                        Call
+                      </a>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-2">

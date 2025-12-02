@@ -4,7 +4,7 @@ export interface User {
   firstName: string;
   lastName: string;
   phone?: string;
-  role: 'client' | 'admin' | 'clinic_owner' | 'doctor' | 'secretariat' | 'salesperson';
+  role: 'client' | 'admin' | 'SUPER_ADMIN' | 'clinic_owner' | 'doctor' | 'secretariat' | 'salesperson';
   profile?: any;
   profilePictureUrl?: string;
   lastLoginAt?: string;

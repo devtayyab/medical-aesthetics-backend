@@ -47,6 +47,7 @@ import { Tasks } from "@/pages/CRM/Tasks";
 import { Actions } from "@/pages/CRM/Actions";
 import { RepeatManagement } from "@/pages/CRM/RepeatManagement";
 import { Dashboard as AdminDashboard } from "@/pages/Admin/Dashboard";
+import { ManagerDashboard } from "./pages/Admin/ManagerDashboard/ManagerDashboard";
 import { Users as AdminUsers } from "@/pages/Admin/Users";
 import { LoyaltyManagement } from "@/pages/Admin/LoyaltyManagement";
 import { Monitor } from "@/pages/Admin/Monitor";
@@ -62,6 +63,14 @@ import "@/styles/globals.css";
 import SiteLogo from "@/assets/SiteLogo.png";
 import { CRM } from "./pages/CRM/CRM";
 import { CheckoutPage } from "./pages/Client/CheckoutPage";
+import AdminLayout from "@/components/layouts/AdminLayout";
+import { Calls as ManagerCrmCalls } from "@/pages/Admin/ManagerCRM/Calls";
+import { Reports as ManagerCrmReports } from "@/pages/Admin/ManagerCRM/Reports";
+import { Advertising as ManagerCrmAdvertising } from "@/pages/Admin/ManagerCRM/Advertising";
+import { AccessControl as ManagerCrmAccessControl } from "@/pages/Admin/ManagerCRM/AccessControl";
+import { Benefits as ManagerCrmBenefits } from "@/pages/Admin/ManagerCRM/Benefits";
+import { NoShowAlerts as ManagerCrmNoShowAlerts } from "@/pages/Admin/ManagerCRM/NoShowAlerts";
+import { ClinicStats as ManagerCrmClinicStats } from "@/pages/Admin/ManagerCRM/ClinicStats";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -110,16 +119,14 @@ function AppContent() {
     }
   }, [isAuthenticated, isLoading, location, navigate, hasRestoredSession]);
 
-  console.log(
-    "App: Rendering, isLoading:",
-    isLoading,
-    "isAuthenticated:",
-    isAuthenticated,
-    "user:",
-    user,
-    "refreshToken:",
-    refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
-  );
+
+  useEffect(() => {
+    if (
+      user?.role === "SUPER_ADMIN"
+    ) {
+      navigate("/admin/manager-dashboard", { replace: true });
+    }
+  }, [user]);
 
   // Show loader until session is restored
   if (!hasRestoredSession || isLoading) {
@@ -384,7 +391,7 @@ function AppContent() {
           <Route
             path="/crm/customers"
             element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
                 <Customers />
               </ProtectedLayout>
             }
@@ -392,7 +399,7 @@ function AppContent() {
           <Route
             path="/crm/customer/:id"
             element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
                 <CustomerDetails />
               </ProtectedLayout>
             }
@@ -400,7 +407,7 @@ function AppContent() {
           <Route
             path="/crm/tasks"
             element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
                 <Tasks />
               </ProtectedLayout>
             }
@@ -408,7 +415,7 @@ function AppContent() {
           <Route
             path="/crm/actions"
             element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
                 <Actions />
               </ProtectedLayout>
             }
@@ -416,7 +423,7 @@ function AppContent() {
           <Route
             path="/crm/repeat-management"
             element={
-              <ProtectedLayout allowedRoles={["salesperson"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
                 <RepeatManagement />
               </ProtectedLayout>
             }
@@ -424,7 +431,7 @@ function AppContent() {
           <Route
             path="/crm"
             element={
-              <ProtectedLayout allowedRoles={["admin"]}>
+              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner" , "SUPER_ADMIN"]}>
                 <CRM />
               </ProtectedLayout>
             }
@@ -434,7 +441,89 @@ function AppContent() {
             path="/admin/dashboard"
             element={
               <ProtectedLayout allowedRoles={["admin"]}>
-                <AdminDashboard />
+                <AdminLayout>
+                  <AdminDashboard />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manager-dashboard"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ManagerDashboard />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manager-crm/calls"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ManagerCrmCalls />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manager-crm/reports"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ManagerCrmReports />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manager-crm/advertising"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ManagerCrmAdvertising />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manager-crm/access"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ManagerCrmAccessControl />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manager-crm/benefits"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ManagerCrmBenefits />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manager-crm/no-show-alerts"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ManagerCrmNoShowAlerts />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/manager-crm/clinic-stats"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ManagerCrmClinicStats />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
@@ -442,7 +531,9 @@ function AppContent() {
             path="/admin/users"
             element={
               <ProtectedLayout allowedRoles={["admin"]}>
-                <AdminUsers />
+                <AdminLayout>
+                  <AdminUsers />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
@@ -450,7 +541,9 @@ function AppContent() {
             path="/admin/loyalty-management"
             element={
               <ProtectedLayout allowedRoles={["admin"]}>
-                <LoyaltyManagement />
+                <AdminLayout>
+                  <LoyaltyManagement />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
@@ -458,7 +551,9 @@ function AppContent() {
             path="/admin/monitor"
             element={
               <ProtectedLayout allowedRoles={["admin"]}>
-                <Monitor />
+                <AdminLayout>
+                  <Monitor />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />

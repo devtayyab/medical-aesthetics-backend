@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { clinicsAPI, bookingAPI, loyaltyAPI } from "@/services/api";
+import type { RootState } from "@/store";
 import type {
   Clinic,
   Service,

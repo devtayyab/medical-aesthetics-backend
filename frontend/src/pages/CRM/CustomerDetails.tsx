@@ -33,6 +33,26 @@ export const CustomerDetails: React.FC = () => {
     }
   };
 
+  const handleCall = (phone: string) => {
+    // Open mobile dialer
+    window.location.href = `tel:${phone}`;
+    // Fire-and-forget log for analytics (click-based, not provider-based)
+    if (customerRecord && user) {
+      dispatch(
+        logCommunication({
+          customerId: customerRecord.record.customerId,
+          salespersonId: user.id,
+          type: "call",
+          direction: "outgoing",
+          status: "completed",
+          subject: "Call initiated via CRM",
+          notes: `Dialed ${phone} from CRM (tel: link)`,
+          metadata: { clickOnly: true },
+        })
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -66,6 +86,7 @@ export const CustomerDetails: React.FC = () => {
     <CustomerDetailsComponent
       customerData={customerRecord}
       onUpdate={handleUpdate}
+      onCall={handleCall}
     />
   );
 };
