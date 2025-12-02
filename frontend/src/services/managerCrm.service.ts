@@ -1,4 +1,6 @@
 import { format } from "date-fns";
+import { api } from './api';
+
 
 // NOTE: These are mock implementations to unblock the frontend.
 // Replace with real API calls using axios instance from `src/services/api.ts`.
@@ -140,78 +142,249 @@ export const initiateCall = async (phone: string): Promise<{ ok: boolean; provid
   };
 };
 
-export const fetchAgentEmails = async (): Promise<AgentEmail[]> => [
-  { agentId: "a1", agentName: "Alice", email: "alice@cliniccrm.test" },
-  { agentId: "a2", agentName: "Bob", email: "bob@cliniccrm.test" },
-  { agentId: "a3", agentName: "Carol", email: "carol@cliniccrm.test" },
-];
+// Helper function to format dates for API
+const formatDateParam = (date: Date): string => {
+  return format(date, 'yyyy-MM-dd');
+};
 
-export const fetchAgentFormStats = async (): Promise<AgentFormStats[]> => [
-  { agentId: "a1", agentName: "Alice", formsReceived: 42 },
-  { agentId: "a2", agentName: "Bob", formsReceived: 35 },
-  { agentId: "a3", agentName: "Carol", formsReceived: 28 },
-];
+// Manager Analytics
+export const fetchAgentKpis = async (params?: { 
+  startDate?: Date; 
+  endDate?: Date;
+}): Promise<any[]> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
+  if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
+  
+  const response = await api.get('/crm/analytics/manager/agents', { params: queryParams });
+  return response.data;
+};
 
-export const fetchAgentCommunicationStats = async (): Promise<AgentCommunicationStats[]> => [
-  { agentId: "a1", agentName: "Alice", totalContacts: 120, realCommunications: 88 },
-  { agentId: "a2", agentName: "Bob", totalContacts: 95, realCommunications: 61 },
-  { agentId: "a3", agentName: "Carol", totalContacts: 77, realCommunications: 49 },
-];
+export const fetchServiceStats = async (params?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<ServicePerformance[]> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
+  if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
+  
+  const response = await api.get('/crm/analytics/manager/services', { params: queryParams });
+  return response.data;
+};
 
-export const fetchAgentAppointmentStats = async (): Promise<AgentAppointmentStats[]> => [
-  { agentId: "a1", agentName: "Alice", booked: 40, attended: 31, treatmentsCompleted: 25, cancelled: 6, noShows: 3 },
-  { agentId: "a2", agentName: "Bob", booked: 32, attended: 24, treatmentsCompleted: 18, cancelled: 5, noShows: 3 },
-  { agentId: "a3", agentName: "Carol", booked: 27, attended: 20, treatmentsCompleted: 15, cancelled: 4, noShows: 3 },
-];
+export const fetchClinicAnalytics = async (params?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<any> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
+  if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
+  
+  const response = await api.get('/crm/analytics/manager/clinics', { params: queryParams });
+  return response.data;
+};
 
-export const fetchAgentCashflow = async (): Promise<AgentCashflow[]> => [
-  { agentId: "a1", agentName: "Alice", revenue: 42000, refunds: 1200, net: 40800 },
-  { agentId: "a2", agentName: "Bob", revenue: 35500, refunds: 1800, net: 33700 },
-  { agentId: "a3", agentName: "Carol", revenue: 29800, refunds: 900, net: 28900 },
-];
+export const fetchCampaignPerformance = async (params?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<AdvertisementStat[]> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
+  if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
+  
+  const response = await api.get('/crm/analytics/campaigns', { params: queryParams });
+  return response.data;
+};
 
-export const fetchServicePerformance = async (): Promise<ServicePerformance[]> => [
-  { serviceId: "s1", serviceName: "Botox", totalAppointments: 110, totalRevenue: 55000, cancellations: 9 },
-  { serviceId: "s2", serviceName: "Dermal Fillers", totalAppointments: 85, totalRevenue: 51000, cancellations: 6 },
-  { serviceId: "s3", serviceName: "Laser Hair Removal", totalAppointments: 62, totalRevenue: 24800, cancellations: 7 },
-];
+// Agent Management
+export const fetchAgentEmails = async (): Promise<AgentEmail[]> => {
+  const response = await api.get('/crm/agents/emails');
+  return response.data;
+};
 
-export const fetchAdvertisementStats = async (): Promise<AdvertisementStat[]> => [
-  { adId: "ad1", channel: "Google Ads", campaignName: "Botox Q4", spent: 5000, patientsCame: 40, cancelled: 5, totalRevenue: 28000, agentBudgetOwner: "Alice" },
-  { adId: "ad2", channel: "Meta Ads", campaignName: "Fillers Black Friday", spent: 3000, patientsCame: 28, cancelled: 3, totalRevenue: 21000, agentBudgetOwner: "Bob" },
-  { adId: "ad3", channel: "Referrals", campaignName: "VIP Program", spent: 1200, patientsCame: 18, cancelled: 1, totalRevenue: 15000, agentBudgetOwner: "Carol" },
-];
+export const fetchAgentFormStats = async (params?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<AgentFormStats[]> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
+  if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
+  
+  const response = await api.get('/crm/analytics/agent-forms', { params: queryParams });
+  return response.data;
+};
 
-export const fetchAccessMatrix = async (): Promise<AccessMatrixRow[]> => [
-  {
-    agentId: "a1",
-    agentName: "Alice",
-    clinics: [
-      { clinicId: "c1", clinicName: "Downtown Clinic", hasAccess: true },
-      { clinicId: "c2", clinicName: "Westside Clinic", hasAccess: false, isPrivateToOwner: true },
-    ],
-  },
-  {
-    agentId: "a2",
-    agentName: "Bob",
-    clinics: [
-      { clinicId: "c1", clinicName: "Downtown Clinic", hasAccess: true },
-      { clinicId: "c2", clinicName: "Westside Clinic", hasAccess: true },
-    ],
-  },
-];
 
-export const fetchClientBenefits = async (): Promise<ClientBenefit[]> => [
-  { customerId: "u1", customerName: "John Doe", clinicName: "Downtown Clinic", discount: "10% off", membership: "Gold", lastUpdated: format(new Date(), "yyyy-MM-dd") },
-  { customerId: "u2", customerName: "Mary Sue", clinicName: "Westside Clinic", gift: "$20 voucher", membership: null, lastUpdated: format(new Date(), "yyyy-MM-dd") },
-];
+export const fetchAgentCommunicationStats = async (params?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<AgentCommunicationStats[]> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
+  if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
+  
+  const response = await api.get('/crm/analytics/agent-communications', { params: queryParams });
+  return response.data;
+};
 
-export const fetchNoShowAlerts = async (): Promise<NoShowAlert[]> => [
-  { appointmentId: "ap1", patientName: "John Doe", agentName: "Alice", clinicName: "Downtown Clinic", date: format(new Date(Date.now() - 2*86400000), "yyyy-MM-dd"), daysAgo: 2, actionRecommended: "Call patient again" },
-  { appointmentId: "ap2", patientName: "Mary Sue", agentName: "Bob", clinicName: "Westside Clinic", date: format(new Date(Date.now() - 1*86400000), "yyyy-MM-dd"), daysAgo: 1, actionRecommended: "SMS follow-up" },
-];
+export const fetchAgentAppointmentStats = async (params?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<AgentAppointmentStats[]> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
+  if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
+  
+  const response = await api.get('/crm/analytics/agent-appointments', { params: queryParams });
+  return response.data;
+};
 
-export const fetchClinicReturnRates = async (): Promise<ClinicReturnRate[]> => [
-  { clinicId: "c1", clinicName: "Downtown Clinic", returnRate: 0.42, last30Days: 17, last90Days: 49 },
-  { clinicId: "c2", clinicName: "Westside Clinic", returnRate: 0.36, last30Days: 14, last90Days: 41 },
-];
+// Customer Management
+export const fetchCustomerRecord = async (customerId: string): Promise<any> => {
+  const response = await api.get(`/crm/customers/${customerId}/record`);
+  return response.data;
+};
+
+export const updateCustomerRecord = async (customerId: string, data: any): Promise<void> => {
+  await api.put(`/crm/customers/${customerId}/record`, data);
+};
+
+export const fetchCommunicationHistory = async (customerId: string, filters?: any): Promise<any> => {
+  const response = await api.get(`/crm/customers/${customerId}/communications`, { params: filters });
+  return response.data;
+};
+
+export const logCommunication = async (data: {
+  customerId: string;
+  type: string;
+  notes?: string;
+  outcome?: string;
+  durationSec?: number;
+}): Promise<void> => {
+  await api.post('/crm/communications', data);
+};
+
+// Task/Action Management
+export const fetchActions = async (filters?: any): Promise<any> => {
+  const response = await api.get('/crm/actions', { params: filters });
+  return response.data;
+};
+
+export const createAction = async (data: any): Promise<any> => {
+  const response = await api.post('/crm/actions', data);
+  return response.data;
+};
+
+export const updateAction = async (actionId: string, data: any): Promise<void> => {
+  await api.put(`/crm/actions/${actionId}`, data);
+};
+
+export const fetchPendingActions = async (): Promise<any> => {
+  const response = await api.get('/crm/actions/pending');
+  return response.data;
+};
+
+export const fetchOverdueTasks = async (salespersonId?: string): Promise<any> => {
+  const params = salespersonId ? { salespersonId } : {};
+  const response = await api.get('/crm/tasks/overdue', { params });
+  return response.data;
+};
+
+// Access Control
+export const fetchAccessMatrix = async (): Promise<AccessMatrixRow[]> => {
+  const response = await api.get('/crm/access-matrix');
+  return response.data;
+};
+
+export const updateAgentAccess = async (agentId: string, clinicAccess: {
+  clinicId: string;
+  hasAccess: boolean;
+}[]): Promise<void> => {
+  await api.put(`/crm/access-matrix/${agentId}`, { clinicAccess });
+};
+
+// Client Benefits
+export const fetchClientBenefits = async (params?: {
+  search?: string;
+  clinicId?: string;
+}): Promise<ClientBenefit[]> => {
+  const response = await api.get('/crm/client-benefits', { params });
+  return response.data;
+};
+
+export const updateClientBenefit = async (customerId: string, data: Partial<ClientBenefit>): Promise<void> => {
+  await api.put(`/crm/client-benefits/${customerId}`, data);
+};
+
+// No-Show Management
+export const fetchNoShowAlerts = async (params?: {
+  daysAgo?: number;
+  status?: 'pending' | 'resolved';
+}): Promise<NoShowAlert[]> => {
+  const response = await api.get('/crm/no-show-alerts', { params });
+  return response.data;
+};
+
+export const resolveNoShowAlert = async (appointmentId: string, actionTaken: string): Promise<void> => {
+  await api.post(`/crm/no-show-alerts/${appointmentId}/resolve`, { actionTaken });
+};
+
+// Reporting
+export const generateWeeklyReports = async (): Promise<void> => {
+  await api.post('/crm/reports/weekly/agents');
+};
+
+// Helper function to get date range for the last N days
+export const getDateRange = (days: number): { startDate: Date; endDate: Date } => {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(endDate.getDate() - days);
+  return { startDate, endDate };
+};
+
+export const fetchAgentCashflow = async (params?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<AgentCashflow[]> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
+  if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
+  
+  const response = await api.get('/crm/analytics/agent-cashflow', { params: queryParams });
+  return response.data;
+};
+
+
+
+export const fetchClinicReturnRates = async (): Promise<ClinicReturnRate[]> => {
+  const response = await api.get('/crm/analytics/clinic-return-rates');
+  return response.data;
+};
+
+export const fetchServicePerformance = async (params?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<ServicePerformance[]> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
+  if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
+  
+  const response = await api.get('/crm/analytics/service-performance', { params: queryParams });
+  return response.data;
+};
+
+export const fetchAdvertisementStats = async (params?: {
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<AdvertisementStat[]> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
+  if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
+  
+  const response = await api.get('/crm/analytics/advertisement-stats', { params: queryParams });
+  return response.data;
+};
+
+
+
+

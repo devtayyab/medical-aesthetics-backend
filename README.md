@@ -278,3 +278,340 @@ For support and questions:
 ---
 
 Built with ❤️ using NestJS and TypeScript
+
+-- Update AdSpendLog table structure
+ALTER TABLE ad_spend_logs 
+ALTER COLUMN spend TYPE numeric(12,2) USING spend::numeric(12,2);
+
+ALTER TABLE ad_spend_logs 
+RENAME COLUMN spend TO amount;
+
+
+-- Add FK: ad_spend_logs.campaignId → ad_campaigns(id)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_ad_spend_logs_campaign'
+    ) THEN
+        ALTER TABLE ad_spend_logs
+        ADD CONSTRAINT fk_ad_spend_logs_campaign
+        FOREIGN KEY (campaignId) REFERENCES ad_campaigns(id)
+        ON DELETE CASCADE;
+    END IF;
+END $$;
+
+
+-- Add FK: ad_campaigns.ownerAgentId → users(id)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_ad_campaigns_owner_agent'
+    ) THEN
+        ALTER TABLE ad_campaigns
+        ADD CONSTRAINT fk_ad_campaigns_owner_agent
+        FOREIGN KEY (ownerAgentId) REFERENCES users(id)
+        ON DELETE SET NULL;
+    END IF;
+END $$;
+
+
+
+-- Add FK: agent_user_id → users(id)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_agent_clinic_access_agent_user_id'
+    ) THEN
+        ALTER TABLE agent_clinic_access
+        ADD CONSTRAINT fk_agent_clinic_access_agent_user_id
+        FOREIGN KEY (agent_user_id) REFERENCES users(id)
+        ON DELETE CASCADE;
+    END IF;
+END $$;
+
+-- Add FK: clinic_id → clinics(id)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_agent_clinic_access_clinic_id'
+    ) THEN
+        ALTER TABLE agent_clinic_access
+        ADD CONSTRAINT fk_agent_clinic_access_clinic_id
+        FOREIGN KEY (clinic_id) REFERENCES clinics(id)
+        ON DELETE CASCADE;
+    END IF;
+END $$;
+
+
+-- Create table
+CREATE TABLE IF NOT EXISTS agent_clinic_access (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_user_id UUID NOT NULL,
+    clinic_id UUID NOT NULL,
+    UNIQUE(agent_user_id, clinic_id)
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_agent_clinic_access_agent_user_id 
+    ON agent_clinic_access(agent_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_agent_clinic_access_clinic_id 
+    ON agent_clinic_access(clinic_id);
+
+-- Add foreign key: agent_user_id
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_agent_clinic_access_agent_user_id'
+    ) THEN
+        ALTER TABLE agent_clinic_access
+        ADD CONSTRAINT fk_agent_clinic_access_agent_user_id
+        FOREIGN KEY (agent_user_id) REFERENCES agent_users(id)
+        ON DELETE CASCADE;
+    END IF;
+END $$;
+
+-- Add foreign key: clinic_id
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_agent_clinic_access_clinic_id'
+    ) THEN
+        ALTER TABLE agent_clinic_access
+        ADD CONSTRAINT fk_agent_clinic_access_clinic_id
+        FOREIGN KEY (clinic_id) REFERENCES clinics(id)
+        ON DELETE CASCADE;
+    END IF;
+END $$;
+
+
+-- 1. Add ownerAgentId column if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name='ad_campaigns' 
+          AND column_name='owneragentid'
+    ) THEN
+        ALTER TABLE ad_campaigns 
+        ADD COLUMN owneragentid UUID NULL;
+    END IF;
+END $$;
+
+
+-- 2. Update AdSpendLog table structure (if needed)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name='ad_spend_logs' 
+          AND column_name='spend'
+    ) THEN
+        ALTER TABLE ad_spend_logs 
+        ALTER COLUMN spend TYPE numeric(12,2) USING spend::numeric(12,2),
+        RENAME COLUMN spend TO amount;
+    END IF;
+END $$;
+
+
+-- 3. Add channel column to ad_campaigns if missing
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name='ad_campaigns' 
+          AND column_name='channel'
+    ) THEN
+        ALTER TABLE ad_campaigns 
+        ADD COLUMN channel VARCHAR(255);
+    END IF;
+END $$;
+
+
+-- 4. Add FK: ad_spend_logs.campaignId → ad_campaigns.id
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_ad_spend_logs_campaign'
+    ) THEN
+        ALTER TABLE ad_spend_logs
+        ADD CONSTRAINT fk_ad_spend_logs_campaign
+        FOREIGN KEY (campaignId) REFERENCES ad_campaigns(id)
+        ON DELETE CASCADE;
+    END IF;
+END $$;
+
+
+-- 5. Add FK: ad_campaigns.ownerAgentId → users.id
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_ad_campaigns_owner_agent'
+    ) THEN
+        ALTER TABLE ad_campaigns
+        ADD CONSTRAINT fk_ad_campaigns_owner_agent
+        FOREIGN KEY (owneragentid) REFERENCES users(id)
+        ON DELETE SET NULL;
+    END IF;
+END $$;
+
+
+-- 1. First, check what columns actually exist in ad_spend_logs
+SELECT column_name, data_type, is_nullable, ordinal_position
+FROM information_schema.columns 
+WHERE table_name = 'ad_spend_logs' 
+ORDER BY ordinal_position;
+
+
+-- 2. Add missing columns to ad_spend_logs table if they don't exist
+DO $$
+BEGIN
+    -- Add campaignId column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name='ad_spend_logs' 
+          AND column_name='campaignid'
+    ) THEN
+        ALTER TABLE ad_spend_logs ADD COLUMN campaignid UUID NULL;
+    END IF;
+
+    -- Rename spend to amount if spend exists
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name='ad_spend_logs' 
+          AND column_name='spend'
+    ) THEN
+        ALTER TABLE ad_spend_logs 
+        ALTER COLUMN spend TYPE numeric(12,2) USING spend::numeric(12,2),
+        RENAME COLUMN spend TO amount;
+    END IF;
+
+    -- Add amount column if neither spend nor amount exist
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name='ad_spend_logs' 
+          AND column_name='amount'
+    ) AND NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name='ad_spend_logs' 
+          AND column_name='spend'
+    ) THEN
+        ALTER TABLE ad_spend_logs ADD COLUMN amount numeric(12,2) DEFAULT 0;
+    END IF;
+END $$;
+
+
+-- 3. Add missing columns to ad_campaigns table if they don't exist
+DO $$
+BEGIN
+    -- Add owneragentid column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name='ad_campaigns'
+          AND column_name='owneragentid'
+    ) THEN
+        ALTER TABLE ad_campaigns ADD COLUMN owneragentid UUID NULL;
+    END IF;
+
+    -- Add channel column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name='ad_campaigns'
+          AND column_name='channel'
+    ) THEN
+        ALTER TABLE ad_campaigns ADD COLUMN channel VARCHAR(255);
+    END IF;
+END $$;
+
+
+-- 4. Add foreign key constraints if they don't exist
+DO $$
+BEGIN
+    -- FK for ad_spend_logs.campaignid -> ad_campaigns.id
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_ad_spend_logs_campaign'
+    ) THEN
+        ALTER TABLE ad_spend_logs
+        ADD CONSTRAINT fk_ad_spend_logs_campaign
+        FOREIGN KEY (campaignid) REFERENCES ad_campaigns(id)
+        ON DELETE CASCADE;
+    END IF;
+
+    -- FK for ad_campaigns.owneragentid -> users.id
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_ad_campaigns_owner_agent'
+    ) THEN
+        ALTER TABLE ad_campaigns
+        ADD CONSTRAINT fk_ad_campaigns_owner_agent
+        FOREIGN KEY (owneragentid) REFERENCES users(id)
+        ON DELETE SET NULL;
+    END IF;
+END $$;
+
+
+-- 5. Create indexes if they don't exist
+DO $$
+BEGIN
+    -- Index on ad_spend_logs.campaignid
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE tablename = 'ad_spend_logs' 
+          AND indexname = 'idx_ad_spend_logs_campaign_id'
+    ) THEN
+        CREATE INDEX idx_ad_spend_logs_campaign_id ON ad_spend_logs(campaignid);
+    END IF;
+
+    -- Index on ad_campaigns.owneragentid
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE tablename = 'ad_campaigns' 
+          AND indexname = 'idx_ad_campaigns_owner_agent_id'
+    ) THEN
+        CREATE INDEX idx_ad_campaigns_owner_agent_id ON ad_campaigns(owneragentid);
+    END IF;
+END $$;
+
+
+-- 6. Verify final structure
+SELECT 
+    'ad_campaigns' as table_name,
+    column_name,
+    data_type,
+    is_nullable,
+    ordinal_position
+FROM information_schema.columns 
+WHERE table_name = 'ad_campaigns'
+
+UNION ALL
+
+SELECT 
+    'ad_spend_logs' as table_name,
+    column_name,
+    data_type,
+    is_nullable,
+    ordinal_position
+FROM information_schema.columns 
+WHERE table_name = 'ad_spend_logs'
+
+ORDER BY table_name, ordinal_position;

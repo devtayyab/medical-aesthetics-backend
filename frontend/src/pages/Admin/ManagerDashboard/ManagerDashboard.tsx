@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { fetchAgentKpis, fetchServiceStats } from '../../../services/managerAnalytics.service';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { fetchAgentKpis, fetchServiceStats, fetchClinicReturnRates, fetchServicePerformance, fetchAdvertisementStats } from '../../../services/managerAnalytics.service';
 import { DataTable } from '../../../components/ui/DataTable';
 import { columns as agentColumns } from './columns/agentColumns';
 import { columns as serviceColumns } from './columns/serviceColumns';
+import { TrendingUp, TrendingDown, Users, DollarSign, Calendar, Target, Activity, BarChart3, PieChart, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 // Define types
 export interface AgentKpi {
@@ -25,6 +30,25 @@ export interface ServiceStat {
   revenueShare?: number;
 }
 
+export interface ClinicReturnRate {
+  clinicId: string;
+  clinicName: string;
+  returnRate: number;
+  last30Days: number;
+  last90Days: number;
+}
+
+export interface AdvertisementStat {
+  adId: string;
+  channel: string;
+  campaignName: string;
+  spent: number;
+  patientsCame: number;
+  cancelled: number;
+  totalRevenue: number;
+  agentBudgetOwner: string;
+}
+
 // Format currency utility function
 const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('en-US', {
@@ -38,19 +62,27 @@ const formatCurrency = (value: number): string => {
 export const ManagerDashboard = () => {
   const [agentKpis, setAgentKpis] = useState<AgentKpi[]>([]);
   const [serviceStats, setServiceStats] = useState<ServiceStat[]>([]);
+  const [clinicReturnRates, setClinicReturnRates] = useState<ClinicReturnRate[]>([]);
+  const [advertisementStats, setAdvertisementStats] = useState<AdvertisementStat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState('30');
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const [agents, services] = await Promise.all([
+        const [agents, services, clinics, ads] = await Promise.all([
           fetchAgentKpis(),
           fetchServiceStats(),
+          fetchClinicReturnRates(),
+          fetchAdvertisementStats(),
         ]);
         setAgentKpis(agents);
         setServiceStats(services);
+        setClinicReturnRates(clinics);
+        setAdvertisementStats(ads);
         setError(null);
       } catch (err) {
         console.error('Failed to load manager dashboard data:', err);
@@ -61,7 +93,7 @@ export const ManagerDashboard = () => {
     };
 
     loadData();
-  }, []);
+  }, [selectedPeriod]);
 
   // Calculate summary metrics
   const totalRevenue = agentKpis.reduce((sum, agent) => sum + agent.totalRevenue, 0);

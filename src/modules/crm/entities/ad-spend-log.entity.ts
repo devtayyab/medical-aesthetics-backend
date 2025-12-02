@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index, ManyToOne, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, Index, CreateDateColumn } from 'typeorm';
 
 @Entity({ name: 'ad_spend_logs' })
 export class AdSpendLog {
@@ -12,8 +12,8 @@ export class AdSpendLog {
   @Column({ type: 'date' })
   date: string; // YYYY-MM-DD
 
-  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
-  spend: string;
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  amount: number;
 
   @Column({ type: 'int', default: 0 })
   clicks: number;

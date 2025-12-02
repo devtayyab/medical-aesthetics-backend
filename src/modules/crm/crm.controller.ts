@@ -432,4 +432,164 @@ export class CrmController {
   sendWeeklyReports() {
     return this.crmService.sendWeeklyAgentReports();
   }
+
+  // Agent Management Endpoints
+  @Get('agents/emails')
+  @ApiOperation({ summary: 'Get all agent emails' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getAgentEmails() {
+    return this.crmService.getAgentEmails();
+  }
+
+  @Get('analytics/agent-forms')
+  @ApiOperation({ summary: 'Get agent form statistics' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getAgentFormStats(
+    @Query() query: { startDate?: string; endDate?: string }
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getAgentFormStats(dateRange);
+  }
+
+  @Get('analytics/agent-communications')
+  @ApiOperation({ summary: 'Get agent communication statistics' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getAgentCommunicationStats(
+    @Query() query: { startDate?: string; endDate?: string }
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getAgentCommunicationStats(dateRange);
+  }
+
+  @Get('analytics/agent-appointments')
+  @ApiOperation({ summary: 'Get agent appointment statistics' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getAgentAppointmentStats(
+    @Query() query: { startDate?: string; endDate?: string }
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getAgentAppointmentStats(dateRange);
+  }
+
+  @Get('analytics/agent-cashflow')
+  @ApiOperation({ summary: 'Get agent cashflow statistics' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getAgentCashflow(
+    @Query() query: { startDate?: string; endDate?: string }
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getAgentCashflow(dateRange);
+  }
+
+  // Access Control Endpoints
+  @Get('access-matrix')
+  @ApiOperation({ summary: 'Get agent access matrix' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getAccessMatrix() {
+    return this.crmService.getAccessMatrix();
+  }
+
+  @Put('access-matrix/:agentId')
+  @ApiOperation({ summary: 'Update agent access matrix' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  updateAgentAccess(
+    @Param('agentId') agentId: string,
+    @Body() data: { clinicAccess: { clinicId: string; hasAccess: boolean }[] }
+  ) {
+    return this.crmService.updateAgentAccess(agentId, data.clinicAccess);
+  }
+
+  // Client Benefits Endpoints
+  @Get('client-benefits')
+  @ApiOperation({ summary: 'Get client benefits' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getClientBenefits(
+    @Query() query: { search?: string; clinicId?: string }
+  ) {
+    return this.crmService.getClientBenefits(query);
+  }
+
+  @Put('client-benefits/:customerId')
+  @ApiOperation({ summary: 'Update client benefit' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  updateClientBenefit(
+    @Param('customerId') customerId: string,
+    @Body() data: any
+  ) {
+    return this.crmService.updateClientBenefit(customerId, data);
+  }
+
+  // No-Show Management Endpoints
+  @Get('no-show-alerts')
+  @ApiOperation({ summary: 'Get no-show alerts' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getNoShowAlerts(
+    @Query() query: { daysAgo?: number; status?: 'pending' | 'resolved' }
+  ) {
+    return this.crmService.getNoShowAlerts(query);
+  }
+
+  @Post('no-show-alerts/:appointmentId/resolve')
+  @ApiOperation({ summary: 'Resolve no-show alert' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  resolveNoShowAlert(
+    @Param('appointmentId') appointmentId: string,
+    @Body() data: { actionTaken: string }
+  ) {
+    return this.crmService.resolveNoShowAlert(appointmentId, data.actionTaken);
+  }
+
+  // Additional Analytics Endpoints
+  @Get('analytics/clinic-return-rates')
+  @ApiOperation({ summary: 'Get clinic return rates' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getClinicReturnRates() {
+    return this.crmService.getClinicReturnRates();
+  }
+
+  @Get('analytics/service-performance')
+  @ApiOperation({ summary: 'Get service performance statistics' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getServicePerformance(
+    @Query() query: { startDate?: string; endDate?: string }
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getServicePerformance(dateRange);
+  }
+
+  @Get('analytics/advertisement-stats')
+  @ApiOperation({ summary: 'Get advertisement statistics' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getAdvertisementStats(
+    @Query() query: { startDate?: string; endDate?: string }
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getAdvertisementStats(dateRange);
+  }
 }
