@@ -53,8 +53,6 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         AdCampaign,
       ],
       ssl: this.configService.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
-      migrations: ['dist/migrations/*.js'],
-      migrationsRun: true,
     };
   }
 }
