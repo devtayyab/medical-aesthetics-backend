@@ -1,14 +1,10 @@
-import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { fetchAgentKpis, fetchServiceStats, fetchClinicReturnRates, fetchServicePerformance, fetchAdvertisementStats } from '../../../services/managerAnalytics.service';
+import { useEffect, useState } from 'react';
 import { DataTable } from '../../../components/ui/DataTable';
+import { fetchAgentKpis, fetchServiceStats } from '../../../services/managerAnalytics.service';
+import { fetchAdvertisementStats, fetchClinicReturnRates } from '../../../services/managerCrm.service';
 import { columns as agentColumns } from './columns/agentColumns';
 import { columns as serviceColumns } from './columns/serviceColumns';
-import { TrendingUp, TrendingDown, Users, DollarSign, Calendar, Target, Activity, BarChart3, PieChart, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 // Define types
 export interface AgentKpi {
@@ -46,7 +42,7 @@ export interface AdvertisementStat {
   patientsCame: number;
   cancelled: number;
   totalRevenue: number;
-  agentBudgetOwner: string;
+  agentBudgetOwner?: string;
 }
 
 // Format currency utility function
