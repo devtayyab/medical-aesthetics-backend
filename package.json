@@ -10,12 +10,10 @@
     "start:debug": "NODE_OPTIONS='--inspect' ts-node-dev -r tsconfig-paths/register --respawn --transpile-only src/main.ts",
     "prestart:prod": "npm run build",
     "start:prod": "node dist/main.js",
-    
     "migration:create": "typeorm-ts-node-commonjs migration:create",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/config/database.config.ts",
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm-ts-node-commonjs/cli.js migration:run -d src/config/database.config.ts",
     "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm-ts-node-commonjs/cli.js migration:revert -d src/config/database.config.ts",
-    
     "db:check": "ts-node -r tsconfig-paths/register src/scripts/check-db.ts",
     "db:reset": "npm run migration:revert && npm run migration:run",
     "deploy:staging": "NODE_ENV=staging npm run migration:run && NODE_ENV=staging npm run start:prod",
@@ -38,6 +36,8 @@
     "bull": "^4.16.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^17.2.3",
     "firebase-admin": "^13.4.0",
     "moment-timezone": "^0.6.0",

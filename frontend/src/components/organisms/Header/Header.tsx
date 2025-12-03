@@ -248,8 +248,7 @@ export const Header: React.FC = () => {
             ? "justify-content: center;"
             : ""}
         `}
-      >
-        <Link
+      >        <Link
           to={
             clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : user?.role === "SUPER_ADMIN" ? "/admin/manager-dashboard" : "/"
           }
@@ -397,6 +396,48 @@ export const Header: React.FC = () => {
         </button>
       </div>
 
+   {/* if user is not logged in , add Home , face and Body medical aesthetics , Asthetics Gynacology , Asthetics Dermatology , Asthetics Plastic Surgery , Hair Removal laser */}
+   {!isAuthenticated && (
+    <div className="flex items-center gap-5 justify-center">
+    <Link
+      to="/"
+      className="text-white"
+    >
+     Home
+    </Link>
+    <Link
+      to="/"
+      className="text-white"
+    >
+     Face and Body Medical Aesthetics
+    </Link>
+    <Link
+      to="/"
+      className="text-white"
+    >
+     Asthetics Gynacology
+    </Link>
+    <Link
+      to="/"
+      className="text-white"
+    >
+     Asthetics Dermatology
+    </Link>
+    <Link
+      to="/"
+      className="text-white"
+    >
+     Asthetics Plastic Surgery
+    </Link>
+    <Link
+      to="/"
+      className="text-white"
+    >
+     Hair Removal Laser
+    </Link>
+    </div>
+  )}
+
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className={mobileMenuStyle}>
@@ -517,6 +558,43 @@ export const Header: React.FC = () => {
               >
                 Sign Up
               </Button>
+                 
+    <Link
+      to="/"
+      className="text-black"
+    >
+     Home
+    </Link>
+    <Link
+      to="/"
+      className="text-black"
+    >
+     Face and Body Medical Aesthetics
+    </Link>
+    <Link
+      to="/"
+      className="text-black"
+    >
+     Asthetics Gynacology
+    </Link>
+    <Link
+      to="/"
+      className="text-black"
+    >
+     Asthetics Dermatology
+    </Link>
+    <Link
+      to="/"
+      className="text-black"
+    >
+     Asthetics Plastic Surgery
+    </Link>
+    <Link
+      to="/"
+      className="text-black"
+    >
+     Hair Removal Laser
+    </Link>
             </div>
           )}
         </div>

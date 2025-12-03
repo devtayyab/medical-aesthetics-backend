@@ -63,6 +63,7 @@ import "@/styles/globals.css";
 import SiteLogo from "@/assets/SiteLogo.png";
 import { CRM } from "./pages/CRM/CRM";
 import { CheckoutPage } from "./pages/Client/CheckoutPage";
+import BookingConfirmation from "./pages/Client/BookingConfirmation";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import { Calls as ManagerCrmCalls } from "@/pages/Admin/ManagerCRM/Calls";
 import { Reports as ManagerCrmReports } from "@/pages/Admin/ManagerCRM/Reports";
@@ -254,6 +255,14 @@ function AppContent() {
             element={
               <ProtectedLayout allowedRoles={["client"]}>
                 <CheckoutPage />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/booking-confirmation"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <BookingConfirmation />
               </ProtectedLayout>
             }
           />

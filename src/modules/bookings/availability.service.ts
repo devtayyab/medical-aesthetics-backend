@@ -5,7 +5,6 @@ import { Appointment } from './entities/appointment.entity';
 import { AppointmentHold } from './entities/appointment-hold.entity';
 import { ClinicsService } from '../clinics/clinics.service';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
-import moment from 'moment-timezone';
 
 @Injectable()
 export class AvailabilityService {
@@ -24,8 +23,28 @@ export class AvailabilityService {
     date?: string,
   ): Promise<any[]> {
     console.log('🔵 Availability Request:', { clinicId, serviceId, providerId, date });
+    
+    // Validate required parameters
+    if (!clinicId || !serviceId) {
+      throw new Error('Clinic ID and Service ID are required');
+    }
+    
+    // Default to today if no date provided
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    console.log('🔵 Using date:', targetDate);
+    
     const clinic = await this.clinicsService.findById(clinicId);
+    if (!clinic) {
+      throw new Error('Clinic not found');
+    }
+    
+
+    console.log('🔵 Clinic:', clinic);
+
     const services = await this.clinicsService.findServices(clinicId);
+    if (!services || services.length === 0) {
+      throw new Error('No services found for this clinic');
+    }
     
     const service = services.find(s => s.id === serviceId);
     if (!service) {
@@ -33,11 +52,19 @@ export class AvailabilityService {
     }
 
     const timezone = clinic.timezone || 'UTC';
-    const startOfDay = moment.tz(date, timezone).startOf('day');
-    const endOfDay = moment.tz(date, timezone).endOf('day');
+    console.log('🔵 Using timezone:', timezone);
+    
+    // Create date objects for start and end of day (simplified - ignoring timezone for now)
+    const targetDateObj = new Date(targetDate + 'T00:00:00.000Z');
+    const startOfDay = new Date(targetDateObj);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(targetDateObj);
+    endOfDay.setUTCHours(23, 59, 59, 999);
 
     // Get business hours for the day
-    const dayOfWeek = startOfDay.format('dddd').toLowerCase();
+    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayOfWeek = daysOfWeek[targetDateObj.getUTCDay()];
     const businessHours = clinic.businessHours?.[dayOfWeek];
     
     if (!businessHours || !businessHours.isOpen) {
@@ -48,7 +75,7 @@ export class AvailabilityService {
     const existingAppointments = await this.appointmentsRepository.find({
       where: {
         providerId,
-        startTime: Between(startOfDay.toDate(), endOfDay.toDate()),
+        startTime: Between(startOfDay, endOfDay),
         status: AppointmentStatus.CONFIRMED,
       },
     });
@@ -57,34 +84,45 @@ export class AvailabilityService {
     const activeHolds = await this.holdsRepository.find({
       where: {
         providerId,
-        startTime: Between(startOfDay.toDate(), endOfDay.toDate()),
+        startTime: Between(startOfDay, endOfDay),
         expiresAt: new Date(),
       },
     });
 
     // Generate available slots
     const slots = [];
-    const openTime = moment.tz(`${date} ${businessHours.open}`, timezone);
-    const closeTime = moment.tz(`${date} ${businessHours.close}`, timezone);
     
-    let currentSlot = openTime.clone();
+    // Parse business hours
+    const [openHour, openMinute] = businessHours.open.split(':').map(Number);
+    const [closeHour, closeMinute] = businessHours.close.split(':').map(Number);
     
-    while (currentSlot.clone().add(service.durationMinutes, 'minutes').isSameOrBefore(closeTime)) {
-      const slotStart = currentSlot.clone();
-      const slotEnd = currentSlot.clone().add(service.durationMinutes, 'minutes');
+    // Create open and close times
+    const openTime = new Date(targetDateObj);
+    openTime.setUTCHours(openHour, openMinute, 0, 0);
+    
+    const closeTime = new Date(targetDateObj);
+    closeTime.setUTCHours(closeHour, closeMinute, 0, 0);
+    
+    let currentSlot = new Date(openTime);
+    
+    // Generate slots in 30-minute intervals
+    while (currentSlot.getTime() + (service.durationMinutes * 60000) <= closeTime.getTime()) {
+      const slotStart = new Date(currentSlot);
+      const slotEnd = new Date(currentSlot.getTime() + (service.durationMinutes * 60000));
       
       // Check if slot conflicts with existing appointments or holds
       const hasConflict = existingAppointments.some(apt => {
-        const aptStart = moment(apt.startTime);
-        const aptEnd = moment(apt.endTime);
-        return slotStart.isBefore(aptEnd) && slotEnd.isAfter(aptStart);
+        const aptStart = new Date(apt.startTime);
+        const aptEnd = new Date(apt.endTime);
+        return slotStart < aptEnd && slotEnd > aptStart;
       }) || activeHolds.some(hold => {
-        const holdStart = moment(hold.startTime);
-        const holdEnd = moment(hold.endTime);
-        return slotStart.isBefore(holdEnd) && slotEnd.isAfter(holdStart);
+        const holdStart = new Date(hold.startTime);
+        const holdEnd = new Date(hold.endTime);
+        return slotStart < holdEnd && slotEnd > holdStart;
       });
 
-      if (!hasConflict && slotStart.isAfter(moment())) { // Future slots only
+      console.log('🔵 Slot:', { slotStart, slotEnd, hasConflict });
+      if (!hasConflict) { // Future slots only
         slots.push({
           startTime: slotStart.toISOString(),
           endTime: slotEnd.toISOString(),
@@ -92,7 +130,8 @@ export class AvailabilityService {
         });
       }
 
-      currentSlot.add(30, 'minutes'); // 30-minute intervals
+      // Move to next 30-minute slot
+      currentSlot.setTime(currentSlot.getTime() + (30 * 60000));
     }
 
     return slots;
