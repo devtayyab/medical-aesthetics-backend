@@ -398,40 +398,40 @@ export const Header: React.FC = () => {
 
    {/* if user is not logged in , add Home , face and Body medical aesthetics , Asthetics Gynacology , Asthetics Dermatology , Asthetics Plastic Surgery , Hair Removal laser */}
    {!isAuthenticated && (
-    <div className="flex items-center gap-5 justify-center">
+    <div className="flex items-center gap-5 justify-center mt-5">
     <Link
       to="/"
-      className="text-white"
+      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
     >
      Home
     </Link>
     <Link
-      to="/"
-      className="text-white"
+      to="/search?q=Face and Body Medical Aesthetics"
+      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
     >
      Face and Body Medical Aesthetics
     </Link>
     <Link
-      to="/"
-      className="text-white"
+      to="/search?q=Asthetics Gynacology"
+      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
     >
      Asthetics Gynacology
     </Link>
     <Link
-      to="/"
-      className="text-white"
+      to="/search?q=Asthetics Dermatology"
+      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
     >
      Asthetics Dermatology
     </Link>
     <Link
-      to="/"
-      className="text-white"
+      to="/search?q=Asthetics Plastic Surgery"
+      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
     >
      Asthetics Plastic Surgery
     </Link>
     <Link
-      to="/"
-      className="text-white"
+      to="/search?q=Hair Removal Laser"
+      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
     >
      Hair Removal Laser
     </Link>
@@ -566,31 +566,31 @@ export const Header: React.FC = () => {
      Home
     </Link>
     <Link
-      to="/"
+      to="/search?q=Face and Body Medical Aesthetics"
       className="text-black"
     >
      Face and Body Medical Aesthetics
     </Link>
     <Link
-      to="/"
+      to="/search?q=Asthetics Gynacology"
       className="text-black"
     >
      Asthetics Gynacology
     </Link>
     <Link
-      to="/"
+      to="/search?q=Asthetics Dermatology"
       className="text-black"
     >
      Asthetics Dermatology
     </Link>
     <Link
-      to="/"
+      to="/search?q=Asthetics Plastic Surgery"
       className="text-black"
     >
      Asthetics Plastic Surgery
     </Link>
     <Link
-      to="/"
+      to="/search?q=Hair Removal Laser"
       className="text-black"
     >
      Hair Removal Laser

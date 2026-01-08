@@ -34,7 +34,7 @@ const BookingConfirmation: React.FC = () => {
       navigate('/search');
     }
     setIsLoading(false);
-  }, [location.state, navigate]);
+  }, [location.state, navigate, isLoading]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

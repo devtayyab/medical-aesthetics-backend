@@ -14,8 +14,8 @@ import BookingNoteModal from '@/components/Modal/BookingNoteModal';
 import { Select } from "@/components/atoms/Select/Select";
 import { FaBackspace, FaBackward, FaCheckCircle, FaChevronLeft, FaShieldAlt } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { createAppointment } from "@/store/slices/bookingSlice";
+import { Provider, useDispatch, useSelector } from "react-redux";
+import { createAppointment , clearBooking } from "@/store/slices/bookingSlice";
 import type { RootState, AppDispatch } from "@/store";
 // Custom class for rounded bottom corners only
 const roundedBottomCorners = css`
@@ -34,7 +34,7 @@ const roundedTopCorners = css`
 export const CheckoutPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
-    const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading, error } = useSelector((state: RootState) => state.booking);
+    const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading, error  } = useSelector((state: RootState) => state.booking);
     const { user } = useSelector((state: RootState) => state.auth);
     
     const [isBookingNoteOpen, setBookingNoteOpen] = useState(false);
@@ -43,6 +43,7 @@ export const CheckoutPage: React.FC = () => {
     const [securityCode, setSecurityCode] = useState('');
     const [nameOnCard, setNameOnCard] = useState('');
     const [bookingNote, setBookingNote] = useState('');
+
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -105,26 +106,29 @@ export const CheckoutPage: React.FC = () => {
         }
 
         setIsSubmitting(true);
-        
+        console.log(`${selectedDate} ${selectedTimeSlot.startTime}`)
         try {
             const appointmentData = {
                 clinicId: selectedClinic.id,
                 serviceId: selectedServices[0].id, // Assuming single service for now
                 clientId: user?.id || 'guest',
-                startTime: new Date(`${selectedDate} ${selectedTimeSlot.startTime}`).toISOString(),
-                endTime: new Date(`${selectedDate} ${selectedTimeSlot.endTime}`).toISOString(),
+                providerId: user?.id,
+                startTime: new Date(`${selectedTimeSlot.startTime}`)?.toISOString(),
+                endTime: new Date(`${selectedTimeSlot.endTime}`)?.toISOString(),
                 notes: bookingNote,
                 paymentMethod: 'card',
-                clientDetails: {
-                    fullName: formData.fullName,
-                    email: formData.email,
-                    phone: `${formData.countryCode}${formData.phone}`
-                }
+                // clientDetails: {
+                //     fullName: formData.fullName,
+                //     email: formData.email,
+                //     phone: `${formData.countryCode}${formData.phone}`
+                // }
             };
 
             const result = await dispatch(createAppointment(appointmentData));
+            console.log('Booking result:', result);
             if (result.meta.requestStatus === 'fulfilled') {
                 // Success - redirect to confirmation page
+                dispatch(clearBooking());
                 navigate('/booking-confirmation', { state: { appointment: result.payload } });
             } else {
                 console.error('Booking failed:', result);
@@ -132,8 +136,12 @@ export const CheckoutPage: React.FC = () => {
         } catch (error) {
             console.error('Booking error:', error);
         } finally {
-            setIsSubmitting(false);
+
+           
+        setIsSubmitting(false);
+    
         }
+
     };
 
     useEffect(() => {
@@ -518,12 +526,12 @@ export const CheckoutPage: React.FC = () => {
                         </div>
                         <div className="bg-white rounded-lg p-4 mb-6 border border-blue-200">
                             <div className="flex justify-between items-center mb-4">
-                                <div className="text-3xl font-bold text-blue-600">
+                                <div className="text-xl font-bold text-blue-600">
                                     {selectedTimeSlot?.startTime || '17:00'}
                                 </div>
                                 <div className="border-l border-gray-300 h-8 mx-4"></div>
                                 <div className="text-right">
-                                    <div className="text-sm font-medium text-gray-800">
+                                    <div className="text-sm text-gray-800">
                                         {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Sat 13 Sep'}
                                     </div>
                                     <div className="text-xs text-gray-500">
