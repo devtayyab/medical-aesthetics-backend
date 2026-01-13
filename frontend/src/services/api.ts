@@ -263,6 +263,7 @@ export const crmAPI = {
   importFacebookLeads: (formId: string, limit?: number) =>
     api.post(`/crm/facebook/import/${formId}`, { limit }),
   getFacebookForms: () => api.get("/crm/facebook/forms"),
+  testFacebookConnection: () => api.get("/crm/facebook/test-connection"),
 
   // Duplicate Detection
   checkForDuplicates: (data: {
@@ -303,12 +304,12 @@ export const crmAPI = {
   updateAction: (id: string, data: Partial<CrmAction>) =>
     api.patch(`/crm/actions/${id}`, data),
   deleteAction: (id: string) => api.delete(`/crm/actions/${id}`),
-  getActions: (salespersonId: string, filters?: {
+  getActions: (salespersonId?: string, filters?: {
     status?: string;
     priority?: string;
     customerId?: string;
-  }) => api.get(`/crm/actions/${salespersonId}`, { params: filters }),
-  getPendingActions: (salespersonId: string) =>
+  }) => api.get(`/crm/actions`, { params: filters }),
+  getPendingActions: (salespersonId?: string) =>
     api.get(`/crm/actions/${salespersonId}/pending`),
   getOverdueTasks: (salespersonId?: string) =>
     api.get("/crm/tasks/overdue", { params: { salespersonId } }),
@@ -381,6 +382,7 @@ export const adminAPI = {
   getUsers: () => api.get("/admin/users"),
   updateRole: (id: string, role: string) =>
     api.patch(`/admin/users/${id}/role`, { role }),
+  getLoyalty: () => api.get("/admin/loyalty"),
   updateLoyalty: (data: {
     tiers: { name: string; points: number; rewards: string[] }[];
   }) => api.patch("/admin/loyalty", data),

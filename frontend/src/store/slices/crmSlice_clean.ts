@@ -1,39 +1,23 @@
-import { createSlice, createAsyncThunk, PayloadAction, Action } from "@reduxjs/toolkit";
-import { crmAPI } from "@/services/api";
-import type { Lead } from "@/types/crm.types";
-import type {
-  CustomerRecord,
-  CommunicationLog,
-  CrmAction,
-  CustomerTag,
-  CustomerSummary,
-  DuplicateCheckResult,
-  TaskAutomationRule,
-  ValidationResult,
-  CrmFilters,
-  CrmAnalytics
-} from "@/types";
-import type { Customer } from "@/types/crm.types";
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { crmAPI } from '@/services/api';
+import type { CrmFilters, CrmAnalytics } from '@/types';
+import type { Lead, CustomerRecord, CommunicationLog, CrmAction, CustomerTag, CustomerSummary, DuplicateCheckResult, TaskAutomationRule, ValidationResult, RequiredFields, FacebookLeadData, ParsedFacebookLead, User, Task } from '@/types';
+
 interface CrmState {
   // Lead Management
   leads: Lead[];
   selectedLead: Lead | null;
   leadFilters: CrmFilters;
-  customer: Customer | null;
+
   // Customer Management
-  customerRecord: CustomerSummary | null;
+  customer: User | null;
+  customerRecord: CustomerRecord | null;
   customerFilters: CrmFilters;
-  
+
   // Actions/Activity Log
   actions: CrmAction[];
- 
-
-  // Repeat Customer Management
-  repeatCustomers: CustomerSummary[];
-  followUpCustomers: CustomerSummary[];
-  recurringSchedule: any;
-
-  // Communication Management
+  pendingActions: CrmAction[];
+  overdueActions: CrmAction[];
   communications: CommunicationLog[];
   communicationFilters: {
     type?: string;
@@ -41,26 +25,20 @@ interface CrmState {
     endDate?: string;
   };
 
-  // Action/Task Management
-  tasks: CrmAction[];
-  selectedTask: CrmAction | null;
-  overdueTasks: CrmAction[];
-  pendingTasks: CrmAction[];
+  // Repeat Customer Management
+  repeatCustomers: CustomerSummary[];
+  followUpCustomers: CustomerSummary[];
+  recurringSchedule: any;
+
+  // Task Automation
   automationRules: TaskAutomationRule[];
-
-  // Tag Management
-  customerTags: CustomerTag[];
-
-  // Duplicate Management
-  duplicateCheck: DuplicateCheckResult | null;
-  duplicateSuggestions: DuplicateCheckResult[];
-
-  // Validation
-  fieldValidation: ValidationResult | null;
-  requiredFields: any;
 
   // Analytics
   analytics: CrmAnalytics | null;
+
+  // Validation
+  fieldValidation: ValidationResult | null;
+  duplicateCheck: DuplicateCheckResult | null;
 
   // UI State
   isLoading: boolean;
@@ -69,33 +47,41 @@ interface CrmState {
 }
 
 const initialState: CrmState = {
+  // Lead Management
   leads: [],
   selectedLead: null,
   leadFilters: {},
-  actions: [],
-  isLoading: false,
-  error: null,
+
+  // Customer Management
+  customer: null,
   customerRecord: null,
   customerFilters: {},
+
+  // Actions/Activity Log
+  actions: [],
+  pendingActions: [],
+  overdueActions: [],
+  communications: [],
+  communicationFilters: {},
 
   // Repeat Customer Management
   repeatCustomers: [],
   followUpCustomers: [],
-  recurringSchedule: null,
-  customer: null,
-  communications: [],
-  communicationFilters: {},
-  tasks: [],
-  selectedTask: null,
-  overdueTasks: [],
-  pendingTasks: [],
+  recurringSchedule: {},
+
+  // Task Automation
   automationRules: [],
-  customerTags: [],
-  duplicateCheck: null,
-  duplicateSuggestions: [],
-  fieldValidation: null,
-  requiredFields: null,
+
+  // Analytics
   analytics: null,
+
+  // Validation
+  fieldValidation: null,
+  duplicateCheck: null,
+
+  // UI State
+  isLoading: false,
+  error: null,
   lastUpdated: null,
 };
 
@@ -104,14 +90,6 @@ export const createLead = createAsyncThunk(
   "crm/createLead",
   async (data: {
     source: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone?: string;
-    facebookLeadId?: string;
-    facebookFormId?: string;
-    facebookCampaignId?: string;
-    facebookAdSetId?: string;
     facebookAdId?: string;
     facebookLeadData?: any;
     status: string;
@@ -137,16 +115,10 @@ export const fetchLead = createAsyncThunk(
     return response.data;
   }
 );
-interface UpdateLeadPayload {
-  id: string;
-  updates: Partial<Lead>;
-}
+
 export const updateLead = createAsyncThunk(
   "crm/updateLead",
-  async (data: UpdateLeadPayload) => {
-    if (data.updates.status) {
-      data.updates.status = data.updates.status as Lead["status"];
-    }
+  async (data: { id: string; updates: Partial<Lead> }) => {
     const response = await crmAPI.updateLead(data.id, data.updates);
     return response.data;
   }
@@ -160,28 +132,27 @@ export const deleteLead = createAsyncThunk(
   }
 );
 
-// Customer Management
-export const fetchCustomerRecord = createAsyncThunk(
-  "crm/fetchCustomerRecord",
-  async (data: { salespersonId?: string }) => {
-    const response = await crmAPI.getCustomerRecord(data.salespersonId);
+// Customer Record Management
+export const getCustomerRecord = createAsyncThunk(
+  "crm/getCustomerRecord",
+  async (customerId: string) => {
+    const response = await crmAPI.getCustomerRecord(customerId);
     return response.data;
   }
 );
-
-export const fetchCustomer = createAsyncThunk(
-  "crm/fetchCustomer",
-  async (data: { id: string }) => {
-    const response = await crmAPI.getCustomer(data.id);
-    return response.data;
-  }
-);
-
 
 export const updateCustomerRecord = createAsyncThunk(
   "crm/updateCustomerRecord",
-  async (data: { customerId: string; updates: Partial<CustomerRecord> }) => {
-    const response = await crmAPI.updateCustomerRecord(data.customerId, data.updates);
+  async (data: { customerId: string; updateData: any }) => {
+    const response = await crmAPI.updateCustomerRecord(data.customerId, data.updateData);
+    return response.data;
+  }
+);
+
+export const getCustomer = createAsyncThunk(
+  "crm/getCustomer",
+  async (customerId: string) => {
+    const response = await crmAPI.getCustomer(customerId);
     return response.data;
   }
 );
@@ -189,14 +160,14 @@ export const updateCustomerRecord = createAsyncThunk(
 // Communication Management
 export const logCommunication = createAsyncThunk(
   "crm/logCommunication",
-  async (data: Partial<CommunicationLog>) => {
+  async (data: any) => {
     const response = await crmAPI.logCommunication(data);
     return response.data;
   }
 );
 
-export const fetchCommunicationHistory = createAsyncThunk(
-  "crm/fetchCommunicationHistory",
+export const getCommunicationHistory = createAsyncThunk(
+  "crm/getCommunicationHistory",
   async (data: { customerId: string; filters?: any }) => {
     const response = await crmAPI.getCommunicationHistory(data.customerId, data.filters);
     return response.data;
@@ -238,7 +209,7 @@ export const fetchActions = createAsyncThunk(
 
 export const fetchPendingActions = createAsyncThunk(
   "crm/fetchPendingActions",
-  async (salespersonId: string) => {
+  async (salespersonId?: string) => {
     const response = await crmAPI.getPendingActions(salespersonId);
     return response.data;
   }
@@ -252,40 +223,7 @@ export const fetchOverdueTasks = createAsyncThunk(
   }
 );
 
-export const fetchTasks = createAsyncThunk(
-  "crm/fetchTasks",
-  async (salespersonId?: string) => {
-    const response = await crmAPI.getTasks(salespersonId);
-    return response.data;
-  }
-);
-
-// Duplicate Management
-export const checkForDuplicates = createAsyncThunk(
-  "crm/checkForDuplicates",
-  async (data: { email?: string; phone?: string; firstName?: string; lastName?: string }) => {
-    const response = await crmAPI.checkForDuplicates(data);
-    return response.data;
-  }
-);
-
-export const getDuplicateSuggestions = createAsyncThunk(
-  "crm/getDuplicateSuggestions",
-  async (data: { email?: string; phone?: string; firstName?: string; lastName?: string }) => {
-    const response = await crmAPI.getDuplicateSuggestions(data);
-    return response.data;
-  }
-);
-
-export const mergeDuplicates = createAsyncThunk(
-  "crm/mergeDuplicates",
-  async (data: { targetId: string; sourceId: string }) => {
-    const response = await crmAPI.mergeDuplicates(data.targetId, data.sourceId);
-    return response.data;
-  }
-);
-
-// Tag Management
+// Customer Tag Management
 export const addCustomerTag = createAsyncThunk(
   "crm/addCustomerTag",
   async (data: { customerId: string; tagId: string; addedBy: string; notes?: string }) => {
@@ -360,34 +298,6 @@ export const validateAction = createAsyncThunk(
   }
 );
 
-// Customer Record Management
-export const getCustomerRecord = createAsyncThunk(
-  "crm/getCustomerRecord",
-  async (customerId: string) => {
-    const response = await crmAPI.getCustomerRecord(customerId);
-    return response.data;
-  }
-);
-
-
-
-export const getCustomer = createAsyncThunk(
-  "crm/getCustomer",
-  async (customerId: string) => {
-    const response = await crmAPI.getCustomer(customerId);
-    return response.data;
-  }
-);
-
-// Communication Management
-export const getCommunicationHistory = createAsyncThunk(
-  "crm/getCommunicationHistory",
-  async (data: { customerId: string; filters?: any }) => {
-    const response = await crmAPI.getCommunicationHistory(data.customerId, data.filters);
-    return response.data;
-  }
-);
-
 // Facebook Integration
 export const handleFacebookWebhook = createAsyncThunk(
   "crm/handleFacebookWebhook",
@@ -409,14 +319,6 @@ export const testFacebookConnection = createAsyncThunk(
   "crm/testFacebookConnection",
   async () => {
     const response = await crmAPI.testFacebookConnection();
-    return response.data;
-  }
-);
-
-export const getFacebookForms = createAsyncThunk(
-  "crm/getFacebookForms",
-  async () => {
-    const response = await crmAPI.getFacebookForms();
     return response.data;
   }
 );
@@ -468,51 +370,88 @@ export const scheduleRecurring = createAsyncThunk(
   }
 );
 
+// Duplicate Management
+export const checkForDuplicates = createAsyncThunk(
+  "crm/checkForDuplicates",
+  async (data: { email?: string; phone?: string; firstName?: string; lastName?: string }) => {
+    const response = await crmAPI.checkForDuplicates(data);
+    return response.data;
+  }
+);
+
+export const getDuplicateSuggestions = createAsyncThunk(
+  "crm/getDuplicateSuggestions",
+  async (data: { email?: string; phone?: string; firstName?: string; lastName?: string }) => {
+    const response = await crmAPI.getDuplicateSuggestions(data);
+    return response.data;
+  }
+);
+
+export const mergeDuplicates = createAsyncThunk(
+  "crm/mergeDuplicates",
+  async (data: { targetId: string; sourceId: string }) => {
+    const response = await crmAPI.mergeDuplicates(data.targetId, data.sourceId);
+    return response.data;
+  }
+);
+
+// State cleanup actions
+export const clearError = (state) => {
+  state.error = null;
+};
+
+export const clearSelectedLead = (state) => {
+  state.selectedLead = null;
+};
+
+export const clearCustomerRecord = (state) => {
+  state.customerRecord = null;
+};
+
+export const clearDuplicateCheck = (state) => {
+  state.duplicateCheck = null;
+};
+
+export const clearFieldValidation = (state) => {
+  state.fieldValidation = null;
+};
+
+export const setLeadFilters = (state, action) => {
+  state.leadFilters = action.payload;
+};
+
+export const setCustomerFilters = (state, action) => {
+  state.customerFilters = action.payload;
+};
+
+export const setCommunicationFilters = (state, action) => {
+  state.communicationFilters = action.payload;
+};
+
+export const clearAllFilters = (state) => {
+  state.leadFilters = {};
+  state.customerFilters = {};
+  state.communicationFilters = {};
+};
+
+export const resetState = () => initialState;
+
 const crmSlice = createSlice({
   name: "crm",
   initialState,
   reducers: {
     // State cleanup actions
-    clearError: (state) => {
-      state.error = null;
-    },
-    clearSelectedLead: (state) => {
-      state.selectedLead = null;
-    },
-    clearCustomerRecord: (state) => {
-      state.customerRecord = null;
-    },
-    clearDuplicateCheck: (state) => {
-      state.duplicateCheck = null;
-    },
-    clearFieldValidation: (state) => {
-      state.fieldValidation = null;
-    },
-
-    // Filter management
-    setLeadFilters: (state, action: PayloadAction<CrmFilters>) => {
-      state.leadFilters = action.payload;
-    },
-    setCustomerFilters: (state, action: PayloadAction<CrmFilters>) => {
-      state.customerFilters = action.payload;
-    },
-    setCommunicationFilters: (state, action: PayloadAction<{
-      type?: string;
-      startDate?: string;
-      endDate?: string;
-    }>) => {
-      state.communicationFilters = action.payload;
-    },
-
-    // Batch operations
-    clearAllFilters: (state) => {
-      state.leadFilters = {};
-      state.customerFilters = {};
-      state.communicationFilters = {};
-    },
-    resetState: () => initialState,
+    clearError,
+    clearSelectedLead,
+    clearCustomerRecord,
+    clearDuplicateCheck,
+    clearFieldValidation,
+    setLeadFilters,
+    setCustomerFilters,
+    setCommunicationFilters,
+    clearAllFilters,
+    resetState,
   },
-
   extraReducers: (builder) => {
     // Lead Management
     builder
@@ -561,11 +500,74 @@ const crmSlice = createSlice({
       .addCase(logCommunication.fulfilled, (state, action) => {
         state.communications.unshift(action.payload);
         if (state.customerRecord) {
-          state.customerRecord.communications.unshift(action.payload);
+          state.customerRecord.communications?.unshift(action.payload);
         }
       })
       .addCase(fetchCommunicationHistory.fulfilled, (state, action) => {
         state.communications = action.payload;
+      })
+
+      // Action/Task Management
+      .addCase(createAction.fulfilled, (state, action) => {
+        state.actions.unshift(action.payload);
+        if (state.customerRecord) {
+          state.customerRecord.actions.unshift(action.payload);
+        }
+      })
+      .addCase(updateAction.fulfilled, (state, action) => {
+        const taskIndex = state.actions.findIndex((t) => t.id === action.payload.id);
+        if (taskIndex !== -1) {
+          state.actions[taskIndex] = action.payload;
+        }
+      })
+      .addCase(deleteAction.fulfilled, (state, action) => {
+        state.actions = state.actions.filter((t) => t.id !== action.payload);
+      })
+      .addCase(fetchActions.fulfilled, (state, action) => {
+        state.actions = action.payload;
+      })
+      .addCase(fetchPendingActions.fulfilled, (state, action) => {
+        state.pendingActions = action.payload;
+      })
+      .addCase(fetchOverdueTasks.fulfilled, (state, action) => {
+        state.overdueActions = action.payload;
+      })
+
+      // Customer Tag Management
+      .addCase(addCustomerTag.fulfilled, (state, action) => {
+        if (state.customerRecord) {
+          state.customerRecord.tags?.unshift(action.payload);
+        }
+      })
+      .addCase(removeCustomerTag.fulfilled, (state, action) => {
+        if (state.customerRecord) {
+          state.customerRecord.tags = state.customerRecord.tags?.filter((t) => t.id !== action.payload);
+        }
+      })
+      .addCase(fetchCustomersByTag.fulfilled, (state, action) => {
+        // Handle tag-based customer list
+      })
+
+      // Task Automation
+      .addCase(fetchAutomationRules.fulfilled, (state, action) => {
+        state.automationRules = action.payload;
+      })
+      .addCase(runTaskAutomationCheck.fulfilled, (state, action) => {
+        // Handle automation check results
+      })
+
+      // Field Validation
+      .addCase(getRequiredFieldsForCall.fulfilled, (state, action) => {
+        state.fieldValidation = action.payload;
+      })
+      .addCase(getRequiredFieldsForAction.fulfilled, (state, action) => {
+        state.fieldValidation = action.payload;
+      })
+      .addCase(validateCommunication.fulfilled, (state, action) => {
+        state.fieldValidation = action.payload;
+      })
+      .addCase(validateAction.fulfilled, (state, action) => {
+        state.fieldValidation = action.payload;
       })
 
       // Facebook Integration
@@ -578,116 +580,13 @@ const crmSlice = createSlice({
       .addCase(testFacebookConnection.fulfilled, (state, action) => {
         // Store connection status if needed
       })
-      .addCase(getFacebookForms.fulfilled, (state, action) => {
-        // Store Facebook forms if needed
-      })
-
-      // Action/Task Management
-      .addCase(createAction.fulfilled, (state, action) => {
-        state.tasks.unshift(action.payload);
-        if (state.customerRecord) {
-          state.customerRecord.actions.unshift(action.payload);
-        }
-      })
-      .addCase(updateAction.fulfilled, (state, action) => {
-        const taskIndex = state.tasks.findIndex((t) => t.id === action.payload.id);
-        if (taskIndex !== -1) {
-          state.tasks[taskIndex] = action.payload;
-        }
-
-        if (state.customerRecord) {
-          const actionIndex = state.customerRecord.actions.findIndex(
-            (a) => a.id === action.payload.id
-          );
-          if (actionIndex !== -1) {
-            state.customerRecord.actions[actionIndex] = action.payload;
-          }
-        }
-
-        // Update pending/overdue task lists
-        const pendingIndex = state.pendingTasks.findIndex((t) => t.id === action.payload.id);
-        if (pendingIndex !== -1) {
-          state.pendingTasks[pendingIndex] = action.payload;
-        }
-
-        const overdueIndex = state.overdueTasks.findIndex((t) => t.id === action.payload.id);
-        if (overdueIndex !== -1) {
-          state.overdueTasks[overdueIndex] = action.payload;
-        }
-      })
-      .addCase(deleteAction.fulfilled, (state, action) => {
-        state.tasks = state.tasks.filter((t) => t.id !== action.payload);
-        state.pendingTasks = state.pendingTasks.filter((t) => t.id !== action.payload);
-        state.overdueTasks = state.overdueTasks.filter((t) => t.id !== action.payload);
-
-        if (state.customerRecord) {
-          state.customerRecord.actions = state.customerRecord.actions.filter(
-            (a) => a.id !== action.payload
-          );
-        }
-      })
-      .addCase(fetchActions.fulfilled, (state, action) => {
-        state.actions = action.payload;
-      })
-      .addCase(fetchPendingActions.fulfilled, (state, action) => {
-        state.pendingTasks = action.payload;
-      })
-      .addCase(fetchOverdueTasks.fulfilled, (state, action) => {
-        state.overdueTasks = action.payload;
-      })
-      .addCase(fetchTasks.fulfilled, (state, action) => {
-        state.tasks = action.payload;
-      })
-
-      // Duplicate Management
-      .addCase(checkForDuplicates.fulfilled, (state, action) => {
-        state.duplicateCheck = action.payload;
-      })
-      .addCase(getDuplicateSuggestions.fulfilled, (state, action) => {
-        state.duplicateSuggestions = action.payload;
-      })
-
-      // Tag Management
-      .addCase(addCustomerTag.fulfilled, (state, action) => {
-        state.customerTags.unshift(action.payload);
-        if (state.customerRecord) {
-          state.customerRecord.tags.unshift(action.payload);
-        }
-      })
-      .addCase(removeCustomerTag.fulfilled, (state, action) => {
-        state.customerTags = state.customerTags.filter((t) => t.id !== action.payload);
-        if (state.customerRecord) {
-          state.customerRecord.tags = state.customerRecord.tags.filter(
-            (t) => t.id !== action.payload
-          );
-        }
-      })
-      .addCase(fetchCustomersByTag.fulfilled, (state, action) => {
-        state.customerTags = action.payload;
-      })
-
-      // Task Automation
-      .addCase(fetchAutomationRules.fulfilled, (state, action) => {
-        state.automationRules = action.payload;
-      })
-
-      // Field Validation
-      .addCase(getRequiredFieldsForCall.fulfilled, (state, action) => {
-        state.requiredFields = action.payload;
-      })
-      .addCase(validateCommunication.fulfilled, (state, action) => {
-        state.fieldValidation = action.payload;
-      })
-      .addCase(validateAction.fulfilled, (state, action) => {
-        state.fieldValidation = action.payload;
-      })
 
       // Analytics
       .addCase(fetchSalespersonAnalytics.fulfilled, (state, action) => {
         state.analytics = action.payload;
       })
       .addCase(fetchCrmMetrics.fulfilled, (state, action) => {
-        state.analytics = { ...state.analytics, ...action.payload };
+        state.analytics = action.payload;
       })
 
       // Repeat Customer Management
@@ -701,7 +600,18 @@ const crmSlice = createSlice({
         state.recurringSchedule = action.payload;
       })
 
-      // Generic loading state handlers
+      // Duplicate Management
+      .addCase(checkForDuplicates.fulfilled, (state, action) => {
+        state.duplicateCheck = action.payload;
+      })
+      .addCase(getDuplicateSuggestions.fulfilled, (state, action) => {
+        state.duplicateCheck = action.payload;
+      })
+      .addCase(mergeDuplicates.fulfilled, (state, action) => {
+        // Handle merge result
+      })
+
+      // Loading states
       .addMatcher(
         (action) => action.type.startsWith('crm/') && action.type.endsWith('/pending'),
         (state) => {
@@ -711,7 +621,7 @@ const crmSlice = createSlice({
       )
       .addMatcher(
         (action) => action.type.startsWith('crm/') && action.type.endsWith('/rejected'),
-        (state, action: Action & { error: { message: string } }) => {
+        (state, action: PayloadAction & { error: { message: string } }) => {
           state.isLoading = false;
           state.error = action.error?.message || 'An error occurred';
         }
@@ -739,6 +649,5 @@ export const {
   clearAllFilters,
   resetState,
 } = crmSlice.actions;
-
 
 export default crmSlice.reducer;

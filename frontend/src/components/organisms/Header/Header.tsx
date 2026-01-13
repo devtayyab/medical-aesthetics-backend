@@ -189,7 +189,7 @@ export const Header: React.FC = () => {
   };
 
   // Define clinic roles
-  const clinicRoles = ["clinic_owner", "doctor", "secretariat", "salesperson"];
+  const clinicRoles = ["clinic_owner", "doctor", "secretariat"];
 
   // Dynamic menu items based on role
   const getMenuItems = () => {
@@ -198,7 +198,6 @@ export const Header: React.FC = () => {
        if (user.role === "admin") {
       return [
         { to: "/admin/dashboard", label: "Dashboard" },
-        { to: "/crm", label: "CRM" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -236,6 +235,28 @@ export const Header: React.FC = () => {
       ];
     }
 
+    // { path: "/crm/customers", label: "Customers", icon: <Users className="w-5 h-5" /> },
+    // { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" /> },
+    // { path: "/crm/actions", label: "Actions", icon: <Repeat className="w-5 h-5" /> },
+    // { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" /> },
+
+    if (user.role === "salesperson") {
+      return [
+        { to: "/crm", label: "CRM" },
+        { to: "/crm/customers", label: "Customers" },
+        { to: "/crm/tasks", label: "Tasks" },
+        { to: "/crm/actions", label: "Actions" },
+        { to: "/crm/repeat-management", label: "Repeat Management" },
+        { to: "/crm/leads", label: "Leads" },
+        { to: "/crm/communication", label: "Communication" },
+        { to: "/crm/analytics", label: "Analytics" },
+        { to: "/crm/tag", label: "Tags" },
+        { to: "/crm/facebook-integration", label: "Facebook Integration" },
+        
+        { action: handleLogout, label: "Logout" },
+      ];
+    }
+
     return [{ action: handleLogout, label: "Logout" }]; // Default case
   };
 
@@ -259,7 +280,7 @@ export const Header: React.FC = () => {
         </Link>
 
         {/* Desktop Navigation for Non-Clinic Roles */}
-        {!clinicRoles.includes(user?.role || "") && (
+        {!clinicRoles.includes(user?.role || '') && (user.role !== 'salesperson') && (
           <>
             <div className={searchContainerStyle}>
               <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
@@ -279,7 +300,7 @@ export const Header: React.FC = () => {
                     Home
                   </Link>
                 </li> */}
-                {(user?.role === "salesperson" || user?.role === "clinic_owner") && (
+                {/* {(user?.role === "salesperson") && (
                   <li
                     className={`cursor-pointer ${location.pathname === "/crm"
                       ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
@@ -296,7 +317,7 @@ export const Header: React.FC = () => {
                       CRM
                     </Link>
                   </li>
-                )}
+                )} */}
                  {clinicRoles.includes(user?.role || "") && <>
                 <li
                   className={`cursor-pointer ${location.pathname.startsWith("/search")

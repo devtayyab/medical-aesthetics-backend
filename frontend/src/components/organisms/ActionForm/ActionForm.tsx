@@ -22,13 +22,15 @@ interface ActionFormProps {
 }
 
 export const ActionForm: React.FC<ActionFormProps> = ({
-  customerId,
+  customerId: propCustomerId,
   onSuccess,
   prefilledData
 }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const [customerId, setCustomerId] = useState(propCustomerId);
+  const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
   const [formData, setFormData] = useState<Partial<CrmAction>>({
-    customerId,
+    customerId: propCustomerId,
     actionType: prefilledData?.actionType || 'follow_up',
     title: prefilledData?.title || '',
     description: prefilledData?.description || '',
@@ -36,8 +38,14 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     priority: prefilledData?.priority || 'medium',
     dueDate: prefilledData?.dueDate || '',
     salespersonId: prefilledData?.salespersonId || '',
-    metadata: prefilledData?.metadata || {},
-    ...prefilledData
+    metadata: {
+      ...(prefilledData?.metadata || {}),
+      // Initialize metadata fields from prefilledData if they exist at top level (for backward compatibility)
+      ...(prefilledData?.clinic && { clinic: prefilledData.clinic }),
+      ...(prefilledData?.proposedTreatment && { proposedTreatment: prefilledData.proposedTreatment }),
+      ...(prefilledData?.callOutcome && { callOutcome: prefilledData.callOutcome }),
+      ...(prefilledData?.cost && { cost: prefilledData.cost })
+    }
   });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
@@ -50,17 +58,32 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   React.useEffect(() => {
     (async () => {
       try {
-        const { data } = await axios.get('/crm/accessible-clinics');
-        const options = (data || []).map((c: any) => ({ value: c.id, label: c.name }));
-        setClinics(options);
+        // Fetch customers if no customerId is provided (for salesperson users)
+        if (!propCustomerId) {
+          const { data } = await axios.get('/crm/customers');
+          const options = (data || []).map((c: any) => ({ 
+            value: c.id, 
+            label: `${c.firstName} ${c.lastName} - ${c.email}` 
+          }));
+          setCustomers(options);
+        }
+        
+        // Fetch clinics
+        const { data: clinicData } = await axios.get('/crm/accessible-clinics');
+        const clinicOptions = (clinicData || []).map((c: any) => ({ value: c.id, label: c.name }));
+        setClinics(clinicOptions);
       } catch (e) {
+        setCustomers([]);
         setClinics([]);
       }
     })();
-  }, []);
+  }, [propCustomerId]);
 
   const handleInputChange = (field: string, value: any) => {
-    if (field.startsWith('metadata.')) {
+    if (field === 'customerId') {
+      setCustomerId(value);
+      setFormData(prev => ({ ...prev, customerId: value }));
+    } else if (field.startsWith('metadata.')) {
       const metadataField = field.replace('metadata.', '');
       setFormData(prev => ({
         ...prev,
@@ -96,16 +119,36 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 
     if (validation.isValid) {
       try {
-        await dispatch(createAction(formData)).unwrap();
+        // Prepare payload according to backend entity structure
+        const payload: Partial<CrmAction> = {
+          customerId: customerId || propCustomerId,
+          salespersonId: formData.salespersonId || (prefilledData?.salespersonId || ''),
+          actionType: formData.actionType,
+          title: formData.title,
+          description: formData.description,
+          status: formData.status || 'pending',
+          priority: formData.priority || 'medium',
+          dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
+          metadata: formData.metadata || {}
+        };
+
+        // Remove undefined values to prevent SQL errors
+        Object.keys(payload).forEach(key => {
+          if (payload[key as keyof CrmAction] === undefined) {
+            delete payload[key as keyof CrmAction];
+          }
+        });
+
+        await dispatch(createAction(payload)).unwrap();
         setFormData({
-          customerId,
+          customerId: customerId || propCustomerId,
           actionType: 'follow_up',
           title: '',
           description: '',
           status: 'pending',
           priority: 'medium',
           dueDate: '',
-          salespersonId: '',
+          salespersonId: prefilledData?.salespersonId || '',
           metadata: {}
         });
         setValidationErrors([]);
@@ -157,6 +200,18 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Customer Selection - only show if no customerId is provided */}
+          {!propCustomerId && customers.length > 0 && (
+            <Select
+              label="Customer"
+              value={customerId}
+              onChange={(value) => handleInputChange('customerId', value)}
+              options={customers}
+              required
+              placeholder="Select a customer..."
+            />
+          )}
+
           {/* Action Type and Priority */}
           <div className="grid grid-cols-2 gap-4">
             <Select

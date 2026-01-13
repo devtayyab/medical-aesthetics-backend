@@ -68,7 +68,7 @@ export const CRM: React.FC = () => {
   };
   React.useEffect(() => {
     if (user) {
-      dispatch(fetchLeads());
+      dispatch(fetchLeads({}));
       dispatch(fetchTasks());
       dispatch(fetchActions({ salespersonId: user.id }));
       dispatch(fetchOverdueTasks(user.id));

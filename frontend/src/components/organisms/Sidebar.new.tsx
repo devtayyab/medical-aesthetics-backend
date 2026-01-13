@@ -31,6 +31,11 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/tasks", label: "Tasks" },
   { path: "/crm/actions", label: "Actions" },
   { path: "/crm/repeat-management", label: "Repeat Management" },
+  { path: "/crm/leads", label: "Leads" },
+  { path: "/crm/communication", label: "Communication" },
+  {path: "/crm/analytics", label: "Analytics"},
+  {path: "/crm/tag", label: "Tags"},
+  {path: "/crm/facebook-integration", label: "Facebook Integration"},
 ];
 
 const adminLinks: SidebarItem[] = [

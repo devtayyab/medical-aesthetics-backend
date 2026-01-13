@@ -163,7 +163,7 @@ export const Register: React.FC = () => {
       const result = await dispatch(register(userData)).unwrap();
       
       // Redirect based on role
-      const clinicRoles = ['clinic_owner', 'doctor', 'secretariat', 'salesperson'];
+      const clinicRoles = ['clinic_owner', 'doctor', 'secretariat'];
       
       if (clinicRoles.includes(result.user.role)) {
         navigate("/clinic/dashboard", { replace: true });
@@ -171,6 +171,9 @@ export const Register: React.FC = () => {
         navigate("/admin/dashboard", { replace: true });
       } else if (result.user.role === 'client') {
         navigate("/my-account", { replace: true });
+      } else if (result.user.role === 'salesperson') {
+        navigate("/crm", { replace: true });
+        
       } else {
         navigate("/", { replace: true });
       }

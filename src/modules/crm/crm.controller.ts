@@ -141,7 +141,6 @@ export class CrmController {
 
 
 
-
   @Put('actions/:id')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)

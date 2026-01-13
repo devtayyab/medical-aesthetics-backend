@@ -19,9 +19,9 @@ export class CrmAction {
   @Column({ type: 'uuid' })
   customerId: string;
 
-  @ManyToOne(() => CustomerRecord, customerRecord => customerRecord.actions, { onDelete: 'CASCADE' })
+  @ManyToOne(() => CustomerRecord, customer => customer.actions, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'customerId' })
-  customerRecord: CustomerRecord;
+  customer: CustomerRecord;
 
   // Salesperson relation
   @Column({ type: 'uuid' })

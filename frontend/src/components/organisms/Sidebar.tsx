@@ -37,6 +37,11 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" /> },
   { path: "/crm/actions", label: "Actions", icon: <Repeat className="w-5 h-5" /> },
   { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" /> },
+  { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" /> },
+  { path: "/crm/communication", label: "Communication", icon: <Repeat className="w-5 h-5" /> },
+  { path: "/crm/analytics", label: "Analytics", icon: <Repeat className="w-5 h-5" /> },
+  { path: "/crm/tag", label: "Tags", icon: <Repeat className="w-5 h-5" /> },
+  { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" /> },
 ];
 
 const getAdminLinks = (role: string): SidebarItem[] => {
@@ -79,7 +84,9 @@ export const Sidebar: React.FC = () => {
           ? getAdminLinks(role)
           : role === "SUPER_ADMIN"
             ? getAdminLinks(role)
-            : [];
+            : role === "salesperson"
+              ? crmLinks
+              : [];
 
   // Group links by their group property
   const groupedLinks = links.reduce<Record<string, SidebarItem[]>>((acc, link) => {

@@ -89,10 +89,8 @@ export interface CrmAction {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   dueDate?: string;
   completedAt?: string;
-  clinic?: string;
-  proposedTreatment?: string;
-  cost?: number;
-  callOutcome?: string;
+  relatedAppointmentId?: string;
+  relatedLeadId?: string;
   metadata?: {
     clinic?: string;
     proposedTreatment?: string;
@@ -307,19 +305,34 @@ export interface CrmFilters {
 }
 
 export interface CrmAnalytics {
-  communications: {
+  // CRM Metrics
+  totalLeads?: number;
+  convertedLeads?: number;
+  conversionRate?: number;
+  totalActions?: number;
+  completedActions?: number;
+  
+  // Salesperson Performance
+  leadsAssigned?: number;
+  leadsContacted?: number;
+  salespersonConversionRate?: number;
+  averageResponseTime?: string;
+  tasksCompleted?: number;
+  
+  // Legacy structure for backward compatibility
+  communications?: {
     total: number;
     calls: number;
     missedCalls: number;
     emails: number;
   };
-  actions: {
+  actions?: {
     total: number;
     pending: number;
     completed: number;
     missed: number;
   };
-  customers: {
+  customers?: {
     total: number;
     repeat: number;
     totalRevenue: number;
