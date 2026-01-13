@@ -9,6 +9,9 @@ export class AdCampaign {
   @Column({ type: 'varchar', length: 50 })
   platform: 'facebook' | 'google' | 'tiktok' | 'other';
 
+  @Column({ type: 'varchar', length: 255 })
+  channel: string; // More descriptive channel name
+
   @Index()
   @Column({ type: 'varchar', length: 255 })
   externalId: string; // e.g., Facebook Campaign ID

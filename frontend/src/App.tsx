@@ -44,7 +44,7 @@ import SettingsPage from "@/pages/Clinic/SettingsPage";
 import { Customers } from "@/pages/CRM/Customers";
 import { CustomerDetails } from "@/pages/CRM/CustomerDetails";
 import { Tasks } from "@/pages/CRM/Tasks";
-import { Actions } from "@/pages/CRM/Actions";
+import { Actions } from "@/pages/CRM/Action";
 import { RepeatManagement } from "@/pages/CRM/RepeatManagement";
 import { Dashboard as AdminDashboard } from "@/pages/Admin/Dashboard";
 import { ManagerDashboard } from "./pages/Admin/ManagerDashboard/ManagerDashboard";
@@ -63,6 +63,7 @@ import "@/styles/globals.css";
 import SiteLogo from "@/assets/SiteLogo.png";
 import { CRM } from "./pages/CRM/CRM";
 import { CheckoutPage } from "./pages/Client/CheckoutPage";
+import BookingConfirmation from "./pages/Client/BookingConfirmation";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import { Calls as ManagerCrmCalls } from "@/pages/Admin/ManagerCRM/Calls";
 import { Reports as ManagerCrmReports } from "@/pages/Admin/ManagerCRM/Reports";
@@ -71,6 +72,11 @@ import { AccessControl as ManagerCrmAccessControl } from "@/pages/Admin/ManagerC
 import { Benefits as ManagerCrmBenefits } from "@/pages/Admin/ManagerCRM/Benefits";
 import { NoShowAlerts as ManagerCrmNoShowAlerts } from "@/pages/Admin/ManagerCRM/NoShowAlerts";
 import { ClinicStats as ManagerCrmClinicStats } from "@/pages/Admin/ManagerCRM/ClinicStats";
+import { LeadsPage } from "./pages/CRM/Leads";
+import { Communication } from "./pages/CRM/Communication";
+import { Analytics } from "./pages/CRM/Analytics";
+import { Tags } from "./pages/CRM/Tags";
+import { FacebookIntegration } from "./pages/CRM/FacebookIntegration";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -258,6 +264,14 @@ function AppContent() {
             }
           />
           <Route
+            path="/booking-confirmation"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <BookingConfirmation />
+              </ProtectedLayout>
+            }
+          />
+          <Route
             path="/invite-friend"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
@@ -282,7 +296,6 @@ function AppContent() {
                   "clinic_owner",
                   "doctor",
                   "secretariat",
-                  "salesperson",
                 ]}
               >
                 <ClinicLayout />
@@ -314,7 +327,7 @@ function AppContent() {
             <Route
               path="analytics"
               element={
-                <ProtectedLayout allowedRoles={["clinic_owner", "salesperson"]}>
+                <ProtectedLayout allowedRoles={["clinic_owner"]}>
                   <AnalyticsPage />
                 </ProtectedLayout>
               }
@@ -391,51 +404,116 @@ function AppContent() {
           <Route
             path="/crm/customers"
             element={
-              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                    <AdminLayout>
                 <Customers />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
           <Route
             path="/crm/customer/:id"
             element={
-              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+               <AdminLayout>
                 <CustomerDetails />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
           <Route
             path="/crm/tasks"
             element={
-              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                  <AdminLayout>
                 <Tasks />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/crm/leads"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                  <AdminLayout>
+                <LeadsPage />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
           <Route
             path="/crm/actions"
             element={
-              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
-                <Actions />
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                  <AdminLayout>
+                < Actions />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
           <Route
             path="/crm/repeat-management"
             element={
-              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner"]}>
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                  <AdminLayout>
                 <RepeatManagement />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
           <Route
             path="/crm"
             element={
-              <ProtectedLayout allowedRoles={["salesperson", "clinic_owner" , "SUPER_ADMIN"]}>
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                  <AdminLayout>
                 <CRM />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
+
+          <Route
+            path="/crm/communication"
+              element={
+                <ProtectedLayout allowedRoles={["salesperson"]}>
+                  <AdminLayout>
+                <Communication />
+                </AdminLayout>
+              </ProtectedLayout>
+              }
+            />
+            <Route 
+            path="/crm/analytics"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                  <AdminLayout>
+                <Analytics />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+            />
+            <Route 
+            path="/crm/tag"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                  <AdminLayout>
+                <Tags />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+            />
+            <Route 
+            path="/crm/facebook-integration"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson"]}>
+                  <AdminLayout>
+                <FacebookIntegration />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+            />
+
+            
           {/* Admin Routes */}
           <Route
             path="/admin/dashboard"

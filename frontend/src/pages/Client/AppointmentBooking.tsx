@@ -11,6 +11,8 @@ import {
   setSelectedClinic,
   addService,
   removeService,
+  setSelectedDate,
+  setSelectedTimeSlot,
 } from "@/store/slices/bookingSlice";
 import {
   fetchClinicServices,
@@ -193,13 +195,14 @@ export const AppointmentBooking: React.FC = () => {
   }, [dispatch, services, serviceIds, clinicId]); // Depend on services for prompt trigger
 
   const handleHoldSlot = async () => {
+    console.log("🔵 Holding slot:", clinic);
     if (clinicId && serviceIds.length > 0 && selectedSlot && user?.id) {
       const [startTime, endTime] = selectedSlot.split(" - ");
       const response = await dispatch(
         holdTimeSlot({
           clinicId,
           serviceId: serviceIds[0],
-          providerId: clinic.ownerId,
+          providerId: clinicId,
           // clientId: user.id,
           startTime,
           endTime,
@@ -212,22 +215,59 @@ export const AppointmentBooking: React.FC = () => {
   const handleBookAppointment = async () => {
     if (clinicId && serviceIds.length > 0 && selectedSlot && user?.id) {
       const [startTime, endTime] = selectedSlot.split(" - ");
-      for (const serviceId of serviceIds) {
-        await dispatch(
-          createAppointment({
-            clinicId,
-            serviceId,
-            providerId: clinic.ownerId,
-            clientId: user.id,
-            startTime,
-            endTime,
-            notes,
-            holdId,
-          })
-        ).unwrap();
+      
+      console.log("🟢 Proceeding to checkout with:", {
+        clinicId,
+        clinic,
+        serviceIds,
+        selectedSlot,
+        hasClinic: !!clinic
+      });
+      
+      // Set the booking data in Redux state
+      if (clinic) {
+        console.log("🟢 Setting selected clinic:", clinic);
+        dispatch(setSelectedClinic(clinic));
+      } else {
+        // Fallback: find clinic from clinics array
+        const clinicData = clinics.find((c) => c.id === clinicId);
+        if (clinicData) {
+          console.log("🟢 Setting clinic from fallback:", clinicData);
+          dispatch(setSelectedClinic(clinicData));
+        } else {
+          console.error("❌ No clinic data found!");
+          return;
+        }
       }
-      dispatch(clearBooking());
-      navigate("/appointments");
+      
+      // Add selected services to booking state
+      for (const serviceId of serviceIds) {
+        const service = services.find(s => s.id === serviceId);
+        if (service) {
+          console.log("🟢 Adding service:", service);
+          dispatch(addService(service));
+        }
+      }
+      
+      // Set the selected date and time slot
+      const today = new Date().toISOString().split("T")[0];
+      console.log("🟢 Setting date:", today);
+      dispatch(setSelectedDate(today));
+      
+      const timeSlot = {
+        startTime,
+        endTime,
+        available: true
+      };
+      console.log("🟢 Setting time slot:", timeSlot);
+      dispatch(setSelectedTimeSlot(timeSlot));
+      
+      // Small delay to ensure Redux state is updated
+      setTimeout(() => {
+        // Navigate to checkout page
+        console.log("🟢 Navigating to checkout...");
+        navigate('/checkout');
+      }, 100);
     }
   };
 
@@ -357,7 +397,7 @@ export const AppointmentBooking: React.FC = () => {
           disabled={!holdId || bookingLoading}
           className="mb-4 mr-5"
         >
-          Confirm Booking
+          Proceed to Checkout
         </Button>
         <Button
           onClick={() => navigate(-1)}

@@ -225,3 +225,38 @@ For detailed documentation, see:
 **Your application is now live at:** `http://YOUR_EC2_IP:3001`
 
 **API Documentation:** `http://YOUR_EC2_IP:3001/api`
+
+
+
+-- First, check if the table exists and what columns it has
+-- If the table doesn't exist, create it:
+CREATE TABLE IF NOT EXISTS agent_clinic_access (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_user_id UUID NOT NULL,
+    clinic_id UUID NOT NULL,
+    UNIQUE(agent_user_id, clinic_id)
+);
+
+-- Create indexes if they don't exist
+CREATE INDEX IF NOT EXISTS IDX_agent_clinic_access_agent_user_id ON agent_clinic_access(agent_user_id);
+CREATE INDEX IF NOT EXISTS IDX_agent_clinic_access_clinic_id ON agent_clinic_access(clinic_id);
+
+-- Add foreign key constraints if they don't exist
+-- Note: Only run these if you have users and clinics tables
+ALTER TABLE agent_clinic_access 
+ADD CONSTRAINT IF NOT EXISTS fk_agent_clinic_access_agent_user_id 
+FOREIGN KEY (agent_user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE agent_clinic_access 
+ADD CONSTRAINT IF NOT EXISTS fk_agent_clinic_access_clinic_id 
+FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE;
+
+
+-- For existing table, just add the foreign key constraints
+ALTER TABLE agent_clinic_access 
+ADD CONSTRAINT IF NOT EXISTS fk_agent_clinic_access_agent_user_id 
+FOREIGN KEY (agent_user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE agent_clinic_access 
+ADD CONSTRAINT IF NOT EXISTS fk_agent_clinic_access_clinic_id 
+FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE;

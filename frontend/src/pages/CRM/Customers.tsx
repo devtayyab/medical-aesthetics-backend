@@ -12,7 +12,7 @@ export const Customers: React.FC = () => {
   );
 
   useEffect(() => {
-    dispatch(fetchLeads());
+    dispatch(fetchLeads({}));
   }, [dispatch]);
 
   return (

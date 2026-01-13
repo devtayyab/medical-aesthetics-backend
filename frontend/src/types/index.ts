@@ -184,7 +184,7 @@ export interface Customer {
     repeatCount: number;
   };
 }
-export interface ActionLog {
+export interface ActionLogType {
   id: string;
   customerId: string;
   type: 'call' | 'email' | 'note' | 'meeting';

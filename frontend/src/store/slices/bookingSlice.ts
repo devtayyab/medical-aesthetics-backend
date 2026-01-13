@@ -153,14 +153,14 @@ const bookingSlice = createSlice({
         state.isLoading = false;
         state.appointments.push(action.payload);
         // Clear booking after successful creation
-        state.selectedClinic = undefined;
-        state.selectedServices = [];
-        state.selectedDate = undefined;
-        state.selectedTimeSlot = undefined;
-        state.totalAmount = 0;
-        state.step = 'services';
-        state.availableSlots = [];
-        state.holdId = undefined;
+        // state.selectedClinic = undefined;
+        // state.selectedServices = [];
+        // state.selectedDate = undefined;
+        // state.selectedTimeSlot = undefined;
+        // state.totalAmount = 0;
+        // state.step = 'services';
+        // state.availableSlots = [];
+        // state.holdId = undefined;
       })
       .addCase(createAppointment.rejected, (state, action) => {
         state.isLoading = false;

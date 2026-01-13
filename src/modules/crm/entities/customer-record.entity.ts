@@ -115,7 +115,7 @@ export class CustomerRecord {
   @OneToMany(() => CommunicationLog, (log) => log.customer)
   communications: CommunicationLog[];
 
-  @OneToMany(() => CrmAction, (action) => action.customerRecord)
+  @OneToMany(() => CrmAction, (action) => action.customer)
   actions: CrmAction[];
 
   @OneToMany(() => AdAttribution, (attribution) => attribution.customerRecord)
