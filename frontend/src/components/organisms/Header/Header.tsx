@@ -280,7 +280,7 @@ export const Header: React.FC = () => {
         </Link>
 
         {/* Desktop Navigation for Non-Clinic Roles */}
-        {!clinicRoles.includes(user?.role || '') && (user.role !== 'salesperson') && (
+        {!clinicRoles.includes(user?.role || '') && (user?.role !== 'salesperson') && (
           <>
             <div className={searchContainerStyle}>
               <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
