@@ -59,11 +59,12 @@ export class BookingsService {
     return this.holdsRepository.save(hold);
   }
 
-  async createAppointment(createAppointmentDto: CreateAppointmentDto): Promise<Appointment> {
+  async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker' }): Promise<Appointment> {
     const appointmentData = {
       ...createAppointmentDto,
       startTime: new Date(createAppointmentDto.startTime),
       endTime: new Date(createAppointmentDto.endTime),
+      appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
     };
 
     // If holdId provided, validate and remove hold
@@ -168,7 +169,7 @@ export class BookingsService {
   async findClinicAppointments(
     userId: string,
     userRole: string,
-    query: { status?: string; date?: string; providerId?: string },
+    query: { status?: string; date?: string; providerId?: string; appointmentSource?: 'clinic_own' | 'platform_broker' },
   ): Promise<Appointment[]> {
     const queryBuilder = this.appointmentsRepository.createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.clinic', 'clinic')
@@ -177,10 +178,9 @@ export class BookingsService {
       .leftJoinAndSelect('appointment.client', 'client');
 
     // Filter based on user role and permissions
-    if (userRole === 'clinic_owner') {
+    // SECRETARIAT and CLINIC_OWNER have same permissions - can see all clinic appointments
+    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       queryBuilder.where('clinic.ownerId = :userId', { userId });
-    } else if (userRole === 'doctor' || userRole === 'secretariat') {
-      queryBuilder.where('appointment.providerId = :userId', { userId });
     } else {
       // For other roles, return appointments where user is involved
       queryBuilder.where(
@@ -207,6 +207,10 @@ export class BookingsService {
       queryBuilder.andWhere('appointment.providerId = :providerId', { providerId: query.providerId });
     }
 
+    if (query.appointmentSource) {
+      queryBuilder.andWhere('appointment.appointmentSource = :appointmentSource', { appointmentSource: query.appointmentSource });
+    }
+
     return queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
   }
 
@@ -223,10 +227,9 @@ export class BookingsService {
       .where('appointment.id = :appointmentId', { appointmentId });
 
     // Add role-based filtering
-    if (userRole === 'clinic_owner') {
+    // SECRETARIAT and CLINIC_OWNER have same permissions - can see all clinic appointments
+    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       queryBuilder.andWhere('clinic.ownerId = :userId', { userId });
-    } else if (userRole === 'doctor' || userRole === 'secretariat') {
-      queryBuilder.andWhere('appointment.providerId = :userId', { userId });
     }
 
     const appointment = await queryBuilder.getOne();
@@ -270,6 +273,13 @@ export class BookingsService {
     userRole: string,
     paymentData?: RecordPaymentDto,
     treatmentDetails?: any,
+    completionReport?: {
+      patientCame: boolean;
+      servicePerformed: string;
+      amountPaid: number;
+      renewalDate?: string;
+      notes?: string;
+    },
   ): Promise<Appointment> {
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
 
@@ -288,6 +298,29 @@ export class BookingsService {
         appointment.totalAmount = paymentData.amount;
       }
       appointment.notes = paymentData.notes || appointment.notes;
+    }
+
+    // Handle completion report
+    if (completionReport) {
+      appointment.showStatus = completionReport.patientCame ? 'showed_up' : 'no_show';
+      appointment.serviceExecuted = completionReport.patientCame && !!completionReport.servicePerformed;
+      appointment.clinicNotes = completionReport.notes || appointment.clinicNotes;
+      
+      // Store completion report
+      appointment.appointmentCompletionReport = {
+        patientCame: completionReport.patientCame,
+        servicePerformed: completionReport.servicePerformed || '',
+        amountPaid: completionReport.amountPaid,
+        renewalDate: completionReport.renewalDate ? new Date(completionReport.renewalDate) : undefined,
+        notes: completionReport.notes,
+        recordedAt: new Date(),
+        recordedById: userId,
+      };
+
+      // Update payment if provided in report
+      if (completionReport.amountPaid) {
+        appointment.totalAmount = completionReport.amountPaid;
+      }
     }
 
     return this.appointmentsRepository.save(appointment);
@@ -346,7 +379,8 @@ export class BookingsService {
       ])
       .groupBy('appointment.status');
 
-    if (userRole === 'clinic_owner') {
+    // SECRETARIAT and CLINIC_OWNER have same permissions
+    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
         .where('clinic.ownerId = :userId', { userId });
     } else {
@@ -388,7 +422,8 @@ export class BookingsService {
       ])
       .groupBy('appointment.paymentMethod');
 
-    if (userRole === 'clinic_owner') {
+    // SECRETARIAT and CLINIC_OWNER have same permissions
+    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
         .where('clinic.ownerId = :userId', { userId });
     } else {
@@ -426,7 +461,8 @@ export class BookingsService {
       .groupBy('appointment.clientId')
       .having('COUNT(appointment.id) > 1');
 
-    if (userRole === 'clinic_owner') {
+    // SECRETARIAT and CLINIC_OWNER have same permissions
+    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
         .where('clinic.ownerId = :userId', { userId });
     } else {
@@ -471,7 +507,8 @@ export class BookingsService {
       .leftJoin('appointment.client', 'client')
       .groupBy('appointment.clientId, client.firstName, client.lastName, client.email, client.phone');
 
-    if (userRole === 'clinic_owner') {
+    // SECRETARIAT and CLINIC_OWNER have same permissions
+    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
         .where('clinic.ownerId = :userId', { userId });
     } else {
@@ -516,7 +553,8 @@ export class BookingsService {
       .leftJoinAndSelect('appointment.client', 'client')
       .where('appointment.clientId = :clientId', { clientId });
 
-    if (userRole === 'clinic_owner') {
+    // SECRETARIAT and CLINIC_OWNER have same permissions
+    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       baseQuery = baseQuery.andWhere('clinic.ownerId = :userId', { userId });
     } else {
       baseQuery = baseQuery.andWhere('appointment.providerId = :userId', { userId });

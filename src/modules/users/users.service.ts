@@ -36,6 +36,28 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email } });
   }
 
+  async findAll(query?: { role?: string; isActive?: boolean; limit?: number; offset?: number }): Promise<User[]> {
+    const queryBuilder = this.usersRepository.createQueryBuilder('user');
+
+    if (query?.role) {
+      queryBuilder.where('user.role = :role', { role: query.role });
+    }
+
+    if (query?.isActive !== undefined) {
+      queryBuilder.andWhere('user.isActive = :isActive', { isActive: query.isActive });
+    }
+
+    if (query?.limit) {
+      queryBuilder.limit(query.limit);
+    }
+
+    if (query?.offset) {
+      queryBuilder.offset(query.offset);
+    }
+
+    return queryBuilder.getMany();
+  }
+
   async findById(id: string): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (!user) {

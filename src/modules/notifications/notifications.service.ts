@@ -5,6 +5,8 @@ import { Repository } from 'typeorm';
 import { Queue } from 'bull';
 import { Notification } from './entities/notification.entity';
 import { NotificationType } from '../../common/enums/notification-type.enum';
+import { UsersService } from '../users/users.service';
+import { UserRole } from '../../common/enums/user-role.enum';
 
 @Injectable()
 export class NotificationsService {
@@ -13,6 +15,7 @@ export class NotificationsService {
     private notificationsRepository: Repository<Notification>,
     @InjectQueue('notifications')
     private notificationsQueue: Queue,
+    private usersService: UsersService,
   ) {}
 
   async create(
@@ -133,5 +136,34 @@ export class NotificationsService {
       `You've earned ${loyaltyDetails.points} points! Your new balance is ${loyaltyDetails.balance}`,
       loyaltyDetails,
     );
+  }
+
+  async sendToPlatformAdmins(
+    title: string,
+    message: string,
+    data?: any,
+  ): Promise<{ message: string; sentTo: number }> {
+    // Find all admin users
+    const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true });
+    
+    if (admins.length === 0) {
+      throw new Error('No admin users found to send message to');
+    }
+
+    const adminIds = admins.map(admin => admin.id);
+    
+    // Send bulk notification to all admins
+    await this.sendBulk(
+      adminIds,
+      NotificationType.PUSH,
+      `[Clinic Message] ${title}`,
+      message,
+      { ...data, source: 'clinic_to_platform' },
+    );
+
+    return {
+      message: 'Message sent to platform admins',
+      sentTo: adminIds.length,
+    };
   }
 }

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Appointment } from './entities/appointment.entity';
 import { AppointmentHold } from './entities/appointment-hold.entity';
+import { BlockedTimeSlot } from './entities/blocked-time-slot.entity';
 import { ClinicsService } from '../clinics/clinics.service';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
@@ -13,6 +14,8 @@ export class AvailabilityService {
     private appointmentsRepository: Repository<Appointment>,
     @InjectRepository(AppointmentHold)
     private holdsRepository: Repository<AppointmentHold>,
+    @InjectRepository(BlockedTimeSlot)
+    private blockedTimeSlotsRepository: Repository<BlockedTimeSlot>,
     private clinicsService: ClinicsService,
   ) {}
 
@@ -89,6 +92,22 @@ export class AvailabilityService {
       },
     });
 
+    // Get blocked time slots for this provider or clinic-wide
+    const blockedSlots = await this.blockedTimeSlotsRepository.find({
+      where: [
+        {
+          clinicId,
+          providerId: providerId || undefined,
+          startTime: Between(startOfDay, endOfDay),
+        },
+        {
+          clinicId,
+          providerId: null, // Clinic-wide blocks
+          startTime: Between(startOfDay, endOfDay),
+        },
+      ],
+    });
+
     // Generate available slots
     const slots = [];
     
@@ -110,7 +129,7 @@ export class AvailabilityService {
       const slotStart = new Date(currentSlot);
       const slotEnd = new Date(currentSlot.getTime() + (service.durationMinutes * 60000));
       
-      // Check if slot conflicts with existing appointments or holds
+      // Check if slot conflicts with existing appointments, holds, or blocked slots
       const hasConflict = existingAppointments.some(apt => {
         const aptStart = new Date(apt.startTime);
         const aptEnd = new Date(apt.endTime);
@@ -119,6 +138,10 @@ export class AvailabilityService {
         const holdStart = new Date(hold.startTime);
         const holdEnd = new Date(hold.endTime);
         return slotStart < holdEnd && slotEnd > holdStart;
+      }) || blockedSlots.some(blocked => {
+        const blockedStart = new Date(blocked.startTime);
+        const blockedEnd = new Date(blocked.endTime);
+        return slotStart < blockedEnd && slotEnd > blockedStart;
       });
 
       console.log('🔵 Slot:', { slotStart, slotEnd, hasConflict });
@@ -143,11 +166,12 @@ export class AvailabilityService {
     query: any,
   ): Promise<any> {
     // Get clinic based on user role
+    // SECRETARIAT and CLINIC_OWNER have same permissions
     let clinic;
-    if (userRole === 'clinic_owner') {
+    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       clinic = await this.clinicsService.findByOwnerId(userId);
     } else {
-      // For doctors and staff, we need to find their clinic
+      // For other roles, we need to find their clinic
       // This is a simplified approach - in reality, you'd need to map users to clinics
       throw new Error('Clinic availability lookup not implemented for this user role');
     }
@@ -156,6 +180,12 @@ export class AvailabilityService {
       throw new Error('Clinic not found');
     }
 
+    // Get blocked time slots
+    const blockedSlots = await this.blockedTimeSlotsRepository.find({
+      where: { clinicId: clinic.id },
+      relations: ['provider', 'blockedBy'],
+    });
+
     // Return clinic availability settings
     return {
       clinicId: clinic.id,
@@ -163,7 +193,100 @@ export class AvailabilityService {
       timezone: clinic.timezone,
       businessHours: clinic.businessHours,
       blockedDates: [], // This would come from a separate blocked dates entity
+      blockedTimeSlots: blockedSlots.map(slot => ({
+        id: slot.id,
+        providerId: slot.providerId,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        reason: slot.reason,
+      })),
     };
+  }
+
+  async blockTimeSlot(
+    clinicId: string,
+    providerId: string | null,
+    startTime: Date,
+    endTime: Date,
+    reason: string,
+    blockedById: string,
+  ): Promise<BlockedTimeSlot> {
+    // Verify clinic exists
+    const clinic = await this.clinicsService.findById(clinicId);
+    if (!clinic) {
+      throw new Error('Clinic not found');
+    }
+
+    // Check for conflicts with existing appointments
+    const conflictingAppointment = await this.appointmentsRepository.findOne({
+      where: {
+        clinicId: clinic.id,
+        providerId: providerId || undefined,
+        startTime: Between(startTime, endTime),
+        status: AppointmentStatus.CONFIRMED,
+      },
+    });
+
+    if (conflictingAppointment) {
+      throw new Error('Cannot block time slot with existing confirmed appointment');
+    }
+
+    const blockedSlot = this.blockedTimeSlotsRepository.create({
+      clinicId: clinic.id,
+      providerId: providerId || null,
+      startTime,
+      endTime,
+      reason,
+      blockedById,
+    });
+
+    return this.blockedTimeSlotsRepository.save(blockedSlot);
+  }
+
+  async unblockTimeSlot(blockedSlotId: string, userId: string, userRole: string): Promise<void> {
+    const blockedSlot = await this.blockedTimeSlotsRepository.findOne({
+      where: { id: blockedSlotId },
+      relations: ['clinic'],
+    });
+
+    if (!blockedSlot) {
+      throw new Error('Blocked time slot not found');
+    }
+
+    // Verify user has permission (clinic owner or admin)
+    if (userRole !== 'admin' && blockedSlot.clinic.ownerId !== userId) {
+      throw new Error('Unauthorized to unblock this time slot');
+    }
+
+    await this.blockedTimeSlotsRepository.remove(blockedSlot);
+  }
+
+  async getBlockedTimeSlots(
+    clinicId: string,
+    providerId?: string | null,
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<BlockedTimeSlot[]> {
+    const queryBuilder = this.blockedTimeSlotsRepository.createQueryBuilder('blocked')
+      .where('blocked.clinicId = :clinicId', { clinicId });
+
+    if (providerId) {
+      queryBuilder.andWhere(
+        '(blocked.providerId = :providerId OR blocked.providerId IS NULL)',
+        { providerId }
+      );
+    } else {
+      queryBuilder.andWhere('blocked.providerId IS NULL');
+    }
+
+    if (startDate && endDate) {
+      queryBuilder.andWhere('blocked.startTime BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
+    }
+
+    return queryBuilder.getMany();
   }
 }
 

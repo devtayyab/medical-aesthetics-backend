@@ -63,6 +63,40 @@ export class Appointment {
   @Column({ type: 'timestamptz', nullable: true })
   completedAt: Date;
 
+  @Column({
+    type: 'enum',
+    enum: ['clinic_own', 'platform_broker'],
+    default: 'platform_broker',
+  })
+  appointmentSource: 'clinic_own' | 'platform_broker'; // Distinguish clinic's own appointments vs platform/broker appointments
+
+  @Column({
+    type: 'enum',
+    enum: ['showed_up', 'no_show', 'pending'],
+    nullable: true,
+  })
+  showStatus?: 'showed_up' | 'no_show' | 'pending'; // Patient attendance status
+
+  @Column({ default: false })
+  serviceExecuted: boolean; // Whether the service was actually performed
+
+  @Column({ nullable: true })
+  followUpServiceId?: string; // Next service appointment (renewal)
+
+  @Column('text', { nullable: true })
+  clinicNotes?: string; // Notes from clinic about the appointment
+
+  @Column('json', { nullable: true })
+  appointmentCompletionReport?: {
+    patientCame: boolean; // Showed up / no-show
+    servicePerformed: string; // What service was performed
+    amountPaid: number; // What they paid
+    renewalDate?: Date; // When they renewed (follow-up or next service)
+    notes?: string; // Additional notes
+    recordedAt: Date; // When this report was recorded
+    recordedById: string; // Who recorded this
+  };
+
   @CreateDateColumn()
   createdAt: Date;
 

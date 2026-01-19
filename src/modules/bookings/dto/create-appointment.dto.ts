@@ -65,4 +65,9 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsObject()
   treatmentDetails?: any;
+
+  @ApiProperty({ enum: ['clinic_own', 'platform_broker'], required: false, default: 'platform_broker' })
+  @IsOptional()
+  @IsEnum(['clinic_own', 'platform_broker'])
+  appointmentSource?: 'clinic_own' | 'platform_broker';
 }
