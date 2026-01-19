@@ -24,6 +24,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 import { TaskAutomationService } from './task-automation.service';
 import { FacebookService, ParsedFacebookLead } from './facebook.service';
+import { QueueService } from '../queue/queue.service';
 import { DuplicateDetectionService } from './duplicate-detection.service';
 import { CustomerAffiliationService } from './customer-affiliation.service';
 import { MandatoryFieldValidationService } from './mandatory-field-validation.service';
@@ -62,6 +63,7 @@ export class CrmService {
     private customerAffiliationService: CustomerAffiliationService,
     private mandatoryFieldValidationService: MandatoryFieldValidationService,
     private taskAutomationService: TaskAutomationService,
+    private queueService: QueueService,
   ) { }
 
   private async userHasAccessToCustomer(userId: string, customerId: string): Promise<boolean> {
@@ -111,6 +113,34 @@ export class CrmService {
     this.eventEmitter.emit('lead.created', savedLead);
 
     return savedLead;
+  }
+
+  async scheduleRecurringAppointment(data: any): Promise<any> {
+    const { customerId, serviceId, frequency } = data;
+
+    // Validate customer exists
+    const customer = await this.usersRepository.findOne({ where: { id: customerId } });
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    // Resolve CustomerRecord
+    let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
+    if (!record) {
+      record = await this.createCustomerRecord(customerId);
+    }
+
+    // Use QueueService to schedule repetition
+    await this.queueService.scheduleRecurringAppointments(
+      serviceId, // we treat serviceId as templateId/service description for now
+      frequency,
+      customerId,
+    );
+
+    return {
+      success: true,
+      message: `Recurring appointment scheduled for client ${customerId} with ${frequency} frequency`,
+    };
   }
 
   async handleFacebookWebhook(webhookData: FacebookWebhookDto): Promise<void> {
@@ -545,6 +575,59 @@ export class CrmService {
     return this.customerRecordsRepository.save(record);
   }
 
+  async createCustomer(data: any, salespersonId: string): Promise<User> {
+    // Check if user already exists
+    const existingUser = await this.usersRepository.findOne({
+      where: [{ email: data.email }, { phone: data.phone }],
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('Customer with this email or phone already exists');
+    }
+
+    const newUser = this.usersRepository.create({
+      ...data,
+      role: UserRole.CLIENT,
+      isActive: true,
+      passwordHash: Math.random().toString(36).slice(-10), // Random temporary password
+    } as Partial<User>);
+
+    const savedUser = await this.usersRepository.save(newUser);
+
+    // Create customer record
+    await this.createCustomerRecord(savedUser.id, salespersonId);
+
+    return savedUser;
+  }
+
+  async getCustomers(filters: any): Promise<any[]> {
+    const requesterId = filters._requesterId;
+
+    const query = this.customerRecordsRepository.createQueryBuilder('record')
+      .leftJoinAndSelect('record.customer', 'customer')
+      .leftJoinAndSelect('record.assignedSalesperson', 'salesperson');
+
+    if (requesterId) {
+      const user = await this.usersRepository.findOne({ where: { id: requesterId } });
+      if (user?.role === UserRole.SALESPERSON) {
+        query.andWhere('record.assignedSalespersonId = :requesterId', { requesterId });
+      }
+    }
+
+    if (filters.search) {
+      query.andWhere(
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search)',
+        { search: `%${filters.search}%` },
+      );
+    }
+
+    if (filters.status) {
+      query.andWhere('record.customerStatus = :status', { status: filters.status });
+    }
+
+    return query.getMany();
+  }
+
   async updateCustomerRecord(customerId: string, updateData: Partial<CustomerRecord>): Promise<CustomerRecord> {
     let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
 
@@ -610,6 +693,19 @@ export class CrmService {
 
   // Action/Task Management
   async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
+    // Resolve customerRecord if customerId (User ID) is provided
+    if (data.customerId) {
+      const record = await this.customerRecordsRepository.findOne({
+        where: { customerId: data.customerId }
+      });
+
+      if (record) {
+        // Here we assume data.customerId was actually the User.id
+        // The entity's customerId field is the FK to CustomerRecord.id
+        data.customerId = record.id;
+      }
+    }
+
     // Enforce mandatory field validation for phone call actions
     if (data.actionType === 'phone_call') {
       await this.mandatoryFieldValidationService.enforceActionCompletion(data.customerId, data);
@@ -664,7 +760,8 @@ export class CrmService {
       const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
       const ownedClinicIds = ownerships.map(o => o.clinicId);
       if (ownedClinicIds.length === 0) return [];
-      qb.leftJoin('customer.clientAppointments', 'apt')
+      qb.leftJoin('customer.customer', 'u')
+        .leftJoin('u.clientAppointments', 'apt')
         .andWhere('apt.clinicId IN (:...ids)', { ids: ownedClinicIds });
     } else {
       // Default: nothing
@@ -873,12 +970,10 @@ export class CrmService {
 
   // Manager analytics: aggregate KPIs across agents
   async getManagerAgentKpis(dateRange?: { startDate: Date; endDate: Date }): Promise<any> {
-    console.log("dateRange" , dateRange)
-    Logger.log("dateRange" , dateRange)
-    // Total communications per agent (exclude no_answer)
+    // 1. Get communication statistics per agent
     let commQ = this.communicationLogsRepository
       .createQueryBuilder('log')
-      .select('log.salespersonId', 'salespersonId')
+      .select('log.salespersonId', 'agentId')
       .addSelect('COUNT(log.id)', 'totalCommunications')
       .addSelect("COUNT(CASE WHEN log.type = 'call' AND (log.metadata->>'callOutcome') <> 'no_answer' THEN 1 END)", 'realCalls')
       .groupBy('log.salespersonId');
@@ -887,66 +982,81 @@ export class CrmService {
       commQ = commQ.where('log.createdAt BETWEEN :startDate AND :endDate', dateRange);
     }
 
-    const comm = await commQ.getRawMany();
+    const commStats = await commQ.getRawMany();
 
-    // Get all sales agents
-    const agents = await this.usersRepository.find({
-      where: { role: UserRole.SALESPERSON },
-      select: ['id', 'firstName', 'lastName']
-    });
-
-    // Appointments outcome per agent (booked/attended/treatments/cancel/no-show)
-    // Get appointment statistics
+    // 2. Get appointment statistics per agent (via CustomerRecord)
     let aptQ = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .leftJoin('apt.client', 'client')
-      .select('apt.clientId', 'agentId')
-      .addSelect("CONCAT(client.firstName, ' ', client.lastName)", 'agentName')
+      .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId')
+      .innerJoin('users', 'agent', 'agent.id = rec.assignedSalespersonId')
+      .select('rec.assignedSalespersonId', 'agentId')
+      .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COUNT(apt.id)', 'totalAppointments')
       .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'completedAppointments')
       .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShows')
       .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancellations')
       .addSelect('COALESCE(SUM(CASE WHEN apt.status = \'completed\' THEN apt.totalAmount ELSE 0 END), 0)', 'totalRevenue')
-      .where('apt.clientId IS NOT NULL')
-      .groupBy('apt.clientId, client.firstName, client.lastName');
+      .where('rec.assignedSalespersonId IS NOT NULL')
+      .groupBy('rec.assignedSalespersonId, agent.firstName, agent.lastName');
 
     if (dateRange) {
-      aptQ = aptQ.where('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+      aptQ = aptQ.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
     }
 
-    const apts = await aptQ.getRawMany();
+    const aptStats = await aptQ.getRawMany();
 
+    // 3. Merge communications and appointment stats
+    const agentMap = new Map<string, any>();
 
+    // Initialize with communication stats
+    for (const comm of commStats) {
+      agentMap.set(comm.agentId, {
+        agentId: comm.agentId,
+        totalCommunications: parseInt(comm.totalCommunications, 10) || 0,
+        realCalls: parseInt(comm.realCalls, 10) || 0,
+        totalAppointments: 0,
+        completedAppointments: 0,
+        noShows: 0,
+        cancellations: 0,
+        totalRevenue: 0,
+      });
+    }
 
-     // Process and format the data to match the frontend's AgentKpi interface
-    const result = apts.map(row => {
-      const completedAppointments = parseInt(row.completedAppointments, 10) || 0;
-      const totalAppointments = parseInt(row.totalAppointments, 10) || 0;
-      const totalRevenue = parseFloat(row.totalRevenue) || 0;
+    // Merge with appointment stats
+    for (const apt of aptStats) {
+      const existing = agentMap.get(apt.agentId) || {
+        agentId: apt.agentId,
+        totalCommunications: 0,
+        realCalls: 0,
+      };
 
-      return {
-        agentId: row.agentId,
-        agentName: row.agentName,
+      const completedAppointments = parseInt(apt.completedAppointments, 10) || 0;
+      const totalAppointments = parseInt(apt.totalAppointments, 10) || 0;
+      const totalRevenue = parseFloat(apt.totalRevenue) || 0;
+
+      agentMap.set(apt.agentId, {
+        ...existing,
+        agentName: apt.agentName,
         totalAppointments,
         completedAppointments,
-        noShows: parseInt(row.noShows, 10) || 0,
-        cancellations: parseInt(row.cancellations, 10) || 0,
+        noShows: parseInt(apt.noShows, 10) || 0,
+        cancellations: parseInt(apt.cancellations, 10) || 0,
         totalRevenue,
         avgAppointmentValue: completedAppointments > 0 ? totalRevenue / completedAppointments : 0,
         conversionRate: totalAppointments > 0 ? (completedAppointments / totalAppointments) * 100 : 0
-      };
-    });
+      });
+    }
 
-    return result;  
+    // For agents who have no name (only comm stats), try to fetch their names
+    const finalResult = await Promise.all(Array.from(agentMap.values()).map(async (agent) => {
+      if (!agent.agentName) {
+        const user = await this.usersRepository.findOne({ where: { id: agent.agentId }, select: ['firstName', 'lastName'] });
+        agent.agentName = user ? `${user.firstName} ${user.lastName}` : 'Unknown Agent';
+      }
+      return agent;
+    }));
 
-    // // Merge
-    // const map = new Map<string, any>();
-    // for (const r of comm) map.set(r.salespersonId, { salespersonId: r.salespersonId, ...r });
-    // for (const r of apts) {
-    //   const prev = map.get(r.salespersonId) || { salespersonId: r.salespersonId };
-    //   map.set(r.salespersonId, { ...prev, ...r });
-    // }
-    // return Array.from(map.values());
+    return finalResult;
   }
 
   async getServiceStats(dateRange?: { startDate: Date; endDate: Date }): Promise<any[]> {
@@ -1093,7 +1203,7 @@ export class CrmService {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 7);
-    const agents = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON  } });
+    const agents = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON } });
     let sent = 0;
     for (const agent of agents) {
       const kpis = await this.getSalespersonAnalytics(agent.id, { startDate, endDate });
@@ -1110,8 +1220,8 @@ export class CrmService {
   }
 
   async getAccessibleClinicsForUser(userId: string) {
-    console.log("userId" , userId)
-    Logger.log("userId" , userId)
+    console.log("userId", userId)
+    Logger.log("userId", userId)
     const user = await this.usersRepository.findOne({
       where: { id: userId },
       relations: ['clinics'],
@@ -1141,11 +1251,11 @@ export class CrmService {
         where: { agentUserId: userId },
         relations: ['clinic']
       });
-      
+
       // Since we don't have a direct relation in the entity, we need to fetch the clinics
       const clinicIds = accesses.map(access => access.clinicId);
       if (clinicIds.length === 0) return [];
-      
+
       return this.clinicsRepository.find({
         where: { id: In(clinicIds) }
       });
@@ -1345,7 +1455,7 @@ export class CrmService {
       .leftJoinAndSelect('record.assignedSalesperson', 'agent');
 
     if (query.search) {
-      qb = qb.where('customer.firstName ILIKE :search OR customer.lastName ILIKE :search', 
+      qb = qb.where('customer.firstName ILIKE :search OR customer.lastName ILIKE :search',
         { search: `%${query.search}%` });
     }
 
@@ -1355,7 +1465,7 @@ export class CrmService {
         .createQueryBuilder('apt')
         .select('apt.clientId')
         .where('apt.clinicId = :clinicId', { clinicId: query.clinicId });
-      
+
       qb = qb.andWhere(`record.customerId IN (${subQuery.getQuery()})`);
     }
 
@@ -1495,8 +1605,8 @@ export class CrmService {
           .having('COUNT(apt.id) > 1')
           .getRawMany();
 
-        const returnRate = allTimeClients.length > 0 
-          ? repeatClients30.length / allTimeClients.length 
+        const returnRate = allTimeClients.length > 0
+          ? repeatClients30.length / allTimeClients.length
           : 0;
 
         return {
@@ -1555,7 +1665,7 @@ export class CrmService {
     `;
 
     const params: any[] = [];
-    
+
     if (dateRange) {
       sql += ` AND adLog.date BETWEEN $1 AND $2`;
       params.push(dateRange.startDate.toISOString().split('T')[0], dateRange.endDate.toISOString().split('T')[0]);

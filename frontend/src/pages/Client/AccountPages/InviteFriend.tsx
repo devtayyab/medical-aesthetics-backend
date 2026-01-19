@@ -1,13 +1,11 @@
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { css } from "@emotion/css";
 import LayeredBG from "@/assets/LayeredBg.svg";
 import HeroImage from "@/assets/ReferralHeaderImg.jpg";
 import { FaChevronRight, FaChevronDown, FaChevronUp } from "react-icons/fa6";
 import type { RootState } from "@/store";
-import { Input } from "@/components/atoms/Input/Input";
-import { IoMdLock } from "react-icons/io";
 
 const containerStyle = css`
   width: 100%;
@@ -17,11 +15,18 @@ const containerStyle = css`
 `;
 
 export const InviteFriend: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
-  const inviteLink = `https://example.com/invite?ref=${user?.id}`;
+  const referralCode = (user as any)?.referralCode || "GET5NOW";
+  const inviteLink = `${window.location.origin}/register?ref=${referralCode}`;
 
   const [faqOpen, setFaqOpen] = useState<number | null>(0);
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const toggleFAQ = (index: number) => {
     setFaqOpen(faqOpen === index ? null : index);
@@ -29,20 +34,20 @@ export const InviteFriend: React.FC = () => {
 
   const faqs = [
     {
-      q: "Lorem ipsum dolor sit amet consectetur?",
-      a: "Lorem ipsum dolor sit amet consectetur. Aliquam in arcu scelerisque amet lorem morbi...",
+      q: "How do I earn the $5 bonus?",
+      a: "Just share your unique referral link with your friends. When they register using your link and complete their first booking, both of you will receive $5 worth of loyalty points in your accounts.",
     },
     {
-      q: "Lorem ipsum dolor sit amet consectetur. Eros vitae?",
-      a: "Suspendisse potenti. Integer ut quam sed turpis dictum blandit in nec dui.",
+      q: "Is there a limit to how many friends I can invite?",
+      a: "No! There is no limit. You can invite as many friends as you want and keep earning rewards for each one who books a treatment.",
     },
     {
-      q: "Lorem ipsum dolor sit amet consectetur. Purus venenatis ultrices?",
-      a: "Vestibulum sit amet quam in tortor mattis rhoncus ut at lacus.",
+      q: "When will I see the bonus in my account?",
+      a: "The bonus points are automatically credited to your account as soon as your friend's first appointment is marked as completed by the clinic.",
     },
     {
-      q: "Lorem ipsum dolor sit amet consectetur?",
-      a: "Mauris eget felis in metus varius finibus sit amet ut augue.",
+      q: "Can I use the $5 for any treatment?",
+      a: "Yes, you can use your loyalty points to get discounts on any treatment available on our platform.",
     },
   ];
 
@@ -77,42 +82,57 @@ export const InviteFriend: React.FC = () => {
         </h2>
 
         {/* Hero Section */}
-        <div className="relative rounded-[24px] overflow-hidden mb-10">
+        <div className="relative rounded-[24px] overflow-hidden mb-10 shadow-2xl">
           <img
             src={HeroImage}
             alt="Invite a friend"
-            className="w-full h-[420px] object-cover"
+            className="w-full h-[420px] object-cover filter brightness-75"
           />
-          <div className="absolute top-0 left-0 p-6 text-white">
-            <h3 className="text-[64px] leading-[70px] font-bold">
-              Invite a friend <br /> and earn 5$!
+          <div className="absolute top-0 left-0 p-8 text-white max-w-[600px]">
+            <h3 className="text-[54px] leading-[60px] font-bold mb-4 drop-shadow-lg">
+              Invite a friend <br /> and earn $5!
             </h3>
+            <p className="text-xl text-gray-100 drop-shadow-md">Share the love for aesthetics and get rewarded for every friend you bring.</p>
           </div>
 
-          {/* Unlock Card */}
-          <div className="md:min-w-[470px] absolute bottom-6 left-6 bg-white shadow-lg rounded-[12px] px-4 py-6">
+          {/* Referral Link Card */}
+          <div className="md:min-w-[500px] absolute bottom-6 left-6 bg-white/95 backdrop-blur shadow-xl rounded-[20px] px-6 py-8">
             <div className="flex items-center gap-4 mb-6">
-              <div className="px-2 py-[5px] size-[46px] flex items-center justify-center bg-[#E7E7E7] rounded-[12px]">
-                <IoMdLock size={28} className="text-[#717171]" />
+              <div className="size-12 flex items-center justify-center bg-[#CBFF38]/20 rounded-xl">
+                <span className="text-2xl">🎁</span>
               </div>
-              <span>
-                <p className="font-semibold text-[#33373F] mb-1">
-                  Unlock your referral now!
+              <div>
+                <p className="font-bold text-[#33373F] text-lg">
+                  Your Referral Link
                 </p>
-                <p className="text-[14px] text-[#586271]">
-                  Make at least one booking to start inviting your friends
+                <p className="text-sm text-[#586271]">
+                  Copy and share this link to start earning
                 </p>
-              </span>
+              </div>
             </div>
-            <div className="flex gap-4">
-              <Input
-                placeholder="Make an appointment"
-                style={{ border: "1px solid #586271" }}
-                fullWidth
-              />
-              <button className="w-[140px] px-4 py-3 rounded-[12px] border-[0.45px] border-[#203400] bg-[#CBFF38] text-[#203400] font-medium hover:bg-[#A7E52F]">
-                Book Now
+
+            <div className="flex gap-2">
+              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center overflow-hidden">
+                <code className="text-sm text-[#357A7B] font-mono truncate">{inviteLink}</code>
+              </div>
+              <button
+                onClick={copyToClipboard}
+                className={`px-6 py-3 rounded-xl font-bold transition-all ${copied
+                  ? "bg-green-500 text-white"
+                  : "bg-[#CBFF38] text-[#203400] hover:bg-[#A7E52F]"
+                  }`}
+              >
+                {copied ? "Copied!" : "Copy"}
               </button>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-100 flex justify-between items-center text-sm">
+              <div className="text-gray-500">
+                Code: <span className="font-bold text-black font-mono">{referralCode}</span>
+              </div>
+              <Link to="/search" className="text-[#357A7B] font-bold hover:underline">
+                Find treatments to share →
+              </Link>
             </div>
           </div>
         </div>

@@ -4,8 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
   OneToMany,
   OneToOne,
+  JoinColumn,
   BeforeInsert,
   BeforeUpdate,
 } from 'typeorm';
@@ -60,7 +62,14 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ unique: true, nullable: true })
+  referralCode: string;
+
   @Column({ nullable: true })
+  referredById: string;
+
+  @Column({ nullable: true })
+  @Exclude()
   refreshToken: string;
 
   @CreateDateColumn()
@@ -70,6 +79,12 @@ export class User {
   updatedAt: Date;
 
   // Relations
+  @ManyToOne(() => User, (user) => user.referrals)
+  @JoinColumn({ name: 'referredById' })
+  referredBy: User;
+
+  @OneToMany(() => User, (user) => user.referredBy)
+  referrals: User[];
   @OneToMany(() => Lead, (lead) => lead.assignedSales)
   assignedLeads: Lead[];
 

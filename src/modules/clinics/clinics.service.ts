@@ -19,7 +19,7 @@ export class ClinicsService {
     private servicesRepository: Repository<Service>,
     @InjectRepository(Review)
     private reviewsRepository: Repository<Review>,
-  ) {}
+  ) { }
 
   async search(params: {
     location?: string;
@@ -27,44 +27,68 @@ export class ClinicsService {
     search?: string;
     limit?: number;
     offset?: number;
-  }): Promise<{ clinics: Clinic[]; total: number; offset: number }> {
-    const queryBuilder = this.clinicsRepository.createQueryBuilder('clinic')
+  }): Promise<{ clinics: Clinic[]; services: Service[]; total: number; offset: number }> {
+    // 1. Search for Clinics
+    const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
       .leftJoinAndSelect('clinic.services', 'services')
       .where('clinic.isActive = :isActive', { isActive: true });
 
     if (params.location) {
-      queryBuilder.andWhere(
+      clinicQb.andWhere(
         '(clinic.address->>\'city\' ILIKE :location OR clinic.address->>\'state\' ILIKE :location)',
         { location: `%${params.location}%` }
       );
     }
 
     if (params.search) {
-      queryBuilder.andWhere(
+      clinicQb.andWhere(
         '(clinic.name ILIKE :search OR clinic.description ILIKE :search)',
         { search: `%${params.search}%` }
       );
     }
 
     if (params.category) {
-      queryBuilder.andWhere('services.category = :category', { category: params.category });
+      clinicQb.andWhere('services.category = :category', { category: params.category });
     }
 
-    const total = await queryBuilder.getCount();
-    
-    if (params.limit) {
-      queryBuilder.limit(params.limit);
-    }
-    
-    if (params.offset) {
-      queryBuilder.offset(params.offset);
+    // 2. Search for Services (Treatments)
+    const serviceQb = this.servicesRepository.createQueryBuilder('service')
+      .leftJoinAndSelect('service.clinic', 'clinic')
+      .where('service.isActive = :isActive', { isActive: true })
+      .andWhere('clinic.isActive = :clinicActive', { clinicActive: true });
+
+    if (params.search) {
+      serviceQb.andWhere(
+        '(service.name ILIKE :search OR service.description ILIKE :search)',
+        { search: `%${params.search}%` }
+      );
     }
 
-    const clinics = await queryBuilder.getMany();
+    if (params.category) {
+      serviceQb.andWhere('service.category = :category', { category: params.category });
+    }
+
+    if (params.location) {
+      serviceQb.andWhere(
+        '(clinic.address->>\'city\' ILIKE :location OR clinic.address->>\'state\' ILIKE :location)',
+        { location: `%${params.location}%` }
+      );
+    }
+
+    const [clinics, totalClinics] = await clinicQb
+      .take(params.limit || 10)
+      .skip(params.offset || 0)
+      .getManyAndCount();
+
+    const [services, totalServices] = await serviceQb
+      .take(params.limit || 10)
+      .skip(params.offset || 0)
+      .getManyAndCount();
 
     return {
       clinics,
-      total,
+      services,
+      total: totalClinics + totalServices,
       offset: params.offset || 0,
     };
   }
@@ -184,12 +208,12 @@ export class ClinicsService {
 
   async createService(ownerId: string, serviceData: Partial<Service>): Promise<Service> {
     const clinic = await this.findByOwnerId(ownerId);
-    
+
     const service = this.servicesRepository.create({
       ...serviceData,
       clinicId: clinic.id,
     });
-    
+
     return this.servicesRepository.save(service);
   }
 
@@ -199,7 +223,7 @@ export class ClinicsService {
     updateData: Partial<Service>,
   ): Promise<Service> {
     const clinic = await this.findByOwnerId(ownerId);
-    
+
     const service = await this.servicesRepository.findOne({
       where: { id: serviceId, clinicId: clinic.id },
     });
@@ -214,7 +238,7 @@ export class ClinicsService {
 
   async toggleServiceStatus(ownerId: string, serviceId: string): Promise<Service> {
     const clinic = await this.findByOwnerId(ownerId);
-    
+
     const service = await this.servicesRepository.findOne({
       where: { id: serviceId, clinicId: clinic.id },
     });
@@ -230,7 +254,7 @@ export class ClinicsService {
   // Review Management
   async getClinicReviews(ownerId: string, query?: { limit?: number; offset?: number }): Promise<any> {
     const clinic = await this.findByOwnerId(ownerId);
-    
+
     const queryBuilder = this.reviewsRepository.createQueryBuilder('review')
       .leftJoinAndSelect('review.client', 'client')
       .leftJoinAndSelect('review.appointment', 'appointment')
@@ -252,7 +276,7 @@ export class ClinicsService {
     const avgRating = await this.reviewsRepository
       .createQueryBuilder('review')
       .select('AVG(review.rating)', 'avgRating')
-      .where('review.clinicId = :clinicId AND review.isVisible = :isVisible', { 
+      .where('review.clinicId = :clinicId AND review.isVisible = :isVisible', {
         clinicId: clinic.id,
         isVisible: true,
       })
@@ -273,7 +297,7 @@ export class ClinicsService {
     response: string,
   ): Promise<Review> {
     const clinic = await this.findByOwnerId(ownerId);
-    
+
     const review = await this.reviewsRepository.findOne({
       where: { id: reviewId, clinicId: clinic.id },
     });
@@ -292,7 +316,7 @@ export class ClinicsService {
     reviewId: string,
   ): Promise<Review> {
     const clinic = await this.findByOwnerId(ownerId);
-    
+
     const review = await this.reviewsRepository.findOne({
       where: { id: reviewId, clinicId: clinic.id },
     });
@@ -319,7 +343,7 @@ export class ClinicsService {
         'COUNT(CASE WHEN review.rating = 2 THEN 1 END) as twoStars',
         'COUNT(CASE WHEN review.rating = 1 THEN 1 END) as oneStar',
       ])
-      .where('review.clinicId = :clinicId AND review.isVisible = :isVisible', { 
+      .where('review.clinicId = :clinicId AND review.isVisible = :isVisible', {
         clinicId: clinic.id,
         isVisible: true,
       })

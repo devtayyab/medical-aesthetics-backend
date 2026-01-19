@@ -18,6 +18,7 @@ interface ClientState {
   availableSlots: TimeSlot[];
   appointments: Appointment[];
   loyaltyBalance: LoyaltyBalance | null;
+  searchServices: Service[];
   isLoading: boolean;
   error: string | null;
   searchFilters: SearchFilters;
@@ -31,6 +32,7 @@ const initialState: ClientState = {
   featuredClinics: [],
   selectedClinic: null,
   services: [],
+  searchServices: [],
   availableSlots: [],
   appointments: [],
   loyaltyBalance: null,
@@ -314,6 +316,7 @@ const clientSlice = createSlice({
       .addCase(searchClinics.fulfilled, (state, action) => {
         state.isLoading = false;
         state.clinics = action.payload.clinics || [];
+        state.searchServices = action.payload.services || [];
         state.total = action.payload.total || 0;
         state.hasMore = action.payload.hasMore || false;
       })
@@ -360,10 +363,10 @@ const clientSlice = createSlice({
         state.appointments = state.appointments.map((appointment) =>
           appointment.id === action.payload.id
             ? {
-                ...appointment,
-                startTime: action.payload.startTime,
-                endTime: action.payload.endTime,
-              }
+              ...appointment,
+              startTime: action.payload.startTime,
+              endTime: action.payload.endTime,
+            }
             : appointment
         );
       })

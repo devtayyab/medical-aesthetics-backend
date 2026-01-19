@@ -12,7 +12,7 @@ export class LoyaltyService {
     private ledgerRepository: Repository<LoyaltyLedger>,
     private eventEmitter: EventEmitter2,
     private clinicsService: ClinicsService,
-  ) {}
+  ) { }
 
   async getClientBalance(clientId: string, clinicId?: string): Promise<any> {
     let queryBuilder = this.ledgerRepository
@@ -78,7 +78,7 @@ export class LoyaltyService {
     description: string,
   ): Promise<LoyaltyLedger> {
     const balance = await this.getClientBalance(clientId, clinicId);
-    
+
     if (balance.totalPoints < points) {
       throw new BadRequestException('Insufficient points balance');
     }
@@ -212,5 +212,33 @@ export class LoyaltyService {
       },
       topClients,
     };
+  }
+  async handleReferral(newClientId: string, referralCode: string): Promise<void> {
+    const referrer = await this.ledgerRepository.manager.getRepository('users').findOne({
+      where: { referralCode },
+    });
+
+    if (!referrer) return;
+
+    // Link the new client to the referrer
+    await this.ledgerRepository.manager.getRepository('users').update(newClientId, {
+      referredById: (referrer as any).id,
+    });
+
+    // Award points to referrer (e.g., 50 points = $5)
+    await this.awardPoints(
+      (referrer as any).id,
+      null as any, // General loyalty, not specific to a clinic if not known
+      50,
+      `Referral bonus for inviting a new friend`,
+    );
+
+    // Award points to the new client
+    await this.awardPoints(
+      newClientId,
+      null as any,
+      50,
+      `Welcome bonus for using a referral code`,
+    );
   }
 }

@@ -85,6 +85,7 @@ export interface TimeSlot {
   available: boolean;
   price?: number;
   discount?: number;
+  providerId?: string;
 }
 
 export interface LoyaltyBalance {
@@ -120,6 +121,7 @@ export interface BookingFlow {
 }
 
 export interface SearchFilters {
+  query?: string;
   location?: string;
   category?: string;
   priceRange?: [number, number];

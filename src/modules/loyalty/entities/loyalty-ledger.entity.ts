@@ -17,7 +17,7 @@ export class LoyaltyLedger {
   @Column()
   clientId: string;
 
-  @Column()
+  @Column({ nullable: true })
   clinicId: string;
 
   @Column()

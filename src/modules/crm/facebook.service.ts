@@ -43,6 +43,17 @@ export class FacebookService {
   }
 
   async getLead(leadId: string): Promise<FacebookLeadData> {
+    if (leadId.startsWith('mock_') || this.accessToken === 'MOCK_TOKEN') {
+      return {
+        id: leadId,
+        created_time: new Date().toISOString(),
+        field_data: [
+          { name: 'full_name', values: ['Mock User'] },
+          { name: 'email', values: ['mock@example.com'] },
+          { name: 'phone_number', values: ['+1234567890'] },
+        ],
+      };
+    }
     try {
       const response = await this.axiosInstance.get(`/${leadId}`, {
         params: {

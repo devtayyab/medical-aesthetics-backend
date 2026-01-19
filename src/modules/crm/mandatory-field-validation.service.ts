@@ -25,7 +25,7 @@ export class MandatoryFieldValidationService {
     private communicationLogsRepository: Repository<CommunicationLog>,
     @InjectRepository(CrmAction)
     private crmActionsRepository: Repository<CrmAction>,
-  ) {}
+  ) { }
 
   validateCommunicationFields(
     customerId: string,
@@ -36,19 +36,20 @@ export class MandatoryFieldValidationService {
 
     // For call communications, these fields are mandatory
     if (communicationData.type === 'call') {
-      if (!communicationData.metadata?.clinic) {
+      const data = communicationData.metadata || {};
+      if (!data.clinic) {
         missingFields.push('clinic');
       }
 
-      if (!communicationData.metadata?.proposedTreatment) {
+      if (!data.proposedTreatment) {
         missingFields.push('proposedTreatment');
       }
 
-      if (!communicationData.metadata?.cost && communicationData.metadata?.cost !== 0) {
+      if (!data.cost && data.cost !== 0) {
         missingFields.push('cost');
       }
 
-      if (!communicationData.metadata?.callOutcome) {
+      if (!data.callOutcome) {
         missingFields.push('callOutcome');
       }
 
@@ -78,20 +79,26 @@ export class MandatoryFieldValidationService {
 
     // For phone call actions, ensure required fields are present
     if (actionData.actionType === 'phone_call') {
-      if (!actionData.metadata?.clinic) {
+      // Check top-level fields first (as they are in the entity), then fallback to metadata
+      const clinic = actionData.clinic || actionData.metadata?.clinic;
+      const proposedTreatment = actionData.proposedTreatment || actionData.metadata?.proposedTreatment;
+      const callOutcome = actionData.callOutcome || actionData.metadata?.callOutcome;
+
+      if (!clinic) {
         missingFields.push('clinic');
       }
 
-      if (!actionData.metadata?.proposedTreatment) {
+      if (!proposedTreatment) {
         missingFields.push('proposedTreatment');
       }
 
-      if (!actionData.metadata?.callOutcome) {
+      if (!callOutcome) {
         missingFields.push('callOutcome');
       }
 
       // Warnings for missing optional but recommended fields
-      if (!actionData.metadata?.cost && actionData.metadata?.cost !== 0) {
+      const cost = actionData.cost !== undefined ? actionData.cost : actionData.metadata?.cost;
+      if (cost === undefined && cost !== 0) {
         warnings.push('Cost information missing');
       }
     }
@@ -125,8 +132,8 @@ export class MandatoryFieldValidationService {
       (comm) =>
         comm.type === 'call' &&
         (!comm.metadata?.callOutcome ||
-         !comm.metadata?.clinic ||
-         !comm.metadata?.proposedTreatment),
+          !comm.metadata?.clinic ||
+          !comm.metadata?.proposedTreatment),
     );
 
     if (incompleteCalls.length > 0) {

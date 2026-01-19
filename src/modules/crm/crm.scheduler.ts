@@ -11,7 +11,7 @@ export class CrmScheduler {
     private readonly crmService: CrmService,
     @Inject(AdAttributionService)
     private readonly adAttributionService: AdAttributionService,
-  ) {}
+  ) { }
 
   // Every Monday at 08:00
   @Cron(CronExpression.EVERY_WEEK)
@@ -35,6 +35,20 @@ export class CrmScheduler {
       );
     } catch (error) {
       this.logger.error('Failed to sync ad campaign metrics', error as any);
+    }
+  }
+
+  // Every day at 02:00 AM
+  @Cron('0 2 * * *')
+  async runTaskAutomation() {
+    try {
+      this.logger.log('Starting daily task automation check...');
+      const result = await this.crmService.runTaskAutomationCheck();
+      this.logger.log(
+        `Task automation check completed. Tasks created: ${result.tasksCreated}, Overdue tasks updated: ${result.overdueTasks}`,
+      );
+    } catch (error) {
+      this.logger.error('Failed to run task automation check', error as any);
     }
   }
 }

@@ -6,8 +6,8 @@ import { User } from "../users/entities/user.entity";
 import { ConfigService } from "@nestjs/config";
 import { RegisterDto } from "./dto/register.dto";
 import { ClinicsService } from "../clinics/clinics.service";
-import { Roles } from "@/common/decorators/roles.decorator";
 import { UserRole } from "@/common/enums/user-role.enum";
+import { LoyaltyService } from "../loyalty/loyalty.service";
 
 @Injectable()
 export class AuthService {
@@ -15,8 +15,9 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
-    private clinicsService: ClinicsService
-  ) {}
+    private clinicsService: ClinicsService,
+    private loyaltyService: LoyaltyService
+  ) { }
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email);
@@ -117,7 +118,19 @@ export class AuthService {
     );
 
     // Create user
-    const user = await this.usersService.create(registerDto);
+    const user = await this.usersService.create({
+      ...registerDto,
+      referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+    });
+
+    // Handle referral if code provided
+    if (registerDto.referralCode) {
+      try {
+        await this.loyaltyService.handleReferral(user.id, registerDto.referralCode);
+      } catch (error) {
+        console.error("[AuthService] Referral handling failed:", error.message);
+      }
+    }
 
     // If role is clinic_owner and clinicData is provided, create clinic
     if (
