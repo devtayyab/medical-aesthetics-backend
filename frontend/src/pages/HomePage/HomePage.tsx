@@ -9,11 +9,12 @@ import {
   FaCalendarAlt,
   FaApple,
   FaGooglePlay,
+  FaStar,
 } from "react-icons/fa";
 
 // import { Button } from "@/components/atoms/Button/Button";
 // import { Input } from "@/components/atoms/Input/Input";
-import { fetchFeaturedClinics } from "@/store/slices/clinicsSlice";
+import { fetchFeaturedClinics } from "@/store/slices/clientSlice";
 import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 
@@ -26,6 +27,7 @@ import TickIcon from "@/assets/Icons/TickIcon.svg";
 import GiftConfidenceImg from "@/assets/GiftConfidenceImg.svg";
 import TopRatedClinicImg from "@/assets/TopRatedClinicImg.svg";
 import OnlineClinicHome from "@/assets/OnlineClinicHome.svg";
+// Treatment Icons
 import DermaIcon from "@/assets/Icons/TreatmentIcons/DermaIcon.svg";
 import CosmeticIcon from "@/assets/Icons/TreatmentIcons/CosmeticIcon.svg";
 import BodyIcon from "@/assets/Icons/TreatmentIcons/BodyIcon.svg";
@@ -54,47 +56,57 @@ const treatmentSteps = [
   },
 ];
 
-// const categories = [
-//   {
-//     id: "dermatology",
-//     name: "Dermatology",
-//     description: "Skin health and medical treatments",
-//     icon: "🔬",
-//   },
-//   {
-//     id: "plastic-surgery",
-//     name: "Plastic Surgery",
-//     description: "Cosmetic and reconstructive procedures",
-//     icon: "✨",
-//   },
-//   {
-//     id: "aesthetics",
-//     name: "Aesthetics",
-//     description: "Non-surgical beauty treatments",
-//     icon: "💫",
-//   },
-//   {
-//     id: "wellness",
-//     name: "Wellness",
-//     description: "Holistic health and wellness",
-//     icon: "🌿",
-//   },
-// ];
+const categories = [
+  {
+    id: "dermatology",
+    name: "Dermatology",
+    description: "Skin health and medical treatments",
+    icon: DermaIcon,
+  },
+  {
+    id: "plastic-surgery",
+    name: "Plastic Surgery",
+    description: "Cosmetic and reconstructive procedures",
+    icon: CosmeticIcon,
+  },
+  {
+    id: "aesthetics",
+    name: "Aesthetics",
+    description: "Non-surgical beauty treatments",
+    icon: BodyIcon,
+  },
+  {
+    id: "hair",
+    name: "Hair Treatments",
+    description: "Hair restoration and removal",
+    icon: HairIcon,
+  },
+  {
+    id: "dentistry",
+    name: "Dentistry",
+    description: "Dental aesthetics and health",
+    icon: DentistIcon,
+  },
+  {
+    id: "wellness",
+    name: "Wellness",
+    description: "Holistic health and wellness",
+    icon: BodyIcon,
+  },
+];
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
+
+
   const { featuredClinics, isLoading } = useSelector(
-    (state: RootState) => state.clinics
+    (state: RootState) => state.client
   );
 
   const [searchQuery, setSearchQuery] = React.useState("");
   const [location, setLocation] = React.useState("");
-
-  // useEffect(() => {
-  //   dispatch(fetchFeaturedClinics());
-  // }, [dispatch]);
 
   const { isAuthenticated, isLoading: authLoading } = useSelector(
     (state: RootState) => state.auth
@@ -133,24 +145,11 @@ export const HomePage: React.FC = () => {
           alignContent: "center",
         }}
       >
-        {/* Container with max-width */}
         <div className="max-w-[1200px] mx-auto grid grid-cols-1 gap-8 items-center h-full px-6">
-          {/* Left: White search box */}
           <div className="w-[55%] mx-auto bg-white shadow-lg rounded-xl px-6 py-7">
-            {/* Tabs */}
-            {/* <div className="flex border border-[#2D3748] rounded-[16px] overflow-hidden mb-6">
-              <button className="flex-1 flex items-center justify-center gap-2 py-[10px] bg-[#2D3748] text-white font-medium">
-                <FaStethoscope /> Treatments
-              </button>
-              <button className="flex-1 flex items-center justify-center gap-2 py-[10px] bg-white text-gray-700 font-medium border-l">
-                <FaHospital /> Clinics
-              </button>
-            </div> */}
             <h2 className="text-[#33373F] text-[32px] font-semibold text-center mb-7">What would you like to improve?</h2>
 
-            {/* Search form */}
             <form onSubmit={handleSearch} className="space-y-4">
-              {/* Services */}
               <div className="flex items-center border rounded-lg px-3 py-4">
                 <FaSearch className="text-gray-500 mr-2" />
                 <input
@@ -162,7 +161,6 @@ export const HomePage: React.FC = () => {
                 />
               </div>
 
-              {/* Location */}
               <div className="flex items-center border rounded-lg px-3 py-4">
                 <FaMapMarkerAlt className="text-gray-500 mr-2" />
                 <input
@@ -174,16 +172,6 @@ export const HomePage: React.FC = () => {
                 />
               </div>
 
-              {/* Date */}
-              {/* <div className="flex items-center border rounded-lg px-3 py-4">
-                <FaCalendarAlt className="text-gray-500 mr-2" />
-                <input
-                  type="date"
-                  className="w-full outline-none text-gray-700"
-                />
-              </div> */}
-
-              {/* Search button */}
               <button
                 type="submit"
                 className="!mt-7 w-full py-3 rounded-lg font-medium text-lg flex items-center justify-center gap-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 transition"
@@ -192,9 +180,100 @@ export const HomePage: React.FC = () => {
               </button>
             </form>
           </div>
+        </div>
+      </section>
 
-          {/* Right: Doctor image full height */}
-          {/* <div className="flex justify-center"></div> */}
+      {/* Popular Categories Section */}
+      <section className="py-12 bg-white">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="flex justify-between items-end mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-[#33373F]">Popular Categories</h2>
+              <p className="text-gray-600 mt-1">Explore top treatments by category</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => handleCategoryClick(category.id)}
+                className="flex flex-col items-center p-6 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-[#CBFF38] transition-all group"
+              >
+                <div className="size-16 bg-[#F7FAFC] rounded-full flex items-center justify-center mb-4 group-hover:bg-[#CBFF38] transition-colors">
+                  <img src={category.icon} alt={category.name} className="size-8" />
+                </div>
+                <span className="font-semibold text-[#33373F] text-sm">{category.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Clinics Section */}
+      <section className="py-12 bg-gray-50">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="flex justify-between items-end mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-[#33373F]">Featured Clinics</h2>
+              <p className="text-gray-600 mt-1">Top-rated clinics recommended for you</p>
+            </div>
+            <button
+              onClick={() => navigate('/search')}
+              className="text-lime-600 font-medium hover:text-lime-700 transition"
+            >
+              See All Clinics &rarr;
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-500"></div>
+            </div>
+          ) : featuredClinics && featuredClinics.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredClinics.map((clinic) => (
+                <div
+                  key={clinic.id}
+                  onClick={() => handleClinicSelect(clinic)}
+                  className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group border border-gray-100 flex flex-col h-full"
+                >
+                  <div className="h-48 bg-gray-200 relative overflow-hidden">
+                    <img
+                      src={clinic.images && clinic.images.length > 0 ? clinic.images[0] : "https://placehold.co/600x400?text=Clinic"}
+                      alt={clinic.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1">
+                      <FaStar className="text-yellow-400" />
+                      <span>{clinic.rating ? clinic.rating.toFixed(1) : "New"}</span>
+                    </div>
+                  </div>
+                  <div className="p-5 flex flex-col flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">{clinic.name}</h3>
+                    <div className="flex items-center text-gray-500 text-sm mb-3">
+                      <FaMapMarkerAlt className="mr-1 text-gray-400" />
+                      <span>{clinic.address.city}, {clinic.address.country}</span>
+                    </div>
+                    <p className="text-gray-600 text-sm line-clamp-2 mb-4 flex-1">
+                      {clinic.description}
+                    </p>
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
+                      <span className="text-gray-400 text-xs">
+                        {clinic.reviewCount || 0} review{clinic.reviewCount !== 1 ? 's' : ''}
+                      </span>
+                      <span className="text-lime-600 font-medium text-sm group-hover:underline">
+                        View Details
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
+              <p>No featured clinics found.</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -211,7 +290,6 @@ export const HomePage: React.FC = () => {
           <div className="flex justify-center items-start flex-wrap gap-8 mt-10">
             {treatmentSteps.map((step, index) => (
               <React.Fragment key={index}>
-                {/* Box */}
                 <div className="w-full lg:w-[240px] text-center group hover:-translate-y-2 transition-all duration-300">
                   <div className="w-fit bg-white rounded-[24px] flex items-center justify-center mx-auto mb-6 px-[30px] py-[26px] text-white shadow-lg group-hover:border-[1px] group-hover:border-[#5F8B00]">
                     <img src={step.icon} alt={step.name} className="w-[48px]" />
@@ -224,7 +302,6 @@ export const HomePage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Divider (only between boxes) */}
                 {index < treatmentSteps.length - 1 && (
                   <div
                     className="hidden lg:block w-[100px] h-[2px] self-start mt-[52px]"
@@ -245,7 +322,6 @@ export const HomePage: React.FC = () => {
         style={{ backgroundImage: `url(${LayeredBG})` }}
       >
         <div className="max-w-[1200px] mx-auto px-4 sm:px-5 lg:px-6 w-full grid grid-cols-1 md:grid-cols-2 gap-12 -scale-x-100 mb-12 md:mb-0">
-          {/* Card 1 */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
             <img
               src={GiftConfidenceImg}
@@ -268,7 +344,6 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 2 */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
             <img
               src={TopRatedClinicImg}
@@ -293,7 +368,6 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Online Clinic Dashboard Section */}
       <section className="bg-[#71809633] text-white py-12 sm:pt-12 sm:pb-0 lg:pt-0">
         <div className="grid grid-cols-1 lg:grid-cols-2 sm:gap-6">
           <div className="w-full lg:w-[585px] ml-auto px-5  sm:pl-10 sm:pr-0 lg:pl-5 flex flex-col justify-center space-y-6">
@@ -319,39 +393,29 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Browse By Treatment & Download our App*/}
       <section className="pt-16 bg-gray-50 relative overflow-hidden">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          {/* Browse By Treatment */}
           <div className="pb-12">
-            {/* Section Title */}
             <div className="text-center mb-12">
               <h2 className="text-[#33373F] text-2xl font-semibold">
                 Browse by treatment
               </h2>
             </div>
 
-            {/* Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-              {[
-                { icon: DermaIcon, title: "Dermatology" },
-                { icon: CosmeticIcon, title: "Cosmetic Surgery" },
-                { icon: BodyIcon, title: "Body Contouring" },
-                { icon: HairIcon, title: "Hair Treatments" },
-                { icon: DentistIcon, title: "Dental Aesthetics" },
-                { icon: BodyIcon, title: "Body Contouring" },
-              ].map((item, idx) => (
+              {categories.map((category, idx) => (
                 <div key={idx} className="space-y-3">
-                  {/* Title with Icon */}
-                  <div className="flex items-center gap-3 border-b border-gray-200 pb-2">
-                    <div className="size-[56px] bg-[#CBFF38] rounded-sm flex items-center justify-center">
-                      <img src={item.icon} alt={item.title} className="p-1" />
+                  <div
+                    className="flex items-center gap-3 border-b border-gray-200 pb-2 cursor-pointer group"
+                    onClick={() => handleCategoryClick(category.id)}
+                  >
+                    <div className="size-[56px] bg-[#CBFF38] rounded-sm flex items-center justify-center group-hover:scale-105 transition-transform">
+                      <img src={category.icon} alt={category.name} className="p-1" />
                     </div>
-                    <h3 className="text-gray-800 font-semibold">
-                      {item.title}
+                    <h3 className="text-gray-800 font-semibold group-hover:text-lime-600 transition-colors">
+                      {category.name}
                     </h3>
                   </div>
-                  {/* Cities */}
                   <ul className="space-y-1 text-gray-700">
                     {[
                       "London",
@@ -362,24 +426,24 @@ export const HomePage: React.FC = () => {
                       "Glasgow",
                       "Manchester",
                     ].map((city, i) => (
-                      <li key={i}>{city}</li>
+                      <li key={i} className="hover:text-lime-600 cursor-pointer" onClick={() => navigate(`/search?category=${category.id}&location=${city}`)}>{city}</li>
                     ))}
                   </ul>
                 </div>
               ))}
             </div>
 
-            {/* Button */}
             <div className="text-center mt-12">
-              <button className="border border-lime-600 text-lime-700 px-6 py-2 rounded-md text-sm font-medium hover:bg-lime-50 transition flex items-center justify-center mx-auto gap-2">
+              <button
+                onClick={() => navigate('/search')}
+                className="border border-lime-600 text-lime-700 px-6 py-2 rounded-md text-sm font-medium hover:bg-lime-50 transition flex items-center justify-center mx-auto gap-2"
+              >
                 View More <span className="text-lg">→</span>
               </button>
             </div>
           </div>
 
-          {/* Download App */}
           <div className="pt-12 grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
-            {/* Left Content */}
             <div className="text-center lg:text-left">
               <h2 className="text-2xl lg:text-3xl font-semibold text-[#33373F] mb-2">
                 Download our app
@@ -389,7 +453,6 @@ export const HomePage: React.FC = () => {
                 swipe or two.
               </p>
 
-              {/* Store Buttons */}
               <div className="flex justify-center lg:justify-start gap-4">
                 <a
                   href="#"
@@ -416,7 +479,6 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Content - Mobile Image */}
             <div className="flex justify-center lg:justify-end">
               <img
                 src={HomeMobAppImg}
@@ -427,7 +489,6 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Background Layered SVG only at bottom */}
         <img
           src={LayeredBG}
           alt="Background"

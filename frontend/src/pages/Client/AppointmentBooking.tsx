@@ -2,15 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms/Button/Button";
-import { Input } from "@/components/atoms/Input/Input";
 import {
   fetchAvailability,
   holdTimeSlot,
-  createAppointment,
-  clearBooking,
   setSelectedClinic,
   addService,
-  removeService,
   setSelectedDate,
   setSelectedTimeSlot,
 } from "@/store/slices/bookingSlice";
@@ -19,80 +15,69 @@ import {
   fetchClinicById,
 } from "@/store/slices/clientSlice";
 import { RootState, AppDispatch } from "@/store";
-import type { Clinic, Service, TimeSlot } from "@/types";
+import type { TimeSlot } from "@/types";
 import { css } from "@emotion/css";
 import LayeredBG from "@/assets/LayeredBg.svg";
+import {
+  format,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  isSameMonth,
+  isSameDay,
+  addDays,
+  isBefore,
+  startOfToday
+} from "date-fns";
+import { FaChevronLeft, FaChevronRight, FaClock, FaCheckCircle } from "react-icons/fa";
 
 const containerStyle = css`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 60px 2rem;
+  padding: 40px 2rem;
   position: relative;
 `;
 
-const layeredBGStyle = css`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100vw;
-  height: 100%;
-  background-image: url(${LayeredBG});
-  background-position: center;
-  background-size: contain;
-  background-repeat: no-repeat;
-  z-index: -1;
+const calendarContainerStyle = css`
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  padding: 30px;
+  border: 1px solid #f0f0f0;
 `;
 
-const headerStyle = css`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  position: relative;
-  z-index: 1;
-`;
-
-const titleStyle = css`
-  font-size: 2rem;
-  font-weight: bold;
-  color: #333;
-`;
-
-const tabsStyle = css`
-  display: flex;
-  gap: 1rem;
-`;
-
-const tabButtonStyle = css`
-  background: #ffffff;
-  color: #2d3748;
+const timeSlotStyle = (isSelected: boolean, isAvailable: boolean) => css`
+  padding: 12px;
+  text-align: center;
   border-radius: 12px;
-  padding: 12px 22px;
-  border: 1px solid #2d3748;
+  cursor: ${isAvailable ? 'pointer' : 'not-allowed'};
+  border: 1px solid ${isSelected ? '#CBFF38' : '#f0f0f0'};
+  background: ${isSelected ? '#CBFF38' : isAvailable ? 'white' : '#f9f9f9'};
+  color: ${isAvailable ? '#333' : '#ccc'};
+  transition: all 0.2s;
   font-weight: 500;
-  cursor: pointer;
   &:hover {
-    background: #2d3748 !important;
-    color: #ffffff !important;
+    ${isAvailable && !isSelected && 'background: #f7faeb; border-color: #CBFF38;'}
   }
 `;
 
-const sectionStyle = css`
-  margin: 2rem 0;
-  position: relative;
-  z-index: 1;
-`;
-
-const waveSectionStyle = css`
-  background-color: #f0f8ff;
-  padding: 2rem;
-  border-radius: 8px;
-  margin: 2rem 0;
-  text-align: center;
-  color: #2d3748;
-  position: relative;
-  z-index: 1;
+const dayStyle = (isCurrentMonth: boolean, isSelected: boolean, isPast: boolean) => css`
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ${isPast ? 'not-allowed' : 'pointer'};
+  border-radius: 50%;
+  font-weight: ${isSelected ? '600' : '400'};
+  background: ${isSelected ? '#CBFF38' : 'transparent'};
+  color: ${isPast ? '#ccc' : isCurrentMonth ? '#333' : '#bbb'};
+  transition: all 0.2s;
+  &:hover {
+    ${!isPast && !isSelected && 'background: #f0f0f0;'}
+  }
 `;
 
 export const AppointmentBooking: React.FC = () => {
@@ -104,12 +89,10 @@ export const AppointmentBooking: React.FC = () => {
     availableSlots,
     holdId,
     isLoading: bookingLoading,
-    error,
     selectedServices,
     selectedClinic,
   } = useSelector((state: RootState) => state.booking);
 
-  // Use more specific selectors to avoid unnecessary re-renders
   const {
     services,
     clinics,
@@ -117,295 +100,278 @@ export const AppointmentBooking: React.FC = () => {
   } = useSelector((state: RootState) => ({
     services: state.client.services,
     clinics: state.client.clinics,
-    isLoading: state.client.isLoading, // Assume client slice has isLoading
+    isLoading: state.client.isLoading,
   }));
 
   const clinicId = searchParams.get("clinicId");
   const serviceIds = searchParams.get("serviceIds")?.split(",") || [];
 
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [notes, setNotes] = useState("");
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDateState, setSelectedDateState] = useState(new Date());
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
 
-  // Use refs to track what we've already processed
   const hasProcessedServices = useRef(false);
-  const hasFetchedAvailability = useRef(false);
 
-  // Use selectedClinic from Redux or find from clinics array if not set
   const clinic = selectedClinic || clinics.find((c) => c.id === clinicId);
-
-  // Combined loading for UI (hides flicker)
   const isLoading = bookingLoading || clientLoading || !clinicId;
 
-  // Effect 1: Initialize clinic data - runs only when clinicId changes
   useEffect(() => {
-    console.log("🔵 Effect 1: Initializing clinic data");
     if (clinicId) {
       dispatch(fetchClinicById(clinicId));
       dispatch(fetchClinicServices(clinicId));
-
-      // Reset flags when clinic changes
       hasProcessedServices.current = false;
-      hasFetchedAvailability.current = false;
     }
   }, [dispatch, clinicId]);
 
-  // Effect 3: Set selectedClinic when clinics update (fixes refresh reset)
   useEffect(() => {
-    if (clinicId && clinics.length > 0 && !selectedClinic) {
-      const clinicData = clinics.find((c) => c.id === clinicId);
-      if (clinicData) {
-        dispatch(setSelectedClinic(clinicData));
-      }
-    }
-  }, [dispatch, clinicId, clinics, selectedClinic]);
-
-  // Effect 2: Add services when they load (runs on services change, not full cond)
-  useEffect(() => {
-    if (
-      services.length > 0 &&
-      serviceIds.length > 0 &&
-      clinicId &&
-      !hasProcessedServices.current
-    ) {
-      console.log("🟢 Effect 2: Processing services and fetching availability");
-
-      // Add services to booking
+    if (services.length > 0 && serviceIds.length > 0 && clinicId && !hasProcessedServices.current) {
       const servicesToAdd = services.filter((s) => serviceIds.includes(s.id));
-      if (servicesToAdd.length > 0) {
-        servicesToAdd.forEach((service) => {
-          dispatch(addService(service));
-        });
-      }
+      servicesToAdd.forEach((service) => dispatch(addService(service)));
 
-      // Fetch availability (only once)
-      if (!hasFetchedAvailability.current) {
-        dispatch(
-          fetchAvailability({
-            clinicId,
-            serviceId: serviceIds[0],
-            date: new Date().toISOString().split("T")[0],
-          })
-        );
-        hasFetchedAvailability.current = true;
-      }
-
-      // Mark as processed
+      // Auto fetch for today or selected date
+      dispatch(fetchAvailability({
+        clinicId,
+        serviceId: serviceIds[0],
+        date: format(selectedDateState, "yyyy-MM-dd"),
+      }));
       hasProcessedServices.current = true;
     }
-  }, [dispatch, services, serviceIds, clinicId]); // Depend on services for prompt trigger
+  }, [dispatch, services, serviceIds, clinicId, selectedDateState]);
 
-  const handleHoldSlot = async () => {
-    console.log("🔵 Holding slot:", clinic);
-    if (clinicId && serviceIds.length > 0 && selectedSlot && user?.id) {
-      const [startTime, endTime] = selectedSlot.split(" - ");
-      const response = await dispatch(
-        holdTimeSlot({
+  const handleDateClick = (day: Date) => {
+    if (isBefore(day, startOfToday())) return;
+    setSelectedDateState(day);
+    setSelectedSlot(null);
+    if (clinicId && serviceIds.length > 0) {
+      dispatch(fetchAvailability({
+        clinicId,
+        serviceId: serviceIds[0],
+        date: format(day, "yyyy-MM-dd"),
+      }));
+    }
+  };
+
+  const handleSlotClick = async (slot: TimeSlot) => {
+    if (!slot.available) return;
+    setSelectedSlot(slot);
+
+    // Auto hold slot when selected
+    if (clinicId && serviceIds.length > 0 && user?.id) {
+      try {
+        await dispatch(holdTimeSlot({
           clinicId,
           serviceId: serviceIds[0],
-          providerId: clinicId,
-          // clientId: user.id,
-          startTime,
-          endTime,
-        })
-      ).unwrap();
-      console.log("Slot held:", response);
+          providerId: slot.providerId || clinicId,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        })).unwrap();
+      } catch (err) {
+        console.error("Failed to hold slot:", err);
+      }
     }
   };
 
-  const handleBookAppointment = async () => {
-    if (clinicId && serviceIds.length > 0 && selectedSlot && user?.id) {
-      const [startTime, endTime] = selectedSlot.split(" - ");
-      
-      console.log("🟢 Proceeding to checkout with:", {
-        clinicId,
-        clinic,
-        serviceIds,
-        selectedSlot,
-        hasClinic: !!clinic
-      });
-      
-      // Set the booking data in Redux state
-      if (clinic) {
-        console.log("🟢 Setting selected clinic:", clinic);
-        dispatch(setSelectedClinic(clinic));
-      } else {
-        // Fallback: find clinic from clinics array
-        const clinicData = clinics.find((c) => c.id === clinicId);
-        if (clinicData) {
-          console.log("🟢 Setting clinic from fallback:", clinicData);
-          dispatch(setSelectedClinic(clinicData));
-        } else {
-          console.error("❌ No clinic data found!");
-          return;
-        }
-      }
-      
-      // Add selected services to booking state
-      for (const serviceId of serviceIds) {
-        const service = services.find(s => s.id === serviceId);
-        if (service) {
-          console.log("🟢 Adding service:", service);
-          dispatch(addService(service));
-        }
-      }
-      
-      // Set the selected date and time slot
-      const today = new Date().toISOString().split("T")[0];
-      console.log("🟢 Setting date:", today);
-      dispatch(setSelectedDate(today));
-      
-      const timeSlot = {
-        startTime,
-        endTime,
-        available: true
-      };
-      console.log("🟢 Setting time slot:", timeSlot);
-      dispatch(setSelectedTimeSlot(timeSlot));
-      
-      // Small delay to ensure Redux state is updated
-      setTimeout(() => {
-        // Navigate to checkout page
-        console.log("🟢 Navigating to checkout...");
-        navigate('/checkout');
-      }, 100);
-    }
+  const handleProceed = () => {
+    if (!selectedSlot || !clinic) return;
+
+    dispatch(setSelectedClinic(clinic));
+    dispatch(setSelectedDate(format(selectedDateState, "yyyy-MM-dd")));
+    dispatch(setSelectedTimeSlot(selectedSlot));
+
+    navigate('/checkout');
   };
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      console.log("🟡 Cleaning up AppointmentBooking");
-      // Reset flags when component unmounts
-      hasProcessedServices.current = false;
-      hasFetchedAvailability.current = false;
-    };
-  }, []);
-
-  // Loading skeleton (prevents hide during fetch)
-  if (isLoading) {
+  // Calendar Helpers
+  const renderHeader = () => {
     return (
-      <div className={containerStyle}>
-        <div className="p-4">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-300 rounded w-1/3"></div>
-            <div className="h-4 bg-gray-300 rounded w-1/2"></div>
-            <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-          </div>
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-[#33373F]">{format(currentMonth, "MMMM yyyy")}</h3>
+        <div className="flex gap-2">
+          <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <FaChevronLeft className="text-gray-600" />
+          </button>
+          <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <FaChevronRight className="text-gray-600" />
+          </button>
         </div>
       </div>
     );
+  };
+
+  const renderDays = () => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return (
+      <div className="grid grid-cols-7 mb-2">
+        {days.map(d => (
+          <div key={d} className="text-center text-xs font-semibold text-gray-400 uppercase tracking-wider py-2">
+            {d}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderCells = () => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart);
+    const endDate = endOfWeek(monthEnd);
+
+    const rows = [];
+    let days = [];
+    let day = startDate;
+    let formattedDate = "";
+
+    while (day <= endDate) {
+      for (let i = 0; i < 7; i++) {
+        formattedDate = format(day, "d");
+        const cloneDay = day;
+        const isPast = isBefore(cloneDay, startOfToday());
+
+        days.push(
+          <div
+            key={day.toISOString()}
+            className={dayStyle(isSameMonth(day, monthStart), isSameDay(day, selectedDateState), isPast)}
+            onClick={() => handleDateClick(cloneDay)}
+          >
+            <span>{formattedDate}</span>
+          </div>
+        );
+        day = addDays(day, 1);
+      }
+      rows.push(
+        <div className="grid grid-cols-7 gap-2" key={day.toISOString()}>
+          {days}
+        </div>
+      );
+      days = [];
+    }
+    return <div className="space-y-2">{rows}</div>;
+  };
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center min-h-[400px]">Loading booking system...</div>;
   }
 
   return (
     <div className={containerStyle}>
-      <div className={layeredBGStyle} />
-      <div className={headerStyle}>
-        <h2 className={titleStyle}>Book Appointment</h2>
-        <div className={tabsStyle}>
-          <Button className={tabButtonStyle}>Availability</Button>
-          <Button className={tabButtonStyle}>Confirmation</Button>
+      <img src={LayeredBG} alt="" className="absolute top-0 left-0 w-full z-[-1] opacity-50" />
+
+      {/* Navigation Header */}
+      <div className="flex items-center justify-between mb-8">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 hover:text-black font-medium transition-colors">
+          <FaChevronLeft size={14} /> Back
+        </button>
+        <div className="flex items-center gap-2 text-sm text-gray-400">
+          <span className="text-[#CBFF38] font-bold">01</span> Date & Time
+          <FaChevronRight size={10} />
+          <span>02</span> Checkout
+          <FaChevronRight size={10} />
+          <span>03</span> Confirm
         </div>
       </div>
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-      <div className={sectionStyle}>
-        {clinic ? (
-          <>
-            <p>
-              <strong>Clinic:</strong> {clinic.name}
-            </p>
-            {selectedServices.length > 0 ? (
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left: Calendar & Slots */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className={calendarContainerStyle}>
+            {renderHeader()}
+            {renderDays()}
+            {renderCells()}
+          </div>
+
+          <div className={calendarContainerStyle}>
+            <div className="flex items-center gap-2 mb-6">
+              <FaClock className="text-[#CBFF38]" />
+              <h3 className="text-xl font-bold text-[#33373F]">Available Time Slots</h3>
+            </div>
+
+            {availableSlots.length > 0 ? (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {availableSlots.map((slot) => (
+                  <div
+                    key={slot.startTime}
+                    className={timeSlotStyle(selectedSlot?.startTime === slot.startTime, slot.available)}
+                    onClick={() => handleSlotClick(slot)}
+                  >
+                    {format(new Date(slot.startTime), "HH:mm")}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10 text-gray-400">
+                No availability found for this date. Please select another day.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Summary Card */}
+        <div className="lg:col-span-1">
+          <div className={`${calendarContainerStyle} sticky top-8`}>
+            <h3 className="text-xl font-bold text-[#33373F] mb-6 border-b pb-4">Booking Summary</h3>
+
+            <div className="space-y-4 mb-8">
               <div>
-                <strong>Selected Services:</strong>
-                <ul className="list-disc pl-5 mt-2">
-                  {selectedServices.map((service) => (
-                    <li key={service.id} className="text-gray-700">
-                      {service.name} - ${service.price} (
-                      {service.durationMinutes} min)
+                <p className="text-xs text-gray-400 uppercase font-bold mb-1">Clinic</p>
+                <p className="font-semibold text-gray-800">{clinic?.name}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-bold mb-1">Services</p>
+                <ul className="space-y-2">
+                  {selectedServices.map(s => (
+                    <li key={s.id} className="flex justify-between text-sm">
+                      <span className="text-gray-600">{s.name}</span>
+                      <span className="font-bold">${s.price}</span>
                     </li>
                   ))}
                 </ul>
               </div>
-            ) : (
-              <p className="text-gray-500">Loading services...</p>
-            )}
-          </>
-        ) : (
-          <p className="text-gray-500">Loading clinic...</p>
-        )}
-      </div>
-      <div className={sectionStyle}>
-        <Button
-          onClick={() =>
-            dispatch(
-              fetchAvailability({
-                clinicId: clinicId || "1",
-                serviceId: serviceIds[0] || "1",
-                date: new Date().toISOString().split("T")[0],
-              })
-            )
-          }
-          disabled={isLoading}
-          className="mb-4"
-        >
-          Check Availability
-        </Button>
-        {availableSlots.length > 0 || !bookingLoading ? (
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700">
-              Select Time Slot
-            </label>
-            <select
-              value={selectedSlot || ""}
-              onChange={(e) => setSelectedSlot(e.target.value)}
-              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="" disabled>
-                Select Time Slot
-              </option>
-              {(availableSlots.length > 0 ? availableSlots : [])
-                .filter((s) => s.available)
-                .map((s) => (
-                  <option
-                    key={s.startTime}
-                    value={`${s.startTime} - ${s.endTime}`}
-                  >
-                    {`${new Date(s.startTime).toLocaleTimeString()} - ${new Date(
-                      s.endTime
-                    ).toLocaleTimeString()}`}
-                  </option>
-                ))}
-            </select>
+
+              {selectedSlot && (
+                <div className="bg-[#f7faeb] p-4 rounded-xl border border-[#CBFF38]">
+                  <p className="text-xs text-[#5f8b00] uppercase font-bold mb-1">Selected Slot</p>
+                  <p className="font-bold text-gray-800">
+                    {format(selectedDateState, "EEEE, MMM d")}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {format(new Date(selectedSlot.startTime), "HH:mm")} - {format(new Date(selectedSlot.endTime), "HH:mm")}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t pt-4 mb-8">
+              <div className="flex justify-between items-center text-lg font-bold">
+                <span>Total</span>
+                <span>${selectedServices.reduce((acc, s) => acc + s.price, 0)}</span>
+              </div>
+            </div>
+
             <Button
-              onClick={handleHoldSlot}
+              fullWidth
+              size="lg"
               disabled={!selectedSlot || bookingLoading}
-              className="mt-4 mb-4"
+              onClick={handleProceed}
+              className="bg-[#CBFF38] text-[#203400] hover:bg-[#A7E52F]"
             >
-              Hold Slot
+              {bookingLoading ? "Holding slot..." : "Continue to Checkout"}
             </Button>
+
+            {!selectedSlot && (
+              <p className="text-center text-xs text-gray-400 mt-4 italic">
+                Please select a time slot to continue
+              </p>
+            )}
+
+            {holdId && (
+              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-green-600 font-medium">
+                <FaCheckCircle /> Slot held for 15 minutes
+              </div>
+            )}
           </div>
-        ) : (
-          <p className="text-gray-500">No slots available yet.</p>
-        )}
-        <Input
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Notes (optional)"
-          className="mb-4"
-        />
-        <Button
-          onClick={handleBookAppointment}
-          disabled={!holdId || bookingLoading}
-          className="mb-4 mr-5"
-        >
-          Proceed to Checkout
-        </Button>
-        <Button
-          onClick={() => navigate(-1)}
-          variant="secondary"
-          className="mt-4"
-        >
-          Back
-        </Button>
+        </div>
       </div>
     </div>
   );

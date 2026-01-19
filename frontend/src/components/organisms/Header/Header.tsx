@@ -195,7 +195,7 @@ export const Header: React.FC = () => {
   const getMenuItems = () => {
     if (!user?.role) return [];
 
-       if (user.role === "admin") {
+    if (user.role === "admin") {
       return [
         { to: "/admin/dashboard", label: "Dashboard" },
         { action: handleLogout, label: "Logout" },
@@ -214,7 +214,7 @@ export const Header: React.FC = () => {
 
     if (user.role === "client") {
       return [
-        { to: "/search", label: "Clinics" },
+        { to: "/search", label: "Treatments" },
         { to: "/appointments", label: "My Appointments" },
         { to: "/my-account", label: "My Account" },
         { action: handleLogout, label: "Logout" },
@@ -252,7 +252,7 @@ export const Header: React.FC = () => {
         { to: "/crm/analytics", label: "Analytics" },
         { to: "/crm/tag", label: "Tags" },
         { to: "/crm/facebook-integration", label: "Facebook Integration" },
-        
+
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -270,12 +270,12 @@ export const Header: React.FC = () => {
             : ""}
         `}
       >        <Link
-          to={
-            clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : user?.role === "SUPER_ADMIN" ? "/admin/manager-dashboard" : "/"
-          }
-          className={`text-[#CBFF38] text-2xl font-bold flex items-center ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
-            }`}
-        >
+        to={
+          clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : user?.role === "SUPER_ADMIN" ? "/admin/manager-dashboard" : "/"
+        }
+        className={`text-[#CBFF38] text-2xl font-bold flex items-center ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
+          }`}
+      >
           <img src={SiteLogo} alt="Site Logo" className="w-[200px]" />
         </Link>
 
@@ -318,24 +318,24 @@ export const Header: React.FC = () => {
                     </Link>
                   </li>
                 )} */}
-                 {clinicRoles.includes(user?.role || "") && <>
-                <li
-                  className={`cursor-pointer ${location.pathname.startsWith("/search")
-                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                    }`}
-                >
-                  <Link
-                    to="/search"
-                    className={`no-underline ${location.pathname.startsWith("/search")
-                      ? "text-[#CBFF38]"
-                      : "text-white"
+                {clinicRoles.includes(user?.role || "") && <>
+                  <li
+                    className={`cursor-pointer ${location.pathname.startsWith("/search")
+                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
                       }`}
                   >
-                    Clinics
-                  </Link>
-                </li>
-         </>}
+                    <Link
+                      to="/search"
+                      className={`no-underline ${location.pathname.startsWith("/search")
+                        ? "text-[#CBFF38]"
+                        : "text-white"
+                        }`}
+                    >
+                      Treatments
+                    </Link>
+                  </li>
+                </>}
               </ul>
             </div>
 
@@ -417,47 +417,57 @@ export const Header: React.FC = () => {
         </button>
       </div>
 
-   {/* if user is not logged in , add Home , face and Body medical aesthetics , Asthetics Gynacology , Asthetics Dermatology , Asthetics Plastic Surgery , Hair Removal laser */}
-   {!isAuthenticated && (
-    <div className="flex items-center gap-5 justify-center mt-5">
-    <Link
-      to="/"
-      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
-    >
-     Home
-    </Link>
-    <Link
-      to="/search?q=Face and Body Medical Aesthetics"
-      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
-    >
-     Face and Body Medical Aesthetics
-    </Link>
-    <Link
-      to="/search?q=Asthetics Gynacology"
-      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
-    >
-     Asthetics Gynacology
-    </Link>
-    <Link
-      to="/search?q=Asthetics Dermatology"
-      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
-    >
-     Asthetics Dermatology
-    </Link>
-    <Link
-      to="/search?q=Asthetics Plastic Surgery"
-      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
-    >
-     Asthetics Plastic Surgery
-    </Link>
-    <Link
-      to="/search?q=Hair Removal Laser"
-      className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
-    >
-     Hair Removal Laser
-    </Link>
-    </div>
-  )}
+      {/* if user is not logged in , add Home , face and Body medical aesthetics , Asthetics Gynacology , Asthetics Dermatology , Asthetics Plastic Surgery , Hair Removal laser */}
+      {!isAuthenticated && (
+        <div className="flex items-center gap-5 justify-center mt-5 relative z-10">
+          <Link
+            to="/"
+            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
+          >
+            Home
+          </Link>
+
+          {/* Medical Aesthetics – Face & Body with Dropdown */}
+          <div className="relative group">
+            <button className="text-white rounded bg-[#2D3748] group-hover:bg-[#CBFF38] group-hover:text-black px-3 py-1 flex items-center gap-1 cursor-pointer">
+              Medical Aesthetics – Face & Body
+            </button>
+            <div className="absolute top-full left-0 mt-0 w-48 bg-white rounded shadow-lg overflow-hidden hidden group-hover:block border border-gray-200">
+              <Link
+                to="/search?q=Face Medical Aesthetics"
+                className="block px-4 py-2 text-gray-800 hover:bg-[#CBFF38] hover:text-black"
+              >
+                Face
+              </Link>
+              <Link
+                to="/search?q=Body Medical Aesthetics"
+                className="block px-4 py-2 text-gray-800 hover:bg-[#CBFF38] hover:text-black"
+              >
+                Body
+              </Link>
+            </div>
+          </div>
+
+          <Link
+            to="/search?q=Aesthetic %26 Reconstructive Gynecology"
+            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
+          >
+            Aesthetic & Reconstructive Gynecology
+          </Link>
+          <Link
+            to="/search?q=Clinical Dermatology"
+            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
+          >
+            Clinical Dermatology
+          </Link>
+          <Link
+            to="/search?q=Plastic Surgery"
+            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
+          >
+            Plastic Surgery
+          </Link>
+        </div>
+      )}
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
@@ -504,7 +514,7 @@ export const Header: React.FC = () => {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={userMenuItemStyle}
                     >
-                      Clinics
+                      Treatments
                     </Link>
 
                     <button
@@ -579,43 +589,54 @@ export const Header: React.FC = () => {
               >
                 Sign Up
               </Button>
-                 
-    <Link
-      to="/"
-      className="text-black"
-    >
-     Home
-    </Link>
-    <Link
-      to="/search?q=Face and Body Medical Aesthetics"
-      className="text-black"
-    >
-     Face and Body Medical Aesthetics
-    </Link>
-    <Link
-      to="/search?q=Asthetics Gynacology"
-      className="text-black"
-    >
-     Asthetics Gynacology
-    </Link>
-    <Link
-      to="/search?q=Asthetics Dermatology"
-      className="text-black"
-    >
-     Asthetics Dermatology
-    </Link>
-    <Link
-      to="/search?q=Asthetics Plastic Surgery"
-      className="text-black"
-    >
-     Asthetics Plastic Surgery
-    </Link>
-    <Link
-      to="/search?q=Hair Removal Laser"
-      className="text-black"
-    >
-     Hair Removal Laser
-    </Link>
+
+              <Link
+                to="/"
+                className="text-black"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Home
+              </Link>
+
+              <div className="flex flex-col gap-2 pl-4 border-l-2 border-gray-100">
+                <span className="text-gray-500 font-medium text-sm">Medical Aesthetics – Face & Body</span>
+                <Link
+                  to="/search?q=Face Medical Aesthetics"
+                  className="text-black pl-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Face
+                </Link>
+                <Link
+                  to="/search?q=Body Medical Aesthetics"
+                  className="text-black pl-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Body
+                </Link>
+              </div>
+
+              <Link
+                to="/search?q=Aesthetic %26 Reconstructive Gynecology"
+                className="text-black"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Aesthetic & Reconstructive Gynecology
+              </Link>
+              <Link
+                to="/search?q=Clinical Dermatology"
+                className="text-black"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Clinical Dermatology
+              </Link>
+              <Link
+                to="/search?q=Plastic Surgery"
+                className="text-black"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Plastic Surgery
+              </Link>
             </div>
           )}
         </div>

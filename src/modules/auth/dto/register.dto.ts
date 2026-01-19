@@ -3,7 +3,7 @@ import { IsOptional, IsObject } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto extends CreateUserDto {
-  @ApiProperty({ 
+  @ApiProperty({
     required: false,
     description: 'Clinic data for clinic_owner role',
     example: {
@@ -35,4 +35,8 @@ export class RegisterDto extends CreateUserDto {
       country: string;
     };
   };
+
+  @ApiProperty({ required: false, description: 'Referral code if invited by a friend' })
+  @IsOptional()
+  referralCode?: string;
 }

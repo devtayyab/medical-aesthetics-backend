@@ -25,6 +25,7 @@ import { UsersModule } from '../users/users.module';
 import { User } from '../users/entities/user.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
+import { QueueModule } from '../queue/queue.module';
 import { CrmScheduler } from './crm.scheduler';
 import { AdAttributionController } from './controllers/ad-attribution.controller';
 import { AdAttributionService } from './services/ad-attribution.service';
@@ -51,25 +52,26 @@ import { AdAttributionService } from './services/ad-attribution.service';
     BookingsModule,
     NotificationsModule,
     UsersModule,
+    QueueModule,
   ],
   controllers: [CrmController, AdAttributionController],
   providers: [
-    CrmService, 
-    FacebookService, 
-    DuplicateDetectionService, 
-    CustomerAffiliationService, 
-    MandatoryFieldValidationService, 
-    TaskAutomationService, 
-    AdAttributionService, 
+    CrmService,
+    FacebookService,
+    DuplicateDetectionService,
+    CustomerAffiliationService,
+    MandatoryFieldValidationService,
+    TaskAutomationService,
+    AdAttributionService,
     CrmScheduler
   ],
   exports: [
-    CrmService, 
-    FacebookService, 
-    DuplicateDetectionService, 
-    CustomerAffiliationService, 
-    MandatoryFieldValidationService, 
-    TaskAutomationService, 
+    CrmService,
+    FacebookService,
+    DuplicateDetectionService,
+    CustomerAffiliationService,
+    MandatoryFieldValidationService,
+    TaskAutomationService,
     AdAttributionService
   ],
 })

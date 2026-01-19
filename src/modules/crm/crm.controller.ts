@@ -16,6 +16,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CrmService } from './crm.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
+import { CreateCustomerDto } from './dto/create.customer.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -107,6 +108,22 @@ export class CrmController {
     });
   }
 
+  @Post('customers')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Create a new customer directly' })
+  createCustomer(@Body() createCustomerDto: CreateCustomerDto, @Request() req) {
+    return this.crmService.createCustomer(createCustomerDto, req.user.id);
+  }
+
+  @Get('customers')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get all customers' })
+  getCustomers(@Query() filters: any, @Request() req) {
+    return this.crmService.getCustomers({ ...filters, _requesterId: req.user.id });
+  }
+
   @Get('customers/:id/communications')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
@@ -137,6 +154,14 @@ export class CrmController {
       salespersonId: req.user.id, // attach logged-in user
     });
     return action;
+  }
+
+  @Post('recurring-appointments')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Schedule recurring appointments' })
+  async createRecurringAppointment(@Body() data: any, @Request() req) {
+    return this.crmService.scheduleRecurringAppointment(data);
   }
 
 

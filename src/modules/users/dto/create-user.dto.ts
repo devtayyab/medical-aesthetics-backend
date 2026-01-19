@@ -42,4 +42,8 @@ export class CreateUserDto {
   @IsOptional()
   @IsObject()
   profile?: any;
+
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
 }

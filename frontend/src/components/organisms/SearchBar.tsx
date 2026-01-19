@@ -3,22 +3,36 @@ import { Input } from "@/components/atoms/Input/Input";
 import { Button } from "@/components/atoms/Button/Button";
 import { Search } from "lucide-react";
 
-interface SearchBarProps {
+export interface SearchBarProps {
   onSearch: (filters: {
     query: string;
     location?: string;
     category?: string;
   }) => void;
   className?: string;
+  initialFilters?: {
+    query?: string;
+    location?: string;
+    category?: string;
+  };
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   onSearch,
   className,
+  initialFilters,
 }) => {
-  const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("");
-  const [category, setCategory] = useState("");
+  const [query, setQuery] = useState(initialFilters?.query || "");
+  const [location, setLocation] = useState(initialFilters?.location || "");
+  const [category, setCategory] = useState(initialFilters?.category || "");
+
+  React.useEffect(() => {
+    if (initialFilters) {
+      if (initialFilters.query !== undefined) setQuery(initialFilters.query);
+      if (initialFilters.location !== undefined) setLocation(initialFilters.location);
+      if (initialFilters.category !== undefined) setCategory(initialFilters.category);
+    }
+  }, [initialFilters]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
