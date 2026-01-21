@@ -7,8 +7,10 @@ import { FirebaseService } from './services/firebase.service';
 import { SmsService } from './services/sms.service';
 import { ViberService } from './services/viber.service';
 import { NotificationProcessor } from './processors/notification.processor';
+import { NotificationsGateway } from './gateways/notifications.gateway';
 import { Notification } from './entities/notification.entity';
 import { UsersModule } from '../users/users.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -17,15 +19,17 @@ import { UsersModule } from '../users/users.module';
       name: 'notifications',
     }),
     forwardRef(() => UsersModule),
+    JwtModule,
   ],
   controllers: [NotificationsController],
   providers: [
     NotificationsService,
+    NotificationsGateway,
     FirebaseService,
     SmsService,
     ViberService,
     NotificationProcessor,
   ],
-  exports: [NotificationsService],
+  exports: [NotificationsService, NotificationsGateway],
 })
 export class NotificationsModule {}

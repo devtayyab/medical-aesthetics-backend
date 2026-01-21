@@ -55,14 +55,61 @@ export class EventHandlersService {
     this.logger.log(`Handling appointment created event for appointment ${appointment.id}`);
 
     // Send confirmation to client
+    const serviceName = appointment.service?.name || 'Appointment';
+    const providerName = appointment.provider 
+      ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
+      : 'Professional';
+    
     await this.notificationsService.sendAppointmentConfirmation(
       appointment.clientId,
       {
         id: appointment.id,
         date: appointment.startTime,
         time: appointment.startTime,
+        serviceName,
+        providerName,
       },
     );
+
+    // Send notification to provider (doctor/aesthetician) if assigned
+    if (appointment.providerId) {
+      const appointmentDate = new Date(appointment.startTime);
+      const formattedDate = appointmentDate.toLocaleDateString();
+      const formattedTime = appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      await this.notificationsService.create(
+        appointment.providerId,
+        NotificationType.PUSH,
+        'New Appointment Booked',
+        `${serviceName} with ${appointment.client?.firstName || 'Client'} on ${formattedDate} at ${formattedTime}`,
+        {
+          appointmentId: appointment.id,
+          type: 'appointment_created',
+          serviceName,
+          clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Client',
+          startTime: appointment.startTime,
+        },
+      );
+    }
+
+    // Also notify clinic owner and secretariat
+    if (appointment.clinic?.ownerId) {
+      const appointmentDate = new Date(appointment.startTime);
+      const formattedDate = appointmentDate.toLocaleDateString();
+      const formattedTime = appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      await this.notificationsService.create(
+        appointment.clinic.ownerId,
+        NotificationType.PUSH,
+        'New Appointment Booking',
+        `${serviceName}${appointment.provider ? ` with ${providerName}` : ''} on ${formattedDate} at ${formattedTime}`,
+        {
+          appointmentId: appointment.id,
+          type: 'appointment_created',
+          clinicId: appointment.clinicId,
+        },
+      );
+    }
 
     // Schedule reminder 24 hours before
     const reminderTime = new Date(appointment.startTime.getTime() - 24 * 60 * 60 * 1000);
@@ -77,29 +124,36 @@ export class EventHandlersService {
     
     this.logger.log(`Appointment ${appointment.id} status changed from ${oldStatus} to ${newStatus}`);
 
+    const serviceName = appointment.service?.name || 'Appointment';
+    const providerName = appointment.provider 
+      ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
+      : 'Professional';
+
     if (newStatus === 'completed') {
       // Award loyalty points
       const points = await this.loyaltyService.calculatePointsForAppointment(
-        appointment.totalAmount || appointment.service.price,
+        appointment.totalAmount || appointment.service?.price || 0,
       );
       
       await this.loyaltyService.awardPoints(
         appointment.clientId,
         appointment.clinicId,
         points,
-        `Points earned from ${appointment.service.name} treatment`,
+        `Points earned from ${serviceName} treatment`,
         appointment.id,
       );
 
       // Create follow-up task for after-care
-      await this.tasksService.create({
-        title: `Follow-up call for ${appointment.client.fullName}`,
-        description: `Check on client satisfaction and recovery after ${appointment.service.name}`,
-        type: TaskType.TREATMENT_FOLLOW_UP,
-        customerId: appointment.clientId,
-        assigneeId: appointment.providerId,
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toDateString(), // 7 days later
-      });
+      if (appointment.client) {
+        await this.tasksService.create({
+          title: `Follow-up call for ${appointment.client.fullName || 'Client'}`,
+          description: `Check on client satisfaction and recovery after ${serviceName}`,
+          type: TaskType.TREATMENT_FOLLOW_UP,
+          customerId: appointment.clientId,
+          assigneeId: appointment.providerId,
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toDateString(), // 7 days later
+        });
+      }
     }
 
     // Send status update notification to client
@@ -107,9 +161,29 @@ export class EventHandlersService {
       appointment.clientId,
       NotificationType.PUSH,
       'Appointment Update',
-      `Your appointment status has been updated to: ${newStatus}`,
-      { appointmentId: appointment.id, status: newStatus },
+      `Your ${serviceName}${providerName ? ` with ${providerName}` : ''} status: ${newStatus}`,
+      { 
+        appointmentId: appointment.id, 
+        status: newStatus,
+        serviceName,
+        providerName,
+      },
     );
+
+    // Also notify provider if status changed
+    if (appointment.providerId) {
+      await this.notificationsService.create(
+        appointment.providerId,
+        NotificationType.PUSH,
+        'Appointment Status Changed',
+        `${serviceName} appointment status changed to: ${newStatus}`,
+        { 
+          appointmentId: appointment.id, 
+          status: newStatus,
+          clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Client',
+        },
+      );
+    }
   }
 
   @OnEvent('loyalty.points.awarded')

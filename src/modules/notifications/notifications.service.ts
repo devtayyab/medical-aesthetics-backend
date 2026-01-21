@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, forwardRef, Inject, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Repository } from 'typeorm';
@@ -7,16 +7,25 @@ import { Notification } from './entities/notification.entity';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 import { UsersService } from '../users/users.service';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { NotificationsGateway } from './gateways/notifications.gateway';
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit {
+  private notificationsGateway: NotificationsGateway;
+
   constructor(
     @InjectRepository(Notification)
     private notificationsRepository: Repository<Notification>,
     @InjectQueue('notifications')
     private notificationsQueue: Queue,
     private usersService: UsersService,
+    @Inject(forwardRef(() => NotificationsGateway))
+    private _gateway: NotificationsGateway,
   ) {}
+
+  onModuleInit() {
+    this.notificationsGateway = this._gateway;
+  }
 
   async create(
     recipientId: string,
@@ -35,7 +44,20 @@ export class NotificationsService {
 
     const savedNotification = await this.notificationsRepository.save(notification);
 
-    // Queue for processing
+    // Send real-time notification via WebSocket if user is connected
+    if (this.notificationsGateway) {
+      await this.notificationsGateway.sendToUser(recipientId, {
+        id: savedNotification.id,
+        type: savedNotification.type,
+        title: savedNotification.title,
+        message: savedNotification.message,
+        data: savedNotification.data,
+        isRead: savedNotification.isRead,
+        createdAt: savedNotification.createdAt,
+      });
+    }
+
+    // Queue for processing (push, SMS, etc.)
     await this.notificationsQueue.add('send-notification', {
       notificationId: savedNotification.id,
     });
@@ -116,12 +138,27 @@ export class NotificationsService {
     recipientId: string,
     appointmentDetails: any,
   ): Promise<Notification> {
+    const serviceName = appointmentDetails.serviceName || 'Appointment';
+    const providerName = appointmentDetails.providerName || 'Professional';
+    const date = appointmentDetails.date instanceof Date 
+      ? appointmentDetails.date.toLocaleDateString()
+      : appointmentDetails.date;
+    const time = appointmentDetails.time instanceof Date
+      ? appointmentDetails.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : appointmentDetails.time;
+    
     return this.create(
       recipientId,
-      NotificationType.SMS,
+      NotificationType.PUSH,
       'Appointment Confirmed',
-      `Your appointment has been confirmed for ${appointmentDetails.date} at ${appointmentDetails.time}`,
-      { appointmentId: appointmentDetails.id },
+      `${serviceName} with ${providerName} confirmed for ${date} at ${time}`,
+      { 
+        appointmentId: appointmentDetails.id,
+        serviceName,
+        providerName,
+        date,
+        time,
+      },
     );
   }
 

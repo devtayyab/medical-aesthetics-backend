@@ -33,15 +33,22 @@ export class BookingsController {
   @ApiOperation({ summary: 'Get available slots (public)' })
   @ApiQuery({ name: 'clinicId', required: true })
   @ApiQuery({ name: 'serviceId', required: true })
-  @ApiQuery({ name: 'providerId', required: true })
+  @ApiQuery({ name: 'providerId', required: false })
   @ApiQuery({ name: 'date', required: true, example: '2025-01-20' })
-  getAvailability(@Query() query: any) {
-    return this.availabilityService.getAvailableSlots(
-      query.clinicId,
-      query.serviceId,
-      query.providerId || null,
-      query.date,
-    );
+  async getAvailability(@Query() query: any) {
+    try {
+      const result = await this.availabilityService.getAvailableSlots(
+        query.clinicId,
+        query.serviceId,
+        query.providerId || null,
+        query.date,
+      );
+      return result;
+    } catch (error) {
+      // Log error for debugging
+      console.error('Error getting availability:', error);
+      throw error;
+    }
   }
 
   @Post('appointments/hold')
@@ -58,8 +65,16 @@ export class BookingsController {
 
   @Get('appointments/:id')
   @ApiOperation({ summary: 'Get appointment details' })
-  getAppointment(@Param('id') id: string) {
-    return this.bookingsService.findById(id);
+  async getAppointment(@Param('id') id: string) {
+    const appointment = await this.bookingsService.findById(id);
+    return {
+      ...appointment,
+      displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
+      serviceName: appointment.service?.name,
+      providerName: appointment.provider 
+        ? `${appointment.provider.firstName} ${appointment.provider.lastName}` 
+        : null,
+    };
   }
 
   @Patch('appointments/:id/reschedule')

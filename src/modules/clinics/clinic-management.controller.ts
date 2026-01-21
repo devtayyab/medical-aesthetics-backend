@@ -112,7 +112,15 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Get appointment details' })
   @ApiResponse({ status: 200, description: 'Appointment details retrieved successfully' })
   async getAppointment(@Param('id') id: string, @Request() req) {
-    return this.bookingsService.findAppointmentForClinic(id, req.user.id, req.user.role);
+    const appointment = await this.bookingsService.findAppointmentForClinic(id, req.user.id, req.user.role);
+    return {
+      ...appointment,
+      displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
+      serviceName: appointment.service?.name,
+      providerName: appointment.provider 
+        ? `${appointment.provider.firstName} ${appointment.provider.lastName}` 
+        : null,
+    };
   }
 
   @Patch('appointments/:id/status')

@@ -6,13 +6,15 @@ import { ClinicsService } from './clinics.service';
 import { Clinic } from './entities/clinic.entity';
 import { Service } from './entities/service.entity';
 import { Review } from './entities/review.entity';
+import { User } from '../users/entities/user.entity';
+import { Appointment } from '../bookings/entities/appointment.entity';
 import { BookingsModule } from '../bookings/bookings.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Clinic, Service, Review]),
+    TypeOrmModule.forFeature([Clinic, Service, Review, User, Appointment]),
     forwardRef(() => BookingsModule),
     forwardRef(() => LoyaltyModule),
     NotificationsModule,

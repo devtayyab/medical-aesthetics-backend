@@ -125,39 +125,72 @@ export const AppointmentBooking: React.FC = () => {
 
   useEffect(() => {
     if (services.length > 0 && serviceIds.length > 0 && clinicId && !hasProcessedServices.current) {
+      console.log('🔍 Processing services:', { services, serviceIds, clinicId });
       const servicesToAdd = services.filter((s) => serviceIds.includes(s.id));
       servicesToAdd.forEach((service) => dispatch(addService(service)));
 
       // Auto fetch for today or selected date
-      dispatch(fetchAvailability({
+      const fetchParams = {
         clinicId,
         serviceId: serviceIds[0],
         date: format(selectedDateState, "yyyy-MM-dd"),
-      }));
+      };
+      console.log('📅 Fetching availability with params:', fetchParams);
+      dispatch(fetchAvailability(fetchParams));
       hasProcessedServices.current = true;
     }
   }, [dispatch, services, serviceIds, clinicId, selectedDateState]);
 
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log('🔍 Booking State Updated:', {
+      availableSlots: availableSlots.length,
+      selectedSlot,
+      selectedServices: selectedServices.length,
+      clinicId,
+      serviceIds,
+      userId: user?.id,
+      isLoading: bookingLoading
+    });
+  }, [availableSlots, selectedSlot, selectedServices, clinicId, serviceIds, user, bookingLoading]);
+
   const handleDateClick = (day: Date) => {
-    if (isBefore(day, startOfToday())) return;
+    console.log('📅 Date clicked:', format(day, "yyyy-MM-dd"));
+    if (isBefore(day, startOfToday())) {
+      console.warn('⚠️ Past date selected, ignoring');
+      return;
+    }
     setSelectedDateState(day);
     setSelectedSlot(null);
     if (clinicId && serviceIds.length > 0) {
-      dispatch(fetchAvailability({
+      const fetchParams = {
         clinicId,
         serviceId: serviceIds[0],
         date: format(day, "yyyy-MM-dd"),
-      }));
+      };
+      console.log('📅 Fetching availability for new date:', fetchParams);
+      dispatch(fetchAvailability(fetchParams));
     }
   };
 
   const handleSlotClick = async (slot: TimeSlot) => {
-    if (!slot.available) return;
+    console.log('🕐 Slot clicked:', slot);
+    if (!slot.available) {
+      console.warn('⚠️ Slot not available');
+      return;
+    }
     setSelectedSlot(slot);
 
     // Auto hold slot when selected
     if (clinicId && serviceIds.length > 0 && user?.id) {
       try {
+        console.log('🔒 Holding slot:', {
+          clinicId,
+          serviceId: serviceIds[0],
+          providerId: slot.providerId || clinicId,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        });
         await dispatch(holdTimeSlot({
           clinicId,
           serviceId: serviceIds[0],
@@ -165,19 +198,37 @@ export const AppointmentBooking: React.FC = () => {
           startTime: slot.startTime,
           endTime: slot.endTime,
         })).unwrap();
+        console.log('✅ Slot held successfully');
       } catch (err) {
-        console.error("Failed to hold slot:", err);
+        console.error("❌ Failed to hold slot:", err);
       }
+    } else {
+      console.warn('⚠️ Missing required data for holding slot:', {
+        clinicId,
+        serviceIdsLength: serviceIds.length,
+        userId: user?.id
+      });
     }
   };
 
   const handleProceed = () => {
-    if (!selectedSlot || !clinic) return;
+    console.log('🚀 Proceed to checkout clicked');
+    console.log('📋 Current state:', { selectedSlot, clinic, selectedServices });
 
+    if (!selectedSlot || !clinic) {
+      console.error('❌ Cannot proceed - missing data:', {
+        hasSelectedSlot: !!selectedSlot,
+        hasClinic: !!clinic
+      });
+      return;
+    }
+
+    console.log('✅ Setting booking data and navigating to checkout');
     dispatch(setSelectedClinic(clinic));
     dispatch(setSelectedDate(format(selectedDateState, "yyyy-MM-dd")));
     dispatch(setSelectedTimeSlot(selectedSlot));
 
+    console.log('🔄 Navigating to /checkout');
     navigate('/checkout');
   };
 

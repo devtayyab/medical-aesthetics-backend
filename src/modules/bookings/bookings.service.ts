@@ -25,7 +25,8 @@ export class BookingsService {
     // Check for conflicts
     const conflictingAppointment = await this.appointmentsRepository.findOne({
       where: {
-        providerId,
+        clinicId,
+        providerId: providerId || undefined,
         startTime: Between(new Date(startTime), new Date(endTime)),
         status: AppointmentStatus.CONFIRMED,
       },
@@ -37,7 +38,8 @@ export class BookingsService {
 
     const conflictingHold = await this.holdsRepository.findOne({
       where: {
-        providerId,
+        clinicId,
+        providerId: providerId || undefined,
         startTime: Between(new Date(startTime), new Date(endTime)),
         expiresAt: MoreThan(new Date()),
       },
@@ -67,6 +69,20 @@ export class BookingsService {
       appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
     };
 
+    // Check for conflicts with existing appointments
+    const conflictingAppointment = await this.appointmentsRepository.findOne({
+      where: {
+        clinicId: createAppointmentDto.clinicId,
+        providerId: createAppointmentDto.providerId || undefined,
+        startTime: Between(new Date(createAppointmentDto.startTime), new Date(createAppointmentDto.endTime)),
+        status: AppointmentStatus.CONFIRMED,
+      },
+    });
+
+    if (conflictingAppointment) {
+      throw new ConflictException('Time slot is already booked');
+    }
+
     // If holdId provided, validate and remove hold
     if (createAppointmentDto.holdId) {
       const hold = await this.holdsRepository.findOne({
@@ -83,10 +99,13 @@ export class BookingsService {
     const appointment = this.appointmentsRepository.create(appointmentData);
     const savedAppointment = await this.appointmentsRepository.save(appointment);
 
-    // Emit event for notifications
-    this.eventEmitter.emit('appointment.created', savedAppointment);
+    // Load full relations before emitting event for notifications
+    const appointmentWithRelations = await this.findById(savedAppointment.id);
 
-    return this.findById(savedAppointment.id);
+    // Emit event for notifications with full relations
+    this.eventEmitter.emit('appointment.created', appointmentWithRelations);
+
+    return appointmentWithRelations;
   }
 
   async findById(id: string): Promise<Appointment> {
@@ -100,6 +119,15 @@ export class BookingsService {
     }
 
     return appointment;
+  }
+
+  // Helper method to format appointment display name
+  formatAppointmentDisplayName(appointment: Appointment): string {
+    const serviceName = appointment.service?.name || 'Appointment';
+    const providerName = appointment.provider
+      ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
+      : 'Professional';
+    return `${serviceName} with ${providerName}`;
   }
 
   async updateStatus(id: string, status: AppointmentStatus, data?: any): Promise<Appointment> {
@@ -156,7 +184,15 @@ export class BookingsService {
       queryBuilder.where('appointment.providerId = :userId', { userId });
     }
 
-    return queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
+    const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
+    
+    // Add display name to each appointment
+    return appointments.map(apt => ({
+      ...apt,
+      displayName: this.formatAppointmentDisplayName(apt),
+      serviceName: apt.service?.name,
+      providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
+    })) as Appointment[];
   }
 
   async cleanupExpiredHolds(): Promise<void> {
@@ -211,7 +247,15 @@ export class BookingsService {
       queryBuilder.andWhere('appointment.appointmentSource = :appointmentSource', { appointmentSource: query.appointmentSource });
     }
 
-    return queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
+    const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
+    
+    // Add display name to each appointment
+    return appointments.map(apt => ({
+      ...apt,
+      displayName: this.formatAppointmentDisplayName(apt),
+      serviceName: apt.service?.name,
+      providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
+    })) as Appointment[];
   }
 
   async findAppointmentForClinic(
