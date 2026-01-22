@@ -30,4 +30,19 @@ export class ClinicsController {
   findServices(@Param('id') id: string) {
     return this.clinicsService.findServices(id);
   }
+
+  @Get(':id/providers')
+  @ApiOperation({ summary: 'Get clinic providers (doctors/aestheticians)' })
+  getProviders(@Param('id') id: string) {
+    return this.clinicsService.getClinicProviders(id);
+  }
+
+  @Get(':id/services/:serviceId/providers')
+  @ApiOperation({ summary: 'Get providers for a specific service' })
+  getServiceProviders(
+    @Param('id') clinicId: string,
+    @Param('serviceId') serviceId: string,
+  ) {
+    return this.clinicsService.getServiceProviders(clinicId, serviceId);
+  }
 }

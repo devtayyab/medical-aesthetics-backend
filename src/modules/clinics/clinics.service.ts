@@ -9,6 +9,9 @@ import { Clinic } from './entities/clinic.entity';
 import { Service } from './entities/service.entity';
 import { Review } from './entities/review.entity';
 import { Repository } from 'typeorm';
+import { User } from '../users/entities/user.entity';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { Appointment } from '../bookings/entities/appointment.entity';
 
 @Injectable()
 export class ClinicsService {
@@ -19,6 +22,10 @@ export class ClinicsService {
     private servicesRepository: Repository<Service>,
     @InjectRepository(Review)
     private reviewsRepository: Repository<Review>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
+    @InjectRepository(Appointment)
+    private appointmentsRepository: Repository<Appointment>,
   ) { }
 
   async search(params: {
@@ -180,6 +187,102 @@ export class ClinicsService {
         name: 'Clinic Owner', // This would come from user table
       },
     ];
+  }
+
+  async getClinicProviders(clinicId: string): Promise<any[]> {
+    // Get all providers (doctors and aestheticians) who have appointments at this clinic
+    // First, get providers from appointments
+    const appointmentProviders = await this.appointmentsRepository
+      .createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.provider', 'provider')
+      .where('appointment.clinicId = :clinicId', { clinicId })
+      .andWhere('appointment.providerId IS NOT NULL')
+      .select('DISTINCT provider.id', 'id')
+      .addSelect('provider.firstName', 'firstName')
+      .addSelect('provider.lastName', 'lastName')
+      .addSelect('provider.email', 'email')
+      .addSelect('provider.phone', 'phone')
+      .addSelect('provider.role', 'role')
+      .addSelect('provider.profilePictureUrl', 'profilePictureUrl')
+      .getRawMany();
+
+    // Also get clinic owner if they're a doctor
+    const clinic = await this.findById(clinicId);
+    const owner = await this.usersRepository.findOne({
+      where: { id: clinic.ownerId },
+    });
+
+    // Map to a cleaner format and remove duplicates
+    const uniqueProviders = new Map();
+    
+    // Add providers from appointments
+    appointmentProviders.forEach((p: any) => {
+      if (p.provider_id && !uniqueProviders.has(p.provider_id)) {
+        uniqueProviders.set(p.provider_id, {
+          id: p.provider_id,
+          firstName: p.provider_firstName,
+          lastName: p.provider_lastName,
+          fullName: `${p.provider_firstName} ${p.provider_lastName}`,
+          email: p.provider_email,
+          phone: p.provider_phone,
+          role: p.provider_role,
+          profilePictureUrl: p.provider_profilePictureUrl,
+        });
+      }
+    });
+
+    // Add clinic owner if they're a doctor or clinic_owner
+    if (owner && (owner.role === UserRole.DOCTOR || owner.role === UserRole.CLINIC_OWNER) && !uniqueProviders.has(owner.id)) {
+      uniqueProviders.set(owner.id, {
+        id: owner.id,
+        firstName: owner.firstName,
+        lastName: owner.lastName,
+        fullName: `${owner.firstName} ${owner.lastName}`,
+        email: owner.email,
+        phone: owner.phone,
+        role: owner.role,
+        profilePictureUrl: owner.profilePictureUrl,
+      });
+    }
+
+    return Array.from(uniqueProviders.values());
+  }
+
+  async getServiceProviders(clinicId: string, serviceId: string): Promise<any[]> {
+    // Get providers who have appointments for this specific service
+    const providers = await this.appointmentsRepository
+      .createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.provider', 'provider')
+      .where('appointment.clinicId = :clinicId', { clinicId })
+      .andWhere('appointment.serviceId = :serviceId', { serviceId })
+      .andWhere('appointment.providerId IS NOT NULL')
+      .select('DISTINCT provider.id', 'id')
+      .addSelect('provider.firstName', 'firstName')
+      .addSelect('provider.lastName', 'lastName')
+      .addSelect('provider.email', 'email')
+      .addSelect('provider.phone', 'phone')
+      .addSelect('provider.role', 'role')
+      .addSelect('provider.profilePictureUrl', 'profilePictureUrl')
+      .getRawMany();
+
+    // Map to a cleaner format and remove duplicates
+    const uniqueProviders = new Map();
+    providers.forEach((p: any) => {
+      if (p.provider_id && !uniqueProviders.has(p.provider_id)) {
+        uniqueProviders.set(p.provider_id, {
+          id: p.provider_id,
+          firstName: p.provider_firstName,
+          lastName: p.provider_lastName,
+          fullName: `${p.provider_firstName} ${p.provider_lastName}`,
+          email: p.provider_email,
+          phone: p.provider_phone,
+          role: p.provider_role,
+          profilePictureUrl: p.provider_profilePictureUrl,
+        });
+      }
+    });
+
+    return Array.from(uniqueProviders.values());
   }
 
   async getClinicAnalytics(clinicId: string, dateRange?: { startDate: Date; endDate: Date }): Promise<any> {

@@ -39,4 +39,16 @@ export class RegisterDto extends CreateUserDto {
   @ApiProperty({ required: false, description: 'Referral code if invited by a friend' })
   @IsOptional()
   referralCode?: string;
+
+  @ApiProperty({ required: false, description: 'Appointment data if booking during registration' })
+  @IsOptional()
+  @IsObject()
+  appointmentData?: {
+    clinicId: string;
+    serviceId: string;
+    providerId?: string;
+    startTime: string;
+    endTime: string;
+    notes?: string;
+  };
 }

@@ -5,11 +5,12 @@ import { BookingsService } from './bookings.service';
 import { AvailabilityService } from './availability.service';
 import { Appointment } from './entities/appointment.entity';
 import { AppointmentHold } from './entities/appointment-hold.entity';
+import { BlockedTimeSlot } from './entities/blocked-time-slot.entity';
 import { ClinicsModule } from '../clinics/clinics.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Appointment, AppointmentHold]),
+    TypeOrmModule.forFeature([Appointment, AppointmentHold, BlockedTimeSlot]),
     forwardRef(() => ClinicsModule),
   ],
   controllers: [BookingsController],

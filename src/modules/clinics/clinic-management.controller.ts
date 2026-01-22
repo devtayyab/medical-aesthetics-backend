@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -43,7 +44,7 @@ export class ClinicManagementController {
     private readonly loyaltyService: LoyaltyService,
     private readonly availabilityService: AvailabilityService,
     private readonly notificationsService: NotificationsService,
-  ) {}
+  ) { }
 
   // Clinic Profile Management
   @Post('profile')
@@ -61,7 +62,7 @@ export class ClinicManagementController {
   }
 
   @Get('profile')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Get clinic profile' })
   @ApiResponse({ status: 200, description: 'Clinic profile retrieved successfully' })
   async getClinicProfile(@Request() req) {
@@ -81,26 +82,49 @@ export class ClinicManagementController {
 
   // Appointment Management
   @Get('appointments')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Get clinic appointments' })
   @ApiResponse({ status: 200, description: 'Appointments retrieved successfully' })
   async getClinicAppointments(
-    @Query() query: { status?: string; date?: string; providerId?: string },
+    @Query() query: { status?: string; date?: string; providerId?: string; appointmentSource?: 'clinic_own' | 'platform_broker' },
     @Request() req,
   ) {
     return this.bookingsService.findClinicAppointments(req.user.id, req.user.role, query);
   }
 
+  @Post('appointments')
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @ApiOperation({ summary: 'Create clinic own appointment' })
+  @ApiResponse({ status: 201, description: 'Appointment created successfully' })
+  async createClinicAppointment(
+    @Body() createAppointmentDto: any,
+    @Request() req,
+  ) {
+    // Ensure appointment is marked as clinic_own
+    return this.bookingsService.createAppointment({
+      ...createAppointmentDto,
+      appointmentSource: 'clinic_own',
+    });
+  }
+
   @Get('appointments/:id')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Get appointment details' })
   @ApiResponse({ status: 200, description: 'Appointment details retrieved successfully' })
   async getAppointment(@Param('id') id: string, @Request() req) {
-    return this.bookingsService.findAppointmentForClinic(id, req.user.id, req.user.role);
+    const appointment = await this.bookingsService.findAppointmentForClinic(id, req.user.id, req.user.role);
+    return {
+      ...appointment,
+      displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
+      serviceName: appointment.service?.name,
+      providerName: appointment.provider 
+        ? `${appointment.provider.firstName} ${appointment.provider.lastName}` 
+        : null,
+    };
   }
 
   @Patch('appointments/:id/status')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
   @ApiOperation({ summary: 'Update appointment status' })
   @ApiResponse({ status: 200, description: 'Appointment status updated successfully' })
   async updateAppointmentStatus(
@@ -118,12 +142,22 @@ export class ClinicManagementController {
   }
 
   @Patch('appointments/:id/complete')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT)
-  @ApiOperation({ summary: 'Complete appointment with payment recording' })
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @ApiOperation({ summary: 'Complete appointment with payment recording and completion report' })
   @ApiResponse({ status: 200, description: 'Appointment completed successfully' })
   async completeAppointment(
     @Param('id') id: string,
-    @Body() body: { paymentData?: RecordPaymentDto; treatmentDetails?: any },
+    @Body() body: {
+      paymentData?: RecordPaymentDto;
+      treatmentDetails?: any;
+      completionReport?: {
+        patientCame: boolean;
+        servicePerformed: string;
+        amountPaid: number;
+        renewalDate?: string;
+        notes?: string;
+      };
+    },
     @Request() req,
   ) {
     return this.bookingsService.completeAppointmentWithPayment(
@@ -132,12 +166,13 @@ export class ClinicManagementController {
       req.user.role,
       body.paymentData,
       body.treatmentDetails,
+      body.completionReport,
     );
   }
 
   // Availability Management
   @Get('availability')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
   @ApiOperation({ summary: 'Get clinic availability' })
   @ApiResponse({ status: 200, description: 'Availability retrieved successfully' })
   async getAvailability(@Query() query: any, @Request() req) {
@@ -155,6 +190,52 @@ export class ClinicManagementController {
     return this.clinicsService.updateClinicAvailability(
       req.user.id,
       availabilitySettingsDto,
+    );
+  }
+
+  // Block Time Slot (Doctor unavailable time)
+  @Post('availability/block-time-slot')
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @ApiOperation({ summary: 'Block a specific time slot (doctor unavailable)' })
+  @ApiResponse({ status: 201, description: 'Time slot blocked successfully' })
+  async blockTimeSlot(
+    @Body() body: { providerId?: string; startTime: string; endTime: string; reason?: string },
+    @Request() req,
+  ) {
+    const clinic = await this.clinicsService.findByOwnerId(req.user.id);
+    return this.availabilityService.blockTimeSlot(
+      clinic.id,
+      body.providerId || null,
+      new Date(body.startTime),
+      new Date(body.endTime),
+      body.reason || 'Doctor unavailable',
+      req.user.id,
+    );
+  }
+
+  @Delete('availability/block-time-slot/:id')
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @ApiOperation({ summary: 'Unblock a time slot' })
+  @ApiResponse({ status: 200, description: 'Time slot unblocked successfully' })
+  async unblockTimeSlot(@Param('id') id: string, @Request() req) {
+    await this.availabilityService.unblockTimeSlot(id, req.user.id, req.user.role);
+    return { message: 'Time slot unblocked successfully' };
+  }
+
+  @Get('availability/blocked-slots')
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @ApiOperation({ summary: 'Get blocked time slots' })
+  @ApiResponse({ status: 200, description: 'Blocked time slots retrieved successfully' })
+  async getBlockedTimeSlots(
+    @Query() query: { providerId?: string; startDate?: string; endDate?: string },
+    @Request() req,
+  ) {
+    const clinic = await this.clinicsService.findByOwnerId(req.user.id);
+    return this.availabilityService.getBlockedTimeSlots(
+      clinic.id,
+      query.providerId || null,
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
     );
   }
 
@@ -246,7 +327,7 @@ export class ClinicManagementController {
 
   // Client Management
   @Get('clients')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Get clinic clients' })
   @ApiResponse({ status: 200, description: 'Clients retrieved successfully' })
   async getClinicClients(
@@ -257,7 +338,7 @@ export class ClinicManagementController {
   }
 
   @Get('clients/:id')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Get client details and history' })
   @ApiResponse({ status: 200, description: 'Client details retrieved successfully' })
   async getClientDetails(@Param('id') id: string, @Request() req) {
@@ -372,13 +453,34 @@ export class ClinicManagementController {
     @Request() req,
   ) {
     const appointment = await this.bookingsService.findAppointmentForClinic(id, req.user.id, req.user.role);
-    
+
     return this.notificationsService.sendAppointmentReminder(
       appointment.clientId,
       {
         id: appointment.id,
         time: appointment.startTime,
         serviceName: appointment.service?.name,
+      },
+    );
+  }
+
+  // Messaging to Platform/Broker
+  @Post('messages/to-platform')
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @ApiOperation({ summary: 'Send message to platform/broker (not clients)' })
+  @ApiResponse({ status: 201, description: 'Message sent to platform successfully' })
+  async sendMessageToPlatform(
+    @Body() body: { title: string; message: string; appointmentId?: string; data?: any },
+    @Request() req,
+  ) {
+    return this.notificationsService.sendToPlatformAdmins(
+      body.title,
+      body.message,
+      {
+        clinicUserId: req.user.id,
+        clinicName: req.user.firstName + ' ' + req.user.lastName,
+        appointmentId: body.appointmentId,
+        ...body.data,
       },
     );
   }

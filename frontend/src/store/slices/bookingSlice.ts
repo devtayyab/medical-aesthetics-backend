@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { bookingAPI } from '@/services/api';
 import type { BookingFlow, Service, TimeSlot, Appointment, Clinic } from '@/types';
-import type { RootState } from '@/types';
+import type { RootState } from '@/store';
 
 interface BookingState extends BookingFlow {
   availableSlots: TimeSlot[];
@@ -83,7 +83,7 @@ const bookingSlice = createSlice({
     addService: (state, action: PayloadAction<Service>) => {
       const service = action.payload;
       const existingIndex = state.selectedServices.findIndex(s => s.id === service.id);
-      
+
       if (existingIndex === -1) {
         state.selectedServices.push(service);
         state.totalAmount += service.price;
@@ -92,7 +92,7 @@ const bookingSlice = createSlice({
     removeService: (state, action: PayloadAction<string>) => {
       const serviceId = action.payload;
       const serviceIndex = state.selectedServices.findIndex(s => s.id === serviceId);
-      
+
       if (serviceIndex !== -1) {
         const service = state.selectedServices[serviceIndex];
         state.selectedServices.splice(serviceIndex, 1);
@@ -129,16 +129,26 @@ const bookingSlice = createSlice({
     builder
       // Fetch availability
       .addCase(fetchAvailability.pending, (state) => {
+        console.log('⏳ Fetching availability...');
         state.isLoading = true;
         state.error = null;
       })
       .addCase(fetchAvailability.fulfilled, (state, action) => {
+        console.log('✅ Availability fetched:', action.payload);
+        // Backend returns { slots, count, reason?, debug? }
+        const slots = action.payload?.slots || action.payload || [];
+        const count = action.payload?.count || slots.length || 0;
+        console.log('📊 Number of slots:', count);
+        if (action.payload?.reason) {
+          console.log('⚠️ Reason:', action.payload.reason);
+        }
         state.isLoading = false;
-        state.availableSlots = action.payload;
+        state.availableSlots = Array.isArray(slots) ? slots : [];
       })
       .addCase(fetchAvailability.rejected, (state, action) => {
+        console.error('❌ Availability fetch failed:', action.error);
         state.isLoading = false;
-        state.error = action.error.message || 'Failed to fetch availability';
+        state.error = action.error.message || (action.payload as string) || 'Failed to fetch availability';
       })
       // Hold slot
       .addCase(holdTimeSlot.fulfilled, (state, action) => {

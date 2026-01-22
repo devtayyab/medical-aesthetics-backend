@@ -1,19 +1,31 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, forwardRef, Inject, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Repository } from 'typeorm';
 import { Queue } from 'bull';
 import { Notification } from './entities/notification.entity';
 import { NotificationType } from '../../common/enums/notification-type.enum';
+import { UsersService } from '../users/users.service';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { NotificationsGateway } from './gateways/notifications.gateway';
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit {
+  private notificationsGateway: NotificationsGateway;
+
   constructor(
     @InjectRepository(Notification)
     private notificationsRepository: Repository<Notification>,
     @InjectQueue('notifications')
     private notificationsQueue: Queue,
+    private usersService: UsersService,
+    @Inject(forwardRef(() => NotificationsGateway))
+    private _gateway: NotificationsGateway,
   ) {}
+
+  onModuleInit() {
+    this.notificationsGateway = this._gateway;
+  }
 
   async create(
     recipientId: string,
@@ -32,7 +44,20 @@ export class NotificationsService {
 
     const savedNotification = await this.notificationsRepository.save(notification);
 
-    // Queue for processing
+    // Send real-time notification via WebSocket if user is connected
+    if (this.notificationsGateway) {
+      await this.notificationsGateway.sendToUser(recipientId, {
+        id: savedNotification.id,
+        type: savedNotification.type,
+        title: savedNotification.title,
+        message: savedNotification.message,
+        data: savedNotification.data,
+        isRead: savedNotification.isRead,
+        createdAt: savedNotification.createdAt,
+      });
+    }
+
+    // Queue for processing (push, SMS, etc.)
     await this.notificationsQueue.add('send-notification', {
       notificationId: savedNotification.id,
     });
@@ -113,12 +138,27 @@ export class NotificationsService {
     recipientId: string,
     appointmentDetails: any,
   ): Promise<Notification> {
+    const serviceName = appointmentDetails.serviceName || 'Appointment';
+    const providerName = appointmentDetails.providerName || 'Professional';
+    const date = appointmentDetails.date instanceof Date 
+      ? appointmentDetails.date.toLocaleDateString()
+      : appointmentDetails.date;
+    const time = appointmentDetails.time instanceof Date
+      ? appointmentDetails.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : appointmentDetails.time;
+    
     return this.create(
       recipientId,
-      NotificationType.SMS,
+      NotificationType.PUSH,
       'Appointment Confirmed',
-      `Your appointment has been confirmed for ${appointmentDetails.date} at ${appointmentDetails.time}`,
-      { appointmentId: appointmentDetails.id },
+      `${serviceName} with ${providerName} confirmed for ${date} at ${time}`,
+      { 
+        appointmentId: appointmentDetails.id,
+        serviceName,
+        providerName,
+        date,
+        time,
+      },
     );
   }
 
@@ -133,5 +173,34 @@ export class NotificationsService {
       `You've earned ${loyaltyDetails.points} points! Your new balance is ${loyaltyDetails.balance}`,
       loyaltyDetails,
     );
+  }
+
+  async sendToPlatformAdmins(
+    title: string,
+    message: string,
+    data?: any,
+  ): Promise<{ message: string; sentTo: number }> {
+    // Find all admin users
+    const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true });
+    
+    if (admins.length === 0) {
+      throw new Error('No admin users found to send message to');
+    }
+
+    const adminIds = admins.map(admin => admin.id);
+    
+    // Send bulk notification to all admins
+    await this.sendBulk(
+      adminIds,
+      NotificationType.PUSH,
+      `[Clinic Message] ${title}`,
+      message,
+      { ...data, source: 'clinic_to_platform' },
+    );
+
+    return {
+      message: 'Message sent to platform admins',
+      sentTo: adminIds.length,
+    };
   }
 }

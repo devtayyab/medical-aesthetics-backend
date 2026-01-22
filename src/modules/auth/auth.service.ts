@@ -8,6 +8,7 @@ import { RegisterDto } from "./dto/register.dto";
 import { ClinicsService } from "../clinics/clinics.service";
 import { UserRole } from "@/common/enums/user-role.enum";
 import { LoyaltyService } from "../loyalty/loyalty.service";
+import { BookingsService } from "../bookings/bookings.service";
 
 @Injectable()
 export class AuthService {
@@ -16,7 +17,8 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private clinicsService: ClinicsService,
-    private loyaltyService: LoyaltyService
+    private loyaltyService: LoyaltyService,
+    private bookingsService: BookingsService,
   ) { }
 
   async validateUser(email: string, password: string): Promise<User | null> {
@@ -135,7 +137,6 @@ export class AuthService {
     // If role is clinic_owner and clinicData is provided, create clinic
     if (
       registerDto.role === UserRole.CLINIC_OWNER ||
-      registerDto.role === UserRole.DOCTOR ||
       (registerDto.role === UserRole.SECRETARIAT && registerDto?.clinicData)
     ) {
       console.log("[AuthService] Creating clinic for user:", user.id);
@@ -157,6 +158,27 @@ export class AuthService {
       } catch (error) {
         console.error("[AuthService] Failed to create clinic:", error.message);
         // Continue with registration even if clinic creation fails
+      }
+    }
+
+    // If appointment data is provided during registration (for clients), create appointment
+    if (registerDto.appointmentData && registerDto.role === UserRole.CLIENT) {
+      console.log("[AuthService] Creating appointment during registration for user:", user.id);
+      try {
+        await this.bookingsService.createAppointment({
+          clinicId: registerDto.appointmentData.clinicId,
+          serviceId: registerDto.appointmentData.serviceId,
+          providerId: registerDto.appointmentData.providerId,
+          clientId: user.id,
+          startTime: registerDto.appointmentData.startTime,
+          endTime: registerDto.appointmentData.endTime,
+          notes: registerDto.appointmentData.notes,
+          appointmentSource: 'platform_broker',
+        });
+        console.log("[AuthService] Appointment created successfully during registration");
+      } catch (error) {
+        console.error("[AuthService] Failed to create appointment during registration:", error.message);
+        // Continue with registration even if appointment creation fails
       }
     }
 
