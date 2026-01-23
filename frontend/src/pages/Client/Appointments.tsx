@@ -29,8 +29,14 @@ const heading = css`
 const cardGrid = css`
   display: grid;
   gap: 20px;
-  // max-width: 900px;
   margin: 0 auto;
+  grid-template-columns: 1fr;
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
 `;
 
 const cardStyle = css`

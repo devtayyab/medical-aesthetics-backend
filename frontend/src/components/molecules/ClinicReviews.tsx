@@ -18,11 +18,16 @@ type FilterOption = {
   count: number;
 };
 
+import { Service } from "@/types";
+
 type ClinicReviewsProps = {
-  clinicId: string;
+  clinicId?: string;
+  ServiceData?: Service[];
+  handleAddService?: (service: Service) => void;
+  handleRemoveService?: (serviceId: string) => void;
 };
 
-const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId }) => {
+const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId, ServiceData, handleAddService, handleRemoveService }) => {
   const { selectedClinic, clinics } = useSelector(
     (state: RootState) => state.client
   );

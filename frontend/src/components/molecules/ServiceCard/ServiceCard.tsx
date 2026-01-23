@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { css } from "@emotion/css";
+import { useNavigate } from "react-router-dom";
 import { Plus, Check } from "lucide-react";
 import { Card } from "@/components/atoms/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
@@ -104,6 +105,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   onRemove,
 }) => {
   const [showDetails, setShowDetails] = useState(false);
+  const navigate = useNavigate();
 
   const handleToggle = () => {
     if (isSelected) {
@@ -125,11 +127,10 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   return (
     <Card
       variant="outlined"
-      className={`${cardStyle} ${
-        isSelected
-          ? selectedCardStyle
-          : "bg-transparent rounded-none border-b-[#D7DAE0] last-of-type:border-transparent"
-      } p-[10px]`}
+      className={`${cardStyle} ${isSelected
+        ? selectedCardStyle
+        : "bg-transparent rounded-none border-b-[#D7DAE0] last-of-type:border-transparent"
+        } p-[10px]`}
     >
       <div className="flex justify-between items-center gap-6">
         <div className="w-full">
@@ -174,6 +175,34 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           <span className={categoryStyle}>{service.category}</span>
         )}
       </div>
+
+      {isSelected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl transform transition-all scale-100 animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Service Selected!</h3>
+            <p className="text-gray-600 mb-6">
+              You have selected <span className="font-semibold text-gray-900">{service.name}</span>. Would you like to proceed to booking?
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={handleToggle}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 rounded-xl bg-[#CBFF38] text-[#203400] hover:bg-[#A7E52F]"
+                onClick={() => {
+                  navigate(`/appointment/booking?clinicId=${service.clinicId}&serviceIds=${service.id}`);
+                }}
+              >
+                Book Now
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 };

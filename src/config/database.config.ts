@@ -19,6 +19,7 @@ import { Appointment } from '@/modules/bookings/entities/appointment.entity';
 import { AppointmentHold } from '@/modules/bookings/entities/appointment-hold.entity';
 import { LoyaltyLedger } from '@/modules/loyalty/entities/loyalty-ledger.entity';
 import { Notification } from '@/modules/notifications/entities/notification.entity';
+import { BlockedTimeSlot } from '@/modules/bookings/entities/blocked-time-slot.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -51,6 +52,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         ConsentRecord,
         AdAttribution,
         AdCampaign,
+        BlockedTimeSlot,
       ],
       ssl: this.configService.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
     };

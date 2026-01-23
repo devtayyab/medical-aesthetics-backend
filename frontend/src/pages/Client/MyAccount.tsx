@@ -28,8 +28,11 @@ import { CheckCircle } from "lucide-react";
 const containerStyle = css`
   display: grid;
   gap: var(--spacing-lg);
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  @media (min-width: 768px) {
+  grid-template-columns: 1fr;
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+  @media (min-width: 1024px) {
     grid-template-columns: repeat(2, 1fr);
   }
 `;
@@ -99,44 +102,58 @@ export const MyAccount: React.FC = () => {
 
         {/* Booking Full Width Box */}
         <Card
-          className={`bg-[#FFFFFF80] w-full mb-6 flex min-h-[256px] ${cardStyle}`}
+          className={`bg-[#FFFFFF80] w-full mb-6 flex flex-col md:flex-row min-h-[256px] ${cardStyle}`}
         >
           <div className="w-full md:w-1/2">
             <span className="flex items-center gap-3 mb-2">
               <ImProfile size={27} />
               <h2 className="text-[#222222] text-[20px] font-semibold">
-                Bookings
+                Book Your Treatment
               </h2>
             </span>
             <p className="text-[#717171] text-[18px]">
-              View and manage your appointments
+              Book your treatment With the best doctors
             </p>
           </div>
           <div className="w-full md:w-1/2">
             <span className="flex items-center gap-3 mb-2">
               <h2 className="text-[#222222] text-[20px] font-semibold">
-                You have no upcoming bookings
+                Book Your Treatment
               </h2>
             </span>
             <p className="text-[#717171] text-[18px]">
-              Check your appointment history or book a new one.
+              Book your treatment from home with just on click with the best
+              doctors in your town
             </p>
-            <Link to="/appointments">
+            <Link to="/search">
               <Button
-                className="mt-5 text-[18px] text-[#405C0B] border-[#5F8B00] hover:border-transparent rounded-[12px]"
-                variant="outline"
+                className="mt-5 text-[18px] bg-[#BBF246] hover:bg-[#a6d838] text-[#1A1A1A] rounded-[12px] border-none"
               >
-                View Appointments
+                Book Now
               </Button>
             </Link>
           </div>
         </Card>
 
         <div className={containerStyle}>
-          <Link to="/personal-details">
+          <Link to="/appointments">
             <Card className={`bg-[#FFFFFF80] ${cardStyle}`}>
               <span className="flex items-center gap-3 mb-2">
                 <TbCalendarClock size={27} />
+                <h2 className="text-[#222222] text-[20px] font-semibold">
+                  My Appointments
+                </h2>
+              </span>
+              <p className="text-[#717171] text-[18px]">
+                Track your upcoming visits
+              </p>
+            </Card>
+          </Link>
+
+          <Link to="/personal-details">
+            <Card className={`bg-[#FFFFFF80] ${cardStyle}`}>
+              <span className="flex items-center gap-3 mb-2">
+                <ImProfile size={27} />
                 <h2 className="text-[#222222] text-[20px] font-semibold">
                   Personal Details
                 </h2>
@@ -221,9 +238,6 @@ export const MyAccount: React.FC = () => {
               <p className="text-[#717171] text-[14px]">Chat Support</p>
             </span>
           </div>
-          <button className="text-[#FF3347] text-[20px]" onClick={handleLogout}>
-            Logout
-          </button>
         </div>
       </div>
     </section>

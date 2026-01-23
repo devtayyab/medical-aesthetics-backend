@@ -13,6 +13,7 @@ const loginContainerStyle = css`
   justify-content: center;
   align-items: center;
   min-height: 80vh;
+  padding: 1rem;
   background: linear-gradient(
     135deg,
     var(--color-medical-bg) 0%,
@@ -23,10 +24,13 @@ const loginContainerStyle = css`
 const loginCardStyle = css`
   width: 100%;
   max-width: 540px;
-  padding: var(--spacing-2xl);
+  padding: 24px;
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-xl);
   background: var(--color-white);
+  @media (min-width: 768px) {
+    padding: var(--spacing-2xl);
+  }
 `;
 
 const loginHeaderStyle = css`
@@ -110,7 +114,7 @@ export const Login: React.FC = () => {
         navigate("/clinic/dashboard", { replace: true });
       } else if (result.user.role === "admin") {
         navigate("/admin/dashboard", { replace: true });
-         } else if (result.user.role === "SUPER_ADMIN") {
+      } else if (result.user.role === "SUPER_ADMIN") {
         navigate("/admin/manager-dashboard", { replace: true });
       } else if (result.user.role === "client") {
         navigate("/my-account", { replace: true });

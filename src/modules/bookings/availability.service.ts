@@ -41,286 +41,291 @@ export class AvailabilityService {
 
     log('🔵 Availability Request:', { clinicId, serviceId, providerId, date });
 
-    // Validate required parameters
-    if (!clinicId || !serviceId) {
-      throw new BadRequestException('Clinic ID and Service ID are required');
-    }
+    try {
+      // Validate required parameters
+      if (!clinicId || !serviceId) {
+        throw new BadRequestException('Clinic ID and Service ID are required');
+      }
 
-    // Default to today if no date provided
-    const targetDate = date || new Date().toISOString().split('T')[0];
-    log('🔵 Using date:', targetDate);
+      // Default to today if no date provided
+      const targetDate = date || new Date().toISOString().split('T')[0];
+      log('🔵 Using date:', targetDate);
 
-    const clinic = await this.clinicsService.findById(clinicId);
-    if (!clinic) {
-      throw new NotFoundException('Clinic not found');
-    }
+      const clinic = await this.clinicsService.findById(clinicId);
+      if (!clinic) {
+        throw new NotFoundException('Clinic not found');
+      }
 
-    console.log('🔵 Clinic:', clinic);
+      log('🔵 Clinic:', clinic.name);
 
-    const services = await this.clinicsService.findServices(clinicId);
-    if (!services || services.length === 0) {
-      throw new NotFoundException('No services found for this clinic');
-    }
+      const services = await this.clinicsService.findServices(clinicId);
+      if (!services || services.length === 0) {
+        throw new NotFoundException('No services found for this clinic');
+      }
 
-    const service = services.find(s => s.id === serviceId);
-    if (!service) {
-      throw new NotFoundException(`Service not found for clinic ${clinicId}`);
-    }
+      const service = services.find(s => s.id === serviceId);
+      if (!service) {
+        throw new NotFoundException(`Service not found for clinic ${clinicId}`);
+      }
 
-    const timezone = clinic.timezone || 'UTC';
-    log('🔵 Using timezone:', timezone);
+      const timezone = clinic.timezone || 'UTC';
+      log('🔵 Using timezone:', timezone);
 
-    // Create date objects for start and end of day respecting timezone
-    const startOfDay = fromZonedTime(`${targetDate}T00:00:00`, timezone);
-    const endOfDay = fromZonedTime(`${targetDate}T23:59:59.999`, timezone);
+      // Create date objects for start and end of day respecting timezone
+      const startOfDay = fromZonedTime(`${targetDate}T00:00:00`, timezone);
+      const endOfDay = fromZonedTime(`${targetDate}T23:59:59.999`, timezone);
 
-    // Get business hours for the day
-    const targetDateObj = new Date(targetDate + 'T00:00:00Z');
-    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayOfWeek = daysOfWeek[targetDateObj.getUTCDay()];
-    const businessHours = clinic.businessHours?.[dayOfWeek];
+      // Get business hours for the day
+      const targetDateObj = new Date(targetDate + 'T00:00:00Z');
+      const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayOfWeek = daysOfWeek[targetDateObj.getUTCDay()];
+      const businessHours = clinic.businessHours?.[dayOfWeek];
 
-    log('🔵 Day of week:', dayOfWeek);
-    log('🔵 Business hours for ' + dayOfWeek + ':', businessHours);
-    log('🔵 All business hours:', clinic.businessHours);
+      log('🔵 Day of week:', dayOfWeek);
+      log('🔵 Business hours for ' + dayOfWeek + ':', businessHours);
+      log('🔵 All business hours:', clinic.businessHours);
 
-    if (!businessHours) {
-      console.log('⚠️ No business hours configured for', dayOfWeek);
-      return {
-        slots: [],
-        count: 0,
-        reason: `No business hours configured for ${dayOfWeek}`,
-        debug: { dayOfWeek, hasBusinessHours: !!clinic.businessHours }
-      };
-    }
+      if (!businessHours) {
+        console.log('⚠️ No business hours configured for', dayOfWeek);
+        return {
+          slots: [],
+          count: 0,
+          reason: `No business hours configured for ${dayOfWeek}`,
+          debug: { dayOfWeek, hasBusinessHours: !!clinic.businessHours }
+        };
+      }
 
-    // Check if clinic is open
-    if (businessHours.isOpen === false) {
-      console.log('⚠️ Clinic is closed on', dayOfWeek);
-      return {
-        slots: [],
-        count: 0,
-        reason: `Clinic is closed on ${dayOfWeek}`,
-        debug: { dayOfWeek, businessHours }
-      };
-    }
+      // Check if clinic is open
+      if (businessHours.isOpen === false) {
+        console.log('⚠️ Clinic is closed on', dayOfWeek);
+        return {
+          slots: [],
+          count: 0,
+          reason: `Clinic is closed on ${dayOfWeek}`,
+          debug: { dayOfWeek, businessHours }
+        };
+      }
 
-    // Validate business hours have open and close times
-    if (!businessHours.open || !businessHours.close) {
-      log('⚠️ Business hours missing open/close times for ' + dayOfWeek, null);
-      return {
-        slots: [],
-        count: 0,
-        reason: `Business hours missing open/close times for ${dayOfWeek}`,
-        debug: { dayOfWeek, businessHours }
-      };
-    }
+      // Validate business hours have open and close times
+      if (!businessHours.open || !businessHours.close) {
+        log('⚠️ Business hours missing open/close times for ' + dayOfWeek, null);
+        return {
+          slots: [],
+          count: 0,
+          reason: `Business hours missing open/close times for ${dayOfWeek}`,
+          debug: { dayOfWeek, businessHours }
+        };
+      }
 
-    log(`✅ Clinic is open on ${dayOfWeek} from ${businessHours.open} to ${businessHours.close}`, null);
+      log(`✅ Clinic is open on ${dayOfWeek} from ${businessHours.open} to ${businessHours.close}`, null);
 
-    // Build where clause for appointments - conditionally include providerId
-    const appointmentWhere: any = {
-      clinicId,
-      startTime: Between(startOfDay, endOfDay),
-      status: AppointmentStatus.CONFIRMED,
-    };
-    if (providerId) {
-      appointmentWhere.providerId = providerId;
-    }
-
-    // Get existing appointments
-    const existingAppointments = await this.appointmentsRepository.find({
-      where: appointmentWhere,
-    });
-
-    console.log('🔵 Existing appointments:', existingAppointments.length);
-
-    // Build where clause for holds - conditionally include providerId
-    const holdsWhere: any = {
-      clinicId,
-      startTime: Between(startOfDay, endOfDay),
-      expiresAt: MoreThan(new Date()),
-    };
-    if (providerId) {
-      holdsWhere.providerId = providerId;
-    }
-
-    // Get active holds (holds that haven't expired yet)
-    const activeHolds = await this.holdsRepository.find({
-      where: holdsWhere,
-    });
-
-    console.log(' Active holds:', activeHolds.length);
-
-    // Get blocked time slots for this provider or clinic-wide
-    const blockedWhere: any[] = [
-      {
+      // Build where clause for appointments - conditionally include providerId
+      const appointmentWhere: any = {
         clinicId,
-        providerId: null, // Clinic-wide blocks
         startTime: Between(startOfDay, endOfDay),
-      },
-    ];
-    if (providerId) {
-      blockedWhere.push({
-        clinicId,
-        providerId,
-        startTime: Between(startOfDay, endOfDay),
-      });
-    }
+        status: AppointmentStatus.CONFIRMED,
+      };
+      if (providerId) {
+        appointmentWhere.providerId = providerId;
+      }
 
-    const blockedSlots = await this.blockedTimeSlotsRepository.find({
-      where: blockedWhere,
-    });
-
-    log('Blocked slots count:', blockedSlots.length);
-
-    // Generate available slots
-    const slots = [];
-
-    // Parse business hours
-    const [openHour, openMinute] = businessHours.open.split(':').map(Number);
-    const [closeHour, closeMinute] = businessHours.close.split(':').map(Number);
-
-    console.log('🔵 Open time:', openHour, ':', openMinute);
-    console.log('🔵 Close time:', closeHour, ':', closeMinute);
-    console.log('🔵 Service duration:', service.durationMinutes, 'minutes');
-
-    // Create open and close times respecting timezone
-    const fmt = (n: number) => n.toString().padStart(2, '0');
-
-    // Construct ISO string for local time in clinic's timezone, then convert to UTC Date
-    // This ensures that 09:00 means 9 AM in the clinic's location
-    const openTime = fromZonedTime(
-      `${targetDate}T${fmt(openHour)}:${fmt(openMinute)}:00`,
-      timezone
-    );
-
-    const closeTime = fromZonedTime(
-      `${targetDate}T${fmt(closeHour)}:${fmt(closeMinute)}:00`,
-      timezone
-    );
-
-    log('🔵 Open time (UTC):', openTime.toISOString());
-    log('🔵 Close time (UTC):', closeTime.toISOString());
-    log('🔵 Current time (UTC):', new Date().toISOString());
-
-    let currentSlot = new Date(openTime);
-    let slotCount = 0;
-
-    // Generate slots in 30-minute intervals
-    while (currentSlot.getTime() + (service.durationMinutes * 60000) <= closeTime.getTime()) {
-      slotCount++;
-      const slotStart = new Date(currentSlot);
-      const slotEnd = new Date(currentSlot.getTime() + (service.durationMinutes * 60000));
-
-      // Check if slot conflicts with existing appointments, holds, or blocked slots
-      const hasConflict = existingAppointments.some(apt => {
-        const aptStart = new Date(apt.startTime);
-        const aptEnd = new Date(apt.endTime);
-        return slotStart < aptEnd && slotEnd > aptStart;
-      }) || activeHolds.some(hold => {
-        const holdStart = new Date(hold.startTime);
-        const holdEnd = new Date(hold.endTime);
-        return slotStart < holdEnd && slotEnd > holdStart;
-      }) || blockedSlots.some(blocked => {
-        const blockedStart = new Date(blocked.startTime);
-        const blockedEnd = new Date(blocked.endTime);
-        return slotStart < blockedEnd && slotEnd > blockedStart;
+      // Get existing appointments
+      const existingAppointments = await this.appointmentsRepository.find({
+        where: appointmentWhere,
       });
 
-      // Only include future slots (not past slots)
-      const now = new Date();
-      const isFuture = slotStart >= now;
+      console.log('🔵 Existing appointments:', existingAppointments.length);
 
-      if (slotCount <= 3) { // Only log first 3 slots to avoid spam
-        console.log('🔵 Slot #' + slotCount + ':', {
-          slotStart: slotStart.toISOString(),
-          slotEnd: slotEnd.toISOString(),
-          hasConflict,
-          isFuture,
-          willBeAdded: !hasConflict && isFuture
+      // Build where clause for holds - conditionally include providerId
+      const holdsWhere: any = {
+        clinicId,
+        startTime: Between(startOfDay, endOfDay),
+        expiresAt: MoreThan(new Date()),
+      };
+      if (providerId) {
+        holdsWhere.providerId = providerId;
+      }
+
+      // Get active holds (holds that haven't expired yet)
+      const activeHolds = await this.holdsRepository.find({
+        where: holdsWhere,
+      });
+
+      console.log(' Active holds:', activeHolds.length);
+
+      // Get blocked time slots for this provider or clinic-wide
+      const blockedWhere: any[] = [
+        {
+          clinicId,
+          providerId: null, // Clinic-wide blocks
+          startTime: Between(startOfDay, endOfDay),
+        },
+      ];
+      if (providerId) {
+        blockedWhere.push({
+          clinicId,
+          providerId,
+          startTime: Between(startOfDay, endOfDay),
         });
       }
 
-      if (!hasConflict && isFuture) {
-        const slot: any = {
-          startTime: slotStart.toISOString(),
-          endTime: slotEnd.toISOString(),
-          available: true,
-          providerId: providerId || null,
-        };
+      const blockedSlots = await this.blockedTimeSlotsRepository.find({
+        where: blockedWhere,
+      });
 
-        // If providerId is specified, try to get provider name for display
-        if (providerId) {
-          // Note: In a real implementation, you'd fetch provider details here
-          // For now, we'll include providerId so frontend can format it
-          slot.providerId = providerId;
+      log('Blocked slots count:', blockedSlots.length);
+
+      // Generate available slots
+      const slots = [];
+
+      // Parse business hours
+      const [openHour, openMinute] = businessHours.open.split(':').map(Number);
+      const [closeHour, closeMinute] = businessHours.close.split(':').map(Number);
+
+      console.log('🔵 Open time:', openHour, ':', openMinute);
+      console.log('🔵 Close time:', closeHour, ':', closeMinute);
+      console.log('🔵 Service duration:', service.durationMinutes, 'minutes');
+
+      // Create open and close times respecting timezone
+      const fmt = (n: number) => n.toString().padStart(2, '0');
+
+      // Construct ISO string for local time in clinic's timezone, then convert to UTC Date
+      // This ensures that 09:00 means 9 AM in the clinic's location
+      const openTime = fromZonedTime(
+        `${targetDate}T${fmt(openHour)}:${fmt(openMinute)}:00`,
+        timezone
+      );
+
+      const closeTime = fromZonedTime(
+        `${targetDate}T${fmt(closeHour)}:${fmt(closeMinute)}:00`,
+        timezone
+      );
+
+      log('🔵 Open time (UTC):', openTime.toISOString());
+      log('🔵 Close time (UTC):', closeTime.toISOString());
+      log('🔵 Current time (UTC):', new Date().toISOString());
+
+      let currentSlot = new Date(openTime);
+      let slotCount = 0;
+
+      // Generate slots in 30-minute intervals
+      while (currentSlot.getTime() + (service.durationMinutes * 60000) <= closeTime.getTime()) {
+        slotCount++;
+        const slotStart = new Date(currentSlot);
+        const slotEnd = new Date(currentSlot.getTime() + (service.durationMinutes * 60000));
+
+        // Check if slot conflicts with existing appointments, holds, or blocked slots
+        const hasConflict = existingAppointments.some(apt => {
+          const aptStart = new Date(apt.startTime);
+          const aptEnd = new Date(apt.endTime);
+          return slotStart < aptEnd && slotEnd > aptStart;
+        }) || activeHolds.some(hold => {
+          const holdStart = new Date(hold.startTime);
+          const holdEnd = new Date(hold.endTime);
+          return slotStart < holdEnd && slotEnd > holdStart;
+        }) || blockedSlots.some(blocked => {
+          const blockedStart = new Date(blocked.startTime);
+          const blockedEnd = new Date(blocked.endTime);
+          return slotStart < blockedEnd && slotEnd > blockedStart;
+        });
+
+        // Only include future slots (not past slots)
+        const now = new Date();
+        const isFuture = slotStart >= now;
+
+        if (slotCount <= 3) { // Only log first 3 slots to avoid spam
+          console.log('🔵 Slot #' + slotCount + ':', {
+            slotStart: slotStart.toISOString(),
+            slotEnd: slotEnd.toISOString(),
+            hasConflict,
+            isFuture,
+            willBeAdded: !hasConflict && isFuture
+          });
         }
 
-        slots.push(slot);
+        if (!hasConflict && isFuture) {
+          const slot: any = {
+            startTime: slotStart.toISOString(),
+            endTime: slotEnd.toISOString(),
+            available: true,
+            providerId: providerId || null,
+          };
+
+          // If providerId is specified, try to get provider name for display
+          if (providerId) {
+            // Note: In a real implementation, you'd fetch provider details here
+            // For now, we'll include providerId so frontend can format it
+            slot.providerId = providerId;
+          }
+
+          slots.push(slot);
+        }
+
+        // Move to next 30-minute slot
+        currentSlot.setTime(currentSlot.getTime() + (30 * 60000));
       }
 
-      // Move to next 30-minute slot
-      currentSlot.setTime(currentSlot.getTime() + (30 * 60000));
-    }
+      console.log('🔵 Total slots generated:', slotCount);
+      console.log('🔵 Available slots (future + no conflict):', slots.length);
 
-    console.log('🔵 Total slots generated:', slotCount);
-    console.log('🔵 Available slots (future + no conflict):', slots.length);
+      let reason: string | undefined;
+      if (slots.length === 0) {
+        const now = new Date();
+        const firstSlotTime = openTime;
+        const allPast = slotCount > 0 && firstSlotTime < now && closeTime < now;
 
-    let reason: string | undefined;
-    if (slots.length === 0) {
-      const now = new Date();
-      const firstSlotTime = openTime;
-      const allPast = slotCount > 0 && firstSlotTime < now && closeTime < now;
+        if (slotCount === 0) {
+          reason = `Service duration (${service.durationMinutes} min) is too long for the available time window (${businessHours.open} - ${businessHours.close})`;
+        } else if (allPast) {
+          reason = 'All available slots are in the past. Please select a future date.';
+        } else if (existingAppointments.length > 0 || activeHolds.length > 0 || blockedSlots.length > 0) {
+          reason = `All ${slotCount} available time slots are already booked, held, or blocked for this date.`;
+        } else {
+          reason = 'No available slots found for this date.';
+        }
 
-      if (slotCount === 0) {
-        reason = `Service duration (${service.durationMinutes} min) is too long for the available time window (${businessHours.open} - ${businessHours.close})`;
-      } else if (allPast) {
-        reason = 'All available slots are in the past. Please select a future date.';
-      } else if (existingAppointments.length > 0 || activeHolds.length > 0 || blockedSlots.length > 0) {
-        reason = `All ${slotCount} available time slots are already booked, held, or blocked for this date.`;
-      } else {
-        reason = 'No available slots found for this date.';
+        log('⚠️ No available slots found. Reason: ' + reason, {
+          totalSlotsChecked: slotCount,
+          firstSlotTime: firstSlotTime.toISOString(),
+          currentTime: now.toISOString(),
+          allPast: allPast
+        });
+        console.log('⚠️ No available slots found. Reason:', reason);
+        console.log('  - Total slots checked:', slotCount);
+        console.log('  - Existing appointments:', existingAppointments.length);
+        console.log('  - Active holds:', activeHolds.length);
+        console.log('  - Blocked slots:', blockedSlots.length);
+        console.log('  - First slot time:', firstSlotTime.toISOString());
+        console.log('  - Current time:', now.toISOString());
+        console.log('  - All slots in past:', allPast);
       }
 
-      log('⚠️ No available slots found. Reason: ' + reason, {
-        totalSlotsChecked: slotCount,
-        firstSlotTime: firstSlotTime.toISOString(),
-        currentTime: now.toISOString(),
-        allPast: allPast
-      });
-      console.log('⚠️ No available slots found. Reason:', reason);
-      console.log('  - Total slots checked:', slotCount);
-      console.log('  - Existing appointments:', existingAppointments.length);
-      console.log('  - Active holds:', activeHolds.length);
-      console.log('  - Blocked slots:', blockedSlots.length);
-      console.log('  - First slot time:', firstSlotTime.toISOString());
-      console.log('  - Current time:', now.toISOString());
-      console.log('  - All slots in past:', allPast);
+      return {
+        slots,
+        count: slots.length,
+        reason: slots.length === 0 ? reason : undefined,
+        debug: slots.length === 0 ? {
+          totalSlotsChecked: slotCount,
+          existingAppointments: existingAppointments.length,
+          activeHolds: activeHolds.length,
+          blockedSlots: blockedSlots.length,
+          businessHours: {
+            open: businessHours.open,
+            close: businessHours.close,
+            isOpen: businessHours.isOpen,
+          },
+          serviceDuration: service.durationMinutes,
+          date: targetDate,
+          dayOfWeek,
+          openTime: openTime.toISOString(),
+          closeTime: closeTime.toISOString(),
+          currentTime: new Date().toISOString(),
+        } : undefined,
+      };
+    } catch (error) {
+      log('❌ Error in getAvailableSlots:', error);
+      throw error;
     }
-
-    return {
-      slots,
-      count: slots.length,
-      reason: slots.length === 0 ? reason : undefined,
-      debug: slots.length === 0 ? {
-        totalSlotsChecked: slotCount,
-        existingAppointments: existingAppointments.length,
-        activeHolds: activeHolds.length,
-        blockedSlots: blockedSlots.length,
-        businessHours: {
-          open: businessHours.open,
-          close: businessHours.close,
-          isOpen: businessHours.isOpen,
-        },
-        serviceDuration: service.durationMinutes,
-        date: targetDate,
-        dayOfWeek,
-        openTime: openTime.toISOString(),
-        closeTime: closeTime.toISOString(),
-        currentTime: new Date().toISOString(),
-      } : undefined,
-    };
   }
 
   async getClinicAvailability(

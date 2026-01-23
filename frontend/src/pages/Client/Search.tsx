@@ -14,8 +14,11 @@ import LinedBg from "@/assets/LinedBg.svg";
 const containerStyle = css`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 2rem;
+  padding: 20px 1rem;
   position: relative;
+  @media (min-width: 768px) {
+    padding: 40px 2rem;
+  }
 `;
 
 const tabStyle = (isActive: boolean) => css`
@@ -66,7 +69,7 @@ export const Search: React.FC = () => {
   };
 
   const handleBookService = (service: any) => {
-    navigate(`/book?clinicId=${service.clinicId}&serviceIds=${service.id}`);
+    navigate(`/appointment/booking?clinicId=${service.clinicId}&serviceIds=${service.id}`);
   };
 
   return (

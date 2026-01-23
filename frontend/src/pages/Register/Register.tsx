@@ -13,6 +13,7 @@ const registerContainerStyle = css`
   justify-content: center;
   align-items: center;
   min-height: 87vh;
+  padding: 1rem;
   background: linear-gradient(
     135deg,
     var(--color-medical-bg) 0%,
@@ -23,10 +24,13 @@ const registerContainerStyle = css`
 const registerCardStyle = css`
   width: 100%;
   max-width: 540px;
-  padding: var(--spacing-2xl);
+  padding: 24px;
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-xl);
   background: var(--color-white);
+  @media (min-width: 768px) {
+    padding: var(--spacing-2xl);
+  }
 `;
 
 const registerHeaderStyle = css`
@@ -72,14 +76,14 @@ export const Register: React.FC = () => {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("client");
-  
+
   // Clinic fields (only for clinic_owner)
   const [clinicName, setClinicName] = useState("");
   const [clinicPhone, setClinicPhone] = useState("");
   const [clinicEmail, setClinicEmail] = useState("");
   const [clinicAddress, setClinicAddress] = useState("");
   const [clinicCity, setClinicCity] = useState("");
-  
+
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [firstNameError, setFirstNameError] = useState("");
@@ -161,10 +165,10 @@ export const Register: React.FC = () => {
       }
 
       const result = await dispatch(register(userData)).unwrap();
-      
+
       // Redirect based on role
       const clinicRoles = ['clinic_owner', 'doctor', 'secretariat'];
-      
+
       if (clinicRoles.includes(result.user.role)) {
         navigate("/clinic/dashboard", { replace: true });
       } else if (result.user.role === 'admin') {
@@ -173,7 +177,7 @@ export const Register: React.FC = () => {
         navigate("/my-account", { replace: true });
       } else if (result.user.role === 'salesperson') {
         navigate("/crm", { replace: true });
-        
+
       } else {
         navigate("/", { replace: true });
       }
@@ -245,7 +249,7 @@ export const Register: React.FC = () => {
             />
             {phoneError && <p className={errorStyle}>{phoneError}</p>}
           </div>
-          
+
           {/* Role Selection */}
           <div>
             <label style={{ display: "block", marginBottom: "8px", fontWeight: 500 }}>
@@ -274,15 +278,15 @@ export const Register: React.FC = () => {
 
           {/* Clinic Fields - Only show for clinic_owner */}
           {role === "clinic_owner" && (
-            <div style={{ 
-              padding: "16px", 
-              backgroundColor: "#f3f4f6", 
+            <div style={{
+              padding: "16px",
+              backgroundColor: "#f3f4f6",
               borderRadius: "8px",
               marginTop: "8px"
             }}>
-              <h3 style={{ 
-                fontSize: "16px", 
-                fontWeight: 600, 
+              <h3 style={{
+                fontSize: "16px",
+                fontWeight: 600,
                 marginBottom: "12px",
                 color: "#374151"
               }}>

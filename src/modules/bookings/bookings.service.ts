@@ -67,6 +67,7 @@ export class BookingsService {
       startTime: new Date(createAppointmentDto.startTime),
       endTime: new Date(createAppointmentDto.endTime),
       appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
+      clientDetails: createAppointmentDto.clientDetails,
     };
 
     // Check for conflicts with existing appointments
@@ -185,7 +186,7 @@ export class BookingsService {
     }
 
     const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
-    
+
     // Add display name to each appointment
     return appointments.map(apt => ({
       ...apt,
@@ -248,7 +249,7 @@ export class BookingsService {
     }
 
     const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
-    
+
     // Add display name to each appointment
     return appointments.map(apt => ({
       ...apt,
@@ -349,7 +350,7 @@ export class BookingsService {
       appointment.showStatus = completionReport.patientCame ? 'showed_up' : 'no_show';
       appointment.serviceExecuted = completionReport.patientCame && !!completionReport.servicePerformed;
       appointment.clinicNotes = completionReport.notes || appointment.clinicNotes;
-      
+
       // Store completion report
       appointment.appointmentCompletionReport = {
         patientCame: completionReport.patientCame,
