@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/Button/Button";
 import axios from "axios";
 import type { RootState, AppDispatch } from "@/store";
@@ -18,7 +18,7 @@ const containerStyle = css`
 
 export const PersonalDetails: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const navigate = useNavigate();
+
   const { user, accessToken, refreshToken } = useSelector(
     (state: RootState) => state.auth
   );

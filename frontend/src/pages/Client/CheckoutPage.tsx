@@ -7,7 +7,7 @@ import Mastercard from "@/assets/paypal.png";
 import Paypal from "@/assets/container.png";
 import { Card } from "@/components/atoms/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
-import { FaArrowRightLong, FaShieldCat, FaClock } from "react-icons/fa6";
+import { FaArrowRightLong, FaClock } from "react-icons/fa6";
 import { BiError } from "react-icons/bi";
 import { Input } from "@/components/atoms/Input/Input";
 import BookingNoteModal from '@/components/Modal/BookingNoteModal';
@@ -15,7 +15,7 @@ import { Select } from "@/components/atoms/Select/Select";
 import { FaBackspace, FaBackward, FaCheckCircle, FaChevronLeft, FaShieldAlt } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { Provider, useDispatch, useSelector } from "react-redux";
-import { createAppointment , clearBooking } from "@/store/slices/bookingSlice";
+import { createAppointment, clearBooking } from "@/store/slices/bookingSlice";
 import type { RootState, AppDispatch } from "@/store";
 // Custom class for rounded bottom corners only
 const roundedBottomCorners = css`
@@ -34,9 +34,9 @@ const roundedTopCorners = css`
 export const CheckoutPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
-    const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading, error  } = useSelector((state: RootState) => state.booking);
+    const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading, error } = useSelector((state: RootState) => state.booking);
     const { user } = useSelector((state: RootState) => state.auth);
-    
+
     const [isBookingNoteOpen, setBookingNoteOpen] = useState(false);
     const [cardNumber, setCardNumber] = useState('');
     const [expirationDate, setExpirationDate] = useState('');
@@ -60,23 +60,23 @@ export const CheckoutPage: React.FC = () => {
 
     const validateForm = () => {
         const errors: Record<string, string> = {};
-        
+
         if (!formData.fullName.trim()) {
             errors.fullName = 'Full name is required';
         }
-        
+
         if (!formData.email.trim()) {
             errors.email = 'Email is required';
         } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
             errors.email = 'Email is invalid';
         }
-        
+
         if (!formData.phone.trim()) {
             errors.phone = 'Phone number is required';
         } else if (!/^[\d\s\-\(\)]+$/.test(formData.phone)) {
             errors.phone = 'Phone number is invalid';
         }
-        
+
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -100,7 +100,7 @@ export const CheckoutPage: React.FC = () => {
         }
 
         if (!selectedClinic || !selectedServices.length || !selectedDate || !selectedTimeSlot) {
-            console.log('Missing booking information. Please start over.' , selectedClinic, selectedServices, selectedDate, selectedTimeSlot);
+            console.log('Missing booking information. Please start over.', selectedClinic, selectedServices, selectedDate, selectedTimeSlot);
             alert('Missing booking information. Please start over.');
             return;
         }
@@ -117,11 +117,11 @@ export const CheckoutPage: React.FC = () => {
                 endTime: new Date(`${selectedTimeSlot.endTime}`)?.toISOString(),
                 notes: bookingNote,
                 paymentMethod: 'card',
-                // clientDetails: {
-                //     fullName: formData.fullName,
-                //     email: formData.email,
-                //     phone: `${formData.countryCode}${formData.phone}`
-                // }
+                clientDetails: {
+                    fullName: formData.fullName,
+                    email: formData.email,
+                    phone: `${formData.countryCode}${formData.phone}`
+                }
             };
 
             const result = await dispatch(createAppointment(appointmentData));
@@ -129,7 +129,14 @@ export const CheckoutPage: React.FC = () => {
             if (result.meta.requestStatus === 'fulfilled') {
                 // Success - redirect to confirmation page
                 dispatch(clearBooking());
-                navigate('/booking-confirmation', { state: { appointment: result.payload } });
+                navigate('/booking-confirmation', {
+                    state: {
+                        appointment: {
+                            ...result.payload,
+                            clientDetails: appointmentData.clientDetails
+                        }
+                    }
+                });
             } else {
                 console.error('Booking failed:', result);
             }
@@ -137,9 +144,9 @@ export const CheckoutPage: React.FC = () => {
             console.error('Booking error:', error);
         } finally {
 
-           
-        setIsSubmitting(false);
-    
+
+            setIsSubmitting(false);
+
         }
 
     };
@@ -154,7 +161,7 @@ export const CheckoutPage: React.FC = () => {
                 phone: user.phone || ''
             }));
         }
-        
+
         // Debug: Log current booking state
         console.log('Current booking state:', {
             selectedClinic,
@@ -189,7 +196,7 @@ export const CheckoutPage: React.FC = () => {
 
     return (
         <section
-            className="relative bg-cover bg-center   px-4 py-[60px] min-h-screen"
+            className="relative bg-cover bg-center min-h-screen px-4 py-8 md:py-[60px]"
             style={{
                 backgroundImage: `url(${LayeredBG})`,
                 backgroundPosition: "center",
@@ -214,7 +221,7 @@ export const CheckoutPage: React.FC = () => {
 
                 <div className="md:col-span-2 space-y-6">
                     {/* Personal Details Card */}
-                    <Card className="p-8 rounded-xl shadow-lg bg-white border border-gray-100">
+                    <Card className="p-4 md:p-8 rounded-xl shadow-lg bg-white border border-gray-100">
                         <div className="flex items-center mb-6">
                             <div className="w-12 h-12 bg-lime-400 from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg mr-4">
                                 {user ? (user.firstName || user.email)[0].toUpperCase() : 'U'}
@@ -293,9 +300,8 @@ export const CheckoutPage: React.FC = () => {
                                         onChange={(e) => handleInputChange('phone', e.target.value)}
                                         placeholder="Enter phone number"
                                         data-error={!!formErrors.phone}
-                                        className={`flex-grow mt-1 rounded-md shadow-sm p-2 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:outline-none ${
-                                            formErrors.phone ? 'border-red-500' : ''
-                                        }`}
+                                        className={`flex-grow mt-1 rounded-md shadow-sm p-2 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:outline-none ${formErrors.phone ? 'border-red-500' : ''
+                                            }`}
                                     />
                                 </div>
                                 {formErrors.phone && (
@@ -318,7 +324,7 @@ export const CheckoutPage: React.FC = () => {
                     </Card>
 
                     {/* Beauty Points Discount Card */}
-                    <Card className="p-6 rounded-xl shadow-lg bg-lime-100 from-purple-50 to-pink-50 border border-purple-200">
+                    <Card className="p-4 md:p-6 rounded-xl shadow-lg bg-lime-100 from-purple-50 to-pink-50 border border-purple-200">
                         <div className="flex items-center mb-4">
                             <div className="w-10 h-10 bg-lime-200 from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white mr-3">
                                 <FaCheckCircle className="text-lg" />
@@ -331,8 +337,8 @@ export const CheckoutPage: React.FC = () => {
                             Use Beauty Points to get a discount on this treatment
                         </p>
                         <div className="bg-white rounded-lg p-4 mb-4 border border-purple-200">
-                            <p className="text-lg font-semibold text-purple-700">You have { 0} Beauty Points</p>
-                            <p className="text-sm text-purple-600">Save €{(  0) / 10} on this treatment</p>
+                            <p className="text-lg font-semibold text-purple-700">You have {0} Beauty Points</p>
+                            <p className="text-sm text-purple-600">Save €{(0) / 10} on this treatment</p>
                         </div>
                         <Button variant="outline" className="text-purple-700 border-purple-300 hover:bg-purple-50">
                             Apply Them Now?
@@ -340,7 +346,7 @@ export const CheckoutPage: React.FC = () => {
                         </Button>
                     </Card>
                     {/* Payment Card */}
-                    <Card className="p-8 rounded-xl shadow-lg bg-white border border-gray-100">
+                    <Card className="p-4 md:p-8 rounded-xl shadow-lg bg-white border border-gray-100">
                         <div className="flex items-center mb-6">
                             <div className="w-10 h-10 bg-lime-400 from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white mr-3">
                                 <FaShieldAlt className="text-lg" />
@@ -375,7 +381,7 @@ export const CheckoutPage: React.FC = () => {
                                             onChange={handleCardNumberChange}
                                             className=""
                                         />
-                                        <div className="flex gap-4">
+                                        <div className="flex flex-col sm:flex-row gap-4">
                                             <Input
                                                 type="text"
                                                 placeholder="Expiration date"
@@ -438,7 +444,7 @@ export const CheckoutPage: React.FC = () => {
                         </form>
                     </Card>
                     {/* Venue Policies Card */}
-                    <Card className="p-8 rounded-xl shadow-lg bg-white border border-gray-100">
+                    <Card className="p-4 md:p-8 rounded-xl shadow-lg bg-white border border-gray-100">
                         <div className="flex items-center mb-6">
                             <div className="w-10 h-10 bg-lime-400 from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white mr-3">
                                 <FaClock className="text-lg" />
@@ -451,21 +457,21 @@ export const CheckoutPage: React.FC = () => {
                             <div>
                                 <h4 className="font-semibold">Reschedule policy</h4>
                                 <p className="text-sm text-gray-500">
-                                    Free rescheduling up to 24 hours before your appointment. 
+                                    Free rescheduling up to 24 hours before your appointment.
                                     Within 24 hours, a small fee may apply. Contact the clinic directly for last-minute changes.
                                 </p>
                             </div>
                             <div>
                                 <h4 className="font-semibold">Refund policy</h4>
                                 <p className="text-sm text-gray-500">
-                                    Full refund available if cancelled at least 48 hours before appointment. 
+                                    Full refund available if cancelled at least 48 hours before appointment.
                                     50% refund for cancellations made 24-48 hours in advance. No refunds within 24 hours.
                                 </p>
                             </div>
                             <div>
                                 <h4 className="font-semibold">Cancellation policy</h4>
                                 <p className="text-sm text-gray-500">
-                                    Cancel online or via app up to 24 hours before your appointment. 
+                                    Cancel online or via app up to 24 hours before your appointment.
                                     Late cancellations may incur a fee. Please contact the clinic if you need to cancel on short notice.
                                 </p>
                             </div>
@@ -473,7 +479,7 @@ export const CheckoutPage: React.FC = () => {
                         <div className="bg-blue-50 border border-blue-200 p-4 mt-6 rounded-md flex items-center gap-4">
                             <BiError className="text-blue-600 text-2xl flex-shrink-0" />
                             <p className="text-blue-800 text-sm">
-                                Please arrive 10 minutes early for your appointment. 
+                                Please arrive 10 minutes early for your appointment.
                                 Bring a valid ID and any relevant medical history information.
                             </p>
                         </div>
@@ -503,7 +509,7 @@ export const CheckoutPage: React.FC = () => {
                                 </label>
                             </div>
                             <p className="text-sm text-gray-600">
-                                By completing this booking, you confirm that you have read and agree to our terms. 
+                                By completing this booking, you confirm that you have read and agree to our terms.
                                 Your personal information will be handled securely and in compliance with GDPR regulations.
                             </p>
                         </div>
@@ -514,7 +520,7 @@ export const CheckoutPage: React.FC = () => {
 
                 {/* Right Column: Treatment Summary Card */}
                 <div className="md:col-span-1">
-                    <Card className="p-8 rounded-xl shadow-lg bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 max-w-md mx-auto">
+                    <Card className="p-4 md:p-8 rounded-xl shadow-lg bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 max-w-md mx-auto">
                         <div className="text-center mb-6">
                             <div className="w-16 h-16 bg-lime-400 from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-4">
                                 {selectedServices.length > 0 ? selectedServices[0].name.charAt(0).toUpperCase() : 'T'}
@@ -535,7 +541,7 @@ export const CheckoutPage: React.FC = () => {
                                         {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Sat 13 Sep'}
                                     </div>
                                     <div className="text-xs text-gray-500">
-                                        {selectedServices.length > 0 ? `${selectedServices[0].duration || 30} mins total` : '30 mins total'}
+                                        {selectedServices.length > 0 ? `${selectedServices[0].durationMinutes || 30} mins total` : '30 mins total'}
                                     </div>
                                 </div>
                             </div>
@@ -564,7 +570,7 @@ export const CheckoutPage: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <button 
+                        <button
                             onClick={handleCompleteBooking}
                             disabled={isSubmitting || isLoading}
                             className="w-full bg-lime-400 from-blue-500 to-purple-600 text-white font-bold py-4 px-6 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"

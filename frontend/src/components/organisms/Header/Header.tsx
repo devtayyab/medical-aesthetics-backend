@@ -13,13 +13,13 @@ import SiteLogo from "@/assets/SiteLogo.png";
 const containerStyle = css`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 var(--spacing-md);
+  padding: 0 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 4rem;
   @media (min-width: 768px) {
-    padding: 0 var(--spacing-xl);
+    padding: 0 2rem;
   }
 `;
 
@@ -38,14 +38,14 @@ const searchContainerStyle = css`
   flex: 1;
   max-width: 400px;
   margin: 0 var(--spacing-xl);
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: none;
   }
 `;
 
 const mobileMenuButtonStyle = css`
   display: none;
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: flex;
   }
 `;
@@ -57,19 +57,20 @@ const mobileMenuStyle = css`
   right: 0;
   bottom: 0;
   background-color: var(--color-white);
-  z-index: var(--z-modal);
-  padding: var(--spacing-lg);
+  z-index: 9999;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: 1.5rem;
+  overflow-y: auto;
 `;
 
 const mobileMenuHeaderStyle = css`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: var(--spacing-lg);
-  border-bottom: 1px solid var(--color-gray-200);
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
 `;
 
 const userMenuStyle = css`
@@ -104,25 +105,26 @@ const userMenuDropdownStyle = css`
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   min-width: 200px;
-  z-index: var(--z-dropdown);
+  z-index: 50;
   padding: var(--spacing-sm);
 `;
 
 const userMenuItemStyle = css`
   display: block;
   width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: 0.5rem 1rem;
   text-align: left;
   border: none;
   background: none;
   cursor: pointer;
-  border-radius: var(--radius-md);
-  transition: background-color var(--transition-fast);
+  border-radius: 0.375rem;
+  transition: all 0.2s;
   text-decoration: none;
-  color: var(--color-medical-text);
-  font-weight: var(--font-weight-medium);
+  color: #4a5568;
+  font-weight: 500;
   &:hover {
-    background-color: var(--color-medical-bg);
+    background-color: #f7fafc;
+    color: #2d3748;
   }
 `;
 
@@ -261,7 +263,7 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-[#2D3748] py-5">
+    <header className="bg-[#2D3748] py-3 sm:py-5 sticky top-0 z-50">
       <div
         className={css`
           ${containerStyle};
@@ -276,7 +278,7 @@ export const Header: React.FC = () => {
         className={`text-[#CBFF38] text-2xl font-bold flex items-center ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
           }`}
       >
-          <img src={SiteLogo} alt="Site Logo" className="w-[200px]" />
+          <img src={SiteLogo} alt="Site Logo" className="w-[140px] sm:w-[200px]" />
         </Link>
 
         {/* Desktop Navigation for Non-Clinic Roles */}
@@ -419,7 +421,7 @@ export const Header: React.FC = () => {
 
       {/* if user is not logged in , add Home , face and Body medical aesthetics , Asthetics Gynacology , Asthetics Dermatology , Asthetics Plastic Surgery , Hair Removal laser */}
       {!isAuthenticated && (
-        <div className="flex items-center gap-5 justify-center mt-5 relative z-10">
+        <div className="hidden md:flex items-center gap-5 justify-center mt-5 relative z-10">
           <Link
             to="/"
             className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"

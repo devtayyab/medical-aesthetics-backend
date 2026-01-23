@@ -29,6 +29,13 @@ export class Appointment {
   @Column()
   clientId: string;
 
+  @Column('json', { nullable: true })
+  clientDetails: {
+    fullName: string;
+    email: string;
+    phone: string;
+  };
+
   @Column({ type: 'timestamptz' })
   startTime: Date;
 

@@ -26,7 +26,10 @@ const fullWidthContainerStyle = css`
 const detailContainerStyle = css`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 60px 2rem;
+  padding: 20px 1rem;
+  @media (min-width: 768px) {
+    padding: 60px 2rem;
+  }
 `;
 
 const headerStyle = css`
@@ -79,46 +82,64 @@ const tabButtonStyle = css`
 
 const imageStyle = css`
   width: 100%;
-  height: 500px;
+  height: 300px;
   object-fit: cover;
   border-radius: 8px;
   margin-bottom: 1rem;
+  @media (min-width: 768px) {
+    height: 500px;
+  }
 `;
 
 const infoStyle = css`
   width: 100%;
   display: flex;
+  flex-direction: column;
   gap: 1rem;
   margin-bottom: 2rem;
-  // padding: 1rem;
   border-radius: 8px;
+  @media (min-width: 768px) {
+    flex-direction: row;
+  }
 `;
 
 const servicesStyle = css`
   margin: 2rem 0;
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
   align-items: flex-start;
   position: relative;
   padding: 1rem;
   border-radius: 8px;
+  @media (min-width: 768px) {
+    flex-direction: row;
+  }
 `;
 
 const serviceHeaderStyle = css`
-  width: 40%;
+  width: 100%;
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1rem;
   color: #333;
-  padding-right: 1rem;
+  padding-right: 0;
+  @media (min-width: 768px) {
+    width: 40%;
+    padding-right: 1rem;
+  }
 `;
 
 const serviceCardsStyle = css`
-  width: 55%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
-   padding-left: 1rem;
+  padding-left: 0;
+  @media (min-width: 768px) {
+    width: 55%;
+    padding-left: 1rem;
+  }
 `;
 
 const waveSectionStyle = css`
@@ -232,14 +253,12 @@ export const ClinicDetails: React.FC = () => {
 
           {/* Tabs / Buttons */}
           <div className="flex flex-wrap gap-2 sm:gap-3">
-            <div className="text-blue-600 hover:text-blue-700 underline text-sm font-medium">
-              <Button
-                onClick={handleBookNow}
-                className="bg-[#2d3748] text-white border border-[#2d3748] hover:!bg-transparent hover:text-[#2d3748] px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition"
-              >
-                Book Now
-              </Button>
-            </div>
+            <Button
+              onClick={handleBookNow}
+              className="bg-[#2d3748] text-white border border-[#2d3748] hover:!bg-transparent hover:text-[#2d3748] px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition"
+            >
+              Book Now
+            </Button>
             <a
               href="#reviews"
               className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm sm:text-base hover:bg-gray-100 transition"

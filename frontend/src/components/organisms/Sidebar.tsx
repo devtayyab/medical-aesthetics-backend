@@ -2,11 +2,11 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/store";
-import { 
-  LayoutDashboard, Users, BarChart2, Tag, Eye, Bell, Settings, 
+import {
+  LayoutDashboard, Users, BarChart2, Tag, Eye, Bell, Settings,
   Calendar, FileText, BarChart, Shield, DollarSign, AlertCircle,
   Home, ClipboardList, Repeat, UserCog, LineChart, ListChecks,
-  Phone
+  Phone, Search
 } from "lucide-react";
 
 interface SidebarItem {
@@ -17,7 +17,7 @@ interface SidebarItem {
 }
 
 const clientLinks: SidebarItem[] = [
-  { path: "/search", label: "Search", icon: <Home className="w-5 h-5" /> },
+  { path: "/search", label: "Search", icon: <Search className="w-5 h-5" /> },
   { path: "/appointments", label: "Appointments", icon: <Calendar className="w-5 h-5" /> },
   { path: "/history", label: "History", icon: <ClipboardList className="w-5 h-5" /> },
   { path: "/reviews", label: "Reviews", icon: <Eye className="w-5 h-5" /> },
@@ -63,7 +63,7 @@ const getAdminLinks = (role: string): SidebarItem[] => {
       { path: "/admin/manager-crm/clinic-stats", label: "Clinic Stats", icon: <LineChart className="w-5 h-5" />, group: "Analytics" },
     ];
   }
-  
+
   return [
     { path: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
     ...baseLinks,
@@ -108,7 +108,7 @@ export const Sidebar: React.FC = () => {
           Manager Panel
         </h2>
       </div>
-      
+
       <nav className="flex-1 overflow-y-auto py-4 px-2">
         {Object.entries(groupedLinks).map(([group, groupLinks]) => (
           <div key={group} className="mb-6">
@@ -122,11 +122,10 @@ export const Sidebar: React.FC = () => {
                   <li key={link.path}>
                     <Link
                       to={link.path}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-[#CBFF38] text-gray-900 shadow-md'
-                          : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
+                        ? 'bg-[#CBFF38] text-gray-900 shadow-md'
+                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                        }`}
                     >
                       <span className={isActive ? 'text-gray-900' : 'text-[#CBFF38]'}>
                         {link.icon}
@@ -143,7 +142,7 @@ export const Sidebar: React.FC = () => {
           </div>
         ))}
       </nav>
-      
+
       <div className="p-4 border-t border-gray-700">
         <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-800">
           <div className="w-8 h-8 rounded-full bg-[#CBFF38] flex items-center justify-center">

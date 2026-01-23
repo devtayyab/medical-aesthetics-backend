@@ -37,16 +37,22 @@ import { FaChevronLeft, FaChevronRight, FaClock, FaCheckCircle } from "react-ico
 const containerStyle = css`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 2rem;
+  padding: 20px 1rem;
   position: relative;
+  @media (min-width: 768px) {
+    padding: 40px 2rem;
+  }
 `;
 
 const calendarContainerStyle = css`
   background: white;
   border-radius: 24px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-  padding: 30px;
+  padding: 20px;
   border: 1px solid #f0f0f0;
+  @media (min-width: 768px) {
+    padding: 30px;
+  }
 `;
 
 const timeSlotStyle = (isSelected: boolean, isAvailable: boolean) => css`
@@ -338,7 +344,7 @@ export const AppointmentBooking: React.FC = () => {
             </div>
 
             {availableSlots.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                 {availableSlots.map((slot) => (
                   <div
                     key={slot.startTime}

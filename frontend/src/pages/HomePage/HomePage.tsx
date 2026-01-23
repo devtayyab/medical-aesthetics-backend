@@ -139,34 +139,33 @@ export const HomePage: React.FC = () => {
     <div>
       {/* Hero Section */}
       <section
-        className="relative bg-cover bg-center min-h-[550px]"
+        className="relative bg-cover bg-center min-h-[400px] sm:min-h-[550px] flex items-center"
         style={{
           backgroundImage: `url(${HeaderBanner})`,
-          alignContent: "center",
         }}
       >
-        <div className="max-w-[1200px] mx-auto grid grid-cols-1 gap-8 items-center h-full px-6">
-          <div className="w-[55%] mx-auto bg-white shadow-lg rounded-xl px-6 py-7">
-            <h2 className="text-[#33373F] text-[32px] font-semibold text-center mb-7">What would you like to improve?</h2>
+        <div className="max-w-[1200px] mx-auto grid grid-cols-1 gap-8 items-center h-full px-4 sm:px-6 py-10 sm:py-0">
+          <div className="w-full max-w-[600px] mx-auto bg-white shadow-xl rounded-2xl px-5 py-8 sm:px-8 sm:py-10 border border-gray-100">
+            <h2 className="text-[#33373F] text-2xl sm:text-[32px] font-bold text-center mb-6 sm:mb-8 leading-tight">What would you like to improve?</h2>
 
             <form onSubmit={handleSearch} className="space-y-4">
-              <div className="flex items-center border rounded-lg px-3 py-4">
-                <FaSearch className="text-gray-500 mr-2" />
+              <div className="flex items-center border border-gray-200 rounded-xl px-4 py-3 sm:py-4 bg-gray-50 focus-within:bg-white focus-within:border-lime-400 focus-within:ring-2 focus-within:ring-lime-100 transition-all">
+                <FaSearch className="text-gray-400 mr-3 text-lg" />
                 <input
                   type="text"
-                  placeholder="Find Treatments"
-                  className="w-full outline-none text-gray-700"
+                  placeholder="Find Treatments (e.g. Botox)"
+                  className="w-full outline-none text-gray-700 bg-transparent placeholder-gray-400 text-base"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
 
-              <div className="flex items-center border rounded-lg px-3 py-4">
-                <FaMapMarkerAlt className="text-gray-500 mr-2" />
+              <div className="flex items-center border border-gray-200 rounded-xl px-4 py-3 sm:py-4 bg-gray-50 focus-within:bg-white focus-within:border-lime-400 focus-within:ring-2 focus-within:ring-lime-100 transition-all">
+                <FaMapMarkerAlt className="text-gray-400 mr-3 text-lg" />
                 <input
                   type="text"
-                  placeholder="Find Clinic"
-                  className="w-full outline-none text-gray-700"
+                  placeholder="Location (e.g. London)"
+                  className="w-full outline-none text-gray-700 bg-transparent placeholder-gray-400 text-base"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                 />
@@ -174,7 +173,7 @@ export const HomePage: React.FC = () => {
 
               <button
                 type="submit"
-                className="!mt-7 w-full py-3 rounded-lg font-medium text-lg flex items-center justify-center gap-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 transition"
+                className="!mt-6 sm:!mt-8 w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 bg-[#CBFF38] text-[#203400] hover:bg-[#bce633] transition-all shadow-md hover:shadow-lg transform active:scale-[0.99]"
               >
                 <FaSearch /> Search
               </button>
@@ -186,7 +185,7 @@ export const HomePage: React.FC = () => {
       {/* Popular Categories Section */}
       <section className="py-12 bg-white">
         <div className="max-w-[1200px] mx-auto px-6">
-          <div className="flex justify-between items-end mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
             <div>
               <h2 className="text-2xl font-bold text-[#33373F]">Popular Categories</h2>
               <p className="text-gray-600 mt-1">Explore top treatments by category</p>
@@ -212,7 +211,7 @@ export const HomePage: React.FC = () => {
       {/* Featured Clinics Section */}
       <section className="py-12 bg-gray-50">
         <div className="max-w-[1200px] mx-auto px-6">
-          <div className="flex justify-between items-end mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
             <div>
               <h2 className="text-2xl font-bold text-[#33373F]">Featured Clinics</h2>
               <p className="text-gray-600 mt-1">Top-rated clinics recommended for you</p>
@@ -278,36 +277,46 @@ export const HomePage: React.FC = () => {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-white overflow-hidden">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-[#586271] text-xl">How It Works</h2>
-            <h3 className="text-[#33373F] text-2xl font-semibold mb-2">
+            <h2 className="text-[#586271] text-xl uppercase tracking-wider font-medium mb-2">How It Works</h2>
+            <h3 className="text-[#33373F] text-2xl sm:text-3xl font-bold">
               3 Steps to Your Treatment
             </h3>
           </div>
 
-          <div className="flex justify-center items-start flex-wrap gap-8 mt-10">
+          <div className="flex flex-col lg:flex-row justify-center items-center gap-8 mt-10 relative">
             {treatmentSteps.map((step, index) => (
               <React.Fragment key={index}>
-                <div className="w-full lg:w-[240px] text-center group hover:-translate-y-2 transition-all duration-300">
-                  <div className="w-fit bg-white rounded-[24px] flex items-center justify-center mx-auto mb-6 px-[30px] py-[26px] text-white shadow-lg group-hover:border-[1px] group-hover:border-[#5F8B00]">
-                    <img src={step.icon} alt={step.name} className="w-[48px]" />
+                <div className="w-full max-w-[300px] text-center group hover:-translate-y-2 transition-all duration-300 relative z-10 p-4">
+                  <div className="size-24 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl border border-gray-50 group-hover:border-[#CBFF38] transition-colors">
+                    <img src={step.icon} alt={step.name} className="w-10" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">
                     {step.name}
                   </h3>
-                  <p className="text-base text-gray-600 leading-relaxed">
+                  <p className="text-base text-gray-500 leading-relaxed">
                     {step.description}
                   </p>
                 </div>
 
                 {index < treatmentSteps.length - 1 && (
                   <div
-                    className="hidden lg:block w-[100px] h-[2px] self-start mt-[52px]"
+                    className="hidden lg:block w-[100px] h-[2px] mt-[-60px]"
                     style={{
                       backgroundImage:
-                        "repeating-linear-gradient(to right, #9CA3AF 0 10px, transparent 10px 15px)",
+                        "repeating-linear-gradient(to right, #E2E8F0 0 10px, transparent 10px 15px)",
+                    }}
+                  ></div>
+                )}
+                {/* Mobile connector line */}
+                {index < treatmentSteps.length - 1 && (
+                  <div
+                    className="block lg:hidden h-[40px] w-[2px]"
+                    style={{
+                      backgroundImage:
+                        "repeating-linear-gradient(to bottom, #E2E8F0 0 10px, transparent 10px 15px)",
                     }}
                   ></div>
                 )}
@@ -318,48 +327,45 @@ export const HomePage: React.FC = () => {
       </section>
 
       <section
-        className="relative bg-cover bg-center min-h-[550px] flex items-center justify-center px-4 -scale-x-100"
+        className="relative bg-cover bg-center py-16 px-4 -scale-x-100 overflow-hidden"
         style={{ backgroundImage: `url(${LayeredBG})` }}
       >
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-5 lg:px-6 w-full grid grid-cols-1 md:grid-cols-2 gap-12 -scale-x-100 mb-12 md:mb-0">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+        <div className="max-w-[1200px] mx-auto px-0 sm:px-4 w-full grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 -scale-x-100">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col transform transition hover:scale-[1.01] duration-300">
             <img
               src={GiftConfidenceImg}
               alt="Gift Confidence"
-              className="w-full h-[241px] object-cover"
+              className="w-full h-[200px] sm:h-[240px] object-cover"
             />
-            <div className="p-6 flex flex-col flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Gift Confidence, Not Just Care
+            <div className="p-6 sm:p-8 flex flex-col flex-1">
+              <h3 className="text-xl font-bold text-gray-900 mb-3">
+                Gift Confidence
               </h3>
-              <p className="mt-2 text-gray-600 text-sm flex-1">
+              <p className="text-gray-600 text-base leading-relaxed flex-1 mb-6">
                 Give the gift of expert medical beauty treatments — from
-                dermatology to aesthetic enhancements — and help your loved ones
-                feel their best.
+                dermatology to aesthetic enhancements.
               </p>
-              <button className="mt-4 w-fit inline-flex items-center justify-center border border-green-600 text-green-700 hover:bg-green-50 font-medium px-4 py-2 rounded-md text-sm">
-                Send a Treatment Gift Card
+              <button className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm">
+                Send a Gift Card
                 <span className="ml-2">→</span>
               </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col transform transition hover:scale-[1.01] duration-300">
             <img
               src={TopRatedClinicImg}
               alt="Find Clinics"
-              className="w-full h-[241px] object-cover"
+              className="w-full h-[200px] sm:h-[240px] object-cover"
             />
-            <div className="p-6 flex flex-col flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Find Trusted, Top-Rated Clinics
+            <div className="p-6 sm:p-8 flex flex-col flex-1">
+              <h3 className="text-xl font-bold text-gray-900 mb-3">
+                Top-Rated Clinics
               </h3>
-              <p className="mt-2 text-gray-600 text-sm flex-1">
-                Discover clinics recognized for their excellence in dermatology,
-                plastic surgery, and aesthetic medicine. Backed by real patient
-                reviews, so you can book with confidence.
+              <p className="text-gray-600 text-base leading-relaxed flex-1 mb-6">
+                Discover clinics recognized for excellence. Backed by real patient reviews, so you can book with confidence.
               </p>
-              <button className="mt-4 w-fit inline-flex items-center justify-center border border-green-600 text-green-700 hover:bg-green-50 font-medium px-4 py-2 rounded-md text-sm">
+              <button className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm">
                 Explore Top Clinics
                 <span className="ml-2">→</span>
               </button>
@@ -368,26 +374,25 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-[#71809633] text-white py-12 sm:pt-12 sm:pb-0 lg:pt-0">
-        <div className="grid grid-cols-1 lg:grid-cols-2 sm:gap-6">
-          <div className="w-full lg:w-[585px] ml-auto px-5  sm:pl-10 sm:pr-0 lg:pl-5 flex flex-col justify-center space-y-6">
-            <h2 className="text-[27px] sm:text-[32px] md:text-4xl font-bold text-[#33373F]">
-              Own a medical aesthetics clinic? <br /> Bring it online.
+      <section className="bg-[#1A202C] text-white py-12 sm:py-16">
+        <div className="max-w-[1200px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="space-y-6 text-center lg:text-left">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
+              Own a medical <br /> <span className="text-[#CBFF38]">aesthetics clinic?</span>
             </h2>
-            <p className="text-[#33373F] text-md leading-[22px] max-w-lg">
-              We’ll help you grow your practice (and attract more patients) with
-              our easy-to-use booking platform for dermatology, plastic surgery,
-              and aesthetic treatments.
+            <p className="text-gray-300 text-lg leading-relaxed max-w-lg mx-auto lg:mx-0">
+              We’ll help you grow your practice and attract more patients with
+              our easy-to-use booking platform.
             </p>
-            <button className="w-fit bg-[#2D3748] text-white px-6 py-3 rounded-[12px] font-medium hover:bg-gray-800 transition">
+            <button className="inline-block bg-[#CBFF38] text-[#1A202C] px-8 py-4 rounded-xl font-bold hover:bg-white transition-colors transform hover:-translate-y-1">
               Partner With Us
             </button>
           </div>
-          <div className="w-0 sm:w-full">
+          <div className="w-full flex justify-center lg:justify-end">
             <img
               src={OnlineClinicHome}
               alt="Online Clinic Dashboard"
-              className="w-full"
+              className="w-full max-w-[500px] rounded-2xl shadow-2xl border-4 border-[#2D3748]"
             />
           </div>
         </div>
@@ -445,35 +450,35 @@ export const HomePage: React.FC = () => {
 
           <div className="pt-12 grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
             <div className="text-center lg:text-left">
-              <h2 className="text-2xl lg:text-3xl font-semibold text-[#33373F] mb-2">
+              <h2 className="text-3xl font-bold text-[#33373F] mb-4">
                 Download our app
               </h2>
-              <p className="text-[#33373F] mb-10 max-w-md mx-auto lg:mx-0">
+              <p className="text-gray-600 mb-8 max-w-md mx-auto lg:mx-0 text-lg">
                 Book treatments and find the best clinic near you with a quick
                 swipe or two.
               </p>
 
-              <div className="flex justify-center lg:justify-start gap-4">
+              <div className="flex flex-wrap justify-center lg:justify-start gap-4">
                 <a
                   href="#"
-                  className="bg-black text-white flex items-center rounded-[8px] px-4 py-2 gap-2"
+                  className="bg-black text-white flex items-center rounded-xl px-5 py-3 gap-3 hover:bg-gray-800 transition shadow-lg"
                   aria-label="Download on App Store"
                 >
-                  <FaApple size={28} />
-                  <span className="text-left leading-tight text-[10px] tracking-wider">
-                    Download on the <br />
-                    <span className="font-semibold text-[20px]">App Store</span>
+                  <FaApple size={32} />
+                  <span className="text-left leading-none">
+                    <span className="text-[10px] uppercase tracking-wider block mb-1">Download on the</span>
+                    <span className="font-bold text-lg">App Store</span>
                   </span>
                 </a>
                 <a
                   href="#"
-                  className="bg-black text-white flex items-center rounded-[8px] px-4 py-2 gap-2"
+                  className="bg-black text-white flex items-center rounded-xl px-5 py-3 gap-3 hover:bg-gray-800 transition shadow-lg"
                   aria-label="Get it on Google Play"
                 >
-                  <FaGooglePlay size={26} />
-                  <span className="text-left leading-tight text-[10px] tracking-wider">
-                    GET IT ON <br />
-                    <span className="font-semibold text-[20px]">Google Play</span>
+                  <FaGooglePlay size={28} />
+                  <span className="text-left leading-none">
+                    <span className="text-[10px] uppercase tracking-wider block mb-1">GET IT ON</span>
+                    <span className="font-bold text-lg">Google Play</span>
                   </span>
                 </a>
               </div>
@@ -483,7 +488,7 @@ export const HomePage: React.FC = () => {
               <img
                 src={HomeMobAppImg}
                 alt="Mobile App"
-                className="w-fit"
+                className="w-full max-w-[400px]"
               />
             </div>
           </div>

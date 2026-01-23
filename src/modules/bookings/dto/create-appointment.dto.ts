@@ -70,4 +70,13 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsEnum(['clinic_own', 'platform_broker'])
   appointmentSource?: 'clinic_own' | 'platform_broker';
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsObject()
+  clientDetails?: {
+    fullName: string;
+    email: string;
+    phone: string;
+  };
 }
