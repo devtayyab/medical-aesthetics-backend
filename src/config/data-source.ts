@@ -48,7 +48,7 @@ const AppDataSource = new DataSource({
         AdAttribution,
         AdCampaign,
     ],
-    migrations: [path.join(__dirname, '../migrations/*.ts')],
+    migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],
     synchronize: false,
     logging: true,
 });
