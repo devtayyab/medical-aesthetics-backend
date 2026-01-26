@@ -129,6 +129,19 @@ export class InitialSchema1768803564900 implements MigrationInterface {
           await queryRunner.query(
             `CREATE TABLE "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "email" character varying NOT NULL, "passwordHash" character varying NOT NULL, "role" "public"."users_role_enum" NOT NULL DEFAULT 'client', "firstName" character varying NOT NULL, "lastName" character varying NOT NULL, "phone" character varying, "profile" json, "profilePictureUrl" character varying, "lastLoginAt" TIMESTAMP WITH TIME ZONE, "isActive" boolean NOT NULL DEFAULT true, "referralCode" character varying, "referredById" uuid, "refreshToken" character varying, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"), CONSTRAINT "UQ_b7f8278f4e89249bb75c9a15899" UNIQUE ("referralCode"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`
           );
+        } else {
+          // Check if referredById column exists, add it if it doesn't
+          const columnExists = await queryRunner.query(
+            `SELECT EXISTS (
+              SELECT FROM information_schema.columns 
+              WHERE table_schema = 'public' 
+              AND table_name = 'users' 
+              AND column_name = 'referredById'
+            )`
+          );
+          if (!columnExists[0].exists) {
+            await queryRunner.query(`ALTER TABLE "users" ADD COLUMN "referredById" uuid`);
+          }
         }
 
         // Create communication_logs enums and table
