@@ -4,7 +4,11 @@ export class AddClientDetailsToAppointment1769145600000 implements MigrationInte
     name = 'AddClientDetailsToAppointment1769145600000'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "appointments" ADD "clientDetails" json`);
+        const table = await queryRunner.getTable("appointments");
+        const column = table?.findColumnByName("clientDetails");
+        if (!column) {
+            await queryRunner.query(`ALTER TABLE "appointments" ADD "clientDetails" json`);
+        }
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
