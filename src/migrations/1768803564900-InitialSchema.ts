@@ -9,9 +9,8 @@ export class InitialSchema1768803564900 implements MigrationInterface {
             `SELECT EXISTS (
               SELECT FROM information_schema.tables 
               WHERE table_schema = 'public' 
-              AND table_name = $1
-            )`,
-            [tableName]
+              AND table_name = '${tableName}'
+            )`
           );
           return result[0].exists;
         };
@@ -21,9 +20,8 @@ export class InitialSchema1768803564900 implements MigrationInterface {
           const result = await queryRunner.query(
             `SELECT EXISTS (
               SELECT FROM pg_type 
-              WHERE typname = $1
-            )`,
-            [typeName]
+              WHERE typname = '${typeName}'
+            )`
           );
           return result[0].exists;
         };
@@ -33,9 +31,8 @@ export class InitialSchema1768803564900 implements MigrationInterface {
           const result = await queryRunner.query(
             `SELECT EXISTS (
               SELECT FROM pg_indexes 
-              WHERE indexname = $1
-            )`,
-            [indexName]
+              WHERE indexname = '${indexName}'
+            )`
           );
           return result[0].exists;
         };
@@ -45,9 +42,8 @@ export class InitialSchema1768803564900 implements MigrationInterface {
           const result = await queryRunner.query(
             `SELECT EXISTS (
               SELECT FROM information_schema.table_constraints 
-              WHERE constraint_name = $1
-            )`,
-            [constraintName]
+              WHERE constraint_name = '${constraintName}'
+            )`
           );
           return result[0].exists;
         };
