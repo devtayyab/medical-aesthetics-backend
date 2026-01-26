@@ -54,7 +54,9 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         AdCampaign,
         BlockedTimeSlot,
       ],
-      ssl: this.configService.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+      // Since we are running in Docker on the same network, we don't need SSL
+      // If using a managed database like AWS RDS in the future, we might need to enable this again
+      ssl: false,
     };
   }
 }
