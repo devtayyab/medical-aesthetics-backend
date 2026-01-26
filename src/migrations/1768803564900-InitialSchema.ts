@@ -31,6 +31,26 @@ export class InitialSchema1768803564900 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "ad_attributions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "customerRecordId" uuid NOT NULL, "adCampaignId" uuid NOT NULL, "firstInteractionAt" TIMESTAMP WITH TIME ZONE NOT NULL, "lastInteractionAt" TIMESTAMP WITH TIME ZONE NOT NULL, "interactionCount" integer NOT NULL DEFAULT '1', "converted" boolean NOT NULL DEFAULT false, "convertedAt" TIMESTAMP WITH TIME ZONE, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_1caa02abe09eddb10028afaa222" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."customer_records_customerstatus_enum" AS ENUM('new', 'contacted', 'qualified', 'active', 'inactive', 'vip')`);
         await queryRunner.query(`CREATE TABLE "customer_records" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "customerId" uuid NOT NULL, "assignedSalespersonId" uuid, "customerStatus" "public"."customer_records_customerstatus_enum" NOT NULL DEFAULT 'new', "lifetimeValue" numeric(10,2) NOT NULL DEFAULT '0', "totalAppointments" integer NOT NULL DEFAULT '0', "completedAppointments" integer NOT NULL DEFAULT '0', "cancelledAppointments" integer NOT NULL DEFAULT '0', "lastAppointmentDate" TIMESTAMP WITH TIME ZONE, "nextAppointmentDate" TIMESTAMP WITH TIME ZONE, "lastContactDate" TIMESTAMP WITH TIME ZONE, "averageDaysBetweenVisits" integer, "preferences" json, "treatmentHistory" json, "preferredClinicId" character varying, "preferredDoctorId" character varying, "clinicHistory" json, "doctorHistory" json, "lastClinicId" character varying, "lastDoctorId" character varying, "treatmentPreferences" json, "isRepeatCustomer" boolean NOT NULL DEFAULT false, "notes" character varying, "repeatCount" character varying, "expectedNextVisit" date, "facebookCampaignId" character varying(100), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_720bc01e02237a56f8f885b7c41" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "crm_actions" (
+            "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+            "customerId" uuid NOT NULL,
+            ...
+            CONSTRAINT "PK_bc9e830bf56a752b67420895809" PRIMARY KEY ("id")
+        )`);
+        
+        await queryRunner.query(`
+            DELETE FROM "crm_actions"
+            WHERE "customerId" NOT IN (
+                SELECT "id" FROM "customer_records"
+            );
+        `);
+        
+        await queryRunner.query(`
+            ALTER TABLE "crm_actions"
+            ADD CONSTRAINT "FK_0d50d9c8f5727b366a284104b71"
+            FOREIGN KEY ("customerId") REFERENCES "customer_records"("id")
+            ON DELETE CASCADE ON UPDATE NO ACTION
+        `);
         await queryRunner.query(`CREATE TYPE "public"."crm_actions_actiontype_enum" AS ENUM('phone_call', 'email', 'follow_up', 'appointment_confirmation', 'meeting', 'treatment_reminder')`);
         await queryRunner.query(`CREATE TYPE "public"."crm_actions_status_enum" AS ENUM('pending', 'completed', 'cancelled', 'missed')`);
         await queryRunner.query(`CREATE TYPE "public"."crm_actions_priority_enum" AS ENUM('low', 'medium', 'high', 'urgent')`);
