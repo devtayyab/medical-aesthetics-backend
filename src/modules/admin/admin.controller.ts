@@ -23,7 +23,18 @@ import { UserRole } from '../../common/enums/user-role.enum';
 @Roles(UserRole.ADMIN)
 @ApiBearerAuth()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
+
+  @Get('metrics')
+  @ApiOperation({ summary: 'Get dashboard metrics' })
+  async getMetrics() {
+    const reports = await this.adminService.getReports();
+    return {
+      leads: reports.leadsToConversions.totalLeads,
+      conversions: reports.leadsToConversions.conversions,
+      revenue: reports.revenueStats.totalRevenue
+    };
+  }
 
   @Post('tags')
   @ApiOperation({ summary: 'Create CRM tag' })
