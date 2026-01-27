@@ -13,26 +13,27 @@ export class TasksService {
     @InjectRepository(Task)
     private tasksRepository: Repository<Task>,
     private eventEmitter: EventEmitter2,
-  ) {}
+  ) { }
 
   async create(createTaskDto: CreateTaskDto): Promise<Task> {
     const task = this.tasksRepository.create({
       ...createTaskDto,
       dueDate: new Date(createTaskDto.dueDate),
     });
-    
+
     const savedTask = await this.tasksRepository.save(task);
-    
+
     // Emit event for notifications
     this.eventEmitter.emit('task.created', savedTask);
-    
+
     return savedTask;
   }
 
   async findAll(filters: any = {}): Promise<Task[]> {
     const queryBuilder = this.tasksRepository.createQueryBuilder('task')
       .leftJoinAndSelect('task.assignee', 'assignee')
-      .leftJoinAndSelect('task.customer', 'customer');
+      .leftJoinAndSelect('task.customer', 'customer')
+      .leftJoinAndSelect('task.customerRecord', 'customerRecord');
 
     if (filters.assigneeId) {
       queryBuilder.where('task.assigneeId = :assigneeId', {
@@ -66,21 +67,21 @@ export class TasksService {
   async findById(id: string): Promise<Task> {
     const task = await this.tasksRepository.findOne({
       where: { id },
-      relations: ['assignee', 'customer'],
+      relations: ['assignee', 'customer', 'customerRecord'],
     });
-    
+
     if (!task) {
       throw new NotFoundException('Task not found');
     }
-    
+
     return task;
   }
 
   async update(id: string, updateTaskDto: UpdateTaskDto): Promise<Task> {
     const task = await this.findById(id);
-    
+
     const updateData: any = { ...updateTaskDto };
-    
+
     if (updateTaskDto.dueDate) {
       updateData.dueDate = new Date(updateTaskDto.dueDate);
     }
@@ -90,7 +91,7 @@ export class TasksService {
       if (updateTaskDto.status === TaskStatus.COMPLETED) {
         updateData.completedAt = new Date();
       }
-      
+
       this.eventEmitter.emit('task.status.changed', {
         task,
         oldStatus: task.status,

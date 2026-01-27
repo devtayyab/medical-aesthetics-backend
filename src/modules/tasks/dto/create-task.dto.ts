@@ -45,6 +45,11 @@ export class CreateTaskDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @IsUUID()
+  customerRecordId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsObject()
   metadata?: any;
 }

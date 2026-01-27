@@ -12,6 +12,7 @@ import { TaskStatus } from '../../../common/enums/task-status.enum';
 import { TaskType } from '../../../common/enums/task-type.enum';
 import { User } from '../../users/entities/user.entity';
 import { Lead } from '../../crm/entities/lead.entity';
+import { CustomerRecord } from '../../crm/entities/customer-record.entity';
 
 @Entity('tasks')
 export class Task {
@@ -69,4 +70,11 @@ export class Task {
   @ManyToOne(() => Lead, (lead) => lead.tasks)
   @JoinColumn({ name: 'customerId' })
   customer: Lead;
+
+  @Column({ nullable: true })
+  customerRecordId: string;
+
+  @ManyToOne(() => CustomerRecord)
+  @JoinColumn({ name: 'customerRecordId' })
+  customerRecord: CustomerRecord;
 }
