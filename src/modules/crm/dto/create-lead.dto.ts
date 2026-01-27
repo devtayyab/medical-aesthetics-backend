@@ -29,7 +29,7 @@ export class CreateLeadDto {
 
   @ApiProperty({ example: '+1234567890', required: false })
   @IsOptional()
-  @IsPhoneNumber()
+  @IsString()
   phone?: string;
 
   @ApiProperty({ required: false })
