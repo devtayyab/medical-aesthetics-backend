@@ -1,12 +1,13 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/store";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { logout } from "@/store/slices/authSlice";
+
 import {
-  LayoutDashboard, Users, BarChart2, Tag, Eye, Bell, Settings,
+  LayoutDashboard, Users, BarChart2, Tag, Eye, Settings,
   Calendar, FileText, BarChart, Shield, DollarSign, AlertCircle,
-  Home, ClipboardList, Repeat, UserCog, LineChart, ListChecks,
-  Phone, Search
+  ClipboardList, Repeat, UserCog, LineChart, ListChecks,
+  Phone, Search, LogOut
 } from "lucide-react";
 
 interface SidebarItem {
@@ -72,7 +73,14 @@ const getAdminLinks = (role: string): SidebarItem[] => {
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
-  const { user } = useSelector((state: RootState) => state.auth);
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+
+  const handleLogout = async () => {
+    await dispatch(logout());
+    navigate("/login");
+  };
   const role = user?.role || "";
 
   const links =
@@ -95,18 +103,30 @@ export const Sidebar: React.FC = () => {
       acc[group] = [];
     }
     acc[group].push(link);
+
     return acc;
   }, {});
+
+  const getHomePath = (userRole: string) => {
+    switch (userRole) {
+      case 'SUPER_ADMIN': return '/admin/manager-dashboard';
+      case 'admin': return '/admin/dashboard';
+      case 'clinic_owner': return '/clinic/dashboard';
+      case 'salesperson': return '/crm';
+      case 'client': return '/my-account';
+      default: return '/';
+    }
+  };
 
   return (
     <aside className="w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-gray-200 h-screen flex flex-col border-r border-gray-700">
       <div className="p-4 border-b border-gray-700">
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+        <Link to={getHomePath(role)} className="text-xl font-bold text-white flex items-center gap-2 hover:opacity-80 transition-opacity">
           <span className="bg-[#CBFF38] text-gray-900 p-1 rounded">
             <LayoutDashboard className="w-5 h-5" />
           </span>
           Manager Panel
-        </h2>
+        </Link>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-2">
@@ -160,6 +180,13 @@ export const Sidebar: React.FC = () => {
           </div>
           <button className="text-gray-400 hover:text-white">
             <Settings className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleLogout}
+            className="text-gray-400 hover:text-red-500 transition-colors"
+            title="Logout"
+          >
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
       </div>

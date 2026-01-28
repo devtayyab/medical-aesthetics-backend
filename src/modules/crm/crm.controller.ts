@@ -11,6 +11,7 @@ import {
   UseGuards,
   Request,
   UsePipes,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
@@ -129,7 +130,7 @@ export class CrmController {
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get customer communication history' })
   getCommunicationHistory(
-    @Param('id') customerId: string,
+    @Param('id', new ParseUUIDPipe()) customerId: string,
     @Query() filters: any,
     @Request() req,
   ) {
@@ -246,6 +247,14 @@ export class CrmController {
       req.user.id,
       daysThreshold || 30,
     );
+  }
+
+  @Get('metrics')
+  @ApiOperation({ summary: 'Get general CRM metrics' })
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  getCrmMetrics() {
+    return this.crmService.getCrmMetrics();
   }
 
   // Salesperson Analytics

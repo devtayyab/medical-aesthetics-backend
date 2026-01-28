@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Phone, Mail, MessageSquare, Calendar, AlertCircle, CheckCircle, Clock, User } from 'lucide-react';
+import { Phone, Mail, MessageSquare, AlertCircle, CheckCircle, Clock, User } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Select } from '@/components/atoms/Select/Select';
 import { Textarea } from '@/components/atoms/Textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 import {
   logCommunication,
   validateCommunication,
@@ -130,88 +129,46 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
     }
   };
 
-  const getCommunicationIcon = (type: string) => {
-    switch (type) {
-      case 'call':
-        return <Phone className="h-4 w-4" />;
-      case 'email':
-        return <Mail className="h-4 w-4" />;
-      case 'sms':
-        return <MessageSquare className="h-4 w-4" />;
-      case 'meeting':
-        return <Calendar className="h-4 w-4" />;
-      default:
-        return <MessageSquare className="h-4 w-4" />;
-    }
-  };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'success';
-      case 'missed':
-        return 'error';
-      case 'pending':
-        return 'warning';
-      default:
-        return 'default';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'error';
-      case 'high':
-        return 'warning';
-      case 'medium':
-        return 'info';
-      case 'low':
-        return 'success';
-      default:
-        return 'default';
-    }
-  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          {getCommunicationIcon(formData.type || 'call')}
-          Log Communication
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Communication Type */}
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Type"
-              value={formData.type}
-              onChange={(value) => handleInputChange('type', value)}
-              options={[
-                { value: 'call', label: 'Phone Call' },
-                { value: 'email', label: 'Email' },
-                { value: 'sms', label: 'SMS' },
-                { value: 'meeting', label: 'Meeting' },
-                { value: 'note', label: 'Note' }
-              ]}
-              required
-            />
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Communication Core Details */}
+      <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100 space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <User className="w-4 h-4 text-blue-500" />
+          Interaction Details
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Select
+            label="Type"
+            value={formData.type}
+            onChange={(value) => handleInputChange('type', value)}
+            options={[
+              { value: 'call', label: 'Phone Call' },
+              { value: 'email', label: 'Email' },
+              { value: 'sms', label: 'SMS' },
+              { value: 'meeting', label: 'Meeting' },
+              { value: 'note', label: 'Note' }
+            ]}
+            required
+            className="bg-white"
+          />
 
-            <Select
-              label="Direction"
-              value={formData.direction}
-              onChange={(value) => handleInputChange('direction', value)}
-              options={[
-                { value: 'incoming', label: 'Incoming' },
-                { value: 'outgoing', label: 'Outgoing' }
-              ]}
-              required
-            />
-          </div>
+          <Select
+            label="Direction"
+            value={formData.direction}
+            onChange={(value) => handleInputChange('direction', value)}
+            options={[
+              { value: 'incoming', label: 'Incoming' },
+              { value: 'outgoing', label: 'Outgoing' }
+            ]}
+            required
+            className="bg-white"
+          />
+        </div>
 
-          {/* Status */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
             label="Status"
             value={formData.status}
@@ -222,139 +179,161 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
               { value: 'pending', label: 'Pending' }
             ]}
             required
+            className="bg-white"
           />
 
-          {/* Subject */}
           <Input
             label="Subject"
             value={formData.subject || ''}
             onChange={(e) => handleInputChange('subject', e.target.value)}
-            placeholder="Brief description of the communication"
+            placeholder="Brief description..."
+            className="bg-white"
           />
+        </div>
+      </div>
 
-          {/* Duration (for calls) */}
-          {formData.type === 'call' && (
-            <Input
-              label="Duration (seconds)"
-              type="number"
-              value={formData.durationSeconds || ''}
-              onChange={(e) => handleInputChange('durationSeconds', parseInt(e.target.value))}
-              placeholder="Call duration in seconds"
-            />
-          )}
+      {/* Call Specifics */}
+      {formData.type === 'call' && (
+        <div className="bg-blue-50/30 p-4 rounded-xl border border-blue-100 space-y-4 animate-in fade-in slide-in-from-top-2">
+          <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+            <Phone className="w-4 h-4 text-blue-500" />
+            Call Specifics
+          </h3>
 
-          {/* Call-specific fields */}
-          {formData.type === 'call' && (
-            <>
-              <h4 className="font-medium text-sm text-gray-700">Call Details (Required)</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <Select
-                  label="Clinic"
-                  value={formData.metadata?.clinic || ''}
-                  onChange={(value) => handleInputChange('metadata.clinic', value)}
-                  options={clinics}
-                  required={requiredFields?.clinic}
-                  error={validationErrors.includes('clinic')}
-                />
-
-                <Select
-                  label="Proposed Treatment"
-                  value={formData.metadata?.proposedTreatment || ''}
-                  onChange={(value) => handleInputChange('metadata.proposedTreatment', value)}
-                  options={[
-                    { value: 'botox', label: 'Botox' },
-                    { value: 'fillers', label: 'Dermal Fillers' },
-                    { value: 'laser', label: 'Laser Treatment' },
-                    { value: 'peels', label: 'Chemical Peels' },
-                    { value: 'consultation', label: 'Consultation' }
-                  ]}
-                  required={requiredFields?.proposedTreatment}
-                  error={validationErrors.includes('proposedTreatment')}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Cost"
-                  type="number"
-                  value={formData.metadata?.cost || ''}
-                  onChange={(e) => handleInputChange('metadata.cost', parseFloat(e.target.value))}
-                  placeholder="0.00"
-                  required={requiredFields?.cost}
-                  error={validationErrors.find((error) => error === 'cost')}
-                />
-
-                <Select
-                  label="Call Outcome"
-                  value={formData.metadata?.callOutcome || ''}
-                  onChange={(value) => handleInputChange('metadata.callOutcome', value)}
-                  options={[
-                    { value: 'interested', label: 'Interested' },
-                    { value: 'not_interested', label: 'Not Interested' },
-                    { value: 'callback', label: 'Call Back' },
-                    { value: 'booked', label: 'Booked Appointment' },
-                    { value: 'no_answer', label: 'No Answer' },
-                    { value: 'wrong_number', label: 'Wrong Number' }
-                  ]}
-                  required={requiredFields?.callOutcome}
-                  error={validationErrors.includes('callOutcome')}
-                />
-              </div>
-            </>
-          )}
-
-          {/* Notes */}
-          <Textarea
-            label="Notes"
-            value={formData.notes || ''}
-            onChange={(e) => handleInputChange('notes', e.target.value)}
-            placeholder="Detailed notes about the communication..."
-            rows={4}
-            required={requiredFields?.notes}
-          />
-
-          {/* Validation Errors */}
-          {validationErrors.length > 0 && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <div className="flex items-center gap-2 text-red-800">
-                <AlertCircle className="h-4 w-4" />
-                <span className="font-medium">Missing Required Fields:</span>
-              </div>
-              <ul className="mt-2 text-sm text-red-700">
-                {validationErrors.map((error, index) => (
-                  <li key={index}>• {error.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</li>
-                ))}
-              </ul>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-1">
+              <Input
+                label="Duration (sec)"
+                type="number"
+                value={formData.durationSeconds || ''}
+                onChange={(e) => handleInputChange('durationSeconds', parseInt(e.target.value))}
+                placeholder={Math.floor((Date.now() - startTime) / 1000).toString()}
+                className="bg-white"
+              />
+              <p className="text-[10px] text-gray-500 mt-1 ml-1">
+                *Auto-calculated if empty
+              </p>
             </div>
-          )}
 
-          {/* Validation Warnings */}
-          {validationWarnings.length > 0 && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-              <div className="flex items-center gap-2 text-yellow-800">
-                <Clock className="h-4 w-4" />
-                <span className="font-medium">Suggestions:</span>
-              </div>
-              <ul className="mt-2 text-sm text-yellow-700">
-                {validationWarnings.map((warning, index) => (
-                  <li key={index}>• {warning}</li>
-                ))}
-              </ul>
+            <div className="md:col-span-2">
+              <Select
+                label="Clinic"
+                value={formData.metadata?.clinic || ''}
+                onChange={(value) => handleInputChange('metadata.clinic', value)}
+                options={clinics}
+                required={requiredFields?.clinic}
+                error={validationErrors.includes('clinic')}
+                className="bg-white"
+              />
             </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button type="submit" variant="primary">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Log Communication
-            </Button>
-            <Button type="button" variant="secondary" onClick={handleValidate}>
-              Validate
-            </Button>
           </div>
-        </form>
-      </CardContent>
-    </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Proposed Treatment"
+              value={formData.metadata?.proposedTreatment || ''}
+              onChange={(value) => handleInputChange('metadata.proposedTreatment', value)}
+              options={[
+                { value: 'botox', label: 'Botox' },
+                { value: 'fillers', label: 'Dermal Fillers' },
+                { value: 'laser', label: 'Laser Treatment' },
+                { value: 'peels', label: 'Chemical Peels' },
+                { value: 'consultation', label: 'Consultation' }
+              ]}
+              required={requiredFields?.proposedTreatment}
+              error={validationErrors.includes('proposedTreatment')}
+              className="bg-white"
+            />
+
+            <Select
+              label="Call Outcome"
+              value={formData.metadata?.callOutcome || ''}
+              onChange={(value) => handleInputChange('metadata.callOutcome', value)}
+              options={[
+                { value: 'interested', label: 'Interested' },
+                { value: 'not_interested', label: 'Not Interested' },
+                { value: 'callback', label: 'Call Back' },
+                { value: 'booked', label: 'Booked Appointment' },
+                { value: 'no_answer', label: 'No Answer' },
+                { value: 'wrong_number', label: 'Wrong Number' }
+              ]}
+              required={requiredFields?.callOutcome}
+              error={validationErrors.includes('callOutcome')}
+              className="bg-white"
+            />
+          </div>
+
+          <Input
+            label="Estimated Cost"
+            type="number"
+            value={formData.metadata?.cost || ''}
+            onChange={(e) => handleInputChange('metadata.cost', parseFloat(e.target.value))}
+            placeholder="0.00"
+            required={requiredFields?.cost}
+            error={validationErrors.find((error) => error === 'cost')}
+            className="bg-white"
+            leftIcon={<span className="text-gray-500">$</span>}
+          />
+        </div>
+      )}
+
+      {/* Notes Section */}
+      <div>
+        <Textarea
+          label="Notes & Observations"
+          value={formData.notes || ''}
+          onChange={(e) => handleInputChange('notes', e.target.value)}
+          placeholder="Detailed notes about the conversation..."
+          rows={4}
+          required={requiredFields?.notes}
+          className="bg-white resize-none"
+        />
+      </div>
+
+      {/* Validation Messages */}
+      {validationErrors.length > 0 && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl animate-in zoom-in-95">
+          <div className="flex items-center gap-2 text-red-800 font-medium mb-2">
+            <AlertCircle className="h-4 w-4" />
+            Missing Information
+          </div>
+          <ul className="text-sm text-red-700 space-y-1 pl-6 list-disc">
+            {validationErrors.map((error, index) => (
+              <li key={index} className="capitalize">{error.replace(/([A-Z])/g, ' $1')}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {validationWarnings.length > 0 && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <div className="flex items-center gap-2 text-amber-800 font-medium mb-2">
+            <Clock className="h-4 w-4" />
+            Suggestions
+          </div>
+          <ul className="text-sm text-amber-700 space-y-1 pl-6 list-disc">
+            {validationWarnings.map((warning, index) => (
+              <li key={index}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={handleValidate}
+          className="text-gray-600 hover:text-gray-900"
+        >
+          Validate Only
+        </Button>
+        <Button type="submit" variant="primary" className="pl-4 pr-6">
+          <CheckCircle className="h-4 w-4 mr-2" />
+          Save Communication
+        </Button>
+      </div>
+    </form>
   );
 };

@@ -935,8 +935,49 @@ export class CrmService {
       .getMany();
   }
 
+  // Analytics
+  async getCrmMetrics(): Promise<any> {
+    const totalLeads = await this.leadsRepository.count();
+    const convertedLeads = await this.leadsRepository.count({
+      where: { status: LeadStatus.CONVERTED },
+    });
+    const totalActions = await this.crmActionsRepository.count();
+    const completedActions = await this.crmActionsRepository.count({
+      where: { status: 'completed' },
+    });
+
+    return {
+      totalLeads,
+      convertedLeads,
+      conversionRate: totalLeads > 0 ? convertedLeads / totalLeads : 0,
+      totalActions,
+      completedActions,
+    };
+  }
+
   // Analytics for Salesperson
   async getSalespersonAnalytics(salespersonId: string, dateRange?: { startDate: Date; endDate: Date }): Promise<any> {
+    // 1. Leads Analytics
+    let leadsQuery = this.leadsRepository
+      .createQueryBuilder('lead')
+      .where('lead.assignedSalesId = :salespersonId', { salespersonId });
+
+    if (dateRange) {
+      leadsQuery = leadsQuery.andWhere(
+        'lead.createdAt BETWEEN :startDate AND :endDate',
+        dateRange
+      );
+    }
+
+    const leadsAssigned = await leadsQuery.getCount();
+    const leadsConverted = await leadsQuery.clone()
+      .andWhere('lead.status = :convertedStatus', { convertedStatus: LeadStatus.CONVERTED })
+      .getCount();
+    const leadsContacted = await leadsQuery.clone()
+      .andWhere('lead.status != :newStatus', { newStatus: LeadStatus.NEW })
+      .getCount();
+
+    // 2. Communication Stats
     let communicationQuery = this.communicationLogsRepository
       .createQueryBuilder('log')
       .where('log.salespersonId = :salespersonId', { salespersonId });
@@ -950,38 +991,72 @@ export class CrmService {
 
     const communicationStats = await communicationQuery
       .select([
-        'COUNT(log.id) as totalCommunications',
-        'COUNT(CASE WHEN log.type = \'call\' THEN 1 END) as totalCalls',
-        'COUNT(CASE WHEN log.status = \'missed\' THEN 1 END) as missedCalls',
-        'COUNT(CASE WHEN log.type = \'email\' THEN 1 END) as totalEmails',
+        'COUNT(log.id) as "totalCommunications"',
+        'COUNT(CASE WHEN log.type = \'call\' THEN 1 END) as "totalCalls"',
+        'COUNT(CASE WHEN log.status = \'missed\' THEN 1 END) as "missedCalls"',
+        'COUNT(CASE WHEN log.type = \'email\' THEN 1 END) as "totalEmails"',
       ])
       .getRawOne();
 
-    const actionStats = await this.crmActionsRepository
+    // 3. Action Stats
+    let actionQuery = this.crmActionsRepository
       .createQueryBuilder('action')
-      .where('action.salespersonId = :salespersonId', { salespersonId })
+      .where('action.salespersonId = :salespersonId', { salespersonId });
+
+    if (dateRange) {
+      actionQuery = actionQuery.andWhere(
+        'action.createdAt BETWEEN :startDate AND :endDate',
+        dateRange
+      );
+    }
+
+    const actionStats = await actionQuery
       .select([
-        'COUNT(action.id) as totalActions',
-        'COUNT(CASE WHEN action.status = \'pending\' THEN 1 END) as pendingActions',
-        'COUNT(CASE WHEN action.status = \'completed\' THEN 1 END) as completedActions',
-        'COUNT(CASE WHEN action.status = \'missed\' THEN 1 END) as missedActions',
+        'COUNT(action.id) as "totalActions"',
+        'COUNT(CASE WHEN action.status = \'pending\' THEN 1 END) as "pendingActions"',
+        'COUNT(CASE WHEN action.status = \'completed\' THEN 1 END) as "completedActions"',
+        'COUNT(CASE WHEN action.status = \'missed\' THEN 1 END) as "missedActions"',
       ])
       .getRawOne();
 
+    const tasksCompleted = parseInt(actionStats.completedActions || '0');
+    const totalActions = parseInt(actionStats.totalActions || '0');
+
+    // 4. Customer Stats (Lifetime Value, etc.)
     const customerStats = await this.customerRecordsRepository
       .createQueryBuilder('record')
       .where('record.assignedSalespersonId = :salespersonId', { salespersonId })
       .select([
-        'COUNT(record.id) as totalCustomers',
-        'COUNT(CASE WHEN record.isRepeatCustomer = true THEN 1 END) as repeatCustomers',
-        'SUM(record.lifetimeValue) as totalRevenue',
+        'COUNT(record.id) as "totalCustomers"',
+        'COUNT(CASE WHEN record.isRepeatCustomer = true THEN 1 END) as "repeatCustomers"',
+        'SUM(record.lifetimeValue) as "totalRevenue"',
       ])
       .getRawOne();
 
     return {
-      communicationStats,
-      actionStats,
-      customerStats,
+      // Flattened metrics for Dashboard
+      leadsAssigned,
+      leadsContacted,
+      salespersonConversionRate: leadsAssigned > 0 ? leadsConverted / leadsAssigned : 0,
+      tasksCompleted,
+      totalActions,
+      completedActions: tasksCompleted,
+      averageResponseTime: '24m', // Placeholder - requires implementation of response time tracking
+
+      // Detailed objects (legacy support)
+      communicationStats: {
+        total: parseInt(communicationStats.totalCommunications),
+        calls: parseInt(communicationStats.totalCalls),
+        missedCalls: parseInt(communicationStats.missedCalls),
+        emails: parseInt(communicationStats.totalEmails),
+      },
+      actionStats: {
+        total: totalActions,
+        pending: parseInt(actionStats.pendingActions),
+        completed: tasksCompleted,
+        missed: parseInt(actionStats.missedActions),
+      },
+      customerStats
     };
   }
 
