@@ -287,10 +287,18 @@ export class CrmController {
 
   @Get('facebook/test')
   @ApiOperation({ summary: 'Test Facebook API connection' })
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   testFacebookConnection() {
     return this.crmService.testFacebookConnection();
+  }
+
+  @Get('facebook/forms')
+  @ApiOperation({ summary: 'Get available Facebook lead forms' })
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.ADMIN)
+  @UseGuards(RolesGuard)
+  getFacebookForms() {
+    return this.crmService.getFacebookForms();
   }
 
   @Get('customer/:id')
@@ -379,7 +387,7 @@ export class CrmController {
 
   @Post('automation/run-check')
   @ApiOperation({ summary: 'Run task automation check' })
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   runTaskAutomationCheck() {
     return this.crmService.runTaskAutomationCheck();

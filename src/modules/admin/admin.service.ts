@@ -29,7 +29,7 @@ export class AdminService {
     private appointmentsRepository: Repository<Appointment>,
     @InjectRepository(LoyaltyLedger)
     private loyaltyRepository: Repository<LoyaltyLedger>,
-  ) {}
+  ) { }
 
   async createTag(name: string, color?: string, description?: string): Promise<Tag> {
     const tag = this.tagsRepository.create({
@@ -478,13 +478,13 @@ export class AdminService {
 
   async updateSetting(key: string, value: any): Promise<PlatformSettings> {
     let setting = await this.settingsRepository.findOne({ where: { key } });
-    
+
     if (setting) {
       setting.value = value;
     } else {
       setting = this.settingsRepository.create({ key, value });
     }
-    
+
     return this.settingsRepository.save(setting);
   }
 
@@ -494,5 +494,28 @@ export class AdminService {
       query.category = category;
     }
     return this.settingsRepository.find({ where: query });
+  }
+  async getLoyalty(): Promise<any> {
+    // Return loyalty tiers configuration
+    // For now returning mock data
+    return [
+      { name: 'Bronze', points: 0, rewards: ['5% discount'] },
+      { name: 'Silver', points: 1000, rewards: ['10% discount', 'Free consultation'] },
+      { name: 'Gold', points: 5000, rewards: ['15% discount', 'Priority booking', 'Free product'] },
+    ];
+  }
+
+  async updateLoyalty(data: any): Promise<any> {
+    // Update loyalty configuration
+    return data;
+  }
+  async getLogs(): Promise<any> {
+    // Return activity logs
+    // For now returning mock data
+    return [
+      { id: '1', userId: 'u1', action: 'User Login', timestamp: new Date().toISOString() },
+      { id: '2', userId: 'u2', action: 'Update Profile', timestamp: new Date().toISOString() },
+      { id: '3', userId: 'u3', action: 'Book Appointment', timestamp: new Date().toISOString() },
+    ];
   }
 }

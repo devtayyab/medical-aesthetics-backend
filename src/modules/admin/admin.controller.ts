@@ -228,4 +228,20 @@ export class AdminController {
   getSettingsByCategory(@Param('category') category: string) {
     return this.adminService.getAllSettings(category);
   }
+  @Get('loyalty')
+  @ApiOperation({ summary: 'Get loyalty settings' })
+  getLoyalty() {
+    return this.adminService.getLoyalty();
+  }
+
+  @Patch('loyalty')
+  @ApiOperation({ summary: 'Update loyalty settings' })
+  updateLoyalty(@Body() body: any) {
+    return this.adminService.updateLoyalty(body);
+  }
+  @Get('monitor')
+  @ApiOperation({ summary: 'Get monitor logs' })
+  getLogs() {
+    return this.adminService.getLogs();
+  }
 }

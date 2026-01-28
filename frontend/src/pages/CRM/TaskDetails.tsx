@@ -6,9 +6,7 @@ import { CardHeader, CardTitle } from "@/components/molecules/Card/Card";
 import { ClipboardList } from "lucide-react";
 import { Calendar } from "lucide-react";
 interface OneCustomerDetailProps {
-    tasks: Task[];
     selectedTask: Task;
-
 }
 export const TaskDetails: React.FC<OneCustomerDetailProps> = ({
     selectedTask,
