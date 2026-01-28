@@ -118,29 +118,50 @@ export class CrmService {
   async scheduleRecurringAppointment(data: any): Promise<any> {
     const { customerId, serviceId, frequency } = data;
 
-    // Validate customer exists
-    const customer = await this.usersRepository.findOne({ where: { id: customerId } });
-    if (!customer) {
-      throw new NotFoundException('Customer not found');
+    if (!customerId || !serviceId || !frequency) {
+      throw new BadRequestException('Missing required fields: customerId, serviceId, frequency');
     }
 
-    // Resolve CustomerRecord
-    let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
-    if (!record) {
-      record = await this.createCustomerRecord(customerId);
+    // Basic UUID format check
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(customerId)) {
+      throw new BadRequestException(`Invalid customer ID format: ${customerId}`);
     }
 
-    // Use QueueService to schedule repetition
-    await this.queueService.scheduleRecurringAppointments(
-      serviceId, // we treat serviceId as templateId/service description for now
-      frequency,
-      customerId,
-    );
+    try {
+      // Validate customer exists
+      const customer = await this.usersRepository.findOne({ where: { id: customerId } });
+      if (!customer) {
+        throw new NotFoundException(`Customer not found with ID: ${customerId}`);
+      }
 
-    return {
-      success: true,
-      message: `Recurring appointment scheduled for client ${customerId} with ${frequency} frequency`,
-    };
+      // Resolve CustomerRecord
+      let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
+      if (!record) {
+        record = await this.createCustomerRecord(customerId);
+      }
+
+      // Use QueueService to schedule repetition
+      await this.queueService.scheduleRecurringAppointments(
+        serviceId, // we treat serviceId as templateId/service description for now
+        frequency,
+        customerId,
+      );
+
+      return {
+        success: true,
+        message: `Recurring appointment scheduled for client ${customerId} with ${frequency} frequency`,
+      };
+    } catch (error) {
+      console.error('Error in scheduleRecurringAppointment:', error);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      if (error.message && error.message.includes('Unsupported frequency')) {
+        throw new BadRequestException(error.message);
+      }
+      throw new BadRequestException(`Failed to schedule recurring appointment: ${error.message}`);
+    }
   }
 
   async handleFacebookWebhook(webhookData: FacebookWebhookDto): Promise<void> {
@@ -966,6 +987,10 @@ export class CrmService {
 
   async testFacebookConnection(): Promise<{ success: boolean; message: string }> {
     return this.facebookService.testFacebookConnection();
+  }
+
+  async getFacebookForms() {
+    return this.facebookService.getForms();
   }
 
   // Manager analytics: aggregate KPIs across agents

@@ -261,9 +261,9 @@ export const crmAPI = {
   // Facebook Integration
   handleFacebookWebhook: (data: any) => api.post("/crm/facebook/webhook", data),
   importFacebookLeads: (formId: string, limit?: number) =>
-    api.post(`/crm/facebook/import/${formId}`, { limit }),
+    api.post(`/crm/facebook/import/${formId}`, {}, { params: { limit } }),
   getFacebookForms: () => api.get("/crm/facebook/forms"),
-  testFacebookConnection: () => api.get("/crm/facebook/test-connection"),
+  testFacebookConnection: () => api.get("/crm/facebook/test"),
 
   // Duplicate Detection
   checkForDuplicates: (data: {
@@ -374,7 +374,7 @@ export const crmAPI = {
     serviceId: string;
     frequency: string;
     startDate: string;
-  }) => api.post("/crm/recurring", data),
+  }) => api.post("/crm/recurring-appointments", data),
 };
 
 export const adminAPI = {

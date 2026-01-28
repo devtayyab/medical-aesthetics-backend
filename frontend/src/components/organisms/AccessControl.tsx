@@ -13,7 +13,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
 }) => {
   return (
     <div className="flex flex-col gap-4">
-      {users.map((user) => (
+      {Array.isArray(users) && users.map((user) => (
         <div key={user.id} className="flex items-center gap-4 p-2 border-b">
           <p>
             {user.firstName} {user.lastName} ({user.email})

@@ -44,3 +44,14 @@ export const Card: React.FC<CardProps> = ({ children, className = '' }) => (
     {children}
   </CardAtom>
 );
+
+interface CardFooterProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export const CardFooter: React.FC<CardFooterProps> = ({ children, className = '' }) => (
+  <div className={`flex items-center p-6 pt-0 ${className}`}>
+    {children}
+  </div>
+);

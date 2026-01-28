@@ -3,11 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
 import { Input } from "@/components/atoms/Input/Input";
-import { 
-  testFacebookConnection, 
-  getFacebookForms, 
+import {
+  testFacebookConnection,
+  getFacebookForms,
   importFacebookLeads,
-  handleFacebookWebhook 
+  handleFacebookWebhook
 } from "@/store/slices/crmSlice";
 import type { RootState, AppDispatch } from "@/store";
 
@@ -75,7 +75,28 @@ export const FacebookIntegration: React.FC = () => {
 
   const handleWebhookTest = async () => {
     try {
-      const result = await dispatch(handleFacebookWebhook(webhookData)).unwrap();
+      // Construct payload to match FacebookWebhookDto
+      const payload = {
+        object: "page",
+        entry: [
+          {
+            id: webhookData.leadId || "test_lead_id",
+            created_time: new Date().toISOString(),
+            form_id: webhookData.formId,
+            campaign_id: webhookData.campaignId,
+            adset_id: webhookData.adsetId,
+            ad_id: webhookData.adId,
+            field_data: [
+              { name: "first_name", values: [webhookData.firstName] },
+              { name: "last_name", values: [webhookData.lastName] },
+              { name: "email", values: [webhookData.email] },
+              { name: "phone_number", values: [webhookData.phone] }
+            ]
+          }
+        ]
+      };
+
+      const result = await dispatch(handleFacebookWebhook(payload)).unwrap();
       console.log("Webhook test result:", result);
       alert("Webhook test successful!");
     } catch (error) {
@@ -96,7 +117,7 @@ export const FacebookIntegration: React.FC = () => {
             <CardTitle>Connection Test</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button 
+            <Button
               onClick={handleTestConnection}
               disabled={isLoading}
               className="w-full"
@@ -104,11 +125,10 @@ export const FacebookIntegration: React.FC = () => {
               Test Facebook Connection
             </Button>
             {connectionStatus && (
-              <div className={`p-3 rounded ${
-                connectionStatus.includes("successful") ? 
-                "bg-green-100 text-green-800" : 
-                "bg-red-100 text-red-800"
-              }`}>
+              <div className={`p-3 rounded ${connectionStatus.includes("successful") ?
+                  "bg-green-100 text-green-800" :
+                  "bg-red-100 text-red-800"
+                }`}>
                 {connectionStatus}
               </div>
             )}
@@ -120,7 +140,7 @@ export const FacebookIntegration: React.FC = () => {
             <CardTitle>Facebook Forms</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button 
+            <Button
               onClick={handleGetForms}
               disabled={isLoading}
               className="w-full"
@@ -163,7 +183,7 @@ export const FacebookIntegration: React.FC = () => {
                 onChange={(e) => setImportData(prev => ({ ...prev, limit: parseInt(e.target.value) || 10 }))}
               />
             </div>
-            <Button 
+            <Button
               onClick={handleImportLeads}
               disabled={isLoading || !importData.formId}
               className="w-full"
@@ -225,7 +245,7 @@ export const FacebookIntegration: React.FC = () => {
                 onChange={(e) => setWebhookData(prev => ({ ...prev, phone: e.target.value }))}
               />
             </div>
-            <Button 
+            <Button
               onClick={handleWebhookTest}
               disabled={isLoading}
               className="w-full"

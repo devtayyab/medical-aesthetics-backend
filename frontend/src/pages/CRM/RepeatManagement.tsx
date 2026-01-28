@@ -4,6 +4,7 @@ import { Input } from "@/components/atoms/Input/Input";
 import { Button } from "@/components/atoms/Button/Button";
 import { scheduleRecurring } from "@/store/slices/crmSlice";
 import type { AppDispatch } from "@/store";
+import { Select } from "@/components/atoms/Select/Select";
 
 export const RepeatManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -13,14 +14,41 @@ export const RepeatManagement: React.FC = () => {
     frequency: "",
     startDate: "",
   });
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFrequencyChange = (value: string) => {
+    setForm({ ...form, frequency: value });
+    setError(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(scheduleRecurring(form));
+    setError(null);
+    setSuccess(null);
+
+    if (!form.customerId || !form.serviceId || !form.frequency) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+
+    try {
+      await dispatch(scheduleRecurring(form)).unwrap();
+      setSuccess("Recurring appointment scheduled successfully!");
+      setForm({
+        customerId: "",
+        serviceId: "",
+        frequency: "",
+        startDate: "",
+      });
+    } catch (err: any) {
+      setError(err.message || "Failed to schedule recurring appointment.");
+    }
   };
 
   return (
@@ -29,12 +57,23 @@ export const RepeatManagement: React.FC = () => {
         Schedule Recurring Appointments
       </h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-50 text-green-600 p-3 rounded-md text-sm">
+            {success}
+          </div>
+        )}
         <Input
           name="customerId"
           placeholder="Customer ID"
           value={form.customerId}
           onChange={handleChange}
           fullWidth
+          required
         />
         <Input
           name="serviceId"
@@ -42,13 +81,19 @@ export const RepeatManagement: React.FC = () => {
           value={form.serviceId}
           onChange={handleChange}
           fullWidth
+          required
         />
-        <Input
-          name="frequency"
-          placeholder="Frequency (e.g., weekly)"
+        <Select
           value={form.frequency}
-          onChange={handleChange}
-          fullWidth
+          onChange={handleFrequencyChange}
+          label="Frequency"
+          placeholder="Select frequency"
+          options={[
+            { value: "weekly", label: "Weekly" },
+            { value: "monthly", label: "Monthly" },
+            { value: "quarterly", label: "Quarterly" },
+          ]}
+          required
         />
         <Input
           name="startDate"

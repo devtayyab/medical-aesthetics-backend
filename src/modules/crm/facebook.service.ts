@@ -151,4 +151,12 @@ export class FacebookService {
       };
     }
   }
+  async getForms(): Promise<any[]> {
+    // Mock implementation since we don't have page access tokens configured
+    return [
+      { id: '12', name: 'Newsletter Signup', status: 'ACTIVE' },
+      { id: '13', name: 'Spring Promo', status: 'ACTIVE' },
+      { id: '14', name: 'Consultation Request', status: 'PAUSED' },
+    ];
+  }
 }

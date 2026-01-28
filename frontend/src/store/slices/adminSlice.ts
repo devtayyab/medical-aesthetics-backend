@@ -6,7 +6,7 @@ export interface AdminState {
   metrics: { leads: number; conversions: number; revenue: number };
   users: User[];
   loyaltyTiers: LoyaltyTier[];
-  logs: { userId: string; action: string; timestamp: string }[];
+  logs: { id: string; userId: string; action: string; timestamp: string }[];
   isLoading: boolean;
   error: string | null;
 }
@@ -27,7 +27,7 @@ export const fetchMetrics = createAsyncThunk("admin/fetchMetrics", async () => {
 
 export const fetchUsers = createAsyncThunk("admin/fetchUsers", async () => {
   const response = await adminAPI.getUsers();
-  return response.data;
+  return response.data.users;
 });
 
 export const updateUserRole = createAsyncThunk(
@@ -50,7 +50,7 @@ export const updateLoyaltyTiers = createAsyncThunk(
   "admin/updateLoyaltyTiers",
   async (tiers: LoyaltyTier[]) => {
     const response = await adminAPI.updateLoyalty({ tiers });
-    return response.data;
+    return response.data.tiers;
   }
 );
 
