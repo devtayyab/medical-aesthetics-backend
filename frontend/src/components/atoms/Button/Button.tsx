@@ -3,8 +3,8 @@ import { css } from '@emotion/css';
 import { Loader2 } from 'lucide-react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'white';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
   fullWidth?: boolean;
   leftIcon?: React.ReactNode;
@@ -92,6 +92,18 @@ const variantStyles = {
       transform: translateY(-1px);
     }
   `,
+  white: css`
+    background-color: var(--color-white);
+    color: var(--color-medical-text);
+    border: 1px solid var(--color-gray-200);
+    font-weight: var(--font-weight-medium);
+    
+    &:hover:not(:disabled) {
+      background-color: var(--color-gray-50);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+  `,
 };
 
 const sizeStyles = {
@@ -109,6 +121,15 @@ const sizeStyles = {
     padding: var(--spacing-md) var(--spacing-xl);
     font-size: var(--font-size-lg);
     min-height: 3rem;
+  `,
+  icon: css`
+    padding: 0.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    min-height: unset;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   `,
 };
 
@@ -130,9 +151,8 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   return (
     <button
-      className={`${buttonStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${
-        fullWidth ? fullWidthStyle : ''
-      } ${className || ''}`}
+      className={`${buttonStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${fullWidth ? fullWidthStyle : ''
+        } ${className || ''}`}
       disabled={disabled || isLoading}
       {...props}
     >

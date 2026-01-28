@@ -4,21 +4,19 @@ import {
   Search,
   Filter,
   Plus,
-  MoreVertical,
   AlertTriangle,
   CheckCircle,
   Clock,
-  User,
   Phone,
   Mail,
-  Calendar,
-  Tag,
-  Eye,
   Edit,
   Trash2,
   Copy,
   Users,
-  Building
+  MoreHorizontal,
+  ArrowUpRight,
+  TrendingUp,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
@@ -32,7 +30,6 @@ import {
   updateLead,
   deleteLead,
   checkForDuplicates,
-  getDuplicateSuggestions,
   setLeadFilters
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
@@ -45,24 +42,8 @@ interface LeadsPageProps {
 }
 
 export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreateForm = false, onFormShown }) => {
-  // Show create form if forceShowCreateForm is true
-  useEffect(() => {
-    if (forceShowCreateForm && !showCreateForm) {
-      setShowCreateForm(true);
-      if (onFormShown) onFormShown();
-    }
-  }, [forceShowCreateForm, onFormShown]);
-
   const dispatch = useDispatch<AppDispatch>();
-  const {
-    leads,
-    leadFilters,
-    duplicateCheck,
-    duplicateSuggestions,
-    isLoading,
-    error
-  } = useSelector((state: RootState) => state.crm);
-
+  const { leads, leadFilters, duplicateCheck, isLoading, error } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,7 +53,9 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   const [showDuplicateResults, setShowDuplicateResults] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [formData, setFormData] = useState({
+
+  // Initial form state
+  const initialFormState = {
     source: "facebook_ads",
     firstName: "",
     lastName: "",
@@ -83,16 +66,21 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
     assignedSalesId: user?.id || null,
     metadata: {},
     estimatedValue: 0,
-  });
-
-  const handleEditLead = (lead: Lead) => {
-    setEditingLead(lead);
-    setShowModal(true);
   };
+  const [formData, setFormData] = useState(initialFormState);
+
+  useEffect(() => {
+    if (forceShowCreateForm && !showCreateForm) {
+      setShowCreateForm(true);
+      if (onFormShown) onFormShown();
+    }
+  }, [forceShowCreateForm, onFormShown]);
+
   useEffect(() => {
     dispatch(fetchLeads(leadFilters));
   }, [dispatch, leadFilters]);
 
+  // Handlers
   const handleFilterChange = (key: string, value: string) => {
     dispatch(setLeadFilters({ ...leadFilters, [key]: value }));
   };
@@ -102,32 +90,15 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   };
 
   const handleCreateLead = async () => {
-    if (!formData.firstName || !formData.lastName || !formData.email) {
-      alert('Please fill in required fields');
-      return;
-    }
-
+    if (!formData.firstName || !formData.lastName || !formData.email) return;
     try {
       await dispatch(createLead(formData)).unwrap();
       setShowCreateForm(false);
-      setFormData({
-        source: "facebook_ads",
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        status: "new",
-        notes: "",
-        assignedSalesId: user?.id || null,
-
-        metadata: {},
-        estimatedValue: 0,
-      });
+      setFormData(initialFormState);
     } catch (error) {
       console.error('Failed to create lead:', error);
     }
   };
-
 
   const handleCheckDuplicates = async (lead: Lead) => {
     await dispatch(checkForDuplicates({
@@ -136,351 +107,297 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       firstName: lead.firstName,
       lastName: lead.lastName
     }));
-    setShowDuplicateResults(true); // ✅ Show results only after click
+    setShowDuplicateResults(true);
+  };
 
+  const handleEditLead = (lead: Lead) => {
+    setEditingLead(lead);
+    setShowModal(true);
   };
 
   const handleBulkAction = async (action: string) => {
     if (selectedLeads.length === 0) return;
-
-    switch (action) {
-      case 'delete':
-        for (const leadId of selectedLeads) {
-          await dispatch(deleteLead(leadId));
-        }
-        break;
-      case 'mark_contacted':
-        for (const leadId of selectedLeads) {
-          await dispatch(updateLead({ id: leadId, updates: { status: 'contacted' } }));
-        }
-        break;
+    if (action === 'delete') {
+      for (const leadId of selectedLeads) await dispatch(deleteLead(leadId));
+    } else if (action === 'mark_contacted') {
+      for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { status: 'contacted' } }));
     }
     setSelectedLeads([]);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'new':
-        return 'info';
-      case 'contacted':
-        return 'warning';
-      case 'qualified':
-        return 'success';
-      case 'converted':
-        return 'success';
-      case 'lost':
-        return 'error';
-      default:
-        return 'default';
+  const handleSaveEdit = async () => {
+    if (!editingLead) return;
+    try {
+      const updates = {
+        firstName: editingLead.firstName,
+        lastName: editingLead.lastName,
+        email: editingLead.email,
+        phone: editingLead.phone,
+        status: editingLead.status,
+        source: editingLead.source,
+      };
+      await dispatch(updateLead({ id: editingLead.id, updates })).unwrap();
+      setShowModal(false);
+      setEditingLead(null);
+      dispatch(fetchLeads(leadFilters));
+    } catch (error) {
+      console.error("Update failed:", error);
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'error';
-      case 'high':
-        return 'warning';
-      case 'medium':
-        return 'info';
-      case 'low':
-        return 'success';
-      default:
-        return 'default';
-    }
+  // UI Helpers
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      new: "bg-blue-100 text-blue-700 border-blue-200",
+      contacted: "bg-amber-100 text-amber-700 border-amber-200",
+      qualified: "bg-purple-100 text-purple-700 border-purple-200",
+      converted: "bg-emerald-100 text-emerald-700 border-emerald-200",
+      lost: "bg-gray-100 text-gray-600 border-gray-200",
+    };
+    return styles[status as keyof typeof styles] || styles.new;
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  // Render Stats Card
+  const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
+    <Card className="border-none shadow-sm hover:shadow-md transition-shadow">
+      <CardContent className="p-6 flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-500">{title}</p>
+          <h3 className="text-2xl font-bold mt-2 text-gray-900">{value}</h3>
+          {trend && (
+            <p className="flex items-center gap-1 text-xs mt-1 text-emerald-600 font-medium">
+              <TrendingUp className="w-3 h-3" /> {trend}
+            </p>
+          )}
+        </div>
+        <div className={`p-3 rounded-xl ${color}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <Card>
-        <div className="flex items-center justify-between  ">
-          <div>
-            <h1 className="text-2xl font-bold">Lead Management</h1>
-            <p className="text-gray-500 mt-1">Manage and track your sales leads</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Lead Management</h1>
+          <p className="text-gray-500 mt-1">Track, organize, and convert your potential customers.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="hidden md:flex">
+            <Filter className="h-4 w-4 mr-2" />
+            Filters
+          </Button>
+          <Button variant="primary" onClick={() => setShowCreateForm(true)} className="shadow-lg shadow-blue-500/20">
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Lead
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Leads"
+          value={leads.length}
+          icon={Users}
+          color="bg-blue-50 text-blue-600"
+          trend="+12% this month"
+        />
+        <StatCard
+          title="New Inquiries"
+          value={leads.filter(l => l.status === 'new').length}
+          icon={AlertTriangle}
+          color="bg-amber-50 text-amber-600"
+        />
+        <StatCard
+          title="In Conversation"
+          value={leads.filter(l => l.status === 'contacted').length}
+          icon={Clock}
+          color="bg-purple-50 text-purple-600"
+        />
+        <StatCard
+          title="Converted"
+          value={leads.filter(l => l.status === 'converted').length}
+          icon={CheckCircle}
+          color="bg-emerald-50 text-emerald-600"
+          trend="4.5% conversion rate"
+        />
+      </div>
+
+      {/* Filters & Search Bar */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search by name, email, or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            className="pl-9 bg-gray-50 border-gray-200 focus:bg-white"
+          />
+        </div>
+
+        {showFilters && (
+          <div className="flex flex-col md:flex-row gap-3 animate-in slide-in-from-right-2">
+            <Select
+              value={leadFilters.status || ''}
+              onChange={(value) => handleFilterChange('status', value)}
+              options={[
+                { value: '', label: 'All Statuses' },
+                { value: 'new', label: 'New' },
+                { value: 'contacted', label: 'Contacted' },
+                { value: 'qualified', label: 'Qualified' },
+                { value: 'converted', label: 'Converted' },
+                { value: 'lost', label: 'Lost' }
+              ]}
+              className="w-full md:w-40"
+            />
+            <Select
+              value={leadFilters.source || ''}
+              onChange={(value) => handleFilterChange('source', value)}
+              options={[
+                { value: '', label: 'All Sources' },
+                { value: 'facebook_ads', label: 'Facebook Ads' },
+                { value: 'google_ads', label: 'Google Ads' },
+                { value: 'referral', label: 'Referral' },
+                { value: 'manual', label: 'Manual' },
+                { value: 'website', label: 'Website' }
+              ]}
+              className="w-full md:w-40"
+            />
+            <Button variant="ghost" onClick={() => {
+              dispatch(setLeadFilters({}));
+              setSearchTerm('');
+            }}>
+              Clear
             </Button>
-            <Button variant="primary" onClick={() => setShowCreateForm(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Lead
+          </div>
+        )}
+      </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedLeads.length > 0 && (
+        <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="text-sm font-medium text-blue-900 flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" /> {selectedLeads.length} leads selected
+          </span>
+          <div className="flex gap-2">
+            <Button variant="white" size="sm" onClick={() => handleBulkAction('mark_contacted')} className="text-blue-700 border-blue-200 hover:bg-blue-50">
+              Mark Contacted
+            </Button>
+            <Button variant="white" size="sm" onClick={() => handleBulkAction('delete')} className="text-red-600 border-red-200 hover:bg-red-50">
+              <Trash2 className="w-4 h-4 mr-1" /> Delete
             </Button>
           </div>
         </div>
-      </Card>
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
-              <div>
-                <div className="text-2xl font-bold">{leads.length}</div>
-                <div className="text-sm text-gray-500">Total Leads</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-600" />
-              <div>
-                <div className="text-2xl font-bold">
-                  {leads.filter(l => l.status === 'new').length}
-                </div>
-                <div className="text-sm text-gray-500">New Leads</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-orange-600" />
-              <div>
-                <div className="text-2xl font-bold">
-                  {leads.filter(l => l.status === 'contacted').length}
-                </div>
-                <div className="text-sm text-gray-500">Contacted</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <div className="text-2xl font-bold">
-                  {leads.filter(l => l.status === 'converted').length}
-                </div>
-                <div className="text-sm text-gray-500">Converted</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      {showFilters && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Select
-                label="Status"
-                value={leadFilters.status || ''}
-                onChange={(value) => handleFilterChange('status', value)}
-                options={[
-                  { value: '', label: 'All Statuses' },
-                  { value: 'new', label: 'New' },
-                  { value: 'contacted', label: 'Contacted' },
-                  { value: 'qualified', label: 'Qualified' },
-                  { value: 'converted', label: 'Converted' },
-                  { value: 'lost', label: 'Lost' }
-                ]}
-              />
-
-
-              <Select
-                label="Source"
-                value={leadFilters.source || ''}
-                onChange={(value) => handleFilterChange('source', value)}
-                options={[
-                  { value: '', label: 'All Sources' },
-                  { value: 'facebook_ads', label: 'Facebook Ads' },
-                  { value: 'google_ads', label: 'Google Ads' },
-                  { value: 'referral', label: 'Referral' },
-                  { value: 'manual', label: 'Manual' },
-                  { value: 'website', label: 'Website' }
-                ]}
-              />
-
-              <div className="flex items-end gap-2">
-                <Button variant="outline" onClick={() => {
-                  dispatch(setLeadFilters({}));
-                  setSearchTerm('');
-                }}>
-                  Clear Filters
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       )}
 
-      {/* Search */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Input
-                placeholder="Search leads by name, email, or phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
-            <Button variant="outline" onClick={handleSearch}>
-              <Search className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Bulk Actions */}
-      {selectedLeads.length > 0 && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <span>{selectedLeads.length} leads selected</span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleBulkAction('mark_contacted')}>
-                  Mark as Contacted
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleBulkAction('delete')}>
-                  Delete Selected
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Leads Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Leads ({leads.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Main Content Area */}
+      <Card className="border-none shadow-md overflow-hidden">
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="text-center py-8">Loading leads...</div>
-          ) : error ? (
-            <div className="text-center py-8 text-red-600">{error}</div>
+            <div className="p-12 text-center text-gray-500">Loading leads...</div>
           ) : leads.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No leads found</div>
+            <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400">
+              <Users className="w-12 h-12 mb-3 opacity-20" />
+              <p>No leads found matching your filters.</p>
+            </div>
           ) : (
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-gray-50/50">
                 <TableRow>
-                  <TableHead>
+                  <TableHead className="w-[50px]">
                     <input
                       type="checkbox"
                       checked={selectedLeads.length === leads.length}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedLeads(leads.map(l => l.id));
-                        } else {
-                          setSelectedLeads([]);
-                        }
-                      }}
+                      onChange={(e) => setSelectedLeads(e.target.checked ? leads.map(l => l.id) : [])}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Contact</TableHead>
+                  <TableHead>Lead Name</TableHead>
+                  <TableHead>Contact Info</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {leads.map((lead) => (
-                  <TableRow key={lead.id}>
+                  <TableRow key={lead.id} className="hover:bg-gray-50/50 transition-colors group">
                     <TableCell>
                       <input
                         type="checkbox"
                         checked={selectedLeads.includes(lead.id)}
                         onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedLeads([...selectedLeads, lead.id]);
-                          } else {
-                            setSelectedLeads(selectedLeads.filter(id => id !== lead.id));
-                          }
+                          setSelectedLeads(e.target.checked
+                            ? [...selectedLeads, lead.id]
+                            : selectedLeads.filter(id => id !== lead.id)
+                          );
                         }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">
-                          {lead.firstName} {lead.lastName}
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-100 to-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs uppercase">
+                          {lead.firstName[0]}{lead.lastName[0]}
                         </div>
-
+                        <div>
+                          <div className="font-medium text-gray-900">{lead.firstName} {lead.lastName}</div>
+                          <div className="text-xs text-gray-500 flex items-center gap-1">
+                            ID: <span className="font-mono">{lead.id.slice(0, 6)}...</span>
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <div className="flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {lead.email}
+                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                          <Mail className="h-3.5 w-3.5 text-gray-400" /> {lead.email}
                         </div>
                         {lead.phone && (
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {lead.phone}
+                          <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                            <Phone className="h-3.5 w-3.5 text-gray-400" /> {lead.phone}
                           </div>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusColor(lead.status)}>
+                      <Badge className={`${getStatusBadge(lead.status)} border px-2.5 py-0.5 rounded-full capitalize font-medium`}>
                         {lead.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {lead.source}
+                      <Badge variant="outline" className="text-xs text-gray-500 font-normal bg-white">
+                        {lead.source?.replace('_', ' ')}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-gray-500 text-sm">
                       {formatDate(lead.createdAt)}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onViewLead?.(lead)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditLead(lead)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCheckDuplicates(lead)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => dispatch(deleteLead(lead.id))}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600" onClick={() => handleCheckDuplicates(lead)} title="Check Duplicates">
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <div className="w-px h-4 bg-gray-200" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600" onClick={() => handleEditLead(lead)} title="Edit Lead">
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <div className="w-px h-4 bg-gray-200" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-600" onClick={() => dispatch(deleteLead(lead.id))} title="Delete">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -491,248 +408,116 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         </CardContent>
       </Card>
 
-      {/* Duplicate Check Results */}
-      {
-        showDuplicateResults && duplicateCheck && (
-          <Card className="">
-            {/* Close (X) button */}
-            <Button
-              variant='outline'
-              onClick={() => setShowDuplicateResults(false)}
-              className="rounded-[100%] pt-4"
-            >
-              ✕
-            </Button>
-
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 mb-8">
-                <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                Duplicate Check Results
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent>
-              <div className="space-y-4">
-                {duplicateCheck.isDuplicate ? (
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-yellow-800 mb-2">
-                      <AlertTriangle className="h-5 w-5" />
-                      <span className="font-medium">Potential Duplicate Found</span>
-                      <Badge variant="warning">
-                        {duplicateCheck.confidence}% confidence
-                      </Badge>
-                    </div>
-                    {duplicateCheck.existingCustomer && (
-                      <div className="text-sm text-yellow-700">
-                        Matches existing customer:{" "}
-                        {duplicateCheck.existingCustomer.firstName}{" "}
-                        {duplicateCheck.existingCustomer.lastName}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-green-800">
-                      <CheckCircle className="h-5 w-5" />
-                      <span className="font-medium">No duplicates found</span>
-                    </div>
-                  </div>
-                )}
-
-                {duplicateCheck?.suggestions?.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-2">Similar Customers:</h4>
-                    <div className="space-y-2">
-                      {duplicateCheck.suggestions.map((suggestion, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
-                          <div>
-                            <div className="font-medium">
-                              {suggestion.customer.firstName}{" "}
-                              {suggestion.customer.lastName}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {suggestion.customer.email} •{" "}
-                              {suggestion.matchReason}
-                            </div>
-                          </div>
-                          <Badge variant="info">
-                            {suggestion.confidence}% match
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )
-      }
-
-
-      {/* Create Lead Modal */}
-      {
-        showCreateForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h2 className="text-xl font-bold mb-4">Create New Lead</h2>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="First Name"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    required
-                  />
-                  <Input
-                    label="Last Name"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    required
-                  />
-                </div>
-                <Input
-                  label="Email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
-                <Input
-                  label="Phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    label="Status"
-                    value={formData.status}
-                    onChange={(value) => setFormData({ ...formData, status: value })}
-                    options={[
-                      { value: '', label: 'All Statuses' },
-                      { value: 'new', label: 'New' },
-                      { value: 'contacted', label: 'Contacted' },
-                      { value: 'qualified', label: 'Qualified' },
-                      { value: 'converted', label: 'Converted' },
-                      { value: 'lost', label: 'Lost' }
-                    ]}
-
-                  />
-
-                  <Select label="Source" value={formData.source || ''} onChange={(value) => setFormData({ ...formData, source: value })} options={[{ value: '', label: 'All Sources' }, { value: 'facebook_ads', label: 'Facebook Ads' }, { value: 'google_ads', label: 'Google Ads' }, { value: 'referral', label: 'Referral' }, { value: 'manual', label: 'Manual' }, { value: 'website', label: 'Website' }]} />
-
-                </div>
-              </div>
-              <div className="flex gap-2 mt-6">
-                <Button variant="primary" onClick={handleCreateLead}>
-                  Create Lead
-                </Button>
-                <Button variant="outline" onClick={() => setShowCreateForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </div>
-        )
-      }
+      {/* Logic for Edit Modal */}
       {showModal && editingLead && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Edit Lead</h2>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="First Name"
-                  value={editingLead.firstName}
-                  onChange={(e) => setEditingLead({ ...editingLead, firstName: e.target.value })}
-                />
-                <Input
-                  label="Last Name"
-                  value={editingLead.lastName}
-                  onChange={(e) => setEditingLead({ ...editingLead, lastName: e.target.value })}
-                />
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <Card className="w-full max-w-lg shadow-2xl">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 pb-4">
+              <div>
+                <CardTitle className="text-xl">Edit Lead</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Update lead information</p>
               </div>
-              <Input
-                label="Email"
-                type="email"
-                value={editingLead.email}
-                onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })}
-              />
-              <Input
-                label="Phone"
-                value={editingLead.phone || ""}
-                onChange={(e) => setEditingLead({ ...editingLead, phone: e.target.value })}
-              />
+              <Button variant="ghost" size="icon" onClick={() => setShowModal(false)}><X className="w-4 h-4" /></Button>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="First Name" value={editingLead.firstName} onChange={(e) => setEditingLead({ ...editingLead, firstName: e.target.value })} />
+                <Input label="Last Name" value={editingLead.lastName} onChange={(e) => setEditingLead({ ...editingLead, lastName: e.target.value })} />
+              </div>
+              <Input label="Email" value={editingLead.email} onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })} />
+              <Input label="Phone" value={editingLead.phone || ''} onChange={(e) => setEditingLead({ ...editingLead, phone: e.target.value })} />
               <div className="grid grid-cols-2 gap-4">
                 <Select
                   label="Status"
                   value={editingLead.status}
-                  onChange={(value) =>
-                    setEditingLead({ ...editingLead, status: value as Lead["status"] })
-                  }
-                  options={[
-                    { value: 'new', label: 'New' },
-                    { value: 'contacted', label: 'Contacted' },
-                    { value: 'qualified', label: 'Qualified' },
-                    { value: 'converted', label: 'Converted' },
-                    { value: 'lost', label: 'Lost' }
-                  ]}
+                  onChange={(v) => setEditingLead({ ...editingLead, status: v as any })}
+                  options={[{ value: 'new', label: 'New' }, { value: 'contacted', label: 'Contacted' }, { value: 'qualified', label: 'Qualified' }, { value: 'converted', label: 'Converted' }, { value: 'lost', label: 'Lost' }]}
                 />
                 <Select
                   label="Source"
                   value={editingLead.source}
-                  onChange={(value) => setEditingLead({ ...editingLead, source: value })}
-                  options={[
-                    { value: 'facebook_ads', label: 'Facebook Ads' },
-                    { value: 'google_ads', label: 'Google Ads' },
-                    { value: 'referral', label: 'Referral' },
-                    { value: 'manual', label: 'Manual' },
-                    { value: 'website', label: 'Website' }
-                  ]}
+                  onChange={(v) => setEditingLead({ ...editingLead, source: v })}
+                  options={[{ value: 'facebook_ads', label: 'Facebook Ads' }, { value: 'website', label: 'Website' }, { value: 'referral', label: 'Referral' }]}
                 />
               </div>
+            </CardContent>
+            <div className="p-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50 rounded-b-xl">
+              <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleSaveEdit}>Save Changes</Button>
             </div>
-            <div className="flex gap-2 mt-6">
-              <Button
-                variant="primary"
-                onClick={async () => {
-                  if (!editingLead) return;
-                  try {
-                    const updates = {
-                      firstName: editingLead.firstName,
-                      lastName: editingLead.lastName,
-                      email: editingLead.email,
-                      phone: editingLead.phone,
-                      status: editingLead.status,
-                      source: editingLead.source,
-                    };
-                    await dispatch(updateLead({ id: editingLead.id, updates })).unwrap();
-                    setShowModal(false);
-                    setEditingLead(null);
-                    dispatch(fetchLeads(leadFilters)); // ✅ Refresh list after save
-                  } catch (error) {
-                    console.error("Update failed:", error);
-                  }
-                }}
-              >
-                Save
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingLead(null);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
+          </Card>
         </div>
       )}
-    </div >
+
+      {/* Create Modal Logic - Similar cleaner implementation */}
+      {showCreateForm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <Card className="w-full max-w-lg shadow-2xl">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 pb-4">
+              <div>
+                <CardTitle className="text-xl">Add New Lead</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Enter lead details to get started.</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowCreateForm(false)}><X className="w-4 h-4" /></Button>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="First Name" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required />
+                <Input label="Last Name" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required />
+              </div>
+              <Input label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
+              <Input label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+              <div className="grid grid-cols-2 gap-4">
+                <Select label="Status" value={formData.status} onChange={(v) => setFormData({ ...formData, status: v })} options={[{ value: 'new', label: 'New' }, { value: 'contacted', label: 'Contacted' }, { value: 'qualified', label: 'Qualified' }]} />
+                <Select label="Source" value={formData.source} onChange={(v) => setFormData({ ...formData, source: v })} options={[{ value: 'facebook_ads', label: 'Facebook Ads' }, { value: 'website', label: 'Website' }, { value: 'manual', label: 'Manual' }]} />
+              </div>
+            </CardContent>
+            <div className="p-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50 rounded-b-xl">
+              <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleCreateLead}>Create Lead</Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Duplicate Results Modal Logic */}
+      {showDuplicateResults && duplicateCheck && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <Card className="w-full max-w-md shadow-2xl border-t-4 border-amber-400">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-amber-100 rounded-full text-amber-600">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Duplicate Check</h3>
+                  <p className="text-sm text-gray-500">Analysis results</p>
+                </div>
+              </div>
+
+              {duplicateCheck.isDuplicate ? (
+                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-4">
+                  <p className="font-semibold text-amber-800 flex items-center gap-2">
+                    Potential duplicate found!
+                  </p>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Matched with <strong>{duplicateCheck.existingCustomer?.firstName} {duplicateCheck.existingCustomer?.lastName}</strong> ({duplicateCheck.confidence}% confidence)
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-green-50 p-4 rounded-xl border border-green-100 mb-4 flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <span className="text-green-800 font-medium">No duplicates detected.</span>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button onClick={() => setShowDuplicateResults(false)}>Close</Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
   );
 };

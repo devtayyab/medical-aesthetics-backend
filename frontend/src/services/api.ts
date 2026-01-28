@@ -6,16 +6,7 @@ import type {
   CustomerRecord,
   CommunicationLog,
   CrmAction,
-  CustomerTag,
-  CustomerSummary,
-  DuplicateCheckResult,
-  TaskAutomationRule,
-  ValidationResult,
-  RequiredFields,
-  FacebookLeadData,
-  ParsedFacebookLead,
   CrmFilters,
-  CrmAnalytics,
   User,
   Task
 } from "@/types";
@@ -296,7 +287,7 @@ export const crmAPI = {
     type?: string;
     startDate?: string;
     endDate?: string;
-  }) => api.get(`/crm/communications/${customerId}`, { params: filters }),
+  }) => api.get(`/crm/customers/${customerId}/communications`, { params: filters }),
 
   // Action/Task Management
   createAction: (data: Partial<CrmAction>) =>
