@@ -84,6 +84,14 @@ export const cancelAppointment = createAsyncThunk(
   }
 );
 
+export const rescheduleAppointment = createAsyncThunk(
+  'booking/rescheduleAppointment',
+  async (data: { id: string; startTime: string; endTime: string }) => {
+    const response = await bookingAPI.reschedule(data.id, data.startTime, data.endTime);
+    return response.data;
+  }
+);
+
 const bookingSlice = createSlice({
   name: 'booking',
   initialState,
@@ -192,6 +200,13 @@ const bookingSlice = createSlice({
         const index = state.appointments.findIndex(a => a.id === action.payload.id);
         if (index !== -1) {
           state.appointments[index].status = 'cancelled';
+        }
+      })
+      // Reschedule appointment
+      .addCase(rescheduleAppointment.fulfilled, (state, action) => {
+        const index = state.appointments.findIndex(a => a.id === action.payload.id);
+        if (index !== -1) {
+          state.appointments[index] = action.payload;
         }
       });
   },

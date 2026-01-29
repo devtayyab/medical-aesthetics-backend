@@ -1,13 +1,15 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { css } from "@emotion/css";
 import { FaCalendarAlt, FaClock, FaClinicMedical, FaTimes, FaEdit, FaRegCommentDots, FaStar } from "react-icons/fa";
 import { MdNotes } from "react-icons/md";
 import { fetchUserAppointments, cancelAppointment } from "@/store/slices/bookingSlice";
-import { clinicsAPI } from "@/services/api";
+
 import { RootState, AppDispatch } from "@/store";
 import type { Appointment } from "@/types";
 import { Card } from "@/components/atoms/Card/Card";
+import { RescheduleModal } from "@/components/organisms/RescheduleModal";
 import LayeredBG from "@/assets/LayeredBg.svg";
 
 const container = css`
@@ -104,14 +106,15 @@ const emptyState = css`
 
 export const Appointments: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const {
     appointments: bookingAppointments,
-    isLoading,
-    error,
   } = useSelector((state: RootState) => state.booking);
   const { appointments: clientAppointments } = useSelector(
     (state: RootState) => state.client
   );
+
+  const [reschedulingAppointment, setReschedulingAppointment] = React.useState<Appointment | null>(null);
 
   useEffect(() => {
     dispatch(fetchUserAppointments());
@@ -139,13 +142,7 @@ export const Appointments: React.FC = () => {
   const appointments =
     bookingAppointments.length > 0 ? bookingAppointments : clientAppointments;
 
-  if (isLoading)
-    return <div className="p-6 text-gray-500 text-center">Loading...</div>;
 
-  if (error)
-    return (
-      <div className="p-6 text-red-500 text-center font-medium">{error}</div>
-    );
 
   return (
     <section className={container}>
@@ -179,7 +176,7 @@ export const Appointments: React.FC = () => {
                         <FaRegCommentDots />
                       </button>
                       <button
-                        onClick={() => alert("Rescheduling feature coming soon. Please contact clinic.")}
+                        onClick={() => setReschedulingAppointment(apt)}
                         className="text-gray-500 hover:text-amber-600 p-2 rounded-full hover:bg-amber-50 transition-colors"
                         title="Reschedule"
                       >
@@ -196,27 +193,7 @@ export const Appointments: React.FC = () => {
                   )}
                   {apt.status === 'completed' && (
                     <button
-                      onClick={async () => {
-                        const ratingStr = prompt("Rate your experience (1-5):");
-                        if (ratingStr) {
-                          const rating = parseInt(ratingStr);
-                          if (isNaN(rating) || rating < 1 || rating > 5) {
-                            alert("Please enter a valid number between 1 and 5");
-                            return;
-                          }
-                          const comment = prompt("Any comments?") || undefined;
-                          try {
-                            await clinicsAPI.createReview(apt.clinicId, {
-                              rating,
-                              comment,
-                              appointmentId: apt.id
-                            });
-                            alert("Thank you for your feedback!");
-                          } catch (error) {
-                            alert("Failed to submit review. Please try again.");
-                          }
-                        }
-                      }}
+                      onClick={() => navigate('/reviews')}
                       className="text-gray-500 hover:text-yellow-500 p-2 rounded-full hover:bg-yellow-50 transition-colors"
                       title="Leave Review"
                     >
@@ -269,6 +246,14 @@ export const Appointments: React.FC = () => {
           </div>
         )}
       </div>
+
+      {reschedulingAppointment && (
+        <RescheduleModal
+          isOpen={!!reschedulingAppointment}
+          onClose={() => setReschedulingAppointment(null)}
+          appointment={reschedulingAppointment}
+        />
+      )}
     </section>
   );
 };

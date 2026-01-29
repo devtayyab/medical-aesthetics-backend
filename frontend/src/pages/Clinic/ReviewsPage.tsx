@@ -13,7 +13,7 @@ const ReviewsPage: React.FC = () => {
   const [responseText, setResponseText] = useState('');
 
   useEffect(() => {
-    dispatch(fetchReviews());
+    dispatch(fetchReviews(undefined));
     dispatch(fetchReviewStatistics());
   }, [dispatch]);
 
@@ -27,7 +27,7 @@ const ReviewsPage: React.FC = () => {
       await clinicApi.reviews.respond(reviewId, responseText);
       setRespondingTo(null);
       setResponseText('');
-      dispatch(fetchReviews());
+      dispatch(fetchReviews(undefined));
     } catch (error) {
       console.error('Failed to respond to review:', error);
       alert('Failed to send response. Please try again.');
@@ -37,7 +37,7 @@ const ReviewsPage: React.FC = () => {
   const handleToggleVisibility = async (reviewId: string) => {
     try {
       await clinicApi.reviews.toggleVisibility(reviewId);
-      dispatch(fetchReviews());
+      dispatch(fetchReviews(undefined));
     } catch (error) {
       console.error('Failed to toggle visibility:', error);
     }
@@ -49,9 +49,8 @@ const ReviewsPage: React.FC = () => {
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`w-5 h-5 ${
-              star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-            }`}
+            className={`w-5 h-5 ${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+              }`}
           />
         ))}
       </div>
@@ -61,9 +60,11 @@ const ReviewsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Reviews & Ratings</h1>
-        <p className="text-gray-600 mt-2">Manage client feedback and reviews</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Reviews & Ratings</h1>
+          <p className="text-gray-600 mt-2">Manage client feedback and reviews</p>
+        </div>
       </div>
 
       {/* Statistics */}
@@ -109,9 +110,9 @@ const ReviewsPage: React.FC = () => {
           {reviews.map((review) => (
             <div key={review.id} className="bg-white rounded-lg shadow p-6">
               {/* Review Header */}
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex flex-col md:flex-row items-start justify-between mb-4 gap-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
                     <span className="text-blue-600 font-semibold text-lg">
                       {review.client.firstName[0]}
                       {review.client.lastName[0]}
@@ -133,7 +134,7 @@ const ReviewsPage: React.FC = () => {
                 {/* Visibility Toggle */}
                 <button
                   onClick={() => handleToggleVisibility(review.id)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 transition-colors self-end md:self-auto"
                   title={review.isVisible ? 'Hide review' : 'Show review'}
                 >
                   {review.isVisible ? (

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { css } from "@emotion/css";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, User, Bell, Menu, X, MessageCircle } from "lucide-react";
+import { Search, User, Bell, Menu, X, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { Button } from "@/components/atoms/Button/Button";
 import { Input } from "@/components/atoms/Input/Input";
@@ -271,15 +271,32 @@ export const Header: React.FC = () => {
             ? "justify-content: center;"
             : ""}
         `}
-      >        <Link
-        to={
-          clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : user?.role === "SUPER_ADMIN" ? "/admin/manager-dashboard" : "/"
-        }
-        className={`text-[#CBFF38] text-2xl font-bold flex items-center ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
-          }`}
       >
-          <img src={SiteLogo} alt="Site Logo" className="w-[140px] sm:w-[200px]" />
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-1 rounded-full text-white hover:bg-[#CBFF38] hover:text-black transition-colors"
+            title="Go Back"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button
+            onClick={() => navigate(1)}
+            className="p-1 rounded-full text-white hover:bg-[#CBFF38] hover:text-black transition-colors"
+            title="Go Forward"
+          >
+            <ChevronRight size={20} />
+          </button>
+          <Link
+            to={
+              clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : user?.role === "SUPER_ADMIN" ? "/admin/manager-dashboard" : "/"
+            }
+            className={`text-[#CBFF38] text-2xl font-bold flex items-center ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
+              }`}
+          >
+            <img src={SiteLogo} alt="Site Logo" className="w-[140px] sm:w-[200px]" />
+          </Link>
+        </div>
 
         {/* Desktop Navigation for Non-Clinic Roles */}
         {!clinicRoles.includes(user?.role || '') && (user?.role !== 'salesperson') && (

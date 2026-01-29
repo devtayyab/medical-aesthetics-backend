@@ -10,7 +10,7 @@ import { Button } from "@/components/atoms/Button/Button";
 import { FaArrowRightLong, FaClock } from "react-icons/fa6";
 import { BiError } from "react-icons/bi";
 import { Input } from "@/components/atoms/Input/Input";
-import BookingNoteModal from '@/components/Modal/BookingNoteModal';
+
 import { Select } from "@/components/atoms/Select/Select";
 import { FaBackspace, FaBackward, FaCheckCircle, FaChevronLeft, FaShieldAlt, FaMoneyBillWave } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
@@ -37,7 +37,7 @@ export const CheckoutPage: React.FC = () => {
     const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading, error } = useSelector((state: RootState) => state.booking);
     const { user } = useSelector((state: RootState) => state.auth);
 
-    const [isBookingNoteOpen, setBookingNoteOpen] = useState(false);
+
     const [cardNumber, setCardNumber] = useState('');
     const [expirationDate, setExpirationDate] = useState('');
     const [securityCode, setSecurityCode] = useState('');
@@ -53,10 +53,7 @@ export const CheckoutPage: React.FC = () => {
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSaveNote = (note: string) => {
-        setBookingNote(note);
-        setBookingNoteOpen(false);
-    };
+
 
     const validateForm = () => {
         const errors: Record<string, string> = {};
@@ -308,17 +305,21 @@ export const CheckoutPage: React.FC = () => {
                                     <p className="text-red-500 text-sm mt-1">{formErrors.phone}</p>
                                 )}
                             </div>
-                            <div>
-                                <a
-                                    href="#"
-                                    className="text-blue-600 flex items-center gap-1 text-sm cursor-pointer"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        setBookingNoteOpen(true);
-                                    }}
+                            <div className="mt-4">
+                                <label
+                                    htmlFor="bookingNote"
+                                    className="block text-sm font-medium text-gray-700 mb-2"
                                 >
-                                    <BiError className="text-blue-600" /> Add a booking note
-                                </a>
+                                    Booking Note <span className="text-gray-400 font-normal">(Optional)</span>
+                                </label>
+                                <textarea
+                                    id="bookingNote"
+                                    value={bookingNote}
+                                    onChange={(e) => setBookingNote(e.target.value)}
+                                    placeholder="Describe your needs or leave a message for the clinic..."
+                                    rows={3}
+                                    className="w-full rounded-md border border-gray-200 shadow-sm p-3 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:outline-none resize-none text-sm text-gray-700"
+                                />
                             </div>
                         </form>
                     </Card>
@@ -600,11 +601,6 @@ export const CheckoutPage: React.FC = () => {
                     </Card>
                 </div >
             </div >
-            <BookingNoteModal
-                isOpen={isBookingNoteOpen}
-                onClose={() => setBookingNoteOpen(false)}
-                onSave={handleSaveNote}
-            />
         </section >
     );
 };

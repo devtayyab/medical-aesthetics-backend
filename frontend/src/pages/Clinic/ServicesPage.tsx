@@ -43,7 +43,7 @@ const ServicesPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
             Services & Pricing
@@ -58,7 +58,7 @@ const ServicesPage: React.FC = () => {
               setEditingService(null);
               setShowModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors w-full md:w-auto"
           >
             <Plus className="w-5 h-5" />
             Add Service
@@ -94,9 +94,8 @@ const ServicesPage: React.FC = () => {
           {services.map((service) => (
             <div
               key={service.id}
-              className={`bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 ${
-                !service.isActive ? "opacity-60" : ""
-              }`}
+              className={`bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 ${!service.isActive ? "opacity-60" : ""
+                }`}
             >
               {/* Service Header */}
               <div className="flex items-start justify-between mb-4">

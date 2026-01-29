@@ -99,15 +99,9 @@ export const AppointmentBooking: React.FC = () => {
     selectedClinic,
   } = useSelector((state: RootState) => state.booking);
 
-  const {
-    services,
-    clinics,
-    isLoading: clientLoading,
-  } = useSelector((state: RootState) => ({
-    services: state.client.services,
-    clinics: state.client.clinics,
-    isLoading: state.client.isLoading,
-  }));
+  const services = useSelector((state: RootState) => state.client.services);
+  const clinics = useSelector((state: RootState) => state.client.clinics);
+  const clientLoading = useSelector((state: RootState) => state.client.isLoading);
 
   const clinicId = searchParams.get("clinicId");
   const serviceIds = searchParams.get("serviceIds")?.split(",") || [];

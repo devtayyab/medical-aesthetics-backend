@@ -291,6 +291,23 @@ export const redeemPoints = createAsyncThunk(
   }
 );
 
+export const submitReview = createAsyncThunk(
+  "client/submitReview",
+  async (
+    { clinicId, data }: { clinicId: string; data: { rating: number; comment?: string; appointmentId?: string } },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await clinicsAPI.createReview(clinicId, data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to submit review"
+      );
+    }
+  }
+);
+
 const clientSlice = createSlice({
   name: "client",
   initialState,
