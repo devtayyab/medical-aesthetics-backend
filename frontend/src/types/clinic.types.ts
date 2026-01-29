@@ -244,9 +244,17 @@ export interface SendBulkNotificationDto {
 }
 
 // Availability
+export interface BlockedSlot {
+  date: string;
+  startTime: string;
+  endTime: string;
+  note?: string;
+}
+
 export interface AvailabilitySettings {
   businessHours: BusinessHours;
   blockedDates?: string[];
+  blockedSlots?: BlockedSlot[];
   timezone: string;
 }
 

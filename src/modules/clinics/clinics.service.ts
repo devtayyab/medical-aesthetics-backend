@@ -214,7 +214,7 @@ export class ClinicsService {
 
     // Map to a cleaner format and remove duplicates
     const uniqueProviders = new Map();
-    
+
     // Add providers from appointments
     appointmentProviders.forEach((p: any) => {
       if (p.provider_id && !uniqueProviders.has(p.provider_id)) {
@@ -463,5 +463,23 @@ export class ClinicsService {
         1: parseInt(stats.oneStar || '0'),
       },
     };
+  }
+
+  async createReview(
+    clinicId: string,
+    clientId: string,
+    rating: number,
+    comment?: string,
+    appointmentId?: string,
+  ): Promise<Review> {
+    const review = this.reviewsRepository.create({
+      clinicId,
+      clientId,
+      rating,
+      comment,
+      appointmentId,
+      isVisible: true, // Auto-visible for now, or false if moderation needed
+    });
+    return this.reviewsRepository.save(review);
   }
 }

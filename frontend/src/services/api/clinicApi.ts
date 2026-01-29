@@ -166,7 +166,7 @@ export const clientsApi = {
     search?: string;
     limit?: number;
     offset?: number;
-  }): Promise<Client[]> => {
+  }): Promise<{ clients: any[]; total: number; limit: number; offset: number }> => {
     const response = await apiClient.get('/clinic/clients', { params });
     return response.data;
   },
@@ -224,6 +224,21 @@ export const availabilityApi = {
 
   update: async (data: AvailabilitySettings): Promise<AvailabilitySettings> => {
     const response = await apiClient.put('/clinic/availability', data);
+    return response.data;
+  },
+
+  getBlockedSlots: async (): Promise<any[]> => {
+    const response = await apiClient.get('/clinic/availability/blocked-slots');
+    return response.data;
+  },
+
+  blockSlot: async (data: { providerId?: string; startTime: string; endTime: string; reason?: string }): Promise<any> => {
+    const response = await apiClient.post('/clinic/availability/block-time-slot', data);
+    return response.data;
+  },
+
+  unblockSlot: async (id: string): Promise<any> => {
+    const response = await apiClient.delete(`/clinic/availability/block-time-slot/${id}`);
     return response.data;
   },
 

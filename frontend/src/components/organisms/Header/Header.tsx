@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { css } from "@emotion/css";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, User, Bell, Menu, X } from "lucide-react";
+import { Search, User, Bell, Menu, X, MessageCircle } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { Button } from "@/components/atoms/Button/Button";
 import { Input } from "@/components/atoms/Input/Input";
@@ -340,6 +340,21 @@ export const Header: React.FC = () => {
                 </>}
               </ul>
             </div>
+
+            {/* Contact Support Box */}
+            <a
+              href="mailto:support@medicalaesthetics.com"
+              className="hidden lg:flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 hover:bg-gray-100 transition-colors mr-2 group decoration-0"
+              style={{ textDecoration: 'none' }}
+            >
+              <div className="size-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 group-hover:border-[#CBFF38] transition-colors">
+                <MessageCircle size={16} className="text-gray-600 group-hover:text-black" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5">Don't know what you need?</span>
+                <span className="text-sm font-bold text-gray-900 leading-none">Contact Us</span>
+              </div>
+            </a>
 
             <nav className="hidden md:flex items-center gap-4">
               {isAuthenticated ? (

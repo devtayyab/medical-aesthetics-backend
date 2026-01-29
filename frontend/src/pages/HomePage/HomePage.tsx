@@ -10,7 +10,10 @@ import {
   FaApple,
   FaGooglePlay,
   FaStar,
+  FaBook,
+  FaTh,
 } from "react-icons/fa";
+
 
 // import { Button } from "@/components/atoms/Button/Button";
 // import { Input } from "@/components/atoms/Input/Input";
@@ -93,6 +96,30 @@ const categories = [
     description: "Holistic health and wellness",
     icon: BodyIcon,
   },
+];
+
+const mainCategories = [
+  {
+    id: "treatments",
+    name: "Treatments",
+    description: "Browse treatments by category",
+    icon: <FaStethoscope className="text-3xl" />,
+    link: "/search"
+  },
+  {
+    id: "articles",
+    name: "Articles",
+    description: "Read about latest trends",
+    icon: <FaBook className="text-3xl" />,
+    link: "/articles" // Placeholder or search redirect
+  },
+  {
+    id: "other",
+    name: "Other Services",
+    description: "Explore more services",
+    icon: <FaTh className="text-3xl" />,
+    link: "/services" // Placeholder
+  }
 ];
 
 export const HomePage: React.FC = () => {
@@ -178,6 +205,29 @@ export const HomePage: React.FC = () => {
                 <FaSearch /> Search
               </button>
             </form>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Categories Section (New Requirement) */}
+      <section className="py-10 bg-white border-b border-gray-100">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {mainCategories.map((cat) => (
+              <div
+                key={cat.id}
+                onClick={() => navigate(cat.link)}
+                className="cursor-pointer bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#CBFF38] transition-all flex items-center gap-4 group"
+              >
+                <div className="size-14 bg-gray-50 rounded-xl flex items-center justify-center text-gray-600 group-hover:bg-[#CBFF38] group-hover:text-black transition-colors">
+                  {cat.icon}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-lime-700 transition-colors">{cat.name}</h3>
+                  <p className="text-gray-500 text-sm">{cat.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

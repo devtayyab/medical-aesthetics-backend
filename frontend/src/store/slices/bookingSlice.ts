@@ -76,6 +76,14 @@ export const fetchUserAppointments = createAsyncThunk(
   }
 );
 
+export const cancelAppointment = createAsyncThunk(
+  'booking/cancelAppointment',
+  async (id: string) => {
+    const response = await bookingAPI.cancel(id);
+    return { id, ...response.data };
+  }
+);
+
 const bookingSlice = createSlice({
   name: 'booking',
   initialState,
@@ -179,6 +187,12 @@ const bookingSlice = createSlice({
       // Fetch user appointments
       .addCase(fetchUserAppointments.fulfilled, (state, action) => {
         state.appointments = action.payload;
+      })
+      .addCase(cancelAppointment.fulfilled, (state, action) => {
+        const index = state.appointments.findIndex(a => a.id === action.payload.id);
+        if (index !== -1) {
+          state.appointments[index].status = 'cancelled';
+        }
       });
   },
 });
