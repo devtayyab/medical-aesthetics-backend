@@ -18,7 +18,7 @@ const ClientsPage: React.FC = () => {
   useEffect(() => {
     const loadClients = async () => {
       try {
-        await dispatch(fetchClients()).unwrap();
+        await dispatch(fetchClients({})).unwrap();
       } catch (err) {
         console.error("Failed to fetch clients:", err);
       }
@@ -29,7 +29,7 @@ const ClientsPage: React.FC = () => {
   const filteredClients = clients.filter(
     (client) =>
       searchTerm === "" ||
-      client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -102,7 +102,7 @@ const ClientsPage: React.FC = () => {
               <p className="text-2xl font-bold text-gray-900">
                 $
                 {clients
-                  .reduce((sum, c) => sum + (c.totalSpent || 0), 0)
+                  .reduce((sum, c) => sum + (c.lifetimeValue || 0), 0)
                   .toFixed(2)}
               </p>
             </div>
@@ -116,7 +116,7 @@ const ClientsPage: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600">Total Appointments</p>
               <p className="text-2xl font-bold text-gray-900">
-                {clients.reduce((sum, c) => sum + (c.totalVisits || 0), 0)}
+                {clients.reduce((sum, c) => sum + (c.totalAppointments || 0), 0)}
               </p>
             </div>
           </div>
@@ -132,9 +132,9 @@ const ClientsPage: React.FC = () => {
                 $
                 {clients.length > 0
                   ? (
-                      clients.reduce((sum, c) => sum + (c.totalSpent || 0), 0) /
-                      clients.length
-                    ).toFixed(2)
+                    clients.reduce((sum, c) => sum + (c.lifetimeValue || 0), 0) /
+                    clients.length
+                  ).toFixed(2)
                   : "0.00"}
               </p>
             </div>
@@ -190,12 +190,12 @@ const ClientsPage: React.FC = () => {
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                         <span className="text-blue-600 font-semibold">
-                          {client.name?.[0] || client.email?.[0] || "N/A"}
+                          {client.firstName?.[0] || client.email?.[0] || "N/A"}
                         </span>
                       </div>
                       <div className="ml-4">
                         <p className="font-medium text-gray-900">
-                          {client.name || client.email || "Unknown Client"}
+                          {`${client.firstName} ${client.lastName}`.trim() || client.email || "Unknown Client"}
                         </p>
                       </div>
                     </div>
@@ -210,17 +210,17 @@ const ClientsPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-medium text-gray-900">
-                      {client.totalVisits || 0}
+                      {client.totalAppointments || 0}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-semibold text-green-600">
-                      ${(client.totalSpent || 0).toFixed(2)}
+                      ${(client.lifetimeValue || 0).toFixed(2)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {client.lastVisit
-                      ? new Date(client.lastVisit).toLocaleDateString()
+                    {client.lastAppointment
+                      ? new Date(client.lastAppointment).toLocaleDateString()
                       : "Never"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -262,11 +262,16 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
   client,
   onClose,
 }) => {
-  const clientName = client.client?.name || client.name || "Unknown Client";
+  const clientName = (client.client?.firstName && client.client?.lastName)
+    ? `${client.client.firstName} ${client.client.lastName}`
+    : (client.firstName && client.lastName)
+      ? `${client.firstName} ${client.lastName}`
+      : client.name || "Unknown Client";
+
   const clientEmail = client.client?.email || client.email || "N/A";
   const clientPhone = client.client?.phone || client.phone || "N/A";
-  const totalVisits = client.summary?.totalVisits || client.totalVisits || 0;
-  const totalSpent = client.summary?.totalSpent || client.totalSpent || 0;
+  const totalVisits = client.summary?.totalVisits || client.totalAppointments || client.totalVisits || 0;
+  const totalSpent = client.summary?.totalSpent || client.lifetimeValue || client.totalSpent || 0;
 
   // Convert to number to ensure .toFixed() works
   const totalSpentNumber =
@@ -303,7 +308,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
             <div>
               <p className="text-sm text-gray-600">Lifetime Value</p>
               <p className="font-medium text-green-600">
-                ${totalSpentNumber.toFixed(2)}
+                ${(totalSpentNumber || 0).toFixed(2)}
               </p>
             </div>
           </div>
@@ -332,13 +337,12 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
                         ${(apt.totalAmount || 0).toFixed(2)}
                       </p>
                       <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                          apt.status === "completed"
-                            ? "bg-green-100 text-green-800"
-                            : apt.status === "cancelled"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-blue-100 text-blue-800"
-                        }`}
+                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${apt.status === "completed"
+                          ? "bg-green-100 text-green-800"
+                          : apt.status === "cancelled"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-blue-100 text-blue-800"
+                          }`}
                       >
                         {apt.status || "Unknown"}
                       </span>
@@ -346,10 +350,10 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
                   </div>
                 </div>
               )) || (
-                <p className="text-gray-600">
-                  No appointment history available.
-                </p>
-              )}
+                  <p className="text-gray-600">
+                    No appointment history available.
+                  </p>
+                )}
             </div>
           </div>
         </div>

@@ -1,11 +1,12 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ClinicsService } from './clinics.service';
 
 @ApiTags('Clinics')
 @Controller('clinics')
 export class ClinicsController {
-  constructor(private readonly clinicsService: ClinicsService) {}
+  constructor(private readonly clinicsService: ClinicsService) { }
 
   @Get()
   @ApiOperation({ summary: 'Search clinics with filters' })
@@ -44,5 +45,22 @@ export class ClinicsController {
     @Param('serviceId') serviceId: string,
   ) {
     return this.clinicsService.getServiceProviders(clinicId, serviceId);
+  }
+
+  @Post(':id/reviews')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Create a review for a clinic' })
+  async createReview(
+    @Param('id') clinicId: string,
+    @Body() body: { rating: number; comment?: string; appointmentId?: string },
+    @Request() req,
+  ) {
+    return this.clinicsService.createReview(
+      clinicId,
+      req.user.id,
+      body.rating,
+      body.comment,
+      body.appointmentId,
+    );
   }
 }

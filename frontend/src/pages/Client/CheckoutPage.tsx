@@ -12,7 +12,7 @@ import { BiError } from "react-icons/bi";
 import { Input } from "@/components/atoms/Input/Input";
 import BookingNoteModal from '@/components/Modal/BookingNoteModal';
 import { Select } from "@/components/atoms/Select/Select";
-import { FaBackspace, FaBackward, FaCheckCircle, FaChevronLeft, FaShieldAlt } from "react-icons/fa";
+import { FaBackspace, FaBackward, FaCheckCircle, FaChevronLeft, FaShieldAlt, FaMoneyBillWave } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { createAppointment, clearBooking } from "@/store/slices/bookingSlice";
@@ -417,10 +417,16 @@ export const CheckoutPage: React.FC = () => {
                                     <label className="flex items-center gap-3 cursor-pointer">
                                         <input type="radio" name="paymentMethod" value="venue" className="w-5 h-5" />
                                         <span className="flex-grow">Pay at venue
-
                                             <span className="bg-green-200 text-xs rounded-full ml-4 px-2 py-0.5">90 points</span>
                                         </span>
-
+                                    </label>
+                                    <label className="flex items-center gap-3 cursor-pointer border-t border-gray-100 pt-3 mt-2">
+                                        <input type="radio" name="paymentMethod" value="cash" className="w-5 h-5" />
+                                        <span className="flex-grow flex items-center gap-2">
+                                            Cash payment
+                                            <span className="bg-gray-100 text-xs text-gray-500 rounded-full px-2 py-0.5">Pay at clinic</span>
+                                        </span>
+                                        <FaMoneyBillWave className="h-5 text-green-600" />
                                     </label>
                                 </fieldset>
 

@@ -156,6 +156,8 @@ export const clinicsAPI = {
   getById: (id: string) => api.get(`/clinics/${id}`),
   getServices: (clinicId: string) => api.get(`/clinics/${clinicId}/services`),
   getFeatured: () => api.get("/clinics/featured"),
+  createReview: (id: string, data: { rating: number; comment?: string; appointmentId?: string }) =>
+    api.post(`/clinics/${id}/reviews`, data),
 };
 
 export const bookingAPI = {

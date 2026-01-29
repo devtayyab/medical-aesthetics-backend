@@ -1,9 +1,10 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { css } from "@emotion/css";
-import { FaCalendarAlt, FaClock, FaClinicMedical } from "react-icons/fa";
-import { MdNotes, MdOutlinePendingActions } from "react-icons/md";
-import { fetchUserAppointments } from "@/store/slices/bookingSlice";
+import { FaCalendarAlt, FaClock, FaClinicMedical, FaTimes, FaEdit, FaRegCommentDots, FaStar } from "react-icons/fa";
+import { MdNotes } from "react-icons/md";
+import { fetchUserAppointments, cancelAppointment } from "@/store/slices/bookingSlice";
+import { clinicsAPI } from "@/services/api";
 import { RootState, AppDispatch } from "@/store";
 import type { Appointment } from "@/types";
 import { Card } from "@/components/atoms/Card/Card";
@@ -116,6 +117,24 @@ export const Appointments: React.FC = () => {
     dispatch(fetchUserAppointments());
   }, [dispatch]);
 
+  const handleCancel = async (id: string) => {
+    if (window.confirm("Are you sure you want to cancel this appointment?")) {
+      await dispatch(cancelAppointment(id));
+      dispatch(fetchUserAppointments());
+    }
+  };
+
+  const handleAddNote = (id: string, currentNote?: string) => {
+    const note = window.prompt("Add a note for the clinic:", currentNote || "");
+    if (note !== null && note !== currentNote) {
+      // Dispatch update note action (Requires backend support, assumed handled via appointment update or separate endpoint)
+      // For now, alerting limitation or we can implement updateAppointment if available.
+      // Since updateAppointment isn't in slice, we will just log it.
+      console.log(`Updating note for ${id}: ${note}`);
+      // In real implementation: dispatch(updateAppointment({ id, notes: note }));
+    }
+  };
+
   // Combine dummy data with fetched data
   const appointments =
     bookingAppointments.length > 0 ? bookingAppointments : clientAppointments;
@@ -147,6 +166,63 @@ export const Appointments: React.FC = () => {
                     {apt.clinic?.name || "Unnamed Clinic"}
                   </div>
                   <span className={statusBadge}>{apt.status}</span>
+                </div>
+
+                <div className="flex gap-2 justify-end mb-4 border-b border-gray-100 pb-3">
+                  {apt.status !== 'cancelled' && apt.status !== 'completed' && (
+                    <>
+                      <button
+                        onClick={() => handleAddNote(apt.id, apt.notes)}
+                        className="text-gray-500 hover:text-blue-600 p-2 rounded-full hover:bg-blue-50 transition-colors"
+                        title="Add Note"
+                      >
+                        <FaRegCommentDots />
+                      </button>
+                      <button
+                        onClick={() => alert("Rescheduling feature coming soon. Please contact clinic.")}
+                        className="text-gray-500 hover:text-amber-600 p-2 rounded-full hover:bg-amber-50 transition-colors"
+                        title="Reschedule"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        onClick={() => handleCancel(apt.id)}
+                        className="text-gray-500 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors"
+                        title="Cancel Appointment"
+                      >
+                        <FaTimes />
+                      </button>
+                    </>
+                  )}
+                  {apt.status === 'completed' && (
+                    <button
+                      onClick={async () => {
+                        const ratingStr = prompt("Rate your experience (1-5):");
+                        if (ratingStr) {
+                          const rating = parseInt(ratingStr);
+                          if (isNaN(rating) || rating < 1 || rating > 5) {
+                            alert("Please enter a valid number between 1 and 5");
+                            return;
+                          }
+                          const comment = prompt("Any comments?") || undefined;
+                          try {
+                            await clinicsAPI.createReview(apt.clinicId, {
+                              rating,
+                              comment,
+                              appointmentId: apt.id
+                            });
+                            alert("Thank you for your feedback!");
+                          } catch (error) {
+                            alert("Failed to submit review. Please try again.");
+                          }
+                        }
+                      }}
+                      className="text-gray-500 hover:text-yellow-500 p-2 rounded-full hover:bg-yellow-50 transition-colors"
+                      title="Leave Review"
+                    >
+                      <FaStar />
+                    </button>
+                  )}
                 </div>
 
                 <p className={serviceName}>

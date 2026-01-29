@@ -542,15 +542,17 @@ export class BookingsService {
     let baseQuery = this.appointmentsRepository.createQueryBuilder('appointment')
       .select([
         'appointment.clientId',
-        'CONCAT(client.firstName, \' \', client.lastName) as clientName', // Concatenate firstName and lastName
+        'client.firstName as firstName',
+        'client.lastName as lastName',
         'client.email as clientEmail',
         'client.phone as clientPhone',
+        'client.createdAt as createdAt',
         'COUNT(appointment.id) as totalVisits',
         'SUM(appointment.totalAmount) as totalSpent',
         'MAX(appointment.startTime) as lastVisit',
       ])
       .leftJoin('appointment.client', 'client')
-      .groupBy('appointment.clientId, client.firstName, client.lastName, client.email, client.phone');
+      .groupBy('appointment.clientId, client.firstName, client.lastName, client.email, client.phone, client.createdAt');
 
     // SECRETARIAT and CLINIC_OWNER have same permissions
     if (userRole === 'clinic_owner' || userRole === 'secretariat') {
