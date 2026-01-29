@@ -19,7 +19,7 @@ const AppointmentsPage: React.FC = () => {
   const [showExecutionModal, setShowExecutionModal] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchAppointments());
+    dispatch(fetchAppointments(undefined));
   }, [dispatch]);
 
   const filteredAppointments = appointments.filter((apt) => {
@@ -143,14 +143,13 @@ const AppointmentsPage: React.FC = () => {
               key={appointment.id}
               className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
             >
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col md:flex-row md:items-start justify-between">
                 {/* Left Side - Appointment Info */}
-                <div className="flex-1">
+                <div className="flex-1 w-full">
                   <div className="flex items-center gap-4 mb-3">
                     <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium border ${
-                        statusColors[appointment.status]
-                      }`}
+                      className={`px-3 py-1 rounded-full text-sm font-medium border ${statusColors[appointment.status]
+                        }`}
                     >
                       {appointment.status}
                     </span>
@@ -159,7 +158,7 @@ const AppointmentsPage: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {/* Client Info */}
                     <div className="flex items-start gap-3">
                       <User className="w-5 h-5 text-gray-400 mt-0.5" />
@@ -168,7 +167,7 @@ const AppointmentsPage: React.FC = () => {
                         <p className="font-semibold text-gray-900">
                           {appointment.client?.firstName} {appointment.client?.lastName}
                         </p>
-                        <p className="text-sm text-gray-600">{appointment.client?.email}</p>
+                        <p className="text-sm text-gray-600 truncate max-w-[150px]">{appointment.client?.email}</p>
                       </div>
                     </div>
 
@@ -195,7 +194,6 @@ const AppointmentsPage: React.FC = () => {
                       <div>
                         <p className="text-sm text-gray-500">Service</p>
                         <p className="font-semibold text-gray-900">{appointment.service?.name}</p>
-                        {/* <p className="text-sm text-gray-600">${appointment.totalAmount}</p> */}
                         <p className="text-sm text-gray-600">${appointment.service?.price}</p>
                       </div>
                     </div>
@@ -209,12 +207,12 @@ const AppointmentsPage: React.FC = () => {
                 </div>
 
                 {/* Right Side - Actions */}
-                <div className="flex flex-col gap-2 ml-4">
+                <div className="flex flex-row md:flex-col gap-2 mt-4 md:mt-0 md:ml-4 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
                   {appointment.status === AppointmentStatus.PENDING &&
                     hasPermission(user?.role, 'canConfirmAppointments') && (
                       <button
                         onClick={() => handleConfirm(appointment.id)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        className="flex-1 md:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium whitespace-nowrap"
                       >
                         Confirm
                       </button>
@@ -224,7 +222,7 @@ const AppointmentsPage: React.FC = () => {
                     hasPermission(user?.role, 'canCompleteAppointments') && (
                       <button
                         onClick={() => handleExecute(appointment)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                        className="flex-1 md:flex-none px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium whitespace-nowrap"
                       >
                         Execute
                       </button>
@@ -235,7 +233,7 @@ const AppointmentsPage: React.FC = () => {
                     hasPermission(user?.role, 'canConfirmAppointments') && (
                       <button
                         onClick={() => handleCancel(appointment.id)}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                        className="flex-1 md:flex-none px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium whitespace-nowrap"
                       >
                         Cancel
                       </button>
@@ -245,7 +243,7 @@ const AppointmentsPage: React.FC = () => {
                     onClick={() => {
                       /* Navigate to details */
                     }}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                    className="flex-1 md:flex-none px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium whitespace-nowrap"
                   >
                     View Details
                   </button>
@@ -267,7 +265,7 @@ const AppointmentsPage: React.FC = () => {
           onComplete={() => {
             setShowExecutionModal(false);
             setSelectedAppointment(null);
-            dispatch(fetchAppointments());
+            dispatch(fetchAppointments(undefined));
           }}
         />
       )}

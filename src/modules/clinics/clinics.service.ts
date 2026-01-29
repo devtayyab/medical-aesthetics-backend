@@ -472,14 +472,30 @@ export class ClinicsService {
     comment?: string,
     appointmentId?: string,
   ): Promise<Review> {
-    const review = this.reviewsRepository.create({
-      clinicId,
-      clientId,
-      rating,
-      comment,
-      appointmentId,
-      isVisible: true, // Auto-visible for now, or false if moderation needed
-    });
-    return this.reviewsRepository.save(review);
+    try {
+      // Validate inputs
+      if (!clientId) {
+        throw new BadRequestException('User ID is required');
+      }
+      if (!clinicId) {
+        throw new BadRequestException('Clinic ID is required');
+      }
+
+      console.log('Creating review with:', { clinicId, clientId, rating, comment, appointmentId });
+
+      const review = this.reviewsRepository.create({
+        clinicId,
+        clientId,
+        rating,
+        comment,
+        appointmentId: appointmentId || null, // ensure empty string is treated as null
+        isVisible: true,
+      });
+
+      return await this.reviewsRepository.save(review);
+    } catch (error) {
+      console.error('Error creating review:', error);
+      throw error;
+    }
   }
 }
