@@ -14,6 +14,12 @@ export class AppController {
     };
   }
 
+  @Get('health')
+  @ApiOperation({ summary: 'Health check endpoint' })
+  checkHealth(): object {
+    return this.getHealth();
+  }
+
   @Get('version')
   @ApiOperation({ summary: 'Get API version' })
   getVersion(): object {
