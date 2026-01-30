@@ -13,6 +13,12 @@ import type {
 
 const getBaseUrl = () => {
   let url = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+
+  // Force HTTP for IP address (no SSL support on raw IP)
+  if (url.includes('51.20.72.67') && url.startsWith('https://')) {
+    url = url.replace('https://', 'http://');
+  }
+
   // Remove trailing slash if present
   if (url.endsWith('/')) {
     url = url.slice(0, -1);
