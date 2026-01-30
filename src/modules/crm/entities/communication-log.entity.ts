@@ -22,6 +22,7 @@ export class CommunicationLog {
   @Column({
     type: 'enum',
     enum: ['call', 'email', 'sms', 'whatsapp', 'meeting', 'note'],
+    enumName: 'communication_logs_type_enum',
   })
   type: string;
 
@@ -29,6 +30,7 @@ export class CommunicationLog {
     type: 'enum',
     enum: ['outgoing', 'incoming', 'missed'],
     nullable: true,
+    enumName: 'communication_logs_direction_enum',
   })
   direction: string;
 
@@ -36,6 +38,7 @@ export class CommunicationLog {
     type: 'enum',
     enum: ['completed', 'missed', 'no_answer', 'voicemail', 'scheduled', 'cancelled'],
     default: 'completed',
+    enumName: 'communication_logs_status_enum',
   })
   status: string;
 
