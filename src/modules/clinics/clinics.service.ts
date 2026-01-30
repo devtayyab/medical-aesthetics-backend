@@ -481,21 +481,53 @@ export class ClinicsService {
         throw new BadRequestException('Clinic ID is required');
       }
 
-      console.log('Creating review with:', { clinicId, clientId, rating, comment, appointmentId });
+      console.log('Creating review - Payload:', { clinicId, clientId, rating, comment, appointmentId });
+
+      // 1. Check if Client (User) exists
+      const clientExists = await this.usersRepository.findOne({ where: { id: clientId } });
+      if (!clientExists) {
+        console.error(`Review creation failed: User ${clientId} not found`);
+        throw new NotFoundException('User not found. Please log out and log in again.');
+      }
+
+      // 2. Check if Clinic exists
+      const clinicExists = await this.clinicsRepository.findOne({ where: { id: clinicId } });
+      if (!clinicExists) {
+        console.error(`Review creation failed: Clinic ${clinicId} not found`);
+        throw new NotFoundException('Clinic not found');
+      }
+
+      // 3. Check if Appointment exists (if provided)
+      if (appointmentId) {
+        const appointmentExists = await this.appointmentsRepository.findOne({ where: { id: appointmentId } });
+        if (!appointmentExists) {
+          console.warn(`Review creation warning: Appointment ${appointmentId} not found. Proceeding without appointment link.`);
+          appointmentId = null; // Decouple if appointment doesn't exist, or throw error depending on requirements. 
+          // For now, let's allow review but remove invalid appointment link to avoid 500
+        }
+      }
 
       const review = this.reviewsRepository.create({
         clinicId,
         clientId,
         rating,
         comment,
-        appointmentId: appointmentId || null, // ensure empty string is treated as null
+        appointmentId: appointmentId || null,
         isVisible: true,
       });
 
       return await this.reviewsRepository.save(review);
     } catch (error) {
       console.error('Error creating review:', error);
-      throw error;
+      // Re-throw known HTTP exceptions
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      // Handle Foreign Key violations specifically if they slip through
+      if (error.code === '23503') { // Postgres FK violation code
+        throw new BadRequestException('Invalid reference (User, Clinic, or Appointment does not exist)');
+      }
+      throw new Error(`Failed to create review: ${error.message}`);
     }
   }
 }
