@@ -4,6 +4,7 @@ import { User } from '../modules/users/entities/user.entity';
 import { Clinic } from '../modules/clinics/entities/clinic.entity';
 import { Service } from '../modules/clinics/entities/service.entity';
 import { Lead, CrmAction, CustomerRecord } from '../modules/crm/entities';
+import { Review } from '../modules/clinics/entities/review.entity';
 import { Tag } from '../modules/admin/entities/tag.entity';
 import { AuditLog } from '../modules/audit/entities/audit-log.entity';
 import { ConsentRecord } from '../modules/users/entities/consent-record.entity';
@@ -49,6 +50,7 @@ const AppDataSource = new DataSource({
         AdAttribution,
         AdCampaign,
         BlockedTimeSlot,
+        Review,
     ],
     migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],
     synchronize: false,
