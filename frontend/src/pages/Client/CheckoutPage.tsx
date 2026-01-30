@@ -530,12 +530,12 @@ export const CheckoutPage: React.FC = () => {
                     <Card className="p-4 md:p-8 rounded-xl shadow-lg bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 max-w-md mx-auto">
                         <div className="text-center mb-6">
                             <div className="w-16 h-16 bg-lime-400 from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-4">
-                                {selectedServices.length > 0 ? selectedServices[0].name.charAt(0).toUpperCase() : 'T'}
+                                {selectedServices && selectedServices.length > 0 ? selectedServices[0].name.charAt(0).toUpperCase() : 'T'}
                             </div>
                             <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                                {selectedServices.length > 0 ? selectedServices[0].name : 'Treatment'}
+                                {selectedServices && selectedServices.length > 0 ? selectedServices[0].name : 'Treatment'}
                             </h2>
-                            <p className="text-sm text-gray-600">{selectedClinic?.name || 'Premium Clinic'}</p>
+                            <p className="text-sm text-gray-600">{selectedClinic?.name || 'Clinic Name'}</p>
                         </div>
                         <div className="bg-white rounded-lg p-4 mb-6 border border-blue-200">
                             <div className="flex justify-between items-center mb-4">
@@ -545,17 +545,21 @@ export const CheckoutPage: React.FC = () => {
                                 <div className="border-l border-gray-300 h-8 mx-4"></div>
                                 <div className="text-right">
                                     <div className="text-sm text-gray-800">
-                                        {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Sat 13 Sep'}
+                                        {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Date'}
                                     </div>
                                     <div className="text-xs text-gray-500">
-                                        {selectedServices.length > 0 ? `${selectedServices[0].durationMinutes || 30} mins total` : '30 mins total'}
+                                        {selectedServices && selectedServices.length > 0 ? `${selectedServices[0].durationMinutes || 30} mins total` : '30 mins total'}
                                     </div>
                                 </div>
                             </div>
                             <div className="text-center mb-3">
-                                <Link to={`/appointment/booking?clinicId=${selectedClinic.id}&serviceIds=${selectedServices[0].id}`} className="text-blue-600 hover:text-blue-700 underline text-sm font-medium">
-                                    Choose a different time
-                                </Link>
+                                {selectedClinic && selectedServices && selectedServices.length > 0 ? (
+                                    <Link to={`/appointment/booking?clinicId=${selectedClinic.id}&serviceIds=${selectedServices[0].id}`} className="text-blue-600 hover:text-blue-700 underline text-sm font-medium">
+                                        Choose a different time
+                                    </Link>
+                                ) : (
+                                    <span className="text-gray-400 text-sm">Please select a service first</span>
+                                )}
                             </div>
                             <div className="text-sm text-gray-600 mb-4">
                                 With {selectedClinic?.name || 'first available practitioner'}
@@ -565,7 +569,7 @@ export const CheckoutPage: React.FC = () => {
                             <div className="space-y-3">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">Treatment Price</span>
-                                    <span className="font-medium">€{selectedServices.length > 0 ? selectedServices[0].price || 120 : 120}</span>
+                                    <span className="font-medium">€{selectedServices && selectedServices.length > 0 ? selectedServices[0].price || 120 : 0}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">Beauty Points Discount</span>
@@ -573,13 +577,13 @@ export const CheckoutPage: React.FC = () => {
                                 </div>
                                 <div className="flex justify-between font-bold text-lg border-t border-gray-300 pt-3">
                                     <span className="text-gray-800">Total</span>
-                                    <span className="text-blue-600">€{selectedServices.length > 0 ? (selectedServices[0].price || 120) - ((user?.beautyPoints || 0) / 10 || 0) : 120}</span>
+                                    <span className="text-blue-600">€{selectedServices && selectedServices.length > 0 ? (selectedServices[0].price || 120) - ((user?.beautyPoints || 0) / 10 || 0) : 0}</span>
                                 </div>
                             </div>
                         </div>
                         <button
                             onClick={handleCompleteBooking}
-                            disabled={isSubmitting || isLoading}
+                            disabled={isSubmitting || isLoading || !selectedClinic || !selectedServices || selectedServices.length === 0}
                             className="w-full bg-lime-400 from-blue-500 to-purple-600 text-white font-bold py-4 px-6 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                         >
                             {isSubmitting || isLoading ? (
