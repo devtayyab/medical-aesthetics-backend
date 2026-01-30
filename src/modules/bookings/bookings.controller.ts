@@ -26,10 +26,10 @@ export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
     private readonly availabilityService: AvailabilityService,
-  ) {}
+  ) { }
 
   @Public()
-  @Get('availability')
+  @Get('availability') // Ensures this is treated as /bookings/availability or root level depending on controller mounting
   @ApiOperation({ summary: 'Get available slots (public)' })
   @ApiQuery({ name: 'clinicId', required: true })
   @ApiQuery({ name: 'serviceId', required: true })
@@ -71,8 +71,8 @@ export class BookingsController {
       ...appointment,
       displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
       serviceName: appointment.service?.name,
-      providerName: appointment.provider 
-        ? `${appointment.provider.firstName} ${appointment.provider.lastName}` 
+      providerName: appointment.provider
+        ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
         : null,
     };
   }
