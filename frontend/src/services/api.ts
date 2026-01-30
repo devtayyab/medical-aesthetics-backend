@@ -12,22 +12,15 @@ import type {
 } from "@/types";
 
 const getBaseUrl = () => {
-  let url = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
-
-  // Force HTTP for IP address (no SSL support on raw IP)
-  if (url.includes('51.20.72.67') && url.startsWith('https://')) {
-    url = url.replace('https://', 'http://');
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  // If we have an environment variable, use it (and make sure it includes /api)
+  if (envUrl && envUrl !== 'http://localhost:3001') {
+    let url = envUrl;
+    if (url.endsWith('/')) url = url.slice(0, -1);
+    return url.endsWith('/api') ? url : `${url}/api`;
   }
-
-  // Remove trailing slash if present
-  if (url.endsWith('/')) {
-    url = url.slice(0, -1);
-  }
-  // Append /api if not present
-  if (!url.endsWith('/api')) {
-    url = `${url}/api`;
-  }
-  return url;
+  // Default to relative /api for local proxy and production rewrites
+  return '/api';
 };
 
 const API_BASE_URL = getBaseUrl();
