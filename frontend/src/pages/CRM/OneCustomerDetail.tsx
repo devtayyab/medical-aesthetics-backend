@@ -54,7 +54,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     useEffect(() => {
         if (SelectedCustomer?.id) {
             // Fetch full customer details
-            dispatch(fetchCustomerRecord({ salespersonId: user?.id }));
+            dispatch(fetchCustomerRecord({
+                customerId: SelectedCustomer.id,
+                salespersonId: user?.id
+            }));
         }
     }, [SelectedCustomer, dispatch, user]);
 
@@ -475,7 +478,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     onClose={() => setShowBookingModal(false)}
                     onSuccess={() => {
                         // Refresh history
-                        dispatch(fetchCustomerRecord({ salespersonId: user?.id }));
+                        dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
                     }}
                 />
             )}
