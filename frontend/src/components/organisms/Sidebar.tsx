@@ -119,20 +119,22 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-gray-200 h-screen flex flex-col border-r border-gray-700">
-      <div className="p-4 border-b border-gray-700">
-        <Link to={getHomePath(role)} className="text-xl font-bold text-white flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <span className="bg-[#CBFF38] text-gray-900 p-1 rounded">
-            <LayoutDashboard className="w-5 h-5" />
+    <aside className="w-64 bg-[#0B1120] text-gray-300 flex flex-col border-r border-gray-800 shadow-2xl z-40 sticky top-[88px] sm:top-[104px] h-[calc(100vh-88px)] sm:h-[calc(100vh-104px)]">
+      <div className="p-6 border-b border-gray-800/50 bg-[#0B1120]">
+        <Link to={getHomePath(role)} className="flex items-center gap-3 group">
+          <div className="bg-gradient-to-br from-[#CBFF38] to-[#A3D900] text-gray-900 p-2 rounded-xl shadow-lg shadow-[#CBFF38]/20 group-hover:scale-105 transition-transform duration-300">
+            <LayoutDashboard className="w-5 h-5" strokeWidth={2.5} />
+          </div>
+          <span className="text-lg font-bold text-white tracking-tight group-hover:text-gray-200 transition-colors">
+            Manager Panel
           </span>
-          Manager Panel
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4 px-2">
+      <nav className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
         {Object.entries(groupedLinks).map(([group, groupLinks]) => (
-          <div key={group} className="mb-6">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 mb-2">
+          <div key={group} className="mb-8 last:mb-0">
+            <h3 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest px-4 mb-3 opacity-80">
               {group}
             </h3>
             <ul className="space-y-1">
@@ -142,17 +144,19 @@ export const Sidebar: React.FC = () => {
                   <li key={link.path}>
                     <Link
                       to={link.path}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                        ? 'bg-[#CBFF38] text-gray-900 shadow-md'
-                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group relative overflow-hidden ${isActive
+                        ? 'text-[#0B1120] bg-[#CBFF38] shadow-lg shadow-[#CBFF38]/10'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
                         }`}
                     >
-                      <span className={isActive ? 'text-gray-900' : 'text-[#CBFF38]'}>
+                      <span className={`relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
                         {link.icon}
                       </span>
-                      {link.label}
+                      <span className="relative z-10">{link.label}</span>
+
+                      {/* Active Indicator (optional, keeping minimal as per request) */}
                       {isActive && (
-                        <span className="ml-auto w-2 h-2 bg-green-400 rounded-full"></span>
+                        <div className="absolute right-3 w-1.5 h-1.5 bg-black/20 rounded-full z-10"></div>
                       )}
                     </Link>
                   </li>
@@ -163,31 +167,33 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-800">
-          <div className="w-8 h-8 rounded-full bg-[#CBFF38] flex items-center justify-center">
+      <div className="p-4 border-t border-gray-800 bg-[#0B1120]">
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/40 border border-gray-800 hover:bg-gray-800 hover:border-gray-700 transition-all cursor-pointer group">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#CBFF38] to-[#98CC00] flex items-center justify-center shadow-lg shadow-[#CBFF38]/10 group-hover:scale-105 transition-transform">
             <span className="text-gray-900 font-bold text-sm">
-              {user.firstName?.toUpperCase() || 'U'}
+              {user.firstName?.substring(0, 2).toUpperCase() || 'US'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">
+            <p className="text-sm font-bold text-white truncate group-hover:text-[#CBFF38] transition-colors">
               {user?.firstName || 'User'}
             </p>
-            <p className="text-xs text-gray-400 truncate">
+            <p className="text-xs text-gray-500 truncate font-medium">
               {role.replace('_', ' ').toLowerCase()}
             </p>
           </div>
-          <button className="text-gray-400 hover:text-white">
-            <Settings className="w-5 h-5" />
-          </button>
-          <button
-            onClick={handleLogout}
-            className="text-gray-400 hover:text-red-500 transition-colors"
-            title="Logout"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
+          <div className="flex gap-1">
+            <button className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors">
+              <Settings className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </aside>

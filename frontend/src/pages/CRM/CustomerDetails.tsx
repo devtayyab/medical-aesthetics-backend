@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import {
-  fetchCustomerRecord,
+  getCustomerRecord,
   updateCustomerRecord,
   logCommunication,
   createAction,
@@ -22,14 +22,14 @@ export const CustomerDetails: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
-    if (user) {
-      dispatch(fetchCustomerRecord({ salespersonId: user.id }));
+    if (id) {
+      dispatch(getCustomerRecord(id));
     }
-  }, [dispatch, user]);
+  }, [dispatch, id]);
 
   const handleUpdate = () => {
-    if (id && user) {
-      dispatch(fetchCustomerRecord({ salespersonId: user.id }));
+    if (id) {
+      dispatch(getCustomerRecord(id));
     }
   };
 

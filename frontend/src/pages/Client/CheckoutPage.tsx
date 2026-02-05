@@ -105,13 +105,56 @@ export const CheckoutPage: React.FC = () => {
         setIsSubmitting(true);
         console.log(`${selectedDate} ${selectedTimeSlot.startTime}`)
         try {
+            // Robust date construction
+            let isoStartTime: string;
+            let isoEndTime: string;
+
+            // Check if selectedTimeSlot already contains full ISO strings (which backend returns)
+            const isIsoDate = (str: string) => {
+                return str.includes('T') && !isNaN(Date.parse(str));
+            };
+
+            if (isIsoDate(selectedTimeSlot.startTime) && isIsoDate(selectedTimeSlot.endTime)) {
+                // Use the provided ISO strings directly
+                isoStartTime = selectedTimeSlot.startTime;
+                isoEndTime = selectedTimeSlot.endTime;
+                console.log('Using provided ISO time slots:', { isoStartTime, isoEndTime });
+            } else {
+                // Fallback for HH:mm format
+                try {
+                    const datePart = selectedDate.includes('T') ? selectedDate.split('T')[0] : selectedDate;
+                    const startDateTimeString = `${datePart}T${selectedTimeSlot.startTime}`;
+                    const endDateTimeString = `${datePart}T${selectedTimeSlot.endTime}`;
+
+                    const startDateTime = new Date(startDateTimeString);
+                    const endDateTime = new Date(endDateTimeString);
+
+                    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+                        console.error('Invalid date construction fallback:', {
+                            selectedDate,
+                            datePart,
+                            timeSlot: selectedTimeSlot
+                        });
+                        throw new Error('Invalid date/time components');
+                    }
+
+                    isoStartTime = startDateTime.toISOString();
+                    isoEndTime = endDateTime.toISOString();
+                } catch (fallbackError) {
+                    console.error('Date parsing failed:', fallbackError);
+                    alert('There was an issue processing the selected time. Please select the time again.');
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
             const appointmentData = {
                 clinicId: selectedClinic.id,
                 serviceId: selectedServices[0].id, // Assuming single service for now
                 clientId: user?.id || 'guest',
                 providerId: user?.id,
-                startTime: new Date(`${selectedTimeSlot.startTime}`)?.toISOString(),
-                endTime: new Date(`${selectedTimeSlot.endTime}`)?.toISOString(),
+                startTime: isoStartTime,
+                endTime: isoEndTime,
                 notes: bookingNote,
                 paymentMethod: 'card',
                 clientDetails: {

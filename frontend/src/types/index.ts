@@ -73,6 +73,11 @@ export interface Appointment {
   advancePaymentAmount?: number;
   totalAmount?: number;
   treatmentDetails?: any;
+  clientDetails?: {
+    fullName: string;
+    email: string;
+    phone: string;
+  };
   completedAt?: string;
   clinic: Clinic;
   service: Service;
@@ -133,13 +138,15 @@ export interface SearchFilters {
 
 export interface Lead {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone?: string;
   status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
   tags?: string[];
   createdAt: string;
   updatedAt: string;
+  source?: string;
 }
 
 export interface Task {

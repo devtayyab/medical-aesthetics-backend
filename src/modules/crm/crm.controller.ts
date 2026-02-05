@@ -110,7 +110,7 @@ export class CrmController {
   }
 
   @Post('customers')
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @Roles(UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Create a new customer directly' })
   createCustomer(@Body() createCustomerDto: CreateCustomerDto, @Request() req) {
@@ -273,6 +273,23 @@ export class CrmController {
       }
       : undefined;
     return this.crmService.getSalespersonAnalytics(req.user.id, dateRange);
+  }
+
+  @Get('analytics/:salespersonId')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get analytics for a specific salesperson' })
+  getSalespersonAnalyticsById(
+    @Param('salespersonId') salespersonId: string,
+    @Query() query: { startDate?: string; endDate?: string },
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? {
+        startDate: new Date(query.startDate),
+        endDate: new Date(query.endDate),
+      }
+      : undefined;
+    return this.crmService.getSalespersonAnalytics(salespersonId, dateRange);
   }
   // Facebook Integration Endpoints
   @Post('facebook/webhook')

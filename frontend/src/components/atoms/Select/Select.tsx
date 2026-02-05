@@ -12,7 +12,7 @@ interface SelectProps {
   options: Option[];
   placeholder?: string;
   required?: boolean;
-  error?: boolean;
+  error?: boolean | string;
   disabled?: boolean;
   className?: string;
 }
@@ -28,6 +28,9 @@ export const Select: React.FC<SelectProps> = ({
   disabled = false,
   className = ''
 }) => {
+  const hasError = !!error;
+  const errorMessage = typeof error === 'string' ? error : 'This field is required';
+
   return (
     <div className={className}>
       {label && (
@@ -44,7 +47,7 @@ export const Select: React.FC<SelectProps> = ({
           w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
           disabled:bg-gray-50 disabled:text-gray-500
-          ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}
+          ${hasError ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}
         `}
       >
         {placeholder && (
@@ -58,9 +61,9 @@ export const Select: React.FC<SelectProps> = ({
           </option>
         ))}
       </select>
-      {error && (
+      {hasError && (
         <p className="mt-1 text-sm text-red-600">
-          This field is required
+          {errorMessage}
         </p>
       )}
     </div>

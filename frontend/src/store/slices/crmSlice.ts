@@ -23,10 +23,10 @@ interface CrmState {
   // Customer Management
   customerRecord: CustomerSummary | null;
   customerFilters: CrmFilters;
-  
+
   // Actions/Activity Log
   actions: CrmAction[];
- 
+
 
   // Repeat Customer Management
   repeatCustomers: CustomerSummary[];
@@ -163,8 +163,8 @@ export const deleteLead = createAsyncThunk(
 // Customer Management
 export const fetchCustomerRecord = createAsyncThunk(
   "crm/fetchCustomerRecord",
-  async (data: { salespersonId?: string }) => {
-    const response = await crmAPI.getCustomerRecord(data.salespersonId);
+  async (data: { customerId: string; salespersonId?: string }) => {
+    const response = await crmAPI.getCustomerRecord(data.customerId, data.salespersonId);
     return response.data;
   }
 );

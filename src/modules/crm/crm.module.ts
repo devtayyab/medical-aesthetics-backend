@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { CrmController } from './crm.controller';
@@ -49,7 +49,7 @@ import { AdAttributionService } from './services/ad-attribution.service';
       AdAttribution,
     ]),
     TasksModule,
-    BookingsModule,
+    forwardRef(() => BookingsModule),
     NotificationsModule,
     UsersModule,
     QueueModule,

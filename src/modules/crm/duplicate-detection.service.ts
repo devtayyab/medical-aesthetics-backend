@@ -32,7 +32,7 @@ export class DuplicateDetectionService {
     private leadsRepository: Repository<Lead>,
     @InjectRepository(CustomerRecord)
     private customerRecordsRepository: Repository<CustomerRecord>,
-  ) {}
+  ) { }
 
   async checkForDuplicates(
     email?: string,
@@ -191,12 +191,11 @@ export class DuplicateDetectionService {
     // Use fuzzy matching for names
     const query = this.usersRepository
       .createQueryBuilder('user')
-      .where(
-        'SIMILARITY(user.firstName, :firstName) > 0.6 OR SIMILARITY(user.lastName, :lastName) > 0.6',
-        { firstName, lastName },
-      )
-      .orWhere('user.firstName ILIKE :firstNamePattern', {
+      .where('user.firstName ILIKE :firstNamePattern', {
         firstNamePattern: `%${firstName}%`,
+      })
+      .orWhere('user.lastName ILIKE :lastNamePattern', {
+        lastNamePattern: `%${lastName}%`,
       })
       .orWhere('user.lastName ILIKE :lastNamePattern', {
         lastNamePattern: `%${lastName}%`,

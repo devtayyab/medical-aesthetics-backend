@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bull';
 import { ScheduleModule } from '@nestjs/schedule';
 import { QueueService } from './queue.service';
@@ -18,7 +18,7 @@ import { TasksModule } from '../tasks/tasks.module';
       { name: 'recurring' },
     ),
     ScheduleModule,
-    BookingsModule,
+    forwardRef(() => BookingsModule),
     LoyaltyModule,
     TasksModule,
   ],
@@ -31,4 +31,4 @@ import { TasksModule } from '../tasks/tasks.module';
   ],
   exports: [QueueService],
 })
-export class QueueModule {}
+export class QueueModule { }
