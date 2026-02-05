@@ -35,7 +35,7 @@ export class TaskAutomationService {
     private appointmentsRepository: Repository<Appointment>,
     private eventEmitter: EventEmitter2,
     private notificationsService: NotificationsService,
-  ) {}
+  ) { }
 
   // Default automation rules
   private readonly defaultRules: TaskAutomationRule[] = [
@@ -133,16 +133,17 @@ export class TaskAutomationService {
   }
 
   private async createAppointmentConfirmationTasks(): Promise<void> {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 2);
+    const twoDaysFromNowStart = new Date();
+    twoDaysFromNowStart.setDate(twoDaysFromNowStart.getDate() + 2);
+    twoDaysFromNowStart.setHours(0, 0, 0, 0);
 
-    const dayAfterTomorrow = new Date();
-    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+    const twoDaysFromNowEnd = new Date(twoDaysFromNowStart);
+    twoDaysFromNowEnd.setHours(23, 59, 59, 999);
 
     // Find appointments 2 days from now
     const appointmentsIn2Days = await this.appointmentsRepository.find({
       where: {
-        startTime: Between(tomorrow, dayAfterTomorrow),
+        startTime: Between(twoDaysFromNowStart, twoDaysFromNowEnd),
         status: AppointmentStatus.CONFIRMED,
       },
       relations: ['client'],
@@ -153,9 +154,16 @@ export class TaskAutomationService {
     }
 
     // Find appointments 1 day from now (urgent)
+    const tomorrowStart = new Date();
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    tomorrowStart.setHours(0, 0, 0, 0);
+
+    const tomorrowEnd = new Date(tomorrowStart);
+    tomorrowEnd.setHours(23, 59, 59, 999);
+
     const appointmentsTomorrow = await this.appointmentsRepository.find({
       where: {
-        startTime: Between(dayAfterTomorrow, new Date(dayAfterTomorrow.getTime() + 24 * 60 * 60 * 1000)),
+        startTime: Between(tomorrowStart, tomorrowEnd),
         status: AppointmentStatus.CONFIRMED,
       },
       relations: ['client'],

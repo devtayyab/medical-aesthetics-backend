@@ -7,56 +7,51 @@ import { Select } from '@/components/atoms/Select/Select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 
 import type { RootState, AppDispatch } from '@/store';
+import { createAction, deleteAction, updateAction, fetchActions } from '@/store/slices/crmSlice';
 import type { CrmAction } from '@/types';
-import { createTask, DeleteTask, UpdateTask, fetchTasks } from '@/store/slices/TaskSlice';
-import type { Task } from '@/types';
 import { CheckCircle, Clock, AlertTriangle, Users } from 'lucide-react';
-interface TasksPageProps {
-  onViewTask?: (task: CrmAction) => void;
-}
 
+interface TasksPageProps {
+  onViewTask?: (task: any) => void;
+}
 
 type TaskFormData = {
   title: string;
   description: string;
-  type:
-  | 'treatment_follow_up'
-  | 'email_follow_up'
-  | 'follow_up_call'
-  | 'loyalty_reward'
-  | 'appointment_reminder'
-  | 'general';
-  status: 'pending' | 'completed' | 'cancelled' | 'in_progress';
+  actionType: CrmAction['actionType'];
+  status: 'pending' | 'completed' | 'cancelled';
   dueDate: string;
-  assigneeId: string;
-  metadata: Record<string, any>;
+  priority: 'low' | 'medium' | 'high';
+  customerId?: string;
 };
 
+
+
 export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
-  const { tasks, isLoading } = useSelector((state: RootState) => state.task);
+  const { actions: tasks, isLoading } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
-  console.log(tasks)
+
   const currentUserId = user?.id;
-  console.log(currentUserId, 'currentUserId')
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<CrmAction | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   const [taskFormData, setTaskFormData] = useState<TaskFormData>({
     title: '',
     description: '',
-    type: 'follow_up_call',
+    actionType: 'follow_up', // Changed from type to actionType
     status: 'pending',
     dueDate: new Date().toISOString().slice(0, 16),
-    assigneeId: user?.id || '',
-    metadata: {},
+    priority: 'medium'
   });
 
   useEffect(() => {
     if (currentUserId) {
-      dispatch(fetchTasks());
+      // Fetch CRM Actions for the salesperson
+      dispatch(fetchActions({ salespersonId: currentUserId }));
     }
   }, [dispatch, currentUserId]);
 
@@ -67,24 +62,23 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     setTaskFormData({
       title: '',
       description: '',
-      type: 'follow_up_call',
+      actionType: 'follow_up',
       status: 'pending',
       dueDate: new Date().toISOString().slice(0, 16),
-      assigneeId: user?.id || '',
-      metadata: {},
+      priority: 'medium'
     });
   };
 
   const handleCreateTask = async () => {
-    if (!taskFormData.title || !taskFormData.type) {
+    if (!taskFormData.title || !taskFormData.actionType) {
       alert('Please fill in required fields');
       return;
     }
     try {
-      const payload = {
+      await dispatch(createAction({
         ...taskFormData,
-      };
-      await dispatch(createTask(payload)).unwrap();
+        salespersonId: user?.id
+      })).unwrap();
       resetForm();
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -93,21 +87,21 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
   const handleDeleteTask = async (id: string) => {
     try {
-      await dispatch(DeleteTask(id)).unwrap();
+      await dispatch(deleteAction(id)).unwrap();
     } catch (error) {
       console.error('Failed to delete task:', error);
     }
   };
 
-  const handleUpdateTask = async (task: Task) => {
-    if (!taskFormData.title || !taskFormData.type) {
+  const handleUpdateTask = async (task: CrmAction) => {
+    if (!taskFormData.title || !taskFormData.actionType) {
       alert('Please fill in required fields');
       return;
     }
 
     try {
       const updates = { ...taskFormData };
-      await dispatch(UpdateTask({ id: task.id, updates })).unwrap();
+      await dispatch(updateAction({ id: task.id, updates })).unwrap();
       resetForm();
     } catch (error) {
       console.error('Failed to update task:', error);
@@ -116,7 +110,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
   const filteredTasks = tasks.filter(
     (task) =>
-      task.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.actionType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -223,7 +217,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                   <div>
                     <h3 className="font-medium capitalize">{task.title}</h3>
                     <p className="text-sm text-gray-500">{task.description}</p>
-                    <p className="text-xs text-gray-400">Type: {task.type}</p>
+                    <p className="text-xs text-gray-400">Type: {task.actionType}</p>
                     <p className="text-xs text-gray-400">Due: {formatDate(task.dueDate)}</p>
                     <p className="text-xs text-gray-400">Status: {task.status}</p>
                   </div>
@@ -240,12 +234,13 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                         setSelectedTask(task);
                         setTaskFormData({
                           title: task.title || '',
-                          description: task.description,
-                          type: task.type,
-                          status: task.status,
+                          description: task.description || '',
+                          actionType: task.actionType,
+                          status: task.status as any,
                           dueDate: task.dueDate
                             ? new Date(task.dueDate).toISOString().slice(0, 16)
                             : new Date().toISOString().slice(0, 16),
+                          priority: task.priority as any
                         });
                         setIsEditing(true);
                       }}
@@ -311,17 +306,16 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               />
               <Select
                 label="Type"
-                value={taskFormData.type}
+                value={taskFormData.actionType}
                 onChange={(v) =>
-                  setTaskFormData({ ...taskFormData, type: v as TaskFormData['type'] })
+                  setTaskFormData({ ...taskFormData, actionType: v as CrmAction['actionType'] })
                 }
                 options={[
-                  { value: 'follow_up_call', label: 'Follow Up Call' },
-                  { value: 'email_follow_up', label: 'Email Follow Up' },
-                  { value: 'appointment_reminder', label: 'Appointment Reminder' },
-                  { value: 'treatment_follow_up', label: 'Treatment Follow Up' },
-                  { value: 'loyalty_reward', label: 'Loyalty Reward' },
-                  { value: 'general', label: 'General' },
+                  { value: 'follow_up', label: 'Follow Up' },
+                  { value: 'phone_call', label: 'Phone Call' },
+                  { value: 'email', label: 'Email' },
+                  { value: 'appointment_confirmation', label: 'Appointment Confirmation' },
+                  { value: 'meeting', label: 'Meeting' },
                 ]}
               />
             </div>
@@ -389,17 +383,16 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
               <Select
                 label="Type"
-                value={taskFormData.type}
+                value={taskFormData.actionType}
                 onChange={(v) =>
-                  setTaskFormData({ ...taskFormData, type: v as TaskFormData['type'] })
+                  setTaskFormData({ ...taskFormData, actionType: v as CrmAction['actionType'] })
                 }
                 options={[
-                  { value: 'follow_up_call', label: 'Follow Up Call' },
-                  { value: 'email_follow_up', label: 'Email Follow Up' },
-                  { value: 'appointment_reminder', label: 'Appointment Reminder' },
-                  { value: 'treatment_follow_up', label: 'Treatment Follow Up' },
-                  { value: 'loyalty_reward', label: 'Loyalty Reward' },
-                  { value: 'general', label: 'General' },
+                  { value: 'follow_up', label: 'Follow Up' },
+                  { value: 'phone_call', label: 'Phone Call' },
+                  { value: 'email', label: 'Email' },
+                  { value: 'appointment_confirmation', label: 'Appointment Confirmation' },
+                  { value: 'meeting', label: 'Meeting' },
                 ]}
               />
             </div>

@@ -17,9 +17,9 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
   onComplete,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
-  
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
-  const [finalAmount, setFinalAmount] = useState<number>(appointment.totalAmount);
+  const [finalAmount, setFinalAmount] = useState<number>(appointment.totalAmount || 0);
   const [treatmentNotes, setTreatmentNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -116,11 +116,10 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
                   key={method.value}
                   type="button"
                   onClick={() => setPaymentMethod(method.value)}
-                  className={`flex items-center gap-3 p-4 border-2 rounded-lg transition-all ${
-                    paymentMethod === method.value
+                  className={`flex items-center gap-3 p-4 border-2 rounded-lg transition-all ${paymentMethod === method.value
                       ? 'border-blue-600 bg-blue-50'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <div
                     className={
@@ -130,9 +129,8 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
                     {method.icon}
                   </div>
                   <span
-                    className={`font-medium ${
-                      paymentMethod === method.value ? 'text-blue-900' : 'text-gray-700'
-                    }`}
+                    className={`font-medium ${paymentMethod === method.value ? 'text-blue-900' : 'text-gray-700'
+                      }`}
                   >
                     {method.label}
                   </span>

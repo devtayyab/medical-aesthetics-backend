@@ -16,7 +16,8 @@ import {
   MoreHorizontal,
   ArrowUpRight,
   TrendingUp,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
@@ -386,6 +387,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600" onClick={() => onViewLead && onViewLead(lead)} title="View Details">
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                          <div className="w-px h-4 bg-gray-200" />
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600" onClick={() => handleCheckDuplicates(lead)} title="Check Duplicates">
                             <Copy className="h-3.5 w-3.5" />
                           </Button>

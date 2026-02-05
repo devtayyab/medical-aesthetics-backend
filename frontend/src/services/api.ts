@@ -196,6 +196,11 @@ export const bookingAPI = {
     paymentMethod?: string;
     advancePaymentAmount?: number;
     holdId?: string;
+    clientDetails?: {
+      fullName: string;
+      email: string;
+      phone: string;
+    };
   }) => api.post("/appointments", data),
   getUserAppointments: () => api.get("/appointments"),
   getAppointment: (id: string) => api.get(`/appointments/${id}`),
@@ -287,7 +292,7 @@ export const crmAPI = {
 
   // Customer Records
   getCustomerRecord: (customerId: string, salespersonId?: string) =>
-    api.get(`/crm/customer/${customerId}`, { params: { salespersonId } }),
+    api.get(`/crm/customers/${customerId}/record`, { params: { salespersonId } }),
   getCustomer: (id?: string) =>
     api.get(`/crm/customer/${id}`),
   updateCustomerRecord: (customerId: string, data: Partial<CustomerRecord>) =>

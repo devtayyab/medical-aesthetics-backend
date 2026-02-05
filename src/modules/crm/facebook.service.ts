@@ -74,6 +74,19 @@ export class FacebookService {
   }
 
   async getLeadsByForm(formId: string, limit: number = 50): Promise<FacebookLeadData[]> {
+    if (this.accessToken === 'MOCK_TOKEN' || this.accessToken === 'your-facebook-access-token') {
+      return Array(limit).fill(null).map((_, i) => ({
+        id: `mock_lead_${i + 1}`,
+        created_time: new Date().toISOString(),
+        field_data: [
+          { name: 'full_name', values: [`Mock Lead ${i + 1}`] },
+          { name: 'email', values: [`mock${i + 1}@example.com`] },
+          { name: 'phone_number', values: ['+15550000000'] }
+        ],
+        form_id: formId
+      }));
+    }
+
     try {
       const response = await this.axiosInstance.get(`/leads`, {
         params: {
@@ -118,6 +131,13 @@ export class FacebookService {
 
   async testFacebookConnection(): Promise<{ success: boolean; message: string }> {
     try {
+      if (this.accessToken === 'MOCK_TOKEN' || this.accessToken === 'your-facebook-access-token') {
+        return {
+          success: true,
+          message: 'Facebook API connection successful (MOCK MODE). Connected as: Mock User',
+        };
+      }
+
       // Test the connection by making a simple API call to verify the access token
       const response = await this.axiosInstance.get('/me', {
         params: {

@@ -9,6 +9,11 @@ import { HoldSlotDto } from './dto/hold-slot.dto';
 import { AppointmentStatus } from '@/common/enums/appointment-status.enum';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 
+import { CrmService } from '../crm/crm.service';
+import { User } from '../users/entities/user.entity';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { forwardRef, Inject } from '@nestjs/common';
+
 @Injectable()
 export class BookingsService {
   constructor(
@@ -16,6 +21,10 @@ export class BookingsService {
     private appointmentsRepository: Repository<Appointment>,
     @InjectRepository(AppointmentHold)
     private holdsRepository: Repository<AppointmentHold>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
+    @Inject(forwardRef(() => CrmService))
+    private crmService: CrmService,
     private eventEmitter: EventEmitter2,
   ) { }
 
@@ -62,8 +71,55 @@ export class BookingsService {
   }
 
   async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker' }): Promise<Appointment> {
+    let clientId = createAppointmentDto.clientId;
+
+    // Check if client exists as User
+    const userExists = await this.usersRepository.findOne({ where: { id: clientId } });
+
+    if (!userExists) {
+      // Try to find as Lead
+      try {
+        const lead = await this.crmService.getLead(clientId);
+        if (lead) {
+          // Check if user with this email already exists
+          const existingUser = await this.usersRepository.findOne({ where: { email: lead.email } });
+
+          if (existingUser) {
+            clientId = existingUser.id;
+          } else {
+            // Convert Lead to User using CRM Service to ensure proper records
+            try {
+              const savedUser = await this.crmService.createCustomer({
+                email: lead.email || `temp-${lead.id}@example.com`,
+                firstName: lead.firstName || 'Unknown',
+                lastName: lead.lastName || 'Client',
+                phone: lead.phone,
+              }, lead.assignedSalesId);
+
+              clientId = savedUser.id;
+            } catch (createErr) {
+              // If createCustomer fails (e.g. race condition on email), try to find again
+              const retryUser = await this.usersRepository.findOne({ where: { email: lead.email } });
+              if (retryUser) {
+                clientId = retryUser.id;
+              } else {
+                throw createErr;
+              }
+            }
+          }
+        } else {
+          // If getLead returns null (though it throws NotFound usually)
+          throw new NotFoundException(`Client not found as User or Lead: ${clientId}`);
+        }
+      } catch (e) {
+        console.error('Lead lookup/conversion failed:', e);
+        throw new NotFoundException(`Client/Lead not found or conversion failed for ID: ${clientId}`);
+      }
+    }
+
     const appointmentData = {
       ...createAppointmentDto,
+      clientId, // Use potentially updated clientId
       startTime: new Date(createAppointmentDto.startTime),
       endTime: new Date(createAppointmentDto.endTime),
       appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',

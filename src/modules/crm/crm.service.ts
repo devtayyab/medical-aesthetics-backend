@@ -444,6 +444,10 @@ export class CrmService {
     return qb.getMany();
   }
 
+  async getLead(id: string): Promise<Lead> {
+    return this.findById(id);
+  }
+
   async findById(id: string): Promise<Lead> {
     const lead = await this.leadsRepository.findOne({
       where: { id },
@@ -662,6 +666,32 @@ export class CrmService {
 
   // Communication Log Management
   async logCommunication(data: Partial<CommunicationLog>): Promise<CommunicationLog> {
+    // Check if ID belongs to a Lead (not a Customer/User)
+    const lead = await this.leadsRepository.findOne({ where: { id: data.customerId } });
+
+    if (lead) {
+      // Append to Lead notes instead of CommunicationLog
+      const newNote = `[${data.type?.toUpperCase()} - ${new Date().toISOString()}] ${data.subject || ''}: ${data.notes || ''}`;
+      const updatedNotes = lead.notes ? `${lead.notes}\n\n${newNote}` : newNote;
+
+      await this.leadsRepository.update(lead.id, {
+        notes: updatedNotes,
+        lastContactedAt: new Date(),
+        metadata: {
+          ...lead.metadata,
+          lastInteraction: data
+        }
+      });
+
+      // Return a pseudo-log for frontend compatibility
+      return {
+        id: `lead-log-${Date.now()}`,
+        ...data,
+        createdAt: new Date(),
+        metadata: data.metadata || {}
+      } as CommunicationLog;
+    }
+
     // Enforce mandatory field validation for call communications, except click-only logs
     if (data.type === 'call' && !(data.metadata && (data.metadata as any).clickOnly === true)) {
       await this.mandatoryFieldValidationService.enforceFieldCompletion(data.customerId, data);

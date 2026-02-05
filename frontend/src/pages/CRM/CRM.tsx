@@ -26,14 +26,15 @@ import {
   fetchActions,
   fetchOverdueTasks,
   fetchAutomationRules,
-  runTaskAutomationCheck,
-  createLead
+  runTaskAutomationCheck
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
 import type { Task } from '@/types';
 import { TaskDetails } from '@/pages/CRM/TaskDetails';
 import { fetchTasks } from "@/store/slices/TaskSlice"
+import { SalesCalendar } from '@/pages/CRM/SalesCalendar';
+
 export const CRM: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
@@ -155,10 +156,11 @@ export const CRM: React.FC = () => {
         className='w-full p-4 md:p-6 bg-gray-50 rounded-2xl shadow-sm'
       >
         <Card>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6"> {/* Increased cols to 6 */}
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="tracker">My Tracker</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
@@ -246,11 +248,14 @@ export const CRM: React.FC = () => {
                     </div>
                     <span className="font-medium">Add New Lead</span>
                   </Button>
-                  <Button variant="outline" className="w-full justify-start h-auto py-3 px-4 border-gray-200 hover:border-green-300 hover:bg-green-50 text-gray-700 hover:text-green-700 transition-all group">
+                  <Button variant="outline"
+                    className="w-full justify-start h-auto py-3 px-4 border-gray-200 hover:border-green-300 hover:bg-green-50 text-gray-700 hover:text-green-700 transition-all group"
+                    onClick={() => window.location.href = 'tel:'}
+                  >
                     <div className="p-2 bg-green-100 rounded-full mr-3 group-hover:bg-green-200 transition-colors">
                       <Phone className="h-4 w-4 text-green-600" />
                     </div>
-                    <span className="font-medium">Log Call</span>
+                    <span className="font-medium">Log Call / Dialer</span>
                   </Button>
                   <Button variant="outline" className="w-full justify-start h-auto py-3 px-4 border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700 hover:text-purple-700 transition-all group">
                     <div className="p-2 bg-purple-100 rounded-full mr-3 group-hover:bg-purple-200 transition-colors">
@@ -425,7 +430,7 @@ export const CRM: React.FC = () => {
                     <Phone className="h-5 w-5 text-blue-600" />
                     <div>
                       <div className="text-2xl font-bold">
-                        {analytics?.communications.calls || 0}
+                        {analytics?.communications?.calls || 0}
                       </div>
                       <div className="text-sm text-gray-500">Total Calls</div>
                     </div>
@@ -439,7 +444,7 @@ export const CRM: React.FC = () => {
                     <Award className="h-5 w-5 text-green-600" />
                     <div>
                       <div className="text-2xl font-bold">
-                        {analytics?.customers.repeat || 0}
+                        {analytics?.customers?.repeat || 0}
                       </div>
                       <div className="text-sm text-gray-500">Repeat Customers</div>
                     </div>
@@ -453,7 +458,7 @@ export const CRM: React.FC = () => {
                     <TrendingUp className="h-5 w-5 text-purple-600" />
                     <div>
                       <div className="text-2xl font-bold">
-                        {formatCurrency(analytics?.customers.totalRevenue || 0)}
+                        {formatCurrency(analytics?.customers?.totalRevenue || 0)}
                       </div>
                       <div className="text-sm text-gray-500">Total Revenue</div>
                     </div>
@@ -474,6 +479,11 @@ export const CRM: React.FC = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Sales Tracker / Calendar Tab */}
+        <TabsContent value="tracker">
+          <SalesCalendar />
         </TabsContent>
       </Tabs>
 

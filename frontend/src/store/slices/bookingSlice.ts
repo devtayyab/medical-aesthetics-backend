@@ -62,6 +62,11 @@ export const createAppointment = createAsyncThunk(
     paymentMethod?: string;
     advancePaymentAmount?: number;
     holdId?: string;
+    clientDetails?: {
+      fullName: string;
+      email: string;
+      phone: string;
+    };
   }) => {
     const response = await bookingAPI.createAppointment(data);
     return response.data;
