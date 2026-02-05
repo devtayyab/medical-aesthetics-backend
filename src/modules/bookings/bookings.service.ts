@@ -89,15 +89,25 @@ export class BookingsService {
           } else {
             // Convert Lead to User using CRM Service to ensure proper records
             try {
+              let salespersonId = lead.assignedSalesId;
+              if (salespersonId) {
+                const salesExists = await this.usersRepository.findOne({ where: { id: salespersonId } });
+                if (!salesExists) {
+                  console.warn(`Lead ${clientId} has invalid assignedSalesId ${salespersonId}, ignoring.`);
+                  salespersonId = undefined;
+                }
+              }
+
               const savedUser = await this.crmService.createCustomer({
                 email: lead.email || `temp-${lead.id}@example.com`,
                 firstName: lead.firstName || 'Unknown',
                 lastName: lead.lastName || 'Client',
                 phone: lead.phone,
-              }, lead.assignedSalesId);
+              }, salespersonId);
 
               clientId = savedUser.id;
             } catch (createErr) {
+              console.error('createCustomer failed:', createErr);
               // If createCustomer fails (e.g. race condition on email), try to find again
               const retryUser = await this.usersRepository.findOne({ where: { email: lead.email } });
               if (retryUser) {
@@ -108,7 +118,6 @@ export class BookingsService {
             }
           }
         } else {
-          // If getLead returns null (though it throws NotFound usually)
           throw new NotFoundException(`Client not found as User or Lead: ${clientId}`);
         }
       } catch (e) {
