@@ -108,7 +108,19 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     }
   };
 
-  const filteredTasks = tasks.filter(
+  const updatedTasks = tasks.map(task => {
+    const dueDate = new Date(task.dueDate);
+    const now = new Date();
+
+    // Check if due date is in the past and task is not completed
+    if (dueDate < now && task.status !== 'completed' && task.status !== 'cancelled') {
+      return { ...task, status: 'overdue' as any };
+    }
+
+    return task;
+  });
+
+  const filteredTasks = updatedTasks.filter(
     (task) =>
       task.actionType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -141,7 +153,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
           </Button>
         </div>
       </Card>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
@@ -160,9 +172,23 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <AlertTriangle className="h-5 w-5 text-yellow-600" />
               <div>
                 <div className="text-2xl font-bold">
-                  {tasks.filter(l => l.status === 'pending').length}
+                  {updatedTasks.filter(l => l.status === 'pending').length}
                 </div>
                 <div className="text-sm text-gray-500">pending Tasks</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <div>
+                <div className="text-2xl font-bold">
+                  {updatedTasks.filter(l => l.status === 'overdue').length}
+                </div>
+                <div className="text-sm text-gray-500">Overdue Tasks</div>
               </div>
             </div>
           </CardContent>
@@ -175,7 +201,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <Clock className="h-5 w-5 text-green-600" />
               <div>
                 <div className="text-2xl font-bold">
-                  {tasks.filter(l => l.status === 'in_progress').length}
+                  {updatedTasks.filter(l => l.status === 'in_progress').length}
                 </div>
                 <div className="text-sm text-gray-500">In Progress Tasks</div>
               </div>
@@ -189,7 +215,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <CheckCircle className="h-5 w-5 text-orange-600" />
               <div>
                 <div className="text-2xl font-bold">
-                  {tasks.filter(l => l.status === 'completed').length}
+                  {updatedTasks.filter(l => l.status === 'completed').length}
                 </div>
                 <div className="text-sm text-gray-500">completed Tasks</div>
               </div>
@@ -219,7 +245,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                     <p className="text-sm text-gray-500">{task.description}</p>
                     <p className="text-xs text-gray-400">Type: {task.actionType}</p>
                     <p className="text-xs text-gray-400">Due: {formatDate(task.dueDate)}</p>
-                    <p className="text-xs text-gray-400">Status: {task.status}</p>
+                    <p className={`text-xs ${task.status === 'overdue' ? 'text-red-500 font-medium' : 'text-gray-400'}`}>Status: {task.status}</p>
                   </div>
                   <div className="flex gap-2">
 
@@ -294,8 +320,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <Select
                 label="Status"
                 value={taskFormData.status}
-                onChange={(v) =>
-                  setTaskFormData({ ...taskFormData, status: v as TaskFormData['status'] })
+                onChange={(e) =>
+                  setTaskFormData({ ...taskFormData, status: e.target.value as TaskFormData['status'] })
                 }
                 options={[
                   { value: 'pending', label: 'Pending' },
@@ -307,8 +333,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <Select
                 label="Type"
                 value={taskFormData.actionType}
-                onChange={(v) =>
-                  setTaskFormData({ ...taskFormData, actionType: v as CrmAction['actionType'] })
+                onChange={(e) =>
+                  setTaskFormData({ ...taskFormData, actionType: e.target.value as CrmAction['actionType'] })
                 }
                 options={[
                   { value: 'follow_up', label: 'Follow Up' },
@@ -370,8 +396,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <Select
                 label="Status"
                 value={taskFormData.status}
-                onChange={(v) =>
-                  setTaskFormData({ ...taskFormData, status: v as TaskFormData['status'] })
+                onChange={(e) =>
+                  setTaskFormData({ ...taskFormData, status: e.target.value as TaskFormData['status'] })
                 }
                 options={[
                   { value: 'pending', label: 'Pending' },
@@ -384,8 +410,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <Select
                 label="Type"
                 value={taskFormData.actionType}
-                onChange={(v) =>
-                  setTaskFormData({ ...taskFormData, actionType: v as CrmAction['actionType'] })
+                onChange={(e) =>
+                  setTaskFormData({ ...taskFormData, actionType: e.target.value as CrmAction['actionType'] })
                 }
                 options={[
                   { value: 'follow_up', label: 'Follow Up' },

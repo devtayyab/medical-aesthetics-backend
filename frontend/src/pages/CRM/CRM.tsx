@@ -11,7 +11,10 @@ import {
   Building,
   Target,
   Award,
-  Clock
+  Clock,
+  ChevronDown,
+  Loader2,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
@@ -32,7 +35,7 @@ import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
 import type { Task } from '@/types';
 import { TaskDetails } from '@/pages/CRM/TaskDetails';
-import { fetchTasks } from "@/store/slices/TaskSlice"
+
 import { SalesCalendar } from '@/pages/CRM/SalesCalendar';
 
 export const CRM: React.FC = () => {
@@ -47,12 +50,16 @@ export const CRM: React.FC = () => {
   } = useSelector((state: RootState) => state.crm);
 
 
-  const { tasks } = useSelector((state: RootState) => state.task);
+  const { actions: tasks } = useSelector((state: RootState) => state.crm);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCustomer, setSelectedCustomer] = useState<Lead | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [forceShowCreateForm, setForceShowCreateForm] = useState(false);
+
+  // New state for buttons
+  const [isAutomationRunning, setIsAutomationRunning] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   const handleAddNewLead = () => {
     setForceShowCreateForm(true);
@@ -65,7 +72,7 @@ export const CRM: React.FC = () => {
   React.useEffect(() => {
     if (user) {
       dispatch(fetchLeads({}));
-      dispatch(fetchTasks());
+
       dispatch(fetchActions({ salespersonId: user.id }));
       dispatch(fetchOverdueTasks(user.id));
       dispatch(fetchAutomationRules());
@@ -80,6 +87,9 @@ export const CRM: React.FC = () => {
   };
 
   const handleRunAutomation = async () => {
+    if (isAutomationRunning) return;
+
+    setIsAutomationRunning(true);
     try {
       await dispatch(runTaskAutomationCheck()).unwrap();
       // Refresh data after automation
@@ -87,8 +97,13 @@ export const CRM: React.FC = () => {
         dispatch(fetchActions({ salespersonId: user.id }));
         dispatch(fetchOverdueTasks(user.id));
       }
+      // Simple alert for feedback since we don't have a global toast yet
+      alert('Automation check completed successfully!');
     } catch (error) {
       console.error('Failed to run automation:', error);
+      alert('Failed to run automation check.');
+    } finally {
+      setIsAutomationRunning(false);
     }
   };
 
@@ -106,7 +121,7 @@ export const CRM: React.FC = () => {
     const now = new Date();
 
     // Check if due date is in the past and task is not completed
-    if (dueDate < now && task.status !== 'completed') {
+    if (dueDate < now && task.status !== 'completed' && task.status !== 'cancelled') {
       return { ...task, status: 'overdue' };
     }
 
@@ -133,18 +148,86 @@ export const CRM: React.FC = () => {
               variant="outline"
               className="border-gray-300 text-gray-700 hover:bg-gray-100 transition-all"
               onClick={handleRunAutomation}
+              disabled={isAutomationRunning}
             >
-              <Target className="h-4 w-4 mr-2 text-blue-600" />
-              Run Automation
+              {isAutomationRunning ? (
+                <Loader2 className="h-4 w-4 mr-2 text-blue-600 animate-spin" />
+              ) : (
+                <Target className="h-4 w-4 mr-2 text-blue-600" />
+              )}
+              {isAutomationRunning ? 'Running...' : 'Run Automation'}
             </Button>
 
-            <Button
-              variant="primary"
-              className="bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-md"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Quick Actions
-            </Button>
+            <div className="relative">
+              <Button
+                variant="primary"
+                className="bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-md"
+                onClick={() => setShowQuickActions(!showQuickActions)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Quick Actions
+                <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${showQuickActions ? 'rotate-180' : ''}`} />
+              </Button>
+
+              {showQuickActions && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden transform transition-all animate-in fade-in slide-in-from-top-2">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        handleAddNewLead();
+                        setShowQuickActions(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-sm text-gray-700 transition-colors"
+                    >
+                      <div className="p-1.5 bg-blue-100 rounded-md">
+                        <Plus className="h-4 w-4 text-blue-600" />
+                      </div>
+                      Add New Lead
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        window.location.href = 'tel:';
+                        setShowQuickActions(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-sm text-gray-700 transition-colors"
+                    >
+                      <div className="p-1.5 bg-green-100 rounded-md">
+                        <Phone className="h-4 w-4 text-green-600" />
+                      </div>
+                      Log Call / Dialer
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setActiveTab('tasks');
+                        setShowQuickActions(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-sm text-gray-700 transition-colors"
+                    >
+                      <div className="p-1.5 bg-purple-100 rounded-md">
+                        <FileText className="h-4 w-4 text-purple-600" />
+                      </div>
+                      View Tasks
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        // Just toggle for now, maybe add specific logic later
+                        setShowQuickActions(false);
+                        alert('Calendar feature coming soon!');
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-sm text-gray-700 transition-colors border-t border-gray-50"
+                    >
+                      <div className="p-1.5 bg-orange-100 rounded-md">
+                        <Calendar className="h-4 w-4 text-orange-600" />
+                      </div>
+                      Schedule Meeting
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </Card>
@@ -312,8 +395,8 @@ export const CRM: React.FC = () => {
               </CardHeader>
               <CardContent className="flex-1 overflow-auto">
                 <div className="space-y-3">
-                  {updatedTasks.slice(0, 5).map((task) => (
-                    <div key={task.id} className="flex items-center justify-between p-3 bg-red-50/50 border border-red-100 rounded-xl hover:bg-red-50 transition-colors">
+                  {updatedTasks.filter(t => t.status === 'overdue').slice(0, 5).map((task) => (
+                    <div key={task.id} className="flex items-center justify-between p-3 bg-red-50/50 border border-red-100 rounded-xl hover:bg-red-50 transition-colors cursor-pointer" onClick={() => handleViewTask(task)}>
                       <div className="flex-1 min-w-0 mr-3">
                         <div className="font-medium text-gray-900 truncate">{task.title}</div>
                         <div className="text-xs text-gray-600 truncate">

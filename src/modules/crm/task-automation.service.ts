@@ -360,60 +360,65 @@ export class TaskAutomationService {
     customerId: string,
     rule: TaskAutomationRule,
     variables: any = {},
-  ): Promise<CrmAction> {
-    // Find assigned salesperson for this customer by querying CustomerRecord directly
-    const customerRecord = await this.customerRecordsRepository.findOne({
-      where: { customerId },
-    });
+  ): Promise<CrmAction | null> {
+    try {
+      // Find assigned salesperson for this customer by querying CustomerRecord directly
+      const customerRecord = await this.customerRecordsRepository.findOne({
+        where: { customerId },
+      });
 
-    const salespersonId = customerRecord?.assignedSalespersonId;
+      const salespersonId = customerRecord?.assignedSalespersonId;
 
-    if (!salespersonId) {
-      // If no assigned salesperson, assign to admin or skip
-      console.warn(`No assigned salesperson for customer ${customerId}, skipping automated task`);
+      if (!salespersonId) {
+        // If no assigned salesperson, assign to admin or skip
+        console.warn(`No assigned salesperson for customer ${customerId}, skipping automated task`);
+        return null;
+      }
+
+      // Calculate due date
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + rule.delayDays);
+
+      // Replace template variables
+      let title = rule.template;
+      Object.keys(variables).forEach(key => {
+        title = title.replace(new RegExp(`{${key}}`, 'g'), variables[key]);
+      });
+
+      const task = this.crmActionsRepository.create({
+        customerId,
+        salespersonId,
+        actionType: rule.actionType,
+        title,
+        description: `Automated task created by rule: ${rule.name}`,
+        status: 'pending',
+        priority: rule.priority,
+        dueDate,
+        metadata: {
+          automationRule: rule.id,
+          createdBy: 'system',
+          ...variables,
+        },
+      });
+
+      const savedTask = await this.crmActionsRepository.save(task);
+
+      // Send notification to salesperson
+      await this.notificationsService.create(
+        salespersonId,
+        NotificationType.PUSH,
+        'New Automated Task',
+        `${title} - Due: ${dueDate.toLocaleDateString()}`,
+        { taskId: savedTask.id, customerId },
+      );
+
+      this.eventEmitter.emit('automated.task.created', savedTask);
+
+      return savedTask;
+    } catch (error) {
+      console.error(`Error creating automated task for customer ${customerId}, rule ${rule.id}:`, error);
       return null;
     }
-
-    // Calculate due date
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + rule.delayDays);
-
-    // Replace template variables
-    let title = rule.template;
-    Object.keys(variables).forEach(key => {
-      title = title.replace(new RegExp(`{${key}}`, 'g'), variables[key]);
-    });
-
-    const task = this.crmActionsRepository.create({
-      customerId,
-      salespersonId,
-      actionType: rule.actionType,
-      title,
-      description: `Automated task created by rule: ${rule.name}`,
-      status: 'pending',
-      priority: rule.priority,
-      dueDate,
-      metadata: {
-        automationRule: rule.id,
-        createdBy: 'system',
-        ...variables,
-      },
-    });
-
-    const savedTask = await this.crmActionsRepository.save(task);
-
-    // Send notification to salesperson
-    await this.notificationsService.create(
-      salespersonId,
-      NotificationType.PUSH,
-      'New Automated Task',
-      `${title} - Due: ${dueDate.toLocaleDateString()}`,
-      { taskId: savedTask.id, customerId },
-    );
-
-    this.eventEmitter.emit('automated.task.created', savedTask);
-
-    return savedTask;
   }
 
   async getOverdueTasks(salespersonId?: string): Promise<CrmAction[]> {
@@ -459,17 +464,37 @@ export class TaskAutomationService {
     let tasksCreated = 0;
     let overdueTasks = 0;
 
-    // Create automated tasks
-    await this.createAutomatedTasks();
-    tasksCreated += await this.getRecentAutomatedTaskCount();
+    console.log('Starting task automation check...');
 
-    // Mark overdue tasks
-    const overdue = await this.getOverdueTasks();
-    for (const task of overdue) {
-      await this.markTaskOverdue(task.id);
-      overdueTasks++;
+    try {
+      // Create automated tasks
+      await this.createAutomatedTasks();
+    } catch (error) {
+      console.error('Error during createAutomatedTasks:', error);
     }
 
+    try {
+      tasksCreated += await this.getRecentAutomatedTaskCount();
+    } catch (error) {
+      console.error('Error getting recent task count:', error);
+    }
+
+    try {
+      // Mark overdue tasks
+      const overdue = await this.getOverdueTasks();
+      for (const task of overdue) {
+        try {
+          await this.markTaskOverdue(task.id);
+          overdueTasks++;
+        } catch (e) {
+          console.error(`Failed to mark task ${task.id} as overdue:`, e);
+        }
+      }
+    } catch (error) {
+      console.error('Error during overdue task check:', error);
+    }
+
+    console.log(`Automation check complete. Created: ${tasksCreated}, Overdue: ${overdueTasks}`);
     return { tasksCreated, overdueTasks };
   }
 

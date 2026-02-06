@@ -1,6 +1,5 @@
 import axios, { AxiosError } from "axios";
-import { store } from "@/store";
-import { setTokens, logout } from "@/store/slices/authSlice";
+
 import type {
   Lead,
   CustomerRecord,
@@ -33,6 +32,16 @@ export const api = axios.create({
   },
 });
 
+let store: any;
+let setTokensAction: any;
+let logoutAction: any;
+
+export const setupAxiosInterceptors = (_store: any, _actions: { setTokens: any, logout: any }) => {
+  store = _store;
+  setTokensAction = _actions.setTokens;
+  logoutAction = _actions.logout;
+};
+
 let isRefreshing = false;
 let refreshSubscribers: ((token: string) => void)[] = [];
 
@@ -46,10 +55,12 @@ const onRefreshed = (token: string) => {
 };
 
 api.interceptors.request.use((config) => {
-  const state = store.getState();
-  const token = state.auth.accessToken;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (store) {
+    const state = store.getState();
+    const token = state.auth.accessToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
@@ -61,6 +72,8 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as any;
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (!store) return Promise.reject(error);
+
       console.log(
         "401 detected, isRefreshing:",
         isRefreshing,
@@ -92,9 +105,13 @@ api.interceptors.response.use(
             refreshToken,
           });
           const { accessToken, refreshToken: newRefreshToken } = response.data;
-          store.dispatch(
-            setTokens({ accessToken, refreshToken: newRefreshToken })
-          );
+
+          if (store && setTokensAction) {
+            store.dispatch(
+              setTokensAction({ accessToken, refreshToken: newRefreshToken })
+            );
+          }
+
           onRefreshed(accessToken);
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
@@ -103,14 +120,19 @@ api.interceptors.response.use(
             message: refreshError.response?.data || refreshError.message,
             status: refreshError.response?.status,
           });
-          store.dispatch(logout());
+
+          if (store && logoutAction) {
+            store.dispatch(logoutAction());
+          }
           window.location.href = "/login";
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
         }
       } else {
-        store.dispatch(logout());
+        if (store && logoutAction) {
+          store.dispatch(logoutAction());
+        }
         window.location.href = "/login";
       }
     }
@@ -129,8 +151,9 @@ export const authAPI = {
     phone?: string;
   }) => api.post("/auth/register", userData),
   logout: () => {
-    const state = store.getState();
-    const token = state.auth.accessToken;
+    // We try to get state from the injected store if available, else null
+    const state = store ? store.getState() : null;
+    const token = state?.auth?.accessToken;
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     return api.post("/auth/logout", {}, { headers }).catch((error) => {
       console.log(

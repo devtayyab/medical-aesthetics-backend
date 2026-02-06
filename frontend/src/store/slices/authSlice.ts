@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { authAPI } from "@/services/api";
+import { authAPI, userAPI } from "@/services/api";
 import type { User } from "@/types";
 
 interface AuthState {
@@ -107,6 +107,8 @@ export const forgotPassword = createAsyncThunk(
   }
 );
 
+// ... existing imports
+
 export const resetPassword = createAsyncThunk(
   "auth/resetPassword",
   async (
@@ -120,6 +122,20 @@ export const resetPassword = createAsyncThunk(
     } catch (error: any) {
       console.error("Reset password failed:", error.response?.data || error.message);
       return rejectWithValue(error.response?.data?.message || "Reset password failed");
+    }
+  }
+);
+
+export const updateProfile = createAsyncThunk(
+  "auth/updateProfile",
+  async (userData: Partial<User>, { rejectWithValue }) => {
+    try {
+      const response = await userAPI.updateProfile(userData);
+      console.log("Update profile success, response:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Update profile failed:", error.response?.data || error.message);
+      return rejectWithValue(error.response?.data?.message || "Update profile failed");
     }
   }
 );
@@ -323,6 +339,19 @@ const authSlice = createSlice({
             "restoreSession.rejected: No token (silent), keeping state"
           );
         }
+      })
+      .addCase(updateProfile.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload; // Assuming payload returns the updated user object
+        state.error = null;
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
       });
   },
 });
