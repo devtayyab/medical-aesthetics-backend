@@ -29,6 +29,7 @@ import { QueueModule } from '../queue/queue.module';
 import { CrmScheduler } from './crm.scheduler';
 import { AdAttributionController } from './controllers/ad-attribution.controller';
 import { AdAttributionService } from './services/ad-attribution.service';
+import { CrmListener } from './crm.listener';
 
 @Module({
   imports: [
@@ -63,7 +64,9 @@ import { AdAttributionService } from './services/ad-attribution.service';
     MandatoryFieldValidationService,
     TaskAutomationService,
     AdAttributionService,
-    CrmScheduler
+    AdAttributionService,
+    CrmScheduler,
+    CrmListener
   ],
   exports: [
     CrmService,
