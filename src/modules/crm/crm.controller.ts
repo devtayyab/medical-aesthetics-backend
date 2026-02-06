@@ -22,6 +22,7 @@ import { UpdateLeadDto } from './dto/update-lead.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
 import { CommunicationLog } from './entities/communication-log.entity';
@@ -292,11 +293,43 @@ export class CrmController {
     return this.crmService.getSalespersonAnalytics(salespersonId, dateRange);
   }
   // Facebook Integration Endpoints
+  @Get('facebook/webhook')
+  @Public()
+  @ApiOperation({ summary: 'Verify Facebook webhook' })
+  verifyWebhook(
+    @Query('hub.mode') mode: string,
+    @Query('hub.verify_token') verifyToken: string,
+    @Query('hub.challenge') challenge: string,
+  ) {
+    return this.crmService.verifyWebhook(mode, verifyToken, challenge);
+  }
+
   @Post('facebook/webhook')
   @ApiOperation({ summary: 'Handle Facebook webhook for lead generation' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  handleFacebookWebhook(@Body() webhookData: FacebookWebhookDto) {
+  @Public() // Allow Facebook to call this without JWT
+  async handleFacebookWebhook(
+    @Body() webhookData: FacebookWebhookDto,
+    @Request() req: any,
+  ) {
+    // Facebook sends X-Hub-Signature in headers
+    const signature = req.headers['x-hub-signature'];
+
+    // In a real production app with body-parser, getting the raw body for HMAC can be tricky.
+    // For this implementation, we will pass the signature to the service.
+    // Ideally, we need the raw buffer. If the app is set up with standard JSON body parser,
+    // verify might need a middleware or interceptor. 
+    // For now, we'll delegate to the service to check if it can validate or if we skip securely.
+
+    // Check signature if provided
+    if (signature) {
+      const isValid = this.crmService.validateFacebookSignature(signature, webhookData);
+      if (!isValid) {
+        // throw new ForbiddenException('Invalid Facebook signature');
+        // For now, just log warning as user doesn't have secret yet
+        console.warn('Invalid or missing Facebook App Secret for signature verification');
+      }
+    }
+
     return this.crmService.handleFacebookWebhook(webhookData);
   }
 

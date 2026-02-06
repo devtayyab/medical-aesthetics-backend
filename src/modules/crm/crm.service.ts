@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -31,6 +32,8 @@ import { MandatoryFieldValidationService } from './mandatory-field-validation.se
 
 @Injectable()
 export class CrmService {
+  private readonly logger = new Logger(CrmService.name);
+
   constructor(
     @InjectRepository(Lead)
     private leadsRepository: Repository<Lead>,
@@ -64,6 +67,7 @@ export class CrmService {
     private mandatoryFieldValidationService: MandatoryFieldValidationService,
     private taskAutomationService: TaskAutomationService,
     private queueService: QueueService,
+    private configService: ConfigService,
   ) { }
 
   private async userHasAccessToCustomer(userId: string, customerId: string): Promise<boolean> {
@@ -73,7 +77,8 @@ export class CrmService {
 
     if (user.role === UserRole.SALESPERSON) {
       const record = await this.customerRecordsRepository.findOne({ where: { customerId } });
-      return record?.assignedSalespersonId === userId;
+      // Allow access if unassigned OR assigned to this salesperson
+      return !record?.assignedSalespersonId || record?.assignedSalespersonId === userId;
     }
 
     if (user.role === UserRole.CLINIC_OWNER) {
@@ -164,29 +169,54 @@ export class CrmService {
     }
   }
 
+  async verifyWebhook(mode: string, verifyToken: string, challenge: string): Promise<string> {
+    const WEBHOOK_VERIFY_TOKEN = this.configService.get<string>('FACEBOOK_WEBHOOK_VERIFY_TOKEN') || 'my_secure_verify_token';
+
+    this.logger.log(`Received Webhook Verification Request: Mode=${mode}, Token=${verifyToken}`);
+
+    if (mode === 'subscribe' && verifyToken === WEBHOOK_VERIFY_TOKEN) {
+      this.logger.log('Webhook verified successfully');
+      return challenge;
+    }
+
+    this.logger.warn(`Webhook verification failed. Expected '${WEBHOOK_VERIFY_TOKEN}', got '${verifyToken}'`);
+    throw new ForbiddenException('Invalid verify token');
+  }
+
+  validateFacebookSignature(signature: string, payload: any): boolean {
+    return this.facebookService.validateSignature(signature, payload);
+  }
+
   async handleFacebookWebhook(webhookData: FacebookWebhookDto): Promise<void> {
     for (const entry of webhookData.entry) {
-      try {
-        // Get full lead data from Facebook
-        const leadData = await this.facebookService.getLead(entry.id);
-        const parsedLead = this.facebookService.parseLeadData(leadData);
+      for (const change of entry.changes) {
+        if (change.field !== 'leadgen') continue;
 
-        // Use enhanced duplicate detection
-        const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
-          parsedLead.email,
-          parsedLead.phone,
-          parsedLead.firstName,
-          parsedLead.lastName,
-        );
+        const leadgenId = change.value.leadgen_id;
+        if (!leadgenId) continue;
 
-        if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-          await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData);
-        } else {
-          await this.createLeadFromFacebook(parsedLead, leadData);
+        try {
+          // Get full lead data from Facebook using the lead ID from the webhook
+          const leadData = await this.facebookService.getLead(leadgenId);
+          const parsedLead = this.facebookService.parseLeadData(leadData);
+
+          // Use enhanced duplicate detection
+          const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+            parsedLead.email,
+            parsedLead.phone,
+            parsedLead.firstName,
+            parsedLead.lastName,
+          );
+
+          if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
+            await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData);
+          } else {
+            await this.createLeadFromFacebook(parsedLead, leadData);
+          }
+        } catch (error) {
+          console.error(`Error processing Facebook lead ${leadgenId}:`, error);
+          // Continue processing other leads even if one fails
         }
-      } catch (error) {
-        console.error(`Error processing Facebook lead ${entry.id}:`, error);
-        // Continue processing other leads even if one fails
       }
     }
   }
@@ -401,7 +431,12 @@ export class CrmService {
   }
 
   async getOverdueTasks(salespersonId?: string) {
-    return this.taskAutomationService.getOverdueTasks(salespersonId);
+    try {
+      return await this.taskAutomationService.getOverdueTasks(salespersonId);
+    } catch (error) {
+      this.logger.error(`Error in getOverdueTasks: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   async getAutomationRules() {
@@ -502,20 +537,88 @@ export class CrmService {
 
   // Customer Record Management
   async getCustomerRecord(customerId: string, salespersonId?: string): Promise<any> {
-    if (salespersonId) {
-      const access = await this.userHasAccessToCustomer(salespersonId, customerId);
-      if (!access) {
-        throw new NotFoundException('Customer not found');
+    // Check if user exists first
+    const customer = await this.usersRepository.findOne({ where: { id: customerId } });
+
+    // If not a user/customer, check if it's a Lead
+    if (!customer) {
+      const lead = await this.leadsRepository.findOne({
+        where: { id: customerId },
+        relations: ['assignedSales', 'tags']
+      });
+
+      if (!lead) {
+        throw new NotFoundException('Customer or Lead not found');
       }
+
+      // Return synthetic record for Lead
+      return {
+        record: {
+          id: 'lead-' + lead.id,
+          customerId: lead.id,
+          customerStatus: lead.status, // Map lead status to customer status
+          customer: {
+            id: lead.id,
+            firstName: lead.firstName,
+            lastName: lead.lastName,
+            email: lead.email,
+            phone: lead.phone,
+            role: 'lead', // Virtual role
+          },
+          assignedSalespersonId: lead.assignedSalesId,
+          assignedSalesperson: lead.assignedSales,
+          lifetimeValue: 0,
+          totalAppointments: 0,
+          completedAppointments: 0,
+          isRepeatCustomer: false,
+          notes: lead.notes,
+          createdAt: lead.createdAt,
+          updatedAt: lead.updatedAt,
+          tags: lead.tags || [],
+        },
+        appointments: [],
+        communications: [], // Could fetch lead logs if we stored them linked to leadId
+        actions: [],
+        tags: (lead.tags || []).map(t => ({
+          id: t.id,
+          tag: t, // Assuming tag relation is properly loaded or mapped
+          addedBy: null,
+          createdAt: new Date()
+        })),
+        affiliations: {
+          clinics: [],
+          doctors: [],
+          preferredClinic: null,
+          preferredDoctor: null,
+        },
+        summary: {
+          type: 'lead', // Frontend can use this to show specific badges
+          status: lead.status
+        }
+      };
     }
+
+    // Existing logic for real Customers
     let record = await this.customerRecordsRepository.findOne({
       where: { customerId },
       relations: ['customer', 'assignedSalesperson', 'communications', 'actions', 'tags'],
     });
 
+    if (record && salespersonId) {
+      const access = await this.userHasAccessToCustomer(salespersonId, customerId);
+      if (!access) {
+        throw new NotFoundException('Customer not found (Access Denied)');
+      }
+    }
+
     if (!record) {
-      // Create new record if doesn't exist
+      // User exists (checked above), ensure record exists
       record = await this.createCustomerRecord(customerId, salespersonId);
+      // Reload with relations
+      record = await this.customerRecordsRepository.findOne({
+        where: { customerId },
+        relations: ['customer', 'assignedSalesperson', 'communications', 'actions', 'tags'],
+      });
     }
 
     // Get appointments
@@ -600,7 +703,7 @@ export class CrmService {
     return this.customerRecordsRepository.save(record);
   }
 
-  async createCustomer(data: any, salespersonId: string): Promise<User> {
+  async createCustomer(data: any, salespersonId?: string): Promise<User> {
     // Check if user already exists
     const existingUser = await this.usersRepository.findOne({
       where: [{ email: data.email }, { phone: data.phone }],
@@ -746,9 +849,17 @@ export class CrmService {
   async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
     // Resolve customerRecord if customerId (User ID) is provided
     if (data.customerId) {
-      const record = await this.customerRecordsRepository.findOne({
+      let record = await this.customerRecordsRepository.findOne({
         where: { customerId: data.customerId }
       });
+
+      if (!record) {
+        // Try to create one if user exists
+        const user = await this.usersRepository.findOne({ where: { id: data.customerId } });
+        if (user) {
+          record = await this.createCustomerRecord(data.customerId);
+        }
+      }
 
       if (record) {
         // Here we assume data.customerId was actually the User.id
@@ -799,39 +910,44 @@ export class CrmService {
     requesterId: string,
     filters?: { status?: string; priority?: string; customerId?: string }
   ): Promise<CrmAction[]> {
-    const user = await this.usersRepository.findOne({ where: { id: requesterId } });
-    const qb = this.crmActionsRepository
-      .createQueryBuilder('action')
-      .leftJoinAndSelect('action.customer', 'customer');
+    try {
+      const user = await this.usersRepository.findOne({ where: { id: requesterId } });
+      const qb = this.crmActionsRepository
+        .createQueryBuilder('action')
+        .leftJoinAndSelect('action.customer', 'customer');
 
-    if (user?.role === UserRole.SALESPERSON) {
-      qb.where('action.salespersonId = :sid', { sid: requesterId });
-    } else if (user?.role === UserRole.CLINIC_OWNER) {
-      // Actions for customers in owned clinics
-      const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
-      const ownedClinicIds = ownerships.map(o => o.clinicId);
-      if (ownedClinicIds.length === 0) return [];
-      qb.leftJoin('customer.customer', 'u')
-        .leftJoin('u.clientAppointments', 'apt')
-        .andWhere('apt.clinicId IN (:...ids)', { ids: ownedClinicIds });
-    } else {
-      // Default: nothing
-      qb.where('1=0');
+      if (user?.role === UserRole.SALESPERSON) {
+        qb.where('action.salespersonId = :sid', { sid: requesterId });
+      } else if (user?.role === UserRole.CLINIC_OWNER) {
+        // Actions for customers in owned clinics
+        const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
+        const ownedClinicIds = ownerships.map(o => o.clinicId);
+        if (ownedClinicIds.length === 0) return [];
+        qb.leftJoin('customer.customer', 'u')
+          .leftJoin('u.clientAppointments', 'apt')
+          .andWhere('apt.clinicId IN (:...ids)', { ids: ownedClinicIds });
+      } else {
+        // Default: nothing
+        qb.where('1=0');
+      }
+
+      if (filters?.status) {
+        qb.andWhere('action.status = :status', { status: filters.status });
+      }
+
+      if (filters?.priority) {
+        qb.andWhere('action.priority = :priority', { priority: filters.priority });
+      }
+
+      if (filters?.customerId) {
+        qb.andWhere('action.customerId = :customerId', { customerId: filters.customerId });
+      }
+
+      return await qb.orderBy('action.dueDate', 'ASC').getMany();
+    } catch (error) {
+      this.logger.error(`Error in getActions: ${error.message}`, error.stack);
+      throw error;
     }
-
-    if (filters?.status) {
-      qb.andWhere('action.status = :status', { status: filters.status });
-    }
-
-    if (filters?.priority) {
-      qb.andWhere('action.priority = :priority', { priority: filters.priority });
-    }
-
-    if (filters?.customerId) {
-      qb.andWhere('action.customerId = :customerId', { customerId: filters.customerId });
-    }
-
-    return qb.orderBy('action.dueDate', 'ASC').getMany();
   }
 
   async getPendingActions(salespersonId: string): Promise<CrmAction[]> {

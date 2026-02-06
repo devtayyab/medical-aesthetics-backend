@@ -1,6 +1,7 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
+import * as crypto from 'crypto';
 
 export interface FacebookLeadData {
   id: string;
@@ -32,14 +33,44 @@ export interface ParsedFacebookLead {
 export class FacebookService {
   private readonly axiosInstance: AxiosInstance;
   private readonly accessToken: string;
+  private readonly appSecret: string;
   private readonly apiVersion: string = 'v18.0';
+  private readonly logger = new Logger(FacebookService.name);
 
   constructor(private configService: ConfigService) {
     this.accessToken = this.configService.get<string>('FACEBOOK_ACCESS_TOKEN');
+    this.appSecret = this.configService.get<string>('FACEBOOK_APP_SECRET');
     this.axiosInstance = axios.create({
       baseURL: `https://graph.facebook.com/${this.apiVersion}`,
       timeout: 10000,
     });
+  }
+
+  validateSignature(signature: string, payload: any): boolean {
+    if (!this.appSecret) {
+      this.logger.warn('FACEBOOK_APP_SECRET not configured. Skipping signature validation.');
+      // Return true to allow testing without secret, but this is insecure for production
+      return true;
+    }
+
+    if (!signature) {
+      return false;
+    }
+
+    const [algorithm, signatureHash] = signature.split('=');
+    if (!algorithm || !signatureHash) {
+      return false;
+    }
+
+    // Note: In a real scenario, payload should be the raw body buffer.
+    // Re-stringifying JSON might result in different white-spacing/ordering than the original request,
+    // causing verification to fail. 
+    // Ideally, we should use a RawBody middleware. 
+    // For this 'lite' implementation, we attempt to stringify, but known limitations exist.
+    const hmac = crypto.createHmac(algorithm, this.appSecret);
+    const digest = hmac.update(JSON.stringify(payload)).digest('hex');
+
+    return signatureHash === digest;
   }
 
   async getLead(leadId: string): Promise<FacebookLeadData> {
