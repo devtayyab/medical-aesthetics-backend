@@ -62,7 +62,7 @@ const inputStyle = css`
 `;
 
 const inputWithLeftIconStyle = css`
-  padding-left: 2.5rem;
+  padding-left: 3rem;
 `;
 
 const inputWithRightIconStyle = css`
@@ -151,9 +151,8 @@ export const Input: React.FC<InputProps> = ({
         {leftIcon && <div className={leftIconStyle}>{leftIcon}</div>}
 
         <input
-          className={`p-3 rounded-[12px] bg-white ${inputStyle} ${leftIcon ? inputWithLeftIconStyle : ""} ${
-            rightIcon || (isPassword && passwordToggle) ? inputWithRightIconStyle : ""
-          } ${error ? inputErrorStyle : ""}`}
+          className={`p-3 rounded-[12px] bg-white ${inputStyle} ${leftIcon ? inputWithLeftIconStyle : ""} ${rightIcon || (isPassword && passwordToggle) ? inputWithRightIconStyle : ""
+            } ${error ? inputErrorStyle : ""}`}
           type={effectiveType}
           aria-invalid={!!error}
           aria-describedby={describedById}

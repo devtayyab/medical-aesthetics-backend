@@ -1,70 +1,156 @@
 import React from 'react';
+import { css } from "@emotion/css";
 
 interface Option {
   value: string;
   label: string;
 }
 
-interface SelectProps {
+interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
-  value: string;
-  onChange: (value: string) => void;
   options: Option[];
   placeholder?: string;
-  required?: boolean;
-  error?: boolean | string;
-  disabled?: boolean;
-  className?: string;
+  error?: string | boolean;
+  helperText?: string;
+  leftIcon?: React.ReactNode;
+  fullWidth?: boolean;
 }
+
+const containerStyle = css`
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+`;
+
+const fullWidthStyle = css`
+  width: 100%;
+`;
+
+const labelStyle = css`
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-medical-text);
+`;
+
+const inputWrapperStyle = css`
+  position: relative;
+  display: flex;
+  align-items: center;
+`;
+
+const selectStyle = css`
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-medical-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-base);
+  transition: all var(--transition-fast);
+  background-color: var(--color-white);
+  color: var(--color-medical-text);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+
+  &:focus {
+    outline: none;
+    border-color: cornflowerblue;
+    box-shadow: 0 0 0 3px rgba(124, 179, 66, 0.1);
+  }
+
+  &:disabled {
+    background-color: var(--color-medical-bg);
+    color: var(--color-medical-text-light);
+    cursor: not-allowed;
+  }
+`;
+
+const selectWithLeftIconStyle = css`
+  padding-left: 3rem;
+`;
+
+const selectErrorStyle = css`
+  border-color: var(--color-error);
+  &:focus {
+    border-color: var(--color-error);
+    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
+  }
+`;
+
+const iconStyle = css`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-medical-text-light);
+  pointer-events: none;
+`;
+
+const leftIconStyle = css`
+  ${iconStyle}
+  left: var(--spacing-sm);
+`;
+
+const helperTextStyle = css`
+  font-size: var(--font-size-xs);
+  color: var(--color-medical-text-light);
+`;
+
+const errorTextStyle = css`
+  font-size: var(--font-size-xs);
+  color: var(--color-error);
+`;
 
 export const Select: React.FC<SelectProps> = ({
   label,
-  value,
-  onChange,
   options,
   placeholder = 'Select an option',
-  required = false,
-  error = false,
-  disabled = false,
-  className = ''
+  error,
+  helperText,
+  leftIcon,
+  fullWidth = false,
+  className,
+  value,
+  onChange,
+  disabled,
+  ...props
 }) => {
   const hasError = !!error;
-  const errorMessage = typeof error === 'string' ? error : 'This field is required';
+  const errorMessage = typeof error === 'string' ? error : undefined;
 
   return (
-    <div className={className}>
-      {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
-        </label>
+    <div className={`${containerStyle} ${fullWidth ? fullWidthStyle : ""} ${className || ""}`}>
+      {label && <label className={labelStyle}>{label}</label>}
+
+      <div className={inputWrapperStyle}>
+        {leftIcon && <div className={leftIconStyle}>{leftIcon}</div>}
+
+        <select
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          className={`p-3 rounded-[12px] bg-white ${selectStyle} ${leftIcon ? selectWithLeftIconStyle : ""} ${hasError ? selectErrorStyle : ""
+            }`}
+          {...props}
+        >
+          {placeholder && (
+            <option value="" disabled>
+              {placeholder}
+            </option>
+          )}
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {hasError && errorMessage && (
+        <span className={errorTextStyle}>{errorMessage}</span>
       )}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className={`
-          w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-          disabled:bg-gray-50 disabled:text-gray-500
-          ${hasError ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}
-        `}
-      >
-        {placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {hasError && (
-        <p className="mt-1 text-sm text-red-600">
-          {errorMessage}
-        </p>
+      {!hasError && helperText && (
+        <span className={helperTextStyle}>{helperText}</span>
       )}
     </div>
   );

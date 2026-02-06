@@ -250,7 +250,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                 // Should be dynamic
                                             ]}
                                             value={interactionForm.clinic}
-                                            onChange={(v) => handleInteractionChange('clinic', v)}
+                                            onChange={(e) => handleInteractionChange('clinic', e.target.value)}
                                             error={showValidationWarning && !interactionForm.clinic ? "Required" : undefined}
                                         />
                                         <Select
@@ -264,7 +264,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                 { value: "wrong_number", label: "Wrong Number" },
                                             ]}
                                             value={interactionForm.outcome}
-                                            onChange={(v) => handleInteractionChange('outcome', v as any)}
+                                            onChange={(e) => handleInteractionChange('outcome', e.target.value)}
                                             error={showValidationWarning && !interactionForm.outcome ? "Required" : undefined}
                                         />
                                     </div>

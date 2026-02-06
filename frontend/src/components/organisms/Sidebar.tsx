@@ -183,7 +183,19 @@ export const Sidebar: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-1">
-            <button className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors">
+            <button
+              onClick={() => {
+                if (role === 'salesperson') {
+                  navigate('/crm/settings');
+                } else if (role === 'clinic_owner') {
+                  navigate('/clinic/settings');
+                } else if (role === 'client') {
+                  navigate('/settings');
+                }
+              }}
+              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              title="Settings"
+            >
               <Settings className="w-4 h-4" />
             </button>
             <button

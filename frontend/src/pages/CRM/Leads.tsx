@@ -17,7 +17,11 @@ import {
   ArrowUpRight,
   TrendingUp,
   X,
-  Eye
+  Eye,
+  User,
+  Globe,
+  Tag,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
@@ -249,7 +253,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
           <div className="flex flex-col md:flex-row gap-3 animate-in slide-in-from-right-2">
             <Select
               value={leadFilters.status || ''}
-              onChange={(value) => handleFilterChange('status', value)}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
               options={[
                 { value: '', label: 'All Statuses' },
                 { value: 'new', label: 'New' },
@@ -262,7 +266,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             />
             <Select
               value={leadFilters.source || ''}
-              onChange={(value) => handleFilterChange('source', value)}
+              onChange={(e) => handleFilterChange('source', e.target.value)}
               options={[
                 { value: '', label: 'All Sources' },
                 { value: 'facebook_ads', label: 'Facebook Ads' },
@@ -435,13 +439,13 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                 <Select
                   label="Status"
                   value={editingLead.status}
-                  onChange={(v) => setEditingLead({ ...editingLead, status: v as any })}
+                  onChange={(e) => setEditingLead({ ...editingLead, status: e.target.value as any })}
                   options={[{ value: 'new', label: 'New' }, { value: 'contacted', label: 'Contacted' }, { value: 'qualified', label: 'Qualified' }, { value: 'converted', label: 'Converted' }, { value: 'lost', label: 'Lost' }]}
                 />
                 <Select
                   label="Source"
                   value={editingLead.source}
-                  onChange={(v) => setEditingLead({ ...editingLead, source: v })}
+                  onChange={(e) => setEditingLead({ ...editingLead, source: e.target.value })}
                   options={[{ value: 'facebook_ads', label: 'Facebook Ads' }, { value: 'website', label: 'Website' }, { value: 'referral', label: 'Referral' }]}
                 />
               </div>
@@ -454,32 +458,147 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         </div>
       )}
 
-      {/* Create Modal Logic - Similar cleaner implementation */}
+      {/* Create Modal Logic - Revamped Design */}
       {showCreateForm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
-          <Card className="w-full max-w-lg shadow-2xl">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 pb-4">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-2xl shadow-2xl border-0 overflow-hidden rounded-2xl flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="px-8 py-6 border-b border-gray-100 bg-white flex items-start justify-between flex-none">
               <div>
-                <CardTitle className="text-xl">Add New Lead</CardTitle>
-                <p className="text-sm text-gray-500 mt-1">Enter lead details to get started.</p>
+                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Add New Lead</h2>
+                <p className="text-gray-500 mt-1.5 text-sm font-medium">Create a new prospect entry in your CRM</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setShowCreateForm(false)}><X className="w-4 h-4" /></Button>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="First Name" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required />
-                <Input label="Last Name" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required />
+              <button
+                onClick={() => setShowCreateForm(false)}
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-gray-50/50">
+              {/* Section 1: Contact Information */}
+              <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-50">
+                  <div className="bg-blue-50 p-2 rounded-lg">
+                    <User className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">Contact Information</h3>
+                    <p className="text-xs text-gray-500">Basic details about the prospect</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <Input
+                      label="First Name"
+                      placeholder="e.g. Sarah"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      required
+                      leftIcon={<User className="w-4 h-4" />}
+                    />
+                    <Input
+                      label="Last Name"
+                      placeholder="e.g. Johnson"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      required
+                      leftIcon={<User className="w-4 h-4" />}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <Input
+                      label="Email Address"
+                      type="email"
+                      placeholder="sarah@example.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                      leftIcon={<Mail className="w-4 h-4" />}
+                    />
+                    <Input
+                      label="Phone Number"
+                      placeholder="+1 (555) 000-0000"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      leftIcon={<Phone className="w-4 h-4" />}
+                    />
+                  </div>
+                </div>
               </div>
-              <Input label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
-              <Input label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-              <div className="grid grid-cols-2 gap-4">
-                <Select label="Status" value={formData.status} onChange={(v) => setFormData({ ...formData, status: v })} options={[{ value: 'new', label: 'New' }, { value: 'contacted', label: 'Contacted' }, { value: 'qualified', label: 'Qualified' }]} />
-                <Select label="Source" value={formData.source} onChange={(v) => setFormData({ ...formData, source: v })} options={[{ value: 'facebook_ads', label: 'Facebook Ads' }, { value: 'website', label: 'Website' }, { value: 'manual', label: 'Manual' }]} />
+
+              {/* Section 2: Lead Details */}
+              <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-50">
+                  <div className="bg-purple-50 p-2 rounded-lg">
+                    <Tag className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">Lead Details</h3>
+                    <p className="text-xs text-gray-500">Status and source information</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <Select
+                      label="Initial Status"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      leftIcon={<Tag className="w-4 h-4" />}
+                      options={[
+                        { value: 'new', label: 'New Lead' },
+                        { value: 'contacted', label: 'Contacted' },
+                        { value: 'qualified', label: 'Qualified' }
+                      ]}
+                    />
+                    <Select
+                      label="Lead Source"
+                      value={formData.source}
+                      onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                      leftIcon={<Globe className="w-4 h-4" />}
+                      options={[
+                        { value: 'facebook_ads', label: 'Facebook Ads' },
+                        { value: 'website', label: 'Website' },
+                        { value: 'manual', label: 'Manual Entry' },
+                        { value: 'referral', label: 'Referral' }
+                      ]}
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <Input
+                      label="Initial Notes"
+                      placeholder="Add any initial notes or context about this lead..."
+                      value={formData.notes || ''}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      leftIcon={<MessageSquare className="w-4 h-4" />}
+                    />
+                  </div>
+                </div>
               </div>
-            </CardContent>
-            <div className="p-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50 rounded-b-xl">
-              <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
-              <Button variant="primary" onClick={handleCreateLead}>Create Lead</Button>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-3 backdrop-blur-sm flex-none">
+              <Button
+                variant="white"
+                onClick={() => setShowCreateForm(false)}
+                className="text-gray-700 hover:text-gray-900 border-gray-200"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleCreateLead}
+                className="px-8 shadow-lg shadow-blue-500/20"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Lead
+              </Button>
             </div>
           </Card>
         </div>
