@@ -59,7 +59,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
       // Since we are running in Docker on the same network, we don't need SSL
       // If using a managed database like AWS RDS in the future, we might need to enable this again
       ssl: false,
-      synchronize: this.configService.get('NODE_ENV') !== 'production',
+      synchronize: this.configService.get('NODE_ENV') !== 'production' || this.configService.get('DB_SYNCHRONIZE') === 'true',
     };
   }
 }
