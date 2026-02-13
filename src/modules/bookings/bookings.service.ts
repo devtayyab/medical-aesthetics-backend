@@ -102,7 +102,7 @@ export class BookingsService {
                 email: lead.email || `temp-${lead.id}@example.com`,
                 firstName: lead.firstName || 'Unknown',
                 lastName: lead.lastName || 'Client',
-                phone: lead.phone,
+                phone: lead.phone || undefined,
               }, salespersonId);
 
               clientId = savedUser.id;

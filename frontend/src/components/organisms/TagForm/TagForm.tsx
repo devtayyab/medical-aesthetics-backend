@@ -7,7 +7,7 @@ import { Textarea } from '@/components/atoms/Textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 import { addCustomerTag, getCustomerRecord } from '@/store/slices/crmSlice';
 import type { AppDispatch } from '@/store';
-import axios from 'axios';
+import { api } from '@/services/api';
 
 interface TagFormProps {
     customerId: string;
@@ -28,8 +28,8 @@ export const TagForm: React.FC<TagFormProps> = ({
     useEffect(() => {
         const fetchTags = async () => {
             try {
-                const { data } = await axios.get('/admin/tags'); // Assuming this endpoint exists
-                const activeTags = (data || []).map((t: any) => ({
+                const { data } = await api.get('/admin/tags');
+                const activeTags = (Array.isArray(data) ? data : []).map((t: any) => ({
                     value: t.id,
                     label: t.name
                 }));
