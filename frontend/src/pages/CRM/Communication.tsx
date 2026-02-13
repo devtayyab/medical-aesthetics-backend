@@ -5,9 +5,7 @@ import {
   Send,
   User,
   Clock,
-  CheckCircle2,
   AlertCircle,
-  Search,
   Phone,
   Mail,
   FileText
@@ -15,11 +13,12 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
-import { Input } from "@/components/atoms/Input/Input";
+import { Select } from "@/components/atoms/Select/Select";
 import { fetchCommunicationHistory } from "@/store/slices/crmSlice";
 import { CommunicationForm } from "@/components/organisms/CommunicationForm/CommunicationForm";
 import type { RootState, AppDispatch } from "@/store";
 import type { CommunicationLog } from "@/types";
+import { userAPI } from "@/services/api";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -27,32 +26,41 @@ export const Communication: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { communications, isLoading } = useSelector((state: RootState) => state.crm);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await userAPI.getAllUsers({ role: 'client' });
+        const users = Array.isArray(response.data) ? response.data : response.data.users || [];
+
+        const customerOptions = users.map((user: any) => ({
+          value: user.id,
+          label: `${user.firstName} ${user.lastName} (${user.email || 'No email'})`,
+        }));
+        setCustomers(customerOptions);
+      } catch (err) {
+        console.error("Failed to fetch customers:", err);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
 
   useEffect(() => {
     if (selectedCustomerId) {
       if (UUID_REGEX.test(selectedCustomerId)) {
         dispatch(fetchCommunicationHistory({ customerId: selectedCustomerId }));
         setErrorHeader(null);
-      } else {
-        // Optional: clear communications or set a local error state if desired
-        // For now, we just don't dispatch to avoid 400/500 backend errors
-        if (selectedCustomerId.length > 10) {
-          // Only show error if they seem to be trying to type a full ID
-          setErrorHeader("Invalid Customer ID format");
-        }
       }
     }
   }, [dispatch, selectedCustomerId]);
 
   const handleCustomerSelect = (customerId: string) => {
     setSelectedCustomerId(customerId);
-    if (customerId && !UUID_REGEX.test(customerId)) {
-      setErrorHeader("Please enter a valid UUID");
-    } else {
-      setErrorHeader(null);
-    }
+    setErrorHeader(null);
   };
 
   const handleCommunicationLogged = () => {
@@ -100,12 +108,11 @@ export const Communication: React.FC = () => {
             </CardHeader>
             <CardContent className="p-6">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Paste Customer UUID..."
+                <Select
                   value={selectedCustomerId}
-                  onChange={(e) => handleCustomerSelect(e.target.value)}
-                  className={`pl-9 ${errorHeader ? 'border-red-300 focus:ring-red-200' : ''}`}
+                  onChange={handleCustomerSelect}
+                  placeholder="Select Customer..."
+                  options={customers}
                 />
               </div>
               {errorHeader && (
@@ -116,7 +123,7 @@ export const Communication: React.FC = () => {
               <div className="mt-4 bg-blue-50 p-4 rounded-lg text-sm text-blue-700">
                 <p className="flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                  Enter a valid Customer ID to view history or log new interactions.
+                  Select a customer to view history or log new interactions.
                 </p>
               </div>
             </CardContent>
@@ -172,8 +179,8 @@ export const Communication: React.FC = () => {
                         className="group flex gap-4 p-4 rounded-xl border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition-all"
                       >
                         <div className={`p-3 rounded-full h-fit shrink-0 ${comm.type === 'call' ? 'bg-green-100 text-green-600' :
-                            comm.type === 'email' ? 'bg-purple-100 text-purple-600' :
-                              'bg-gray-100 text-gray-600'
+                          comm.type === 'email' ? 'bg-purple-100 text-purple-600' :
+                            'bg-gray-100 text-gray-600'
                           }`}>
                           {getIconForType(comm.type)}
                         </div>
@@ -195,8 +202,8 @@ export const Communication: React.FC = () => {
 
                           <div className="mt-3 flex items-center gap-2">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider ${comm.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                comm.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                                  'bg-gray-100 text-gray-700'
+                              comm.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                                'bg-gray-100 text-gray-700'
                               }`}>
                               {comm.status}
                             </span>

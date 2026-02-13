@@ -14,6 +14,7 @@ import {
 import type { AppDispatch } from '@/store';
 import axios from 'axios';
 import type { CrmAction } from '@/types';
+import { userAPI } from '@/services/api';
 
 interface ActionFormProps {
   customerId: string;
@@ -40,11 +41,11 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     salespersonId: prefilledData?.salespersonId || '',
     metadata: {
       ...(prefilledData?.metadata || {}),
-      // Initialize metadata fields from prefilledData if they exist at top level (for backward compatibility)
-      ...(prefilledData?.clinic && { clinic: prefilledData.clinic }),
-      ...(prefilledData?.proposedTreatment && { proposedTreatment: prefilledData.proposedTreatment }),
-      ...(prefilledData?.callOutcome && { callOutcome: prefilledData.callOutcome }),
-      ...(prefilledData?.cost && { cost: prefilledData.cost })
+      // Initialize metadata fields from prefilledData if they exist in metadata
+      ...((prefilledData as any)?.metadata?.clinic && { clinic: (prefilledData as any).metadata.clinic }),
+      ...((prefilledData as any)?.metadata?.proposedTreatment && { proposedTreatment: (prefilledData as any).metadata.proposedTreatment }),
+      ...((prefilledData as any)?.metadata?.callOutcome && { callOutcome: (prefilledData as any).metadata.callOutcome }),
+      ...((prefilledData as any)?.metadata?.cost && { cost: (prefilledData as any).metadata.cost })
     }
   });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -56,27 +57,32 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   }, [dispatch, formData.actionType]);
 
   React.useEffect(() => {
-    (async () => {
+    const fetchData = async () => {
       try {
-        // Fetch customers if no customerId is provided (for salesperson users)
+        // Fetch customers if no customerId is provided
         if (!propCustomerId) {
-          const { data } = await axios.get('/crm/customers');
-          const options = (data || []).map((c: any) => ({ 
-            value: c.id, 
-            label: `${c.firstName} ${c.lastName} - ${c.email}` 
+          const response = await userAPI.getAllUsers({ role: 'client' });
+          const users = Array.isArray(response.data) ? response.data : response.data.users || [];
+          const options = users.map((u: any) => ({
+            value: u.id,
+            label: `${u.firstName} ${u.lastName} (${u.email || 'No email'})`
           }));
           setCustomers(options);
         }
-        
-        // Fetch clinics
-        const { data: clinicData } = await axios.get('/crm/accessible-clinics');
+
+        // Fetch clinics - trying to use relative path if axios is configured with baseURL
+        // In this project, axios is imported from 'axios' here, not restricted to the service
+        // We'll use the relative path which should be handled by the proxy
+        const { data: clinicData } = await axios.get('/api/crm/accessible-clinics');
         const clinicOptions = (clinicData || []).map((c: any) => ({ value: c.id, label: c.name }));
         setClinics(clinicOptions);
       } catch (e) {
+        console.error('ActionForm initialization failed:', e);
         setCustomers([]);
         setClinics([]);
       }
-    })();
+    };
+    fetchData();
   }, [propCustomerId]);
 
   const handleInputChange = (field: string, value: any) => {

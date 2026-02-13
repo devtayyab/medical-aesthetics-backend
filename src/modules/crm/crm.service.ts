@@ -132,12 +132,6 @@ export class CrmService {
       throw new BadRequestException('Missing required fields: customerId, serviceId, frequency');
     }
 
-    // Basic UUID format check
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(customerId)) {
-      throw new BadRequestException(`Invalid customer ID format: ${customerId}`);
-    }
-
     try {
       // Validate customer exists
       const customer = await this.usersRepository.findOne({ where: { id: customerId } });
@@ -170,6 +164,11 @@ export class CrmService {
       if (error.message && error.message.includes('Unsupported frequency')) {
         throw new BadRequestException(error.message);
       }
+      // Handle database UUID format errors
+      if (error.code === '22P02') { // PostgreSQL invalid text representation code
+        throw new BadRequestException(`Invalid customer ID format: ${customerId}`);
+      }
+
       throw new BadRequestException(`Failed to schedule recurring appointment: ${error.message}`);
     }
   }
