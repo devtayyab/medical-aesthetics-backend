@@ -16,7 +16,7 @@ export class EventHandlersService {
     private tasksService: TasksService,
     private loyaltyService: LoyaltyService,
     private queueService: QueueService,
-  ) {}
+  ) { }
 
   @OnEvent('lead.created')
   async handleLeadCreated(lead: any) {
@@ -56,10 +56,10 @@ export class EventHandlersService {
 
     // Send confirmation to client
     const serviceName = appointment.service?.name || 'Appointment';
-    const providerName = appointment.provider 
+    const providerName = appointment.provider
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
       : 'Professional';
-    
+
     await this.notificationsService.sendAppointmentConfirmation(
       appointment.clientId,
       {
@@ -76,7 +76,7 @@ export class EventHandlersService {
       const appointmentDate = new Date(appointment.startTime);
       const formattedDate = appointmentDate.toLocaleDateString();
       const formattedTime = appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      
+
       await this.notificationsService.create(
         appointment.providerId,
         NotificationType.PUSH,
@@ -97,7 +97,7 @@ export class EventHandlersService {
       const appointmentDate = new Date(appointment.startTime);
       const formattedDate = appointmentDate.toLocaleDateString();
       const formattedTime = appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      
+
       await this.notificationsService.create(
         appointment.clinic.ownerId,
         NotificationType.PUSH,
@@ -112,7 +112,8 @@ export class EventHandlersService {
     }
 
     // Schedule reminder 24 hours before
-    const reminderTime = new Date(appointment.startTime.getTime() - 24 * 60 * 60 * 1000);
+    const startTime = appointment.startTime instanceof Date ? appointment.startTime : new Date(appointment.startTime);
+    const reminderTime = new Date(startTime.getTime() - 24 * 60 * 60 * 1000);
     if (reminderTime > new Date()) {
       await this.queueService.scheduleAppointmentReminder(appointment.id, reminderTime);
     }
@@ -121,11 +122,11 @@ export class EventHandlersService {
   @OnEvent('appointment.status.changed')
   async handleAppointmentStatusChanged(eventData: any) {
     const { appointment, oldStatus, newStatus } = eventData;
-    
+
     this.logger.log(`Appointment ${appointment.id} status changed from ${oldStatus} to ${newStatus}`);
 
     const serviceName = appointment.service?.name || 'Appointment';
-    const providerName = appointment.provider 
+    const providerName = appointment.provider
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
       : 'Professional';
 
@@ -134,7 +135,7 @@ export class EventHandlersService {
       const points = await this.loyaltyService.calculatePointsForAppointment(
         appointment.totalAmount || appointment.service?.price || 0,
       );
-      
+
       await this.loyaltyService.awardPoints(
         appointment.clientId,
         appointment.clinicId,
@@ -162,8 +163,8 @@ export class EventHandlersService {
       NotificationType.PUSH,
       'Appointment Update',
       `Your ${serviceName}${providerName ? ` with ${providerName}` : ''} status: ${newStatus}`,
-      { 
-        appointmentId: appointment.id, 
+      {
+        appointmentId: appointment.id,
         status: newStatus,
         serviceName,
         providerName,
@@ -177,8 +178,8 @@ export class EventHandlersService {
         NotificationType.PUSH,
         'Appointment Status Changed',
         `${serviceName} appointment status changed to: ${newStatus}`,
-        { 
-          appointmentId: appointment.id, 
+        {
+          appointmentId: appointment.id,
           status: newStatus,
           clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Client',
         },
@@ -189,7 +190,7 @@ export class EventHandlersService {
   @OnEvent('loyalty.points.awarded')
   async handleLoyaltyPointsAwarded(eventData: any) {
     const { clientId, points, balance } = eventData;
-    
+
     this.logger.log(`${points} loyalty points awarded to client ${clientId}`);
 
     // Send notification about points earned
