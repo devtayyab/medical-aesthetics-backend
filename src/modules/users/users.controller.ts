@@ -7,8 +7,9 @@ import {
   Param,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -20,7 +21,7 @@ import { UserRole } from '../../common/enums/user-role.enum';
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
@@ -28,6 +29,18 @@ export class UsersController {
   @ApiOperation({ summary: 'Get current user profile' })
   getProfile(@Request() req) {
     return req.user;
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all users' })
+  @ApiQuery({ name: 'role', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'offset', required: false })
+  findAll(@Query() query: { role?: string; limit?: number; offset?: number }) {
+    return this.usersService.findAll(query);
   }
 
   @Patch(':id')

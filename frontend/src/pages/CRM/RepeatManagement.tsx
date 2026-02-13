@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { Input } from "@/components/atoms/Input/Input";
 import { Button } from "@/components/atoms/Button/Button";
 import { scheduleRecurring } from "@/store/slices/crmSlice";
 import type { AppDispatch } from "@/store";
 import { Select } from "@/components/atoms/Select/Select";
+import { userAPI } from "@/services/api";
 
 export const RepeatManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -14,16 +15,37 @@ export const RepeatManagement: React.FC = () => {
     frequency: "",
     startDate: "",
   });
+  const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await userAPI.getAllUsers({ role: 'client' });
+        // Assuming response.data is an array of users or has a users property
+        const users = Array.isArray(response.data) ? response.data : response.data.users || [];
+
+        const customerOptions = users.map((user: any) => ({
+          value: user.id,
+          label: `${user.firstName} ${user.lastName} (${user.email || 'No email'})`,
+        }));
+        setCustomers(customerOptions);
+      } catch (err) {
+        console.error("Failed to fetch customers:", err);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError(null);
   };
 
-  const handleFrequencyChange = (value: string) => {
-    setForm({ ...form, frequency: value });
+  const handleSelectChange = (name: string, value: string) => {
+    setForm({ ...form, [name]: value });
     setError(null);
   };
 
@@ -67,14 +89,16 @@ export const RepeatManagement: React.FC = () => {
             {success}
           </div>
         )}
-        <Input
-          name="customerId"
-          placeholder="Customer ID"
+
+        <Select
+          label="Customer"
+          placeholder="Select Customer"
           value={form.customerId}
-          onChange={handleChange}
-          fullWidth
+          onChange={(val) => handleSelectChange('customerId', val)}
+          options={customers}
           required
         />
+
         <Input
           name="serviceId"
           placeholder="Service ID"
@@ -85,7 +109,7 @@ export const RepeatManagement: React.FC = () => {
         />
         <Select
           value={form.frequency}
-          onChange={handleFrequencyChange}
+          onChange={(val) => handleSelectChange('frequency', val)}
           label="Frequency"
           placeholder="Select frequency"
           options={[
