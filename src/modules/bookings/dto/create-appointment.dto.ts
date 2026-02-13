@@ -22,7 +22,7 @@ export class CreateAppointmentDto {
   @ApiProperty()
   @IsOptional()
   @IsUUID()
-  providerId?: string;
+  providerId?: string | null;
 
   @ApiProperty()
   @IsUUID()

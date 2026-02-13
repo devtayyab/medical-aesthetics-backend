@@ -23,8 +23,8 @@ export class Appointment {
   @Column()
   serviceId: string;
 
-  @Column({ nullable: true })
-  providerId?: string; // Doctor/Practitioner
+  @Column({ type: 'uuid', nullable: true })
+  providerId?: string | null; // Doctor/Practitioner
 
   @Column()
   clientId: string;
