@@ -141,6 +141,7 @@ export class BookingsService {
     const appointmentData = {
       ...createAppointmentDto,
       clientId, // Use potentially updated clientId
+      providerId: createAppointmentDto.providerId ?? null,
       startTime: new Date(createAppointmentDto.startTime),
       endTime: new Date(createAppointmentDto.endTime),
       appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
