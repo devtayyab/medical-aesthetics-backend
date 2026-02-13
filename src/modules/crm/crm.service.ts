@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In } from 'typeorm';
+import { Repository, Between, In, DataSource } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Lead } from './entities/lead.entity';
 import { CustomerRecord } from './entities/customer-record.entity';
@@ -31,7 +31,7 @@ import { CustomerAffiliationService } from './customer-affiliation.service';
 import { MandatoryFieldValidationService } from './mandatory-field-validation.service';
 
 @Injectable()
-export class CrmService {
+export class CrmService implements OnModuleInit {
   private readonly logger = new Logger(CrmService.name);
 
   constructor(
@@ -68,7 +68,32 @@ export class CrmService {
     private taskAutomationService: TaskAutomationService,
     private queueService: QueueService,
     private configService: ConfigService,
+    private dataSource: DataSource,
   ) { }
+
+  async onModuleInit() {
+    // Automatically fix schema issue if migration failed or wasn't run
+    try {
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+
+      const checkResult = await queryRunner.query(`
+        SELECT is_nullable 
+        FROM information_schema.columns 
+        WHERE table_name = 'crm_actions' AND column_name = 'customerId'
+      `);
+
+      if (checkResult && checkResult.length > 0 && checkResult[0].is_nullable === 'NO') {
+        this.logger.warn('Detected NOT NULL constraint on crm_actions.customerId. Attempting to fix...');
+        await queryRunner.query('ALTER TABLE "crm_actions" ALTER COLUMN "customerId" DROP NOT NULL');
+        this.logger.log('Successfully altered crm_actions.customerId to be nullable.');
+      }
+
+      await queryRunner.release();
+    } catch (err) {
+      this.logger.error('Failed to auto-fix DB schema in CrmService', err);
+    }
+  }
 
   private async userHasAccessToCustomer(userId: string, customerId: string): Promise<boolean> {
     if (!userId) return false;
