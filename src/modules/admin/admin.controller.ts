@@ -43,6 +43,7 @@ export class AdminController {
   }
 
   @Get('tags')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @ApiOperation({ summary: 'Get all tags' })
   getTags() {
     return this.adminService.getTags();

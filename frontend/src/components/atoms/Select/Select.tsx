@@ -6,7 +6,7 @@ interface Option {
   label: string;
 }
 
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+export interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
   label?: string;
   options: Option[];
   placeholder?: string;
@@ -14,6 +14,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   helperText?: string;
   leftIcon?: React.ReactNode;
   fullWidth?: boolean;
+  onChange?: (value: string) => void;
 }
 
 const containerStyle = css`
@@ -55,19 +56,20 @@ const selectStyle = css`
 
   &:focus {
     outline: none;
-    border-color: cornflowerblue;
-    box-shadow: 0 0 0 3px rgba(124, 179, 66, 0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(130, 201, 30, 0.08);
   }
 
   &:disabled {
-    background-color: var(--color-medical-bg);
+    background-color: #F9FAFB;
     color: var(--color-medical-text-light);
     cursor: not-allowed;
+    border-color: var(--color-gray-200);
   }
 `;
 
 const selectWithLeftIconStyle = css`
-  padding-left: 3rem;
+  padding-left: 2.75rem;
 `;
 
 const selectErrorStyle = css`
@@ -88,7 +90,8 @@ const iconStyle = css`
 
 const leftIconStyle = css`
   ${iconStyle}
-  left: var(--spacing-sm);
+  left: 0.875rem;
+  color: var(--color-gray-400);
 `;
 
 const helperTextStyle = css`
@@ -127,7 +130,7 @@ export const Select: React.FC<SelectProps> = ({
 
         <select
           value={value}
-          onChange={onChange}
+          onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
           className={`p-3 rounded-[12px] bg-white ${selectStyle} ${leftIcon ? selectWithLeftIconStyle : ""} ${hasError ? selectErrorStyle : ""
             }`}

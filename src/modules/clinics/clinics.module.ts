@@ -11,10 +11,11 @@ import { Appointment } from '../bookings/entities/appointment.entity';
 import { BookingsModule } from '../bookings/bookings.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Clinic, Service, Review, User, Appointment]),
+    TypeOrmModule.forFeature([Clinic, Service, Review, User, Appointment, AgentClinicAccess]),
     forwardRef(() => BookingsModule),
     forwardRef(() => LoyaltyModule),
     NotificationsModule,
@@ -23,4 +24,4 @@ import { NotificationsModule } from '../notifications/notifications.module';
   providers: [ClinicsService],
   exports: [ClinicsService],
 })
-export class ClinicsModule {}
+export class ClinicsModule { }

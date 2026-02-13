@@ -340,19 +340,15 @@ export const crmAPI = {
     status?: string;
     priority?: string;
     customerId?: string;
-  }) => api.get(`/crm/actions`, { params: filters }),
+  }) => api.get(`/crm/actions`, { params: { ...filters, salespersonId } }),
   getPendingActions: (salespersonId?: string) =>
     api.get(`/crm/actions/${salespersonId}/pending`),
   getOverdueTasks: (salespersonId?: string) =>
     api.get("/crm/tasks/overdue", { params: { salespersonId } }),
 
   // Tag Management
-  addCustomerTag: (data: {
-    customerId: string;
-    tagId: string;
-    addedBy: string;
-    notes?: string;
-  }) => api.post("/crm/tags", data),
+  addCustomerTag: (customerId: string, tagId: string, notes?: string) =>
+    api.post(`/crm/customers/${customerId}/tags`, { tagId, notes }),
   removeCustomerTag: (id: string) => api.delete(`/crm/tags/${id}`),
   getCustomersByTag: (tagId: string, salespersonId?: string) =>
     api.get(`/crm/tags/${tagId}/customers`, { params: { salespersonId } }),

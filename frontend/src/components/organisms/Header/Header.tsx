@@ -166,7 +166,7 @@ export const Header: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { isAuthenticated, user, refreshToken } = useSelector(
+  const { isAuthenticated, user } = useSelector(
     (state: RootState) => state.auth
   );
   const { unreadCount } = useSelector(
@@ -204,7 +204,7 @@ export const Header: React.FC = () => {
       ];
     }
 
-    if (user.role === "SUPER_ADMIN") {
+    if (user.role === "SUPER_ADMIN" || user.role === "manager") {
       return [
         { to: "/admin/manager-dashboard", label: "Dashboard" },
         // { to: "/crm", label: "CRM" },
@@ -289,7 +289,7 @@ export const Header: React.FC = () => {
           </button>
           <Link
             to={
-              clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : user?.role === "SUPER_ADMIN" ? "/admin/manager-dashboard" : "/"
+              clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : (user?.role === "SUPER_ADMIN" || user?.role === "manager") ? "/admin/manager-dashboard" : "/"
             }
             className={`text-[#CBFF38] text-2xl font-bold flex items-center ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
               }`}

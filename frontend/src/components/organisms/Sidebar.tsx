@@ -45,6 +45,17 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" /> },
 ];
 
+const managerLinks: SidebarItem[] = [
+  { path: "/admin/manager-dashboard", label: "Manager Dashboard", icon: <LayoutDashboard className="w-5 h-5" />, group: "Overview" },
+  { path: "/admin/manager-crm/calls", label: "CRM Calls", icon: <Phone className="w-5 h-5" />, group: "CRM" },
+  { path: "/admin/manager-crm/reports", label: "CRM Reports", icon: <FileText className="w-5 h-5" />, group: "CRM" },
+  { path: "/admin/manager-crm/advertising", label: "Advertising", icon: <BarChart2 className="w-5 h-5" />, group: "Marketing" },
+  { path: "/admin/manager-crm/access", label: "Access Control", icon: <Shield className="w-5 h-5" />, group: "Settings" },
+  { path: "/admin/manager-crm/benefits", label: "Benefits", icon: <DollarSign className="w-5 h-5" />, group: "Settings" },
+  { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <AlertCircle className="w-5 h-5" />, group: "Alerts" },
+  { path: "/admin/manager-crm/clinic-stats", label: "Clinic Stats", icon: <LineChart className="w-5 h-5" />, group: "Analytics" },
+];
+
 const getAdminLinks = (role: string): SidebarItem[] => {
   const baseLinks = [
     { path: "/admin/users", label: "Users", icon: <Users className="w-5 h-5" />, group: "Administration" },
@@ -52,17 +63,8 @@ const getAdminLinks = (role: string): SidebarItem[] => {
     { path: "/admin/monitor", label: "Monitor", icon: <BarChart2 className="w-5 h-5" />, group: "Analytics" },
   ];
 
-  if (role === 'SUPER_ADMIN') {
-    return [
-      { path: "/admin/manager-dashboard", label: "Manager Dashboard", icon: <LayoutDashboard className="w-5 h-5" />, group: "Overview" },
-      { path: "/admin/manager-crm/calls", label: "CRM Calls", icon: <Phone className="w-5 h-5" />, group: "CRM" },
-      { path: "/admin/manager-crm/reports", label: "CRM Reports", icon: <FileText className="w-5 h-5" />, group: "CRM" },
-      { path: "/admin/manager-crm/advertising", label: "Advertising", icon: <BarChart2 className="w-5 h-5" />, group: "Marketing" },
-      { path: "/admin/manager-crm/access", label: "Access Control", icon: <Shield className="w-5 h-5" />, group: "Settings" },
-      { path: "/admin/manager-crm/benefits", label: "Benefits", icon: <DollarSign className="w-5 h-5" />, group: "Settings" },
-      { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <AlertCircle className="w-5 h-5" />, group: "Alerts" },
-      { path: "/admin/manager-crm/clinic-stats", label: "Clinic Stats", icon: <LineChart className="w-5 h-5" />, group: "Analytics" },
-    ];
+  if (role === 'SUPER_ADMIN' || role === 'manager') {
+    return managerLinks;
   }
 
   return [
@@ -81,7 +83,7 @@ export const Sidebar: React.FC = () => {
     await dispatch(logout());
     navigate("/login");
   };
-  const role = user?.role || "";
+  const role = (user?.role as string) || "";
 
   const links =
     role === "client"
@@ -94,7 +96,9 @@ export const Sidebar: React.FC = () => {
             ? getAdminLinks(role)
             : role === "salesperson"
               ? crmLinks
-              : [];
+              : role === "manager"
+                ? managerLinks
+                : [];
 
   // Group links by their group property
   const groupedLinks = links.reduce<Record<string, SidebarItem[]>>((acc, link) => {
@@ -126,7 +130,7 @@ export const Sidebar: React.FC = () => {
             <LayoutDashboard className="w-5 h-5" strokeWidth={2.5} />
           </div>
           <span className="text-lg font-bold text-white tracking-tight group-hover:text-gray-200 transition-colors">
-            Manager Panel
+            {role === 'salesperson' ? 'Sales Panel' : role === 'clinic_owner' ? 'Clinic Panel' : 'Manager Panel'}
           </span>
         </Link>
       </div>

@@ -46,14 +46,16 @@ const inputStyle = css`
 
   &:focus {
     outline: none;
-    border-color:cornflowerblue;
-    box-shadow: 0 0 0 3px rgba(124, 179, 66, 0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(130, 201, 30, 0.08); /* Using the new primary color */
+    background-color: var(--color-white);
   }
 
   &:disabled {
-    background-color: var(--color-medical-bg);
+    background-color: #F9FAFB;
     color: var(--color-medical-text-light);
     cursor: not-allowed;
+    border-color: var(--color-gray-200);
   }
 
   &::placeholder {
@@ -62,11 +64,11 @@ const inputStyle = css`
 `;
 
 const inputWithLeftIconStyle = css`
-  padding-left: 3rem;
+  padding-left: 2.75rem;
 `;
 
 const inputWithRightIconStyle = css`
-  padding-right: 2.5rem;
+  padding-right: 2.75rem;
 `;
 
 const inputErrorStyle = css`
@@ -88,12 +90,14 @@ const iconStyle = css`
 
 const leftIconStyle = css`
   ${iconStyle}
-  left: var(--spacing-sm);
+  left: 0.875rem;
+  color: var(--color-gray-400); /* Subtler icon color */
 `;
 
 const rightIconStyle = css`
   ${iconStyle}
-  right: var(--spacing-sm);
+  right: 0.875rem;
+  color: var(--color-gray-400); 
 `;
 
 const passwordToggleButtonStyle = css`
@@ -109,9 +113,7 @@ const passwordToggleButtonStyle = css`
   color: var(--color-medical-text-light);
 `;
 
-const inputWithPasswordToggleStyle = css`
-  padding-right: 2.5rem;
-`;
+
 
 const helperTextStyle = css`
   font-size: var(--font-size-xs);

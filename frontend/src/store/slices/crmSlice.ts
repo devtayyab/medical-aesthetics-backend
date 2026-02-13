@@ -160,14 +160,19 @@ export const deleteLead = createAsyncThunk(
   }
 );
 
-// Customer Management
-export const fetchCustomerRecord = createAsyncThunk(
-  "crm/fetchCustomerRecord",
-  async (data: { customerId: string; salespersonId?: string }) => {
-    const response = await crmAPI.getCustomerRecord(data.customerId, data.salespersonId);
+// Customer Record Management
+export const getCustomerRecord = createAsyncThunk(
+  "crm/getCustomerRecord",
+  async (arg: string | { customerId: string; salespersonId?: string }) => {
+    const customerId = typeof arg === 'string' ? arg : arg.customerId;
+    const salespersonId = typeof arg === 'string' ? undefined : arg.salespersonId;
+    const response = await crmAPI.getCustomerRecord(customerId, salespersonId);
     return response.data;
   }
 );
+
+// Backward compatibility
+export const fetchCustomerRecord = getCustomerRecord;
 
 export const fetchCustomer = createAsyncThunk(
   "crm/fetchCustomer",
@@ -288,8 +293,8 @@ export const mergeDuplicates = createAsyncThunk(
 // Tag Management
 export const addCustomerTag = createAsyncThunk(
   "crm/addCustomerTag",
-  async (data: { customerId: string; tagId: string; addedBy: string; notes?: string }) => {
-    const response = await crmAPI.addCustomerTag(data);
+  async (data: { customerId: string; tagId: string; notes?: string }) => {
+    const response = await crmAPI.addCustomerTag(data.customerId, data.tagId, data.notes);
     return response.data;
   }
 );
@@ -360,14 +365,7 @@ export const validateAction = createAsyncThunk(
   }
 );
 
-// Customer Record Management
-export const getCustomerRecord = createAsyncThunk(
-  "crm/getCustomerRecord",
-  async (customerId: string) => {
-    const response = await crmAPI.getCustomerRecord(customerId);
-    return response.data;
-  }
-);
+// getCustomerRecord moved to line 164
 
 
 
@@ -545,7 +543,7 @@ const crmSlice = createSlice({
       })
 
       // Customer Management
-      .addCase(fetchCustomerRecord.fulfilled, (state, action) => {
+      .addCase(getCustomerRecord.fulfilled, (state, action) => {
         state.customerRecord = action.payload;
       })
       .addCase(updateCustomerRecord.fulfilled, (state, action) => {
@@ -569,16 +567,16 @@ const crmSlice = createSlice({
       })
 
       // Facebook Integration
-      .addCase(handleFacebookWebhook.fulfilled, (state, action) => {
+      .addCase(handleFacebookWebhook.fulfilled, (_state, _action) => {
         // Handle webhook response if needed
       })
       .addCase(importFacebookLeads.fulfilled, (state, action) => {
         state.leads.unshift(...action.payload);
       })
-      .addCase(testFacebookConnection.fulfilled, (state, action) => {
+      .addCase(testFacebookConnection.fulfilled, (_state, _action) => {
         // Store connection status if needed
       })
-      .addCase(getFacebookForms.fulfilled, (state, action) => {
+      .addCase(getFacebookForms.fulfilled, (_state, _action) => {
         // Store Facebook forms if needed
       })
 

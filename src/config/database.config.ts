@@ -21,6 +21,7 @@ import { AppointmentHold } from '@/modules/bookings/entities/appointment-hold.en
 import { LoyaltyLedger } from '@/modules/loyalty/entities/loyalty-ledger.entity';
 import { Notification } from '@/modules/notifications/entities/notification.entity';
 import { BlockedTimeSlot } from '@/modules/bookings/entities/blocked-time-slot.entity';
+import { AgentClinicAccess } from '../modules/crm/entities/agent-clinic-access.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -55,6 +56,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         AdCampaign,
         BlockedTimeSlot,
         Review,
+        AgentClinicAccess,
       ],
       // Since we are running in Docker on the same network, we don't need SSL
       // If using a managed database like AWS RDS in the future, we might need to enable this again

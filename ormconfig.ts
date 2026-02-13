@@ -21,6 +21,7 @@ import { AppointmentHold } from './src/modules/bookings/entities/appointment-hol
 import { LoyaltyLedger } from './src/modules/loyalty/entities/loyalty-ledger.entity';
 import { Notification } from './src/modules/notifications/entities/notification.entity';
 import { BlockedTimeSlot } from './src/modules/bookings/entities/blocked-time-slot.entity';
+import { AgentClinicAccess } from './src/modules/crm/entities/agent-clinic-access.entity';
 
 export const AppDataSource = new DataSource({
     type: "postgres",
@@ -48,7 +49,8 @@ export const AppDataSource = new DataSource({
         ConsentRecord,
         AdAttribution,
         AdCampaign,
-        BlockedTimeSlot
+        BlockedTimeSlot,
+        AgentClinicAccess
     ],
     synchronize: false, // Don't auto-sync in production
     logging: true,
