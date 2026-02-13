@@ -21,7 +21,7 @@ export class NotificationsService implements OnModuleInit {
     private usersService: UsersService,
     @Inject(forwardRef(() => NotificationsGateway))
     private _gateway: NotificationsGateway,
-  ) {}
+  ) { }
 
   onModuleInit() {
     this.notificationsGateway = this._gateway;
@@ -140,19 +140,19 @@ export class NotificationsService implements OnModuleInit {
   ): Promise<Notification> {
     const serviceName = appointmentDetails.serviceName || 'Appointment';
     const providerName = appointmentDetails.providerName || 'Professional';
-    const date = appointmentDetails.date instanceof Date 
+    const date = appointmentDetails.date instanceof Date
       ? appointmentDetails.date.toLocaleDateString()
       : appointmentDetails.date;
     const time = appointmentDetails.time instanceof Date
       ? appointmentDetails.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : appointmentDetails.time;
-    
+
     return this.create(
       recipientId,
       NotificationType.PUSH,
       'Appointment Confirmed',
       `${serviceName} with ${providerName} confirmed for ${date} at ${time}`,
-      { 
+      {
         appointmentId: appointmentDetails.id,
         serviceName,
         providerName,
@@ -182,13 +182,13 @@ export class NotificationsService implements OnModuleInit {
   ): Promise<{ message: string; sentTo: number }> {
     // Find all admin users
     const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true });
-    
+
     if (admins.length === 0) {
       throw new Error('No admin users found to send message to');
     }
 
     const adminIds = admins.map(admin => admin.id);
-    
+
     // Send bulk notification to all admins
     await this.sendBulk(
       adminIds,
@@ -202,5 +202,19 @@ export class NotificationsService implements OnModuleInit {
       message: 'Message sent to platform admins',
       sentTo: adminIds.length,
     };
+  }
+
+  async sendWelcomeCredentials(
+    recipientId: string,
+    email: string,
+    password: string,
+  ): Promise<Notification> {
+    return this.create(
+      recipientId,
+      NotificationType.EMAIL,
+      'Welcome to Medical Aesthetics Platform!',
+      `Your account has been created. \nLogin ID: ${email}\nTemporary Password: ${password}\nPlease change your password after logging in.`,
+      { email, passwordType: 'temporary' },
+    );
   }
 }

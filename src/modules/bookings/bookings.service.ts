@@ -109,7 +109,7 @@ export class BookingsService {
                 salespersonId = undefined;
               }
 
-              const savedUser = await this.crmService.createCustomer({
+              const { user: savedUser } = await this.crmService.createCustomer({
                 email: lead.email || `temp-${lead.id}@example.com`,
                 firstName: lead.firstName || 'Unknown',
                 lastName: lead.lastName || 'Client',
