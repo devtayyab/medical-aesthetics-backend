@@ -1,5 +1,5 @@
 import { RecordPaymentDto } from '../clinics/dto/clinic.dto';
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { Between, Repository, MoreThan } from 'typeorm';
@@ -73,12 +73,21 @@ export class BookingsService {
   async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker' }): Promise<Appointment> {
     let clientId = createAppointmentDto.clientId;
 
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
     // Check if client exists as User
-    const userExists = await this.usersRepository.findOne({ where: { id: clientId } });
+    let userExists = null;
+    if (UUID_REGEX.test(clientId)) {
+      userExists = await this.usersRepository.findOne({ where: { id: clientId } });
+    }
 
     if (!userExists) {
       // Try to find as Lead
       try {
+        if (!UUID_REGEX.test(clientId)) {
+          throw new NotFoundException(`Invalid Client ID format: ${clientId}`);
+        }
+
         const lead = await this.crmService.getLead(clientId);
         if (lead) {
           // Check if user with this email already exists
@@ -90,12 +99,14 @@ export class BookingsService {
             // Convert Lead to User using CRM Service to ensure proper records
             try {
               let salespersonId = lead.assignedSalesId;
-              if (salespersonId) {
+              if (salespersonId && UUID_REGEX.test(salespersonId)) {
                 const salesExists = await this.usersRepository.findOne({ where: { id: salespersonId } });
                 if (!salesExists) {
                   console.warn(`Lead ${clientId} has invalid assignedSalesId ${salespersonId}, ignoring.`);
                   salespersonId = undefined;
                 }
+              } else {
+                salespersonId = undefined;
               }
 
               const savedUser = await this.crmService.createCustomer({
@@ -107,7 +118,7 @@ export class BookingsService {
 
               clientId = savedUser.id;
             } catch (createErr) {
-              console.error('createCustomer failed:', createErr);
+              console.error('createCustomer failed during booking:', createErr);
               // If createCustomer fails (e.g. race condition on email), try to find again
               const retryUser = await this.usersRepository.findOne({ where: { email: lead.email } });
               if (retryUser) {
@@ -121,8 +132,9 @@ export class BookingsService {
           throw new NotFoundException(`Client not found as User or Lead: ${clientId}`);
         }
       } catch (e) {
+        if (e instanceof NotFoundException) throw e;
         console.error('Lead lookup/conversion failed:', e);
-        throw new NotFoundException(`Client/Lead not found or conversion failed for ID: ${clientId}`);
+        throw new BadRequestException(`Lead conversion failed: ${e.message}`);
       }
     }
 
