@@ -859,22 +859,34 @@ export class CrmService {
   async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
     // Resolve customerRecord if customerId (User ID) is provided
     if (data.customerId) {
-      let record = await this.customerRecordsRepository.findOne({
-        where: { customerId: data.customerId }
-      });
-
-      if (!record) {
-        // Try to create one if user exists
+      // 1. Check if it's a CustomerRecord ID (unlikely from frontend, but possible)
+      const recordById = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
+      if (recordById) {
+        // It is a valid CustomerRecord ID, proceed.
+      } else {
+        // 2. Check if it's a User ID (Client)
         const user = await this.usersRepository.findOne({ where: { id: data.customerId } });
         if (user) {
-          record = await this.createCustomerRecord(data.customerId);
+          // It's a User, ensure they have a CustomerRecord
+          let record = await this.customerRecordsRepository.findOne({ where: { customerId: user.id } });
+          if (!record) {
+            record = await this.createCustomerRecord(user.id);
+          }
+          data.customerId = record.id;
+        } else {
+          // 3. User not found. Check if it's a Lead ID
+          const lead = await this.leadsRepository.findOne({ where: { id: data.customerId } });
+          if (lead) {
+            // It's a Lead! use relatedLeadId instead of customerId
+            data.relatedLeadId = lead.id;
+            data.customerId = null; // Important: set to null so we don't violate FK
+          } else {
+            // Invalid ID passed
+            console.warn(`Invalid customerId passed to createAction: ${data.customerId}`);
+            // Depending on strictness, we might want to throw error or allow unlinked action
+            // For now, let's allow unlinked but logged
+          }
         }
-      }
-
-      if (record) {
-        // Here we assume data.customerId was actually the User.id
-        // The entity's customerId field is the FK to CustomerRecord.id
-        data.customerId = record.id;
       }
     }
 
