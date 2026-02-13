@@ -415,6 +415,7 @@ export const adminAPI = {
     tiers: { name: string; points: number; rewards: string[] }[];
   }) => api.patch("/admin/loyalty", data),
   getLogs: () => api.get("/admin/monitor"),
+  toggleUserStatus: (id: string) => api.patch(`/admin/users/${id}/toggle-status`),
 };
 
 export const TaskAPI = {

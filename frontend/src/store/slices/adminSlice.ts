@@ -38,6 +38,14 @@ export const updateUserRole = createAsyncThunk(
   }
 );
 
+export const toggleUserStatus = createAsyncThunk(
+  "admin/toggleUserStatus",
+  async (id: string) => {
+    const response = await adminAPI.toggleUserStatus(id);
+    return response.data;
+  }
+);
+
 export const fetchLoyaltyTiers = createAsyncThunk(
   "admin/fetchLoyaltyTiers",
   async () => {
@@ -76,6 +84,12 @@ const adminSlice = createSlice({
         state.users = action.payload;
       })
       .addCase(updateUserRole.fulfilled, (state, action) => {
+        const index = state.users.findIndex((u) => u.id === action.payload.id);
+        if (index !== -1) {
+          state.users[index] = action.payload;
+        }
+      })
+      .addCase(toggleUserStatus.fulfilled, (state, action) => {
         const index = state.users.findIndex((u) => u.id === action.payload.id);
         if (index !== -1) {
           state.users[index] = action.payload;
