@@ -710,8 +710,13 @@ export class CrmService {
 
   async createCustomer(data: any, salespersonId?: string): Promise<User> {
     // Check if user already exists
+    const whereConditions: any[] = [{ email: data.email }];
+    if (data.phone) {
+      whereConditions.push({ phone: data.phone });
+    }
+
     const existingUser = await this.usersRepository.findOne({
-      where: [{ email: data.email }, { phone: data.phone }],
+      where: whereConditions,
     });
 
     if (existingUser) {
@@ -1727,10 +1732,8 @@ export class CrmService {
       select: ['id', 'name']
     });
 
-    // Use raw query since AgentClinicAccess entity might not be registered
-    const accessRecords = await this.usersRepository.query(
-      `SELECT * FROM agent_clinic_access`
-    );
+    // Use repository to transparently handle column mapping
+    const accessRecords = await this.agentClinicAccessRepository.find();
 
     const result = agents.map(agent => {
       const agentAccess = accessRecords.filter(ar => ar.agentUserId === agent.id);

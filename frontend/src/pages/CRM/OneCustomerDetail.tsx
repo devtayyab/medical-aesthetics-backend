@@ -211,6 +211,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                     <div className="p-2 bg-gray-50 rounded-lg group-hover/item:bg-blue-50 transition-colors"><Mail className="w-4 h-4" /></div>
                                     <span className="text-sm border-b border-transparent group-hover/item:border-blue-200">{customer.email}</span>
                                 </div>
+                                <div className="flex items-center gap-2 text-gray-400 group/item hover:text-gray-600 transition-colors" title="Customer ID">
+                                    <div className="p-2 bg-gray-50 rounded-lg group-hover/item:bg-gray-100 transition-colors"><span className="w-4 h-4 flex items-center justify-center font-mono text-[10px] font-bold">#</span></div>
+                                    <span className="text-xs font-mono tracking-wider uppercase">{customer.id.slice(0, 8)}</span>
+                                </div>
                                 {customer.phone && (
                                     <div className="flex items-center gap-2 group/item cursor-pointer hover:text-emerald-600 transition-colors">
                                         <div className="p-2 bg-gray-50 rounded-lg group-hover/item:bg-emerald-50 transition-colors"><Phone className="w-4 h-4" /></div>
@@ -244,7 +248,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                         </Button>
                     </div>
                 </div>
-            </Card>
+            </Card >
 
             <div className="lg:col-span-2 space-y-8">
                 <div ref={tabsRef} className="scroll-mt-6">
@@ -523,17 +527,19 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
             </div>
 
             {/* Booking Modal */}
-            {showBookingModal && (
-                <CRMBookingModal
-                    customerId={customer.id}
-                    customerName={displayName}
-                    onClose={() => setShowBookingModal(false)}
-                    onSuccess={() => {
-                        // Refresh history
-                        dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
-                    }}
-                />
-            )}
-        </div>
+            {
+                showBookingModal && (
+                    <CRMBookingModal
+                        customerId={customer.id}
+                        customerName={displayName}
+                        onClose={() => setShowBookingModal(false)}
+                        onSuccess={() => {
+                            // Refresh history
+                            dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                        }}
+                    />
+                )
+            }
+        </div >
     );
 };

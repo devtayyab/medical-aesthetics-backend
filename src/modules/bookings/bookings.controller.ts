@@ -59,8 +59,14 @@ export class BookingsController {
 
   @Post('appointments')
   @ApiOperation({ summary: 'Confirm appointment booking' })
-  createAppointment(@Body() createAppointmentDto: CreateAppointmentDto) {
-    return this.bookingsService.createAppointment(createAppointmentDto);
+  async createAppointment(@Body() createAppointmentDto: CreateAppointmentDto) {
+    try {
+      return await this.bookingsService.createAppointment(createAppointmentDto);
+    } catch (error) {
+      console.error('Create Appointment Error:', error);
+      throw error; // Let NestJS handle it, but now it's logged.
+      // Or throw new InternalServerErrorException(error.message); if we really want to see it in 500 body.
+    }
   }
 
   @Get('appointments/:id')
