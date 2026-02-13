@@ -3,12 +3,16 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { CrmService } from './crm.service';
 import { Lead } from './entities/lead.entity';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class CrmListener {
     private readonly logger = new Logger(CrmListener.name);
 
-    constructor(private readonly crmService: CrmService) { }
+    constructor(
+        private readonly crmService: CrmService,
+        private readonly notificationsService: NotificationsService,
+    ) { }
 
     @OnEvent('lead.status.changed')
     async handleLeadStatusChange(payload: { lead: Lead; oldStatus: string; newStatus: string }) {
@@ -32,9 +36,13 @@ export class CrmListener {
                 };
 
                 // We pass the assigned salesperson ID if present
-                const newCustomer = await this.crmService.createCustomer(customerData, lead.assignedSalesId);
+                const { user: newCustomer, password } = await this.crmService.createCustomer(customerData, lead.assignedSalesId);
 
                 this.logger.log(`Customer created for converted lead ${lead.id}. Customer ID: ${newCustomer.id}`);
+
+                // Send welcome email with credentials
+                await this.notificationsService.sendWelcomeCredentials(newCustomer.id, newCustomer.email, password);
+                this.logger.log(`Credentials sent to ${newCustomer.email}`);
 
                 // Link back to lead
                 await this.crmService.update(lead.id, {

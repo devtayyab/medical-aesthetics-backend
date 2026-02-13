@@ -707,7 +707,7 @@ export class CrmService {
     return this.customerRecordsRepository.save(record);
   }
 
-  async createCustomer(data: any, salespersonId?: string): Promise<User> {
+  async createCustomer(data: any, salespersonId?: string): Promise<{ user: User; password: string }> {
     // Check if user already exists
     const whereConditions: any[] = [{ email: data.email }];
     if (data.phone) {
@@ -722,11 +722,12 @@ export class CrmService {
       throw new BadRequestException('Customer with this email or phone already exists');
     }
 
+    const password = Math.random().toString(36).slice(-10); // Random temporary password
     const newUser = this.usersRepository.create({
       ...data,
       role: UserRole.CLIENT,
       isActive: true,
-      passwordHash: Math.random().toString(36).slice(-10), // Random temporary password
+      passwordHash: password,
     } as Partial<User>);
 
     const savedUser = await this.usersRepository.save(newUser);
@@ -734,7 +735,7 @@ export class CrmService {
     // Create customer record
     await this.createCustomerRecord(savedUser.id, salespersonId);
 
-    return savedUser;
+    return { user: savedUser, password };
   }
 
   async getCustomers(filters: any): Promise<any[]> {
