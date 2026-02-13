@@ -117,8 +117,8 @@ export class ClinicManagementController {
       ...appointment,
       displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
       serviceName: appointment.service?.name,
-      providerName: appointment.provider 
-        ? `${appointment.provider.firstName} ${appointment.provider.lastName}` 
+      providerName: appointment.provider
+        ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
         : null,
     };
   }
@@ -487,7 +487,7 @@ export class ClinicManagementController {
 
   // Review Management
   @Get('reviews')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Get clinic reviews' })
   @ApiResponse({ status: 200, description: 'Reviews retrieved successfully' })
   async getClinicReviews(
@@ -498,7 +498,7 @@ export class ClinicManagementController {
   }
 
   @Get('reviews/statistics')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Get review statistics' })
   @ApiResponse({ status: 200, description: 'Review statistics retrieved successfully' })
   async getReviewStatistics(@Request() req) {

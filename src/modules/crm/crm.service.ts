@@ -75,6 +75,11 @@ export class CrmService {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) return false;
 
+    // Direct platform managers/admins have full access
+    if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER].includes(user.role as UserRole)) {
+      return true;
+    }
+
     if (user.role === UserRole.SALESPERSON) {
       const record = await this.customerRecordsRepository.findOne({ where: { customerId } });
       // Allow access if unassigned OR assigned to this salesperson
@@ -1222,10 +1227,11 @@ export class CrmService {
       .select('log.salespersonId', 'agentId')
       .addSelect('COUNT(log.id)', 'totalCommunications')
       .addSelect("COUNT(CASE WHEN log.type = 'call' AND (log.metadata->>'callOutcome') <> 'no_answer' THEN 1 END)", 'realCalls')
+      .where('log.salespersonId IS NOT NULL')
       .groupBy('log.salespersonId');
 
     if (dateRange) {
-      commQ = commQ.where('log.createdAt BETWEEN :startDate AND :endDate', dateRange);
+      commQ = commQ.andWhere('log.createdAt BETWEEN :startDate AND :endDate', dateRange);
     }
 
     const commStats = await commQ.getRawMany();
@@ -1251,7 +1257,22 @@ export class CrmService {
 
     const aptStats = await aptQ.getRawMany();
 
-    // 3. Merge communications and appointment stats
+    // 3. Get lead statistics per agent
+    let leadQ = this.leadsRepository
+      .createQueryBuilder('lead')
+      .select('lead.assignedSalesId', 'agentId')
+      .addSelect('COUNT(lead.id)', 'totalLeads')
+      .addSelect("COUNT(CASE WHEN lead.status = 'converted' THEN 1 END)", 'convertedLeads')
+      .where('lead.assignedSalesId IS NOT NULL')
+      .groupBy('lead.assignedSalesId');
+
+    if (dateRange) {
+      leadQ = leadQ.andWhere('lead.createdAt BETWEEN :startDate AND :endDate', dateRange);
+    }
+
+    const leadStats = await leadQ.getRawMany();
+
+    // 4. Merge all stats
     const agentMap = new Map<string, any>();
 
     // Initialize with communication stats
@@ -1265,6 +1286,8 @@ export class CrmService {
         noShows: 0,
         cancellations: 0,
         totalRevenue: 0,
+        totalLeads: 0,
+        convertedLeads: 0,
       });
     }
 
@@ -1274,6 +1297,8 @@ export class CrmService {
         agentId: apt.agentId,
         totalCommunications: 0,
         realCalls: 0,
+        totalLeads: 0,
+        convertedLeads: 0,
       };
 
       const completedAppointments = parseInt(apt.completedAppointments, 10) || 0;
@@ -1293,14 +1318,46 @@ export class CrmService {
       });
     }
 
+    // Merge with lead stats
+    for (const lead of leadStats) {
+      if (!lead.agentId) continue;
+
+      const existing = agentMap.get(lead.agentId) || {
+        agentId: lead.agentId,
+        agentName: 'Unknown Agent',
+        totalCommunications: 0,
+        realCalls: 0,
+        totalAppointments: 0,
+        completedAppointments: 0,
+        noShows: 0,
+        cancellations: 0,
+        totalRevenue: 0,
+        conversionRate: 0,
+        avgAppointmentValue: 0
+      };
+
+      agentMap.set(lead.agentId, {
+        ...existing,
+        totalLeads: parseInt(lead.totalLeads, 10) || 0,
+        convertedLeads: parseInt(lead.convertedLeads, 10) || 0,
+      });
+    }
+
     // For agents who have no name (only comm stats), try to fetch their names
-    const finalResult = await Promise.all(Array.from(agentMap.values()).map(async (agent) => {
-      if (!agent.agentName) {
-        const user = await this.usersRepository.findOne({ where: { id: agent.agentId }, select: ['firstName', 'lastName'] });
-        agent.agentName = user ? `${user.firstName} ${user.lastName}` : 'Unknown Agent';
-      }
-      return agent;
-    }));
+    const finalResult = await Promise.all(
+      Array.from(agentMap.values())
+        .filter(agent => agent.agentId) // Ensure agentId exists
+        .map(async (agent) => {
+          if (!agent.agentName) {
+            const user = await this.usersRepository.findOne({
+              where: { id: agent.agentId },
+              select: ['firstName', 'lastName']
+            });
+            agent.agentName = user ? `${user.firstName} ${user.lastName}` : 'Unknown Agent';
+          }
+          return agent;
+        })
+    );
 
     return finalResult;
   }
@@ -1445,12 +1502,14 @@ export class CrmService {
   }
 
   async sendWeeklyAgentReports(): Promise<{ sent: number }> {
-    // naive weekly window
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 7);
-    const agents = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON } });
+
     let sent = 0;
+
+    // 1. Send individual reports to Salespersons
+    const agents = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON } });
     for (const agent of agents) {
       const kpis = await this.getSalespersonAnalytics(agent.id, { startDate, endDate });
       await this.notificationsService.create(
@@ -1462,6 +1521,30 @@ export class CrmService {
       );
       sent++;
     }
+
+    // 2. Send Global Report to Managers and Admins
+    const managersAndAdmins = await this.usersRepository.find({
+      where: [
+        { role: UserRole.MANAGER },
+        { role: UserRole.ADMIN },
+        { role: UserRole.SUPER_ADMIN }
+      ]
+    });
+
+    if (managersAndAdmins.length > 0) {
+      const globalKpis = await this.getManagerAgentKpis({ startDate, endDate });
+      for (const user of managersAndAdmins) {
+        await this.notificationsService.create(
+          user.id,
+          NotificationType.EMAIL,
+          'Weekly Global Sales Report (Manager View)',
+          'The weekly aggregate sales report for all agents is ready.',
+          { globalKpis }
+        );
+        sent++;
+      }
+    }
+
     return { sent };
   }
 
@@ -1800,72 +1883,77 @@ export class CrmService {
 
   // Additional Analytics Methods
   async getClinicReturnRates() {
-    const clinics = await this.clinicsRepository.find({
-      select: ['id', 'name']
-    });
+    try {
+      const clinics = await this.clinicsRepository.find({
+        select: ['id', 'name']
+      });
 
-    const results = await Promise.all(
-      clinics.map(async (clinic) => {
-        // Get appointments in the last 30 and 90 days
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const results = await Promise.all(
+        clinics.map(async (clinic) => {
+          // Get appointments in the last 30 and 90 days
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const ninetyDaysAgo = new Date();
-        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+          const ninetyDaysAgo = new Date();
+          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-        // Get unique clients in the last 30 days
-        const last30DaysClients = await this.appointmentsRepository
-          .createQueryBuilder('apt')
-          .select('DISTINCT apt.clientId')
-          .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
-          .andWhere('apt.status = :status', { status: 'completed' })
-          .andWhere('apt.startTime >= :date', { date: thirtyDaysAgo })
-          .getRawMany();
+          // Get unique clients in the last 30 days
+          const last30DaysClients = await this.appointmentsRepository
+            .createQueryBuilder('apt')
+            .select('DISTINCT apt.clientId')
+            .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
+            .andWhere('apt.status = :status', { status: 'completed' })
+            .andWhere('apt.startTime >= :date', { date: thirtyDaysAgo })
+            .getRawMany();
 
-        // Get unique clients in the last 90 days
-        const last90DaysClients = await this.appointmentsRepository
-          .createQueryBuilder('apt')
-          .select('DISTINCT apt.clientId')
-          .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
-          .andWhere('apt.status = :status', { status: 'completed' })
-          .andWhere('apt.startTime >= :date', { date: ninetyDaysAgo })
-          .getRawMany();
+          // Get unique clients in the last 90 days
+          const last90DaysClients = await this.appointmentsRepository
+            .createQueryBuilder('apt')
+            .select('DISTINCT apt.clientId')
+            .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
+            .andWhere('apt.status = :status', { status: 'completed' })
+            .andWhere('apt.startTime >= :date', { date: ninetyDaysAgo })
+            .getRawMany();
 
-        // Get all unique clients who have ever visited
-        const allTimeClients = await this.appointmentsRepository
-          .createQueryBuilder('apt')
-          .select('DISTINCT apt.clientId')
-          .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
-          .andWhere('apt.status = :status', { status: 'completed' })
-          .getRawMany();
+          // Get all unique clients who have ever visited
+          const allTimeClients = await this.appointmentsRepository
+            .createQueryBuilder('apt')
+            .select('DISTINCT apt.clientId')
+            .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
+            .andWhere('apt.status = :status', { status: 'completed' })
+            .getRawMany();
 
-        // Count repeat clients in last 30 days (clients who had more than one appointment)
-        const repeatClients30 = await this.appointmentsRepository
-          .createQueryBuilder('apt')
-          .select('apt.clientId')
-          .addSelect('COUNT(apt.id)', 'appointmentCount')
-          .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
-          .andWhere('apt.status = :status', { status: 'completed' })
-          .andWhere('apt.startTime >= :date', { date: thirtyDaysAgo })
-          .groupBy('apt.clientId')
-          .having('COUNT(apt.id) > 1')
-          .getRawMany();
+          // Count repeat clients in last 30 days (clients who had more than one appointment)
+          const repeatClients30 = await this.appointmentsRepository
+            .createQueryBuilder('apt')
+            .select('apt.clientId')
+            .addSelect('COUNT(apt.id)', 'appointmentCount')
+            .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
+            .andWhere('apt.status = :status', { status: 'completed' })
+            .andWhere('apt.startTime >= :date', { date: thirtyDaysAgo })
+            .groupBy('apt.clientId')
+            .having('COUNT(apt.id) > 1')
+            .getRawMany();
 
-        const returnRate = allTimeClients.length > 0
-          ? repeatClients30.length / allTimeClients.length
-          : 0;
+          const returnRate = allTimeClients.length > 0
+            ? repeatClients30.length / allTimeClients.length
+            : 0;
 
-        return {
-          clinicId: clinic.id,
-          clinicName: clinic.name,
-          returnRate: parseFloat(returnRate.toFixed(2)),
-          last30Days: repeatClients30.length,
-          last90Days: last90DaysClients.length
-        };
-      })
-    );
+          return {
+            clinicId: clinic.id,
+            clinicName: clinic.name,
+            returnRate: parseFloat(returnRate.toFixed(2)),
+            last30Days: repeatClients30.length,
+            last90Days: last90DaysClients.length
+          };
+        })
+      );
 
-    return results;
+      return results;
+    } catch (error) {
+      console.error('Error fetching clinic return rates:', error);
+      return [];
+    }
   }
 
   async getServicePerformance(dateRange?: { startDate: Date; endDate: Date }) {
@@ -1902,61 +1990,67 @@ export class CrmService {
         campaign.id as "adId",
         COALESCE(campaign.channel, campaign.platform) as "channel",
         campaign.name as "campaignName",
-        COALESCE(SUM(adLog.amount), 0) as "spent",
+        COALESCE(SUM("ad_spend_logs"."amount"), 0) as "spent",
         COALESCE(CONCAT(agent."firstName", ' ', agent."lastName"), 'Unassigned') as "agentBudgetOwner"
-      FROM ad_spend_logs adLog
-      LEFT JOIN ad_campaigns campaign ON campaign.id = adLog."campaignId"
-      LEFT JOIN users agent ON agent.id = campaign."ownerAgentId"
-      WHERE campaign.id IS NOT NULL
+      FROM "ad_spend_logs"
+      LEFT JOIN "ad_campaigns" "campaign" ON "campaign"."id" = "ad_spend_logs"."campaignId"
+      LEFT JOIN "users" "agent" ON "agent"."id" = "campaign"."ownerAgentId"
+      WHERE "campaign"."id" IS NOT NULL
     `;
 
     const params: any[] = [];
 
     if (dateRange) {
-      sql += ` AND adLog.date BETWEEN $1 AND $2`;
-      params.push(dateRange.startDate.toISOString().split('T')[0], dateRange.endDate.toISOString().split('T')[0]);
+      sql += ` AND "ad_spend_logs"."date" BETWEEN $1 AND $2`;
+      params.push(dateRange.startDate, dateRange.endDate);
     }
 
-    sql += ` GROUP BY campaign.id, campaign.channel, campaign.platform, campaign.name, agent."firstName", agent."lastName"`;
+    sql += ` GROUP BY "campaign"."id", "campaign"."channel", "campaign"."platform", "campaign"."name", "agent"."firstName", "agent"."lastName"`;
 
-    const adResults = await this.usersRepository.query(sql, params);
+    try {
+      const adResults = await this.usersRepository.query(sql, params);
 
 
-    console.log(adResults);
+      console.log(adResults);
 
-    // Now get appointment attribution for each campaign
-    const results = await Promise.all(
-      adResults.map(async (row) => {
-        // Get appointments attributed to this campaign
-        const aptQuery = this.appointmentsRepository
-          .createQueryBuilder('apt')
-          .leftJoin('apt.client', 'client')
-          .leftJoin('customer_records', 'cr', 'cr.customerId = client.id')
-          .leftJoin('ad_attributions', 'aa', 'aa.customerRecordId = cr.id')
-          .select('COUNT(apt.id)', 'patientsCame')
-          .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
-          .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'totalRevenue')
-          .where('aa.campaignId = :campaignId', { campaignId: row.adId });
+      // Now get appointment attribution for each campaign
+      const results = await Promise.all(
+        adResults.map(async (row) => {
+          // Get appointments attributed to this campaign
+          const aptQuery = this.appointmentsRepository
+            .createQueryBuilder('apt')
+            .leftJoin('apt.client', 'client')
+            .leftJoin('customer_records', 'cr', 'cr.customerId = client.id')
+            .leftJoin('ad_attributions', 'aa', 'aa.customerRecordId = cr.id')
+            .select('COUNT(apt.id)', 'patientsCame')
+            .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
+            .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'totalRevenue')
+            .where('aa.adCampaignId = :campaignId', { campaignId: row.adId });
 
-        if (dateRange) {
-          aptQuery.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
-        }
+          if (dateRange) {
+            aptQuery.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+          }
 
-        const aptResults = await aptQuery.getRawOne();
+          const aptResults = await aptQuery.getRawOne();
 
-        return {
-          adId: row.adId,
-          channel: row.channel || 'Unknown',
-          campaignName: row.campaignName || 'Unknown Campaign',
-          spent: parseFloat(row.spent) || 0,
-          patientsCame: parseInt(aptResults?.patientsCame) || 0,
-          cancelled: parseInt(aptResults?.cancelled) || 0,
-          totalRevenue: parseFloat(aptResults?.totalRevenue) || 0,
-          agentBudgetOwner: row.agentBudgetOwner || 'Unassigned'
-        };
-      })
-    );
+          return {
+            adId: row.adId,
+            channel: row.channel || 'Unknown',
+            campaignName: row.campaignName || 'Unknown Campaign',
+            spent: parseFloat(row.spent) || 0,
+            patientsCame: parseInt(aptResults?.patientsCame) || 0,
+            cancelled: parseInt(aptResults?.cancelled) || 0,
+            totalRevenue: parseFloat(aptResults?.totalRevenue) || 0,
+            agentBudgetOwner: row.agentBudgetOwner || 'Unassigned'
+          };
+        })
+      );
 
-    return results;
+      return results;
+
+    } catch (error) {
+      console.error('Error fetching ad stats:', error);
+      return [];
+    }
   }
 }

@@ -13,6 +13,8 @@ import { User } from '../users/entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { Appointment } from '../bookings/entities/appointment.entity';
 
+import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
+
 @Injectable()
 export class ClinicsService {
   constructor(
@@ -26,6 +28,8 @@ export class ClinicsService {
     private usersRepository: Repository<User>,
     @InjectRepository(Appointment)
     private appointmentsRepository: Repository<Appointment>,
+    @InjectRepository(AgentClinicAccess)
+    private agentAccessRepository: Repository<AgentClinicAccess>,
   ) { }
 
   async search(params: {
@@ -142,16 +146,27 @@ export class ClinicsService {
   }
 
   async findByOwnerId(ownerId: string): Promise<Clinic> {
+    // 1. Check if user owns a clinic
     const clinic = await this.clinicsRepository.findOne({
       where: { ownerId, isActive: true },
       relations: ['services'],
     });
 
-    if (!clinic) {
-      throw new NotFoundException('Clinic not found for this owner');
+    if (clinic) {
+      return clinic;
     }
 
-    return clinic;
+    // 2. Check if user is an agent for a clinic
+    const agentAccess = await this.agentAccessRepository.findOne({
+      where: { agentUserId: ownerId },
+      relations: ['clinic'],
+    });
+
+    if (agentAccess && agentAccess.clinic) {
+      return this.findById(agentAccess.clinic.id);
+    }
+
+    throw new NotFoundException('Clinic not found for this owner');
   }
 
   async updateClinicProfile(

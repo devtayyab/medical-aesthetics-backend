@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
     Mail, Phone, Calendar,
     Activity, CheckCircle, PhoneCall,
-    MapPin, Stethoscope, Briefcase
+    Briefcase, Clock
 } from "lucide-react";
 import { Button } from "@/components/atoms/Button/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
@@ -21,6 +21,8 @@ import {
     logCommunication,
     updateLead
 } from "@/store/slices/crmSlice";
+import { clinicsAPI } from "@/services/api";
+import type { Clinic } from "@/types";
 
 interface OneCustomerDetailProps {
     SelectedCustomer: Customer | Lead;
@@ -50,6 +52,27 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const [isInteracting, setIsInteracting] = useState(false);
     const [showValidationWarning, setShowValidationWarning] = useState(false);
     const [showBookingModal, setShowBookingModal] = useState(false);
+    const [availableClinics, setAvailableClinics] = useState<Clinic[]>([]);
+    const tabsRef = React.useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const fetchClinics = async () => {
+            try {
+                const res = await clinicsAPI.search({ limit: 100 });
+                setAvailableClinics(res.data.clinics || []);
+            } catch (err) {
+                console.error("Failed to fetch clinics", err);
+            }
+        };
+        fetchClinics();
+    }, []);
+
+    const scrollToTabs = (tab: string) => {
+        setActiveTab(tab);
+        setTimeout(() => {
+            tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    };
 
     useEffect(() => {
         if (SelectedCustomer?.id) {
@@ -75,6 +98,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     };
 
     const { displayName, initials } = getCustomerDetails(customer);
+
+    // Helper to determine type
+    const isCustomer = (c: Customer | Lead): c is Customer => {
+        return (c as Customer).summary !== undefined;
+    };
+    const customerType = isCustomer(customer) ? 'Customer' : 'Lead';
 
     const handleInteractionChange = (field: string, value: string) => {
         setInteractionForm(prev => ({ ...prev, [field]: value }));
@@ -158,99 +187,105 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     if (!customer) return <div>No customer selected</div>;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header / Summary Card */}
-            <Card className="border-l-4 border-l-blue-500 shadow-md">
-                <CardContent className="pt-6">
-                    <div className="flex flex-col md:flex-row justify-between gap-6">
-                        <div className="flex items-start gap-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-inner">
-                                <span className="text-2xl font-bold text-blue-700">
-                                    {initials}
-                                </span>
+        <div className="space-y-8 animate-in fade-in duration-500 max-w-[1400px] mx-auto pb-12">
+            {/* Header / Profile Summary */}
+            <Card className="border-none shadow-sm overflow-hidden relative group bg-white">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full -mr-48 -mt-48 blur-3xl group-hover:bg-blue-600/5 transition-all duration-700" />
+                <div className="flex flex-col md:flex-row items-center justify-between p-10 gap-8 relative z-10">
+                    <div className="flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
+                        <div className="relative">
+                            <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-4xl shadow-xl shadow-blue-600/20 group-hover:scale-105 transition-transform duration-500 border-4 border-white">
+                                {initials}
                             </div>
-                            <div>
-                                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                    {displayName}
-                                    {summary?.summary?.isRepeatCustomer && (
-                                        <Badge variant="success" className="ml-2">Active Member</Badge>
-                                    )}
-                                </h2>
-                                <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-600">
-                                    <div className="flex items-center gap-1.5">
-                                        <Mail className="w-4 h-4 text-gray-400" />
-                                        {customer.email}
-                                    </div>
-                                    {customer.phone && (
-                                        <div className="flex items-center gap-1.5">
-                                            <Phone className="w-4 h-4 text-gray-400" />
-                                            {customer.phone}
-                                        </div>
-                                    )}
-                                    <div className="flex items-center gap-1.5">
-                                        <MapPin className="w-4 h-4 text-gray-400" />
-                                        {summary?.summary?.preferredClinic || 'No preferred clinic'}
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <Stethoscope className="w-4 h-4 text-gray-400" />
-                                        {summary?.summary?.preferredDoctor || 'No assigned doctor'}
-                                    </div>
-                                </div>
-                            </div>
+                            <div className="absolute -bottom-2 -right-2 bg-green-500 w-6 h-6 rounded-full border-4 border-white" />
                         </div>
-
-                        <div className="flex flex-col gap-2 min-w-[200px]">
-                            <div className="grid grid-cols-2 gap-2 text-center">
-                                <div className="bg-blue-50 p-2 rounded-lg">
-                                    <div className="text-xs text-blue-600 font-medium">LTV</div>
-                                    <div className="text-lg font-bold text-blue-900">
-                                        ${summary?.summary?.lifetimeValue || 0}
-                                    </div>
+                        <div>
+                            <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start">
+                                <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-tight">{displayName}</h1>
+                                <Badge className={`${customerType === 'Customer' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-blue-50 text-blue-700 border-blue-100'} px-3 py-1 rounded-full font-bold uppercase text-[10px] tracking-widest border shadow-sm`}>
+                                    {customerType}
+                                </Badge>
+                            </div>
+                            <div className="mt-4 flex flex-wrap items-center gap-6 justify-center md:justify-start text-gray-500 font-medium">
+                                <div className="flex items-center gap-2 group/item cursor-pointer hover:text-blue-600 transition-colors">
+                                    <div className="p-2 bg-gray-50 rounded-lg group-hover/item:bg-blue-50 transition-colors"><Mail className="w-4 h-4" /></div>
+                                    <span className="text-sm border-b border-transparent group-hover/item:border-blue-200">{customer.email}</span>
                                 </div>
-                                <div className="bg-green-50 p-2 rounded-lg">
-                                    <div className="text-xs text-green-600 font-medium">Visits</div>
-                                    <div className="text-lg font-bold text-green-900">
-                                        {summary?.summary?.completedAppointments || 0}
+                                {customer.phone && (
+                                    <div className="flex items-center gap-2 group/item cursor-pointer hover:text-emerald-600 transition-colors">
+                                        <div className="p-2 bg-gray-50 rounded-lg group-hover/item:bg-emerald-50 transition-colors"><Phone className="w-4 h-4" /></div>
+                                        <span className="text-sm border-b border-transparent group-hover/item:border-emerald-200">{customer.phone}</span>
                                     </div>
+                                )}
+                                <div className="flex items-center gap-2 text-amber-600 bg-amber-50/50 px-3 py-1 rounded-full border border-amber-100/50">
+                                    <Activity className="w-3.5 h-3.5" />
+                                    <span className="text-xs font-bold uppercase tracking-wide">{customer.status}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </CardContent>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <Button
+                            variant="white"
+                            className="w-full sm:w-auto bg-white hover:bg-gray-50 border-gray-200 shadow-sm h-12 px-6 font-bold text-gray-700 hover:text-gray-900 hover:border-gray-300 transition-all"
+                            onClick={() => window.location.href = `mailto:${customer.email}`}
+                        >
+                            <Mail className="w-4 h-4 mr-2" />
+                            Message
+                        </Button>
+                        <Button
+                            variant="primary"
+                            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 h-12 px-8 font-bold transform hover:-translate-y-0.5 transition-all"
+                            onClick={() => setShowBookingModal(true)}
+                        >
+                            <Calendar className="w-4 h-4 mr-2" />
+                            Book Now
+                        </Button>
+                    </div>
+                </div>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Content Area */}
-                <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-8">
+                <div ref={tabsRef} className="scroll-mt-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="overview">Overview</TabsTrigger>
-                            <TabsTrigger value="history">History</TabsTrigger>
-                            <TabsTrigger value="treatments">Treatments</TabsTrigger>
-                        </TabsList>
+                        <Card className="border-none shadow-sm p-1.5 bg-gray-100/50 rounded-2xl mb-8">
+                            <TabsList className="grid grid-cols-3 md:grid-cols-5 bg-transparent h-auto gap-1">
+                                <TabsTrigger value="overview" className="rounded-xl py-3 font-bold data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Overview</TabsTrigger>
+                                <TabsTrigger value="records" className="rounded-xl py-3 font-bold data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all text-xs md:text-sm">Medical Records</TabsTrigger>
+                                <TabsTrigger value="treatments" className="rounded-xl py-3 font-bold data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all text-sm">Treatments</TabsTrigger>
+                                <TabsTrigger value="communication" className="rounded-xl py-3 font-bold data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all text-xs md:text-sm">History</TabsTrigger>
+                                <TabsTrigger value="history" className="rounded-xl py-3 font-bold data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all text-xs md:text-sm">Tasks</TabsTrigger>
+                            </TabsList>
+                        </Card>
 
-                        <TabsContent value="overview" className="mt-4 space-y-6">
-                            {/* Interaction Logging Panel (Mandatory) */}
-                            <Card className={`border-2 ${isInteracting ? 'border-amber-300 shadow-amber-100' : 'border-gray-100'} shadow-md transition-all`}>
-                                <CardHeader className="bg-gray-50/50 pb-4">
-                                    <CardTitle className="text-lg flex items-center gap-2">
-                                        <PhoneCall className="w-5 h-5 text-blue-600" />
-                                        Current Interaction
-                                        {isInteracting && <Badge variant="warning" className="ml-auto text-xs">Unsaved Changes</Badge>}
+                        <TabsContent value="overview" className="space-y-6">
+                            {/* Interaction Logging Panel */}
+                            <Card className={`border-none shadow-md transition-all overflow-hidden ${isInteracting ? 'ring-2 ring-amber-300 shadow-amber-100' : ''}`}>
+                                <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 pb-4">
+                                    <CardTitle className="text-lg flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-gray-800">
+                                            <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                                                <PhoneCall className="w-5 h-5" />
+                                            </div>
+                                            Current Interaction
+                                        </div>
+                                        {isInteracting && (
+                                            <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-xs font-bold uppercase tracking-wide border border-amber-100 animate-pulse">
+                                                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                Unsaved
+                                            </span>
+                                        )}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Select
                                             label="Clinic *"
-                                            placeholder="Select logic"
-                                            options={[
-                                                { value: "clinic_a", label: "Clinic A (Downtown)" },
-                                                { value: "clinic_b", label: "Clinic B (West End)" },
-                                                // Should be dynamic
-                                            ]}
+                                            placeholder="Select clinic"
+                                            options={availableClinics.map(c => ({ value: c.id, label: c.name }))}
                                             value={interactionForm.clinic}
-                                            onChange={(e) => handleInteractionChange('clinic', e.target.value)}
+                                            onChange={(value) => handleInteractionChange('clinic', value)}
                                             error={showValidationWarning && !interactionForm.clinic ? "Required" : undefined}
                                         />
                                         <Select
@@ -264,7 +299,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                 { value: "wrong_number", label: "Wrong Number" },
                                             ]}
                                             value={interactionForm.outcome}
-                                            onChange={(e) => handleInteractionChange('outcome', e.target.value)}
+                                            onChange={(value) => handleInteractionChange('outcome', value)}
                                             error={showValidationWarning && !interactionForm.outcome ? "Required" : undefined}
                                         />
                                     </div>
@@ -284,14 +319,16 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                             onChange={(e) => handleInteractionChange('cost', e.target.value)}
                                         />
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Input
-                                            label="Consumables Cost (Doctor only)"
-                                            placeholder="e.g. 1ml Filler (€60)"
-                                            value={interactionForm.consumablesCost}
-                                            onChange={(e) => handleInteractionChange('consumablesCost', e.target.value)}
-                                        />
-                                    </div>
+                                    {user?.role === 'doctor' && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <Input
+                                                label="Consumables Cost (Doctor only)"
+                                                placeholder="e.g. 1ml Filler (€60)"
+                                                value={interactionForm.consumablesCost}
+                                                onChange={(e) => handleInteractionChange('consumablesCost', e.target.value)}
+                                            />
+                                        </div>
+                                    )}
                                     <Textarea
                                         placeholder="Add notes about this conversation..."
                                         value={interactionForm.notes}
@@ -385,30 +422,33 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                         </TabsContent>
                     </Tabs>
                 </div>
-
                 {/* Sidebar Info */}
                 <div className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm uppercase tracking-wide text-gray-500">Customer Profile</CardTitle>
+                    <Card className="border-none shadow-sm bg-white">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-xs font-bold uppercase tracking-widest text-gray-400">Customer Profile</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-6">
                             <div>
-                                <div className="text-sm font-medium text-gray-700">Source</div>
-                                <div className="flex items-center gap-2 mt-1">
+                                <div className="text-sm font-bold text-gray-900">Source</div>
+                                <div className="flex items-center gap-2 mt-1.5 p-2 bg-blue-50/50 rounded-lg border border-blue-100/50">
                                     <Activity className="w-4 h-4 text-blue-500" />
-                                    <span className="text-gray-900">{customer.source || 'Facebook Ads'}</span>
+                                    <span className="text-sm font-medium text-gray-700">{customer.source || 'Facebook Ads'}</span>
                                 </div>
                             </div>
                             <div>
-                                <div className="text-sm font-medium text-gray-700">Lead Status</div>
-                                <Badge className="mt-1 capitalize">{customer.status}</Badge>
+                                <div className="text-sm font-bold text-gray-900">Lead Status</div>
+                                <div className="mt-1.5">
+                                    <Badge className="capitalize px-3 py-1 text-sm font-medium">{customer.status}</Badge>
+                                </div>
                             </div>
                             <div>
-                                <div className="text-sm font-medium text-gray-700">Assigned To</div>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <Briefcase className="w-4 h-4 text-gray-400" />
-                                    <span className="text-gray-900">
+                                <div className="text-sm font-bold text-gray-900">Assigned To</div>
+                                <div className="flex items-center gap-2 mt-1.5 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
+                                        {summary?.record?.assignedSalesperson?.firstName?.[0] || 'U'}
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-700">
                                         {summary?.record?.assignedSalesperson?.firstName || 'Unassigned'}
                                     </span>
                                 </div>
@@ -416,57 +456,69 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-none">
-                        <CardHeader>
-                            <CardTitle className="text-indigo-900">Next Step</CardTitle>
+                    <Card className="bg-gradient-to-br from-indigo-600 to-purple-700 border-none text-white shadow-lg shadow-indigo-500/30 overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
+                        <CardHeader className="relative z-10 pb-2">
+                            <CardTitle className="text-white flex items-center gap-2">
+                                <Calendar className="w-4 h-4" /> Next Step
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="relative z-10 space-y-4">
                             {summary?.actions?.find(a => a.status === 'pending') ? (
-                                <div className="bg-white p-4 rounded-lg shadow-sm">
-                                    <div className="font-medium text-gray-900">
+                                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
+                                    <div className="font-bold text-white text-lg">
                                         {summary.actions.find(a => a.status === 'pending')?.title}
                                     </div>
-                                    <div className="text-sm text-red-500 mt-1 font-medium">
+                                    <div className="text-sm text-indigo-100 mt-1 font-medium flex items-center gap-2">
+                                        <Clock className="w-3.5 h-3.5" />
                                         Due: {new Date(summary.actions.find(a => a.status === 'pending')?.dueDate || '').toLocaleDateString()}
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-indigo-600 text-sm">No pending tasks. Great job!</div>
+                                <div className="text-indigo-100 text-sm bg-white/10 p-4 rounded-xl border border-white/20">
+                                    No pending tasks. You're all caught up!
+                                </div>
                             )}
 
-                            <div className="flex flex-col gap-2 mt-4">
+                            <div className="flex flex-col gap-2 pt-2">
                                 <Button
-                                    className="w-full bg-blue-600 hover:bg-blue-700 shadow-md transition-all"
+                                    className="w-full bg-white text-indigo-600 hover:bg-indigo-50 font-bold border-none shadow-sm h-10"
                                     onClick={() => setShowBookingModal(true)}
                                 >
-                                    <Calendar className="w-4 h-4 mr-2" /> Book Appointment
+                                    Book Appointment
                                 </Button>
-                                <Button variant="outline" className="w-full bg-white hover:bg-indigo-50 text-indigo-700 border-indigo-200">
+                                <Button
+                                    variant="outline"
+                                    className="w-full bg-transparent text-white border-white/30 hover:bg-white/10 font-medium h-10"
+                                    onClick={() => scrollToTabs('history')}
+                                >
                                     Schedule Task
                                 </Button>
                             </div>
-
-                            {customer.status && customer.status !== 'converted' && (
-                                <Button
-                                    variant="primary"
-                                    className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700"
-                                    onClick={async () => {
-                                        if (confirm('Are you sure you want to convert this lead to a customer?')) {
-                                            await dispatch(updateLead({
-                                                id: customer.id,
-                                                updates: { status: 'converted' }
-                                            }));
-                                            // Ideally refresh or navigate, but status badge update handles visual
-                                            alert('Lead converted successfully!');
-                                        }
-                                    }}
-                                >
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Convert to Customer
-                                </Button>
-                            )}
                         </CardContent>
                     </Card>
+
+                    {customer.status && customer.status !== 'converted' && (
+                        <Card className="border-none shadow-none bg-transparent">
+                            <Button
+                                variant="primary"
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 h-10 shadow-lg shadow-emerald-600/20"
+                                onClick={async () => {
+                                    if (confirm('Are you sure you want to convert this lead to a customer?')) {
+                                        await dispatch(updateLead({
+                                            id: customer.id,
+                                            updates: { status: 'converted' }
+                                        }));
+                                        // Ideally refresh or navigate, but status badge update handles visual
+                                        alert('Lead converted successfully!');
+                                    }
+                                }}
+                            >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Convert to Customer
+                            </Button>
+                        </Card>
+                    )}
                 </div>
             </div>
 

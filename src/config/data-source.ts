@@ -11,6 +11,8 @@ import { ConsentRecord } from '../modules/users/entities/consent-record.entity';
 import { CommunicationLog } from '../modules/crm/entities/communication-log.entity';
 import { CustomerTag } from '../modules/crm/entities/customer-tag.entity';
 import { AdAttribution } from '../modules/crm/entities/ad-attribution.entity';
+import { AdSpendLog } from '../modules/crm/entities/ad-spend-log.entity';
+
 import { AdCampaign } from '../modules/crm/entities/ad-campaign.entity';
 import { Task } from '../modules/tasks/entities/task.entity';
 import { Appointment } from '../modules/bookings/entities/appointment.entity';
@@ -18,6 +20,7 @@ import { AppointmentHold } from '../modules/bookings/entities/appointment-hold.e
 import { LoyaltyLedger } from '../modules/loyalty/entities/loyalty-ledger.entity';
 import { Notification } from '../modules/notifications/entities/notification.entity';
 import { BlockedTimeSlot } from '../modules/bookings/entities/blocked-time-slot.entity';
+import { AgentClinicAccess } from '../modules/crm/entities/agent-clinic-access.entity';
 import * as path from 'path';
 
 config();
@@ -49,8 +52,10 @@ const AppDataSource = new DataSource({
         ConsentRecord,
         AdAttribution,
         AdCampaign,
+        AdSpendLog,
         BlockedTimeSlot,
         Review,
+        AgentClinicAccess,
     ],
     migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],
     synchronize: false,

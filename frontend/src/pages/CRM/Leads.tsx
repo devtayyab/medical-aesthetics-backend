@@ -153,11 +153,11 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   // UI Helpers
   const getStatusBadge = (status: string) => {
     const styles = {
-      new: "bg-blue-100 text-blue-700 border-blue-200",
-      contacted: "bg-amber-100 text-amber-700 border-amber-200",
-      qualified: "bg-purple-100 text-purple-700 border-purple-200",
-      converted: "bg-emerald-100 text-emerald-700 border-emerald-200",
-      lost: "bg-gray-100 text-gray-600 border-gray-200",
+      new: "bg-blue-50 text-blue-700 border-blue-100",
+      contacted: "bg-amber-50 text-amber-700 border-amber-100",
+      qualified: "bg-purple-50 text-purple-700 border-purple-100",
+      converted: "bg-emerald-50 text-emerald-700 border-emerald-100",
+      lost: "bg-gray-50 text-gray-500 border-gray-100",
     };
     return styles[status as keyof typeof styles] || styles.new;
   };
@@ -168,19 +168,22 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
   // Render Stats Card
   const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
-    <Card className="border-none shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-6 flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <h3 className="text-2xl font-bold mt-2 text-gray-900">{value}</h3>
-          {trend && (
-            <p className="flex items-center gap-1 text-xs mt-1 text-emerald-600 font-medium">
-              <TrendingUp className="w-3 h-3" /> {trend}
-            </p>
-          )}
+    <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative">
+      <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-[0.03] group-hover:scale-110 transition-transform duration-500 ${color.split(' ')[1]}`} style={{ backgroundColor: 'currentColor' }} />
+      <CardContent className="p-6 flex items-start justify-between relative z-10">
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-400 group-hover:text-gray-500 transition-colors">{title}</p>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-3xl font-extrabold text-gray-900 leading-none">{value}</h3>
+            {trend && (
+              <span className="text-xs font-bold text-emerald-600 flex items-center bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                {trend.includes('%') ? trend : `+${trend}`}
+              </span>
+            )}
+          </div>
         </div>
-        <div className={`p-3 rounded-xl ${color}`}>
-          <Icon className="w-5 h-5" />
+        <div className={`p-4 rounded-2xl ${color} shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
+          <Icon className="w-6 h-6" />
         </div>
       </CardContent>
     </Card>
@@ -253,7 +256,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
           <div className="flex flex-col md:flex-row gap-3 animate-in slide-in-from-right-2">
             <Select
               value={leadFilters.status || ''}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
+              onChange={(value) => handleFilterChange('status', value)}
               options={[
                 { value: '', label: 'All Statuses' },
                 { value: 'new', label: 'New' },
@@ -266,7 +269,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             />
             <Select
               value={leadFilters.source || ''}
-              onChange={(e) => handleFilterChange('source', e.target.value)}
+              onChange={(value) => handleFilterChange('source', value)}
               options={[
                 { value: '', label: 'All Sources' },
                 { value: 'facebook_ads', label: 'Facebook Ads' },
@@ -289,15 +292,21 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
       {/* Bulk Actions Bar */}
       {selectedLeads.length > 0 && (
-        <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-          <span className="text-sm font-medium text-blue-900 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" /> {selectedLeads.length} leads selected
-          </span>
+        <div className="bg-white border-2 border-primary/20 p-4 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 shadow-xl shadow-primary/5">
+          <div className="flex items-center gap-4">
+            <div className="bg-primary/10 p-2 rounded-xl">
+              <CheckCircle className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <span className="text-sm font-bold text-gray-900">{selectedLeads.length} leads selected</span>
+              <p className="text-xs text-gray-500">Perform bulk actions on your selection</p>
+            </div>
+          </div>
           <div className="flex gap-2">
-            <Button variant="white" size="sm" onClick={() => handleBulkAction('mark_contacted')} className="text-blue-700 border-blue-200 hover:bg-blue-50">
+            <Button variant="white" size="sm" onClick={() => handleBulkAction('mark_contacted')} className="hover:border-primary/30">
               Mark Contacted
             </Button>
-            <Button variant="white" size="sm" onClick={() => handleBulkAction('delete')} className="text-red-600 border-red-200 hover:bg-red-50">
+            <Button variant="white" size="sm" onClick={() => handleBulkAction('delete')} className="text-red-600 hover:bg-red-50 border-red-100">
               <Trash2 className="w-4 h-4 mr-1" /> Delete
             </Button>
           </div>
@@ -336,8 +345,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               </TableHeader>
               <TableBody>
                 {leads.map((lead) => (
-                  <TableRow key={lead.id} className="hover:bg-gray-50/50 transition-colors group">
-                    <TableCell>
+                  <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0">
+                    <TableCell className="py-4">
                       <input
                         type="checkbox"
                         checked={selectedLeads.includes(lead.id)}
@@ -347,64 +356,60 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                             : selectedLeads.filter(id => id !== lead.id)
                           );
                         }}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded-md border-gray-300 text-primary focus:ring-primary h-4 w-4 transition-all"
                       />
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-100 to-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs uppercase">
+                    <TableCell className="py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-100 text-primary flex items-center justify-center font-black text-sm uppercase shadow-sm group-hover:scale-110 transition-transform">
                           {lead.firstName[0]}{lead.lastName[0]}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{lead.firstName} {lead.lastName}</div>
-                          <div className="text-xs text-gray-500 flex items-center gap-1">
-                            ID: <span className="font-mono">{lead.id.slice(0, 6)}...</span>
+                          <div className="font-bold text-gray-900 group-hover:text-primary transition-colors">{lead.firstName} {lead.lastName}</div>
+                          <div className="text-[10px] text-gray-400 font-mono tracking-tighter uppercase mt-0.5">
+                            ID: {lead.id.slice(0, 8)}
                           </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <TableCell className="py-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
                           <Mail className="h-3.5 w-3.5 text-gray-400" /> {lead.email}
                         </div>
                         {lead.phone && (
-                          <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
                             <Phone className="h-3.5 w-3.5 text-gray-400" /> {lead.phone}
                           </div>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge className={`${getStatusBadge(lead.status)} border px-2.5 py-0.5 rounded-full capitalize font-medium`}>
+                    <TableCell className="py-4">
+                      <Badge className={`${getStatusBadge(lead.status)} border px-3 py-1 rounded-full capitalize font-bold text-[10px] tracking-wider`}>
                         {lead.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs text-gray-500 font-normal bg-white">
-                        {lead.source?.replace('_', ' ')}
-                      </Badge>
+                    <TableCell className="py-4 font-medium text-xs text-gray-500 uppercase tracking-widest">
+                      {lead.source?.replace('_', ' ')}
                     </TableCell>
-                    <TableCell className="text-gray-500 text-sm">
+                    <TableCell className="py-4 text-gray-400 text-xs font-semibold">
                       {formatDate(lead.createdAt)}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600" onClick={() => onViewLead && onViewLead(lead)} title="View Details">
-                            <Eye className="h-3.5 w-3.5" />
+                    <TableCell className="py-4 text-right">
+                      <div className="flex justify-end gap-1 items-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                        <div className="flex items-center bg-white border border-gray-100 rounded-xl shadow-lg p-1 scale-90 group-hover:scale-100 transition-all origin-right">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg" onClick={() => onViewLead && onViewLead(lead)}>
+                            <Eye className="h-4 w-4" />
                           </Button>
-                          <div className="w-px h-4 bg-gray-200" />
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600" onClick={() => handleCheckDuplicates(lead)} title="Check Duplicates">
-                            <Copy className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg" onClick={() => handleCheckDuplicates(lead)}>
+                            <Copy className="h-4 w-4" />
                           </Button>
-                          <div className="w-px h-4 bg-gray-200" />
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600" onClick={() => handleEditLead(lead)} title="Edit Lead">
-                            <Edit className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg" onClick={() => handleEditLead(lead)}>
+                            <Edit className="h-4 w-4" />
                           </Button>
-                          <div className="w-px h-4 bg-gray-200" />
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-600" onClick={() => dispatch(deleteLead(lead.id))} title="Delete">
-                            <Trash2 className="h-3.5 w-3.5" />
+                          <div className="w-px h-4 bg-gray-100 mx-1" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg" onClick={() => dispatch(deleteLead(lead.id))}>
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -439,13 +444,13 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                 <Select
                   label="Status"
                   value={editingLead.status}
-                  onChange={(e) => setEditingLead({ ...editingLead, status: e.target.value as any })}
+                  onChange={(value) => setEditingLead({ ...editingLead, status: value as any })}
                   options={[{ value: 'new', label: 'New' }, { value: 'contacted', label: 'Contacted' }, { value: 'qualified', label: 'Qualified' }, { value: 'converted', label: 'Converted' }, { value: 'lost', label: 'Lost' }]}
                 />
                 <Select
                   label="Source"
                   value={editingLead.source}
-                  onChange={(e) => setEditingLead({ ...editingLead, source: e.target.value })}
+                  onChange={(value) => setEditingLead({ ...editingLead, source: value })}
                   options={[{ value: 'facebook_ads', label: 'Facebook Ads' }, { value: 'website', label: 'Website' }, { value: 'referral', label: 'Referral' }]}
                 />
               </div>
@@ -547,7 +552,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     <Select
                       label="Initial Status"
                       value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      onChange={(value) => setFormData({ ...formData, status: value })}
                       leftIcon={<Tag className="w-4 h-4" />}
                       options={[
                         { value: 'new', label: 'New Lead' },
@@ -558,7 +563,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     <Select
                       label="Lead Source"
                       value={formData.source}
-                      onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                      onChange={(value) => setFormData({ ...formData, source: value })}
                       leftIcon={<Globe className="w-4 h-4" />}
                       options={[
                         { value: 'facebook_ads', label: 'Facebook Ads' },
