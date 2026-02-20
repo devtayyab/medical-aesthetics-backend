@@ -27,6 +27,7 @@ import { UserRole } from '../../common/enums/user-role.enum';
 import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
 import { CommunicationLog } from './entities/communication-log.entity';
 import { CrmAction } from './entities';
+import { CreateActionDto } from './dto/create-action.dto';
 @ApiTags('CRM')
 @Controller('crm')
 @UseGuards(JwtAuthGuard)
@@ -150,7 +151,7 @@ export class CrmController {
     },
   }))
   @ApiOperation({ summary: 'Create action/task (phone call, follow-up, etc.)' })
-  async createAction(@Body() createActionDto: any, @Request() req) {
+  async createAction(@Body() createActionDto: CreateActionDto, @Request() req) {
     const action = await this.crmService.createAction({
       ...createActionDto,
       salespersonId: req.user.id, // attach logged-in user
@@ -692,5 +693,20 @@ export class CrmController {
     return this.crmService.resolveNoShowAlert(appointmentId, data.actionTaken);
   }
 
+  @Get('salespersons')
+  @ApiOperation({ summary: 'Get all salespersons' })
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getSalespersons() {
+    return this.crmService.getSalespersons();
+  }
 
+  @Get('activities/diary')
+  @ApiOperation({ summary: 'Get sales activities for diary view' })
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getSalesActivities(@Query('date') date: string, @Request() req) {
+    const salespersonId = req.user.role === UserRole.SALESPERSON ? req.user.id : undefined;
+    return this.crmService.getSalesActivities(date ? new Date(date) : undefined, salespersonId);
+  }
 }

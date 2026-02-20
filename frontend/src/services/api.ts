@@ -12,10 +12,10 @@ import type {
 
 const getBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
-  // If we have an environment variable, use it (and make sure it includes /api)
-  if (envUrl && envUrl !== 'http://localhost:3001') {
+  if (envUrl) {
     let url = envUrl;
     if (url.endsWith('/')) url = url.slice(0, -1);
+    // Ensure it's the full URL including /api
     return url.endsWith('/api') ? url : `${url}/api`;
   }
   // Default to relative /api for local proxy and production rewrites
@@ -43,14 +43,19 @@ export const setupAxiosInterceptors = (_store: any, _actions: { setTokens: any, 
 };
 
 let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+let refreshSubscribers: ((token: string | null, error?: any) => void)[] = [];
 
-const subscribeTokenRefresh = (cb: (token: string) => void) => {
+const subscribeTokenRefresh = (cb: (token: string | null, error?: any) => void) => {
   refreshSubscribers.push(cb);
 };
 
 const onRefreshed = (token: string) => {
   refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+};
+
+const onRefreshFailed = (error: any) => {
+  refreshSubscribers.forEach((cb) => cb(null, error));
   refreshSubscribers = [];
 };
 
@@ -81,14 +86,17 @@ api.interceptors.response.use(
         {
           url: originalRequest.url,
           method: originalRequest.method,
-          headers: originalRequest.headers,
         }
       );
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            resolve(api(originalRequest));
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((token, refreshError) => {
+            if (refreshError) {
+              reject(refreshError);
+            } else if (token) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              resolve(api(originalRequest));
+            }
           });
         });
       }
@@ -120,6 +128,9 @@ api.interceptors.response.use(
             message: refreshError.response?.data || refreshError.message,
             status: refreshError.response?.status,
           });
+
+          onRefreshFailed(refreshError);
+          isRefreshing = false; // Reset flag before rejecting
 
           if (store && logoutAction) {
             store.dispatch(logoutAction());
@@ -230,6 +241,7 @@ export const bookingAPI = {
   reschedule: (id: string, startTime: string, endTime: string) =>
     api.patch(`/appointments/${id}/reschedule`, { startTime, endTime }),
   cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
+  complete: (id: string, data?: any) => api.patch(`/appointments/${id}/complete`, data),
 };
 
 export const userAPI = {
@@ -239,6 +251,7 @@ export const userAPI = {
   deleteData: () => api.post("/users/me/delete"),
   getAllUsers: (params: { limit?: number; offset?: number; role?: string }) =>
     api.get("/users", { params }),
+  createUser: (userData: any) => api.post("/users", userData),
 };
 
 export const loyaltyAPI = {
@@ -265,6 +278,7 @@ export const notificationsAPI = {
   },
   getUnreadCount: () => api.get("/notifications/unread-count"),
   markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllAsRead: () => api.patch("/notifications/read-all"),
 };
 
 export const crmAPI = {
@@ -403,6 +417,10 @@ export const crmAPI = {
     frequency: string;
     startDate: string;
   }) => api.post("/crm/recurring-appointments", data),
+  // Clinic Access
+  getAccessibleClinics: () => api.get("/crm/accessible-clinics"),
+  getSalespersons: () => api.get("/crm/salespersons"),
+  getSalesActivities: (date?: string) => api.get("/crm/activities/diary", { params: { date } }),
 };
 
 export const adminAPI = {
@@ -431,6 +449,17 @@ export const TaskAPI = {
   updateTask: (id: string, data: Partial<Task>) =>
     api.patch(`/tasks/${id}`, data),
   deleteTask: (id: string) => api.delete(`/tasks/${id}`),
+};
+
+export const messagesAPI = {
+  getConversations: () => api.get("/messages/conversations"),
+  getMessages: (conversationId: string, params?: { limit?: number; offset?: number }) =>
+    api.get(`/messages/conversations/${conversationId}/messages`, { params }),
+  sendMessage: (conversationId: string, data: { content: string; type?: string; metadata?: any }) =>
+    api.post(`/messages/conversations/${conversationId}/messages`, data),
+  createConversation: (participantIds: string[], title?: string, isGroup?: boolean) =>
+    api.post("/messages/conversations", { participantIds, title, isGroup }),
+  search: (query: string) => api.get("/messages/search", { params: { q: query } }),
 };
 
 export default api;

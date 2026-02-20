@@ -12,7 +12,7 @@ import {
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { CommunicationLog } from '@/types';
-import axios from 'axios';
+import { crmAPI } from '@/services/api';
 
 interface CommunicationFormProps {
   customerId: string;
@@ -45,7 +45,7 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
   React.useEffect(() => {
     (async () => {
       try {
-        const { data } = await axios.get('/crm/accessible-clinics');
+        const { data } = await crmAPI.getAccessibleClinics();
         const options = (data || []).map((c: any) => ({ value: c.id, label: c.name }));
         setClinics(options);
       } catch (e) {

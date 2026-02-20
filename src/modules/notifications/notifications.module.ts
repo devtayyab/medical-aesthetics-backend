@@ -30,6 +30,6 @@ import { JwtModule } from '@nestjs/jwt';
     ViberService,
     NotificationProcessor,
   ],
-  exports: [NotificationsService, NotificationsGateway],
+  exports: [NotificationsService, NotificationsGateway, SmsService],
 })
-export class NotificationsModule {}
+export class NotificationsModule { }

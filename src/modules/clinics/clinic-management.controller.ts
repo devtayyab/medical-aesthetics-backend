@@ -62,7 +62,7 @@ export class ClinicManagementController {
   }
 
   @Get('profile')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get clinic profile' })
   @ApiResponse({ status: 200, description: 'Clinic profile retrieved successfully' })
   async getClinicProfile(@Request() req) {
@@ -82,7 +82,7 @@ export class ClinicManagementController {
 
   // Appointment Management
   @Get('appointments')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get clinic appointments' })
   @ApiResponse({ status: 200, description: 'Appointments retrieved successfully' })
   async getClinicAppointments(
@@ -108,7 +108,7 @@ export class ClinicManagementController {
   }
 
   @Get('appointments/:id')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get appointment details' })
   @ApiResponse({ status: 200, description: 'Appointment details retrieved successfully' })
   async getAppointment(@Param('id') id: string, @Request() req) {
@@ -172,7 +172,7 @@ export class ClinicManagementController {
 
   // Availability Management
   @Get('availability')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get clinic availability' })
   @ApiResponse({ status: 200, description: 'Availability retrieved successfully' })
   async getAvailability(@Query() query: any, @Request() req) {
@@ -223,14 +223,19 @@ export class ClinicManagementController {
   }
 
   @Get('availability/blocked-slots')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get blocked time slots' })
   @ApiResponse({ status: 200, description: 'Blocked time slots retrieved successfully' })
   async getBlockedTimeSlots(
-    @Query() query: { providerId?: string; startDate?: string; endDate?: string },
+    @Query() query: { providerId?: string; startDate?: string; endDate?: string; clinicId?: string },
     @Request() req,
   ) {
-    const clinic = await this.clinicsService.findByOwnerId(req.user.id);
+    let clinic;
+    if (query.clinicId && req.user.role === UserRole.MANAGER) {
+      clinic = await this.clinicsService.findById(query.clinicId);
+    } else {
+      clinic = await this.clinicsService.findByOwnerId(req.user.id);
+    }
     return this.availabilityService.getBlockedTimeSlots(
       clinic.id,
       query.providerId || null,
@@ -266,7 +271,7 @@ export class ClinicManagementController {
 
   // Analytics and Reports
   @Get('analytics/appointments')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get appointment analytics' })
   @ApiResponse({ status: 200, description: 'Appointment analytics retrieved successfully' })
   async getAppointmentAnalytics(
@@ -281,7 +286,7 @@ export class ClinicManagementController {
   }
 
   @Get('analytics/revenue')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get revenue analytics' })
   @ApiResponse({ status: 200, description: 'Revenue analytics retrieved successfully' })
   async getRevenueAnalytics(
@@ -296,7 +301,7 @@ export class ClinicManagementController {
   }
 
   @Get('analytics/loyalty')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get loyalty program analytics' })
   @ApiResponse({ status: 200, description: 'Loyalty analytics retrieved successfully' })
   async getLoyaltyAnalytics(
@@ -311,7 +316,7 @@ export class ClinicManagementController {
   }
 
   @Get('analytics/repeat-forecast')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get repeat client forecast' })
   @ApiResponse({ status: 200, description: 'Repeat forecast retrieved successfully' })
   async getRepeatForecast(
@@ -327,7 +332,7 @@ export class ClinicManagementController {
 
   // Client Management
   @Get('clients')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get clinic clients' })
   @ApiResponse({ status: 200, description: 'Clients retrieved successfully' })
   async getClinicClients(
@@ -338,7 +343,7 @@ export class ClinicManagementController {
   }
 
   @Get('clients/:id')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get client details and history' })
   @ApiResponse({ status: 200, description: 'Client details retrieved successfully' })
   async getClientDetails(@Param('id') id: string, @Request() req) {
@@ -347,11 +352,14 @@ export class ClinicManagementController {
 
   // Treatment/Service Management
   @Get('services')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get clinic services/treatments' })
   @ApiResponse({ status: 200, description: 'Services retrieved successfully' })
-  async getClinicServices(@Request() req) {
-    return this.clinicsService.getClinicServices(req.user.id);
+  async getClinicServices(
+    @Query('clinicId') clinicId: string,
+    @Request() req
+  ) {
+    return this.clinicsService.getClinicServices(req.user.id, clinicId);
   }
 
   @Post('services')
@@ -487,7 +495,7 @@ export class ClinicManagementController {
 
   // Review Management
   @Get('reviews')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get clinic reviews' })
   @ApiResponse({ status: 200, description: 'Reviews retrieved successfully' })
   async getClinicReviews(
@@ -498,7 +506,7 @@ export class ClinicManagementController {
   }
 
   @Get('reviews/statistics')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get review statistics' })
   @ApiResponse({ status: 200, description: 'Review statistics retrieved successfully' })
   async getReviewStatistics(@Request() req) {

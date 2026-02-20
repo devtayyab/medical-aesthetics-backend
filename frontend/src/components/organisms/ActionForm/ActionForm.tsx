@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Calendar, Clock, AlertCircle, CheckCircle, Phone, MessageSquare, Mail } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Select } from '@/components/atoms/Select/Select';
@@ -12,9 +12,8 @@ import {
   getRequiredFieldsForAction
 } from '@/store/slices/crmSlice';
 import type { AppDispatch } from '@/store';
-import axios from 'axios';
 import type { CrmAction } from '@/types';
-import { userAPI } from '@/services/api';
+import { userAPI, crmAPI } from '@/services/api';
 
 interface ActionFormProps {
   customerId: string;
@@ -38,7 +37,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     status: prefilledData?.status || 'pending',
     priority: prefilledData?.priority || 'medium',
     dueDate: prefilledData?.dueDate || '',
-    salespersonId: prefilledData?.salespersonId || '',
+    salespersonId: prefilledData?.salespersonId || undefined,
     metadata: {
       ...(prefilledData?.metadata || {}),
       // Initialize metadata fields from prefilledData if they exist in metadata
@@ -73,7 +72,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         // Fetch clinics - trying to use relative path if axios is configured with baseURL
         // In this project, axios is imported from 'axios' here, not restricted to the service
         // We'll use the relative path which should be handled by the proxy
-        const { data: clinicData } = await axios.get('/api/crm/accessible-clinics');
+        const { data: clinicData } = await crmAPI.getAccessibleClinics();
         const clinicOptions = (clinicData || []).map((c: any) => ({ value: c.id, label: c.name }));
         setClinics(clinicOptions);
       } catch (e) {
@@ -127,8 +126,8 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       try {
         // Prepare payload according to backend entity structure
         const payload: Partial<CrmAction> = {
-          customerId: customerId || propCustomerId,
-          salespersonId: formData.salespersonId || (prefilledData?.salespersonId || ''),
+          customerId: customerId || propCustomerId || undefined,
+          salespersonId: formData.salespersonId || prefilledData?.salespersonId || undefined,
           actionType: formData.actionType,
           title: formData.title,
           description: formData.description,
@@ -166,35 +165,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     }
   };
 
-  const getActionIcon = (actionType: string) => {
-    switch (actionType) {
-      case 'phone_call':
-        return <Phone className="h-4 w-4" />;
-      case 'email':
-        return <Mail className="h-4 w-4" />;
-      case 'meeting':
-        return <Calendar className="h-4 w-4" />;
-      case 'follow_up':
-        return <MessageSquare className="h-4 w-4" />;
-      default:
-        return <CheckCircle className="h-4 w-4" />;
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'error';
-      case 'high':
-        return 'warning';
-      case 'medium':
-        return 'info';
-      case 'low':
-        return 'success';
-      default:
-        return 'default';
-    }
-  };
 
   return (
     <Card>

@@ -26,6 +26,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/molecules
 import { CommunicationForm } from '@/components/organisms/CommunicationForm/CommunicationForm';
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { TagForm } from '@/components/organisms/TagForm/TagForm';
+import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
+import { useDispatch } from 'react-redux';
+import { completeAppointment } from '@/store/slices/bookingSlice';
+import type { AppDispatch } from '@/store';
 import type { CustomerSummary } from '@/types';
 
 interface CustomerDetailsProps {
@@ -40,7 +44,9 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   onUpdate,
   onCall
 }) => {
+  const dispatch = useDispatch<AppDispatch>();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const tabsRef = React.useRef<HTMLDivElement>(null);
   const { record, appointments, communications, actions, tags, affiliations, summary } = customerData;
 
@@ -94,6 +100,18 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
         return 'success';
       default:
         return 'default';
+    }
+  };
+
+  const handleCompleteAppointment = async (id: string) => {
+    if (confirm('Are you sure you want to mark this appointment as completed?')) {
+      try {
+        await dispatch(completeAppointment({ id })).unwrap();
+        onUpdate?.();
+      } catch (error) {
+        console.error('Failed to complete appointment:', error);
+        alert('Failed to complete appointment.');
+      }
     }
   };
 
@@ -291,13 +309,21 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                   <Button
                     className="bg-gradient-to-r from-[#CBFF38] to-[#A3D900] text-gray-900 border-none hover:opacity-90 shadow-md font-bold"
                     size="sm"
+                    onClick={() => setIsBookingModalOpen(true)}
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Book Appointment
+                  </Button>
+                  <Button
+                    className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-none shadow-sm font-bold"
+                    size="sm"
                     onClick={() => scrollToTabs('communications')}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Log Communication
                   </Button>
                   <Button
-                    className="bg-gradient-to-r from-[#CBFF38] to-[#A3D900] text-gray-900 border-none hover:opacity-90 shadow-md font-bold"
+                    className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-none shadow-sm font-bold"
                     size="sm"
                     onClick={() => scrollToTabs('actions')}
                   >
@@ -339,10 +365,20 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="flex flex-col items-end gap-2">
                         <Badge variant={getStatusColor(appointment.status)}>
                           {appointment.status}
                         </Badge>
+                        {appointment.status !== 'completed' && appointment.status !== 'cancelled' && (
+                          <Button
+                            size="xs"
+                            variant="primary"
+                            onClick={() => handleCompleteAppointment(appointment.id)}
+                            className="text-[10px] h-7 px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            Mark Completed
+                          </Button>
+                        )}
                         <div className="text-sm font-medium mt-1">
                           {formatCurrency(appointment.totalAmount)}
                         </div>
@@ -550,6 +586,21 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
           </TabsContent>
         </Tabs>
       </div>
+
+      <CRMBookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        customer={{
+          id: record.customerId,
+          name: `${record.customer?.firstName} ${record.customer?.lastName}`,
+          email: record.customer?.email || '',
+          phone: record.customer?.phone || ''
+        }}
+        onSuccess={() => {
+          setIsBookingModalOpen(false);
+          onUpdate?.();
+        }}
+      />
     </div>
   );
 };

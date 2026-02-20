@@ -15,8 +15,8 @@ import { AvailabilityService } from './availability.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { HoldSlotDto } from './dto/hold-slot.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AppointmentStatus } from '@/common/enums/appointment-status.enum';
-import { Public } from '@/common/decorators/public.decorator';
+import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('Bookings')
 @Controller()

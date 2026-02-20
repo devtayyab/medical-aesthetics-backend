@@ -16,7 +16,7 @@ import { AdCampaign } from './entities/ad-campaign.entity';
 import { AdSpendLog } from './entities/ad-spend-log.entity';
 import { AdAttribution } from './entities/ad-attribution.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
-import { UserRole } from '@/common/enums/user-role.enum';
+import { UserRole } from '../../common/enums/user-role.enum';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
@@ -87,6 +87,19 @@ export class CrmService implements OnModuleInit {
         this.logger.warn('Detected NOT NULL constraint on crm_actions.customerId. Attempting to fix...');
         await queryRunner.query('ALTER TABLE "crm_actions" ALTER COLUMN "customerId" DROP NOT NULL');
         this.logger.log('Successfully altered crm_actions.customerId to be nullable.');
+      }
+
+      // Add treatmentRooms to clinics if missing
+      const hasTreatmentRooms = await queryRunner.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'clinics' AND column_name = 'treatmentRooms'
+      `);
+
+      if (hasTreatmentRooms && hasTreatmentRooms.length === 0) {
+        this.logger.warn('Detected missing treatmentRooms column in clinics table. Adding...');
+        await queryRunner.query('ALTER TABLE "clinics" ADD COLUMN "treatmentRooms" integer DEFAULT 1');
+        this.logger.log('Successfully added treatmentRooms column to clinics table.');
       }
 
       await queryRunner.release();
@@ -606,7 +619,7 @@ export class CrmService implements OnModuleInit {
           tags: lead.tags || [],
         },
         appointments: [],
-        communications: [], // Could fetch lead logs if we stored them linked to leadId
+        communications: (lead.metadata as any)?.interactionHistory || [],
         actions: [],
         tags: (lead.tags || []).map(t => ({
           id: t.id,
@@ -812,12 +825,23 @@ export class CrmService implements OnModuleInit {
       const newNote = `[${data.type?.toUpperCase()} - ${new Date().toISOString()}] ${data.subject || ''}: ${data.notes || ''}`;
       const updatedNotes = lead.notes ? `${lead.notes}\n\n${newNote}` : newNote;
 
+      // Store structured history in metadata array
+      const currentHistory = (lead.metadata as any)?.interactionHistory || [];
+      const newInteraction = {
+        id: `lead-log-${Date.now()}`,
+        ...data,
+        createdAt: new Date(),
+        metadata: data.metadata || {}
+      };
+      const updatedHistory = [newInteraction, ...currentHistory]; // Prepend for easy access
+
       await this.leadsRepository.update(lead.id, {
         notes: updatedNotes,
         lastContactedAt: new Date(),
         metadata: {
-          ...lead.metadata,
-          lastInteraction: data
+          ...lead.metadata || {}, // Ensure object
+          lastInteraction: data,
+          interactionHistory: updatedHistory
         }
       });
 
@@ -833,6 +857,11 @@ export class CrmService implements OnModuleInit {
     // Enforce mandatory field validation for call communications, except click-only logs
     if (data.type === 'call' && !(data.metadata && (data.metadata as any).clickOnly === true)) {
       await this.mandatoryFieldValidationService.enforceFieldCompletion(data.customerId, data);
+    }
+
+    // If durationSeconds is provided but not part of schema, ensure it's in metadata
+    if (data.durationSeconds && !data.metadata?.durationSeconds) {
+      data.metadata = { ...data.metadata, durationSeconds: data.durationSeconds };
     }
 
     const log = this.communicationLogsRepository.create(data);
@@ -1186,8 +1215,10 @@ export class CrmService implements OnModuleInit {
       .select([
         'COUNT(log.id) as "totalCommunications"',
         'COUNT(CASE WHEN log.type = \'call\' THEN 1 END) as "totalCalls"',
-        'COUNT(CASE WHEN log.status = \'missed\' THEN 1 END) as "missedCalls"',
+        'COUNT(CASE WHEN log.type = \'call\' AND log.status = \'completed\' THEN 1 END) as "answeredCalls"',
+        'COUNT(CASE WHEN log.type = \'call\' AND log.status = \'missed\' THEN 1 END) as "missedCalls"',
         'COUNT(CASE WHEN log.type = \'email\' THEN 1 END) as "totalEmails"',
+        'SUM(CASE WHEN log.type = \'call\' THEN COALESCE(log.durationSeconds, 0) ELSE 0 END) as "totalDuration"',
       ])
       .getRawOne();
 
@@ -1238,18 +1269,27 @@ export class CrmService implements OnModuleInit {
 
       // Detailed objects (legacy support)
       communicationStats: {
-        total: parseInt(communicationStats.totalCommunications),
-        calls: parseInt(communicationStats.totalCalls),
-        missedCalls: parseInt(communicationStats.missedCalls),
-        emails: parseInt(communicationStats.totalEmails),
+        total: parseInt(communicationStats.totalCommunications) || 0,
+        calls: parseInt(communicationStats.totalCalls) || 0,
+        answeredCalls: parseInt(communicationStats.answeredCalls) || 0,
+        missedCalls: parseInt(communicationStats.missedCalls) || 0,
+        emails: parseInt(communicationStats.totalEmails) || 0,
+        totalDurationSeconds: parseInt(communicationStats.totalDuration) || 0,
+        avgDurationMinutes: communicationStats.totalCalls > 0
+          ? (parseInt(communicationStats.totalDuration) / parseInt(communicationStats.totalCalls) / 60).toFixed(1)
+          : 0
       },
       actionStats: {
         total: totalActions,
-        pending: parseInt(actionStats.pendingActions),
+        pending: parseInt(actionStats.pendingActions) || 0,
         completed: tasksCompleted,
-        missed: parseInt(actionStats.missedActions),
+        missed: parseInt(actionStats.missedActions) || 0,
       },
-      customerStats
+      customerStats: {
+        totalCustomers: parseInt(customerStats.totalCustomers) || 0,
+        repeatCustomers: parseInt(customerStats.repeatCustomers) || 0,
+        totalRevenue: parseFloat(customerStats.totalRevenue) || 0,
+      }
     };
   }
 
@@ -1268,7 +1308,10 @@ export class CrmService implements OnModuleInit {
       .createQueryBuilder('log')
       .select('log.salespersonId', 'agentId')
       .addSelect('COUNT(log.id)', 'totalCommunications')
-      .addSelect("COUNT(CASE WHEN log.type = 'call' AND (log.metadata->>'callOutcome') <> 'no_answer' THEN 1 END)", 'realCalls')
+      .addSelect("COUNT(CASE WHEN log.type = 'call' THEN 1 END)", 'totalCalls')
+      .addSelect("COUNT(CASE WHEN log.type = 'call' AND log.status = 'completed' THEN 1 END)", 'answeredCalls')
+      .addSelect("COUNT(CASE WHEN log.type = 'call' AND log.status = 'missed' THEN 1 END)", 'missedCalls')
+      .addSelect("SUM(CASE WHEN log.type = 'call' THEN COALESCE(log.durationSeconds, 0) ELSE 0 END)", 'totalDuration')
       .where('log.salespersonId IS NOT NULL')
       .groupBy('log.salespersonId');
 
@@ -1322,7 +1365,10 @@ export class CrmService implements OnModuleInit {
       agentMap.set(comm.agentId, {
         agentId: comm.agentId,
         totalCommunications: parseInt(comm.totalCommunications, 10) || 0,
-        realCalls: parseInt(comm.realCalls, 10) || 0,
+        totalCalls: parseInt(comm.totalCalls, 10) || 0,
+        answeredCalls: parseInt(comm.answeredCalls, 10) || 0,
+        missedCalls: parseInt(comm.missedCalls, 10) || 0,
+        totalDuration: parseInt(comm.totalDuration, 10) || 0,
         totalAppointments: 0,
         completedAppointments: 0,
         noShows: 0,
@@ -1338,7 +1384,10 @@ export class CrmService implements OnModuleInit {
       const existing = agentMap.get(apt.agentId) || {
         agentId: apt.agentId,
         totalCommunications: 0,
-        realCalls: 0,
+        totalCalls: 0,
+        answeredCalls: 0,
+        missedCalls: 0,
+        totalDuration: 0,
         totalLeads: 0,
         convertedLeads: 0,
       };
@@ -1368,7 +1417,10 @@ export class CrmService implements OnModuleInit {
         agentId: lead.agentId,
         agentName: 'Unknown Agent',
         totalCommunications: 0,
-        realCalls: 0,
+        totalCalls: 0,
+        answeredCalls: 0,
+        missedCalls: 0,
+        totalDuration: 0,
         totalAppointments: 0,
         completedAppointments: 0,
         noShows: 0,
@@ -1419,23 +1471,47 @@ export class CrmService implements OnModuleInit {
   }
 
   async getClinicAnalytics(dateRange?: { startDate: Date; endDate: Date }): Promise<any[]> {
+    // 1. Get all active clinics
+    const clinics = await this.clinicsRepository.find({
+      where: { isActive: true },
+    });
+
+    // 2. Get appointment stats
     let qb = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .leftJoin('apt.clinic', 'clinic')
-      .select('clinic.id', 'clinicId')
-      .addSelect('clinic.name', 'clinicName')
+      .select('apt.clinicId', 'clinicId')
       .addSelect('COUNT(apt.id)', 'totalAppointments')
       .addSelect('COUNT(DISTINCT apt.clientId)', 'uniqueClients')
       .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'completed')
       .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
       .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShow')
       .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'totalRevenue')
-      .groupBy('clinic.id')
-      .addGroupBy('clinic.name');
+      .groupBy('apt.clinicId');
+
     if (dateRange) {
       qb = qb.where('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
     }
-    return qb.getRawMany();
+
+    const stats = await qb.getRawMany();
+
+    // 3. Merge stats with clinics
+    return clinics.map((clinic) => {
+      // Find stats for this clinic, checking for case-sensitive keys from generic raw results
+      const clinicStats = stats.find((s) => (s.clinicId || s.clinicid) === clinic.id) || {};
+      return {
+        clinicId: clinic.id,
+        clinicName: clinic.name,
+        phone: clinic.phone,
+        address: clinic.address,
+        treatmentRooms: clinic.treatmentRooms,
+        totalAppointments: parseInt(clinicStats.totalAppointments || clinicStats.totalappointments) || 0,
+        uniqueClients: parseInt(clinicStats.uniqueClients || clinicStats.uniqueclients) || 0,
+        completed: parseInt(clinicStats.completed) || 0,
+        cancelled: parseInt(clinicStats.cancelled) || 0,
+        noShow: parseInt(clinicStats.noShow || clinicStats.noshow) || 0,
+        totalRevenue: parseFloat(clinicStats.totalRevenue || clinicStats.totalrevenue) || 0,
+      };
+    });
   }
 
   async getCampaignPerformance(dateRange?: { startDate: Date; endDate: Date }): Promise<any[]> {
@@ -1590,51 +1666,7 @@ export class CrmService implements OnModuleInit {
     return { sent };
   }
 
-  async getAccessibleClinicsForUser(userId: string) {
-    console.log("userId", userId)
-    Logger.log("userId", userId)
-    const user = await this.usersRepository.findOne({
-      where: { id: userId },
-      relations: ['clinics'],
-    });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // If user is admin or super admin, return all clinics
-    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
-      return this.clinicsRepository.find();
-    }
-
-    // If user is clinic owner, get their clinics through clinic ownership
-    if (user.role === UserRole.CLINIC_OWNER) {
-      const ownerships = await this.clinicOwnershipRepository.find({
-        where: { ownerUserId: userId },
-        relations: ['clinic']
-      });
-      return ownerships.map(o => o.clinicId);
-    }
-
-    // If user is salesperson, return clinics they have access to
-    if (user.role === UserRole.SALESPERSON) {
-      const accesses = await this.agentClinicAccessRepository.find({
-        where: { agentUserId: userId },
-        relations: ['clinic']
-      });
-
-      // Since we don't have a direct relation in the entity, we need to fetch the clinics
-      const clinicIds = accesses.map(access => access.clinicId);
-      if (clinicIds.length === 0) return [];
-
-      return this.clinicsRepository.find({
-        where: { id: In(clinicIds) }
-      });
-    }
-
-    // For other roles, return empty array
-    return [];
-  }
 
   // Agent Management Methods
   async getAgentEmails() {
@@ -1702,27 +1734,27 @@ export class CrmService implements OnModuleInit {
   async getAgentAppointmentStats(dateRange?: { startDate: Date; endDate: Date }) {
     let query = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .leftJoin('apt.client', 'agent')
-      .select('apt.clientId', 'agentId')
+      .innerJoin('customer_records', 'cr', 'cr.customerId = apt.clientId')
+      .leftJoin('users', 'agent', 'agent.id = cr.assignedSalespersonId')
+      .select('cr.assignedSalespersonId', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COUNT(apt.id)', 'booked')
       .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'attended')
       .addSelect("COUNT(CASE WHEN apt.status = 'completed' AND apt.treatmentDetails IS NOT NULL THEN 1 END)", 'treatmentsCompleted')
       .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
       .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShows')
-      .where('apt.clientId IS NOT NULL')
-      .andWhere('agent.role = :role', { role: UserRole.SALESPERSON });
+      .where('cr.assignedSalespersonId IS NOT NULL');
 
     if (dateRange) {
       query = query.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
     }
 
-    query = query.groupBy('apt.clientId, agent.firstName, agent.lastName');
+    query = query.groupBy('cr.assignedSalespersonId, agent.firstName, agent.lastName');
 
     const results = await query.getRawMany();
     return results.map(row => ({
       agentId: row.agentId,
-      agentName: row.agentName,
+      agentName: row.agentName || 'Unknown Agent',
       booked: parseInt(row.booked) || 0,
       attended: parseInt(row.attended) || 0,
       treatmentsCompleted: parseInt(row.treatmentsCompleted) || 0,
@@ -1734,24 +1766,24 @@ export class CrmService implements OnModuleInit {
   async getAgentCashflow(dateRange?: { startDate: Date; endDate: Date }) {
     let query = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .leftJoin('apt.client', 'agent')
-      .select('apt.clientId', 'agentId')
+      .innerJoin('customer_records', 'cr', 'cr.customerId = apt.clientId')
+      .leftJoin('users', 'agent', 'agent.id = cr.assignedSalespersonId')
+      .select('cr.assignedSalespersonId', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'revenue')
       .addSelect('COALESCE(SUM(CASE WHEN apt.status = \'cancelled\' AND apt.totalAmount > 0 THEN apt.totalAmount ELSE 0 END), 0)', 'refunds')
-      .where('apt.clientId IS NOT NULL')
-      .andWhere('agent.role = :role', { role: UserRole.SALESPERSON });
+      .where('cr.assignedSalespersonId IS NOT NULL');
 
     if (dateRange) {
       query = query.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
     }
 
-    query = query.groupBy('apt.clientId, agent.firstName, agent.lastName');
+    query = query.groupBy('cr.assignedSalespersonId, agent.firstName, agent.lastName');
 
     const results = await query.getRawMany();
     return results.map(row => ({
       agentId: row.agentId,
-      agentName: row.agentName,
+      agentName: row.agentName || 'Unknown Agent',
       revenue: parseFloat(row.revenue) || 0,
       refunds: parseFloat(row.refunds) || 0,
       net: (parseFloat(row.revenue) || 0) - (parseFloat(row.refunds) || 0)
@@ -2092,5 +2124,114 @@ export class CrmService implements OnModuleInit {
       console.error('Error fetching ad stats:', error);
       return [];
     }
+  }
+
+  async getAccessibleClinicsForUser(userId: string): Promise<Clinic[]> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Role-based access
+    if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER].includes(user.role as UserRole)) {
+      // Admins see all active clinics
+      return this.clinicsRepository.find({
+        where: { isActive: true },
+        select: ['id', 'name', 'address', 'phone', 'email']
+      });
+    }
+
+    if (user.role === UserRole.CLINIC_OWNER) {
+      const ownerships = await this.clinicOwnershipRepository.find({
+        where: { ownerUserId: userId }
+      });
+
+      const clinicIds = ownerships.map(o => o.clinicId);
+      if (clinicIds.length === 0) return [];
+
+      return this.clinicsRepository.find({
+        where: { id: In(clinicIds), isActive: true }
+      });
+    }
+
+    // For other roles (Salesperson, etc.), check explicit access grants
+    const accesses = await this.agentClinicAccessRepository.find({
+      where: { agentUserId: userId },
+      relations: ['clinic']
+    });
+
+    return accesses.map(a => a.clinic).filter(c => c && c.isActive);
+  }
+
+  async getSalespersons(): Promise<User[]> {
+    return this.usersRepository.find({
+      where: { role: UserRole.SALESPERSON, isActive: true },
+      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePictureUrl'],
+    });
+  }
+
+  async getSalesActivities(date?: Date, salespersonId?: string): Promise<any[]> {
+    const startDate = date ? new Date(date) : new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(startDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    const whereAction: any = {
+      createdAt: Between(startDate, endDate),
+    };
+
+    if (salespersonId) {
+      whereAction.salespersonId = salespersonId;
+    }
+
+    // Fetch CRM Actions
+    const actions = await this.crmActionsRepository.find({
+      where: whereAction,
+      relations: ['salesperson', 'customer', 'customer.customer'],
+    });
+
+    const whereTask: any = {
+      dueDate: Between(startDate, endDate),
+    };
+
+    if (salespersonId) {
+      whereTask.assigneeId = salespersonId;
+    }
+
+    // Fetch Tasks
+    const tasks = await this.dataSource.getRepository('Task').find({
+      where: whereTask,
+      relations: ['assignee', 'customer'],
+    }) as any[];
+
+    // Standardize format for Diary
+    const standardizedActivities = [
+      ...actions.map(action => ({
+        id: action.id,
+        title: action.title,
+        type: 'action',
+        actionType: action.actionType,
+        status: action.status,
+        startTime: action.createdAt,
+        endTime: new Date(new Date(action.createdAt).getTime() + 30 * 60000),
+        salespersonId: action.salespersonId,
+        customerName: action.customer?.customer
+          ? `${action.customer.customer.firstName} ${action.customer.customer.lastName}`
+          : 'N/A',
+      })),
+      ...tasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        type: 'task',
+        taskType: task.type,
+        status: task.status,
+        startTime: task.dueDate,
+        endTime: new Date(new Date(task.dueDate).getTime() + 30 * 60000),
+        salespersonId: task.assigneeId,
+        customerName: task.customer ? `${task.customer.firstName} ${task.customer.lastName}` : 'N/A',
+      })),
+    ];
+
+    return standardizedActivities;
   }
 }

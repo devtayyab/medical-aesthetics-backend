@@ -10,8 +10,15 @@ import { AppDispatch, RootState } from '@/store';
 import { format } from 'date-fns';
 
 interface CRMBookingModalProps {
-    customerId: string;
-    customerName: string;
+    customerId?: string;
+    customerName?: string;
+    customer?: {
+        id: string;
+        name: string;
+        email?: string;
+        phone?: string;
+    };
+    isOpen?: boolean;
     onClose: () => void;
     onSuccess?: () => void;
 }
@@ -19,9 +26,15 @@ interface CRMBookingModalProps {
 export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     customerId,
     customerName,
+    customer,
+    isOpen,
     onClose,
     onSuccess
 }) => {
+    const finalCustomerId = customer?.id || customerId || '';
+    const finalCustomerName = customer?.name || customerName || '';
+
+    if (isOpen === false) return null;
     const dispatch = useDispatch<AppDispatch>();
     const { user } = useSelector((state: RootState) => state.auth);
 
@@ -109,7 +122,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
             const payload: any = {
                 clinicId: selectedClinic,
                 serviceId: selectedService,
-                clientId: customerId,
+                clientId: finalCustomerId,
                 // Fix: Check if startTime is already a full ISO string to prevent double date (e.g. 2026-02-06T2026-02-06...)
                 startTime: selectedSlot.startTime.includes('T')
                     ? selectedSlot.startTime
@@ -189,7 +202,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                         </div>
                         <div>
                             <CardTitle className="text-xl">Book Appointment</CardTitle>
-                            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Client: {customerName}</p>
+                            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Client: {finalCustomerName}</p>
                         </div>
                     </div>
                     <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-gray-200">
@@ -387,7 +400,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                                             <div className="space-y-4 text-sm">
                                                 <div>
                                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 leading-none">Treating</p>
-                                                    <p className="font-bold text-gray-900 text-lg leading-tight">{customerName}</p>
+                                                    <p className="font-bold text-gray-900 text-lg leading-tight">{finalCustomerName}</p>
                                                 </div>
                                                 <div className="flex items-start gap-3">
                                                     <div className="mt-1 p-1 bg-gray-100 rounded text-gray-500"><MapPin className="w-4 h-4" /></div>

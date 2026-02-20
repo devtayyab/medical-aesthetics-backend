@@ -9,7 +9,6 @@ import {
   Search,
   RefreshCw,
   Clock,
-  CheckCircle2,
   BarChart3
 } from "lucide-react";
 
@@ -191,29 +190,37 @@ export const Analytics: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-xl p-6 space-y-6">
-                  <div className="flex items-start gap-4">
-                    <div className="p-2 bg-white rounded-lg shadow-sm text-orange-600">
-                      <Clock className="w-5 h-5" />
+                <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+                  <div className="flex items-start gap-4 p-3 bg-white rounded-lg shadow-sm">
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                      <Activity className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Avg. Response Time</p>
-                      <p className="text-xl font-bold text-gray-900 mt-1">
-                        {analytics.averageResponseTime || 'N/A'}
-                      </p>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Calls</p>
+                      <p className="text-lg font-bold text-gray-900">{analytics.communicationStats?.calls || 0}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-4">
-                    <div className="p-2 bg-white rounded-lg shadow-sm text-green-600">
-                      <CheckCircle2 className="w-5 h-5" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-emerald-50 text-emerald-700 rounded-lg">
+                      <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">Answered</p>
+                      <p className="text-lg font-bold">{analytics.communicationStats?.answeredCalls || 0}</p>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Tasks Completed</p>
-                      <p className="text-xl font-bold text-gray-900 mt-1">
-                        {analytics.tasksCompleted || 0}
-                      </p>
+                    <div className="p-3 bg-red-50 text-red-700 rounded-lg">
+                      <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">Missed</p>
+                      <p className="text-lg font-bold">{analytics.communicationStats?.missedCalls || 0}</p>
                     </div>
+                  </div>
+
+                  <div className="p-3 bg-indigo-50 text-indigo-700 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">Talk Time</p>
+                        <p className="text-lg font-bold">{analytics.communicationStats?.totalDurationSeconds ? Math.floor(analytics.communicationStats.totalDurationSeconds / 60) : 0}m {analytics.communicationStats?.totalDurationSeconds ? analytics.communicationStats.totalDurationSeconds % 60 : 0}s</p>
+                      </div>
+                      <Clock className="w-5 h-5 opacity-40" />
+                    </div>
+                    <p className="text-[10px] mt-1">Avg: {analytics.communicationStats?.avgDurationMinutes || 0} min/call</p>
                   </div>
                 </div>
               </div>
@@ -238,26 +245,33 @@ export const Analytics: React.FC = () => {
             <div className="space-y-4">
               {analytics ? (
                 <>
-                  <BreakdownItem label="Total Actions" value={analytics.totalActions || 0} total={analytics.totalActions || 1} color="bg-indigo-500" />
-                  <BreakdownItem label="Completed" value={analytics.completedActions || 0} total={analytics.totalActions || 1} color="bg-emerald-500" />
+                  <BreakdownItem label="Pending Tasks" value={analytics.actionStats?.pending || 0} total={analytics.actionStats?.total || 1} color="bg-orange-500" />
+                  <BreakdownItem label="Completed Tasks" value={analytics.actionStats?.completed || 0} total={analytics.actionStats?.total || 1} color="bg-emerald-500" />
+                  <BreakdownItem label="Missed Tasks" value={analytics.actionStats?.missed || 0} total={analytics.actionStats?.total || 1} color="bg-red-500" />
+
+                  <div className="mt-8 pt-6 border-t border-gray-100">
+                    <h4 className="font-medium text-sm text-gray-700 mb-4">Customer Base</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-500">Total</p>
+                        <p className="text-xl font-bold">{analytics.customerStats?.totalCustomers || 0}</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-500">Repeat</p>
+                        <p className="text-xl font-bold text-blue-600">{analytics.customerStats?.repeatCustomers || 0}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-emerald-50 rounded-lg">
+                      <p className="text-xs text-emerald-700 font-medium">Lifetime Revenue</p>
+                      <p className="text-xl font-black text-emerald-900 mt-1">
+                        £{(analytics.customerStats?.totalRevenue || 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
                 </>
               ) : (
                 <div className="text-sm text-gray-500 text-center py-8">Loading stats...</div>
               )}
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-gray-100">
-              <h4 className="font-medium text-sm text-gray-700 mb-4">Quick Insights</h4>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5" />
-                  Review pending tasks daily to improve completion rates.
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5" />
-                  Target a conversion rate above 20% for optimal growth.
-                </li>
-              </ul>
             </div>
           </CardContent>
         </Card>

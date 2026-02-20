@@ -78,7 +78,7 @@ export class MandatoryFieldValidationService {
     const warnings: string[] = [];
 
     // For phone call actions, ensure required fields are present
-    if (actionData.actionType === 'phone_call') {
+    if (actionData.actionType === 'phone_call' && actionData.status !== 'pending') {
       // Check top-level fields first (as they are in the entity), then fallback to metadata
       const clinic = actionData.clinic || actionData.metadata?.clinic;
       const proposedTreatment = actionData.proposedTreatment || actionData.metadata?.proposedTreatment;

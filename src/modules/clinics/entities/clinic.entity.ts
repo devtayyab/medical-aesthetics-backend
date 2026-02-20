@@ -35,6 +35,9 @@ export class Clinic {
   @Column({ nullable: true })
   phone: string;
 
+  @Column({ default: 1 })
+  treatmentRooms: number;
+
   @Column({ nullable: true })
   email: string;
 

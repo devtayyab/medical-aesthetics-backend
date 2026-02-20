@@ -23,6 +23,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { EventsModule } from './modules/events/events.module';
+import { MessagesModule } from './modules/messages/messages.module';
 
 @Module({
   imports: [
@@ -47,7 +48,7 @@ import { EventsModule } from './modules/events/events.module';
       secret: process.env.JWT_SECRET || 'medical-aesthetics-secret-key',
       signOptions: { expiresIn: '1d' },
     }),
-    
+
     // Feature modules
     AuthModule,
     UsersModule,
@@ -61,7 +62,8 @@ import { EventsModule } from './modules/events/events.module';
     AuditModule,
     QueueModule,
     EventsModule,
+    MessagesModule,
   ],
   controllers: [AppController],
 })
-export class AppModule {}
+export class AppModule { }

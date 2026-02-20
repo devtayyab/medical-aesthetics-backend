@@ -338,10 +338,12 @@ export class AvailabilityService {
     let clinic;
     if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       clinic = await this.clinicsService.findByOwnerId(userId);
+    } else if (userRole === 'manager' && query?.clinicId) {
+      clinic = await this.clinicsService.findById(query.clinicId);
     } else {
       // For other roles, we need to find their clinic
       // This is a simplified approach - in reality, you'd need to map users to clinics
-      throw new Error('Clinic availability lookup not implemented for this user role');
+      throw new Error('Clinic availability lookup not implemented for this user role or missing clinicId');
     }
 
     if (!clinic) {

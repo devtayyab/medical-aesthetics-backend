@@ -11,7 +11,8 @@ import type {
   TaskAutomationRule,
   ValidationResult,
   CrmFilters,
-  CrmAnalytics
+  CrmAnalytics,
+  User
 } from "@/types";
 import type { Customer } from "@/types/crm.types";
 interface CrmState {
@@ -61,7 +62,8 @@ interface CrmState {
 
   // Analytics
   analytics: CrmAnalytics | null;
-
+  salespersons: User[];
+  diaryActivities: any[];
   // UI State
   isLoading: boolean;
   error: string | null;
@@ -96,6 +98,8 @@ const initialState: CrmState = {
   fieldValidation: null,
   requiredFields: null,
   analytics: null,
+  salespersons: [],
+  diaryActivities: [],
   lastUpdated: null,
 };
 
@@ -466,6 +470,22 @@ export const scheduleRecurring = createAsyncThunk(
   }
 );
 
+export const fetchSalespersons = createAsyncThunk(
+  "crm/fetchSalespersons",
+  async () => {
+    const response = await crmAPI.getSalespersons();
+    return response.data;
+  }
+);
+
+export const fetchSalesActivities = createAsyncThunk(
+  "crm/fetchSalesActivities",
+  async (date?: string) => {
+    const response = await crmAPI.getSalesActivities(date);
+    return response.data;
+  }
+);
+
 const crmSlice = createSlice({
   name: "crm",
   initialState,
@@ -697,6 +717,12 @@ const crmSlice = createSlice({
       })
       .addCase(scheduleRecurring.fulfilled, (state, action) => {
         state.recurringSchedule = action.payload;
+      })
+      .addCase(fetchSalespersons.fulfilled, (state, action) => {
+        state.salespersons = action.payload;
+      })
+      .addCase(fetchSalesActivities.fulfilled, (state, action) => {
+        state.diaryActivities = action.payload;
       })
 
       // Generic loading state handlers

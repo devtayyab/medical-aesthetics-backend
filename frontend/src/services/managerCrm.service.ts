@@ -148,14 +148,14 @@ const formatDateParam = (date: Date): string => {
 };
 
 // Manager Analytics
-export const fetchAgentKpis = async (params?: { 
-  startDate?: Date; 
+export const fetchAgentKpis = async (params?: {
+  startDate?: Date;
   endDate?: Date;
 }): Promise<any[]> => {
   const queryParams: Record<string, string> = {};
   if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
   if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
-  
+
   const response = await api.get('/crm/analytics/manager/agents', { params: queryParams });
   return response.data;
 };
@@ -167,7 +167,7 @@ export const fetchServiceStats = async (params?: {
   const queryParams: Record<string, string> = {};
   if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
   if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
-  
+
   const response = await api.get('/crm/analytics/manager/services', { params: queryParams });
   return response.data;
 };
@@ -179,7 +179,7 @@ export const fetchClinicAnalytics = async (params?: {
   const queryParams: Record<string, string> = {};
   if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
   if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
-  
+
   const response = await api.get('/crm/analytics/manager/clinics', { params: queryParams });
   return response.data;
 };
@@ -191,7 +191,7 @@ export const fetchCampaignPerformance = async (params?: {
   const queryParams: Record<string, string> = {};
   if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
   if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
-  
+
   const response = await api.get('/crm/analytics/campaigns', { params: queryParams });
   return response.data;
 };
@@ -209,7 +209,7 @@ export const fetchAgentFormStats = async (params?: {
   const queryParams: Record<string, string> = {};
   if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
   if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
-  
+
   const response = await api.get('/crm/analytics/agent-forms', { params: queryParams });
   return response.data;
 };
@@ -222,7 +222,7 @@ export const fetchAgentCommunicationStats = async (params?: {
   const queryParams: Record<string, string> = {};
   if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
   if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
-  
+
   const response = await api.get('/crm/analytics/agent-communications', { params: queryParams });
   return response.data;
 };
@@ -234,7 +234,7 @@ export const fetchAgentAppointmentStats = async (params?: {
   const queryParams: Record<string, string> = {};
   if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
   if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
-  
+
   const response = await api.get('/crm/analytics/agent-appointments', { params: queryParams });
   return response.data;
 };
@@ -337,8 +337,14 @@ export const generateWeeklyReports = async (): Promise<void> => {
 // Helper function to get date range for the last N days
 export const getDateRange = (days: number): { startDate: Date; endDate: Date } => {
   const endDate = new Date();
+  // Set end date to end of current day
+  endDate.setHours(23, 59, 59, 999);
+
   const startDate = new Date();
   startDate.setDate(endDate.getDate() - days);
+  // Set start date to beginning of that day
+  startDate.setHours(0, 0, 0, 0);
+
   return { startDate, endDate };
 };
 
@@ -349,7 +355,7 @@ export const fetchAgentCashflow = async (params?: {
   const queryParams: Record<string, string> = {};
   if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
   if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
-  
+
   const response = await api.get('/crm/analytics/agent-cashflow', { params: queryParams });
   return response.data;
 };
@@ -368,7 +374,7 @@ export const fetchServicePerformance = async (params?: {
   const queryParams: Record<string, string> = {};
   if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
   if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
-  
+
   const response = await api.get('/crm/analytics/service-performance', { params: queryParams });
   return response.data;
 };
@@ -380,7 +386,7 @@ export const fetchAdvertisementStats = async (params?: {
   const queryParams: Record<string, string> = {};
   if (params?.startDate) queryParams.startDate = formatDateParam(params.startDate);
   if (params?.endDate) queryParams.endDate = formatDateParam(params.endDate);
-  
+
   const response = await api.get('/crm/analytics/advertisement-stats', { params: queryParams });
   return response.data;
 };

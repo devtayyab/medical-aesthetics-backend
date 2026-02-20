@@ -6,7 +6,7 @@ import { User } from "../users/entities/user.entity";
 import { ConfigService } from "@nestjs/config";
 import { RegisterDto } from "./dto/register.dto";
 import { ClinicsService } from "../clinics/clinics.service";
-import { UserRole } from "@/common/enums/user-role.enum";
+import { UserRole } from "../../common/enums/user-role.enum";
 import { LoyaltyService } from "../loyalty/loyalty.service";
 import { BookingsService } from "../bookings/bookings.service";
 

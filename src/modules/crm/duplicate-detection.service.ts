@@ -4,8 +4,8 @@ import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Lead } from './entities/lead.entity';
 import { CustomerRecord } from './entities/customer-record.entity';
-import { LeadStatus } from '@/common/enums/lead-status.enum';
-import { UserRole } from '@/common/enums/user-role.enum';
+import { LeadStatus } from '../../common/enums/lead-status.enum';
+import { UserRole } from '../../common/enums/user-role.enum';
 
 export interface DuplicateCheckResult {
   isDuplicate: boolean;

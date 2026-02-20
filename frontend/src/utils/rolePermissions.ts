@@ -8,11 +8,12 @@ export const permissions = {
     UserRole.DOCTOR,
     UserRole.SECRETARIAT,
     UserRole.SALESPERSON,
+    UserRole.MANAGER,
   ],
 
   // Services/Treatments
   canManageServices: [UserRole.CLINIC_OWNER],
-  canViewServices: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT],
+  canViewServices: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER],
 
   // Appointments
   canConfirmAppointments: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT],
@@ -23,14 +24,15 @@ export const permissions = {
     UserRole.DOCTOR,
     UserRole.SECRETARIAT,
     UserRole.SALESPERSON,
+    UserRole.MANAGER,
   ],
 
   // Payments
   canRecordPayments: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT],
-  canViewPayments: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT],
+  canViewPayments: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER],
 
   // Analytics
-  canViewAnalytics: [UserRole.CLINIC_OWNER, UserRole.SALESPERSON],
+  canViewAnalytics: [UserRole.CLINIC_OWNER, UserRole.SALESPERSON, UserRole.MANAGER],
 
   // Notifications
   canSendNotifications: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT],
@@ -46,10 +48,11 @@ export const permissions = {
     UserRole.DOCTOR,
     UserRole.SECRETARIAT,
     UserRole.SALESPERSON,
+    UserRole.MANAGER,
   ],
 
   // Availability
-  canManageAvailability: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT],
+  canManageAvailability: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER],
 };
 
 export const hasPermission = (
@@ -66,6 +69,7 @@ export const canAccessClinicDashboard = (userRole: UserRole | string): boolean =
     UserRole.DOCTOR,
     UserRole.SECRETARIAT,
     UserRole.SALESPERSON,
+    UserRole.MANAGER,
   ].includes(userRole as UserRole);
 };
 
@@ -88,6 +92,12 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
       label: 'Appointments',
       path: '/clinic/appointments',
       icon: 'Calendar',
+    });
+    menuItems.push({
+      id: 'diary',
+      label: 'Staff Diary',
+      path: '/clinic/diary',
+      icon: 'Clock',
     });
   }
 
@@ -128,6 +138,12 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
       label: 'Analytics & Reports',
       path: '/clinic/analytics',
       icon: 'BarChart3',
+    });
+    menuItems.push({
+      id: 'sales-diary',
+      label: 'Sales Diary',
+      path: '/clinic/sales-diary',
+      icon: 'Calendar',
     });
   }
 
