@@ -3,8 +3,8 @@ import { css } from '@emotion/css';
 import { Loader2 } from 'lucide-react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'white';
-  size?: 'sm' | 'md' | 'lg' | 'icon';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'white' | 'link';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
   fullWidth?: boolean;
   leftIcon?: React.ReactNode;
@@ -104,9 +104,30 @@ const variantStyles = {
       box-shadow: var(--shadow-sm);
     }
   `,
+  link: css`
+    background-color: transparent;
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    padding: 0;
+    min-height: auto;
+    height: auto;
+    box-shadow: none;
+    border: none;
+    
+    &:hover:not(:disabled) {
+      text-decoration: none;
+      opacity: 0.8;
+    }
+  `,
 };
 
 const sizeStyles = {
+  xs: css`
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    min-height: 1.75rem;
+  `,
   sm: css`
     padding: var(--spacing-sm) var(--spacing-md);
     font-size: var(--font-size-sm);

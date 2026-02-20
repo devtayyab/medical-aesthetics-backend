@@ -205,59 +205,53 @@ export class ClinicsService {
   }
 
   async getClinicProviders(clinicId: string): Promise<any[]> {
-    // Get all providers (doctors and aestheticians) who have appointments at this clinic
-    // First, get providers from appointments
-    const appointmentProviders = await this.appointmentsRepository
-      .createQueryBuilder('appointment')
-      .leftJoinAndSelect('appointment.provider', 'provider')
+    // 1. Get all providers from appointments
+    const providersFromAppointments = await this.usersRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.providerAppointments', 'appointment')
       .where('appointment.clinicId = :clinicId', { clinicId })
-      .andWhere('appointment.providerId IS NOT NULL')
-      .select('DISTINCT provider.id', 'id')
-      .addSelect('provider.firstName', 'firstName')
-      .addSelect('provider.lastName', 'lastName')
-      .addSelect('provider.email', 'email')
-      .addSelect('provider.phone', 'phone')
-      .addSelect('provider.role', 'role')
-      .addSelect('provider.profilePictureUrl', 'profilePictureUrl')
-      .getRawMany();
+      .getMany();
 
-    // Also get clinic owner if they're a doctor
-    const clinic = await this.findById(clinicId);
-    const owner = await this.usersRepository.findOne({
-      where: { id: clinic.ownerId },
+    // 2. Get clinic owner
+    const clinic = await this.clinicsRepository.findOne({
+      where: { id: clinicId },
+      relations: ['owner'],
     });
 
-    // Map to a cleaner format and remove duplicates
     const uniqueProviders = new Map();
 
     // Add providers from appointments
-    appointmentProviders.forEach((p: any) => {
-      if (p.provider_id && !uniqueProviders.has(p.provider_id)) {
-        uniqueProviders.set(p.provider_id, {
-          id: p.provider_id,
-          firstName: p.provider_firstName,
-          lastName: p.provider_lastName,
-          fullName: `${p.provider_firstName} ${p.provider_lastName}`,
-          email: p.provider_email,
-          phone: p.provider_phone,
-          role: p.provider_role,
-          profilePictureUrl: p.provider_profilePictureUrl,
-        });
-      }
+    providersFromAppointments.forEach((user) => {
+      uniqueProviders.set(user.id, {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        profilePictureUrl: user.profilePictureUrl,
+      });
     });
 
-    // Add clinic owner if they're a doctor or clinic_owner
-    if (owner && (owner.role === UserRole.DOCTOR || owner.role === UserRole.CLINIC_OWNER) && !uniqueProviders.has(owner.id)) {
-      uniqueProviders.set(owner.id, {
-        id: owner.id,
-        firstName: owner.firstName,
-        lastName: owner.lastName,
-        fullName: `${owner.firstName} ${owner.lastName}`,
-        email: owner.email,
-        phone: owner.phone,
-        role: owner.role,
-        profilePictureUrl: owner.profilePictureUrl,
-      });
+    // Add owner if they are a doctor or clinic_owner
+    if (clinic?.owner) {
+      const owner = clinic.owner;
+      if (
+        (owner.role === UserRole.DOCTOR || owner.role === UserRole.CLINIC_OWNER) &&
+        !uniqueProviders.has(owner.id)
+      ) {
+        uniqueProviders.set(owner.id, {
+          id: owner.id,
+          firstName: owner.firstName,
+          lastName: owner.lastName,
+          fullName: `${owner.firstName} ${owner.lastName}`,
+          email: owner.email,
+          phone: owner.phone,
+          role: owner.role,
+          profilePictureUrl: owner.profilePictureUrl,
+        });
+      }
     }
 
     return Array.from(uniqueProviders.values());
@@ -265,39 +259,24 @@ export class ClinicsService {
 
   async getServiceProviders(clinicId: string, serviceId: string): Promise<any[]> {
     // Get providers who have appointments for this specific service
-    const providers = await this.appointmentsRepository
-      .createQueryBuilder('appointment')
-      .leftJoinAndSelect('appointment.provider', 'provider')
+    const providers = await this.usersRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.providerAppointments', 'appointment')
       .where('appointment.clinicId = :clinicId', { clinicId })
       .andWhere('appointment.serviceId = :serviceId', { serviceId })
-      .andWhere('appointment.providerId IS NOT NULL')
-      .select('DISTINCT provider.id', 'id')
-      .addSelect('provider.firstName', 'firstName')
-      .addSelect('provider.lastName', 'lastName')
-      .addSelect('provider.email', 'email')
-      .addSelect('provider.phone', 'phone')
-      .addSelect('provider.role', 'role')
-      .addSelect('provider.profilePictureUrl', 'profilePictureUrl')
-      .getRawMany();
+      .getMany();
 
-    // Map to a cleaner format and remove duplicates
-    const uniqueProviders = new Map();
-    providers.forEach((p: any) => {
-      if (p.provider_id && !uniqueProviders.has(p.provider_id)) {
-        uniqueProviders.set(p.provider_id, {
-          id: p.provider_id,
-          firstName: p.provider_firstName,
-          lastName: p.provider_lastName,
-          fullName: `${p.provider_firstName} ${p.provider_lastName}`,
-          email: p.provider_email,
-          phone: p.provider_phone,
-          role: p.provider_role,
-          profilePictureUrl: p.provider_profilePictureUrl,
-        });
-      }
-    });
-
-    return Array.from(uniqueProviders.values());
+    // Map to the desired format
+    return providers.map((user) => ({
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      profilePictureUrl: user.profilePictureUrl,
+    }));
   }
 
   async getClinicAnalytics(clinicId: string, dateRange?: { startDate: Date; endDate: Date }): Promise<any> {
@@ -316,8 +295,14 @@ export class ClinicsService {
   }
 
   // Service/Treatment Management
-  async getClinicServices(ownerId: string): Promise<Service[]> {
-    const clinic = await this.findByOwnerId(ownerId);
+  async getClinicServices(ownerId: string, clinicId?: string): Promise<Service[]> {
+    let clinic;
+    if (clinicId) {
+      clinic = await this.findById(clinicId);
+    } else {
+      clinic = await this.findByOwnerId(ownerId);
+    }
+
     return this.servicesRepository.find({
       where: { clinicId: clinic.id },
       order: { createdAt: 'DESC' },

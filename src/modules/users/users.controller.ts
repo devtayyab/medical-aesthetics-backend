@@ -43,6 +43,15 @@ export class UsersController {
     return this.usersService.findAll(query);
   }
 
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create new user (Agent/Staff)' })
+  create(@Body() createUserDto: CreateUserDto) {
+    return this.usersService.create(createUserDto);
+  }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)

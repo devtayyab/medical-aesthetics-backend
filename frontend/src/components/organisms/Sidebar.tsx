@@ -2,12 +2,14 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
+import { fetchConversations } from "@/store/slices/messagesSlice";
+import { useEffect } from "react";
 
 import {
   LayoutDashboard, Users, BarChart2, Tag, Eye, Settings,
   Calendar, FileText, BarChart, Shield, DollarSign, AlertCircle,
   ClipboardList, Repeat, UserCog, LineChart, ListChecks,
-  Phone, Search, LogOut
+  Phone, Search, LogOut, MessageSquare
 } from "lucide-react";
 
 interface SidebarItem {
@@ -23,6 +25,7 @@ const clientLinks: SidebarItem[] = [
   { path: "/history", label: "History", icon: <ClipboardList className="w-5 h-5" /> },
   { path: "/reviews", label: "Reviews", icon: <Eye className="w-5 h-5" /> },
   { path: "/loyalty", label: "Loyalty", icon: <Tag className="w-5 h-5" /> },
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" /> },
 ];
 
 const clinicLinks: SidebarItem[] = [
@@ -31,6 +34,7 @@ const clinicLinks: SidebarItem[] = [
   { path: "/clinic/availability", label: "Availability", icon: <Calendar className="w-5 h-5" /> },
   { path: "/clinic/execution", label: "Execution", icon: <ListChecks className="w-5 h-5" /> },
   { path: "/clinic/reports", label: "Reports", icon: <BarChart className="w-5 h-5" /> },
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" /> },
 ];
 
 const crmLinks: SidebarItem[] = [
@@ -42,7 +46,9 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/communication", label: "Communication", icon: <Repeat className="w-5 h-5" /> },
   { path: "/crm/analytics", label: "Analytics", icon: <Repeat className="w-5 h-5" /> },
   { path: "/crm/tag", label: "Tags", icon: <Repeat className="w-5 h-5" /> },
+  { path: "/clinic/sales-diary", label: "Sales Diary", icon: <Calendar className="w-5 h-5" /> },
   { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" /> },
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" /> },
 ];
 
 const managerLinks: SidebarItem[] = [
@@ -54,6 +60,7 @@ const managerLinks: SidebarItem[] = [
   { path: "/admin/manager-crm/benefits", label: "Benefits", icon: <DollarSign className="w-5 h-5" />, group: "Settings" },
   { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <AlertCircle className="w-5 h-5" />, group: "Alerts" },
   { path: "/admin/manager-crm/clinic-stats", label: "Clinic Stats", icon: <LineChart className="w-5 h-5" />, group: "Analytics" },
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Overview" },
 ];
 
 const getAdminLinks = (role: string): SidebarItem[] => {
@@ -69,6 +76,7 @@ const getAdminLinks = (role: string): SidebarItem[] => {
 
   return [
     { path: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" /> },
     ...baseLinks,
   ];
 };
@@ -78,6 +86,15 @@ export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
+  const { conversations } = useAppSelector((state) => state.messages);
+
+  const totalUnread = (conversations || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchConversations());
+    }
+  }, [dispatch, user]);
 
   const handleLogout = async () => {
     await dispatch(logout());
@@ -88,7 +105,7 @@ export const Sidebar: React.FC = () => {
   const links =
     role === "client"
       ? clientLinks
-      : role === "clinic_owner"
+      : role === "clinic_owner" || role === "doctor" || role === "secretariat"
         ? clinicLinks
         : role === "admin"
           ? getAdminLinks(role)
@@ -156,7 +173,13 @@ export const Sidebar: React.FC = () => {
                       <span className={`relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
                         {link.icon}
                       </span>
-                      <span className="relative z-10">{link.label}</span>
+                      <span className="relative z-10 flex-1">{link.label}</span>
+
+                      {link.path === '/messages' && totalUnread > 0 && (
+                        <div className="relative z-10 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-md shadow-red-500/20 animate-pulse">
+                          {totalUnread > 99 ? '99+' : totalUnread}
+                        </div>
+                      )}
 
                       {/* Active Indicator (optional, keeping minimal as per request) */}
                       {isActive && (

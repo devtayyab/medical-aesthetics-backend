@@ -40,6 +40,13 @@ export const markAsRead = createAsyncThunk(
   }
 );
 
+export const markAllAsRead = createAsyncThunk(
+  'notifications/markAllAsRead',
+  async () => {
+    await notificationsAPI.markAllAsRead();
+  }
+);
+
 const notificationsSlice = createSlice({
   name: 'notifications',
   initialState,
@@ -67,6 +74,14 @@ const notificationsSlice = createSlice({
           notification.readAt = new Date().toISOString();
           state.unreadCount = Math.max(0, state.unreadCount - 1);
         }
+      })
+      .addCase(markAllAsRead.fulfilled, (state) => {
+        state.notifications = state.notifications.map(n => ({
+          ...n,
+          isRead: true,
+          readAt: new Date().toISOString()
+        }));
+        state.unreadCount = 0;
       });
   },
 });

@@ -1,0 +1,65 @@
+/* Reuse most of staff diary styles but with Sales specific tweaks */
+
+.sales-diary-root .nav-btn:hover {
+    color: #2563eb;
+    background: #eff6ff;
+}
+
+.sales-diary-root .activity-block {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    border-radius: 8px;
+    padding: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    border-left: 4px solid;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.activity-block.type-action.status-pending {
+    background: #eff6ff;
+    border-color: #3b82f6;
+}
+
+.activity-block.type-action.status-completed {
+    background: #ecfdf5;
+    border-color: #10b981;
+}
+
+.activity-block.type-task.status-pending {
+    background: #fffbeb;
+    border-color: #f59e0b;
+}
+
+.act-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1.2;
+}
+
+.act-customer {
+    font-size: 10px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.act-time {
+    font-size: 9px;
+    font-weight: 900;
+    color: #94a3b8;
+    align-self: flex-end;
+}
+
+.sales-diary-root .diary-header-cell.staff-info .staff-avatar {
+    background: #dbeafe;
+}
+
+.sales-diary-root .diary-header-cell.staff-info .staff-name {
+    color: #1e3a8a;
+}

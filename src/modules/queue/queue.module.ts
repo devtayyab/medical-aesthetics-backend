@@ -9,6 +9,7 @@ import { RecurringAppointmentProcessor } from './processors/recurring-appointmen
 import { BookingsModule } from '../bookings/bookings.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { TasksModule } from '../tasks/tasks.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { TasksModule } from '../tasks/tasks.module';
     forwardRef(() => BookingsModule),
     LoyaltyModule,
     TasksModule,
+    NotificationsModule,
   ],
   providers: [
     QueueService,

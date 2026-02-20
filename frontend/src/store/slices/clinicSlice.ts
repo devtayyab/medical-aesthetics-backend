@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import clinicApi from '../../services/api/clinicApi';
 import {
   ClinicProfile,
@@ -6,7 +6,6 @@ import {
   Appointment,
   AppointmentFilters,
   CompleteAppointmentDto,
-  RecordPaymentDto,
   Client,
   Review,
   ReviewStatistics,
@@ -23,6 +22,7 @@ interface ClinicState {
   reviews: Review[];
   reviewStats: ReviewStatistics | null;
   availability: AvailabilitySettings | null;
+  staff: any[];
   isLoading: boolean;
   error: string | null;
 }
@@ -36,11 +36,22 @@ const initialState: ClinicState = {
   reviews: [],
   reviewStats: null,
   availability: null,
+  staff: [],
   isLoading: false,
   error: null,
 };
 
 // Async Thunks
+export const fetchClinicProviders = createAsyncThunk(
+  'clinic/fetchProviders',
+  async (clinicId: string, { rejectWithValue }) => {
+    try {
+      return await clinicApi.clinicProfile.getProviders(clinicId);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch staff');
+    }
+  }
+);
 export const fetchClinicProfile = createAsyncThunk(
   'clinic/fetchProfile',
   async (_, { rejectWithValue }) => {
@@ -65,9 +76,9 @@ export const updateClinicProfile = createAsyncThunk(
 
 export const fetchServices = createAsyncThunk(
   'clinic/fetchServices',
-  async (_, { rejectWithValue }) => {
+  async (clinicId: string | undefined, { rejectWithValue }) => {
     try {
-      return await clinicApi.services.getAll();
+      return await clinicApi.services.getAll(clinicId);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch services');
     }
@@ -194,9 +205,9 @@ export const fetchReviewStatistics = createAsyncThunk(
 
 export const fetchAvailability = createAsyncThunk(
   'clinic/fetchAvailability',
-  async (_, { rejectWithValue }) => {
+  async (clinicId: string | undefined, { rejectWithValue }) => {
     try {
-      return await clinicApi.availability.get();
+      return await clinicApi.availability.get(clinicId);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch availability');
     }
@@ -352,18 +363,8 @@ const clinicSlice = createSlice({
       .addCase(updateAvailability.fulfilled, (state, action) => {
         state.availability = action.payload;
       })
-      .addCase(fetchBlockedSlots.fulfilled, (state, action) => {
-        // We might want to store this in state.availability or separate
-        // For now, let's assume availability has blockedSlots property or we append
-        // Since the backend structure of availability might not have it, we may need to adapt.
-        // But for simplicity/speed, I'll rely on the component fetching this or storing in a new field if needed.
-        // Wait, AvailabilitySettings type has blockedSlots?: BlockedSlot[].
-        // But the API returns BlockedTimeSlot entities which have ids.
-        // Ideally we should update the state properly.
-        // Let's assume action.payload is BlockedTimeSlot[]
-        // We'll map it to the partial structure if needed or store as is.
-        // Actually, let's just leave state management to the component or simple side effects for now
-        // to avoid complex type surgery in this turn.
+      .addCase(fetchClinicProviders.fulfilled, (state, action) => {
+        state.staff = action.payload;
       });
   },
 });

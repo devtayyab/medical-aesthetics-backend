@@ -28,6 +28,7 @@ import { Reviews } from "@/pages/Client/Reviews";
 import { Loyalty } from "@/pages/Client/Loyalty";
 import { Profile as ClinicProfile } from "@/pages/Clinic/Profile";
 import { Diary } from "@/pages/Clinic/Diary";
+import { SalesDiaryPage } from "./pages/CRM/SalesDiaryPage";
 import { Availability } from "@/pages/Clinic/Availability";
 import { Execution } from "@/pages/Clinic/Execution";
 import { Reports } from "@/pages/Clinic/Reports";
@@ -78,6 +79,8 @@ import { Analytics } from "./pages/CRM/Analytics";
 import { Tags } from "./pages/CRM/Tags";
 import { FacebookIntegration } from "./pages/CRM/FacebookIntegration";
 import { Settings as CrmSettings } from "./pages/CRM/Settings";
+import { Notifications as NotificationsCrm } from "./pages/CRM/Notifications";
+import { MessagesPage } from "./pages/Messages/MessagesPage";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -373,8 +376,18 @@ function AppContent() {
           <Route
             path="/clinic/diary"
             element={
-              <ProtectedLayout allowedRoles={["clinic_owner"]}>
+              <ProtectedLayout allowedRoles={["clinic_owner", "doctor", "secretariat"]}>
                 <Diary />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/clinic/sales-diary"
+            element={
+              <ProtectedLayout allowedRoles={["clinic_owner", "manager", "admin", "salesperson"]}>
+                <AdminLayout>
+                  <SalesDiaryPage />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />
@@ -469,6 +482,16 @@ function AppContent() {
               <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
                 <AdminLayout>
                   <CRM />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/crm/notifications"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <NotificationsCrm />
                 </AdminLayout>
               </ProtectedLayout>
             }
@@ -644,6 +667,14 @@ function AppContent() {
                 <AdminLayout>
                   <Monitor />
                 </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/messages"
+            element={
+              <ProtectedLayout allowedRoles={["client", "salesperson", "manager", "admin", "clinic_owner", "doctor", "secretariat", "SUPER_ADMIN"]}>
+                <MessagesPage />
               </ProtectedLayout>
             }
           />

@@ -7,9 +7,9 @@ import { User } from '../users/entities/user.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
-import { AppointmentStatus } from '@/common/enums/appointment-status.enum';
+import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { CrmAction } from './entities/crm-action.entity';
-import { UserRole } from '@/common/enums/user-role.enum';
+import { UserRole } from '../../common/enums/user-role.enum';
 
 export interface TaskAutomationRule {
   id: string;

@@ -85,6 +85,8 @@ export interface Appointment {
   treatmentDetails?: any;
   createdAt: string;
   updatedAt: string;
+  completedAt?: string;
+  showStatus?: 'showed_up' | 'no_show' | 'pending';
   service?: Service;
   client?: {
     id: string;
@@ -92,6 +94,11 @@ export interface Appointment {
     lastName: string;
     email: string;
     phone?: string;
+  };
+  clientDetails?: {
+    fullName: string;
+    email: string;
+    phone: string;
   };
   provider?: {
     id: string;
@@ -104,6 +111,7 @@ export interface AppointmentFilters {
   status?: AppointmentStatus;
   date?: string;
   providerId?: string;
+  clinicId?: string;
 }
 
 // Payment

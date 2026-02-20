@@ -311,30 +311,32 @@ export interface CrmAnalytics {
   conversionRate?: number;
   totalActions?: number;
   completedActions?: number;
-  
+
   // Salesperson Performance
   leadsAssigned?: number;
   leadsContacted?: number;
   salespersonConversionRate?: number;
   averageResponseTime?: string;
   tasksCompleted?: number;
-  
-  // Legacy structure for backward compatibility
-  communications?: {
+
+  communicationStats?: {
     total: number;
     calls: number;
+    answeredCalls: number;
     missedCalls: number;
     emails: number;
+    totalDurationSeconds: number;
+    avgDurationMinutes: number | string;
   };
-  actions?: {
+  actionStats?: {
     total: number;
     pending: number;
     completed: number;
     missed: number;
   };
-  customers?: {
-    total: number;
-    repeat: number;
+  customerStats?: {
+    totalCustomers: number;
+    repeatCustomers: number;
     totalRevenue: number;
   };
 }

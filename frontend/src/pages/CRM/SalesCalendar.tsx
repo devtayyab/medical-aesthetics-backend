@@ -6,12 +6,10 @@ import {
     ChevronRight,
     Plus,
     BarChart,
-    XCircle,
-    Clock
+    XCircle
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
-import { Badge } from '@/components/atoms/Badge';
 import { RootState } from '@/store';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday, startOfWeek, endOfWeek } from 'date-fns';
 
@@ -23,13 +21,13 @@ interface CalendarNote {
     color: string;
 }
 
-import { fetchSalespersonAnalytics } from '@/store/slices/crmSlice';
-import { AppDispatch } from '@/store'; // Ensure AppDispatch is used if needed, or just useDispatch
+import { fetchSalespersonAnalytics, fetchSalespersons, fetchTasks } from '@/store/slices/crmSlice';
+import { AppDispatch } from '@/store';
 
 export const SalesCalendar: React.FC = () => {
-    const dispatch = useDispatch<AppDispatch>(); // Typed dispatch
+    const dispatch = useDispatch<AppDispatch>();
     const { user } = useSelector((state: RootState) => state.auth);
-    const { tasks, analytics } = useSelector((state: RootState) => state.crm);
+    const { tasks, analytics, salespersons } = useSelector((state: RootState) => state.crm);
 
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -40,6 +38,23 @@ export const SalesCalendar: React.FC = () => {
     });
     const [timeRange, setTimeRange] = useState('this_month');
 
+    // Admin: Selected Salesperson
+    const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('');
+
+    // Initialize with user ID
+    useEffect(() => {
+        if (user?.id && !selectedSalespersonId) {
+            setSelectedSalespersonId(user.id);
+        }
+    }, [user, selectedSalespersonId]);
+
+    // Fetch salespersons if admin
+    useEffect(() => {
+        if (user?.role === 'admin') {
+            dispatch(fetchSalespersons());
+        }
+    }, [dispatch, user]);
+
     // New state for note input
     const [noteContent, setNoteContent] = useState('');
     const [noteColor, setNoteColor] = useState('bg-blue-100 border-blue-200 text-blue-800');
@@ -49,9 +64,9 @@ export const SalesCalendar: React.FC = () => {
         localStorage.setItem('sales_calendar_notes', JSON.stringify(notes));
     }, [notes]);
 
-    // Fetch real analytics based on time filter
+    // Fetch real analytics based on time filter AND selected salesperson
     useEffect(() => {
-        if (user?.id) {
+        if (selectedSalespersonId) {
             let startDate = new Date();
             let endDate = new Date();
 
@@ -67,19 +82,22 @@ export const SalesCalendar: React.FC = () => {
             }
 
             dispatch(fetchSalespersonAnalytics({
-                salespersonId: user.id,
+                salespersonId: selectedSalespersonId,
                 dateRange: {
                     startDate: startDate.toISOString(),
                     endDate: endDate.toISOString()
                 }
             }));
+
+            // Also refetch tasks for this person
+            dispatch(fetchTasks(selectedSalespersonId));
         }
-    }, [dispatch, user?.id, timeRange]);
+    }, [dispatch, selectedSalespersonId, timeRange]);
 
     // Derived Performance Data from Redux
     const progress = {
-        sales: analytics?.customers?.totalRevenue || 0,
-        calls: analytics?.communications?.calls || 0,
+        sales: analytics?.customerStats?.totalRevenue || 0,
+        calls: analytics?.communicationStats?.calls || 0,
         appointments: analytics?.completedActions || 0
     };
 
@@ -153,6 +171,21 @@ export const SalesCalendar: React.FC = () => {
                                 <p className="text-blue-100 mt-1.5 text-sm font-medium opacity-90">Track your daily wins and upcoming targets.</p>
                             </div>
                             <div className="flex items-center gap-2">
+                                {user?.role === 'admin' && (
+                                    <select
+                                        value={selectedSalespersonId}
+                                        onChange={(e) => setSelectedSalespersonId(e.target.value)}
+                                        className="bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 transition-colors cursor-pointer appearance-none pr-8 font-medium"
+                                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
+                                    >
+                                        <option value={user.id} className="text-gray-900">My Calendar</option>
+                                        {salespersons?.filter(s => s.id !== user.id).map(s => (
+                                            <option key={s.id} value={s.id} className="text-gray-900">
+                                                {s.firstName} {s.lastName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                                 <select
                                     value={timeRange}
                                     onChange={(e) => setTimeRange(e.target.value)}

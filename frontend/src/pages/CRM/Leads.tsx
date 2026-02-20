@@ -306,9 +306,11 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             <Button variant="white" size="sm" onClick={() => handleBulkAction('mark_contacted')} className="hover:border-primary/30">
               Mark Contacted
             </Button>
-            <Button variant="white" size="sm" onClick={() => handleBulkAction('delete')} className="text-red-600 hover:bg-red-50 border-red-100">
-              <Trash2 className="w-4 h-4 mr-1" /> Delete
-            </Button>
+            {user?.role !== 'salesperson' && (
+              <Button variant="white" size="sm" onClick={() => handleBulkAction('delete')} className="text-red-600 hover:bg-red-50 border-red-100">
+                <Trash2 className="w-4 h-4 mr-1" /> Delete
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -396,8 +398,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                       {formatDate(lead.createdAt)}
                     </TableCell>
                     <TableCell className="py-4 text-right">
-                      <div className="flex justify-end gap-1 items-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                        <div className="flex items-center bg-white border border-gray-100 rounded-xl shadow-lg p-1 scale-90 group-hover:scale-100 transition-all origin-right">
+                      <div className="flex justify-end gap-1 items-center">
+                        <div className="flex items-center bg-white border border-gray-100 rounded-xl shadow-sm p-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg" onClick={() => onViewLead && onViewLead(lead)}>
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -408,9 +410,11 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                             <Edit className="h-4 w-4" />
                           </Button>
                           <div className="w-px h-4 bg-gray-100 mx-1" />
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg" onClick={() => dispatch(deleteLead(lead.id))}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {user?.role !== 'salesperson' && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg" onClick={() => dispatch(deleteLead(lead.id))}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </TableCell>

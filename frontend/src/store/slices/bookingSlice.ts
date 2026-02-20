@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { bookingAPI } from '@/services/api';
 import type { BookingFlow, Service, TimeSlot, Appointment, Clinic } from '@/types';
-import type { RootState } from '@/store';
 
 interface BookingState extends BookingFlow {
   availableSlots: TimeSlot[];
@@ -94,6 +93,14 @@ export const rescheduleAppointment = createAsyncThunk(
   async (data: { id: string; startTime: string; endTime: string }) => {
     const response = await bookingAPI.reschedule(data.id, data.startTime, data.endTime);
     return response.data;
+  }
+);
+
+export const completeAppointment = createAsyncThunk(
+  'booking/completeAppointment',
+  async (data: { id: string; completionData?: any }) => {
+    const response = await bookingAPI.complete(data.id, data.completionData);
+    return { id: data.id, ...response.data };
   }
 );
 
@@ -212,6 +219,13 @@ const bookingSlice = createSlice({
         const index = state.appointments.findIndex(a => a.id === action.payload.id);
         if (index !== -1) {
           state.appointments[index] = action.payload;
+        }
+      })
+      // Complete appointment
+      .addCase(completeAppointment.fulfilled, (state, action) => {
+        const index = state.appointments.findIndex(a => a.id === action.payload.id);
+        if (index !== -1) {
+          state.appointments[index].status = 'completed';
         }
       });
   },

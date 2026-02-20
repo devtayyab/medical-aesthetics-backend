@@ -1,0 +1,248 @@
+.staff-diary-root {
+    padding: 1.5rem;
+    height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
+}
+
+.diary-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.toolbar-left,
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.date-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: #f8fafc;
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+    border: 1px solid #f1f5f9;
+}
+
+.current-date-display {
+    min-width: 200px;
+    text-align: center;
+    color: #1e293b;
+}
+
+.diary-content-area {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.diary-card {
+    height: 100%;
+}
+
+.diary-grid-container {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+.diary-time-column {
+    width: 80px;
+    flex-shrink: 0;
+    border-right: 1px solid #f1f5f9;
+    background: #fff;
+    z-index: 10;
+}
+
+.diary-header-cell {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.diary-header-cell.spacer {
+    background: #f8fafc;
+}
+
+.diary-time-cell {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    border-bottom: 1px dashed #f1f5f9;
+}
+
+.diary-staff-columns {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: auto;
+    position: relative;
+}
+
+.diary-staff-scroll-wrapper {
+    display: flex;
+    min-height: 100%;
+}
+
+.diary-staff-column {
+    width: 200px;
+    flex-shrink: 0;
+    border-right: 1px solid #f1f5f9;
+    position: relative;
+}
+
+.diary-header-cell.staff-info {
+    flex-direction: column;
+    padding: 0.5rem;
+    background: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.staff-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.staff-meta {
+    text-align: center;
+}
+
+.staff-name {
+    font-size: 11px;
+    font-weight: 800;
+    display: block;
+    color: #1e293b;
+    line-height: 1.1;
+}
+
+.staff-role {
+    font-size: 9px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.diary-slots-container {
+    position: relative;
+}
+
+.diary-slot-cell {
+    height: 60px;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.2s;
+}
+
+.diary-slot-cell:hover {
+    background: #f8fafc;
+    cursor: pointer;
+}
+
+.appointment-block {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    border-radius: 8px;
+    padding: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    border-left: 4px solid;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.appointment-block:hover {
+    transform: scale(1.02);
+    z-index: 20;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+.appointment-block.status-pending {
+    background: #eff6ff;
+    border-color: #3b82f6;
+}
+
+.appointment-block.status-confirmed {
+    background: #fdf2f8;
+    border-color: #ec4899;
+}
+
+.appointment-block.status-completed {
+    background: #ecfdf5;
+    border-color: #10b981;
+}
+
+.appointment-block.status-arrived {
+    background: #fffbeb;
+    border-color: #f59e0b;
+}
+
+.appointment-block.status-no_show {
+    background: #fef2f2;
+    border-color: #ef4444;
+}
+
+.apt-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.apt-service {
+    font-size: 11px;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1.2;
+}
+
+.apt-client {
+    font-size: 10px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.apt-time {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+    font-size: 9px;
+    font-weight: 900;
+    color: #94a3b8;
+}
+
+/* Custom Scrollbar for premium feel */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+}

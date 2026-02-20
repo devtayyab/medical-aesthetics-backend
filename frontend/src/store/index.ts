@@ -9,6 +9,8 @@ import clinicSlice from './slices/clinicSlice';
 import crmSlice from './slices/crmSlice';
 import adminSlice from './slices/adminSlice';
 import taskSlice from './slices/TaskSlice';
+import messagesSlice from './slices/messagesSlice';
+
 export const store = configureStore({
   reducer: {
     auth: authSlice,
@@ -21,6 +23,7 @@ export const store = configureStore({
     crm: crmSlice,
     admin: adminSlice,
     task: taskSlice,
+    messages: messagesSlice,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

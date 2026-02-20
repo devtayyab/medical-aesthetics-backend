@@ -9,6 +9,7 @@ import type { RootState, AppDispatch } from "@/store";
 import { logout } from "@/store/slices/authSlice";
 
 import SiteLogo from "@/assets/SiteLogo.png";
+import { NotificationDropdown } from "@/components/molecules/NotificationDropdown";
 
 const containerStyle = css`
   max-width: 1200px;
@@ -137,7 +138,7 @@ const notificationButtonStyle = css`
   cursor: pointer;
   border-radius: var(--radius-lg);
   transition: background-color var(--transition-fast);
-  color: var(--color-medical-text);
+  color: white; /* Force white color so it is visible on dark header */
   &:hover {
     background-color: #cbff38;
     color: black;
@@ -160,9 +161,12 @@ const notificationBadgeStyle = css`
   font-weight: var(--font-weight-medium);
 `;
 
+
+
 export const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -200,6 +204,7 @@ export const Header: React.FC = () => {
     if (user.role === "admin") {
       return [
         { to: "/admin/dashboard", label: "Dashboard" },
+        { to: "/messages", label: "Messages" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -207,7 +212,7 @@ export const Header: React.FC = () => {
     if (user.role === "SUPER_ADMIN" || user.role === "manager") {
       return [
         { to: "/admin/manager-dashboard", label: "Dashboard" },
-        // { to: "/crm", label: "CRM" },
+        { to: "/messages", label: "Messages" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -219,6 +224,7 @@ export const Header: React.FC = () => {
         { to: "/search", label: "Treatments" },
         { to: "/appointments", label: "My Appointments" },
         { to: "/my-account", label: "My Account" },
+        { to: "/messages", label: "Messages" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -231,6 +237,7 @@ export const Header: React.FC = () => {
         { to: "/clinic/services", label: "Services" },
         { to: "/clinic/analytics", label: "Analytics" },
         { to: "/clinic/reviews", label: "Reviews" },
+        { to: "/messages", label: "Messages" },
         { to: "/clinic/notifications", label: "Notifications" },
         { to: "/clinic/settings", label: "Settings" },
         { action: handleLogout, label: "Logout" },
@@ -250,11 +257,11 @@ export const Header: React.FC = () => {
         { to: "/crm/actions", label: "Actions" },
         { to: "/crm/repeat-management", label: "Repeat Management" },
         { to: "/crm/leads", label: "Leads" },
+        { to: "/messages", label: "Messages" },
         { to: "/crm/communication", label: "Communication" },
         { to: "/crm/analytics", label: "Analytics" },
         { to: "/crm/tag", label: "Tags" },
         { to: "/crm/facebook-integration", label: "Facebook Integration" },
-
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -299,11 +306,12 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Desktop Navigation for Non-Clinic Roles */}
-        {!clinicRoles.includes(user?.role || '') && (user?.role !== 'salesperson') && (
+        {!clinicRoles.includes(user?.role || '') && (
           <>
-            <div className={searchContainerStyle}>
-              <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
-                {/* <li
+            {user?.role !== 'salesperson' && (
+              <div className={searchContainerStyle}>
+                <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
+                  {/* <li
                   className={`cursor-pointer ${location.pathname === "/"
                     ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
                     : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
@@ -319,7 +327,7 @@ export const Header: React.FC = () => {
                     Home
                   </Link>
                 </li> */}
-                {/* {(user?.role === "salesperson") && (
+                  {/* {(user?.role === "salesperson") && (
                   <li
                     className={`cursor-pointer ${location.pathname === "/crm"
                       ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
@@ -337,56 +345,92 @@ export const Header: React.FC = () => {
                     </Link>
                   </li>
                 )} */}
-                {clinicRoles.includes(user?.role || "") && <>
-                  <li
-                    className={`cursor-pointer ${location.pathname.startsWith("/search")
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                      }`}
-                  >
-                    <Link
-                      to="/search"
-                      className={`no-underline ${location.pathname.startsWith("/search")
-                        ? "text-[#CBFF38]"
-                        : "text-white"
+                  {clinicRoles.includes(user?.role || "") && <>
+                    <li
+                      className={`cursor-pointer ${location.pathname.startsWith("/search")
+                        ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
+                        : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
                         }`}
                     >
-                      Treatments
-                    </Link>
-                  </li>
-                </>}
-              </ul>
-            </div>
+                      <Link
+                        to="/search"
+                        className={`no-underline ${location.pathname.startsWith("/search")
+                          ? "text-[#CBFF38]"
+                          : "text-white"
+                          }`}
+                      >
+                        Treatments
+                      </Link>
+                    </li>
+                  </>}
+                </ul>
+              </div>
+            )}
 
             {/* Contact Support Box */}
-            <a
-              href="mailto:support@medicalaesthetics.com"
-              className="hidden lg:flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 hover:bg-gray-100 transition-colors mr-2 group decoration-0"
-              style={{ textDecoration: 'none' }}
-            >
-              <div className="size-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 group-hover:border-[#CBFF38] transition-colors">
-                <MessageCircle size={16} className="text-gray-600 group-hover:text-black" />
+            {user?.role !== 'salesperson' && (
+              <a
+                href="mailto:support@medicalaesthetics.com"
+                className="hidden lg:flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 hover:bg-gray-100 transition-colors mr-2 group decoration-0"
+                style={{ textDecoration: 'none' }}
+              >
+                <div className="size-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 group-hover:border-[#CBFF38] transition-colors">
+                  <MessageCircle size={16} className="text-gray-600 group-hover:text-black" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5">Don't know what you need?</span>
+                  <span className="text-sm font-bold text-gray-900 leading-none">Contact Us</span>
+                </div>
+              </a>
+            )}
+
+            {/* Mobile Notification Bell */}
+            {isAuthenticated && (
+              <div className="md:hidden relative mr-2">
+                <button
+                  className={`group ${notificationButtonStyle}`}
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                >
+                  <Bell
+                    size={20}
+                    className="text-white group-hover:text-black"
+                  />
+                  {unreadCount > 0 && (
+                    <span className={notificationBadgeStyle}>
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+                <NotificationDropdown
+                  isOpen={isNotificationsOpen}
+                  onClose={() => setIsNotificationsOpen(false)}
+                />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5">Don't know what you need?</span>
-                <span className="text-sm font-bold text-gray-900 leading-none">Contact Us</span>
-              </div>
-            </a>
+            )}
 
             <nav className="hidden md:flex items-center gap-4">
               {isAuthenticated ? (
                 <>
-                  <button className={`group ${notificationButtonStyle}`}>
-                    <Bell
-                      size={20}
-                      className="text-white group-hover:text-black"
+                  <div className="relative">
+                    <button
+                      className={`group ${notificationButtonStyle}`}
+                      onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                    >
+                      <Bell
+                        size={20}
+                        className="text-white group-hover:text-black"
+                      />
+                      {unreadCount > 0 && (
+                        <span className={notificationBadgeStyle}>
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                    <NotificationDropdown
+                      isOpen={isNotificationsOpen}
+                      onClose={() => setIsNotificationsOpen(false)}
                     />
-                    {unreadCount > 0 && (
-                      <span className={notificationBadgeStyle}>
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
-                    )}
-                  </button>
+                  </div>
 
                   <div className={userMenuStyle}>
                     <button

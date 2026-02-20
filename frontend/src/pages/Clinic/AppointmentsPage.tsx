@@ -4,13 +4,14 @@ import { AppDispatch, RootState } from '../../store';
 import { fetchAppointments, updateAppointmentStatus } from '../../store/slices/clinicSlice';
 import { AppointmentStatus } from '../../types/clinic.types';
 import { hasPermission } from '../../utils/rolePermissions';
-import { Calendar, Clock, User, DollarSign, Filter, Search } from 'lucide-react';
+import { Calendar, Clock, User, DollarSign, Search } from 'lucide-react';
 import AppointmentExecutionModal from '../../components/clinic/AppointmentExecutionModal';
+import { AuthState } from '../../store/slices/authSlice';
 
 const AppointmentsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { appointments, isLoading } = useSelector((state: RootState) => state.clinic);
-  const user = useSelector((state: RootState) => state.auth.user);
+  const user = useSelector((state: RootState) => (state.auth as AuthState).user);
 
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -231,12 +232,24 @@ const AppointmentsPage: React.FC = () => {
                   {(appointment.status === AppointmentStatus.PENDING ||
                     appointment.status === AppointmentStatus.CONFIRMED) &&
                     hasPermission(user?.role, 'canConfirmAppointments') && (
-                      <button
-                        onClick={() => handleCancel(appointment.id)}
-                        className="flex-1 md:flex-none px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium whitespace-nowrap"
-                      >
-                        Cancel
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleCancel(appointment.id)}
+                          className="flex-1 md:flex-none px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium whitespace-nowrap"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('Mark this client as No Show?')) {
+                              await dispatch(updateAppointmentStatus({ id: appointment.id, status: AppointmentStatus.NO_SHOW }));
+                            }
+                          }}
+                          className="flex-1 md:flex-none px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium whitespace-nowrap"
+                        >
+                          No Show
+                        </button>
+                      </>
                     )}
 
                   <button

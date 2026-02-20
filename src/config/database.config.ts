@@ -15,13 +15,16 @@ import { CommunicationLog } from '../modules/crm/entities/communication-log.enti
 import { CustomerTag } from '../modules/crm/entities/customer-tag.entity';
 import { AdAttribution } from '../modules/crm/entities/ad-attribution.entity';
 import { AdCampaign } from '../modules/crm/entities/ad-campaign.entity';
-import { Task } from '@/modules/tasks/entities/task.entity';
-import { Appointment } from '@/modules/bookings/entities/appointment.entity';
-import { AppointmentHold } from '@/modules/bookings/entities/appointment-hold.entity';
-import { LoyaltyLedger } from '@/modules/loyalty/entities/loyalty-ledger.entity';
-import { Notification } from '@/modules/notifications/entities/notification.entity';
-import { BlockedTimeSlot } from '@/modules/bookings/entities/blocked-time-slot.entity';
+import { Task } from '../modules/tasks/entities/task.entity';
+import { Appointment } from '../modules/bookings/entities/appointment.entity';
+import { AppointmentHold } from '../modules/bookings/entities/appointment-hold.entity';
+import { LoyaltyLedger } from '../modules/loyalty/entities/loyalty-ledger.entity';
+import { Notification } from '../modules/notifications/entities/notification.entity';
+import { BlockedTimeSlot } from '../modules/bookings/entities/blocked-time-slot.entity';
 import { AgentClinicAccess } from '../modules/crm/entities/agent-clinic-access.entity';
+import { Conversation } from '../modules/messages/entities/conversation.entity';
+import { Message } from '../modules/messages/entities/message.entity';
+import { ConversationParticipant } from '../modules/messages/entities/conversation-participant.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -57,6 +60,9 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         BlockedTimeSlot,
         Review,
         AgentClinicAccess,
+        Conversation,
+        Message,
+        ConversationParticipant,
       ],
       // Since we are running in Docker on the same network, we don't need SSL
       // If using a managed database like AWS RDS in the future, we might need to enable this again

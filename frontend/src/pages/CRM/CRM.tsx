@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Users,
@@ -16,9 +16,11 @@ import {
   Loader2,
   Search,
   X,
-  FileText,
+  CheckCircle,
+  Mail,
   ArrowUpRight,
-  CheckCircle
+  FileText,
+  Trash2
 } from 'lucide-react';
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 import { Button } from '@/components/atoms/Button/Button';
@@ -30,18 +32,20 @@ import { LeadsPage } from '@/pages/CRM/Leads';
 import { Tasks } from '@/pages/CRM/Tasks';
 import { OneCustomerDetail } from '@/pages/CRM/OneCustomerDetail';
 import {
-  fetchLeads,
-  fetchActions,
   fetchOverdueTasks,
   fetchAutomationRules,
-  runTaskAutomationCheck
+  runTaskAutomationCheck,
+  deleteLead,
+  fetchSalespersons,
+  fetchLeads,
+  fetchActions
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
 import type { Task } from '@/types';
 import { TaskDetails } from '@/pages/CRM/TaskDetails';
 
-import { SalesCalendar } from '@/pages/CRM/SalesCalendar';
+import { SalesDiary } from '@/components/organisms/SalesDiary/SalesDiary';
 
 export const CRM: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -78,15 +82,31 @@ export const CRM: React.FC = () => {
   const handleFormShown = () => {
     setForceShowCreateForm(false);
   };
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
       dispatch(fetchLeads({}));
 
       dispatch(fetchActions({ salespersonId: user.id }));
       dispatch(fetchOverdueTasks(user.id));
       dispatch(fetchAutomationRules());
+
+      if (user.role === 'admin' || user.role === 'manager') {
+        dispatch(fetchSalespersons());
+      }
     }
   }, [dispatch, user]);
+
+  const handleDeleteCustomer = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
+      try {
+        await dispatch(deleteLead(id)).unwrap();
+      } catch (error) {
+        console.error('Failed to delete customer:', error);
+        alert('Failed to delete customer.');
+      }
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -146,6 +166,20 @@ export const CRM: React.FC = () => {
     return task;
   });
 
+
+  const [customersTabSearchTerm, setCustomersTabSearchTerm] = useState('');
+
+  const filteredCustomers = leads.filter(customer => {
+    if (!customersTabSearchTerm) return true;
+    const term = customersTabSearchTerm.toLowerCase();
+    return (
+      customer.id.toLowerCase().includes(term) ||
+      customer.firstName.toLowerCase().includes(term) ||
+      customer.lastName.toLowerCase().includes(term) ||
+      customer.email.toLowerCase().includes(term) ||
+      (customer.phone && customer.phone.includes(term))
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -263,206 +297,173 @@ export const CRM: React.FC = () => {
             <TabsTrigger value="tracker" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">My Tracker</TabsTrigger>
             <TabsTrigger value="customers" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Customers</TabsTrigger>
             <TabsTrigger value="analytics" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Analytics</TabsTrigger>
+            {(user?.role === 'admin' || user?.role === 'manager') && (
+              <TabsTrigger value="team" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Team</TabsTrigger>
+            )}
           </TabsList>
         </Card>
 
         {/* Dashboard Tab */}
-        <TabsContent value="dashboard" className="space-y-6">
+        <TabsContent value="dashboard" className="space-y-8 animate-in fade-in duration-500">
+
           {/* Stats Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative bg-white">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <CardContent className="p-6 relative z-10 flex items-center gap-5">
-                <div className="p-4 bg-blue-50 rounded-2xl text-blue-600 group-hover:scale-110 group-hover:shadow-md transition-all duration-300 shadow-sm border border-blue-100/50">
-                  <Users className="h-6 w-6" />
+            <Card className="border-none shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden relative bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-150 transition-transform duration-700" />
+              <CardContent className="p-6 relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+                <div className="flex justify-between items-start">
+                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                    <Users className="h-6 w-6 text-white" />
+                  </div>
+                  {/* <span className="bg-white/20 px-2 py-1 rounded text-[10px] font-bold">+12%</span> */}
                 </div>
                 <div>
-                  <div className="text-3xl font-black text-gray-900 leading-none">{leads.length}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">Total Leads</div>
+                  <div className="text-4xl font-black tracking-tight mt-4">{leads.length}</div>
+                  <div className="text-blue-100 text-xs font-bold uppercase tracking-widest mt-1">Total Leads</div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative bg-white">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <CardContent className="p-6 relative z-10 flex items-center gap-5">
-                <div className="p-4 bg-emerald-50 rounded-2xl text-emerald-600 group-hover:scale-110 group-hover:shadow-md transition-all duration-300 shadow-sm border border-emerald-100/50">
-                  <TrendingUp className="h-6 w-6" />
+            <Card className="border-none shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden relative bg-white">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
+              <CardContent className="p-6 relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+                <div className="flex justify-between items-start">
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
+                    <TrendingUp className="h-6 w-6" />
+                  </div>
+                  <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-[10px] font-bold border border-emerald-100">
+                    {leads.length > 0 ? Math.round((leads.filter(l => l.status === 'converted').length / leads.length) * 100) : 0}% Conv.
+                  </span>
                 </div>
                 <div>
-                  <div className="text-3xl font-black text-gray-900 leading-none">
+                  <div className="text-4xl font-black text-gray-900 tracking-tight mt-4">
                     {leads.filter(l => l.status === 'converted').length}
                   </div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">Converted</div>
+                  <div className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Converted</div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative bg-white">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <CardContent className="p-6 relative z-10 flex items-center gap-5">
-                <div className="p-4 bg-amber-50 rounded-2xl text-amber-600 group-hover:scale-110 group-hover:shadow-md transition-all duration-300 shadow-sm border border-amber-100/50">
-                  <Clock className="h-6 w-6" />
+            <Card className="border-none shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden relative bg-white">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
+              <CardContent className="p-6 relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+                <div className="flex justify-between items-start">
+                  <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl border border-amber-100">
+                    <AlertTriangle className="h-6 w-6" />
+                  </div>
+                  {tasks.filter(t => t.status === 'overdue').length > 0 && (
+                    <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-full text-[10px] font-bold animate-pulse border border-red-100">
+                      Attention
+                    </span>
+                  )}
                 </div>
                 <div>
-                  <div className="text-3xl font-black text-gray-900 leading-none">
-                    {tasks.filter(l => l.status === 'pending').length}
+                  <div className="text-4xl font-black text-gray-900 tracking-tight mt-4">
+                    {tasks.filter(t => t.status === 'overdue').length}
                   </div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">Pending Tasks</div>
+                  <div className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Overdue Tasks</div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative bg-white">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <CardContent className="p-6 relative z-10 flex items-center gap-5">
-                <div className="p-4 bg-rose-50 rounded-2xl text-rose-600 group-hover:scale-110 group-hover:shadow-md transition-all duration-300 shadow-sm border border-rose-100/50">
-                  <AlertTriangle className="h-6 w-6" />
+            <Card className="border-none shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden relative bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-150 transition-transform duration-700" />
+              <CardContent className="p-6 relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+                <div className="flex justify-between items-start">
+                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                    <Target className="h-6 w-6 text-white" />
+                  </div>
                 </div>
                 <div>
-                  <div className="text-3xl font-black text-gray-900 leading-none">
-                    {updatedTasks.filter(l => l.status === 'overdue').length}
+                  <div className="text-4xl font-black tracking-tight mt-4">
+                    {tasks.filter(t => t.status === 'pending').length}
                   </div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">Overdue</div>
+                  <div className="text-purple-100 text-xs font-bold uppercase tracking-widest mt-1">Pending Actions</div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Quick Actions and Recent Activity */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Quick Actions and Recent Activity - Moved inside Dashboard Tab */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Quick Actions */}
-            {/* Quick Actions */}
-            <Card className="flex flex-col h-full border-none shadow-sm hover:shadow-md transition-all duration-300">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-bold text-gray-900 flex items-center justify-between">
+            <Card className="border-none shadow-sm hover:shadow-lg transition-all duration-300 relative overflow-hidden h-full">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                  <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
                   Quick Actions
-                  <TrendingUp className="h-4 w-4 text-blue-500" />
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 space-y-3 pt-0">
+              <CardContent className="space-y-3 pt-4">
                 <button
                   onClick={handleAddNewLead}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-blue-50 rounded-2xl group transition-all border border-transparent hover:border-blue-100"
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-blue-50 rounded-xl group transition-all border border-transparent hover:border-blue-100"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-blue-500 text-white rounded-xl shadow-sm group-hover:scale-110 transition-transform">
+                    <div className="p-2 bg-white text-blue-600 rounded-lg shadow-sm border border-gray-100 group-hover:scale-110 transition-transform">
                       <Plus className="h-4 w-4" />
                     </div>
-                    <span className="font-bold text-gray-700">Add New Lead</span>
-                  </div>
-                  <ArrowUpRight className="h-4 w-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
-                </button>
-
-                <button
-                  onClick={() => window.location.href = 'tel:'}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-emerald-50 rounded-2xl group transition-all border border-transparent hover:border-emerald-100"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-500 text-white rounded-xl shadow-sm group-hover:scale-110 transition-transform">
-                      <Phone className="h-4 w-4" />
+                    <div className="text-left">
+                      <span className="block font-bold text-gray-900">Add Lead</span>
+                      <span className="text-xs text-gray-500 font-medium">Create new potential customer</span>
                     </div>
-                    <span className="font-bold text-gray-700">Log Call / Dialer</span>
                   </div>
-                  <ArrowUpRight className="h-4 w-4 text-gray-300 group-hover:text-emerald-500 transition-colors" />
+                  <ArrowUpRight className="h-4 w-4 text-blue-300 group-hover:text-blue-600 transition-colors" />
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('tasks')}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-purple-50 rounded-2xl group transition-all border border-transparent hover:border-purple-100"
+                  onClick={() => setShowQuickBooking(true)}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-emerald-50 rounded-xl group transition-all border border-transparent hover:border-emerald-100"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-purple-500 text-white rounded-xl shadow-sm group-hover:scale-110 transition-transform">
+                    <div className="p-2 bg-white text-emerald-600 rounded-lg shadow-sm border border-gray-100 group-hover:scale-110 transition-transform">
                       <Calendar className="h-4 w-4" />
                     </div>
-                    <span className="font-bold text-gray-700">Schedule Follow-up</span>
-                  </div>
-                  <ArrowUpRight className="h-4 w-4 text-gray-300 group-hover:text-purple-500 transition-colors" />
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('leads')}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-amber-50 rounded-2xl group transition-all border border-transparent hover:border-amber-100"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-sm group-hover:scale-110 transition-transform">
-                      <Building className="h-4 w-4" />
+                    <div className="text-left">
+                      <span className="block font-bold text-gray-900">Book Appointment</span>
+                      <span className="text-xs text-gray-500 font-medium">Schedule for a client</span>
                     </div>
-                    <span className="font-bold text-gray-700">View All Leads</span>
                   </div>
-                  <ArrowUpRight className="h-4 w-4 text-gray-300 group-hover:text-amber-500 transition-colors" />
+                  <ArrowUpRight className="h-4 w-4 text-emerald-300 group-hover:text-emerald-600 transition-colors" />
                 </button>
               </CardContent>
             </Card>
 
-            {/* Recent Leads */}
-            <Card className="flex flex-col h-full border-none shadow-sm hover:shadow-md transition-all duration-300 bg-white">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-bold text-gray-900 flex items-center justify-between">
-                  Recent Leads
-                  <Users className="h-4 w-4 text-blue-500" />
+            {/* Sales Calendar Preview (Placeholder for now, or small list) */}
+            <Card className="lg:col-span-2 border-none shadow-sm hover:shadow-lg transition-all duration-300 relative overflow-hidden h-full">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                  <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  Recent Tasks
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 overflow-auto pt-0 space-y-3">
-                {leads.slice(0, 5).map((lead) => (
-                  <div
-                    key={lead.id}
-                    className="group flex items-center justify-between p-4 bg-gray-50/50 hover:bg-white border border-transparent hover:border-blue-100 rounded-2xl transition-all cursor-pointer shadow-none hover:shadow-lg hover:shadow-blue-500/5"
-                    onClick={() => handleViewCustomer(lead)}
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs uppercase group-hover:scale-110 transition-transform">
-                        {lead.firstName[0]}{lead.lastName[0]}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                          {lead.firstName} {lead.lastName}
+              <CardContent className="pt-4">
+                {tasks.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400 font-medium">No pending tasks</div>
+                ) : (
+                  <div className="space-y-3">
+                    {tasks.slice(0, 3).map(task => (
+                      <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-transparent hover:border-gray-200 transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${task.priority === 'urgent' ? 'bg-red-500' : task.priority === 'high' ? 'bg-orange-500' : 'bg-blue-500'}`} />
+                          <div>
+                            <div className="font-bold text-gray-900 text-sm">{task.title}</div>
+                            <div className="text-xs text-gray-500">{new Date(task.dueDate).toLocaleDateString()}</div>
+                          </div>
                         </div>
-                        <div className="text-[10px] text-gray-500 truncate font-medium uppercase tracking-tighter">{lead.status} • {formatDate(lead.createdAt)}</div>
+                        <Button variant="ghost" size="sm" onClick={() => handleViewTask(task)}>View</Button>
                       </div>
-                    </div>
-                    <ArrowUpRight className="h-4 w-4 text-gray-300 opacity-0 group-hover:opacity-100 transition-all shrink-0" />
-                  </div>
-                ))}
-                {leads.length === 0 && <div className="text-center text-gray-400 py-8 font-medium">No recent leads found</div>}
-              </CardContent>
-            </Card>
-
-            {/* Overdue Tasks */}
-            <Card className="flex flex-col h-full border-none shadow-sm hover:shadow-md transition-all duration-300 bg-white">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-rose-500" />
-                  Overdue
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-auto pt-0 space-y-3">
-                {updatedTasks.filter(t => t.status === 'overdue').slice(0, 5).map((task) => (
-                  <div
-                    key={task.id}
-                    className="group flex items-center justify-between p-4 bg-rose-50/30 hover:bg-white border border-transparent hover:border-rose-100 rounded-2xl transition-all cursor-pointer shadow-none hover:shadow-lg hover:shadow-rose-500/5"
-                    onClick={() => handleViewTask(task)}
-                  >
-                    <div className="flex-1 min-w-0 mr-3">
-                      <div className="font-bold text-gray-900 truncate group-hover:text-rose-600 transition-colors">{task.title}</div>
-                      <div className="text-[10px] text-rose-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Due: {new Date(task.dueDate || '').toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="p-2 bg-rose-50 rounded-lg text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
-                      <ArrowUpRight className="h-4 w-4" />
-                    </div>
-                  </div>
-                ))}
-                {updatedTasks.filter(t => t.status === 'overdue').length === 0 && (
-                  <div className="text-center py-8 text-emerald-500 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex flex-col items-center gap-2">
-                    <CheckCircle className="w-8 h-8" />
-                    <span className="font-bold text-sm">All caught up!</span>
+                    ))}
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
+
 
           {/* Automation Rules */}
           <Card className="border-none shadow-none bg-transparent">
@@ -518,8 +519,14 @@ export const CRM: React.FC = () => {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex gap-4">
-                  <div className="flex-1">
-                    <Input placeholder="Search customers by name, email, or phone..." />
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      placeholder="Search by ID, Name, Email, or Phone..."
+                      value={customersTabSearchTerm}
+                      onChange={(e) => setCustomersTabSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
                   </div>
                   <Button variant="outline">
                     <Filter className="h-4 w-4 mr-2" />
@@ -531,15 +538,88 @@ export const CRM: React.FC = () => {
 
             {/* Customer List */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle>Customer Management</CardTitle>
+                <div className="text-xs text-gray-500 font-medium">
+                  Showing {filteredCustomers.length} results
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  Customer management interface coming soon...
-                  <br />
-                  Use the "Customer Details" tab to view individual customers.
-                </div>
+                {filteredCustomers.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-gray-50 rounded-lg text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      <div className="col-span-3">Customer</div>
+                      <div className="col-span-3">Contact</div>
+                      <div className="col-span-2">ID</div>
+                      <div className="col-span-2">Status</div>
+                      <div className="col-span-2 text-right">Action</div>
+                    </div>
+                    {filteredCustomers.map(customer => (
+                      <div
+                        key={customer.id}
+                        className="grid grid-cols-12 gap-4 px-4 py-4 items-center hover:bg-gray-50 transition-colors rounded-lg cursor-pointer group"
+                        onClick={() => handleViewCustomer(customer)}
+                      >
+                        <div className="col-span-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs ring-4 ring-white group-hover:ring-blue-50 transition-all">
+                              {customer.firstName?.[0]}{customer.lastName?.[0]}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-900">{customer.firstName} {customer.lastName}</div>
+                              <div className="text-xs text-gray-400">Since {new Date(customer.createdAt).toLocaleDateString()}</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-span-3">
+                          <div className="text-sm text-gray-700 flex items-center gap-2"><Mail className="w-3 h-3 text-gray-400" /> {customer.email}</div>
+                          {customer.phone && <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2"><Phone className="w-3 h-3 text-gray-400" /> {customer.phone}</div>}
+                        </div>
+                        <div className="col-span-2">
+                          <code className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[10px] font-mono whitespace-nowrap overflow-hidden text-ellipsis max-w-full block">
+                            {customer.id}
+                          </code>
+                        </div>
+                        <div className="col-span-2">
+                          <Badge
+                            variant="secondary"
+                            className={`
+                              ${customer.status === 'converted' ? 'bg-emerald-100 text-emerald-800' :
+                                customer.status === 'new' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}
+                            `}
+                          >
+                            {customer.status}
+                          </Badge>
+                        </div>
+                        <div className="col-span-2 text-right flex items-center justify-end gap-2">
+                          <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            View <ArrowUpRight className="w-3 h-3 ml-1" />
+                          </Button>
+                          {(user?.role === 'admin' || user?.role === 'manager') && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => handleDeleteCustomer(e, customer.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center border border-dashed border-gray-200">
+                      <Users className="w-8 h-8 text-gray-300" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">No customers found</h3>
+                      <p className="text-sm text-gray-500">Try searching for a different ID, name, or email.</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -556,7 +636,7 @@ export const CRM: React.FC = () => {
                     <Phone className="h-5 w-5 text-blue-600" />
                     <div>
                       <div className="text-2xl font-bold">
-                        {analytics?.communications?.calls || 0}
+                        {analytics?.communicationStats?.calls || 0}
                       </div>
                       <div className="text-sm text-gray-500">Total Calls</div>
                     </div>
@@ -570,7 +650,7 @@ export const CRM: React.FC = () => {
                     <Award className="h-5 w-5 text-green-600" />
                     <div>
                       <div className="text-2xl font-bold">
-                        {analytics?.customers?.repeat || 0}
+                        {analytics?.customerStats?.repeatCustomers || 0}
                       </div>
                       <div className="text-sm text-gray-500">Repeat Customers</div>
                     </div>
@@ -584,7 +664,7 @@ export const CRM: React.FC = () => {
                     <TrendingUp className="h-5 w-5 text-purple-600" />
                     <div>
                       <div className="text-2xl font-bold">
-                        {formatCurrency(analytics?.customers?.totalRevenue || 0)}
+                        {formatCurrency(analytics?.customerStats?.totalRevenue || 0)}
                       </div>
                       <div className="text-sm text-gray-500">Total Revenue</div>
                     </div>
@@ -609,173 +689,205 @@ export const CRM: React.FC = () => {
 
         {/* Sales Tracker / Calendar Tab */}
         <TabsContent value="tracker">
-          <SalesCalendar />
+          <SalesDiary />
         </TabsContent>
+
+        {/* Team Management Tab (Admin Only) */}
+        {(user?.role === 'admin' || user?.role === 'manager') && (
+          <TabsContent value="team">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Team Management</CardTitle>
+                  <p className="text-sm text-gray-500 mt-1">Manage salespeople and permissions</p>
+                </div>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" /> Add Salesperson
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Placeholder for Salespersons List relying on crm.salespersons */}
+                  <div className="text-center py-8 text-gray-500 col-span-full">
+                    Salesperson management interface loading...
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* s Modal/Tab */}
-      {selectedCustomer && activeTab === 'customer' && (
+      {
+        selectedCustomer && activeTab === 'customer' && (
 
-        <div className="space-y-6">
-          <Card>
-            <div className="px-8">
+          <div className="space-y-6">
+            <Card>
+              <div className="px-8">
 
-              <div className="flex  justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                    Customer Details
-                  </h2></div>
-                <div>
-                  <Button variant="outline" onClick={() => setActiveTab('leads')}>
-                    ← Back to Leads
-                  </Button>
+                <div className="flex  justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                      Customer Details
+                    </h2></div>
+                  <div>
+                    <Button variant="outline" onClick={() => setActiveTab('leads')}>
+                      ← Back to Leads
+                    </Button>
+                  </div>
                 </div>
+
               </div>
-
-            </div>
-            <OneCustomerDetail
-              SelectedCustomer={selectedCustomer as any}
-              isLoading={isLoading}
-              error={error}
+              <OneCustomerDetail
+                SelectedCustomer={selectedCustomer as any}
+                isLoading={isLoading}
+                error={error}
 
 
-            />
-          </Card>
+              />
+            </Card>
 
-        </div>
-      )
+          </div>
+        )
       }
 
       {/* s Modal/Tab */}
-      {selectedTask && activeTab === 'task' && (
+      {
+        selectedTask && activeTab === 'task' && (
 
-        <div className="space-y-6">
-          <Card>
-            <div className="px-8">
+          <div className="space-y-6">
+            <Card>
+              <div className="px-8">
 
-              <div className="flex  justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                    Task Details
-                  </h2></div>
-                <div>
-                  <Button variant="outline" onClick={() => setActiveTab('tasks')}>
-                    ← Back to Tasks
-                  </Button>
+                <div className="flex  justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                      Task Details
+                    </h2></div>
+                  <div>
+                    <Button variant="outline" onClick={() => setActiveTab('tasks')}>
+                      ← Back to Tasks
+                    </Button>
+                  </div>
                 </div>
+
               </div>
+              <TaskDetails
+                selectedTask={selectedTask}
+              />
+            </Card>
 
-            </div>
-            <TaskDetails
-              selectedTask={selectedTask}
-            />
-          </Card>
-
-        </div>
-      )}
+          </div>
+        )
+      }
 
       {/* Quick Booking Customer Search Modal */}
-      {showQuickBooking && !bookingCustomer && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in">
-          <Card className="w-full max-w-lg shadow-2xl">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 pb-4">
-              <div>
-                <CardTitle className="text-xl">Direct Appointment</CardTitle>
-                <p className="text-sm text-gray-500 mt-1">Select a customer to book an appointment</p>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => setShowQuickBooking(false)}><X className="w-4 h-4" /></Button>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search by name, email or phone..."
-                  className="pl-9"
-                  value={customerSearchTerm}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setCustomerSearchTerm(val);
-                    if (val.length > 2) {
-                      const filtered = leads.filter(l =>
-                        `${l.firstName} ${l.lastName}`.toLowerCase().includes(val.toLowerCase()) ||
-                        l.email.toLowerCase().includes(val.toLowerCase()) ||
-                        l.phone?.includes(val)
-                      ).slice(0, 5);
-                      setSearchResults(filtered);
-                    } else {
-                      setSearchResults([]);
-                    }
-                  }}
-                />
-              </div>
+      {
+        showQuickBooking && !bookingCustomer && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in">
+            <Card className="w-full max-w-lg shadow-2xl">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 pb-4">
+                <div>
+                  <CardTitle className="text-xl">Direct Appointment</CardTitle>
+                  <p className="text-sm text-gray-500 mt-1">Select a customer to book an appointment</p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setShowQuickBooking(false)}><X className="w-4 h-4" /></Button>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search by name, email or phone..."
+                    className="pl-9"
+                    value={customerSearchTerm}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomerSearchTerm(val);
+                      if (val.length > 2) {
+                        const filtered = leads.filter(l =>
+                          `${l.firstName} ${l.lastName}`.toLowerCase().includes(val.toLowerCase()) ||
+                          l.email.toLowerCase().includes(val.toLowerCase()) ||
+                          l.phone?.includes(val)
+                        ).slice(0, 5);
+                        setSearchResults(filtered);
+                      } else {
+                        setSearchResults([]);
+                      }
+                    }}
+                  />
+                </div>
 
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {searchResults.map(customer => (
-                  <div
-                    key={customer.id}
-                    className="flex items-center justify-between p-3 hover:bg-gray-50 border border-gray-100 rounded-xl cursor-pointer transition-colors"
-                    onClick={() => setBookingCustomer({ id: customer.id, name: `${customer.firstName} ${customer.lastName}` })}
-                  >
-                    <div>
-                      <div className="font-semibold text-gray-900">{customer.firstName} {customer.lastName}</div>
-                      <div className="text-xs text-gray-500">{customer.email}</div>
-                    </div>
-                    <Button size="sm" variant="ghost" className="text-blue-600 font-bold">Select</Button>
-                  </div>
-                ))}
-
-                {customerSearchTerm.length > 2 && searchResults.length === 0 && (
-                  <div className="text-center py-4 text-gray-500 text-sm">
-                    No customers found.
-                    <button
-                      className="text-blue-600 font-bold ml-1 hover:underline"
-                      onClick={() => {
-                        handleAddNewLead();
-                        setShowQuickBooking(false);
-                      }}
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {searchResults.map(customer => (
+                    <div
+                      key={customer.id}
+                      className="flex items-center justify-between p-3 hover:bg-gray-50 border border-gray-100 rounded-xl cursor-pointer transition-colors"
+                      onClick={() => setBookingCustomer({ id: customer.id, name: `${customer.firstName} ${customer.lastName}` })}
                     >
-                      Create new lead first?
-                    </button>
-                  </div>
-                )}
+                      <div>
+                        <div className="font-semibold text-gray-900">{customer.firstName} {customer.lastName}</div>
+                        <div className="text-xs text-gray-500">{customer.email}</div>
+                      </div>
+                      <Button size="sm" variant="ghost" className="text-blue-600 font-bold">Select</Button>
+                    </div>
+                  ))}
 
-                {customerSearchTerm.length <= 2 && (
-                  <div className="text-center py-8 text-gray-400 text-sm">
-                    Start typing to find a customer...
-                  </div>
-                )}
+                  {customerSearchTerm.length > 2 && searchResults.length === 0 && (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                      No customers found.
+                      <button
+                        className="text-blue-600 font-bold ml-1 hover:underline"
+                        onClick={() => {
+                          handleAddNewLead();
+                          setShowQuickBooking(false);
+                        }}
+                      >
+                        Create new lead first?
+                      </button>
+                    </div>
+                  )}
+
+                  {customerSearchTerm.length <= 2 && (
+                    <div className="text-center py-8 text-gray-400 text-sm">
+                      Start typing to find a customer...
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+              <div className="p-4 border-t border-gray-100 flex justify-between gap-2 bg-gray-50 rounded-b-xl">
+                <button
+                  className="text-sm text-blue-600 font-medium hover:underline"
+                  onClick={() => {
+                    handleAddNewLead();
+                    setShowQuickBooking(false);
+                  }}
+                >
+                  + Add New Customer
+                </button>
+                <Button variant="outline" onClick={() => setShowQuickBooking(false)}>Cancel</Button>
               </div>
-            </CardContent>
-            <div className="p-4 border-t border-gray-100 flex justify-between gap-2 bg-gray-50 rounded-b-xl">
-              <button
-                className="text-sm text-blue-600 font-medium hover:underline"
-                onClick={() => {
-                  handleAddNewLead();
-                  setShowQuickBooking(false);
-                }}
-              >
-                + Add New Customer
-              </button>
-              <Button variant="outline" onClick={() => setShowQuickBooking(false)}>Cancel</Button>
-            </div>
-          </Card>
-        </div>
-      )}
+            </Card>
+          </div>
+        )
+      }
 
       {/* Actual Booking Modal */}
-      {bookingCustomer && (
-        <CRMBookingModal
-          customerId={bookingCustomer.id}
-          customerName={bookingCustomer.name}
-          onClose={() => {
-            setBookingCustomer(null);
-            setShowQuickBooking(false);
-          }}
-          onSuccess={() => {
-            alert('Booking completed!');
-          }}
-        />
-      )}
+      {
+        bookingCustomer && (
+          <CRMBookingModal
+            customerId={bookingCustomer.id}
+            customerName={bookingCustomer.name}
+            onClose={() => {
+              setBookingCustomer(null);
+              setShowQuickBooking(false);
+            }}
+            onSuccess={() => {
+              alert('Booking completed!');
+            }}
+          />
+        )
+      }
     </div >
   );
 };

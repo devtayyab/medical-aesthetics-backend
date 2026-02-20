@@ -3,13 +3,15 @@ import { IsUUID, IsString, IsEnum, IsOptional, IsDate, IsObject } from 'class-va
 import { Type } from 'class-transformer';
 
 export class CreateActionDto {
-  @ApiProperty({ example: 'b3f1c2d0-8f4a-4d3e-a123-56789abcde01' })
+  @ApiProperty({ example: 'b3f1c2d0-8f4a-4d3e-a123-56789abcde01', required: false })
+  @IsOptional()
   @IsUUID()
-  customerId: string;
+  customerId?: string;
 
-  @ApiProperty({ example: 'd2e5f6a1-3b4c-4e5f-b678-12345fghij67' })
+  @ApiProperty({ example: 'd2e5f6a1-3b4c-4e5f-b678-12345fghij67', required: false })
+  @IsOptional()
   @IsUUID()
-  salespersonId: string;
+  salespersonId?: string;
 
   @ApiProperty({
     example: 'phone_call',

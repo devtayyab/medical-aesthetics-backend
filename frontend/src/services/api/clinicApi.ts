@@ -39,12 +39,18 @@ export const clinicProfileApi = {
     const response = await apiClient.put('/clinic/profile', data);
     return response.data;
   },
+
+  getProviders: async (clinicId: string): Promise<any[]> => {
+    const response = await apiClient.get(`/clinics/${clinicId}/providers`);
+    return response.data;
+  },
 };
 
 // Services/Treatments API
 export const servicesApi = {
-  getAll: async (): Promise<Service[]> => {
-    const response = await apiClient.get('/clinic/services');
+  getAll: async (clinicId?: string): Promise<Service[]> => {
+    const params = clinicId ? { clinicId } : {};
+    const response = await apiClient.get('/clinic/services', { params });
     return response.data;
   },
 
@@ -217,8 +223,9 @@ export const notificationsApi = {
 
 // Availability API
 export const availabilityApi = {
-  get: async (): Promise<AvailabilitySettings> => {
-    const response = await apiClient.get('/clinic/availability');
+  get: async (clinicId?: string): Promise<AvailabilitySettings> => {
+    const params = clinicId ? { clinicId } : {};
+    const response = await apiClient.get('/clinic/availability', { params });
     return response.data;
   },
 
