@@ -169,7 +169,7 @@ export class CrmController {
 
 
 
-  @Put('actions/:id')
+  @Patch('actions/:id')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Update action/task' })

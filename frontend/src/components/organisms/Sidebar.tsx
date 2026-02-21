@@ -20,38 +20,39 @@ interface SidebarItem {
 }
 
 const clientLinks: SidebarItem[] = [
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
   { path: "/search", label: "Search", icon: <Search className="w-5 h-5" /> },
   { path: "/appointments", label: "Appointments", icon: <Calendar className="w-5 h-5" /> },
   { path: "/history", label: "History", icon: <ClipboardList className="w-5 h-5" /> },
   { path: "/reviews", label: "Reviews", icon: <Eye className="w-5 h-5" /> },
   { path: "/loyalty", label: "Loyalty", icon: <Tag className="w-5 h-5" /> },
-  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" /> },
 ];
 
 const clinicLinks: SidebarItem[] = [
-  { path: "/clinic/profile", label: "Profile", icon: <UserCog className="w-5 h-5" /> },
-  { path: "/clinic/diary", label: "Diary", icon: <FileText className="w-5 h-5" /> },
-  { path: "/clinic/availability", label: "Availability", icon: <Calendar className="w-5 h-5" /> },
-  { path: "/clinic/execution", label: "Execution", icon: <ListChecks className="w-5 h-5" /> },
-  { path: "/clinic/reports", label: "Reports", icon: <BarChart className="w-5 h-5" /> },
-  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" /> },
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
+  { path: "/clinic/profile", label: "Profile", icon: <UserCog className="w-5 h-5" />, group: "Account" },
+  { path: "/clinic/diary", label: "Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
+  { path: "/clinic/availability", label: "Availability", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
+  { path: "/clinic/execution", label: "Execution", icon: <ListChecks className="w-5 h-5" />, group: "Operations" },
+  { path: "/clinic/reports", label: "Reports", icon: <BarChart className="w-5 h-5" />, group: "Operations" },
 ];
 
 const crmLinks: SidebarItem[] = [
-  { path: "/crm/customers", label: "Customers", icon: <Users className="w-5 h-5" /> },
-  { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" /> },
-  { path: "/crm/actions", label: "Actions", icon: <Repeat className="w-5 h-5" /> },
-  { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" /> },
-  { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" /> },
-  { path: "/crm/communication", label: "Communication", icon: <Repeat className="w-5 h-5" /> },
-  { path: "/crm/analytics", label: "Analytics", icon: <Repeat className="w-5 h-5" /> },
-  { path: "/crm/tag", label: "Tags", icon: <Repeat className="w-5 h-5" /> },
-  { path: "/clinic/sales-diary", label: "Sales Diary", icon: <Calendar className="w-5 h-5" /> },
-  { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" /> },
-  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" /> },
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
+  { path: "/crm/customers", label: "Customers", icon: <Users className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "Operations" },
+  { path: "/crm/actions", label: "Actions", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
+  { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
+  { path: "/crm/communication", label: "Communication Flow", icon: <Phone className="w-5 h-5" />, group: "Communication" },
+  { path: "/crm/analytics", label: "Analytics", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
+  { path: "/crm/tag", label: "Tags", icon: <Tag className="w-5 h-5" />, group: "CRM" },
+  { path: "/clinic/sales-diary", label: "Sales Diary", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
+  { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
 ];
 
 const managerLinks: SidebarItem[] = [
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
   { path: "/admin/manager-dashboard", label: "Manager Dashboard", icon: <LayoutDashboard className="w-5 h-5" />, group: "Overview" },
   { path: "/admin/manager-crm/calls", label: "CRM Calls", icon: <Phone className="w-5 h-5" />, group: "CRM" },
   { path: "/admin/manager-crm/reports", label: "CRM Reports", icon: <FileText className="w-5 h-5" />, group: "CRM" },
@@ -60,7 +61,6 @@ const managerLinks: SidebarItem[] = [
   { path: "/admin/manager-crm/benefits", label: "Benefits", icon: <DollarSign className="w-5 h-5" />, group: "Settings" },
   { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <AlertCircle className="w-5 h-5" />, group: "Alerts" },
   { path: "/admin/manager-crm/clinic-stats", label: "Clinic Stats", icon: <LineChart className="w-5 h-5" />, group: "Analytics" },
-  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Overview" },
 ];
 
 const getAdminLinks = (role: string): SidebarItem[] => {
@@ -154,10 +154,12 @@ export const Sidebar: React.FC = () => {
 
       <nav className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
         {Object.entries(groupedLinks).map(([group, groupLinks]) => (
-          <div key={group} className="mb-8 last:mb-0">
-            <h3 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest px-4 mb-3 opacity-80">
-              {group}
-            </h3>
+          <div key={group} className="mb-6 last:mb-0">
+            {group !== 'General' && (
+              <h3 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest px-4 mb-3 opacity-80">
+                {group}
+              </h3>
+            )}
             <ul className="space-y-1">
               {groupLinks.map((link) => {
                 const isActive = location.pathname === link.path;
@@ -182,9 +184,7 @@ export const Sidebar: React.FC = () => {
                       )}
 
                       {/* Active Indicator (optional, keeping minimal as per request) */}
-                      {isActive && (
-                        <div className="absolute right-3 w-1.5 h-1.5 bg-black/20 rounded-full z-10"></div>
-                      )}
+
                     </Link>
                   </li>
                 );

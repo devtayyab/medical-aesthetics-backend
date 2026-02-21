@@ -19,6 +19,7 @@ import { CommunicationForm } from "@/components/organisms/CommunicationForm/Comm
 import type { RootState, AppDispatch } from "@/store";
 import type { CommunicationLog } from "@/types";
 import { userAPI } from "@/services/api";
+import { Input } from "@/components/atoms/Input/Input";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -26,6 +27,7 @@ export const Communication: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { communications, isLoading } = useSelector((state: RootState) => state.crm);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [inputValue, setInputValue] = useState<string>("");
   const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
@@ -108,12 +110,31 @@ export const Communication: React.FC = () => {
             </CardHeader>
             <CardContent className="p-6">
               <div className="relative">
-                <Select
-                  value={selectedCustomerId}
-                  onChange={handleCustomerSelect}
-                  placeholder="Select Customer..."
-                  options={customers}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Enter Customer Email..."
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={() => {
+                      // Find customer by email from the fetched list
+                      const customer = customers.find(c => c.label.toLowerCase().includes(inputValue.toLowerCase()));
+                      if (customer) {
+                        handleCustomerSelect(customer.value);
+                        setInputValue(customer.label); // Show full label on select
+                      } else {
+                        // If checking backend is needed, we'd add that logic here. 
+                        // For now we match against the loaded list.
+                        setErrorHeader("Customer not found in list");
+                      }
+                    }}
+                    disabled={!inputValue}
+                  >
+                    Find
+                  </Button>
+                </div>
               </div>
               {errorHeader && (
                 <p className="text-red-500 text-xs mt-2 flex items-center gap-1">

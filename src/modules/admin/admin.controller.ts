@@ -20,12 +20,12 @@ import { UserRole } from '../../common/enums/user-role.enum';
 @ApiTags('Admin')
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
 @ApiBearerAuth()
 export class AdminController {
   constructor(private readonly adminService: AdminService) { }
 
   @Get('metrics')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get dashboard metrics' })
   async getMetrics() {
     const reports = await this.adminService.getReports();
@@ -37,6 +37,7 @@ export class AdminController {
   }
 
   @Post('tags')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @ApiOperation({ summary: 'Create CRM tag' })
   createTag(@Body() body: { name: string; color?: string; description?: string }) {
     return this.adminService.createTag(body.name, body.color, body.description);
@@ -50,18 +51,21 @@ export class AdminController {
   }
 
   @Get('reports')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get platform reports and analytics' })
   getReports() {
     return this.adminService.getReports();
   }
 
   @Get('settings')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get platform settings' })
   getSettings() {
     return this.adminService.getSettings();
   }
 
   @Patch('settings')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update platform settings' })
   updateSettings(@Body() settings: any) {
     return this.adminService.updateSettings(settings);
@@ -69,6 +73,7 @@ export class AdminController {
 
   // User Management
   @Get('users')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all users' })
   getAllUsers(
     @Query() query: { role?: string; isActive?: boolean; search?: string; limit?: number; offset?: number }
@@ -77,24 +82,28 @@ export class AdminController {
   }
 
   @Get('users/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get user by ID' })
   getUserById(@Param('id') id: string) {
     return this.adminService.getUserById(id);
   }
 
   @Put('users/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update user' })
   updateUser(@Param('id') id: string, @Body() updateData: any) {
     return this.adminService.updateUser(id, updateData);
   }
 
   @Patch('users/:id/toggle-status')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Toggle user active status' })
   toggleUserStatus(@Param('id') id: string) {
     return this.adminService.toggleUserStatus(id);
   }
 
   @Delete('users/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete user' })
   deleteUser(@Param('id') id: string) {
     return this.adminService.deleteUser(id);
@@ -102,6 +111,7 @@ export class AdminController {
 
   // Clinic Management
   @Get('clinics')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all clinics' })
   getAllClinics(
     @Query() query: { isActive?: boolean; search?: string; limit?: number; offset?: number }
@@ -110,18 +120,21 @@ export class AdminController {
   }
 
   @Get('clinics/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
   @ApiOperation({ summary: 'Get clinic by ID' })
   getClinicById(@Param('id') id: string) {
     return this.adminService.getClinicById(id);
   }
 
   @Patch('clinics/:id/toggle-status')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Toggle clinic active status (approve/suspend)' })
   toggleClinicStatus(@Param('id') id: string) {
     return this.adminService.toggleClinicStatus(id);
   }
 
   @Get('clinics/:id/analytics')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
   @ApiOperation({ summary: 'Get clinic analytics' })
   getClinicAnalytics(
     @Param('id') id: string,
@@ -132,6 +145,7 @@ export class AdminController {
 
   // Platform Analytics
   @Get('analytics/platform')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get platform-wide analytics (users, sales, loyalty)' })
   getPlatformAnalytics(@Query() query?: { startDate: string; endDate: string }) {
     return this.adminService.getPlatformAnalytics(query);
@@ -139,36 +153,42 @@ export class AdminController {
 
   // Offer Management
   @Post('offers')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create new offer/promotion' })
   createOffer(@Body() offerData: any) {
     return this.adminService.createOffer(offerData);
   }
 
   @Get('offers')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all offers' })
   getAllOffers(@Query() query: { isActive?: boolean; limit?: number; offset?: number }) {
     return this.adminService.getAllOffers(query);
   }
 
   @Get('offers/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get offer by ID' })
   getOfferById(@Param('id') id: string) {
     return this.adminService.getOfferById(id);
   }
 
   @Put('offers/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update offer' })
   updateOffer(@Param('id') id: string, @Body() updateData: any) {
     return this.adminService.updateOffer(id, updateData);
   }
 
   @Patch('offers/:id/toggle-status')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Toggle offer active status' })
   toggleOfferStatus(@Param('id') id: string) {
     return this.adminService.toggleOfferStatus(id);
   }
 
   @Delete('offers/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete offer' })
   deleteOffer(@Param('id') id: string) {
     return this.adminService.deleteOffer(id);
@@ -176,36 +196,42 @@ export class AdminController {
 
   // Reward Management
   @Post('rewards')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create new reward' })
   createReward(@Body() rewardData: any) {
     return this.adminService.createReward(rewardData);
   }
 
   @Get('rewards')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all rewards' })
   getAllRewards(@Query() query: { isActive?: boolean; tier?: string; limit?: number; offset?: number }) {
     return this.adminService.getAllRewards(query);
   }
 
   @Get('rewards/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get reward by ID' })
   getRewardById(@Param('id') id: string) {
     return this.adminService.getRewardById(id);
   }
 
   @Put('rewards/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update reward' })
   updateReward(@Param('id') id: string, @Body() updateData: any) {
     return this.adminService.updateReward(id, updateData);
   }
 
   @Patch('rewards/:id/toggle-status')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Toggle reward active status' })
   toggleRewardStatus(@Param('id') id: string) {
     return this.adminService.toggleRewardStatus(id);
   }
 
   @Delete('rewards/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete reward' })
   deleteReward(@Param('id') id: string) {
     return this.adminService.deleteReward(id);
@@ -213,34 +239,40 @@ export class AdminController {
 
   // Platform Settings
   @Get('settings/:key')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get specific setting' })
   getSetting(@Param('key') key: string) {
     return this.adminService.getSetting(key);
   }
 
   @Put('settings/:key')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update specific setting' })
   updateSetting(@Param('key') key: string, @Body('value') value: any) {
     return this.adminService.updateSetting(key, value);
   }
 
   @Get('settings/category/:category')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all settings by category' })
   getSettingsByCategory(@Param('category') category: string) {
     return this.adminService.getAllSettings(category);
   }
   @Get('loyalty')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get loyalty settings' })
   getLoyalty() {
     return this.adminService.getLoyalty();
   }
 
   @Patch('loyalty')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update loyalty settings' })
   updateLoyalty(@Body() body: any) {
     return this.adminService.updateLoyalty(body);
   }
   @Get('monitor')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get monitor logs' })
   getLogs() {
     return this.adminService.getLogs();

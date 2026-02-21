@@ -20,7 +20,8 @@ import {
   Mail,
   ArrowUpRight,
   FileText,
-  Trash2
+  Trash2,
+  Activity
 } from 'lucide-react';
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 import { Button } from '@/components/atoms/Button/Button';
@@ -38,7 +39,10 @@ import {
   deleteLead,
   fetchSalespersons,
   fetchLeads,
-  fetchActions
+  fetchActions,
+  fetchSalespersonAnalytics,
+  fetchCrmMetrics,
+  fetchRepeatCustomers
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
@@ -93,6 +97,11 @@ export const CRM: React.FC = () => {
       if (user.role === 'admin' || user.role === 'manager') {
         dispatch(fetchSalespersons());
       }
+
+      // Fetch Analytics
+      dispatch(fetchSalespersonAnalytics({ salespersonId: user.id }));
+      dispatch(fetchCrmMetrics());
+      dispatch(fetchRepeatCustomers(user.id));
     }
   }, [dispatch, user]);
 
@@ -190,8 +199,8 @@ export const CRM: React.FC = () => {
         </div>
         <div className="flex flex-col md:flex-row md:items-center justify-between p-8 gap-6 relative z-10">
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">CRM Dashboard</h1>
-            <p className="text-gray-500 mt-1.5 font-medium">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">CRM Dashboard</h1>
+            <p className="text-slate-500 mt-1 font-medium text-sm">
               Manage leads, customers, and sales activities
             </p>
           </div>
@@ -199,23 +208,23 @@ export const CRM: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <Button
               variant="outline"
-              className="bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100 transition-all font-bold px-6 shadow-sm hover:shadow-md h-11"
+              className="bg-white text-slate-700 border-slate-200 hover:bg-slate-50 font-bold px-4 h-10 shadow-sm transition-all text-xs"
               onClick={() => setShowQuickBooking(true)}
             >
-              <Calendar className="h-4 w-4 mr-2" />
+              <Calendar className="h-3.5 w-3.5 mr-2 text-slate-400" />
               Direct Booking
             </Button>
 
             <Button
               variant="outline"
-              className={`border-gray-200 hover:border-blue-200 hover:bg-blue-50 transition-all font-bold h-11 shadow-sm ${isAutomationRunning ? 'animate-pulse opacity-80' : ''}`}
+              className={`bg-white text-slate-700 border-slate-200 hover:bg-slate-50 font-bold h-10 px-4 shadow-sm text-xs ${isAutomationRunning ? 'animate-pulse opacity-80' : ''}`}
               onClick={handleRunAutomation}
               disabled={isAutomationRunning}
             >
               {isAutomationRunning ? (
-                <Loader2 className="h-4 w-4 mr-2 text-blue-600 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 mr-2 text-blue-500 animate-spin" />
               ) : (
-                <Target className="h-4 w-4 mr-2 text-blue-600" />
+                <Target className="h-3.5 w-3.5 mr-2 text-slate-400" />
               )}
               Run Automation
             </Button>
@@ -223,12 +232,12 @@ export const CRM: React.FC = () => {
             <div className="relative">
               <Button
                 variant="primary"
-                className="bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-lg hover:shadow-blue-200/50 font-bold px-6 h-11"
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-bold px-4 h-10 text-xs"
                 onClick={() => setShowQuickActions(!showQuickActions)}
               >
-                <Plus className="h-4 w-4 mr-2 transition-transform duration-300" style={{ transform: showQuickActions ? 'rotate(45deg)' : 'none' }} />
+                <Plus className="h-3.5 w-3.5 mr-2" />
                 Quick Actions
-                <ChevronDown className={`h-4 w-4 ml-2 transition-transform duration-300 ${showQuickActions ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-3.5 w-3.5 ml-2 transition-transform duration-300 ${showQuickActions ? 'rotate-180' : ''}`} />
               </Button>
 
               {showQuickActions && (
@@ -289,14 +298,14 @@ export const CRM: React.FC = () => {
         onValueChange={setActiveTab}
         className='w-full'
       >
-        <Card className="border-none shadow-sm p-1.5 bg-gray-100/50 rounded-2xl mb-8">
+        <Card className="border-none shadow-sm p-1 bg-slate-100/80 rounded-lg mb-8">
           <TabsList className="grid grid-cols-2 lg:grid-cols-6 bg-transparent h-auto gap-1">
-            <TabsTrigger value="dashboard" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Dashboard</TabsTrigger>
-            <TabsTrigger value="leads" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Leads</TabsTrigger>
-            <TabsTrigger value="tasks" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Tasks</TabsTrigger>
-            <TabsTrigger value="tracker" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">My Tracker</TabsTrigger>
-            <TabsTrigger value="customers" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Customers</TabsTrigger>
-            <TabsTrigger value="analytics" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Analytics</TabsTrigger>
+            <TabsTrigger value="dashboard" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Dashboard</TabsTrigger>
+            <TabsTrigger value="leads" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Leads</TabsTrigger>
+            <TabsTrigger value="tasks" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Tasks</TabsTrigger>
+            <TabsTrigger value="tracker" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">My Tracker</TabsTrigger>
+            <TabsTrigger value="customers" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Customers</TabsTrigger>
+            <TabsTrigger value="analytics" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Analytics</TabsTrigger>
             {(user?.role === 'admin' || user?.role === 'manager') && (
               <TabsTrigger value="team" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Team</TabsTrigger>
             )}
@@ -308,77 +317,72 @@ export const CRM: React.FC = () => {
 
           {/* Stats Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="border-none shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden relative bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-150 transition-transform duration-700" />
-              <CardContent className="p-6 relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+            <Card className="border-none shadow-sm bg-white overflow-hidden relative border border-slate-200">
+              <CardContent className="p-5 flex flex-col justify-between h-full min-h-[120px]">
                 <div className="flex justify-between items-start">
-                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                    <Users className="h-6 w-6 text-white" />
+                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
+                    <Users className="h-5 w-5" />
                   </div>
-                  {/* <span className="bg-white/20 px-2 py-1 rounded text-[10px] font-bold">+12%</span> */}
                 </div>
                 <div>
-                  <div className="text-4xl font-black tracking-tight mt-4">{leads.length}</div>
-                  <div className="text-blue-100 text-xs font-bold uppercase tracking-widest mt-1">Total Leads</div>
+                  <div className="text-3xl font-bold text-slate-900 tracking-tight mt-3">{leads.length}</div>
+                  <div className="text-slate-400 text-[11px] font-bold uppercase mt-1">Total Leads</div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden relative bg-white">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
-              <CardContent className="p-6 relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+            <Card className="border-none shadow-sm bg-white overflow-hidden relative border border-slate-200">
+              <CardContent className="p-5 flex flex-col justify-between h-full min-h-[120px]">
                 <div className="flex justify-between items-start">
-                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
-                    <TrendingUp className="h-6 w-6" />
+                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
+                    <TrendingUp className="h-5 w-5" />
                   </div>
-                  <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-[10px] font-bold border border-emerald-100">
+                  <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[9px] font-bold border border-emerald-100">
                     {leads.length > 0 ? Math.round((leads.filter(l => l.status === 'converted').length / leads.length) * 100) : 0}% Conv.
                   </span>
                 </div>
                 <div>
-                  <div className="text-4xl font-black text-gray-900 tracking-tight mt-4">
+                  <div className="text-3xl font-bold text-slate-900 tracking-tight mt-3">
                     {leads.filter(l => l.status === 'converted').length}
                   </div>
-                  <div className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Converted</div>
+                  <div className="text-slate-400 text-[11px] font-bold uppercase mt-1">Converted</div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden relative bg-white">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
-              <CardContent className="p-6 relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+            <Card className="border-none shadow-sm bg-white overflow-hidden relative border border-slate-200">
+              <CardContent className="p-5 flex flex-col justify-between h-full min-h-[120px]">
                 <div className="flex justify-between items-start">
-                  <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl border border-amber-100">
-                    <AlertTriangle className="h-6 w-6" />
+                  <div className="p-2 bg-amber-50 text-amber-600 rounded-lg border border-amber-100">
+                    <AlertTriangle className="h-5 w-5" />
                   </div>
                   {tasks.filter(t => t.status === 'overdue').length > 0 && (
-                    <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-full text-[10px] font-bold animate-pulse border border-red-100">
+                    <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded text-[9px] font-bold border border-red-100">
                       Attention
                     </span>
                   )}
                 </div>
                 <div>
-                  <div className="text-4xl font-black text-gray-900 tracking-tight mt-4">
+                  <div className="text-3xl font-bold text-slate-900 tracking-tight mt-3">
                     {tasks.filter(t => t.status === 'overdue').length}
                   </div>
-                  <div className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Overdue Tasks</div>
+                  <div className="text-slate-400 text-[11px] font-bold uppercase mt-1">Overdue Tasks</div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden relative bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-150 transition-transform duration-700" />
-              <CardContent className="p-6 relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+            <Card className="border-none shadow-sm bg-white overflow-hidden relative border border-slate-200">
+              <CardContent className="p-5 flex flex-col justify-between h-full min-h-[120px]">
                 <div className="flex justify-between items-start">
-                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                    <Target className="h-6 w-6 text-white" />
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100">
+                    <Target className="h-5 w-5" />
                   </div>
                 </div>
                 <div>
-                  <div className="text-4xl font-black tracking-tight mt-4">
+                  <div className="text-3xl font-bold text-slate-900 tracking-tight mt-3">
                     {tasks.filter(t => t.status === 'pending').length}
                   </div>
-                  <div className="text-purple-100 text-xs font-bold uppercase tracking-widest mt-1">Pending Actions</div>
+                  <div className="text-slate-400 text-[11px] font-bold uppercase mt-1">Pending Actions</div>
                 </div>
               </CardContent>
             </Card>
@@ -387,12 +391,10 @@ export const CRM: React.FC = () => {
           {/* Quick Actions and Recent Activity - Moved inside Dashboard Tab */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Quick Actions */}
-            <Card className="border-none shadow-sm hover:shadow-lg transition-all duration-300 relative overflow-hidden h-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xl font-bold flex items-center gap-2">
-                  <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                    <TrendingUp className="h-5 w-5" />
-                  </div>
+            <Card className="border-none shadow-sm bg-white rounded-lg overflow-hidden border border-slate-200">
+              <CardHeader className="pb-2 pt-4 px-5 bg-slate-50 border-b border-slate-100">
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-700">
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
                   Quick Actions
                 </CardTitle>
               </CardHeader>
@@ -432,12 +434,10 @@ export const CRM: React.FC = () => {
             </Card>
 
             {/* Sales Calendar Preview (Placeholder for now, or small list) */}
-            <Card className="lg:col-span-2 border-none shadow-sm hover:shadow-lg transition-all duration-300 relative overflow-hidden h-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xl font-bold flex items-center gap-2">
-                  <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
-                    <Clock className="h-5 w-5" />
-                  </div>
+            <Card className="lg:col-span-2 border-none shadow-sm bg-white rounded-lg overflow-hidden border border-slate-200">
+              <CardHeader className="pb-2 pt-4 px-5 bg-slate-50 border-b border-slate-100">
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-700">
+                  <Clock className="h-4 w-4 text-slate-400" />
                   Recent Tasks
                 </CardTitle>
               </CardHeader>
@@ -468,27 +468,27 @@ export const CRM: React.FC = () => {
           {/* Automation Rules */}
           <Card className="border-none shadow-none bg-transparent">
             <div className="flex items-center gap-2 mb-4 px-1">
-              <Target className="h-5 w-5 text-gray-700" />
-              <h3 className="text-lg font-semibold text-gray-800">Active Automation Rules</h3>
+              <Target className="h-4 w-4 text-slate-400" />
+              <h3 className="text-sm font-bold text-slate-700">Active Automation Rules</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {automationRules.map((rule) => (
-                <Card key={rule.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500">
+                <Card key={rule.id} className="shadow-sm border border-slate-200 rounded-lg overflow-hidden transition-all hover:bg-slate-50">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-gray-900">{rule.name}</h4>
-                      <Badge variant="success" size="sm" className="uppercase text-[10px]">Active</Badge>
+                      <h4 className="font-bold text-sm text-slate-800">{rule.name}</h4>
+                      <Badge variant="success" size="sm" className="text-[9px] font-bold">ACTIVE</Badge>
                     </div>
-                    <div className="text-sm text-gray-600 mb-3 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-gray-400" />
+                    <div className="text-[11px] text-slate-500 mb-3 flex items-center gap-2 font-medium">
+                      <Clock className="w-3.5 h-3.5" />
                       <span>Triggers {rule.delayDays > 0 ? `+${rule.delayDays}` : rule.delayDays} days</span>
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                      <span className="text-xs text-gray-500 font-medium">Priority</span>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded bg-gray-100
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Priority</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded
                         ${rule.priority === 'high' ? 'text-red-600 bg-red-50' :
                           rule.priority === 'medium' ? 'text-orange-600 bg-orange-50' : 'text-blue-600 bg-blue-50'}`}>
-                        {rule.priority}
+                        {rule.priority.toUpperCase()}
                       </span>
                     </div>
                   </CardContent>
@@ -627,61 +627,239 @@ export const CRM: React.FC = () => {
 
         {/* Analytics Tab */}
         <TabsContent value="analytics">
-          <div className="space-y-6">
-            {/* Performance Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <div className="text-2xl font-bold">
-                        {analytics?.communicationStats?.calls || 0}
+          <div className="space-y-8 animate-in fade-in duration-700">
+            {/* Top Level Metric Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <AnalyticsCard
+                title="Total Calls"
+                value={analytics?.communicationStats?.calls || 0}
+                icon={<Phone className="h-5 w-5" />}
+                trend={`${analytics?.communicationStats?.answeredCalls || 0} Answered`}
+                color="blue"
+              />
+              <AnalyticsCard
+                title="Conversion Rate"
+                value={`${analytics?.conversionRate ? (analytics.conversionRate * 100).toFixed(1) : 0}%`}
+                icon={<TrendingUp className="h-5 w-5" />}
+                trend="Lead to Customer"
+                color="indigo"
+              />
+              <AnalyticsCard
+                title="Repeat Customers"
+                value={analytics?.customerStats?.repeatCustomers || 0}
+                icon={<Award className="h-5 w-5" />}
+                trend="Returning Clients"
+                color="emerald"
+              />
+              <AnalyticsCard
+                title="Total Revenue"
+                value={formatCurrency(analytics?.customerStats?.totalRevenue || 0)}
+                icon={<TrendingUp className="h-5 w-5" />}
+                trend="Lifetime Value"
+                color="purple"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Detailed Performance Card */}
+              <Card className="lg:col-span-2 border-none shadow-sm overflow-hidden bg-white">
+                <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-blue-600" />
+                    Agent Performance Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                    <div className="space-y-8">
+                      <div>
+                        <span className="text-sm font-bold text-gray-500 uppercase tracking-widest block mb-1">Conversion Efficiency</span>
+                        <div className="flex items-end gap-3 mt-1">
+                          <span className="text-5xl font-black text-gray-900 leading-none">
+                            {analytics?.salespersonConversionRate ? (analytics.salespersonConversionRate * 100).toFixed(1) : 0}%
+                          </span>
+                          <span className="text-sm font-bold text-emerald-600 mb-1 flex items-center">
+                            <ArrowUpRight className="w-4 h-4 mr-0.5" />
+                            Success
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-2.5 rounded-full mt-6 overflow-hidden">
+                          <div
+                            className="bg-blue-600 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(37,99,235,0.4)]"
+                            style={{ width: `${(analytics?.salespersonConversionRate || 0) * 100}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-500">Total Calls</div>
+
+                      <div className="grid grid-cols-2 gap-6 pt-4">
+                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                          <p className="text-xs font-bold text-gray-400 uppercase mb-1">Assigned</p>
+                          <p className="text-2xl font-black text-gray-900">{analytics?.leadsAssigned || 0}</p>
+                        </div>
+                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                          <p className="text-xs font-bold text-gray-400 uppercase mb-1">Contacted</p>
+                          <p className="text-2xl font-black text-gray-900">{analytics?.leadsContacted || 0}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="p-5 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl border border-blue-100">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-sm font-bold text-indigo-700">Communication Mix</span>
+                          <Phone className="w-5 h-5 text-indigo-300" />
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium text-gray-600">Total Calls</span>
+                            <span className="font-bold text-gray-900">{analytics?.communicationStats?.calls || 0}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium text-gray-600">Avg Duration</span>
+                            <span className="font-bold text-gray-900">{analytics?.communicationStats?.avgDurationMinutes || 0}m</span>
+                          </div>
+                          <div className="pt-3 border-t border-indigo-100 flex items-center justify-between">
+                            <span className="text-xs font-bold text-indigo-600">Answer Rate</span>
+                            <span className="text-xs font-black text-indigo-800">
+                              {analytics?.communicationStats?.calls ? Math.round((analytics.communicationStats.answeredCalls / analytics.communicationStats.calls) * 100) : 0}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-100">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-bold text-emerald-700">Customer Base</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-3xl font-black text-emerald-900">{analytics?.customerStats?.totalCustomers || 0}</div>
+                          <div className="text-xs font-medium text-emerald-600 leading-tight">Verified<br />Profiles</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5 text-green-600" />
-                    <div>
-                      <div className="text-2xl font-bold">
-                        {analytics?.customerStats?.repeatCustomers || 0}
-                      </div>
-                      <div className="text-sm text-gray-500">Repeat Customers</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Task Breakdown Card */}
+              <Card className="border-none shadow-sm bg-white h-full">
+                <CardHeader className="border-b border-gray-100">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-emerald-600" />
+                    Task Efficiency
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-8">
+                  <div className="space-y-6">
+                    <TaskMetric
+                      label="Completed"
+                      value={analytics?.actionStats?.completed || 0}
+                      total={analytics?.actionStats?.total || 1}
+                      color="bg-emerald-500"
+                    />
+                    <TaskMetric
+                      label="Pending"
+                      value={analytics?.actionStats?.pending || 0}
+                      total={analytics?.actionStats?.total || 1}
+                      color="bg-amber-500"
+                    />
+                    <TaskMetric
+                      label="Missed"
+                      value={analytics?.actionStats?.missed || 0}
+                      total={analytics?.actionStats?.total || 1}
+                      color="bg-red-500"
+                    />
 
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-purple-600" />
-                    <div>
-                      <div className="text-2xl font-bold">
-                        {formatCurrency(analytics?.customerStats?.totalRevenue || 0)}
+                    <div className="mt-12 p-6 bg-gradient-to-tr from-gray-900 to-gray-800 rounded-3xl text-white relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-xl group-hover:scale-125 transition-transform duration-700" />
+                      <div className="relative z-10">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Lifetime Value</p>
+                        <p className="text-3xl font-black tracking-tight">
+                          {formatCurrency(analytics?.customerStats?.totalRevenue || 0)}
+                        </p>
+                        <div className="mt-4 flex items-center gap-2">
+                          <div className="h-1.5 w-12 bg-blue-500 rounded-full" />
+                          <span className="text-[10px] font-bold text-gray-300">Total processed revenue</span>
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-500">Total Revenue</div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Detailed Analytics */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance Analytics</CardTitle>
+            {/* Repeat Customers List */}
+            <Card className="border-none shadow-sm bg-white overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-100/50">
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Award className="h-5 w-5 text-emerald-600" />
+                  Returning High-Value Clients
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  Detailed analytics dashboard coming soon...
-                </div>
+              <CardContent className="p-0">
+                {(() => {
+                  const { repeatCustomers } = useSelector((state: RootState) => state.crm);
+                  if (!repeatCustomers || repeatCustomers.length === 0) {
+                    return (
+                      <div className="p-12 text-center text-gray-400">
+                        <Search className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                        <p className="font-medium">No repeat customers found yet.</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="divide-y divide-slate-100">
+                      <div className="grid grid-cols-12 gap-4 px-8 py-3 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        <div className="col-span-5">Customer Name</div>
+                        <div className="col-span-2 text-center">Visits</div>
+                        <div className="col-span-3 text-right">Lifetime Value</div>
+                        <div className="col-span-2 text-right">Action</div>
+                      </div>
+                      {repeatCustomers.slice(0, 10).map((record: any) => (
+                        <div key={record.id} className="grid grid-cols-12 gap-4 px-8 py-4 items-center hover:bg-slate-50 transition-all group">
+                          <div className="col-span-5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs border border-slate-200">
+                                {record.customer?.firstName?.[0]}{record.customer?.lastName?.[0]}
+                              </div>
+                              <div>
+                                <div className="font-bold text-slate-900 text-sm">{record.customer?.firstName} {record.customer?.lastName}</div>
+                                <div className="text-xs text-slate-500 font-medium">{record.customer?.email}</div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="col-span-2 text-center">
+                            <span className="inline-flex items-center justify-center min-w-[28px] h-5 px-2 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold border border-blue-100">
+                              {record.repeatCount}
+                            </span>
+                          </div>
+                          <div className="col-span-3 text-right">
+                            <span className="font-bold text-slate-900 text-sm">{formatCurrency(record.lifetimeValue || 0)}</span>
+                          </div>
+                          <div className="col-span-2 text-right">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-gray-400 hover:text-emerald-600 transition-colors"
+                              onClick={() => handleViewCustomer({
+                                id: record.customerId,
+                                firstName: record.customer?.firstName,
+                                lastName: record.customer?.lastName,
+                                email: record.customer?.email,
+                                phone: record.customer?.phone,
+                                status: record.customerStatus,
+                                createdAt: record.createdAt
+                              } as any)}
+                            >
+                              Profile
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </div>
@@ -818,18 +996,18 @@ export const CRM: React.FC = () => {
                   />
                 </div>
 
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                   {searchResults.map(customer => (
                     <div
                       key={customer.id}
-                      className="flex items-center justify-between p-3 hover:bg-gray-50 border border-gray-100 rounded-xl cursor-pointer transition-colors"
+                      className="flex items-center justify-between p-3 hover:bg-slate-50 border border-slate-200 rounded-lg cursor-pointer transition-colors"
                       onClick={() => setBookingCustomer({ id: customer.id, name: `${customer.firstName} ${customer.lastName}` })}
                     >
                       <div>
-                        <div className="font-semibold text-gray-900">{customer.firstName} {customer.lastName}</div>
-                        <div className="text-xs text-gray-500">{customer.email}</div>
+                        <div className="font-bold text-slate-900 text-sm">{customer.firstName} {customer.lastName}</div>
+                        <div className="text-[11px] text-slate-500 font-medium">{customer.email}</div>
                       </div>
-                      <Button size="sm" variant="ghost" className="text-blue-600 font-bold">Select</Button>
+                      <Button size="sm" variant="ghost" className="text-blue-600 font-bold text-xs px-2">Select</Button>
                     </div>
                   ))}
 
@@ -889,5 +1067,55 @@ export const CRM: React.FC = () => {
         )
       }
     </div >
+  );
+};
+
+// Subcomponents for Analytics
+const AnalyticsCard = ({ title, value, icon, trend, color }: any) => {
+  const colors: any = {
+    blue: "bg-slate-50 text-blue-600 border-slate-100",
+    emerald: "bg-slate-50 text-emerald-600 border-slate-100",
+    indigo: "bg-slate-50 text-indigo-600 border-slate-100",
+    purple: "bg-slate-50 text-purple-600 border-slate-100",
+  };
+
+  return (
+    <Card className="border shadow-sm border-slate-200 bg-white rounded-lg">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className={`p-2.5 rounded-lg border ${colors[color]}`}>
+            {icon}
+          </div>
+        </div>
+        <div>
+          <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">{title}</h3>
+          <p className="text-2xl font-bold text-slate-900 mt-2 leading-none">{value}</p>
+          <p className="text-[10px] text-slate-400 font-medium mt-3 flex items-center gap-1">
+            {trend}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const TaskMetric = ({ label, value, total, color }: any) => {
+  const percent = Math.min(100, Math.round((value / total) * 100));
+  return (
+    <div className="space-y-1.5">
+      <div className="flex justify-between items-end">
+        <div>
+          <span className="text-xs font-bold text-slate-700 block leading-tight">{label}</span>
+          <span className="text-[10px] text-slate-400 font-medium">{value} of {total} tasks</span>
+        </div>
+        <span className="text-xs font-bold text-slate-900">{percent}%</span>
+      </div>
+      <div className="w-full bg-gray-50 h-2 rounded-full overflow-hidden border border-gray-100">
+        <div
+          className={`${color} h-full rounded-full transition-all duration-1000 ease-out`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
   );
 };

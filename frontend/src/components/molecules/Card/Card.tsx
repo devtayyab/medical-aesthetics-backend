@@ -1,57 +1,52 @@
 import React from 'react';
 import { Card as CardAtom } from '@/components/atoms/Card/Card';
 
-interface CardHeaderProps {
+interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
-  className?: string;
 }
 
-interface CardContentProps {
+interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
-  className?: string;
 }
 
-interface CardTitleProps {
+interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
   children: React.ReactNode;
-  className?: string;
 }
 
-interface CardProps {
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
-  className?: string;
 }
 
-export const CardHeader: React.FC<CardHeaderProps> = ({ children, className = '' }) => (
-  <div className={`p-6 pb-0 ${className}`}>
+export const CardHeader: React.FC<CardHeaderProps> = ({ children, className = '', ...props }) => (
+  <div className={`p-6 pb-0 ${className}`} {...props}>
     {children}
   </div>
 );
 
-export const CardContent: React.FC<CardContentProps> = ({ children, className = '' }) => (
-  <div className={`p-6 pt-0 ${className}`}>
+export const CardContent: React.FC<CardContentProps> = ({ children, className = '', ...props }) => (
+  <div className={`p-6 pt-0 ${className}`} {...props}>
     {children}
   </div>
 );
 
-export const CardTitle: React.FC<CardTitleProps> = ({ children, className = '' }) => (
-  <h3 className={`text-lg font-semibold leading-none tracking-tight ${className}`}>
+export const CardTitle: React.FC<CardTitleProps> = ({ children, className = '', ...props }) => (
+  <h3 className={`text-lg font-semibold leading-none tracking-tight ${className}`} {...props}>
     {children}
   </h3>
 );
 
-export const Card: React.FC<CardProps> = ({ children, className = '' }) => (
-  <CardAtom className={className}>
+export const Card: React.FC<CardProps> = ({ children, className = '', ...props }) => (
+  <CardAtom className={className} {...props}>
     {children}
   </CardAtom>
 );
 
-interface CardFooterProps {
+interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
-  className?: string;
 }
 
-export const CardFooter: React.FC<CardFooterProps> = ({ children, className = '' }) => (
-  <div className={`flex items-center p-6 pt-0 ${className}`}>
+export const CardFooter: React.FC<CardFooterProps> = ({ children, className = '', ...props }) => (
+  <div className={`flex items-center p-6 pt-0 ${className}`} {...props}>
     {children}
   </div>
 );

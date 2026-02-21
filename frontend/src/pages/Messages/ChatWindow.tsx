@@ -43,27 +43,27 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId }) => {
     if (!conversation) return null;
 
     return (
-        <div className="flex flex-col h-full bg-gray-50/30">
+        <div className="flex flex-col h-full bg-slate-50/20">
             {/* Chat Header */}
-            <div className="p-4 bg-white border-b border-gray-100 flex items-center justify-between shadow-sm">
+            <div className="p-4 bg-white border-b border-slate-100 flex items-center justify-between shadow-sm">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold border border-blue-50">
+                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 font-bold border border-slate-200">
                         {otherUser?.firstName?.[0]}{otherUser?.lastName?.[0]}
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900 leading-none">
+                        <h3 className="font-bold text-slate-900 leading-none text-sm">
                             {conversation.title || `${otherUser?.firstName} ${otherUser?.lastName}`}
                         </h3>
-                        <span className="text-[10px] text-green-500 font-bold flex items-center gap-1 mt-1">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                        <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1 mt-1 uppercase tracking-tight">
+                            <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
                             Online
                         </span>
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
-                    <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors text-gray-400 hover:text-blue-600"><Phone className="w-4 h-4" /></button>
-                    <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors text-gray-400 hover:text-blue-600"><Video className="w-4 h-4" /></button>
-                    <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors text-gray-400 hover:text-blue-600"><MoreVertical className="w-4 h-4" /></button>
+                    <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"><Phone className="w-4 h-4" /></button>
+                    <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"><Video className="w-4 h-4" /></button>
+                    <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"><MoreVertical className="w-4 h-4" /></button>
                 </div>
             </div>
 
@@ -82,13 +82,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId }) => {
                                 className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                             >
                                 <div
-                                    className={`max-w-[70%] p-3 rounded-2xl shadow-sm ${isMe
-                                            ? 'bg-blue-600 text-white rounded-tr-none'
-                                            : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
+                                    className={`max-w-[75%] p-3 rounded-lg shadow-sm ${isMe
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-white text-slate-800 border border-slate-200'
                                         }`}
                                 >
-                                    <p className="text-sm leading-relaxed">{msg.content}</p>
-                                    <div className={`text-[9px] mt-1 font-medium ${isMe ? 'text-blue-100 text-right' : 'text-gray-400'}`}>
+                                    <p className="text-sm leading-relaxed font-medium">{msg.content}</p>
+                                    <div className={`text-[9px] mt-1 font-bold ${isMe ? 'text-blue-100 text-right' : 'text-slate-400'}`}>
                                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                 </div>
@@ -100,28 +100,28 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId }) => {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-white border-t border-gray-100">
+            <div className="p-4 bg-white border-t border-slate-100">
                 <form onSubmit={handleSend} className="flex items-center gap-2">
-                    <button type="button" className="p-2.5 text-gray-400 hover:bg-gray-50 rounded-xl transition-all">
+                    <button type="button" className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-lg transition-all">
                         <Smile className="w-5 h-5" />
                     </button>
-                    <button type="button" className="p-2.5 text-gray-400 hover:bg-gray-50 rounded-xl transition-all">
+                    <button type="button" className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-lg transition-all">
                         <Paperclip className="w-5 h-5" />
                     </button>
                     <div className="flex-1 relative">
                         <input
                             type="text"
                             placeholder="Type your message..."
-                            className="w-full pl-4 pr-12 py-3 bg-gray-50 border border-transparent focus:border-blue-500 rounded-xl text-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                            className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-transparent focus:border-blue-400 rounded-lg text-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/5"
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                         />
                         <button
                             type="submit"
                             disabled={!content.trim()}
-                            className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all ${content.trim()
-                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                                    : 'bg-gray-100 text-gray-300'
+                            className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-2 rounded-md transition-all ${content.trim()
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-slate-100 text-slate-300'
                                 }`}
                         >
                             <Send className="w-4 h-4" />

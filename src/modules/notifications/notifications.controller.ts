@@ -22,7 +22,7 @@ import { NotificationType } from '../../common/enums/notification-type.enum';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(private readonly notificationsService: NotificationsService) { }
 
   @Post('send')
   @ApiOperation({ summary: 'Send notification' })
@@ -48,6 +48,12 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Get unread notification count' })
   getUnreadCount(@Request() req) {
     return this.notificationsService.getUnreadCount(req.user.id).then(count => ({ count }));
+  }
+
+  @Patch('read-all')
+  @ApiOperation({ summary: 'Mark all notifications as read' })
+  markAllAsRead(@Request() req) {
+    return this.notificationsService.markAllAsRead(req.user.id);
   }
 
   @Patch(':id/read')
