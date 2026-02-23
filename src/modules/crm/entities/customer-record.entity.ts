@@ -89,6 +89,9 @@ export class CustomerRecord {
   @Column({ nullable: true })
   notes: string;
 
+  @Column('json', { nullable: true })
+  metadata: any;
+
   @Column({ nullable: true })
   repeatCount: string
 

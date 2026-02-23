@@ -17,13 +17,16 @@ import {
     Phone,
     Mail,
     MessageSquare,
-    CheckCircle2
+    CheckCircle2,
+    Calendar as CalendarIcon,
+    Clock
 } from 'lucide-react';
 import { RootState, AppDispatch } from '@/store';
 import { fetchSalespersons, fetchSalesActivities } from '@/store/slices/crmSlice';
 import { Button } from '@/components/atoms/Button/Button';
 import { Card, CardContent } from '@/components/molecules/Card/Card';
 import './SalesDiary.css';
+import { startOfWeek, eachDayOfInterval, endOfWeek, isToday } from 'date-fns';
 
 interface SalesDiaryProps {
     salespersonId?: string;
@@ -83,6 +86,72 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
         );
     };
 
+    const renderWeekView = () => {
+        const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+        const weekDays = eachDayOfInterval({
+            start: weekStart,
+            end: endOfWeek(selectedDate, { weekStartsOn: 1 })
+        });
+
+        const myId = salespersonId || user?.id;
+
+        return (
+            <div className="diary-grid-container week-view">
+                <div className="diary-time-column">
+                    <div className="diary-header-cell spacer"></div>
+                    {timeSlots.map(time => (
+                        <div key={time} className="diary-time-cell">{time}</div>
+                    ))}
+                </div>
+                <div className="diary-week-columns flex-1 flex overflow-x-auto custom-scrollbar">
+                    {weekDays.map(day => (
+                        <div key={day.toISOString()} className={`diary-day-column flex-1 min-w-[180px] border-r border-gray-100 relative ${isToday(day) ? 'bg-blue-50/10' : ''}`}>
+                            <div className={`diary-header-cell flex-col border-b border-gray-100 ${isToday(day) ? 'bg-blue-50/30' : ''}`}>
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{format(day, 'EEE')}</span>
+                                <span className={`text-lg font-black ${isToday(day) ? 'text-blue-600' : 'text-gray-900'}`}>{format(day, 'd')}</span>
+                            </div>
+                            <div className="diary-slots-container relative">
+                                {timeSlots.map(time => (
+                                    <div key={time} className="diary-slot-cell border-b border-gray-50 h-[60px]"></div>
+                                ))}
+                                {diaryActivities
+                                    .filter(act => (myId ? act.salespersonId === myId : true) && isSameDay(new Date(act.startTime), day))
+                                    .map(act => {
+                                        const start = new Date(act.startTime);
+                                        const end = new Date(act.endTime);
+                                        const startMinutes = start.getHours() * 60 + start.getMinutes();
+                                        const dayStartMinutes = 8 * 60;
+                                        const top = ((startMinutes - dayStartMinutes) / 30) * 60;
+                                        const duration = (end.getTime() - start.getTime()) / (1000 * 60);
+                                        const height = Math.max((duration / 30) * 60, 35);
+
+                                        const getIcon = () => {
+                                            if (act.actionType === 'phone_call') return <Phone className="w-2.5 h-2.5" />;
+                                            if (act.actionType === 'email') return <Mail className="w-2.5 h-2.5" />;
+                                            return <MessageSquare className="w-2.5 h-2.5" />;
+                                        };
+
+                                        return (
+                                            <div
+                                                key={act.id}
+                                                className={`activity-block compact type-${act.type} status-${act.status}`}
+                                                style={{ top: `${top + 60}px`, height: `${height - 2}px` }}
+                                            >
+                                                <div className="text-[9px] font-black leading-tight text-gray-900 truncate flex items-center gap-1">
+                                                    {getIcon()} {act.title}
+                                                </div>
+                                                <div className="text-[8px] font-bold text-gray-500 truncate">{act.customerName}</div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     const renderDayView = () => (
         <div className="diary-grid-container">
             <div className="diary-time-column">
@@ -97,7 +166,7 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                 <div className="diary-staff-scroll-wrapper" style={{ width: `${Math.max(displaySalespersons.length * 200, 800)}px` }}>
                     {displaySalespersons.map(member => (
                         <div key={member.id} className="diary-staff-column">
-                            <div className="diary-header-cell staff-info">
+                            <div className="diary-header-cell staff-info border-b border-gray-100">
                                 <div className="staff-avatar">
                                     {member.profilePictureUrl ? (
                                         <img src={member.profilePictureUrl} alt={`${member.firstName} ${member.lastName}`} />
@@ -166,13 +235,13 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                 <div className="toolbar-left">
                     <div>
                         <h1 className="text-2xl font-black text-gray-900 tracking-tight">Sales Diary</h1>
-                        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Lead & Activity Tracking</p>
+                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1">Lead & Activity Tracking</p>
                     </div>
-                    <div className="date-nav">
+                    <div className="date-nav ml-4">
                         <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')} className="nav-btn">
                             <ChevronLeft className="w-5 h-5" />
                         </Button>
-                        <span className="current-date-display font-bold">
+                        <span className="current-date-display font-black text-sm uppercase tracking-wider">
                             {format(selectedDate, 'EEEE, MMM do, yyyy')}
                         </span>
                         <Button variant="ghost" size="icon" onClick={() => navigateDate('next')} className="nav-btn">
@@ -187,7 +256,7 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                             <button
                                 key={mode}
                                 onClick={() => setViewMode(mode)}
-                                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${viewMode === mode ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${viewMode === mode ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
                             >
                                 {mode}
                             </button>
@@ -203,7 +272,7 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20">
+                    <Button className="bg-[#b3d81b] hover:bg-[#a1c218] text-white font-bold rounded-xl shadow-lg shadow-lime-500/20 border-none px-6">
                         <Plus className="w-4 h-4 mr-2" /> Log Activity
                     </Button>
                 </div>
@@ -221,7 +290,7 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                 )}
                 <Card className="diary-card border-none shadow-2xl shadow-gray-200/50 bg-white rounded-3xl overflow-hidden">
                     <CardContent className="p-0 h-full">
-                        {renderDayView()}
+                        {viewMode === 'day' ? renderDayView() : renderWeekView()}
                     </CardContent>
                 </Card>
             </div>

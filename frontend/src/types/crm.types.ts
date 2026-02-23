@@ -47,6 +47,7 @@ export interface CustomerRecord {
   isRepeatCustomer: boolean;
   repeatCount: number;
   notes?: string;
+  metadata?: any;
   createdAt: string;
   updatedAt: string;
   customer?: User;
@@ -294,7 +295,7 @@ export interface ParsedFacebookLead {
 }
 
 export interface CrmFilters {
-  status?: string;
+  status?: string | string[];
   assignedSalesId?: string;
   source?: string;
   search?: string;
@@ -302,6 +303,11 @@ export interface CrmFilters {
   endDate?: string;
   tags?: string[];
   priority?: string;
+  formNames?: string[];
+  submissionDateFrom?: string;
+  submissionDateTo?: string;
+  lastContactedFrom?: string;
+  lastContactedTo?: string;
 }
 
 export interface CrmAnalytics {

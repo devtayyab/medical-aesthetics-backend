@@ -320,6 +320,9 @@ export class CrmService implements OnModuleInit {
     const lead = this.leadsRepository.create({
       ...leadDto,
       status: LeadStatus.CONTACTED, // Mark as contacted since they already exist
+      lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt,
+      lastMetaFormName: leadDto.lastMetaFormName,
+      lastContactedAt: new Date(),
       metadata: {
         ...leadDto.metadata,
         existingCustomerId: existingCustomer.id,
@@ -372,6 +375,19 @@ export class CrmService implements OnModuleInit {
       lastContactDate: new Date(),
     });
 
+    // We must also update the Lead entity if there's an existing one to update the meta form details,
+    // or just rely on the new lead logic. Ah, wait. Over here we are merging with a User (Existing Customer).
+    // The Lead table needs to be updated. Since it's a Customer, maybe there is a Lead associated?
+    // Let's find an existing lead for this customer.
+    const existingLead = await this.leadsRepository.findOne({ where: { email: existingCustomer.email } });
+    if (existingLead) {
+      await this.leadsRepository.update(existingLead.id, {
+        lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
+        lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
+        lastContactedAt: new Date(),
+      });
+    }
+
     // Create a communication log entry for the Facebook form submission
     if (customerRecord?.assignedSalespersonId) {
       await this.logCommunication({
@@ -417,6 +433,12 @@ export class CrmService implements OnModuleInit {
   }
 
   private async createLeadFromFacebook(parsedLead: ParsedFacebookLead, leadData: any): Promise<Lead> {
+    // Extract Facebook Ad Name from form fields if available (multiple-choice answer rule)
+    const facebookAdNameField = parsedLead.facebookLeadData?.field_data?.find(
+      (f: any) => f.name.toLowerCase().includes('ad_name') || f.name.toLowerCase().includes('campaign')
+    );
+    const facebookAdName = facebookAdNameField ? facebookAdNameField.values[0] : 'Unknown Ad';
+
     const leadDto: CreateLeadDto = {
       source: 'facebook_ads',
       firstName: parsedLead.firstName || '',
@@ -433,8 +455,12 @@ export class CrmService implements OnModuleInit {
       metadata: {
         importedFromFacebook: true,
         importDate: new Date(),
+        facebookAdName: facebookAdName, // Sourced from form submission as requested
       },
+      lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
+      lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
     };
+
 
     return this.create(leadDto);
   }
@@ -496,7 +522,11 @@ export class CrmService implements OnModuleInit {
       .leftJoinAndSelect('lead.tags', 'tags');
 
     if (filters.status) {
-      qb.where('lead.status = :status', { status: filters.status });
+      if (Array.isArray(filters.status)) {
+        qb.andWhere('lead.status IN (:...status)', { status: filters.status });
+      } else {
+        qb.andWhere('lead.status = :status', { status: filters.status });
+      }
     }
 
     if (filters.source) {
@@ -505,9 +535,29 @@ export class CrmService implements OnModuleInit {
 
     if (filters.search) {
       qb.andWhere(
-        '(lead.firstName ILIKE :search OR lead.lastName ILIKE :search OR lead.email ILIKE :search)',
+        '(lead.firstName ILIKE :search OR lead.lastName ILIKE :search OR lead.email ILIKE :search OR lead.phone ILIKE :search)',
         { search: `%${filters.search}%` },
       );
+    }
+
+    // Advanced Filters
+    if (filters.formNames) {
+      const formNamesArray = Array.isArray(filters.formNames) ? filters.formNames : [filters.formNames];
+      qb.andWhere('lead.lastMetaFormName IN (:...formNames)', { formNames: formNamesArray });
+    }
+
+    if (filters.submissionDateFrom) {
+      qb.andWhere('lead.lastMetaFormSubmittedAt >= :submissionDateFrom', { submissionDateFrom: filters.submissionDateFrom });
+    }
+    if (filters.submissionDateTo) {
+      qb.andWhere('lead.lastMetaFormSubmittedAt <= :submissionDateTo', { submissionDateTo: filters.submissionDateTo });
+    }
+
+    if (filters.lastContactedFrom) {
+      qb.andWhere('lead.lastContactedAt >= :lastContactedFrom', { lastContactedFrom: filters.lastContactedFrom });
+    }
+    if (filters.lastContactedTo) {
+      qb.andWhere('lead.lastContactedAt <= :lastContactedTo', { lastContactedTo: filters.lastContactedTo });
     }
 
     // ACL: if requester is salesperson, only show leads assigned to them
@@ -518,6 +568,10 @@ export class CrmService implements OnModuleInit {
       }
       // For clinic owners, leave as-is for now (leads may not be linked to clinics). Future: relate leads to clinic and filter.
     }
+
+    // Default Sorting
+    qb.orderBy('lead.lastMetaFormSubmittedAt', 'DESC', 'NULLS LAST');
+    qb.addOrderBy('lead.createdAt', 'DESC');
 
     return qb.getMany();
   }
@@ -594,6 +648,16 @@ export class CrmService implements OnModuleInit {
         throw new NotFoundException('Customer or Lead not found');
       }
 
+      const leadAppointments = await this.appointmentsRepository.find({
+        where: { clientId: customerId },
+        relations: ['service', 'clinic'],
+        order: { startTime: 'DESC' },
+      });
+
+      const compApts = leadAppointments.filter(a => a.status === 'completed');
+      const ltv = compApts.reduce((sum, apt) => sum + Number(apt.totalAmount || 0), 0);
+      const isRepeat = compApts.length > 1;
+
       // Return synthetic record for Lead
       return {
         record: {
@@ -610,16 +674,25 @@ export class CrmService implements OnModuleInit {
           },
           assignedSalespersonId: lead.assignedSalesId,
           assignedSalesperson: lead.assignedSales,
-          lifetimeValue: 0,
-          totalAppointments: 0,
-          completedAppointments: 0,
-          isRepeatCustomer: false,
+          lifetimeValue: ltv,
+          totalAppointments: leadAppointments.length,
+          completedAppointments: compApts.length,
+          isRepeatCustomer: isRepeat,
           notes: lead.notes,
+          source: lead.source,
           createdAt: lead.createdAt,
           updatedAt: lead.updatedAt,
           tags: lead.tags || [],
         },
-        appointments: [],
+        appointments: leadAppointments.map(apt => ({
+          id: apt.id,
+          serviceName: apt.service?.name,
+          clinicName: apt.clinic?.name,
+          startTime: apt.startTime,
+          status: apt.status,
+          totalAmount: apt.totalAmount,
+          treatmentDetails: apt.treatmentDetails,
+        })),
         communications: (lead.metadata as any)?.interactionHistory || [],
         actions: [],
         tags: (lead.tags || []).map(t => ({
@@ -636,7 +709,11 @@ export class CrmService implements OnModuleInit {
         },
         summary: {
           type: 'lead', // Frontend can use this to show specific badges
-          status: lead.status
+          status: lead.status,
+          totalAppointments: leadAppointments.length,
+          completedAppointments: compApts.length,
+          lifetimeValue: ltv,
+          repeatCount: isRepeat ? compApts.length : 0,
         }
       };
     }
@@ -868,10 +945,23 @@ export class CrmService implements OnModuleInit {
     const log = this.communicationLogsRepository.create(data);
     const savedLog = await this.communicationLogsRepository.save(log);
 
-    // Update last contact date
-    await this.updateCustomerRecord(data.customerId, {
-      lastContactDate: new Date(),
-    });
+    // Update last contact date based on specific rules
+    const CONTACT_TYPES = ['call', 'viber', 'email'];
+    const isContactAttempt = CONTACT_TYPES.includes(data.type || '') ||
+      (data.type === 'note' && (data.metadata as any)?.isContactAttempt === true);
+
+    if (isContactAttempt) {
+      if (lead) {
+        await this.leadsRepository.update(lead.id, {
+          lastContactedAt: new Date(),
+        });
+      } else {
+        await this.updateCustomerRecord(data.customerId, {
+          lastContactDate: new Date(),
+        });
+      }
+    }
+
 
     // Emit event for notifications
     this.eventEmitter.emit('communication.logged', savedLog);

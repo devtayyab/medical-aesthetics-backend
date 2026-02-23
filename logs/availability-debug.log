@@ -1022,3 +1022,15 @@
 [2026-02-18T09:04:26.008Z] 🔵 Open time (UTC): "2026-02-18T14:00:00.000Z"
 [2026-02-18T09:04:26.009Z] 🔵 Close time (UTC): "2026-02-18T22:00:00.000Z"
 [2026-02-18T09:04:26.010Z] 🔵 Current time (UTC): "2026-02-18T09:04:26.010Z"
+[2026-02-23T06:46:43.228Z] 🔵 Availability Request: {"clinicId":"c07c073a-ad9e-44fd-b1b7-0b82ac7ed194","serviceId":"bdd6033a-d623-4770-a2a4-f62177b3c3f3","providerId":null,"date":"2026-02-23"}
+[2026-02-23T06:46:43.501Z] 🔵 Using date: "2026-02-23"
+[2026-02-23T06:46:43.513Z] 🔵 Clinic: "abc clinic"
+[2026-02-23T06:46:43.519Z] 🔵 Using timezone: "America/New_York"
+[2026-02-23T06:46:43.525Z] 🔵 Day of week: "monday"
+[2026-02-23T06:46:43.526Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-02-23T06:46:43.527Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-02-23T06:46:43.528Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-02-23T06:46:43.555Z] Blocked slots count: 
+[2026-02-23T06:46:43.556Z] 🔵 Open time (UTC): "2026-02-23T14:00:00.000Z"
+[2026-02-23T06:46:43.557Z] 🔵 Close time (UTC): "2026-02-23T22:00:00.000Z"
+[2026-02-23T06:46:43.558Z] 🔵 Current time (UTC): "2026-02-23T06:46:43.558Z"

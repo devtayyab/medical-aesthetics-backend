@@ -3,7 +3,7 @@ import { css } from '@emotion/css';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'secondary' | 'outline';
-  size?: 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md';
 }
 
 const badgeStyles = css`
@@ -56,6 +56,11 @@ const variantStyles = {
 };
 
 const sizeStyles = {
+  xs: css`
+    padding: 1px 4px;
+    font-size: 10px;
+    line-height: 1;
+  `,
   sm: css`
     padding: var(--spacing-xs) var(--spacing-sm);
     font-size: var(--font-size-xs);
