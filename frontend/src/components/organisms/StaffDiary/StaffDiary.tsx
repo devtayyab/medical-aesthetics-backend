@@ -17,7 +17,6 @@ import {
     ChevronRight,
     Plus,
     Search,
-    Clock,
     User as UserIcon,
     Calendar as CalendarIcon,
     MoreHorizontal
@@ -30,9 +29,10 @@ import './StaffDiary.css';
 
 interface StaffDiaryProps {
     clinicId?: string;
+    onNewAppointment?: () => void;
 }
 
-export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId }) => {
+export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointment }) => {
     const dispatch = useDispatch<AppDispatch>();
     const { appointments, staff, profile, isLoading } = useSelector((state: RootState) => state.clinic);
 
@@ -243,7 +243,10 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId }) => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20">
+                    <Button
+                        onClick={onNewAppointment}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20"
+                    >
                         <Plus className="w-4 h-4 mr-2" /> New Appointment
                     </Button>
                 </div>

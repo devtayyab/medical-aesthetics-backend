@@ -64,6 +64,15 @@ export class CreateLeadDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  lastMetaFormSubmittedAt?: Date;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  lastMetaFormName?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
   notes?: string;
 

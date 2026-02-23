@@ -78,6 +78,12 @@ export class Lead {
   lastContactedAt: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
+  lastMetaFormSubmittedAt: Date;
+
+  @Column({ nullable: true })
+  lastMetaFormName: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
   convertedAt: Date;
 
   @CreateDateColumn()

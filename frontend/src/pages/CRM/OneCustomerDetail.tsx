@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-    Activity, CheckCircle, PhoneCall,
     Clock, Tag, Mail, Phone, Calendar,
     ArrowRight, User, Users, Plus,
     AlertCircle, FileText, Check, X,
-    MoreHorizontal, Play, Trash2
+    MoreHorizontal, Trash2, PhoneCall,
+    Activity, CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/atoms/Button/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/molecules/Tabs";
 import { Badge } from "@/components/atoms/Badge";
 import { Input } from "@/components/atoms/Input/Input";
 import { Select } from "@/components/atoms/Select/Select";
@@ -28,10 +27,10 @@ import {
     deleteLead
 } from "@/store/slices/crmSlice";
 import { AuthState } from "@/store/slices/authSlice";
-import { clinicsAPI } from "@/services/api";
-import type { Clinic } from "@/types";
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 import { completeAppointment } from "@/store/slices/bookingSlice";
+import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
+import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
 
 interface OneCustomerDetailProps {
     SelectedCustomer: Customer | Lead;
@@ -211,6 +210,20 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [activeTab, setActiveTab] = useState("overview");
 
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [showTagModal, setShowTagModal] = useState(false);
+    const [quickTagInput, setQuickTagInput] = useState("");
+
+    // --- New Action Modals ---
+    const [showPhoneCallModal, setShowPhoneCallModal] = useState(false);
+    const [phoneCallNotes, setPhoneCallNotes] = useState("");
+
+    const [showEmailModal, setShowEmailModal] = useState(false);
+    const [emailNotes, setEmailNotes] = useState("");
+    const [emailDate, setEmailDate] = useState(new Date().toISOString().substring(0, 16));
+
+    const [showDiaryModal, setShowDiaryModal] = useState(false);
+
     useEffect(() => {
         if (SelectedCustomer?.id) {
             dispatch(fetchCustomerRecord({
@@ -227,7 +240,60 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
         return (first?.[0] || '') + (last?.[0] || '');
     };
 
+    const handleDirectAddTag = async () => {
+        if (!quickTagInput.trim()) return;
+        try {
+            await dispatch(addCustomerTag({ customerId: customer.id, tagId: quickTagInput.trim() }) as any).unwrap();
+            setQuickTagInput("");
+            setShowTagModal(false);
+            dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+        } catch (error) {
+            console.error("Failed to add tag", error);
+            alert("Failed to add tag.");
+        }
+    };
+
     // --- Workflow Handlers ---
+
+    const handleSavePhoneCallNotes = async () => {
+        if (!phoneCallNotes.trim()) return;
+        try {
+            await dispatch(logCommunication({
+                customerId: customer.id,
+                salespersonId: user?.id,
+                type: 'call',
+                status: 'completed',
+                notes: phoneCallNotes,
+                direction: 'outgoing'
+            })).unwrap();
+            setPhoneCallNotes("");
+            setShowPhoneCallModal(false);
+            dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+        } catch (error) {
+            console.error("Failed to save phone call note", error);
+            alert("Failed to save.");
+        }
+    };
+
+    const handleSaveEmailLog = async () => {
+        if (!emailNotes.trim()) return;
+        try {
+            await dispatch(logCommunication({
+                customerId: customer.id,
+                salespersonId: user?.id,
+                type: 'email',
+                status: 'completed',
+                notes: `[Sent: ${new Date(emailDate).toLocaleString()}]\n\n${emailNotes}`,
+                direction: 'outgoing'
+            })).unwrap();
+            setEmailNotes("");
+            setShowEmailModal(false);
+            dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+        } catch (error) {
+            console.error("Failed to log email", error);
+            alert("Failed to save.");
+        }
+    };
 
     const handleStartInteraction = (type: 'call' | 'meeting' | 'email') => {
         setInteractionType(type);
@@ -741,11 +807,50 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 </div>
             </div>
 
-            {/* 2. Main Layout - Split View */}
+            {/* KPI Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6">
+                <Card className="border-none shadow-sm bg-white overflow-hidden p-4">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Total Appointments</div>
+                    <div className="text-xl font-bold text-slate-900">{summary?.appointments?.length || 0}</div>
+                </Card>
+                <Card className="border-none shadow-sm bg-white overflow-hidden p-4">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Completed</div>
+                    <div className="text-xl font-bold text-slate-900">{summary?.appointments?.filter(a => a.status === 'completed').length || 0}</div>
+                </Card>
+                <Card className="border-none shadow-sm bg-white overflow-hidden p-4">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1.5">Lifetime Value</div>
+                    <div className="text-xl font-bold text-slate-900">€{summary?.summary?.lifetimeValue || 0}</div>
+                </Card>
+                <Card className="border-none shadow-sm bg-white overflow-hidden p-4">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> Repeat Visits</div>
+                    <div className="text-xl font-bold text-slate-900">{summary?.summary?.repeatCount || 0}</div>
+                </Card>
+            </div>
+
+            {/* Quick Actions Bar */}
+            <div className="flex flex-wrap gap-2 bg-white p-3 rounded-lg shadow-sm border border-slate-200 mb-6">
+                <Button variant="primary" size="sm" onClick={() => handleStartInteraction('call')} className="bg-[#b3d81b] hover:bg-[#a1c218] text-white border-none text-xs px-4 shadow-sm">
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Log Communication
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowPhoneCallModal(true)} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs px-4 shadow-sm">
+                    <PhoneCall className="w-3.5 h-3.5 mr-1" /> Add Phone Call Notes
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowEmailModal(true)} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs px-4 shadow-sm">
+                    <Mail className="w-3.5 h-3.5 mr-1" /> Log Email Sent
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowTaskModal(true)} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs px-4 shadow-sm">
+                    <Clock className="w-3.5 h-3.5 mr-1" /> Follow Up
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => setShowDiaryModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white border-none text-xs px-4 shadow-sm">
+                    <Calendar className="w-3.5 h-3.5 mr-1" /> Book Appointment
+                </Button>
+            </div>
+
+            {/* Main Layout - 2 Columns */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-                {/* Left Column: Contact Info & Tags (Small) */}
-                <div className="lg:col-span-3 space-y-6">
+                {/* Left Column: Properties */}
+                <div className="lg:col-span-4 xl:col-span-3 space-y-6">
                     <Card className="border-none shadow-sm bg-white rounded-lg overflow-hidden border border-slate-200">
                         <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-5">
                             <CardTitle className="text-xs font-bold text-slate-600 flex items-center justify-between">
@@ -778,145 +883,49 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                         </div>
                                     )}
                                 </div>
+                                <div className="space-y-4 pt-4 border-t border-slate-100">
+                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-2 mb-2">
+                                        <Activity className="w-3 h-3" /> Core Properties
+                                    </label>
+                                    <div className="space-y-3 text-xs">
+                                        <div className="space-y-1 pb-2">
+                                            <label className="text-gray-400 font-medium">First Name</label>
+                                            <div className="font-bold text-gray-800">{customer.firstName}</div>
+                                        </div>
+                                        <div className="space-y-1 pb-2">
+                                            <label className="text-gray-400 font-medium">Last Name</label>
+                                            <div className="font-bold text-gray-800">{customer.lastName || '--'}</div>
+                                        </div>
+                                        <div className="space-y-1 pb-2">
+                                            <label className="text-gray-400 font-medium">Phone Number</label>
+                                            <div className="font-bold text-blue-600">{customer.phone || '--'}</div>
+                                        </div>
+                                        <div className="space-y-1 pb-2">
+                                            <label className="text-gray-400 font-medium">Email</label>
+                                            <div className="font-bold text-blue-600">{customer.email || '--'}</div>
+                                        </div>
+                                        <div className="space-y-1 pb-2">
+                                            <label className="text-gray-400 font-medium">Customer ID</label>
+                                            <div className="font-bold text-gray-800">{customer.id.slice(-6).toUpperCase()}</div>
+                                        </div>
+                                        <div className="space-y-1 pb-2">
+                                            <label className="text-gray-400 font-medium">Contact owner</label>
+                                            <div className="font-bold text-blue-600">{user?.firstName} {user?.lastName}</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
-
-                    {/* Upcoming Task */}
-                    <Card className="border-none shadow-sm bg-white border border-slate-200 overflow-hidden relative rounded-lg">
-                        <CardHeader className="pb-3 px-5 pt-4">
-                            <CardTitle className="text-slate-700 font-bold flex items-center gap-2">
-                                <AlertCircle className="w-4 h-4 text-red-500" />
-                                <span className="text-xs font-bold">Upcoming Task</span>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="relative z-10 px-6 pb-6">
-                            {pendingTask ? (
-                                <div className="bg-white p-4 rounded-xl border border-red-100 shadow-xl shadow-red-500/5 group-hover:-translate-y-1 transition-all duration-500">
-                                    <div className="space-y-3">
-                                        <div className="font-bold text-gray-900 text-base leading-tight line-clamp-2">{pendingTask.title}</div>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">Countdown</span>
-                                                <span className="text-[10px] font-bold text-red-500">{new Date(pendingTask.dueDate).toLocaleDateString()}</span>
-                                            </div>
-                                            <div className="p-1.5 bg-gray-50 rounded-lg group-hover:bg-red-50 transition-colors">
-                                                <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-500" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-center py-6 px-4 bg-slate-50/50 rounded-lg border-2 border-dashed border-slate-100">
-                                    <div className="p-2.5 bg-white rounded-lg w-fit mx-auto shadow-sm mb-3 border border-slate-100">
-                                        <AlertCircle className="w-5 h-5 text-slate-400" />
-                                    </div>
-                                    <h4 className="text-slate-700 font-bold text-[11px] mb-1">No Active Tasks</h4>
-                                    <p className="text-slate-400 text-[10px] font-medium mb-5 leading-relaxed max-w-[160px] mx-auto">Click below to start a new interaction sequence.</p>
-                                    <Button
-                                        onClick={() => setWorkflowStep(1)}
-                                        className="w-full h-9 bg-slate-800 hover:bg-slate-950 text-white rounded-md font-bold text-[11px] transition-all active:scale-95 px-4"
-                                    >
-                                        Log Activity
-                                    </Button>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
                 </div>
 
-                {/* Middle Column: THE WORKFLOW (Large Focus) */}
-                <div className="lg:col-span-5 space-y-6">
-                    {renderInteractionFlow()}
+                {/* Right Column: Interaction Logging & Timeline */}
+                <div className="lg:col-span-8 xl:col-span-9 space-y-6 h-full">
 
-                    {/* Conditional Lifecycle Tab (If Customer) */}
-                    {isConverted && (
-                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-                            <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-transparent">
-                                <TabsList className="w-full bg-gray-100/50 backdrop-blur-sm p-1 rounded-xl grid grid-cols-2 h-11 border border-gray-100">
-                                    <TabsTrigger value="overview" className="rounded-lg font-bold text-[11px] data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-300">
-                                        <Activity className="w-3 h-3 mr-2" />
-                                        Overview
-                                    </TabsTrigger>
-                                    <TabsTrigger value="records" className="rounded-lg font-bold text-[11px] data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-300">
-                                        <FileText className="w-3 h-3 mr-2" />
-                                        Records
-                                    </TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="overview">
-                                    <div className="space-y-6 mt-6">
-                                        {/* Status & Key Metrics */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-                                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Lifetime Value</div>
-                                                <div className="text-lg font-bold text-slate-900">€{summary?.summary?.lifetimeValue || 0}</div>
-                                            </div>
-                                            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-                                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Repeat Visits</div>
-                                                <div className="text-lg font-bold text-slate-900">{summary?.summary?.repeatCount || 0}</div>
-                                            </div>
-                                            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col justify-center">
-                                                <Badge className="bg-emerald-50 text-emerald-700 border-none font-bold uppercase text-[9px] py-1 w-fit">Active Patient</Badge>
-                                            </div>
-                                        </div>
-
-                                        {/* Recent Treatments (Appointment History) */}
-                                        <Card className="border-none shadow-sm overflow-hidden">
-                                            <CardHeader className="bg-slate-50 py-3 px-5 border-b border-slate-200">
-                                                <CardTitle className="text-xs font-bold text-slate-600 flex items-center gap-2">
-                                                    <Calendar className="w-4 h-4" /> Appointment History
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-0">
-                                                <div className="divide-y divide-gray-50">
-                                                    {summary?.appointments?.slice(0, 3).map((apt: any) => (
-                                                        <div key={apt.id} className="p-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center font-bold text-xs">
-                                                                    {new Date(apt.startTime).getDate()}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="text-xs font-bold text-gray-900">{apt.serviceName}</div>
-                                                                    <div className="text-[10px] text-gray-500 font-medium">
-                                                                        {new Date(apt.startTime).toLocaleDateString()} • {apt.clinicName}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <Badge variant={apt.status === 'completed' ? 'success' : 'info'} size="sm" className="uppercase text-[9px] px-2 py-0.5">
-                                                                {apt.status}
-                                                            </Badge>
-                                                        </div>
-                                                    ))}
-                                                    {(!summary?.appointments || summary.appointments.length === 0) && (
-                                                        <div className="p-6 text-center text-[10px] text-gray-400 italic">No appointments recorded.</div>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                    </div>
-                                </TabsContent>
-                                <TabsContent value="records">
-                                    <div className="p-8 bg-white rounded-lg shadow-sm border border-slate-200 mt-6 text-center space-y-4">
-                                        <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center mx-auto border border-slate-100">
-                                            <FileText className="w-6 h-6" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <h3 className="text-base font-bold text-slate-800">No Documents</h3>
-                                            <p className="text-[12px] text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">Securely store reports, consent forms, and patient photos.</p>
-                                        </div>
-                                        <Button variant="outline" className="mt-2 h-10 px-5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold transition-all text-xs">
-                                            Upload Document <Plus className="w-3.5 h-3.5 ml-2" />
-                                        </Button>
-                                    </div>
-                                </TabsContent>
-                            </Tabs>
-                        </div>
-                    )}
-                </div>
-
-                {/* Right Column: Timeline (History) */}
-                <div className="lg:col-span-4 space-y-6 h-full">
+                    {/* Interaction Logger Drop-in */}
+                    <div className="mb-6">
+                        {renderInteractionFlow()}
+                    </div>
                     <Card className="border-none shadow-sm h-[650px] flex flex-col bg-white rounded-lg overflow-hidden border border-slate-200">
                         <CardHeader className="border-b border-gray-100/30 pb-3 pt-4 px-5 bg-white/40">
                             <CardTitle className="text-[10px] uppercase font-bold text-slate-500 flex items-center justify-between">
@@ -938,63 +947,59 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                         ...(summary?.communications?.map(c => ({ type: 'communication', date: new Date(c.createdAt), data: c })) || []),
                                         ...(summary?.appointments?.map(a => ({ type: 'appointment', date: new Date(a.startTime), data: a })) || []),
                                         ...(summary?.actions?.map(a => ({ type: 'action', date: new Date(a.createdAt), data: a })) || []),
-                                        ...(summary?.tags?.map(t => ({ type: 'tag', date: new Date(t.createdAt), data: t })) || [])
+                                        ...(summary?.tags?.map(t => ({ type: 'tag', date: new Date(t.createdAt), data: t })) || []),
+                                        // Fake Form Submission if they have customer.metadata.lastMetaFormName
+                                        ...((customer as any).metadata?.lastMetaFormName ? [{
+                                            type: 'form',
+                                            date: new Date((customer as any).metadata.lastMetaFormSubmittedAt || customer.createdAt),
+                                            data: { formName: (customer as any).metadata.lastMetaFormName }
+                                        }] : [])
                                     ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
                                     if (timelineItems.length === 0) {
                                         return (
-                                            <div className="text-center text-slate-300 py-24 flex flex-col items-center gap-6">
-                                                <div className="w-20 h-20 bg-white/50 rounded-2xl flex items-center justify-center border-2 border-dashed border-slate-200 animate-pulse">
-                                                    <Activity className="w-8 h-8 text-slate-300" />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <p className="font-black text-slate-900 uppercase tracking-[0.2em] text-[10px]">Zero Signal</p>
-                                                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest opacity-60">Awaiting interaction data</p>
-                                                </div>
+                                            <div className="text-center text-slate-400 py-12 text-xs">
+                                                No activity recorded yet.
                                             </div>
                                         );
                                     }
 
                                     return timelineItems.map((item: any, idx) => {
+
+                                        // Renderer for Form Submission
+                                        if (item.type === 'form') {
+                                            return (
+                                                <div key={`form-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
+                                                    <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-100 border border-slate-200 shadow-sm flex items-center justify-center">
+                                                        <FileText className="w-3 h-3 text-slate-600" />
+                                                    </div>
+                                                    <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm mb-4">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className="font-bold text-slate-800 text-sm">Form submission</span>
+                                                            <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
+                                                        </div>
+                                                        <div className="text-xs text-slate-600">
+                                                            <strong>{customer.firstName}</strong> submitted <strong>{item.data.formName}</strong>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        }
                                         if (item.type === 'communication') {
                                             const comm = item.data as CommunicationLog;
                                             const isCall = comm.type === 'call';
                                             return (
-                                                <div key={`comm-${idx}`} className="relative pl-10 pr-5 z-10 group/item">
-                                                    <div className={`absolute left-[24px] top-2.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-lg z-10 transition-all duration-700 group-hover/item:scale-150 ${isCall ? 'bg-blue-600 shadow-blue-500/40' : 'bg-indigo-600 shadow-indigo-500/40'}`} />
-
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center justify-between gap-3">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`text-[10px] font-bold px-2 py-1 rounded border ${isCall ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
-                                                                    {isCall ? 'Phone Call' : 'Message'}
-                                                                </span>
-                                                            </div>
-                                                            <span className="text-[11px] text-slate-400 font-medium tabular-nums">
-                                                                {item.date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                                                            </span>
-                                                        </div>
-
+                                                <div key={`comm-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
+                                                    <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-100 border border-slate-200 shadow-sm z-10 flex items-center justify-center">
+                                                        {isCall ? <PhoneCall className="w-3 h-3 text-slate-600" /> : <Mail className="w-3 h-3 text-slate-600" />}
+                                                    </div>
+                                                    <div className="space-y-2 mb-4">
                                                         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <span className="font-bold text-slate-800 text-sm">{isCall ? 'Call logged' : 'Message logged'}</span>
+                                                                <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
+                                                            </div>
                                                             <p className="text-xs text-slate-700 leading-relaxed font-medium mb-3">{comm.notes}</p>
-
-                                                            {comm.metadata?.recordingUrl && (
-                                                                <div className="bg-slate-50 rounded-lg p-2.5 flex items-center gap-3 border border-slate-100 relative">
-                                                                    <div className="w-7 h-7 bg-white border border-slate-200 rounded-full flex items-center justify-center shadow-sm cursor-pointer hover:bg-slate-50 transition-all text-slate-600 flex-shrink-0">
-                                                                        <Play className="w-3 h-3 ml-0.5 fill-current" />
-                                                                    </div>
-                                                                    <div className="flex-1 space-y-1.5">
-                                                                        <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
-                                                                            <div className="h-full w-1/3 bg-blue-500 rounded-full" />
-                                                                        </div>
-                                                                        <div className="flex justify-between items-center px-1">
-                                                                            <span className="text-[9px] font-medium text-slate-400">Recording</span>
-                                                                            <span className="text-[9px] font-medium text-slate-500 tabular-nums">0:12 / 2:45</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
                                                             {(comm.metadata?.outcome || (comm.metadata?.tags && comm.metadata?.tags.length > 0)) && (
                                                                 <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
                                                                     {comm.metadata.outcome && (
@@ -1016,38 +1021,33 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                         } else if (item.type === 'appointment') {
                                             const apt = item.data as any;
                                             return (
-                                                <div key={`apt-${idx}`} className="relative pl-10 pr-5 z-10 group/item">
-                                                    <div className="absolute left-[24px] top-2.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-md z-10 bg-emerald-500 transition-all duration-700 group-hover/item:scale-125" />
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-[10px] font-bold px-2 py-1 bg-emerald-50 text-emerald-700 rounded border border-emerald-100">Appointment</span>
-                                                            <span className="text-[11px] text-slate-400 font-medium tabular-nums">
-                                                                {item.date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                                                            </span>
-                                                        </div>
-                                                        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300 flex items-start gap-4">
-                                                            <div className="p-2.5 bg-emerald-50 rounded-lg text-emerald-600 flex-shrink-0 border border-emerald-100">
-                                                                <Calendar className="w-5 h-5" />
+                                                <div key={`apt-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
+                                                    <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-emerald-50 border border-emerald-200 shadow-sm z-10 flex items-center justify-center">
+                                                        <Calendar className="w-3 h-3 text-emerald-600" />
+                                                    </div>
+                                                    <div className="space-y-2 mb-4">
+                                                        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <span className="font-bold text-slate-800 text-sm">Meeting</span>
+                                                                <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
                                                             </div>
-                                                            <div className="flex-1 space-y-1.5">
-                                                                <p className="text-sm font-bold text-slate-900 leading-tight">{apt.serviceName || 'Procedure'}</p>
-                                                                <div className="flex items-center justify-between">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Badge className="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded border border-emerald-100">
-                                                                            {apt.status}
-                                                                        </Badge>
-                                                                        <span className="text-[10px] font-medium text-slate-400">{apt.clinicName || 'Clinic'}</span>
-                                                                    </div>
-                                                                    {apt.status !== 'completed' && apt.status !== 'cancelled' && (
-                                                                        <Button
-                                                                            size="sm"
-                                                                            className="h-7 px-3 bg-slate-800 hover:bg-emerald-600 text-white rounded font-bold text-[10px] transition-all"
-                                                                            onClick={() => handleCompleteAppointment(apt.id)}
-                                                                        >
-                                                                            Complete
-                                                                        </Button>
-                                                                    )}
+                                                            <p className="text-sm font-bold text-slate-900 leading-tight mb-3">{apt.serviceName || 'Procedure'}</p>
+                                                            <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                                                                <div className="flex items-center gap-3">
+                                                                    <Badge className="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded border border-emerald-100">
+                                                                        {apt.status}
+                                                                    </Badge>
+                                                                    <span className="text-[10px] font-medium text-slate-400">{apt.clinicName || 'Clinic'}</span>
                                                                 </div>
+                                                                {apt.status !== 'completed' && apt.status !== 'cancelled' && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="h-7 px-3 bg-slate-800 hover:bg-emerald-600 text-white rounded font-bold text-[10px] transition-all"
+                                                                        onClick={() => handleCompleteAppointment(apt.id)}
+                                                                    >
+                                                                        Complete
+                                                                    </Button>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1056,31 +1056,22 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                         } else if (item.type === 'action') {
                                             const act = item.data as CrmAction;
                                             return (
-                                                <div key={`act-${idx}`} className="relative pl-10 pr-5 z-10 group/item">
-                                                    <div className="absolute left-[24px] top-2.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-md z-10 bg-amber-500 transition-all duration-700 group-hover/item:scale-125" />
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-[10px] font-bold px-2 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded">Task</span>
-                                                            <span className="text-[11px] text-slate-400 font-medium tabular-nums">
-                                                                {item.date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                                                            </span>
-                                                        </div>
+                                                <div key={`act-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
+                                                    <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-amber-50 border border-amber-200 shadow-sm z-10 flex items-center justify-center">
+                                                        <CheckCircle className="w-3 h-3 text-amber-600" />
+                                                    </div>
+                                                    <div className="space-y-2 mb-4">
                                                         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
-                                                            <div className="flex items-start gap-4">
-                                                                <div className="mt-1 flex-shrink-0">
-                                                                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${act.status === 'completed' ? 'bg-amber-500 border-amber-500 text-white shadow' : 'border-slate-200 bg-white shadow-sm'}`}>
-                                                                        {act.status === 'completed' && <Check className="w-3 h-3" strokeWidth={4} />}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex-1 space-y-1.5">
-                                                                    <p className={`text-sm font-bold leading-tight ${act.status === 'completed' ? 'line-through text-slate-300' : 'text-slate-900'}`}>{act.title}</p>
-                                                                    <p className="text-[12px] text-slate-500 font-medium leading-relaxed line-clamp-2">{act.description || 'No description provided'}</p>
-                                                                    {act.dueDate && (
-                                                                        <div className="mt-2 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-100 w-fit flex items-center gap-1.5">
-                                                                            <Clock className="w-3 h-3" /> Due {new Date(act.dueDate).toLocaleDateString()}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <span className="font-bold text-slate-800 text-sm">Task: {act.title}</span>
+                                                                <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
+                                                            </div>
+                                                            <p className="text-xs text-slate-700 leading-relaxed font-medium mb-3">{act.description || '--'}</p>
+                                                            <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
+                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${act.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>{act.status}</span>
+                                                                {act.dueDate && (
+                                                                    <span className="text-[10px] text-slate-400 flex items-center gap-1 font-medium"><Clock className="w-3 h-3" /> Due {new Date(act.dueDate).toLocaleDateString()}</span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1089,18 +1080,17 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                         } else if (item.type === 'tag') {
                                             const tag = item.data as any;
                                             return (
-                                                <div key={`tag-${idx}`} className="relative pl-10 pr-5 z-10 group/item">
-                                                    <div className="absolute left-[24px] top-2.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-md z-10 bg-slate-400 transition-all duration-700 group-hover/item:scale-125" />
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-[10px] font-bold px-2 py-1 bg-slate-50 text-slate-500 rounded border border-slate-200">Tag Added</span>
-                                                            <span className="text-[11px] text-slate-400 font-medium tabular-nums">
-                                                                {item.date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                                                            </span>
-                                                        </div>
-                                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center gap-3">
-                                                            <div className="p-1.5 bg-white rounded border border-slate-200 shadow-sm"><Tag className="w-3.5 h-3.5 text-slate-400" /></div>
-                                                            <span className="text-[12px] font-medium text-slate-600">Classification: <span className="text-slate-900 font-bold">#{tag.tag?.name || 'General'}</span></span>
+                                                <div key={`tag-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
+                                                    <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-50 border border-slate-200 shadow-sm z-10 flex items-center justify-center">
+                                                        <Tag className="w-3 h-3 text-slate-600" />
+                                                    </div>
+                                                    <div className="space-y-2 mb-4">
+                                                        <div className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-sm font-bold text-slate-800">Tag added:</span>
+                                                                <Badge className="bg-slate-100 text-slate-700 border border-slate-200">#{tag.tag?.name || 'General'}</Badge>
+                                                            </div>
+                                                            <span className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1113,7 +1103,27 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                         </CardContent>
                     </Card>
                 </div>
-            </div>
+            </div >
+
+            {/* Diary Modal */}
+            {showDiaryModal && (
+                <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4">
+                    <div className="bg-gray-50 flex flex-col w-[95vw] h-[95vh] rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="bg-white border-b border-gray-100 flex items-center justify-between px-6 py-4">
+                            <h3 className="font-black text-xl text-gray-900">Clinic Sales Diary</h3>
+                            <Button variant="ghost" className="hover:bg-red-50 text-gray-500 hover:text-red-500 rounded-xl" onClick={() => setShowDiaryModal(false)}>
+                                <X className="w-6 h-6" />
+                            </Button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            <StaffDiary onNewAppointment={() => {
+                                setShowDiaryModal(false);
+                                setShowBookingModal(true);
+                            }} />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modals */}
             {showBookingModal && (
@@ -1130,6 +1140,121 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 />
             )}
 
+            {/* Phone Call Notes Modal */}
+            {showPhoneCallModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2"><PhoneCall className="w-4 h-4 text-slate-400" /> Add Phone Call Notes</h3>
+                            <Button variant="ghost" size="sm" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); }} className="h-8 w-8 p-0">
+                                <X className="w-4 h-4" />
+                            </Button>
+                        </div>
+                        <div className="space-y-4">
+                            <Textarea
+                                placeholder="Write down important notes from the phone call..."
+                                value={phoneCallNotes}
+                                onChange={(e) => setPhoneCallNotes(e.target.value)}
+                                className="min-h-[120px] resize-none"
+                            />
+                            <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); }}>Cancel</Button>
+                                <Button className="bg-slate-800 hover:bg-slate-900 text-white" onClick={handleSavePhoneCallNotes}>Save Notes</Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Email Log Modal */}
+            {showEmailModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2"><Mail className="w-4 h-4 text-slate-400" /> Log Sent Email</h3>
+                            <Button variant="ghost" size="sm" onClick={() => { setShowEmailModal(false); setEmailNotes(""); }} className="h-8 w-8 p-0">
+                                <X className="w-4 h-4" />
+                            </Button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 mb-1 block">Date Sent</label>
+                                <Input type="datetime-local" value={emailDate} onChange={(e) => setEmailDate(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 mb-1 block">Email Content / Body</label>
+                                <Textarea
+                                    placeholder="Paste the email sent from Outlook..."
+                                    value={emailNotes}
+                                    onChange={(e) => setEmailNotes(e.target.value)}
+                                    className="min-h-[120px] resize-none"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <Button variant="outline" onClick={() => { setShowEmailModal(false); setEmailNotes(""); }}>Cancel</Button>
+                                <Button className="bg-slate-800 hover:bg-slate-900 text-white" onClick={handleSaveEmailLog}>Save Email Log</Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Tag Modal */}
+            {showTagModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm border border-slate-200 p-6 space-y-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-slate-800">Add Customer Tag</h3>
+                            <Button variant="ghost" size="sm" onClick={() => { setShowTagModal(false); setQuickTagInput(""); }} className="h-8 w-8 p-0">
+                                <X className="w-4 h-4" />
+                            </Button>
+                        </div>
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="e.g. VIP, Interested"
+                                value={quickTagInput}
+                                onChange={(e) => setQuickTagInput(e.target.value)}
+                                onKeyPress={async (e) => {
+                                    if (e.key === 'Enter' && quickTagInput.trim()) {
+                                        await handleDirectAddTag();
+                                    }
+                                }}
+                            />
+                            <Button
+                                onClick={handleDirectAddTag}
+                                className="bg-slate-800 hover:bg-slate-900 text-white"
+                            >
+                                Save
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Task Modal */}
+            {showTaskModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-slate-800">New Follow-up Task</h2>
+                            <Button variant="ghost" size="sm" onClick={() => setShowTaskModal(false)}>
+                                <X className="w-4 h-4" />
+                            </Button>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            <ActionForm
+                                customerId={customer.id}
+                                onSuccess={() => {
+                                    setShowTaskModal(false);
+                                    dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                }}
+                                prefilledData={{ salespersonId: user?.id }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <DialerModal
                 isOpen={showDialer}
                 onClose={() => setShowDialer(false)}
@@ -1137,6 +1262,6 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 phoneNumber={customer.phone || 'No Number'}
                 onCallEnded={handleCallEnded}
             />
-        </div>
+        </div >
     );
 };

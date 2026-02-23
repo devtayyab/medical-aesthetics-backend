@@ -21,6 +21,12 @@
     justify-content: space-between;
 }
 
+.sales-diary-root .activity-block.compact {
+    padding: 4px 6px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px -1px rgb(0 0 0 / 0.05);
+}
+
 .activity-block.type-action.status-pending {
     background: #eff6ff;
     border-color: #3b82f6;
@@ -62,4 +68,18 @@
 
 .sales-diary-root .diary-header-cell.staff-info .staff-name {
     color: #1e3a8a;
+}
+
+/* Week View Specifics */
+.week-view .diary-day-column {
+    border-right: 1px solid #f1f5f9;
+}
+
+.week-view .diary-header-cell {
+    height: 60px;
+}
+
+.week-view .activity-block {
+    left: 2px;
+    right: 2px;
 }

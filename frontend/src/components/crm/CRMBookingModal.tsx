@@ -118,12 +118,15 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 
         setIsLoading(true);
         try {
-            // Construct payload dynamically to avoid sending undefined values
+            const formattedNotes = [
+                notes ? notes.trim() : null,
+                `[Booked By: ${user?.firstName} ${user?.lastName}]`
+            ].filter(Boolean).join('\n\n');
+
             const payload: any = {
                 clinicId: selectedClinic,
                 serviceId: selectedService,
                 clientId: finalCustomerId,
-                // Fix: Check if startTime is already a full ISO string to prevent double date (e.g. 2026-02-06T2026-02-06...)
                 startTime: selectedSlot.startTime.includes('T')
                     ? selectedSlot.startTime
                     : `${selectedDate}T${selectedSlot.startTime}${selectedSlot.startTime.length === 5 ? ':00' : ''}`,
@@ -132,7 +135,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                     ? selectedSlot.endTime
                     : `${selectedDate}T${selectedSlot.endTime}${selectedSlot.endTime.length === 5 ? ':00' : ''}`,
 
-                notes: notes || undefined,
+                notes: formattedNotes || undefined,
                 paymentMethod: 'pay_at_clinic',
             };
 

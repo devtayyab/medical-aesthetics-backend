@@ -26,13 +26,13 @@ const ServicesPage: React.FC = () => {
   const [editingService, setEditingService] = useState<Service | null>(null);
 
   useEffect(() => {
-    dispatch(fetchServices());
+    dispatch(fetchServices(undefined));
   }, [dispatch]);
 
   const handleToggleStatus = async (id: string) => {
     try {
       await clinicApi.services.toggleStatus(id);
-      dispatch(fetchServices());
+      dispatch(fetchServices(undefined));
     } catch (error) {
       console.error("Failed to toggle service status:", error);
     }
@@ -175,7 +175,7 @@ const ServicesPage: React.FC = () => {
           onSave={() => {
             setShowModal(false);
             setEditingService(null);
-            dispatch(fetchServices());
+            dispatch(fetchServices(undefined));
           }}
         />
       )}
