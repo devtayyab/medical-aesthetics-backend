@@ -24,11 +24,18 @@ const formatPercent = (val?: number) => val ? `${(val * 100).toFixed(1)}%` : '0%
 export const Analytics: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { analytics, isLoading } = useSelector((state: RootState) => state.crm);
+  const { user } = useSelector((state: RootState) => state.auth);
   const [salespersonId, setSalespersonId] = useState<string>("");
   const [dateRange, setDateRange] = useState({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0]
   });
+
+  useEffect(() => {
+    if (user?.id && !salespersonId) {
+      setSalespersonId(user.id);
+    }
+  }, [user]);
 
   useEffect(() => {
     dispatch(fetchCrmMetrics());

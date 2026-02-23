@@ -8,6 +8,7 @@ import { CustomerRecord } from './entities/customer-record.entity';
 import { CommunicationLog } from './entities/communication-log.entity';
 import { CrmAction } from './entities/crm-action.entity';
 import { CustomerTag } from './entities/customer-tag.entity';
+import { Tag } from '../admin/entities/tag.entity';
 import { User } from '../users/entities/user.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { AgentClinicAccess } from './entities/agent-clinic-access.entity';
@@ -1043,9 +1044,53 @@ export class CrmService implements OnModuleInit {
     tagId: string,
     addedBy: string,
     notes?: string
-  ): Promise<CustomerTag> {
+  ): Promise<any> {
+    // 1. Check if it's a Lead ID
+    const lead = await this.leadsRepository.findOne({
+      where: { id: customerId },
+      relations: ['tags']
+    });
+
+    if (lead) {
+      const tag = await this.dataSource.getRepository(Tag).findOne({ where: { id: tagId } });
+      if (!tag) throw new NotFoundException('Tag not found');
+
+      const finalTag = tag as Tag;
+
+      // Check if lead already has this tag
+      const hasTag = lead.tags?.some(t => t.id === tagId);
+      if (!hasTag) {
+        lead.tags = [...(lead.tags || []), finalTag];
+        await this.leadsRepository.save(lead);
+      }
+      return { success: true, message: 'Tag added to lead', data: lead };
+    }
+
+    // 2. Check if it's a User ID (Client)
+    const user = await this.usersRepository.findOne({ where: { id: customerId } });
+    let finalRecordId = customerId;
+
+    if (user) {
+      let record = await this.customerRecordsRepository.findOne({ where: { customerId: user.id } });
+      if (!record) {
+        record = await this.createCustomerRecord(user.id);
+      }
+      finalRecordId = record.id;
+    } else {
+      // 3. check if it's already a CustomerRecord ID
+      const recordById = await this.customerRecordsRepository.findOne({ where: { id: customerId } });
+      if (!recordById) {
+        throw new NotFoundException('Customer or Lead not found');
+      }
+      finalRecordId = recordById.id;
+    }
+
+    // Ensure tag exists before creating CustomerTag
+    const tagExists = await this.dataSource.getRepository(Tag).findOne({ where: { id: tagId } });
+    if (!tagExists) throw new NotFoundException('Tag not found');
+
     const tag = this.customerTagsRepository.create({
-      customerId,
+      customerId: finalRecordId,
       tagId,
       addedBy,
       notes,
@@ -1265,7 +1310,12 @@ export class CrmService implements OnModuleInit {
       tasksCompleted,
       totalActions,
       completedActions: tasksCompleted,
-      averageResponseTime: '24m', // Placeholder - requires implementation of response time tracking
+      averageResponseTime: '24m', // Placeholder
+
+      // Map to generic CRM metrics names for consistent UI display
+      totalLeads: leadsAssigned,
+      convertedLeads: leadsConverted,
+      conversionRate: leadsAssigned > 0 ? leadsConverted / leadsAssigned : 0,
 
       // Detailed objects (legacy support)
       communicationStats: {

@@ -99,7 +99,7 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { isLoading, isAuthenticated, user, refreshToken } = useSelector(
+  const { isLoading, isAuthenticated, user } = useSelector(
     (state: RootState) => state.auth
   );
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
@@ -351,6 +351,14 @@ function AppContent() {
               element={
                 <ProtectedLayout allowedRoles={["clinic_owner", "secretariat"]}>
                   <NotificationsPage />
+                </ProtectedLayout>
+              }
+            />
+            <Route
+              path="my-notifications"
+              element={
+                <ProtectedLayout allowedRoles={["clinic_owner", "doctor", "secretariat"]}>
+                  <NotificationsCrm />
                 </ProtectedLayout>
               }
             />
@@ -674,7 +682,9 @@ function AppContent() {
             path="/messages"
             element={
               <ProtectedLayout allowedRoles={["client", "salesperson", "manager", "admin", "clinic_owner", "doctor", "secretariat", "SUPER_ADMIN"]}>
-                <MessagesPage />
+                <AdminLayout>
+                  <MessagesPage />
+                </AdminLayout>
               </ProtectedLayout>
             }
           />

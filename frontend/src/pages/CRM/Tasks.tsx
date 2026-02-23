@@ -320,8 +320,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <Select
                 label="Status"
                 value={taskFormData.status}
-                onChange={(e) =>
-                  setTaskFormData({ ...taskFormData, status: e.target.value as TaskFormData['status'] })
+                onChange={(value) =>
+                  setTaskFormData({ ...taskFormData, status: value as TaskFormData['status'] })
                 }
                 options={[
                   { value: 'pending', label: 'Pending' },
@@ -333,8 +333,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <Select
                 label="Type"
                 value={taskFormData.actionType}
-                onChange={(e) =>
-                  setTaskFormData({ ...taskFormData, actionType: e.target.value as CrmAction['actionType'] })
+                onChange={(value) =>
+                  setTaskFormData({ ...taskFormData, actionType: value as CrmAction['actionType'] })
                 }
                 options={[
                   { value: 'follow_up', label: 'Follow Up' },
@@ -396,8 +396,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <Select
                 label="Status"
                 value={taskFormData.status}
-                onChange={(e) =>
-                  setTaskFormData({ ...taskFormData, status: e.target.value as TaskFormData['status'] })
+                onChange={(value) =>
+                  setTaskFormData({ ...taskFormData, status: value as TaskFormData['status'] })
                 }
                 options={[
                   { value: 'pending', label: 'Pending' },
@@ -410,8 +410,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <Select
                 label="Type"
                 value={taskFormData.actionType}
-                onChange={(e) =>
-                  setTaskFormData({ ...taskFormData, actionType: e.target.value as CrmAction['actionType'] })
+                onChange={(value) =>
+                  setTaskFormData({ ...taskFormData, actionType: value as CrmAction['actionType'] })
                 }
                 options={[
                   { value: 'follow_up', label: 'Follow Up' },

@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { css } from "@emotion/css";
 import type { RootState, AppDispatch } from "@/store";
-import { fetchNotifications, markAsRead } from "@/store/slices/notificationsSlice";
+import { fetchNotifications, markAsRead, markAllAsRead } from "@/store/slices/notificationsSlice";
 
 const dropdownStyle = css`
   position: absolute;
@@ -76,7 +76,19 @@ interface NotificationDropdownProps {
 export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose }) => {
     const dispatch = useDispatch<AppDispatch>();
     const { notifications } = useSelector((state: RootState) => state.notifications);
+    const { user } = useSelector((state: RootState) => state.auth);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const getNotificationsLink = () => {
+        if (['clinic_owner', 'doctor', 'secretariat'].includes(user?.role || '')) {
+            return '/clinic/my-notifications';
+        }
+        return '/crm/notifications';
+    };
+
+    const handleMarkAllRead = () => {
+        dispatch(markAllAsRead());
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -113,7 +125,12 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
         <div className={dropdownStyle} ref={dropdownRef}>
             <div className={headerStyle}>
                 <h3 className="font-bold text-gray-900">Notifications</h3>
-                <span className="text-xs text-blue-600 font-medium cursor-pointer hover:underline">Mark all as read</span>
+                <span
+                    className="text-xs text-blue-600 font-medium cursor-pointer hover:underline"
+                    onClick={handleMarkAllRead}
+                >
+                    Mark all as read
+                </span>
             </div>
 
             <div className={scrollAreaStyle}>
@@ -149,7 +166,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
 
             <div className="p-3 bg-gray-50 text-center border-t border-gray-100">
                 <Link
-                    to="/crm/notifications"
+                    to={getNotificationsLink()}
                     className="text-xs font-bold text-gray-600 hover:text-black"
                     onClick={onClose}
                 >

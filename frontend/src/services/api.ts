@@ -394,7 +394,7 @@ export const crmAPI = {
 
   // Repeat Customer Management
   identifyRepeatCustomers: (salespersonId?: string) =>
-    api.get("/crm/repeat-customers", { params: { salespersonId } }),
+    api.get("/crm/customers/repeat", { params: { salespersonId } }),
   getCustomersDueForFollowUp: (salespersonId?: string, daysThreshold?: number) =>
     api.get("/crm/follow-up", { params: { salespersonId, daysThreshold } }),
 
@@ -425,6 +425,8 @@ export const crmAPI = {
 
 export const adminAPI = {
   getMetrics: () => api.get("/admin/metrics"),
+  getTags: () => api.get("/admin/tags"),
+  createTag: (data: { name: string; color?: string; description?: string }) => api.post("/admin/tags", data),
   getUsers: () => api.get("/admin/users"),
   updateRole: (id: string, role: string) =>
     api.patch(`/admin/users/${id}/role`, { role }),
