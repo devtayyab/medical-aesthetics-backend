@@ -81,6 +81,7 @@ import { FacebookIntegration } from "./pages/CRM/FacebookIntegration";
 import { Settings as CrmSettings } from "./pages/CRM/Settings";
 import { Notifications as NotificationsCrm } from "./pages/CRM/Notifications";
 import { MessagesPage } from "./pages/Messages/MessagesPage";
+import { BookingCalendar } from "./pages/CRM/BookingCalendar";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -470,6 +471,16 @@ function AppContent() {
               <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
                 <AdminLayout>
                   <Actions />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/crm/calendar"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <BookingCalendar />
                 </AdminLayout>
               </ProtectedLayout>
             }

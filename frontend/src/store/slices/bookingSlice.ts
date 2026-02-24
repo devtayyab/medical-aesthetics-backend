@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { bookingAPI } from '@/services/api';
+import { bookingAPI, api } from '@/services/api';
 import type { BookingFlow, Service, TimeSlot, Appointment, Clinic } from '@/types';
 
 interface BookingState extends BookingFlow {
@@ -80,6 +80,14 @@ export const fetchUserAppointments = createAsyncThunk(
   }
 );
 
+export const fetchClinicAppointments = createAsyncThunk(
+  'booking/fetchClinicAppointments',
+  async (params: { clinicId?: string; date?: string; providerId?: string; status?: string }) => {
+    const response = await bookingAPI.getClinicAppointments(params);
+    return response.data;
+  }
+);
+
 export const cancelAppointment = createAsyncThunk(
   'booking/cancelAppointment',
   async (id: string) => {
@@ -101,6 +109,14 @@ export const completeAppointment = createAsyncThunk(
   async (data: { id: string; completionData?: any }) => {
     const response = await bookingAPI.complete(data.id, data.completionData);
     return { id: data.id, ...response.data };
+  }
+);
+
+export const updateAppointmentStatus = createAsyncThunk(
+  'booking/updateStatus',
+  async (data: { id: string; status: string }) => {
+    const response = await api.patch(`/appointments/${data.id}/status`, { status: data.status });
+    return response.data;
   }
 );
 
@@ -206,6 +222,9 @@ const bookingSlice = createSlice({
       })
       // Fetch user appointments
       .addCase(fetchUserAppointments.fulfilled, (state, action) => {
+        state.appointments = action.payload;
+      })
+      .addCase(fetchClinicAppointments.fulfilled, (state, action) => {
         state.appointments = action.payload;
       })
       .addCase(cancelAppointment.fulfilled, (state, action) => {

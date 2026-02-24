@@ -238,6 +238,8 @@ export const bookingAPI = {
   }) => api.post("/appointments", data),
   getUserAppointments: () => api.get("/appointments"),
   getAppointment: (id: string) => api.get(`/appointments/${id}`),
+  getClinicAppointments: (params: { clinicId?: string; date?: string; providerId?: string; status?: string }) =>
+    api.get("/appointments/clinic", { params }),
   reschedule: (id: string, startTime: string, endTime: string) =>
     api.patch(`/appointments/${id}/reschedule`, { startTime, endTime }),
   cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
@@ -297,6 +299,9 @@ export const crmAPI = {
     facebookLeadData?: any;
     status: string;
     metadata?: any;
+    assignedSalesId?: string;
+    notes?: string;
+    estimatedValue?: number;
   }) => api.post("/crm/leads", data),
   getLeads: (filters?: CrmFilters) => api.get("/crm/leads", { params: filters }),
   getLead: (id: string) => api.get(`/crm/leads/${id}`),
@@ -359,6 +364,7 @@ export const crmAPI = {
     api.get(`/crm/actions/${salespersonId}/pending`),
   getOverdueTasks: (salespersonId?: string) =>
     api.get("/crm/tasks/overdue", { params: { salespersonId } }),
+  getTaskKpis: () => api.get("/crm/tasks/kpis"),
 
   // Tag Management
   addCustomerTag: (customerId: string, tagId: string, notes?: string) =>
