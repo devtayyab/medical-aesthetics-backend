@@ -78,29 +78,9 @@ export class MandatoryFieldValidationService {
     const warnings: string[] = [];
 
     // For phone call actions, ensure required fields are present
-    if (actionData.actionType === 'phone_call' && actionData.status !== 'pending') {
-      // Check top-level fields first (as they are in the entity), then fallback to metadata
-      const clinic = actionData.clinic || actionData.metadata?.clinic;
-      const proposedTreatment = actionData.proposedTreatment || actionData.metadata?.proposedTreatment;
-      const callOutcome = actionData.callOutcome || actionData.metadata?.callOutcome;
-
-      if (!clinic) {
-        missingFields.push('clinic');
-      }
-
-      if (!proposedTreatment) {
-        missingFields.push('proposedTreatment');
-      }
-
-      if (!callOutcome) {
-        missingFields.push('callOutcome');
-      }
-
-      // Warnings for missing optional but recommended fields
-      const cost = actionData.cost !== undefined ? actionData.cost : actionData.metadata?.cost;
-      if (cost === undefined && cost !== 0) {
-        warnings.push('Cost information missing');
-      }
+    if (actionData.actionType === 'call' && actionData.status !== 'pending') {
+      // No longer strictly requiring these fields on the Action itself,
+      // as they are typically captured in the CommunicationLog instead.
     }
 
     return {
@@ -209,12 +189,12 @@ export class MandatoryFieldValidationService {
 
   getRequiredFieldsForAction(actionType: string): RequiredFields {
     switch (actionType) {
-      case 'phone_call':
+      case 'call':
         return {
-          clinic: true,
-          proposedTreatment: true,
+          clinic: false,
+          proposedTreatment: false,
           cost: false, // Optional for actions
-          callOutcome: true,
+          callOutcome: false,
           notes: false,
         };
       case 'follow_up':

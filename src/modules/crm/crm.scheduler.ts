@@ -51,4 +51,18 @@ export class CrmScheduler {
       this.logger.error('Failed to run task automation check', error as any);
     }
   }
+
+  // Every 15 minutes
+  @Cron('*/15 * * * *')
+  async runTaskReminders() {
+    try {
+      this.logger.log('Starting task reminders check...');
+      const sent = await this.crmService.runTaskRemindersOnly();
+      if (sent > 0) {
+        this.logger.log(`Task reminders sent: ${sent}`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to run task reminders', error as any);
+    }
+  }
 }
