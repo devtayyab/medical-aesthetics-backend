@@ -108,6 +108,22 @@ export class BookingsController {
     return this.bookingsService.updateStatus(id, AppointmentStatus.COMPLETED, data);
   }
 
+  @Patch('appointments/:id/status')
+  @ApiOperation({ summary: 'Update appointment status' })
+  updateStatus(
+    @Param('id') id: string,
+    @Body() body: { status: AppointmentStatus },
+    @Request() req,
+  ) {
+    return this.bookingsService.updateAppointmentStatus(id, body.status, req.user.id, req.user.role);
+  }
+
+  @Get('appointments/clinic')
+  @ApiOperation({ summary: 'Get clinic appointments with filters' })
+  getClinicAppointments(@Request() req, @Query() query: any) {
+    return this.bookingsService.findClinicAppointments(req.user.id, req.user.role, query);
+  }
+
   @Get('appointments')
   @ApiOperation({ summary: 'Get user appointments' })
   getUserAppointments(@Request() req) {

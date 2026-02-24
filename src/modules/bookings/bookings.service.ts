@@ -222,6 +222,10 @@ export class BookingsService {
       if (data?.totalAmount) {
         updateData.totalAmount = data.totalAmount;
       }
+    } else if (status === AppointmentStatus.CANCELLED) {
+      updateData.cancelledAt = new Date();
+    } else if (status === AppointmentStatus.NO_SHOW) {
+      updateData.noShowMarkedAt = new Date();
     }
 
     await this.appointmentsRepository.update(id, updateData);
@@ -399,6 +403,10 @@ export class BookingsService {
 
     if (status === AppointmentStatus.COMPLETED) {
       appointment.completedAt = new Date();
+    } else if (status === AppointmentStatus.CANCELLED) {
+      appointment.cancelledAt = new Date();
+    } else if (status === AppointmentStatus.NO_SHOW) {
+      appointment.noShowMarkedAt = new Date();
     }
 
     return this.appointmentsRepository.save(appointment);

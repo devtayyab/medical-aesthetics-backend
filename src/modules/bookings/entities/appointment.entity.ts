@@ -61,6 +61,9 @@ export class Appointment {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   totalAmount: number;
 
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  amountPaid: number; // For turnover
+
   @Column({ nullable: true })
   holdId: string; // Reference to temporary hold
 
@@ -69,6 +72,12 @@ export class Appointment {
 
   @Column({ type: 'timestamptz', nullable: true })
   completedAt: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  cancelledAt: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  noShowMarkedAt: Date;
 
   @Column({
     type: 'enum',
@@ -92,6 +101,9 @@ export class Appointment {
 
   @Column('text', { nullable: true })
   clinicNotes?: string; // Notes from clinic about the appointment
+
+  @Column({ type: 'uuid', nullable: true })
+  bookedById: string;
 
   @Column('json', { nullable: true })
   appointmentCompletionReport?: {
@@ -125,4 +137,8 @@ export class Appointment {
   @ManyToOne(() => User, (user) => user.clientAppointments)
   @JoinColumn({ name: 'clientId' })
   client: User;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'bookedById' })
+  bookedBy: User;
 }

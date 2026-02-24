@@ -3,10 +3,9 @@ import { IsUUID, IsString, IsEnum, IsOptional, IsDate, IsObject } from 'class-va
 import { Type } from 'class-transformer';
 
 export class CreateActionDto {
-  @ApiProperty({ example: 'b3f1c2d0-8f4a-4d3e-a123-56789abcde01', required: false })
-  @IsOptional()
+  @ApiProperty({ example: 'b3f1c2d0-8f4a-4d3e-a123-56789abcde01', required: true })
   @IsUUID()
-  customerId?: string;
+  customerId: string;
 
   @ApiProperty({ example: 'd2e5f6a1-3b4c-4e5f-b678-12345fghij67', required: false })
   @IsOptional()
@@ -14,12 +13,17 @@ export class CreateActionDto {
   salespersonId?: string;
 
   @ApiProperty({
-    example: 'phone_call',
-    enum: ['phone_call', 'email', 'follow_up', 'appointment_confirmation', 'meeting', 'treatment_reminder'],
+    example: 'call',
+    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder'],
   })
   @IsString()
-  @IsEnum(['phone_call', 'email', 'follow_up', 'appointment_confirmation', 'meeting', 'treatment_reminder'])
+  @IsEnum(['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder'])
   actionType: string;
+
+  @ApiProperty({ example: 'Facial Therapy', required: false })
+  @IsOptional()
+  @IsString()
+  therapy?: string;
 
   @ApiProperty({ example: 'Follow up with client' })
   @IsString()
@@ -46,11 +50,34 @@ export class CreateActionDto {
   @Type(() => Date)
   dueDate?: Date;
 
+  @ApiProperty({ example: '2025-10-29T09:00:00Z', required: true })
+  @IsDate()
+  @Type(() => Date)
+  reminderDate: Date;
+
   @ApiProperty({ example: '2025-10-30T12:00:00Z', required: false })
   @IsOptional()
   @IsDate()
   @Type(() => Date)
   completedAt?: Date;
+
+  @ApiProperty({ example: false, required: false })
+  @IsOptional()
+  isRecurring?: boolean;
+
+  @ApiProperty({ example: 'weekly', enum: ['daily', 'weekly', 'monthly', 'custom'], required: false })
+  @IsOptional()
+  @IsEnum(['daily', 'weekly', 'monthly', 'custom'])
+  recurrenceType?: string;
+
+  @ApiProperty({ example: 7, required: false })
+  @IsOptional()
+  recurrenceInterval?: number;
+
+  @ApiProperty({ example: 'b3f1c2d0-8f4a-4d3e-a123-56789abcde01', required: false })
+  @IsOptional()
+  @IsUUID()
+  originalTaskId?: string;
 
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7g8h-9i0j-123456789abc', required: false })
   @IsOptional()

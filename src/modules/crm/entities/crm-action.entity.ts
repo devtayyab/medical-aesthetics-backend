@@ -17,7 +17,7 @@ export class CrmAction {
 
   // Customer relation
   @Column({ type: 'uuid', nullable: true })
-  customerId?: string | null;
+  customerId: string;
 
   @ManyToOne(() => CustomerRecord, customer => customer.actions, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'customerId' })
@@ -34,9 +34,12 @@ export class CrmAction {
   // Action type
   @Column({
     type: 'enum',
-    enum: ['phone_call', 'email', 'follow_up', 'appointment_confirmation', 'meeting', 'treatment_reminder'],
+    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder', 'follow_up', 'phone_call'],
   })
   actionType: string;
+
+  @Column({ nullable: true })
+  therapy?: string;
 
   // Title
   @Column()
@@ -49,7 +52,7 @@ export class CrmAction {
   // Status
   @Column({
     type: 'enum',
-    enum: ['pending', 'completed', 'cancelled', 'missed'],
+    enum: ['pending', 'in_progress', 'completed', 'cancelled', 'missed'],
     default: 'pending',
   })
   status: string;
@@ -67,7 +70,27 @@ export class CrmAction {
   dueDate?: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
+  reminderDate: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
   completedAt?: Date;
+
+  // Recurrence logic
+  @Column({ default: false })
+  isRecurring: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: ['daily', 'weekly', 'monthly', 'custom'],
+    nullable: true,
+  })
+  recurrenceType?: string;
+
+  @Column({ type: 'integer', nullable: true })
+  recurrenceInterval?: number; // for custom/interval based
+
+  @Column({ type: 'uuid', nullable: true })
+  originalTaskId?: string;
 
   // Optional relations
   @Column({ type: 'uuid', nullable: true })
@@ -76,7 +99,7 @@ export class CrmAction {
   @Column({ type: 'uuid', nullable: true })
   relatedLeadId?: string;
 
-  // Mandatory fields for phone_call actions
+  // Mandatory fields for call actions
   @Column({ nullable: true })
   clinic?: string;
 
