@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card as CardAtom } from '@/components/atoms/Card/Card';
+import { Card as CardAtom, CardProps as CardAtomProps } from '@/components/atoms/Card/Card';
 
 interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -13,12 +13,12 @@ interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
   children: React.ReactNode;
 }
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardProps extends CardAtomProps {
   children: React.ReactNode;
 }
 
 export const CardHeader: React.FC<CardHeaderProps> = ({ children, className = '', ...props }) => (
-  <div className={`p-6 pb-0 ${className}`} {...props}>
+  <div className={`p-4 pb-0 ${className}`} {...props}>
     {children}
   </div>
 );

@@ -24,6 +24,7 @@ import {
 import React, { useEffect, useState, cloneElement, ReactNode, ReactElement } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { SalesDiary } from '@/components/organisms/SalesDiary/SalesDiary';
+import { Analytics } from '@/pages/CRM/Analytics';
 import { fetchServices, fetchAvailability, fetchClinicProviders } from '@/store/slices/clinicSlice';
 import { RootState } from '@/store';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
@@ -449,29 +450,7 @@ export const ManagerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="sales">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                title="Revenue"
-                value={formatCurrency(selectedClinic.totalRevenue)}
-                change={0}
-                icon={<DollarSign className="h-4 w-4" />}
-                iconBg="bg-green-100 text-green-600"
-              />
-              <StatCard
-                title="Appointments"
-                value={selectedClinic.totalAppointments.toString()}
-                change={0}
-                icon={<Calendar className="h-4 w-4" />}
-                iconBg="bg-blue-100 text-blue-600"
-              />
-              <StatCard
-                title="Completed"
-                value={selectedClinic.completed.toString()}
-                change={0}
-                icon={<Activity className="h-4 w-4" />}
-                iconBg="bg-purple-100 text-purple-600"
-              />
-            </div>
+            <Analytics />
           </TabsContent>
 
           <TabsContent value="messages">
@@ -531,43 +510,7 @@ export const ManagerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="performance">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <StatCard
-                title="Appointments Booked"
-                value={selectedAgent.totalAppointments.toString()}
-                change={0}
-                icon={<Calendar className="h-4 w-4" />}
-                iconBg="bg-blue-100 text-blue-600"
-              />
-              <StatCard
-                title="Revenue"
-                value={formatCurrency(selectedAgent.totalRevenue)}
-                change={0}
-                icon={<DollarSign className="h-4 w-4" />}
-                iconBg="bg-green-100 text-green-600"
-              />
-              <StatCard
-                title="Services Sold"
-                value={(selectedAgent.servicesSold || selectedAgent.completedAppointments).toString()}
-                change={0}
-                icon={<Activity className="h-4 w-4" />}
-                iconBg="bg-purple-100 text-purple-600"
-              />
-              <StatCard
-                title="Non-shows"
-                value={selectedAgent.noShows.toString()}
-                change={0}
-                icon={<AlertCircle className="h-4 w-4" />}
-                iconBg="bg-red-100 text-red-600"
-              />
-              <StatCard
-                title="Calls Made"
-                value={(selectedAgent.callsMade || 0).toString()}
-                change={0}
-                icon={<Phone className="h-4 w-4" />}
-                iconBg="bg-amber-100 text-amber-600"
-              />
-            </div>
+            <Analytics initialSalespersonId={selectedAgent.agentId} />
           </TabsContent>
         </Tabs>
       </div>

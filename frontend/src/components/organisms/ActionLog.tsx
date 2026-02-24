@@ -9,7 +9,7 @@ interface ActionLogProps {
 //   id: string;
 //   customerId: string;
 //   salespersonId: string;
-//   actionType: 'phone_call' | 'email' | 'follow_up' | 'appointment_confirmation' | 'treatment_reminder' | 'meeting';
+//   actionType: 'call' | 'email' | 'follow_up' | 'appointment_confirmation' | 'treatment_reminder' | 'meeting';
 //   title: string;
 //   description?: string;
 //   status: 'pending' | 'in_progress' | 'completed' | 'overdue' | 'cancelled';
@@ -49,8 +49,8 @@ export const ActionLog: React.FC<ActionLogProps> = ({ actions }) => {
             </p>
             <p>{action.description}</p>
             <p>{action.customerId}</p>
-            <p>{action.callOutcome}</p>
-          
+            <p>{action.metadata?.callOutcome}</p>
+
             <p>{new Date(action.createdAt).toLocaleString()}</p>
           </div>
         ))}

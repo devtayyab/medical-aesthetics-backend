@@ -5,7 +5,7 @@ import {
     ArrowRight, User, Users, Plus,
     AlertCircle, FileText, Check, X,
     MoreHorizontal, Trash2, PhoneCall,
-    Activity, CheckCircle
+    Activity, CheckCircle, Repeat
 } from "lucide-react";
 import { Button } from "@/components/atoms/Button/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
@@ -24,7 +24,9 @@ import {
     logCommunication,
     updateLead,
     addCustomerTag,
-    deleteLead
+    deleteLead,
+    updateAction,
+    deleteAction
 } from "@/store/slices/crmSlice";
 import { AuthState } from "@/store/slices/authSlice";
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
@@ -335,7 +337,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
             setWorkflowStep(4); // Go to review to set confirmation task
             // Task set by modal success or manually here? 
             // We'll set a default confirmation task
-            setAutoTask({ title: 'Confirmation Call', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], type: 'phone_call' });
+            setAutoTask({ title: 'Confirmation Call', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], type: 'call' });
         } else if (outcome === 'call_later') {
             setOutcomeStep('callback'); // Shows date picker
             setWorkflowStep(3); // Tag step (can skip or integrate) -> actually let's go to Tag then Task
@@ -344,7 +346,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
         } else if (outcome === 'no_answer') {
             setWorkflowStep(3); // Tag
             // Mandatory Task: Call again
-            setAutoTask({ title: 'Call again (No Answer)', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], type: 'phone_call' });
+            setAutoTask({ title: 'Call again (No Answer)', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], type: 'call' });
         } else {
             // Default Fallback
             setWorkflowStep(3);
@@ -397,14 +399,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
             currentAutoTask = {
                 title: 'Follow-up: No Answer (Auto)',
                 date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-                type: 'phone_call'
+                type: 'call'
             };
         }
         if (hasCallAgain && !currentAutoTask) {
             currentAutoTask = {
                 title: 'Follow-up: Call Again (Auto)',
                 date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-                type: 'phone_call'
+                type: 'call'
             };
         }
 
@@ -469,10 +471,27 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
         }
     };
 
-    const handleCompleteAppointment = async (id: string) => {
+    const handleCompleteAppointment = async (id: string, aptObj?: any) => {
         if (!confirm('Mark this appointment as completed?')) return;
         try {
             await dispatch(completeAppointment({ id })).unwrap();
+
+            // Create a Confirmation Call Reminder for the next day as requested (Section 6.3/6.4)
+            const nextDay = new Date();
+            nextDay.setDate(nextDay.getDate() + 1);
+
+            await dispatch(createAction({
+                title: `Confirmation Call for ${aptObj?.serviceName || 'Procedure'}`,
+                description: 'Follow up with the customer post-appointment.',
+                actionType: 'confirmation_call_reminder' as any,
+                priority: 'medium',
+                status: 'pending',
+                dueDate: nextDay.toISOString().split('T')[0],
+                reminderDate: nextDay.toISOString(),
+                customerId: customer.id,
+                salespersonId: user?.id || undefined,
+            })).unwrap();
+
             dispatch(fetchCustomerRecord({
                 customerId: customer.id,
                 salespersonId: user?.id
@@ -590,7 +609,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                         value={callbackDate}
                                         onChange={(e) => {
                                             setCallbackDate(e.target.value);
-                                            setAutoTask({ title: 'Callback Request', date: e.target.value, type: 'phone_call' });
+                                            setAutoTask({ title: 'Callback Request', date: e.target.value, type: 'call' });
                                         }}
                                         className="bg-white h-12 rounded-lg border-blue-200 text-sm font-bold px-4 shadow-sm"
                                     />
@@ -693,10 +712,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                 <div className="space-y-1.5">
                                                     <label className="text-[10px] font-bold text-slate-400 uppercase block px-1 text-center">Type</label>
                                                     <Select
-                                                        value={autoTask?.type || 'phone_call'}
+                                                        value={autoTask?.type || 'call'}
                                                         onChange={(val) => setAutoTask(prev => ({ ...prev!, type: val }))}
                                                         options={[
-                                                            { value: 'phone_call', label: 'Call' },
+                                                            { value: 'call', label: 'Call' },
                                                             { value: 'meeting', label: 'Meeting' },
                                                             { value: 'email', label: 'Email' }
                                                         ]}
@@ -846,11 +865,34 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 </Button>
             </div>
 
-            {/* Main Layout - 2 Columns */}
+            {/* Tabs Navigation */}
+            <div className="flex items-center gap-1 border-b border-slate-200 mb-6">
+                {[
+                    { id: 'overview', label: 'Overview', icon: Activity },
+                    { id: 'appointments', label: 'Appointments', icon: Calendar },
+                    { id: 'communications', label: 'Communications', icon: Mail },
+                    { id: 'tasks', label: 'Tasks', icon: CheckCircle }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-2 px-6 py-3 text-xs font-bold transition-all relative
+                            ${activeTab === tab.id ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <tab.icon className="w-3.5 h-3.5" />
+                        {tab.label}
+                        {activeTab === tab.id && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+                        )}
+                    </button>
+                ))}
+            </div>
+
+            {/* Main Layout - Conditional Rendering based on Tabs */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-                {/* Left Column: Properties */}
-                <div className="lg:col-span-4 xl:col-span-3 space-y-6">
+                {/* Left Column: Properties (Always visible in Overview, hidden or minimized in others if needed) */}
+                <div className={`lg:col-span-4 xl:col-span-3 space-y-6 ${activeTab !== 'overview' && 'hidden lg:block opacity-50 pointer-events-none'}`}>
                     <Card className="border-none shadow-sm bg-white rounded-lg overflow-hidden border border-slate-200">
                         <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-5">
                             <CardTitle className="text-xs font-bold text-slate-600 flex items-center justify-between">
@@ -919,189 +961,421 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     </Card>
                 </div>
 
-                {/* Right Column: Interaction Logging & Timeline */}
-                <div className="lg:col-span-8 xl:col-span-9 space-y-6 h-full">
+                {/* Right Column: Dynamic Content */}
+                <div className="lg:col-span-8 xl:col-span-9 space-y-6">
 
-                    {/* Interaction Logger Drop-in */}
-                    <div className="mb-6">
-                        {renderInteractionFlow()}
-                    </div>
-                    <Card className="border-none shadow-sm h-[650px] flex flex-col bg-white rounded-lg overflow-hidden border border-slate-200">
-                        <CardHeader className="border-b border-gray-100/30 pb-3 pt-4 px-5 bg-white/40">
-                            <CardTitle className="text-[10px] uppercase font-bold text-slate-500 flex items-center justify-between">
-                                Activity History
-                                <div className="px-2 py-1 bg-slate-100 rounded-lg text-[9px] font-bold text-slate-600 border border-slate-200">
-                                    {((summary?.communications?.length || 0) +
-                                        (summary?.appointments?.length || 0) +
-                                        (summary?.actions?.length || 0) +
-                                        (summary?.tags?.length || 0))} Activities
-                                </div>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-1 overflow-y-auto p-0 relative custom-scrollbar bg-slate-50/10">
-                            <div className="absolute left-[29px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-blue-500/0 via-blue-500/10 to-blue-500/0 z-0" />
-
-                            <div className="py-6 space-y-6">
-                                {(() => {
-                                    const timelineItems = [
-                                        ...(summary?.communications?.map(c => ({ type: 'communication', date: new Date(c.createdAt), data: c })) || []),
-                                        ...(summary?.appointments?.map(a => ({ type: 'appointment', date: new Date(a.startTime), data: a })) || []),
-                                        ...(summary?.actions?.map(a => ({ type: 'action', date: new Date(a.createdAt), data: a })) || []),
-                                        ...(summary?.tags?.map(t => ({ type: 'tag', date: new Date(t.createdAt), data: t })) || []),
-                                        // Fake Form Submission if they have customer.metadata.lastMetaFormName
-                                        ...((customer as any).metadata?.lastMetaFormName ? [{
-                                            type: 'form',
-                                            date: new Date((customer as any).metadata.lastMetaFormSubmittedAt || customer.createdAt),
-                                            data: { formName: (customer as any).metadata.lastMetaFormName }
-                                        }] : [])
-                                    ].sort((a, b) => b.date.getTime() - a.date.getTime());
-
-                                    if (timelineItems.length === 0) {
-                                        return (
-                                            <div className="text-center text-slate-400 py-12 text-xs">
-                                                No activity recorded yet.
-                                            </div>
-                                        );
-                                    }
-
-                                    return timelineItems.map((item: any, idx) => {
-
-                                        // Renderer for Form Submission
-                                        if (item.type === 'form') {
-                                            return (
-                                                <div key={`form-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
-                                                    <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-100 border border-slate-200 shadow-sm flex items-center justify-center">
-                                                        <FileText className="w-3 h-3 text-slate-600" />
-                                                    </div>
-                                                    <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm mb-4">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <span className="font-bold text-slate-800 text-sm">Form submission</span>
-                                                            <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
-                                                        </div>
-                                                        <div className="text-xs text-slate-600">
-                                                            <strong>{customer.firstName}</strong> submitted <strong>{item.data.formName}</strong>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )
-                                        }
-                                        if (item.type === 'communication') {
-                                            const comm = item.data as CommunicationLog;
-                                            const isCall = comm.type === 'call';
-                                            return (
-                                                <div key={`comm-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
-                                                    <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-100 border border-slate-200 shadow-sm z-10 flex items-center justify-center">
-                                                        {isCall ? <PhoneCall className="w-3 h-3 text-slate-600" /> : <Mail className="w-3 h-3 text-slate-600" />}
-                                                    </div>
-                                                    <div className="space-y-2 mb-4">
-                                                        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <span className="font-bold text-slate-800 text-sm">{isCall ? 'Call logged' : 'Message logged'}</span>
-                                                                <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
-                                                            </div>
-                                                            <p className="text-xs text-slate-700 leading-relaxed font-medium mb-3">{comm.notes}</p>
-                                                            {(comm.metadata?.outcome || (comm.metadata?.tags && comm.metadata?.tags.length > 0)) && (
-                                                                <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
-                                                                    {comm.metadata.outcome && (
-                                                                        <Badge className="bg-slate-700 text-white text-[9px] font-semibold px-2 py-0.5 rounded">
-                                                                            {comm.metadata.outcome.replace('_', ' ')}
-                                                                        </Badge>
-                                                                    )}
-                                                                    {comm.metadata.tags && comm.metadata.tags.map((t: string) => (
-                                                                        <span key={t} className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                                                                            #{t}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        } else if (item.type === 'appointment') {
-                                            const apt = item.data as any;
-                                            return (
-                                                <div key={`apt-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
-                                                    <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-emerald-50 border border-emerald-200 shadow-sm z-10 flex items-center justify-center">
-                                                        <Calendar className="w-3 h-3 text-emerald-600" />
-                                                    </div>
-                                                    <div className="space-y-2 mb-4">
-                                                        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <span className="font-bold text-slate-800 text-sm">Meeting</span>
-                                                                <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
-                                                            </div>
-                                                            <p className="text-sm font-bold text-slate-900 leading-tight mb-3">{apt.serviceName || 'Procedure'}</p>
-                                                            <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                                                                <div className="flex items-center gap-3">
-                                                                    <Badge className="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded border border-emerald-100">
-                                                                        {apt.status}
-                                                                    </Badge>
-                                                                    <span className="text-[10px] font-medium text-slate-400">{apt.clinicName || 'Clinic'}</span>
-                                                                </div>
-                                                                {apt.status !== 'completed' && apt.status !== 'cancelled' && (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="h-7 px-3 bg-slate-800 hover:bg-emerald-600 text-white rounded font-bold text-[10px] transition-all"
-                                                                        onClick={() => handleCompleteAppointment(apt.id)}
-                                                                    >
-                                                                        Complete
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        } else if (item.type === 'action') {
-                                            const act = item.data as CrmAction;
-                                            return (
-                                                <div key={`act-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
-                                                    <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-amber-50 border border-amber-200 shadow-sm z-10 flex items-center justify-center">
-                                                        <CheckCircle className="w-3 h-3 text-amber-600" />
-                                                    </div>
-                                                    <div className="space-y-2 mb-4">
-                                                        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <span className="font-bold text-slate-800 text-sm">Task: {act.title}</span>
-                                                                <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
-                                                            </div>
-                                                            <p className="text-xs text-slate-700 leading-relaxed font-medium mb-3">{act.description || '--'}</p>
-                                                            <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
-                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${act.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>{act.status}</span>
-                                                                {act.dueDate && (
-                                                                    <span className="text-[10px] text-slate-400 flex items-center gap-1 font-medium"><Clock className="w-3 h-3" /> Due {new Date(act.dueDate).toLocaleDateString()}</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        } else if (item.type === 'tag') {
-                                            const tag = item.data as any;
-                                            return (
-                                                <div key={`tag-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
-                                                    <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-50 border border-slate-200 shadow-sm z-10 flex items-center justify-center">
-                                                        <Tag className="w-3 h-3 text-slate-600" />
-                                                    </div>
-                                                    <div className="space-y-2 mb-4">
-                                                        <div className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="text-sm font-bold text-slate-800">Tag added:</span>
-                                                                <Badge className="bg-slate-100 text-slate-700 border border-slate-200">#{tag.tag?.name || 'General'}</Badge>
-                                                            </div>
-                                                            <span className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    });
-                                })()}
+                    {activeTab === 'overview' && (
+                        <div className="space-y-6 animate-in fade-in duration-500">
+                            {/* Interaction Logger Drop-in */}
+                            <div className="mb-6">
+                                {renderInteractionFlow()}
                             </div>
-                        </CardContent>
-                    </Card>
+                            <Card className="border-none shadow-sm h-[650px] flex flex-col bg-white rounded-lg overflow-hidden border border-slate-200">
+                                <CardHeader className="border-b border-gray-100/30 pb-3 pt-4 px-5 bg-white/40">
+                                    <CardTitle className="text-[10px] uppercase font-bold text-slate-500 flex items-center justify-between">
+                                        Activity History
+                                        <div className="px-2 py-1 bg-slate-100 rounded-lg text-[9px] font-bold text-slate-600 border border-slate-200">
+                                            {((summary?.communications?.length || 0) +
+                                                (summary?.appointments?.length || 0) +
+                                                (summary?.actions?.length || 0) +
+                                                (summary?.tags?.length || 0))} Activities
+                                        </div>
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="flex-1 overflow-y-auto p-0 relative custom-scrollbar bg-slate-50/10">
+                                    <div className="absolute left-[29px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-blue-500/0 via-blue-500/10 to-blue-500/0 z-0" />
+
+                                    <div className="py-6 space-y-6">
+                                        {(() => {
+                                            const actionEvents = (summary?.actions || []).flatMap(a => {
+                                                const events = [];
+                                                // 1. Task Created
+                                                events.push({ type: 'action_created', date: new Date(a.createdAt), data: a });
+
+                                                // 2. Task Completed
+                                                if (a.status === 'completed' && a.completedAt) {
+                                                    events.push({ type: 'action_completed', date: new Date(a.completedAt), data: a });
+                                                }
+
+                                                // 3. Task Overdue (if pending and past due)
+                                                if (a.status !== 'completed' && a.dueDate && new Date(a.dueDate) < new Date()) {
+                                                    events.push({ type: 'action_overdue', date: new Date(a.dueDate), data: a });
+                                                }
+                                                return events;
+                                            });
+
+                                            const timelineItems = [
+                                                ...(summary?.communications?.map(c => ({ type: 'communication', date: new Date(c.createdAt), data: c })) || []),
+                                                ...(summary?.appointments?.map(a => ({ type: 'appointment', date: new Date(a.startTime), data: a })) || []),
+                                                ...actionEvents,
+                                                ...(summary?.tags?.map(t => ({ type: 'tag', date: new Date(t.createdAt), data: t })) || []),
+                                                // Fake Form Submission if they have customer.metadata.lastMetaFormName
+                                                ...((customer as any).metadata?.lastMetaFormName ? [{
+                                                    type: 'form',
+                                                    date: new Date((customer as any).metadata.lastMetaFormSubmittedAt || customer.createdAt),
+                                                    data: { formName: (customer as any).metadata.lastMetaFormName }
+                                                }] : [])
+                                            ].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+                                            if (timelineItems.length === 0) {
+                                                return (
+                                                    <div className="text-center text-slate-400 py-12 text-xs">
+                                                        No activity recorded yet.
+                                                    </div>
+                                                );
+                                            }
+
+                                            return timelineItems.map((item: any, idx) => {
+
+                                                // Renderer for Form Submission
+                                                if (item.type === 'form') {
+                                                    return (
+                                                        <div key={`form-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
+                                                            <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-100 border border-slate-200 shadow-sm flex items-center justify-center">
+                                                                <FileText className="w-3 h-3 text-slate-600" />
+                                                            </div>
+                                                            <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm mb-4">
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <span className="font-bold text-slate-800 text-sm">Form submission</span>
+                                                                    <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
+                                                                </div>
+                                                                <div className="text-xs text-slate-600">
+                                                                    <strong>{customer.firstName}</strong> submitted <strong>{item.data.formName}</strong>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                }
+                                                if (item.type === 'communication') {
+                                                    const comm = item.data as CommunicationLog;
+                                                    const isCall = comm.type === 'call';
+                                                    return (
+                                                        <div key={`comm-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
+                                                            <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-100 border border-slate-200 shadow-sm z-10 flex items-center justify-center">
+                                                                {isCall ? <PhoneCall className="w-3 h-3 text-slate-600" /> : <Mail className="w-3 h-3 text-slate-600" />}
+                                                            </div>
+                                                            <div className="space-y-2 mb-4">
+                                                                <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <span className="font-bold text-slate-800 text-sm">{isCall ? 'Call logged' : 'Message logged'}</span>
+                                                                        <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
+                                                                    </div>
+                                                                    <p className="text-xs text-slate-700 leading-relaxed font-medium mb-3">{comm.notes}</p>
+                                                                    {(comm.metadata?.outcome || (comm.metadata?.tags && comm.metadata?.tags.length > 0)) && (
+                                                                        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
+                                                                            {comm.metadata.outcome && (
+                                                                                <Badge className="bg-slate-700 text-white text-[9px] font-semibold px-2 py-0.5 rounded">
+                                                                                    {comm.metadata.outcome.replace('_', ' ')}
+                                                                                </Badge>
+                                                                            )}
+                                                                            {comm.metadata.tags && comm.metadata.tags.map((t: string) => (
+                                                                                <span key={t} className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                                                                    #{t}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else if (item.type === 'appointment') {
+                                                    const apt = item.data as any;
+                                                    return (
+                                                        <div key={`apt-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
+                                                            <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-emerald-50 border border-emerald-200 shadow-sm z-10 flex items-center justify-center">
+                                                                <Calendar className="w-3 h-3 text-emerald-600" />
+                                                            </div>
+                                                            <div className="space-y-2 mb-4">
+                                                                <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <span className="font-bold text-slate-800 text-sm">Meeting</span>
+                                                                        <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
+                                                                    </div>
+                                                                    <p className="text-sm font-bold text-slate-900 leading-tight mb-3">{apt.serviceName || 'Procedure'}</p>
+                                                                    <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Badge className="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded border border-emerald-100">
+                                                                                {apt.status}
+                                                                            </Badge>
+                                                                            <span className="text-[10px] font-medium text-slate-400">{apt.clinicName || 'Clinic'}</span>
+                                                                        </div>
+                                                                        {apt.status !== 'completed' && apt.status !== 'cancelled' && (
+                                                                            <div className="flex gap-2">
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    className="h-7 px-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded font-bold text-[10px] transition-all shadow-sm"
+                                                                                    onClick={() => setShowDiaryModal(true)}
+                                                                                >
+                                                                                    <Calendar className="w-3 h-3 mr-1.5" /> Edit
+                                                                                </Button>
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    className="h-7 px-3 bg-slate-800 hover:bg-emerald-600 text-white rounded font-bold text-[10px] transition-all shadow-sm"
+                                                                                    onClick={() => handleCompleteAppointment(apt.id, apt)}
+                                                                                >
+                                                                                    <Check className="w-3 h-3 mr-1.5" /> Complete
+                                                                                </Button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else if (item.type.startsWith('action_')) {
+                                                    const act = item.data as CrmAction;
+                                                    const isConfirmation = act.actionType === 'confirmation_call_reminder';
+                                                    const isCompleted = item.type === 'action_completed';
+                                                    const isOverdue = item.type === 'action_overdue';
+                                                    const isCreated = item.type === 'action_created';
+
+                                                    // Use different styling based on event type
+                                                    let icon = <CheckCircle className="w-3 h-3 text-amber-600" />;
+                                                    let iconBg = 'bg-amber-50 border-amber-200';
+                                                    let titleLabel = `Task Created: ${act.title}`;
+
+                                                    if (isConfirmation) {
+                                                        icon = <PhoneCall className="w-3 h-3 text-indigo-600" />;
+                                                        iconBg = 'bg-indigo-50 border-indigo-200';
+                                                    }
+
+                                                    if (isCompleted) {
+                                                        icon = <CheckCircle className="w-3 h-3 text-emerald-600" />;
+                                                        iconBg = 'bg-emerald-50 border-emerald-200';
+                                                        titleLabel = `Task Completed: ${act.title}`;
+                                                    } else if (isOverdue) {
+                                                        icon = <AlertCircle className="w-3 h-3 text-red-600" />;
+                                                        iconBg = 'bg-red-50 border-red-200';
+                                                        titleLabel = `Task Overdue: ${act.title}`;
+                                                    } else if (act.originalTaskId && act.isRecurring && isCreated) {
+                                                        icon = <Repeat className="w-3 h-3 text-blue-600" />;
+                                                        iconBg = 'bg-blue-50 border-blue-200';
+                                                        titleLabel = `Recurring Task Auto-generated: ${act.title}`;
+                                                    }
+
+                                                    return (
+                                                        <div key={`${item.type}-${act.id}-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
+                                                            <div className={`absolute left-[-2px] top-1 w-6 h-6 rounded-full border shadow-sm z-10 flex items-center justify-center ${iconBg}`}>
+                                                                {icon}
+                                                            </div>
+                                                            <div className="space-y-2 mb-4">
+                                                                <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <span className="font-bold text-slate-800 text-sm">{titleLabel}</span>
+                                                                        <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
+                                                                    </div>
+                                                                    <p className="text-xs text-slate-700 leading-relaxed font-medium mb-3">{act.description || '--'}</p>
+                                                                    <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
+                                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${act.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>{act.status}</span>
+                                                                        {act.dueDate && (
+                                                                            <span className="text-[10px] text-slate-400 flex items-center gap-1 font-medium"><Clock className="w-3 h-3" /> Due {new Date(act.dueDate).toLocaleDateString()}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else if (item.type === 'tag') {
+                                                    const tag = item.data as any;
+                                                    return (
+                                                        <div key={`tag-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
+                                                            <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-50 border border-slate-200 shadow-sm z-10 flex items-center justify-center">
+                                                                <Tag className="w-3 h-3 text-slate-600" />
+                                                            </div>
+                                                            <div className="space-y-2 mb-4">
+                                                                <div className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className="text-sm font-bold text-slate-800">Tag added:</span>
+                                                                        <Badge className="bg-slate-100 text-slate-700 border border-slate-200">#{tag.tag?.name || 'General'}</Badge>
+                                                                    </div>
+                                                                    <span className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            });
+                                        })()}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+
+                    {activeTab === 'tasks' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-200">
+                                <CardHeader className="flex flex-row items-center justify-between bg-slate-50/50 border-b border-slate-100">
+                                    <CardTitle className="text-sm font-black text-slate-800">Operational Tasks</CardTitle>
+                                    <Button size="sm" onClick={() => setShowTaskModal(true)} className="h-8 bg-slate-900 text-white font-bold text-[10px] px-4 rounded-lg">
+                                        <Plus className="w-3 h-3 mr-2" /> Program New Task
+                                    </Button>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="bg-slate-50 border-b border-slate-100">
+                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Task Details</th>
+                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type</th>
+                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Due/Reminder</th>
+                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {summary?.actions?.length === 0 ? (
+                                                    <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic text-xs">No tasks programmed for this contact.</td></tr>
+                                                ) : (
+                                                    summary?.actions?.map((task) => (
+                                                        <tr key={task.id} className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${new Date(task.dueDate!) < new Date() && task.status !== 'completed' ? 'bg-red-50/30' : ''}`}>
+                                                            <td className="p-4">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={task.status === 'completed'}
+                                                                    onChange={(e) => {
+                                                                        e.preventDefault();
+                                                                        const isCompleting = task.status !== 'completed';
+                                                                        const newStatus = isCompleting ? 'completed' : 'pending';
+
+                                                                        if (isCompleting) {
+                                                                            if (task.actionType === 'call' || task.actionType === 'follow_up_call') {
+                                                                                setShowPhoneCallModal(true);
+                                                                            } else if (task.actionType === 'email') {
+                                                                                setShowEmailModal(true);
+                                                                            } else if (task.actionType === 'appointment') {
+                                                                                setShowDiaryModal(true);
+                                                                            }
+                                                                        }
+
+                                                                        dispatch(updateAction({ id: task.id, updates: { status: newStatus } }));
+                                                                        setTimeout(() => dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id })), 500);
+                                                                    }}
+                                                                    className="h-5 w-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                                />
+                                                            </td>
+                                                            <td className="p-4">
+                                                                <div className="font-bold text-slate-800 text-xs">{task.title}</div>
+                                                                {task.description && <div className="text-[10px] text-slate-400 mt-0.5 line-clamp-1 italic">{task.description}</div>}
+                                                            </td>
+                                                            <td className="p-4">
+                                                                <div className="flex flex-col gap-1">
+                                                                    <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[9px] w-fit font-black uppercase tracking-tight">
+                                                                        {task.actionType.replace('_', ' ')}
+                                                                    </Badge>
+                                                                    {task.therapy && <span className="text-[9px] font-bold text-blue-500 italic">Re: {task.therapy}</span>}
+                                                                </div>
+                                                            </td>
+                                                            <td className="p-4">
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <div className={`text-[10px] font-bold flex items-center gap-1.5 ${new Date(task.dueDate!) < new Date() && task.status !== 'completed' ? 'text-red-500' : 'text-slate-600'}`}>
+                                                                        <Clock className="w-3 h-3" /> {new Date(task.dueDate!).toLocaleDateString()}
+                                                                    </div>
+                                                                    <div className="text-[9px] text-slate-400 font-medium">Reminder: {new Date(task.reminderDate!).toLocaleDateString()}</div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="p-4 text-right">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-7 w-7 p-0 text-slate-300 hover:text-red-500"
+                                                                    onClick={async () => {
+                                                                        if (window.confirm('Are you sure you want to delete this task?')) {
+                                                                            await dispatch(deleteAction(task.id));
+                                                                            setTimeout(() => dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id })), 500);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+
+                    {activeTab === 'appointments' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-200">
+                                <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+                                    <CardTitle className="text-sm font-black text-slate-800">Appointment History</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="bg-slate-50 border-b border-slate-100">
+                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date/Time</th>
+                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Service</th>
+                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clinic</th>
+                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {summary?.appointments?.length === 0 ? (
+                                                    <tr><td colSpan={4} className="p-12 text-center text-slate-400 italic text-xs">No appointments scheduled.</td></tr>
+                                                ) : (
+                                                    summary?.appointments?.map((apt) => (
+                                                        <tr key={apt.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                                            <td className="p-4 text-xs font-bold text-slate-700">{new Date(apt.startTime).toLocaleString()}</td>
+                                                            <td className="p-4 text-xs font-medium text-slate-600">{apt.serviceName}</td>
+                                                            <td className="p-4 text-xs font-medium text-slate-500">{apt.clinicName}</td>
+                                                            <td className="p-4">
+                                                                <Badge className={`${apt.status === 'completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'} text-[9px] font-black uppercase`}>{apt.status}</Badge>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+
+                    {activeTab === 'communications' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-200">
+                                <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+                                    <CardTitle className="text-sm font-black text-slate-800">Communication Logs</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    {summary?.communications?.length === 0 ? (
+                                        <div className="p-12 text-center text-slate-400 italic text-xs">No communication logged.</div>
+                                    ) : (
+                                        <div className="divide-y divide-slate-100">
+                                            {summary?.communications?.map((comm) => (
+                                                <div key={comm.id} className="p-5 hover:bg-slate-50/50 transition-all">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            {comm.type === 'call' ? <PhoneCall className="w-3.5 h-3.5 text-blue-500" /> : <Mail className="w-3.5 h-3.5 text-indigo-500" />}
+                                                            <span className="text-xs font-black text-slate-800 uppercase tracking-tight">{comm.type} Logged</span>
+                                                        </div>
+                                                        <span className="text-[10px] font-bold text-slate-400">{new Date(comm.createdAt).toLocaleString()}</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-600 leading-relaxed font-medium bg-white/50 p-3 rounded-lg border border-slate-100 shadow-sm">{comm.notes}</p>
+                                                    {comm.metadata?.outcome && (
+                                                        <div className="mt-3">
+                                                            <Badge className="bg-slate-800 text-white text-[9px] font-bold uppercase">{comm.metadata.outcome}</Badge>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
                 </div>
             </div >
 

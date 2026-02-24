@@ -10,7 +10,7 @@ export class QueueService {
     @InjectQueue('reminders') private remindersQueue: Queue,
     @InjectQueue('followups') private followUpsQueue: Queue,
     @InjectQueue('recurring') private recurringQueue: Queue,
-  ) {}
+  ) { }
 
   // Appointment reminders
   async scheduleAppointmentReminder(
@@ -23,10 +23,10 @@ export class QueueService {
       {
         delay: reminderTime.getTime() - Date.now(),
         attempts: 3,
-        backoff: { type: 'exponential', delay: 1000 }, 
+        backoff: { type: 'exponential', delay: 1000 },
       },
     );
-    
+
     this.logger.log(`Scheduled appointment reminder for ${appointmentId}`);
   }
 
@@ -34,7 +34,7 @@ export class QueueService {
   async scheduleLeadFollowUp(
     leadId: string,
     followUpTime: Date,
-    taskType: string = 'phone_call',
+    taskType: string = 'call',
   ): Promise<void> {
     await this.followUpsQueue.add(
       'lead-followup',
@@ -42,10 +42,10 @@ export class QueueService {
       {
         delay: followUpTime.getTime() - Date.now(),
         attempts: 3,
-        backoff: { type: 'exponential', delay: 1000 }, 
+        backoff: { type: 'exponential', delay: 1000 },
       },
     );
-    
+
     this.logger.log(`Scheduled lead follow-up for ${leadId}`);
   }
 
@@ -56,7 +56,7 @@ export class QueueService {
     clientId: string,
   ): Promise<void> {
     let cronExpression: string;
-    
+
     switch (frequency) {
       case 'weekly':
         cronExpression = '0 9 * * 1'; // Every Monday at 9 AM
@@ -77,10 +77,10 @@ export class QueueService {
       {
         repeat: { cron: cronExpression },
         attempts: 3,
-        backoff: { type: 'exponential', delay: 1000 }, 
+        backoff: { type: 'exponential', delay: 1000 },
       },
     );
-    
+
     this.logger.log(`Scheduled recurring appointments for client ${clientId}`);
   }
 

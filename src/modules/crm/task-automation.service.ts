@@ -480,6 +480,14 @@ export class TaskAutomationService {
     }
 
     try {
+      // Send reminders for pending tasks
+      const remindersSent = await this.sendTaskReminders();
+      console.log(`Sent ${remindersSent} task reminders.`);
+    } catch (error) {
+      console.error('Error during sendTaskReminders:', error);
+    }
+
+    try {
       // Mark overdue tasks
       const overdue = await this.getOverdueTasks();
       for (const task of overdue) {
@@ -498,6 +506,44 @@ export class TaskAutomationService {
     return { tasksCreated, overdueTasks };
   }
 
+  async sendTaskReminders(): Promise<number> {
+    let remindersSent = 0;
+    const now = new Date();
+
+    // Find pending tasks where the reminderDate is in the past,
+    // we haven't sent a reminder yet, and we are within 24 hours of the reminder
+    const tasksToRemind = await this.crmActionsRepository.createQueryBuilder('action')
+      .where('action.status = :status', { status: 'pending' })
+      .andWhere('action.reminderDate <= :now', { now })
+      .andWhere("action.metadata->>'reminderSent' IS NULL")
+      .getMany();
+
+    for (const task of tasksToRemind) {
+      // Avoid sending reminders for tasks that are super old (e.g. reminder was days ago)
+      // assuming they missed it, or just send it anyway? We will send it to make sure it's not missed.
+
+      try {
+        await this.notificationsService.create(
+          task.salespersonId,
+          NotificationType.PUSH,
+          'Task Reminder',
+          `Reminder: Task "${task.title}" is due soon.`,
+          { actionId: task.id } // metadata for frontend linking
+        );
+
+        // Mark as sent
+        const metadata = task.metadata || {};
+        metadata['reminderSent'] = true;
+
+        await this.crmActionsRepository.update(task.id, { metadata });
+        remindersSent++;
+      } catch (e) {
+        console.error(`Failed to send reminder for task ${task.id}:`, e);
+      }
+    }
+
+    return remindersSent;
+  }
   private async getRecentAutomatedTaskCount(): Promise<number> {
     const oneHourAgo = new Date();
     oneHourAgo.setHours(oneHourAgo.getHours() - 1);

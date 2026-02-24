@@ -516,6 +516,10 @@ export class CrmService implements OnModuleInit {
     return this.taskAutomationService.runTaskAutomationCheck();
   }
 
+  async runTaskRemindersOnly(): Promise<number> {
+    return this.taskAutomationService.sendTaskReminders();
+  }
+
   async findAll(filters: any = {}): Promise<Lead[]> {
     const qb = this.leadsRepository.createQueryBuilder('lead')
       .leftJoinAndSelect('lead.assignedSales', 'sales')
@@ -680,6 +684,7 @@ export class CrmService implements OnModuleInit {
           isRepeatCustomer: isRepeat,
           notes: lead.notes,
           source: lead.source,
+          metadata: lead.metadata,
           createdAt: lead.createdAt,
           updatedAt: lead.updatedAt,
           tags: lead.tags || [],
@@ -1002,6 +1007,24 @@ export class CrmService implements OnModuleInit {
 
   // Action/Task Management
   async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
+    // 1. Mandatory Reminder Logic
+    if (!data.reminderDate) {
+      throw new BadRequestException('Reminder date is required for all tasks.');
+    }
+
+    const now = new Date();
+    const reminderDate = new Date(data.reminderDate);
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setFullYear(now.getFullYear() + 1);
+
+    if (reminderDate < now) {
+      throw new BadRequestException('Reminder date cannot be in the past.');
+    }
+
+    if (reminderDate > oneYearFromNow) {
+      throw new BadRequestException('Reminder date cannot be more than 1 year in the future.');
+    }
+
     // Resolve customerRecord if customerId (User ID) is provided
     if (data.customerId) {
       // 1. Check if it's a CustomerRecord ID (unlikely from frontend, but possible)
@@ -1035,10 +1058,8 @@ export class CrmService implements OnModuleInit {
       }
     }
 
-    // Enforce mandatory field validation for phone call actions
-    if (data.actionType === 'phone_call') {
-      await this.mandatoryFieldValidationService.enforceActionCompletion(data.customerId, data);
-    }
+    // We used to enforce mandatory field validation for phone call actions here,
+    // but ActionForm does not require them upfront.
 
     const action = this.crmActionsRepository.create(data);
     const savedAction = await this.crmActionsRepository.save(action);
@@ -1065,39 +1086,121 @@ export class CrmService implements OnModuleInit {
       throw new NotFoundException('Action not found');
     }
 
-    if (updateData.status === 'completed' && action.status !== 'completed') {
+    // Reminder validation if being updated
+    if (updateData.reminderDate) {
+      const now = new Date();
+      const reminderDate = new Date(updateData.reminderDate);
+      const oneYearFromNow = new Date(action.createdAt || now);
+      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
+      if (reminderDate < now && reminderDate.getTime() !== new Date(action.reminderDate).getTime()) {
+        throw new BadRequestException('Reminder date cannot be in the past.');
+      }
+
+      if (reminderDate > oneYearFromNow) {
+        throw new BadRequestException('Reminder date cannot exceed 1 year from task creation.');
+      }
+    }
+
+    const wasCompleted = action.status === 'completed';
+    const isNowCompleted = updateData.status === 'completed';
+
+    if (isNowCompleted && !wasCompleted) {
       updateData.completedAt = new Date();
+
+      // Handle Recurrence Logic
+      if (action.isRecurring || updateData.isRecurring) {
+        await this.handleTaskRecurrence(action, updateData);
+      }
     }
 
     Object.assign(action, updateData);
     return this.crmActionsRepository.save(action);
   }
 
+  async deleteAction(id: string): Promise<void> {
+    const result = await this.crmActionsRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Action with ID "${id}" not found`);
+    }
+  }
+
+  private async handleTaskRecurrence(action: CrmAction, updateData: Partial<CrmAction>) {
+    const type = updateData.recurrenceType || action.recurrenceType;
+    const interval = updateData.recurrenceInterval || action.recurrenceInterval || 1;
+
+    if (!type) return;
+
+    const nextDueDate = new Date(updateData.dueDate || action.dueDate || new Date());
+    const nextReminderDate = new Date(updateData.reminderDate || action.reminderDate || new Date());
+
+    if (type === 'daily') {
+      nextDueDate.setDate(nextDueDate.getDate() + 1);
+      nextReminderDate.setDate(nextReminderDate.getDate() + 1);
+    } else if (type === 'weekly') {
+      nextDueDate.setDate(nextDueDate.getDate() + 7);
+      nextReminderDate.setDate(nextReminderDate.getDate() + 7);
+    } else if (type === 'monthly') {
+      nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+      nextReminderDate.setMonth(nextReminderDate.getMonth() + 1);
+    } else if (type === 'custom') {
+      nextDueDate.setDate(nextDueDate.getDate() + interval);
+      nextReminderDate.setDate(nextReminderDate.getDate() + interval);
+    }
+
+    const nextActionData: Partial<CrmAction> = {
+      ...action,
+      id: undefined, // TypeORM will generate new ID
+      status: 'pending',
+      dueDate: nextDueDate,
+      reminderDate: nextReminderDate,
+      completedAt: null,
+      originalTaskId: action.originalTaskId || action.id,
+      createdAt: undefined,
+      updatedAt: undefined,
+    };
+
+    // Filter out some fields that shouldn't be copied
+    delete nextActionData['createdAt'];
+    delete nextActionData['updatedAt'];
+    delete (nextActionData as any)['id'];
+
+    const nextAction = this.crmActionsRepository.create(nextActionData);
+    await this.crmActionsRepository.save(nextAction);
+  }
+
   async getActions(
     requesterId: string,
-    filters?: { status?: string; priority?: string; customerId?: string }
+    filters?: { status?: string; priority?: string; customerId?: string; salespersonId?: string }
   ): Promise<CrmAction[]> {
     try {
       const user = await this.usersRepository.findOne({ where: { id: requesterId } });
       const qb = this.crmActionsRepository
         .createQueryBuilder('action')
-        .leftJoinAndSelect('action.customer', 'customer');
+        .leftJoinAndSelect('action.customer', 'customer')
+        .leftJoinAndSelect('customer.customer', 'clientUser') // Join with actual User for name
+        .leftJoinAndSelect('action.salesperson', 'salesperson');
 
+      // 1. Authorization Filter
       if (user?.role === UserRole.SALESPERSON) {
+        // Salespeople only see their own tasks
         qb.where('action.salespersonId = :sid', { sid: requesterId });
       } else if (user?.role === UserRole.CLINIC_OWNER) {
-        // Actions for customers in owned clinics
+        // Clinic owners see tasks for customers in their clinics
         const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
         const ownedClinicIds = ownerships.map(o => o.clinicId);
         if (ownedClinicIds.length === 0) return [];
         qb.leftJoin('customer.customer', 'u')
           .leftJoin('u.clientAppointments', 'apt')
           .andWhere('apt.clinicId IN (:...ids)', { ids: ownedClinicIds });
+      } else if ([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER].includes(user?.role as UserRole)) {
+        // Admins/Managers can see everything (initial state)
       } else {
-        // Default: nothing
         qb.where('1=0');
+        return [];
       }
 
+      // 2. Additional Filters from Query Params
       if (filters?.status) {
         qb.andWhere('action.status = :status', { status: filters.status });
       }
@@ -1110,11 +1213,46 @@ export class CrmService implements OnModuleInit {
         qb.andWhere('action.customerId = :customerId', { customerId: filters.customerId });
       }
 
-      return await qb.orderBy('action.dueDate', 'ASC').getMany();
+      if (filters?.salespersonId) {
+        qb.andWhere('action.salespersonId = :salespersonId', { salespersonId: filters.salespersonId });
+      }
+
+      const now = new Date();
+
+      // Custom sorting: Overdue (pending + date < now) first, then upcoming
+      // In TypeORM QueryBuilder, we can use CASE in orderBy
+      return await qb
+        .orderBy(`CASE 
+          WHEN action.status = 'pending' AND action.dueDate < CURRENT_TIMESTAMP THEN 0 
+          WHEN action.status = 'pending' AND action.dueDate >= CURRENT_TIMESTAMP THEN 1
+          ELSE 2 
+        END`, 'ASC')
+        .addOrderBy('action.dueDate', 'ASC')
+        .getMany();
     } catch (error) {
       this.logger.error(`Error in getActions: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+  async getTaskKpis(salespersonId: string): Promise<any> {
+    const now = new Date();
+
+    const stats = await this.crmActionsRepository.createQueryBuilder('action')
+      .where('action.salespersonId = :sid', { sid: salespersonId })
+      .select('action.status', 'status')
+      .addSelect('action.dueDate', 'dueDate')
+      .getRawMany();
+
+    const result = {
+      total: stats.length,
+      pending: stats.filter(s => s.status === 'pending').length,
+      overdue: stats.filter(s => s.status === 'pending' && s.dueDate && new Date(s.dueDate) < now).length,
+      inProgress: stats.filter(s => s.status === 'in_progress').length,
+      completed: stats.filter(s => s.status === 'completed').length,
+    };
+
+    return result;
   }
 
   async getPendingActions(salespersonId: string): Promise<CrmAction[]> {
@@ -1127,6 +1265,8 @@ export class CrmService implements OnModuleInit {
       order: { dueDate: 'ASC' },
     });
   }
+
+
 
   // Customer Tag Management
   async addCustomerTag(
@@ -1314,10 +1454,15 @@ export class CrmService implements OnModuleInit {
 
   // Analytics for Salesperson
   async getSalespersonAnalytics(salespersonId: string, dateRange?: { startDate: Date; endDate: Date }): Promise<any> {
+    const isAll = salespersonId === 'all' || salespersonId === '';
+
     // 1. Leads Analytics
-    let leadsQuery = this.leadsRepository
-      .createQueryBuilder('lead')
-      .where('lead.assignedSalesId = :salespersonId', { salespersonId });
+    let leadsQuery = this.leadsRepository.createQueryBuilder('lead');
+    if (!isAll) {
+      leadsQuery = leadsQuery.where('lead.assignedSalesId = :salespersonId', { salespersonId });
+    } else {
+      leadsQuery = leadsQuery.where('1=1');
+    }
 
     if (dateRange) {
       leadsQuery = leadsQuery.andWhere(
@@ -1335,9 +1480,12 @@ export class CrmService implements OnModuleInit {
       .getCount();
 
     // 2. Communication Stats
-    let communicationQuery = this.communicationLogsRepository
-      .createQueryBuilder('log')
-      .where('log.salespersonId = :salespersonId', { salespersonId });
+    let communicationQuery = this.communicationLogsRepository.createQueryBuilder('log');
+    if (!isAll) {
+      communicationQuery = communicationQuery.where('log.salespersonId = :salespersonId', { salespersonId });
+    } else {
+      communicationQuery = communicationQuery.where('1=1');
+    }
 
     if (dateRange) {
       communicationQuery = communicationQuery.andWhere(
@@ -1358,9 +1506,12 @@ export class CrmService implements OnModuleInit {
       .getRawOne();
 
     // 3. Action Stats
-    let actionQuery = this.crmActionsRepository
-      .createQueryBuilder('action')
-      .where('action.salespersonId = :salespersonId', { salespersonId });
+    let actionQuery = this.crmActionsRepository.createQueryBuilder('action');
+    if (!isAll) {
+      actionQuery = actionQuery.where('action.salespersonId = :salespersonId', { salespersonId });
+    } else {
+      actionQuery = actionQuery.where('1=1');
+    }
 
     if (dateRange) {
       actionQuery = actionQuery.andWhere(
@@ -1382,15 +1533,166 @@ export class CrmService implements OnModuleInit {
     const totalActions = parseInt(actionStats.totalActions || '0');
 
     // 4. Customer Stats (Lifetime Value, etc.)
-    const customerStats = await this.customerRecordsRepository
-      .createQueryBuilder('record')
-      .where('record.assignedSalespersonId = :salespersonId', { salespersonId })
+    let customerQuery = this.customerRecordsRepository.createQueryBuilder('record');
+    if (!isAll) {
+      customerQuery = customerQuery.where('record.assignedSalespersonId = :salespersonId', { salespersonId });
+    } else {
+      customerQuery = customerQuery.where('1=1');
+    }
+
+    const customerStats = await customerQuery
       .select([
         'COUNT(record.id) as "totalCustomers"',
         'COUNT(CASE WHEN record.isRepeatCustomer = true THEN 1 END) as "repeatCustomers"',
         'SUM(record.lifetimeValue) as "totalRevenue"',
       ])
       .getRawOne();
+
+    // 5. Appointments Funnel Stats
+    const aptBaseQ = this.appointmentsRepository
+      .createQueryBuilder('apt')
+      .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId');
+
+    if (!isAll) {
+      aptBaseQ.where('rec.assignedSalespersonId = :salespersonId', { salespersonId });
+    } else {
+      aptBaseQ.where('1=1');
+    }
+
+    // Booked
+    let bookedQ = aptBaseQ.clone();
+    if (dateRange) {
+      bookedQ = bookedQ.andWhere('apt.createdAt >= :startDate AND apt.createdAt <= :endDate', dateRange);
+    }
+    const bookedApts = await bookedQ.getCount();
+
+    // Canceled 
+    let cancelledQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'cancelled' });
+    if (dateRange) {
+      cancelledQ = cancelledQ.andWhere('apt.updatedAt >= :startDate AND apt.updatedAt <= :endDate', dateRange);
+    }
+    const cancelledApts = await cancelledQ.getCount();
+
+    // No-shows 
+    let noShowQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'no_show' });
+    if (dateRange) {
+      noShowQ = noShowQ.andWhere('apt.startTime >= :startDate AND apt.startTime <= :endDate', dateRange);
+    }
+    const noShowApts = await noShowQ.getCount();
+
+    // Done / Completed 
+    let completedQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'completed' });
+    if (dateRange) {
+      completedQ = completedQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt) >= :startDate AND COALESCE(apt.completedAt, apt.updatedAt) <= :endDate', dateRange);
+    }
+    const completedApts = await completedQ.getCount();
+
+    // Returned Appointments
+    let returnedQ = aptBaseQ.clone();
+    if (dateRange) {
+      returnedQ = returnedQ.andWhere('apt.startTime >= :startDate AND apt.startTime <= :endDate', dateRange);
+    }
+    returnedQ = returnedQ.andWhere(`
+      EXISTS (
+        SELECT 1 FROM appointments prev
+        WHERE prev."clientId" = apt."clientId"
+        AND prev.status = 'completed'
+        AND COALESCE(prev."completedAt", prev."updatedAt", prev."startTime") < apt."startTime"
+      )
+    `);
+    const returnedApts = await returnedQ.getCount();
+
+    // 6. Turnover MTD & Monthly Target
+    let monthlyTarget = 0;
+    let targetIsSet = false;
+
+    if (!isAll) {
+      const sp = await this.usersRepository.findOne({ where: { id: salespersonId } });
+      if (sp?.profile?.monthly_target_eur) {
+        monthlyTarget = parseFloat(sp.profile.monthly_target_eur);
+        targetIsSet = true;
+      }
+    } else {
+      const salespeople = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON } });
+      let totalTarget = 0;
+      let anySet = false;
+      for (const sp of salespeople) {
+        if (sp?.profile?.monthly_target_eur) {
+          totalTarget += parseFloat(sp.profile.monthly_target_eur);
+          anySet = true;
+        }
+      }
+      if (anySet) {
+        monthlyTarget = totalTarget;
+        targetIsSet = true;
+      }
+    }
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    let mtdAptQ = this.appointmentsRepository
+      .createQueryBuilder('apt')
+      .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId')
+      .select([
+        'COALESCE(SUM(COALESCE(apt.amountPaid, apt.totalAmount, 0)), 0) as "totalRevenue"'
+      ]);
+
+    if (!isAll) {
+      mtdAptQ = mtdAptQ.where('rec.assignedSalespersonId = :salespersonId', { salespersonId });
+    } else {
+      mtdAptQ = mtdAptQ.where('1=1');
+    }
+
+    mtdAptQ = mtdAptQ.andWhere('apt.completedAt BETWEEN :startOfMonth AND :now', { startOfMonth, now });
+
+    const mtdStats = await mtdAptQ.getRawOne();
+
+    const achievedMtd = parseFloat(mtdStats?.totalRevenue || 0);
+    const progress = targetIsSet && monthlyTarget > 0 ? (achievedMtd / monthlyTarget) : 0;
+
+    // Pacing calculation
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const currentDay = now.getDate();
+    const expectedProgress = currentDay / daysInMonth;
+
+    let pacingDelta = 0;
+    let pacingStatus = 'On Track';
+    if (targetIsSet && monthlyTarget > 0) {
+      pacingDelta = progress - expectedProgress;
+      if (pacingDelta > 0.05) pacingStatus = 'Ahead';
+      else if (pacingDelta < -0.05) pacingStatus = 'Behind';
+    }
+
+    // 7. Turnover Time Series Data for Chart
+    const timeSeriesQ = this.appointmentsRepository
+      .createQueryBuilder('apt')
+      .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId')
+      .select([
+        "DATE(COALESCE(apt.completedAt, apt.updatedAt)) as date",
+        "SUM(COALESCE(apt.amountPaid, apt.totalAmount, 0)) as amount",
+      ])
+      .where('apt.status = :status', { status: 'completed' });
+
+    if (!isAll) {
+      timeSeriesQ.andWhere('rec.assignedSalespersonId = :salespersonId', { salespersonId });
+    }
+
+    if (dateRange) {
+      timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt) >= :startDate AND COALESCE(apt.completedAt, apt.updatedAt) <= :endDate', dateRange);
+    } else {
+      timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt) >= :startOfMonth AND COALESCE(apt.completedAt, apt.updatedAt) <= :now', { startOfMonth, now });
+    }
+
+    timeSeriesQ
+      .groupBy("DATE(COALESCE(apt.completedAt, apt.updatedAt))")
+      .orderBy("date", "ASC");
+
+    const tsStats = await timeSeriesQ.getRawMany();
+    const turnoverTimeSeries = tsStats.map(t => ({
+      date: t.date?.toISOString ? t.date.toISOString().split('T')[0] : t.date,
+      amount: parseFloat(t.amount || 0)
+    }));
 
     return {
       // Flattened metrics for Dashboard
@@ -1407,28 +1709,48 @@ export class CrmService implements OnModuleInit {
       convertedLeads: leadsConverted,
       conversionRate: leadsAssigned > 0 ? leadsConverted / leadsAssigned : 0,
 
+      // Turnover Performance
+      turnoverStats: {
+        monthlyTarget,
+        targetIsSet,
+        achieved: achievedMtd,
+        progress: targetIsSet ? parseFloat(progress.toFixed(4)) : null,
+        expectedProgress: parseFloat(expectedProgress.toFixed(4)),
+        pacingDelta: parseFloat(pacingDelta.toFixed(4)),
+        pacingStatus
+      },
+
+      appointmentStats: {
+        total: bookedApts,
+        completed: completedApts,
+        cancelled: cancelledApts,
+        noShow: noShowApts,
+        returned: returnedApts
+      },
+      turnoverTimeSeries,
+
       // Detailed objects (legacy support)
       communicationStats: {
-        total: parseInt(communicationStats.totalCommunications) || 0,
-        calls: parseInt(communicationStats.totalCalls) || 0,
-        answeredCalls: parseInt(communicationStats.answeredCalls) || 0,
-        missedCalls: parseInt(communicationStats.missedCalls) || 0,
-        emails: parseInt(communicationStats.totalEmails) || 0,
-        totalDurationSeconds: parseInt(communicationStats.totalDuration) || 0,
-        avgDurationMinutes: communicationStats.totalCalls > 0
-          ? (parseInt(communicationStats.totalDuration) / parseInt(communicationStats.totalCalls) / 60).toFixed(1)
+        total: parseInt(communicationStats?.totalCommunications || 0),
+        calls: parseInt(communicationStats?.totalCalls || 0),
+        answeredCalls: parseInt(communicationStats?.answeredCalls || 0),
+        missedCalls: parseInt(communicationStats?.missedCalls || 0),
+        emails: parseInt(communicationStats?.totalEmails || 0),
+        totalDurationSeconds: parseInt(communicationStats?.totalDuration || 0),
+        avgDurationMinutes: parseInt(communicationStats?.totalCalls || 0) > 0
+          ? (parseInt(communicationStats?.totalDuration || 0) / parseInt(communicationStats?.totalCalls || 0) / 60).toFixed(1)
           : 0
       },
       actionStats: {
         total: totalActions,
-        pending: parseInt(actionStats.pendingActions) || 0,
+        pending: parseInt(actionStats?.pendingActions || 0),
         completed: tasksCompleted,
-        missed: parseInt(actionStats.missedActions) || 0,
+        missed: parseInt(actionStats?.missedActions || 0),
       },
       customerStats: {
-        totalCustomers: parseInt(customerStats.totalCustomers) || 0,
-        repeatCustomers: parseInt(customerStats.repeatCustomers) || 0,
-        totalRevenue: parseFloat(customerStats.totalRevenue) || 0,
+        totalCustomers: parseInt(customerStats?.totalCustomers || 0),
+        repeatCustomers: parseInt(customerStats?.repeatCustomers || 0),
+        totalRevenue: parseFloat(customerStats?.totalRevenue || 0),
       }
     };
   }

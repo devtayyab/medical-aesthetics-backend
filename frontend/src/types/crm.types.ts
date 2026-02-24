@@ -83,13 +83,19 @@ export interface CrmAction {
   id: string;
   customerId: string;
   salespersonId: string;
-  actionType: 'phone_call' | 'email' | 'follow_up' | 'appointment_confirmation' | 'treatment_reminder' | 'meeting';
+  actionType: 'call' | 'mobile_message' | 'follow_up_call' | 'email' | 'appointment' | 'confirmation_call_reminder';
+  therapy?: string;
   title: string;
   description?: string;
   status: 'pending' | 'in_progress' | 'completed' | 'overdue' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   dueDate?: string;
+  reminderDate: string;
   completedAt?: string;
+  isRecurring?: boolean;
+  recurrenceType?: 'daily' | 'weekly' | 'monthly' | 'custom';
+  recurrenceInterval?: number;
+  originalTaskId?: string;
   relatedAppointmentId?: string;
   relatedLeadId?: string;
   metadata?: {
@@ -345,4 +351,26 @@ export interface CrmAnalytics {
     repeatCustomers: number;
     totalRevenue: number;
   };
+
+  // Newly added stats
+  turnoverStats?: {
+    monthlyTarget: number;
+    targetIsSet: boolean;
+    achieved: number;
+    progress: number | null;
+    expectedProgress: number;
+    pacingDelta: number;
+    pacingStatus: string;
+  };
+  appointmentStats?: {
+    total: number;
+    completed: number;
+    cancelled: number;
+    noShow: number;
+    returned: number;
+  };
+  turnoverTimeSeries?: {
+    date: string;
+    amount: number;
+  }[];
 }

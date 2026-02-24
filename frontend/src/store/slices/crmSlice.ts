@@ -54,7 +54,7 @@ interface CrmState {
 
   // Duplicate Management
   duplicateCheck: DuplicateCheckResult | null;
-  duplicateSuggestions: DuplicateCheckResult[];
+  duplicateSuggestions: DuplicateCheckResult['suggestions'];
 
   // Validation
   fieldValidation: ValidationResult | null;
@@ -62,6 +62,13 @@ interface CrmState {
 
   // Analytics
   analytics: CrmAnalytics | null;
+  taskKpis: {
+    total: number;
+    pending: number;
+    overdue: number;
+    inProgress: number;
+    completed: number;
+  } | null;
   salespersons: User[];
   diaryActivities: any[];
   // UI State
@@ -98,6 +105,7 @@ const initialState: CrmState = {
   fieldValidation: null,
   requiredFields: null,
   analytics: null,
+  taskKpis: null,
   salespersons: [],
   diaryActivities: [],
   lastUpdated: null,
@@ -120,6 +128,9 @@ export const createLead = createAsyncThunk(
     facebookLeadData?: any;
     status: string;
     metadata?: any;
+    assignedSalesId?: string;
+    notes?: string;
+    estimatedValue?: number;
   }) => {
     const response = await crmAPI.createLead(data);
     return response.data;
@@ -265,6 +276,14 @@ export const fetchTasks = createAsyncThunk(
   "crm/fetchTasks",
   async (salespersonId?: string) => {
     const response = await crmAPI.getTasks(salespersonId);
+    return response.data;
+  }
+);
+
+export const fetchTaskKpis = createAsyncThunk(
+  "crm/fetchTaskKpis",
+  async () => {
+    const response = await crmAPI.getTaskKpis();
     return response.data;
   }
 );
@@ -655,6 +674,9 @@ const crmSlice = createSlice({
       })
       .addCase(fetchTasks.fulfilled, (state, action) => {
         state.tasks = action.payload;
+      })
+      .addCase(fetchTaskKpis.fulfilled, (state, action) => {
+        state.taskKpis = action.payload;
       })
 
       // Duplicate Management

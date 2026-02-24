@@ -177,12 +177,28 @@ export class CrmController {
     return this.crmService.updateAction(id, updateData);
   }
 
+  @Delete('actions/:id')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Delete action/task' })
+  deleteAction(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.crmService.deleteAction(id);
+  }
+
   @Get('actions')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get actions/tasks with filters' })
   getActions(@Query() filters: any, @Request() req) {
     return this.crmService.getActions(req.user.id, filters);
+  }
+
+  @Get('tasks/kpis')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get task KPIs for the logged-in user' })
+  getTaskKpis(@Request() req) {
+    return this.crmService.getTaskKpis(req.user.id);
   }
 
   @Get('actions/pending')

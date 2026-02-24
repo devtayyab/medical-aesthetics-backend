@@ -17,9 +17,7 @@ import {
     Phone,
     Mail,
     MessageSquare,
-    CheckCircle2,
-    Calendar as CalendarIcon,
-    Clock
+    CheckCircle2
 } from 'lucide-react';
 import { RootState, AppDispatch } from '@/store';
 import { fetchSalespersons, fetchSalesActivities } from '@/store/slices/crmSlice';
@@ -126,7 +124,7 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                                         const height = Math.max((duration / 30) * 60, 35);
 
                                         const getIcon = () => {
-                                            if (act.actionType === 'phone_call') return <Phone className="w-2.5 h-2.5" />;
+                                            if (act.actionType === 'call') return <Phone className="w-2.5 h-2.5" />;
                                             if (act.actionType === 'email') return <Mail className="w-2.5 h-2.5" />;
                                             return <MessageSquare className="w-2.5 h-2.5" />;
                                         };
@@ -195,7 +193,7 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                                     const height = Math.max((duration / 30) * 60, 40);
 
                                     const getIcon = () => {
-                                        if (act.actionType === 'phone_call') return <Phone className="w-3 h-3" />;
+                                        if (act.actionType === 'call') return <Phone className="w-3 h-3" />;
                                         if (act.actionType === 'email') return <Mail className="w-3 h-3" />;
                                         return <MessageSquare className="w-3 h-3" />;
                                     };

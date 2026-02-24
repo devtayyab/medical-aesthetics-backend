@@ -46,8 +46,9 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/communication", label: "Communication Flow", icon: <Phone className="w-5 h-5" />, group: "Communication" },
   { path: "/crm/analytics", label: "Analytics", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
+  { path: "/crm/calendar", label: "Booking Calendar", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/tag", label: "Tags", icon: <Tag className="w-5 h-5" />, group: "CRM" },
-  { path: "/clinic/sales-diary", label: "Sales Diary", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
+  { path: "/clinic/sales-diary", label: "Sales Activities", icon: <ClipboardList className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
 ];
 

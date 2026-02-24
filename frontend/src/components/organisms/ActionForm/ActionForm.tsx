@@ -31,7 +31,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
   const [formData, setFormData] = useState<Partial<CrmAction>>({
     customerId: propCustomerId,
-    actionType: prefilledData?.actionType || 'follow_up',
+    actionType: prefilledData?.actionType || 'call',
     title: prefilledData?.title || '',
     description: prefilledData?.description || '',
     status: prefilledData?.status || 'pending',
@@ -58,20 +58,15 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch customers if no customerId is provided
-        if (!propCustomerId) {
-          const response = await userAPI.getAllUsers({ role: 'client' });
-          const users = Array.isArray(response.data) ? response.data : response.data.users || [];
-          const options = users.map((u: any) => ({
-            value: u.id,
-            label: `${u.firstName} ${u.lastName} (${u.email || 'No email'})`
-          }));
-          setCustomers(options);
-        }
+        const response = await userAPI.getAllUsers({ role: 'client' });
+        const users = Array.isArray(response.data) ? response.data : response.data.users || [];
+        const options = users.map((u: any) => ({
+          value: u.id,
+          label: `${u.firstName} ${u.lastName} (${u.email || 'No email'})`
+        }));
+        setCustomers(options);
 
-        // Fetch clinics - trying to use relative path if axios is configured with baseURL
-        // In this project, axios is imported from 'axios' here, not restricted to the service
-        // We'll use the relative path which should be handled by the proxy
+        // Fetch clinics
         const { data: clinicData } = await crmAPI.getAccessibleClinics();
         const clinicOptions = (clinicData || []).map((c: any) => ({ value: c.id, label: c.name }));
         setClinics(clinicOptions);
@@ -129,11 +124,16 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           customerId: customerId || propCustomerId || undefined,
           salespersonId: formData.salespersonId || prefilledData?.salespersonId || undefined,
           actionType: formData.actionType,
+          therapy: formData.therapy,
           title: formData.title,
           description: formData.description,
           status: formData.status || 'pending',
           priority: formData.priority || 'medium',
           dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
+          reminderDate: formData.reminderDate ? new Date(formData.reminderDate).toISOString() : undefined,
+          isRecurring: formData.isRecurring || false,
+          recurrenceType: formData.recurrenceType,
+          recurrenceInterval: formData.recurrenceInterval,
           metadata: formData.metadata || {}
         };
 
@@ -147,12 +147,15 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         await dispatch(createAction(payload)).unwrap();
         setFormData({
           customerId: customerId || propCustomerId,
-          actionType: 'follow_up',
+          actionType: 'call',
+          therapy: '',
           title: '',
           description: '',
           status: 'pending',
           priority: 'medium',
           dueDate: '',
+          reminderDate: '',
+          isRecurring: false,
           salespersonId: prefilledData?.salespersonId || '',
           metadata: {}
         });
@@ -176,31 +179,32 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Customer Selection - only show if no customerId is provided */}
-          {!propCustomerId && customers.length > 0 && (
+          {/* Customer Selection - always show, disabled if prefilled */}
+          {customers.length > 0 && (
             <Select
-              label="Customer"
+              label="Associated Contact"
               value={customerId}
               onChange={(value) => handleInputChange('customerId', value)}
               options={customers}
               required
-              placeholder="Select a customer..."
+              disabled={!!propCustomerId}
+              placeholder="Select associated contact..."
             />
           )}
 
           {/* Action Type and Priority */}
           <div className="grid grid-cols-2 gap-4">
             <Select
-              label="Action Type"
+              label="Task Type"
               value={formData.actionType}
               onChange={(value) => handleInputChange('actionType', value)}
               options={[
-                { value: 'phone_call', label: 'Phone Call' },
+                { value: 'call', label: 'Call' },
+                { value: 'mobile_message', label: 'Mobile Message (SMS/Viber/WhatsApp)' },
+                { value: 'follow_up_call', label: 'Follow up Call' },
                 { value: 'email', label: 'Email' },
-                { value: 'meeting', label: 'Meeting' },
-                { value: 'follow_up', label: 'Follow Up' },
-                { value: 'appointment_confirmation', label: 'Appointment Confirmation' },
-                { value: 'treatment_reminder', label: 'Treatment Reminder' }
+                { value: 'appointment', label: 'Appointment' },
+                { value: 'confirmation_call_reminder', label: 'Confirmation Call Reminder' }
               ]}
               required
             />
@@ -219,22 +223,74 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             />
           </div>
 
-          {/* Title */}
-          <Input
-            label="Title"
-            value={formData.title}
-            onChange={(e) => handleInputChange('title', e.target.value)}
-            placeholder="Brief task title..."
-            required
-          />
+          {/* Title and Therapy */}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Task Title"
+              value={formData.title}
+              onChange={(e) => handleInputChange('title', e.target.value)}
+              placeholder="e.g. Call client for confirmation"
+              required
+            />
+            <Input
+              label="Therapy Associated"
+              value={formData.therapy}
+              onChange={(e) => handleInputChange('therapy', e.target.value)}
+              placeholder="e.g. Botox Treatment"
+            />
+          </div>
 
-          {/* Due Date */}
-          <Input
-            label="Due Date & Time"
-            type="datetime-local"
-            value={formData.dueDate}
-            onChange={(e) => handleInputChange('dueDate', e.target.value)}
-          />
+          {/* Due Date and Reminder Date */}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Due Date & Time"
+              type="datetime-local"
+              value={formData.dueDate}
+              onChange={(e) => handleInputChange('dueDate', e.target.value)}
+              required
+            />
+            <Input
+              label="Reminder Date & Time"
+              type="datetime-local"
+              value={formData.reminderDate || ''}
+              onChange={(e) => handleInputChange('reminderDate', e.target.value)}
+              required
+            />
+          </div>
+
+          {/* Recurring Options */}
+          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                type="checkbox"
+                id="isRecurring"
+                checked={formData.isRecurring || false}
+                onChange={(e) => handleInputChange('isRecurring', e.target.checked)}
+                className="h-4 w-4"
+              />
+              <label htmlFor="isRecurring" className="text-sm font-bold text-slate-700">Set to Repeat (Recurring)</label>
+            </div>
+            {formData.isRecurring && (
+              <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                <Select
+                  label="Recurrence Frequency"
+                  value={formData.recurrenceType || 'weekly'}
+                  onChange={(val) => handleInputChange('recurrenceType', val)}
+                  options={[
+                    { value: 'daily', label: 'Daily' },
+                    { value: 'weekly', label: 'Weekly' },
+                    { value: 'monthly', label: 'Monthly' }
+                  ]}
+                />
+                <Input
+                  label="Interval"
+                  type="number"
+                  value={formData.recurrenceInterval || 1}
+                  onChange={(e) => handleInputChange('recurrenceInterval', parseInt(e.target.value))}
+                />
+              </div>
+            )}
+          </div>
 
           {/* Description */}
           <Textarea
@@ -246,7 +302,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           />
 
           {/* Action-specific fields */}
-          {formData.actionType === 'phone_call' && (
+          {(formData.actionType === 'call' || formData.actionType === 'follow_up_call' || formData.actionType === 'confirmation_call_reminder') && (
             <>
               <h4 className="font-medium text-sm text-gray-700">Call Details</h4>
               <div className="grid grid-cols-2 gap-4">

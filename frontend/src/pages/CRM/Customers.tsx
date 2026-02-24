@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchLeads } from "@/store/slices/crmSlice";
+import { fetchLeads, createLead } from "@/store/slices/crmSlice";
 import type { RootState, AppDispatch } from "@/store";
 import type { Lead } from "@/types";
-import { Search, Filter, X, PlusCircle, ArrowRight, ArrowLeft } from "lucide-react";
+import { Search, Filter, X, PlusCircle, ArrowRight, ArrowLeft, Plus, User, Globe, Tag, MessageSquare, Mail, Phone } from "lucide-react";
 import { DataTable } from "@/components/ui/DataTable";
 import { OneCustomerDetail } from "@/pages/CRM/OneCustomerDetail";
 import { Button } from "@/components/atoms/Button/Button";
@@ -24,10 +24,12 @@ export const Customers: React.FC = () => {
   const { leads, isLoading, error } = useSelector(
     (state: RootState) => state.crm
   );
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<Lead | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [filters, setFilters] = useState<AdvancedFilters>({
     formNames: [],
     submissionDateFrom: "",
@@ -35,6 +37,17 @@ export const Customers: React.FC = () => {
     lastContactedFrom: "",
     lastContactedTo: "",
     status: [],
+  });
+
+  const [contactFormData, setContactFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    status: "new",
+    source: "manual",
+    notes: "",
+    estimatedValue: 0,
   });
 
   // Unique Form Names for the dropdown (derived from leads or an API)
@@ -108,6 +121,35 @@ export const Customers: React.FC = () => {
     setSearchTerm("");
   };
 
+  const handleCreateContact = async () => {
+    if (!contactFormData.firstName || !contactFormData.lastName || !contactFormData.email) {
+      alert("Please fill in required fields (Name and Email)");
+      return;
+    }
+    try {
+      await dispatch(createLead({
+        ...contactFormData,
+        assignedSalesId: user?.id
+      })).unwrap();
+      setShowCreateForm(false);
+      setContactFormData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        status: "new",
+        source: "manual",
+        notes: "",
+        estimatedValue: 0,
+      });
+      // fetchLeads will be triggered by the effect if needed, but createLead usually updates the store or triggers a refresh
+      dispatch(fetchLeads({}));
+    } catch (error) {
+      console.error("Failed to create contact:", error);
+      alert("Failed to create contact. Please try again.");
+    }
+  };
+
   const setDatePreset = (days: number) => {
     const to = new Date();
     const from = new Date();
@@ -151,7 +193,7 @@ export const Customers: React.FC = () => {
         <button
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
           onClick={() => {
-            // Trigger add contact modal or link here
+            setShowCreateForm(true);
           }}
         >
           <PlusCircle className="w-5 h-5" /> Add Contact
@@ -387,6 +429,177 @@ export const Customers: React.FC = () => {
           />
         )}
       </div>
+
+      {/* Create Contact Modal */}
+      {showCreateForm && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-2xl shadow-2xl border-0 overflow-hidden rounded-2xl flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="px-8 py-6 border-b border-gray-100 bg-white flex items-start justify-between flex-none">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Add New Contact</h2>
+                <p className="text-gray-500 mt-1.5 text-sm font-medium">Create a new customer entry in your CRM</p>
+              </div>
+              <button
+                onClick={() => setShowCreateForm(false)}
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-gray-50/50">
+              {/* Section 1: Contact Information */}
+              <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-50">
+                  <div className="bg-blue-50 p-2 rounded-lg">
+                    <User className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">Contact Information</h3>
+                    <p className="text-xs text-gray-500">Basic details about the person</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">First Name *</label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="e.g. Sarah"
+                          className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          value={contactFormData.firstName}
+                          onChange={(e) => setContactFormData({ ...contactFormData, firstName: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Last Name *</label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="e.g. Johnson"
+                          className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          value={contactFormData.lastName}
+                          onChange={(e) => setContactFormData({ ...contactFormData, lastName: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Email Address *</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="email"
+                          placeholder="sarah@example.com"
+                          className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          value={contactFormData.email}
+                          onChange={(e) => setContactFormData({ ...contactFormData, email: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="+1 (555) 000-0000"
+                          className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          value={contactFormData.phone}
+                          onChange={(e) => setContactFormData({ ...contactFormData, phone: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Account Details */}
+              <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-50">
+                  <div className="bg-purple-50 p-2 rounded-lg">
+                    <Tag className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">Account Details</h3>
+                    <p className="text-xs text-gray-500">Status and source information</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Initial Status</label>
+                      <select
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                        value={contactFormData.status}
+                        onChange={(e) => setContactFormData({ ...contactFormData, status: e.target.value })}
+                      >
+                        <option value="new">New Contact</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="converted">Converted / Active</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Lead Source</label>
+                      <select
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                        value={contactFormData.source}
+                        onChange={(e) => setContactFormData({ ...contactFormData, source: e.target.value })}
+                      >
+                        <option value="manual">Manual Entry</option>
+                        <option value="facebook_ads">Facebook Ads</option>
+                        <option value="website">Website</option>
+                        <option value="referral">Referral</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Initial Notes</label>
+                    <div className="relative">
+                      <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                      <textarea
+                        placeholder="Add any initial notes or context..."
+                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all min-h-[100px]"
+                        value={contactFormData.notes}
+                        onChange={(e) => setContactFormData({ ...contactFormData, notes: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-3 backdrop-blur-sm flex-none">
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateForm(false)}
+                className="text-gray-700 hover:text-gray-900 border-gray-200"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleCreateContact}
+                className="px-8 shadow-lg shadow-blue-500/20"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Contact
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
