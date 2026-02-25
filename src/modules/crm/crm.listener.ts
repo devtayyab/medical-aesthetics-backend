@@ -22,11 +22,6 @@ export class CrmListener {
             this.logger.log(`Lead ${lead.id} converted. Attempting to create customer account...`);
 
             try {
-                // Check if customer already exists is handled inside createCustomer usually, 
-                // but createCustomer throws error if exists.
-                // We should try/catch.
-
-                // Prepare customer data from lead
                 const customerData = {
                     firstName: lead.firstName,
                     lastName: lead.lastName,
@@ -35,32 +30,37 @@ export class CrmListener {
                     source: lead.source,
                 };
 
-                // We pass the assigned salesperson ID if present
-                const { user: newCustomer, password } = await this.crmService.createCustomer(customerData, lead.assignedSalesId);
+                let convertedUser: any = null;
+                let passwordToEmail: string | undefined = undefined;
 
-                this.logger.log(`Customer created for converted lead ${lead.id}. Customer ID: ${newCustomer.id}`);
-
-                // Send welcome email with credentials
-                await this.notificationsService.sendWelcomeCredentials(newCustomer.id, newCustomer.email, password);
-                this.logger.log(`Credentials sent to ${newCustomer.email}`);
-
-                // Link back to lead
-                await this.crmService.update(lead.id, {
-                    metadata: {
-                        ...lead.metadata,
-                        convertedToCustomerId: newCustomer.id,
-                        convertedAt: new Date()
+                try {
+                    const result = await this.crmService.createCustomer(customerData, lead.assignedSalesId);
+                    convertedUser = result.user;
+                    passwordToEmail = result.password;
+                    this.logger.log(`Customer created for lead ${lead.id}: ${convertedUser.id}`);
+                } catch (error) {
+                    if (error.message && error.message.includes('already exists')) {
+                        this.logger.warn(`User already exists for lead ${lead.id}. Linking...`);
+                        convertedUser = await this.crmService.findUserByEmail(lead.email);
+                    } else {
+                        throw error;
                     }
-                } as any);
-
-            } catch (error) {
-                if (error.message && error.message.includes('already exists')) {
-                    this.logger.warn(`Customer already exists for converted lead ${lead.id}. Linking to existing...`);
-                    // Implementation to find and link existing could go here if needed, 
-                    // but for now logging is sufficient or we can add logic to get the existing user.
-                } else {
-                    this.logger.error(`Failed to create customer for lead ${lead.id}`, error.stack);
                 }
+
+                if (convertedUser) {
+                    if (passwordToEmail) {
+                        await this.notificationsService.sendWelcomeCredentials(convertedUser.id, convertedUser.email, passwordToEmail);
+                    }
+                    await this.crmService.update(lead.id, {
+                        metadata: {
+                            ...lead.metadata,
+                            convertedToCustomerId: convertedUser.id,
+                            convertedAt: new Date()
+                        }
+                    } as any);
+                }
+            } catch (error) {
+                this.logger.error(`Failed to handle lead conversion for ${lead.id}`, error.stack);
             }
         }
     }

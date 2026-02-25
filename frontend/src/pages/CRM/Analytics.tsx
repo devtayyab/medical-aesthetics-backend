@@ -90,8 +90,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
   }, [analytics?.appointmentStats]);
 
   useEffect(() => {
-    if (user?.id && !salespersonId) {
+    if (user?.role === 'salesperson' && user?.id) {
       setSalespersonId(user.id);
+    } else if (user?.id && (salespersonId === "all" || !salespersonId)) {
+      // For managers/admins, default to "all" or specific initial ID
+      // but ensure state is initialized
     }
   }, [user]);
 
@@ -140,21 +143,23 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
 
       {/* Filter Bar */}
       <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100 flex flex-col md:flex-row items-end md:items-center gap-3">
-        <div className="flex-1 w-full relative">
-          <label className="text-[9px] font-bold text-gray-400 uppercase mb-0.5 block">Salesperson</label>
-          <Select
-            options={[
-              { label: 'All Salespeople', value: 'all' },
-              ...(salespersons || []).map(s => ({
-                label: `${s.firstName} ${s.lastName}`,
-                value: s.id
-              }))
-            ]}
-            value={salespersonId}
-            onChange={(val) => setSalespersonId(val)}
-            className="h-8 text-xs"
-          />
-        </div>
+        {user?.role !== 'salesperson' && (
+          <div className="flex-1 w-full relative">
+            <label className="text-[9px] font-bold text-gray-400 uppercase mb-0.5 block">Salesperson</label>
+            <Select
+              options={[
+                { label: 'All Salespeople', value: 'all' },
+                ...(salespersons || []).map(s => ({
+                  label: `${s.firstName} ${s.lastName}`,
+                  value: s.id
+                }))
+              ]}
+              value={salespersonId}
+              onChange={(val) => setSalespersonId(val)}
+              className="h-8 text-xs"
+            />
+          </div>
+        )}
 
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="flex-1 md:w-36">
@@ -300,9 +305,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
                 {/* Turnover Chart Panel */}
                 <div className="md:col-span-2 mt-1 space-y-2">
                   <h3 className="font-bold text-gray-500 text-[9px] uppercase tracking-wider">Turnover Trend (MTD)</h3>
-                  <div className="h-48 w-full bg-white border border-gray-100 rounded-lg p-2 shadow-sm">
+                  <div className="h-48 w-full bg-white border border-gray-100 rounded-lg p-2 shadow-sm overflow-hidden" style={{ minWidth: 0 }}>
                     {turnoverChartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
+                      <ResponsiveContainer width="99%" height="100%" debounce={50}>
                         <ComposedChart data={turnoverChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
                           <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} dy={5} />
@@ -422,9 +427,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
                     {/* Funnel Donut Charts */}
                     <div className="mt-4 pt-4 border-t border-gray-100">
                       <h4 className="font-medium text-xs text-gray-700 mb-1">Appointments Overview</h4>
-                      <div className="h-40 w-full">
+                      <div className="h-40 w-full" style={{ minWidth: 0 }}>
                         {appointmentDonutData.length > 0 ? (
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="99%" height="100%" debounce={50}>
                             <PieChart>
                               <Pie
                                 data={appointmentDonutData}
@@ -451,9 +456,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
                         )}
                       </div>
 
-                      <div className="h-32 w-full mt-1">
+                      <div className="h-32 w-full mt-1" style={{ minWidth: 0 }}>
                         {appointmentReturnData.length > 0 ? (
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="99%" height="100%" debounce={50}>
                             <PieChart>
                               <Pie
                                 data={appointmentReturnData}

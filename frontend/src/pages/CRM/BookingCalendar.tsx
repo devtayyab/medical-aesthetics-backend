@@ -56,7 +56,7 @@ export const BookingCalendar: React.FC = () => {
         });
     }, [viewDate, viewMode]);
 
-    const hours = Array.from({ length: 14 }, (_, i) => i + 8); // 8:00 to 21:00
+    const hours = Array.from({ length: 24 }, (_, i) => i); // 0:00 to 23:00
 
     const handleStatusUpdate = (appointmentId: string, status: string) => {
         dispatch(updateAppointmentStatus({ id: appointmentId, status }));
@@ -137,7 +137,7 @@ export const BookingCalendar: React.FC = () => {
                 <div className="w-16 flex-shrink-0 border-r border-gray-100 bg-gray-50/50 pt-10 sticky left-0 z-20">
                     {hours.map(hour => (
                         <div key={hour} className="h-14 flex items-start justify-center text-[10px] font-bold text-gray-400 -mt-2">
-                            {hour}:00
+                            {hour.toString().padStart(2, '0')}:00
                         </div>
                     ))}
                 </div>
@@ -154,7 +154,7 @@ export const BookingCalendar: React.FC = () => {
                             </div>
 
                             {/* Hour Slots */}
-                            <div className="relative h-[784px]"> {/* 14 hours * 56px */}
+                            <div className="relative h-[1344px]"> {/* 24 hours * 56px */}
                                 {hours.map(hour => (
                                     <div key={hour} className="h-14 border-b border-gray-50/50 w-full" />
                                 ))}
@@ -163,7 +163,7 @@ export const BookingCalendar: React.FC = () => {
                                 {appointments && appointments.filter(apt => isSameDay(new Date(apt.startTime), day)).map(apt => {
                                     const start = new Date(apt.startTime);
                                     const end = new Date(apt.endTime);
-                                    const top = (start.getHours() - 8) * 56 + (start.getMinutes() / 60) * 56;
+                                    const top = (start.getHours()) * 56 + (start.getMinutes() / 60) * 56;
                                     const lengthInHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
                                     const height = lengthInHours * 56;
                                     const statusStyle = statusLabels[apt.status] || statusLabels.pending;

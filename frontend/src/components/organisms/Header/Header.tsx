@@ -260,6 +260,8 @@ export const Header: React.FC = () => {
         { to: "/messages", label: "Messages" },
         { to: "/crm/communication", label: "Communication" },
         { to: "/crm/analytics", label: "Analytics" },
+        { to: "/crm/sales-analytics", label: "Sales Analytics Dashboard" },
+        { to: "/crm/calendar", label: "Sales Week Calendar" },
         { to: "/crm/tag", label: "Tags" },
         { to: "/crm/facebook-integration", label: "Facebook Integration" },
         { action: handleLogout, label: "Logout" },

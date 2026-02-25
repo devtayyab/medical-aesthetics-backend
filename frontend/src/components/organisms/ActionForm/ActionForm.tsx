@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { Clock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle, Search, User as UserIcon, X } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Select } from '@/components/atoms/Select/Select';
@@ -50,6 +50,20 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [clinics, setClinics] = useState<{ value: string; label: string }[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showResults, setShowResults] = useState(false);
+  const [selectedCustomerLabel, setSelectedCustomerLabel] = useState('');
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   React.useEffect(() => {
     dispatch(getRequiredFieldsForAction(formData.actionType));
@@ -65,6 +79,12 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           label: `${u.firstName} ${u.lastName} (${u.email || 'No email'})`
         }));
         setCustomers(options);
+
+        // If we have a propCustomerId, set the initial label
+        if (propCustomerId) {
+          const matched = options.find((o: any) => o.value === propCustomerId);
+          if (matched) setSelectedCustomerLabel(matched.label);
+        }
 
         // Fetch clinics
         const { data: clinicData } = await crmAPI.getAccessibleClinics();
@@ -171,26 +191,84 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CheckCircle className="h-5 w-5" />
-          Create Task/Action
-        </CardTitle>
+      <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-6">
+        <div>
+          <CardTitle className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+            Program New Task
+          </CardTitle>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Operation Workflow</p>
+        </div>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Customer Selection - always show, disabled if prefilled */}
-          {customers.length > 0 && (
-            <Select
-              label="Associated Contact"
-              value={customerId}
-              onChange={(value) => handleInputChange('customerId', value)}
-              options={customers}
-              required
-              disabled={!!propCustomerId}
-              placeholder="Select associated contact..."
-            />
-          )}
+      <CardContent className="pt-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <span className="text-sm font-bold text-slate-700">Create Task/Action</span>
+          </div>
+          {/* Searchable Customer Selection */}
+          <div className="relative" ref={searchRef}>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">Associated Contact</label>
+            <div className="relative group">
+              <Input
+                value={propCustomerId ? selectedCustomerLabel : searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowResults(true);
+                }}
+                onFocus={() => !propCustomerId && setShowResults(true)}
+                placeholder={propCustomerId ? selectedCustomerLabel : "Search by Client ID or Name..."}
+                disabled={!!propCustomerId}
+                className="pl-11 h-12 bg-slate-50 border-slate-200 rounded-xl focus:bg-white transition-all font-medium"
+                leftIcon={<Search className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />}
+              />
+              {!propCustomerId && searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchTerm(''); setShowResults(false); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full"
+                >
+                  <X className="w-3 h-3 text-slate-400" />
+                </button>
+              )}
+            </div>
+
+            {/* Floating Search Results */}
+            {showResults && !propCustomerId && searchTerm.length > 0 && (
+              <div className="absolute z-[100] left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 max-h-[300px] overflow-y-auto">
+                {customers
+                  .filter(c =>
+                    c.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    c.value.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map(c => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => {
+                        handleInputChange('customerId', c.value);
+                        setSearchTerm(c.label);
+                        setShowResults(false);
+                      }}
+                      className="w-full text-left px-5 py-4 hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-none flex items-center gap-4 group"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 transition-all">
+                        <UserIcon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-black text-slate-800">{c.label}</div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">ID: {c.value}</div>
+                      </div>
+                    </button>
+                  ))}
+                {customers.filter(c =>
+                  c.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  c.value.toLowerCase().includes(searchTerm.toLowerCase())
+                ).length === 0 && (
+                    <div className="p-8 text-center text-slate-400 italic text-sm">No clients found matching your search.</div>
+                  )}
+              </div>
+            )}
+          </div>
 
           {/* Action Type and Priority */}
           <div className="grid grid-cols-2 gap-4">

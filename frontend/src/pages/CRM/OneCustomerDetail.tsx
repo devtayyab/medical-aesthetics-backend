@@ -266,7 +266,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 type: 'call',
                 status: 'completed',
                 notes: phoneCallNotes,
-                direction: 'outgoing'
+                direction: 'outgoing',
+                metadata: { clickOnly: true }
             })).unwrap();
             setPhoneCallNotes("");
             setShowPhoneCallModal(false);
@@ -1404,6 +1405,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 <CRMBookingModal
                     customerId={customer.id}
                     customerName={`${customer.firstName} ${customer.lastName}`}
+                    customerEmail={customer.email}
+                    customerPhone={customer.phone}
                     onClose={() => setShowBookingModal(false)}
                     onSuccess={async () => {
                         if (!isConverted) {

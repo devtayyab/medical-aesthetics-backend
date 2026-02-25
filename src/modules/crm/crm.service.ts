@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In, DataSource } from 'typeorm';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Repository, Between, In, DataSource, IsNull } from 'typeorm';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { Lead } from './entities/lead.entity';
 import { CustomerRecord } from './entities/customer-record.entity';
 import { CommunicationLog } from './entities/communication-log.entity';
@@ -617,6 +617,10 @@ export class CrmService implements OnModuleInit {
     return this.findById(id);
   }
 
+  async findUserByEmail(email: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { email } });
+  }
+
   async softDelete(id: string): Promise<void> {
     const result = await this.leadsRepository.softDelete(id);
     if (result.affected === 0) {
@@ -652,11 +656,18 @@ export class CrmService implements OnModuleInit {
         throw new NotFoundException('Customer or Lead not found');
       }
 
-      const leadAppointments = await this.appointmentsRepository.find({
-        where: { clientId: customerId },
-        relations: ['service', 'clinic'],
-        order: { startTime: 'DESC' },
-      });
+      const linkedCustomerId = (lead.metadata as any)?.convertedToCustomerId;
+      const idMatchList = [lead.id];
+      if (linkedCustomerId) idMatchList.push(linkedCustomerId);
+
+      const leadAppointments = await this.appointmentsRepository.createQueryBuilder('apt')
+        .leftJoinAndSelect('apt.service', 'service')
+        .leftJoinAndSelect('apt.clinic', 'clinic')
+        .where('apt.clientId IN (:...ids)', { ids: idMatchList })
+        .orWhere("LOWER(apt.\"clientDetails\"->>'email') = LOWER(:email)", { email: lead.email })
+        .orWhere("apt.\"clientDetails\"->>'phone' = :phone", { phone: lead.phone })
+        .orderBy('apt.startTime', 'DESC')
+        .getMany();
 
       const compApts = leadAppointments.filter(a => a.status === 'completed');
       const ltv = compApts.reduce((sum, apt) => sum + Number(apt.totalAmount || 0), 0);
@@ -698,8 +709,20 @@ export class CrmService implements OnModuleInit {
           totalAmount: apt.totalAmount,
           treatmentDetails: apt.treatmentDetails,
         })),
-        communications: (lead.metadata as any)?.interactionHistory || [],
-        actions: [],
+        communications: [
+          ...(await this.communicationLogsRepository.find({
+            where: { customerId: In(idMatchList) },
+            relations: ['salesperson'],
+            order: { createdAt: 'DESC' },
+            take: 50,
+          })),
+          ...((lead.metadata as any)?.interactionHistory || [])
+        ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 50),
+        actions: await this.crmActionsRepository.find({
+          where: { customerId: In(idMatchList) },
+          relations: ['salesperson'],
+          order: { createdAt: 'DESC' },
+        }),
         tags: (lead.tags || []).map(t => ({
           id: t.id,
           tag: t, // Assuming tag relation is properly loaded or mapped
@@ -746,24 +769,42 @@ export class CrmService implements OnModuleInit {
       });
     }
 
-    // Get appointments
-    const appointments = await this.appointmentsRepository.find({
-      where: { clientId: customerId },
-      relations: ['service', 'clinic'],
-      order: { startTime: 'DESC' },
-    });
+    // Get appointments - include any booked while they were a lead
+    const originalLead = await this.leadsRepository.createQueryBuilder('lead')
+      .where("lead.metadata->>'convertedToCustomerId' = :customerId", { customerId })
+      .getOne();
 
-    // Get communication history
-    const communications = await this.communicationLogsRepository.find({
-      where: { customerId },
+    const idMatchList = [customerId];
+    if (originalLead) idMatchList.push(originalLead.id);
+
+    const appointments = await this.appointmentsRepository.createQueryBuilder('apt')
+      .leftJoinAndSelect('apt.service', 'service')
+      .leftJoinAndSelect('apt.clinic', 'clinic')
+      .where('apt.clientId IN (:...ids)', { ids: idMatchList })
+      .orWhere("LOWER(apt.\"clientDetails\"->>'email') = LOWER(:email)", { email: record.customer?.email })
+      .orWhere("apt.\"clientDetails\"->>'phone' = :phone", { phone: record.customer?.phone })
+      .orderBy('apt.startTime', 'DESC')
+      .getMany();
+
+    // Get communication history - merge database logs and legacy metadata logs
+    const dbLogs = await this.communicationLogsRepository.find({
+      where: { customerId: In(idMatchList) },
       relations: ['salesperson'],
       order: { createdAt: 'DESC' },
       take: 50,
     });
 
-    // Get actions/tasks
+    const metadataLogs = originalLead ? ((originalLead.metadata as any)?.interactionHistory || []) : [];
+
+    const communications = [...dbLogs, ...metadataLogs]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 50);
+
+    this.logger.log(`[getCustomerRecord] customerId: ${customerId}, dbLogs: ${dbLogs.length}, metadataLogs: ${metadataLogs.length}, total: ${communications.length}`);
+
+    // Get actions/tasks - include anything created while they were a lead
     const actions = await this.crmActionsRepository.find({
-      where: { customerId },
+      where: { customerId: In(idMatchList) },
       relations: ['salesperson'],
       order: { createdAt: 'DESC' },
     });
@@ -904,11 +945,11 @@ export class CrmService implements OnModuleInit {
     const lead = await this.leadsRepository.findOne({ where: { id: data.customerId } });
 
     if (lead) {
-      // Append to Lead notes instead of CommunicationLog
+      // Append to Lead notes instead of ONLY metadata
       const newNote = `[${data.type?.toUpperCase()} - ${new Date().toISOString()}] ${data.subject || ''}: ${data.notes || ''}`;
       const updatedNotes = lead.notes ? `${lead.notes}\n\n${newNote}` : newNote;
 
-      // Store structured history in metadata array
+      // Store structured history in metadata array (legacy support)
       const currentHistory = (lead.metadata as any)?.interactionHistory || [];
       const newInteraction = {
         id: `lead-log-${Date.now()}`,
@@ -916,25 +957,18 @@ export class CrmService implements OnModuleInit {
         createdAt: new Date(),
         metadata: data.metadata || {}
       };
-      const updatedHistory = [newInteraction, ...currentHistory]; // Prepend for easy access
+      const updatedHistory = [newInteraction, ...currentHistory];
 
       await this.leadsRepository.update(lead.id, {
         notes: updatedNotes,
         lastContactedAt: new Date(),
         metadata: {
-          ...lead.metadata || {}, // Ensure object
+          ...lead.metadata || {},
           lastInteraction: data,
           interactionHistory: updatedHistory
         }
       });
-
-      // Return a pseudo-log for frontend compatibility
-      return {
-        id: `lead-log-${Date.now()}`,
-        ...data,
-        createdAt: new Date(),
-        metadata: data.metadata || {}
-      } as CommunicationLog;
+      // Do NOT return here, continue to save to communication_logs table
     }
 
     // Enforce mandatory field validation for call communications, except click-only logs
@@ -986,10 +1020,26 @@ export class CrmService implements OnModuleInit {
         throw new NotFoundException('Customer not found');
       }
     }
+    // Check for linked lead/customer IDs
+    const originalLead = await this.leadsRepository.createQueryBuilder('lead')
+      .where("lead.metadata->>'convertedToCustomerId' = :customerId", { customerId })
+      .orWhere("lead.id = :customerId", { customerId })
+      .getOne();
+
+    const idMatchList = [customerId];
+    let metadataLogs: any[] = [];
+
+    if (originalLead) {
+      if (originalLead.id !== customerId) idMatchList.push(originalLead.id);
+      const linkedId = (originalLead.metadata as any)?.convertedToCustomerId;
+      if (linkedId && linkedId !== customerId) idMatchList.push(linkedId);
+      metadataLogs = (originalLead.metadata as any)?.interactionHistory || [];
+    }
+
     const queryBuilder = this.communicationLogsRepository
       .createQueryBuilder('log')
       .leftJoinAndSelect('log.salesperson', 'salesperson')
-      .where('log.customerId = :customerId', { customerId });
+      .where('log.customerId IN (:...ids)', { ids: idMatchList });
 
     if (filters?.type) {
       queryBuilder.andWhere('log.type = :type', { type: filters.type });
@@ -1002,7 +1052,13 @@ export class CrmService implements OnModuleInit {
       });
     }
 
-    return queryBuilder.orderBy('log.createdAt', 'DESC').getMany();
+    const dbLogs = await queryBuilder.orderBy('log.createdAt', 'DESC').getMany();
+
+    // Merge and sort
+    const allLogs = [...dbLogs, ...metadataLogs]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return allLogs as CommunicationLog[];
   }
 
   // Action/Task Management
@@ -2081,6 +2137,205 @@ export class CrmService implements OnModuleInit {
     return rows;
   }
 
+  async getPerformanceDashboard(dateRange?: { startDate: Date; endDate: Date }, salespersonId?: string) {
+    const defaultDateRange = dateRange || {
+      startDate: new Date(new Date().setDate(new Date().getDate() - 30)), // Last 30 days
+      endDate: new Date()
+    };
+
+    const aptQ = this.appointmentsRepository.createQueryBuilder('apt')
+      .leftJoin('apt.client', 'client')
+      .leftJoin('apt.service', 'service')
+      .leftJoin('users', 'agent', 'agent.id = apt.bookedById OR apt.providerId = agent.id')
+      .select('apt.id', 'id')
+      .addSelect('apt.startTime', 'date')
+      .addSelect('service.name', 'eventType')
+      .addSelect('apt.status', 'status')
+      .addSelect('apt.totalAmount', 'revenue')
+      .addSelect('apt.notes', 'notes')
+      .addSelect("CONCAT(client.firstName, ' ', client.lastName)", 'clientName')
+      .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
+      .addSelect('agent.id', 'agentId')
+      .where('apt.startTime BETWEEN :startDate AND :endDate', defaultDateRange);
+
+    if (salespersonId) {
+      aptQ.andWhere('agent.id = :salespersonId', { salespersonId });
+    }
+
+    const apts = await aptQ.getRawMany();
+
+    const actQ = this.crmActionsRepository.createQueryBuilder('act')
+      .leftJoin('act.salesperson', 'agent')
+      .leftJoin('customer_records', 'cr', 'cr.customerId = act.customerId')
+      .leftJoin('users', 'client', 'client.id = cr.customerId')
+      .select('act.id', 'id')
+      .addSelect('act.createdAt', 'date')
+      .addSelect('act.actionType', 'eventType')
+      .addSelect('act.title', 'taskPerformed')
+      .addSelect('act.status', 'status')
+      .addSelect("CONCAT(client.firstName, ' ', client.lastName)", 'clientName')
+      .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
+      .addSelect('agent.id', 'agentId')
+      .where('act.createdAt BETWEEN :startDate AND :endDate', defaultDateRange);
+
+    if (salespersonId) {
+      actQ.andWhere('agent.id = :salespersonId', { salespersonId });
+    }
+
+    const actions = await actQ.getRawMany();
+
+    const activities = [
+      ...apts.map(a => ({
+        id: a.id,
+        salesPersonName: a.agentName || 'Unassigned',
+        salesPersonId: a.agentId,
+        clientName: a.clientName || 'Unknown',
+        date: a.date,
+        eventType: 'Appointment',
+        taskPerformed: a.eventType,
+        taskResult: a.status,
+        bookingStatus: a.status,
+        revenue: parseFloat(a.revenue) || 0,
+        executionStatus: ['completed', 'cancelled', 'no_show'].includes(a.status) ? 'Executed' : 'Not Executed',
+        rebookingRequest: a.notes?.toLowerCase().includes('rebook') ? 'Yes' : 'No'
+      })),
+      ...actions.map(a => ({
+        id: a.id,
+        salesPersonName: a.agentName || 'Unassigned',
+        salesPersonId: a.agentId,
+        clientName: a.clientName || 'Unknown',
+        date: a.date,
+        eventType: 'Task',
+        taskPerformed: a.taskPerformed,
+        taskResult: a.status,
+        bookingStatus: 'N/A',
+        revenue: 0,
+        executionStatus: ['completed', 'cancelled', 'missed'].includes(a.status) ? 'Executed' : 'Not Executed',
+        rebookingRequest: 'No'
+      }))
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const dateMap = new Map();
+    const startObj = new Date(defaultDateRange.startDate);
+    const endObj = new Date(defaultDateRange.endDate);
+    for (let d = new Date(startObj); d <= endObj; d.setDate(d.getDate() + 1)) {
+      dateMap.set(d.toISOString().split('T')[0], { confirmed: 0, cancelled: 0, noShow: 0, revenue: 0, total: 0 });
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    let dailyStats = { total: 0, confirmed: 0, cancelled: 0, noShow: 0, revenue: 0 };
+
+    for (const a of apts) {
+      const dStr = new Date(a.date).toISOString().split('T')[0];
+      if (dateMap.has(dStr)) {
+        const m = dateMap.get(dStr);
+        m.total++;
+        if (a.status === 'completed' || a.status === 'confirmed') m.confirmed++;
+        if (a.status === 'cancelled') m.cancelled++;
+        if (a.status === 'no_show') m.noShow++;
+        m.revenue += parseFloat(a.revenue) || 0;
+        dateMap.set(dStr, m);
+      }
+
+      if (dStr === todayStr) {
+        dailyStats.total++;
+        if (a.status === 'completed' || a.status === 'confirmed') dailyStats.confirmed++;
+        if (a.status === 'cancelled') dailyStats.cancelled++;
+        if (a.status === 'no_show') dailyStats.noShow++;
+        dailyStats.revenue += parseFloat(a.revenue) || 0;
+      }
+    }
+
+    const dailyProgressChart = Array.from(dateMap.entries()).map(([date, stats]) => ({
+      date,
+      ...stats
+    }));
+
+    const salesPersonsMap = new Map();
+    const getSpObj = (id: string, name: string) => {
+      if (!salesPersonsMap.has(id)) {
+        salesPersonsMap.set(id, { id, name, leads: 0, confirmedBookings: 0, revenue: 0, assignedTasks: 0, completedTasks: 0, executedBookings: 0, totalBookings: 0 });
+      }
+      return salesPersonsMap.get(id);
+    };
+
+    const leadQ = this.leadsRepository.createQueryBuilder('l')
+      .select('l.assignedSalesId', 'agentId')
+      .addSelect('COUNT(l.id)', 'count')
+      .where('l.createdAt BETWEEN :startDate AND :endDate', defaultDateRange);
+    if (salespersonId) leadQ.andWhere('l.assignedSalesId = :salespersonId', { salespersonId });
+    const leadsData = await leadQ.groupBy('l.assignedSalesId').getRawMany();
+
+    for (const ld of leadsData) {
+      if (ld.agentId) {
+        const sp = getSpObj(ld.agentId, 'Unknown');
+        sp.leads += parseInt(ld.count);
+      }
+    }
+
+    for (const a of activities) {
+      if (!a.salesPersonId) continue;
+      const sp = getSpObj(a.salesPersonId, a.salesPersonName);
+      if (a.eventType === 'Appointment') {
+        sp.totalBookings++;
+        if (a.bookingStatus === 'completed' || a.bookingStatus === 'confirmed') sp.confirmedBookings++;
+        sp.revenue += a.revenue;
+        if (a.executionStatus === 'Executed') sp.executedBookings++;
+      } else {
+        sp.assignedTasks++;
+        if (a.taskResult === 'completed') sp.completedTasks++;
+      }
+    }
+
+    const performanceReport = Array.from(salesPersonsMap.values()).map(sp => {
+      const conversionRate = sp.leads > 0 ? (sp.confirmedBookings / sp.leads) * 100 : (sp.confirmedBookings > 0 ? 100 : 0);
+      const taskCompletionRate = sp.assignedTasks > 0 ? (sp.completedTasks / sp.assignedTasks) * 100 : 100;
+      const bookingExecutionRate = sp.totalBookings > 0 ? (sp.executedBookings / sp.totalBookings) * 100 : 100;
+
+      return {
+        salesPerson: sp.name,
+        leads: sp.leads,
+        confirmedBookings: sp.confirmedBookings,
+        revenue: sp.revenue,
+        conversionRate: conversionRate.toFixed(1),
+        taskCompletionRate: taskCompletionRate.toFixed(1),
+        bookingExecutionRate: bookingExecutionRate.toFixed(1),
+        assignedTasks: sp.assignedTasks,
+        completedTasks: sp.completedTasks,
+        totalBookings: sp.totalBookings,
+        performanceScore: "0"
+      };
+    });
+
+    const maxRev = Math.max(...performanceReport.map(r => r.revenue), 1);
+
+    performanceReport.forEach(r => {
+      r.performanceScore = (
+        ((r.revenue / maxRev) * 30) +
+        ((parseFloat(r.conversionRate) / 100) * 30) +
+        ((parseFloat(r.taskCompletionRate) / 100) * 20) +
+        ((parseFloat(r.bookingExecutionRate) / 100) * 20)
+      ).toFixed(1);
+    });
+
+    const totals = {
+      leads: performanceReport.reduce((sum, r) => sum + r.leads, 0),
+      confirmedBookings: performanceReport.reduce((sum, r) => sum + r.confirmedBookings, 0),
+      revenue: performanceReport.reduce((sum, r) => sum + r.revenue, 0),
+      assignedTasks: performanceReport.reduce((sum, r) => sum + r.assignedTasks, 0),
+      completedTasks: performanceReport.reduce((sum, r) => sum + r.completedTasks, 0),
+      totalBookings: performanceReport.reduce((sum, r) => sum + r.totalBookings, 0)
+    };
+
+    return {
+      reportTable: activities,
+      dailyStats,
+      dailyProgressChart,
+      salesConversionAnalytics: totals,
+      performanceReport,
+    };
+  }
+
   async sendWeeklyAgentReports(): Promise<{ sent: number }> {
     const endDate = new Date();
     const startDate = new Date();
@@ -2595,7 +2850,7 @@ export class CrmService implements OnModuleInit {
     }
 
     // Role-based access
-    if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER].includes(user.role as UserRole)) {
+    if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.SALESPERSON].includes(user.role as UserRole)) {
       // Admins see all active clinics
       return this.clinicsRepository.find({
         where: { isActive: true },
@@ -2627,8 +2882,11 @@ export class CrmService implements OnModuleInit {
 
   async getSalespersons(): Promise<User[]> {
     return this.usersRepository.find({
-      where: { role: UserRole.SALESPERSON, isActive: true },
-      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePictureUrl'],
+      where: {
+        role: In([UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER]),
+        isActive: true
+      },
+      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePictureUrl', 'role'],
     });
   }
 
@@ -2638,17 +2896,20 @@ export class CrmService implements OnModuleInit {
     const endDate = new Date(startDate);
     endDate.setHours(23, 59, 59, 999);
 
-    const whereAction: any = {
-      createdAt: Between(startDate, endDate),
+    const whereActionDueDate: any = {
+      dueDate: Between(startDate, endDate),
     };
+    if (salespersonId) whereActionDueDate.salespersonId = salespersonId;
 
-    if (salespersonId) {
-      whereAction.salespersonId = salespersonId;
-    }
+    const whereActionCreatedAt: any = {
+      createdAt: Between(startDate, endDate),
+      dueDate: IsNull(),
+    };
+    if (salespersonId) whereActionCreatedAt.salespersonId = salespersonId;
 
     // Fetch CRM Actions
     const actions = await this.crmActionsRepository.find({
-      where: whereAction,
+      where: [whereActionDueDate, whereActionCreatedAt],
       relations: ['salesperson', 'customer', 'customer.customer'],
     });
 
@@ -2674,8 +2935,8 @@ export class CrmService implements OnModuleInit {
         type: 'action',
         actionType: action.actionType,
         status: action.status,
-        startTime: action.createdAt,
-        endTime: new Date(new Date(action.createdAt).getTime() + 30 * 60000),
+        startTime: action.dueDate || action.createdAt,
+        endTime: new Date(new Date(action.dueDate || action.createdAt).getTime() + 30 * 60000),
         salespersonId: action.salespersonId,
         customerName: action.customer?.customer
           ? `${action.customer.customer.firstName} ${action.customer.customer.lastName}`
@@ -2695,5 +2956,65 @@ export class CrmService implements OnModuleInit {
     ];
 
     return standardizedActivities;
+  }
+
+  @OnEvent('appointment.created')
+  async handleAppointmentCreated(appointment: any) {
+    if (!appointment || !appointment.clientId) return;
+
+    // Check if the client is a lead
+    let lead = await this.leadsRepository.findOne({
+      where: { id: appointment.clientId },
+    });
+
+    // If not found by ID (common if already converted to User), try by email
+    if (!lead && (appointment.client?.email || appointment.clientDetails?.email)) {
+      const email = appointment.client?.email || appointment.clientDetails?.email;
+      lead = await this.leadsRepository.findOne({
+        where: { email },
+      });
+    }
+
+    if (lead) {
+      if (lead.status !== LeadStatus.CONVERTED) {
+        const oldStatus = lead.status;
+        lead.status = LeadStatus.CONVERTED;
+        lead.convertedAt = new Date();
+        await this.leadsRepository.save(lead);
+
+        // Emit status change event
+        this.eventEmitter.emit('lead.status.changed', {
+          lead: lead,
+          oldStatus: oldStatus,
+          newStatus: LeadStatus.CONVERTED,
+        });
+
+        this.logger.log(`Changed lead status for ${lead.id} from ${oldStatus} to ${LeadStatus.CONVERTED} due to appointment created`);
+      }
+    }
+  }
+
+  @OnEvent('appointment.status.changed')
+  async handleAppointmentStatusChanged(eventData: any) {
+    const { appointment, newStatus } = eventData;
+    if (!appointment || !appointment.clientId) return;
+
+    if (newStatus === 'completed') {
+      const lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
+      if (lead && lead.status !== LeadStatus.CONVERTED) {
+        const oldStatus = lead.status;
+        lead.status = LeadStatus.CONVERTED;
+        lead.convertedAt = new Date();
+        await this.leadsRepository.save(lead);
+
+        this.eventEmitter.emit('lead.status.changed', {
+          lead: lead,
+          oldStatus: oldStatus,
+          newStatus: LeadStatus.CONVERTED,
+        });
+
+        this.logger.log(`Changed lead status for ${lead.id} to ${LeadStatus.CONVERTED} due to appointment completed`);
+      }
+    }
   }
 }
