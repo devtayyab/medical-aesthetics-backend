@@ -120,6 +120,14 @@ export class CrmService implements OnModuleInit {
     }
 
     if (user.role === UserRole.SALESPERSON) {
+      // First check if it's a lead
+      const lead = await this.leadsRepository.findOne({ where: { id: customerId } });
+      if (lead) {
+        // Allow access if unassigned OR assigned to this salesperson
+        return !lead.assignedSalesId || lead.assignedSalesId === userId;
+      }
+
+      // If not a lead, check customer record
       const record = await this.customerRecordsRepository.findOne({ where: { customerId } });
       // Allow access if unassigned OR assigned to this salesperson
       return !record?.assignedSalespersonId || record?.assignedSalespersonId === userId;
@@ -129,6 +137,8 @@ export class CrmService implements OnModuleInit {
       const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: userId } });
       const ownedClinicIds = ownerships.map(o => o.clinicId);
       if (ownedClinicIds.length === 0) return false;
+
+      // Check for appointments in owned clinics
       const apt = await this.appointmentsRepository.findOne({
         where: { clientId: customerId },
         relations: ['clinic'],
@@ -719,7 +729,10 @@ export class CrmService implements OnModuleInit {
           ...((lead.metadata as any)?.interactionHistory || [])
         ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 50),
         actions: await this.crmActionsRepository.find({
-          where: { customerId: In(idMatchList) },
+          where: [
+            { customerId: In(idMatchList) },
+            { relatedLeadId: In(idMatchList) },
+          ],
           relations: ['salesperson'],
           order: { createdAt: 'DESC' },
         }),
@@ -804,7 +817,10 @@ export class CrmService implements OnModuleInit {
 
     // Get actions/tasks - include anything created while they were a lead
     const actions = await this.crmActionsRepository.find({
-      where: { customerId: In(idMatchList) },
+      where: [
+        { customerId: In(idMatchList) },
+        { relatedLeadId: In(idMatchList) },
+      ],
       relations: ['salesperson'],
       order: { createdAt: 'DESC' },
     });
@@ -1012,53 +1028,75 @@ export class CrmService implements OnModuleInit {
     customerId: string,
     filters?: { type?: string; startDate?: Date; endDate?: Date }
   ): Promise<CommunicationLog[]> {
-    // Enforce ACL when requester provided
-    const anyFilters: any = filters || {};
-    if (anyFilters._requesterId) {
-      const allowed = await this.userHasAccessToCustomer(anyFilters._requesterId, customerId);
-      if (!allowed) {
-        throw new NotFoundException('Customer not found');
+    try {
+      // Enforce ACL when requester provided
+      const anyFilters: any = filters || {};
+      if (anyFilters._requesterId) {
+        const allowed = await this.userHasAccessToCustomer(anyFilters._requesterId, customerId);
+        if (!allowed) {
+          throw new NotFoundException('Customer not found');
+        }
       }
-    }
-    // Check for linked lead/customer IDs
-    const originalLead = await this.leadsRepository.createQueryBuilder('lead')
-      .where("lead.metadata->>'convertedToCustomerId' = :customerId", { customerId })
-      .orWhere("lead.id = :customerId", { customerId })
-      .getOne();
 
-    const idMatchList = [customerId];
-    let metadataLogs: any[] = [];
+      // Check for linked lead/customer IDs
+      let originalLead = await this.leadsRepository.findOne({ where: { id: customerId } });
 
-    if (originalLead) {
-      if (originalLead.id !== customerId) idMatchList.push(originalLead.id);
-      const linkedId = (originalLead.metadata as any)?.convertedToCustomerId;
-      if (linkedId && linkedId !== customerId) idMatchList.push(linkedId);
-      metadataLogs = (originalLead.metadata as any)?.interactionHistory || [];
-    }
+      if (!originalLead) {
+        try {
+          originalLead = await this.leadsRepository.createQueryBuilder('lead')
+            .where("lead.metadata @> :convertedJson", {
+              convertedJson: JSON.stringify({ convertedToCustomerId: customerId })
+            })
+            .getOne();
+        } catch (e) {
+          const recentLeads = await this.leadsRepository.find({ order: { createdAt: 'DESC' }, take: 500 });
+          originalLead = recentLeads.find(l => {
+            const meta = l.metadata as any;
+            return meta && typeof meta === 'object' && meta.convertedToCustomerId === customerId;
+          });
+        }
+      }
 
-    const queryBuilder = this.communicationLogsRepository
-      .createQueryBuilder('log')
-      .leftJoinAndSelect('log.salesperson', 'salesperson')
-      .where('log.customerId IN (:...ids)', { ids: idMatchList });
+      const idMatchList: string[] = [customerId];
+      let metadataLogs: any[] = [];
 
-    if (filters?.type) {
-      queryBuilder.andWhere('log.type = :type', { type: filters.type });
-    }
+      if (originalLead) {
+        if (originalLead.id && originalLead.id !== customerId) idMatchList.push(originalLead.id);
+        const meta = originalLead.metadata as any;
+        const linkedId = meta?.convertedToCustomerId;
+        if (typeof linkedId === 'string' && linkedId !== customerId) idMatchList.push(linkedId);
 
-    if (filters?.startDate && filters?.endDate) {
-      queryBuilder.andWhere('log.createdAt BETWEEN :startDate AND :endDate', {
-        startDate: filters.startDate,
-        endDate: filters.endDate,
+        const history = meta?.interactionHistory;
+        metadataLogs = Array.isArray(history) ? history : [];
+      }
+
+      // Get communication history - merge database logs and legacy metadata logs
+      const dbLogs = await this.communicationLogsRepository.find({
+        where: { customerId: In(idMatchList) },
+        relations: ['salesperson'],
+        order: { createdAt: 'DESC' },
+        take: 50,
       });
+
+      // Merge and sort robustly
+      const allLogs = [
+        ...dbLogs,
+        ...metadataLogs.map(log => ({
+          ...log,
+          createdAt: log.createdAt || log.created_at || new Date()
+        }))
+      ].sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        if (isNaN(dateA) || isNaN(dateB)) return 0;
+        return dateB - dateA;
+      });
+
+      return allLogs.slice(0, 50) as CommunicationLog[];
+    } catch (error) {
+      this.logger.error(`Error fetching communication history for customer ${customerId}:`, error);
+      return [];
     }
-
-    const dbLogs = await queryBuilder.orderBy('log.createdAt', 'DESC').getMany();
-
-    // Merge and sort
-    const allLogs = [...dbLogs, ...metadataLogs]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    return allLogs as CommunicationLog[];
   }
 
   // Action/Task Management
@@ -1107,15 +1145,10 @@ export class CrmService implements OnModuleInit {
           } else {
             // Invalid ID passed
             console.warn(`Invalid customerId passed to createAction: ${data.customerId}`);
-            // Depending on strictness, we might want to throw error or allow unlinked action
-            // For now, let's allow unlinked but logged
           }
         }
       }
     }
-
-    // We used to enforce mandatory field validation for phone call actions here,
-    // but ActionForm does not require them upfront.
 
     const action = this.crmActionsRepository.create(data);
     const savedAction = await this.crmActionsRepository.save(action);
@@ -1235,6 +1268,7 @@ export class CrmService implements OnModuleInit {
         .createQueryBuilder('action')
         .leftJoinAndSelect('action.customer', 'customer')
         .leftJoinAndSelect('customer.customer', 'clientUser') // Join with actual User for name
+        .leftJoinAndSelect('action.relatedLead', 'relatedLead')
         .leftJoinAndSelect('action.salesperson', 'salesperson');
 
       // 1. Authorization Filter

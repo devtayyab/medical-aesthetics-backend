@@ -861,9 +861,6 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 <Button variant="outline" size="sm" onClick={() => setShowTaskModal(true)} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs px-4 shadow-sm">
                     <Clock className="w-3.5 h-3.5 mr-1" /> Follow Up
                 </Button>
-                <Button variant="primary" size="sm" onClick={() => setShowDiaryModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white border-none text-xs px-4 shadow-sm">
-                    <Calendar className="w-3.5 h-3.5 mr-1" /> Book Appointment
-                </Button>
             </div>
 
             {/* Tabs Navigation */}

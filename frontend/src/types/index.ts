@@ -92,10 +92,11 @@ export interface Appointment {
 export interface TimeSlot {
   startTime: string;
   endTime: string;
-  available: boolean;
+  available?: boolean;
   price?: number;
   discount?: number;
   providerId?: string;
+  clinicId?: string;
 }
 
 export interface LoyaltyBalance {

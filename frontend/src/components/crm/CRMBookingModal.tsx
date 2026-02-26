@@ -130,6 +130,10 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
         dispatch(setReduxDate(selectedDate));
         dispatch(setReduxTimeSlot(selectedSlot));
 
+        if (onSuccess) {
+            onSuccess();
+        }
+
         onClose();
         navigate('/checkout', {
             state: {

@@ -1,22 +1,156 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Eye, Trash2, Plus, Edit, X } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 import { Link, useNavigate } from 'react-router-dom';
+import { Textarea } from '@/components/atoms/Textarea';
+import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 
 import type { RootState, AppDispatch } from '@/store';
 import {
   deleteAction,
   updateAction,
   fetchActions,
-  fetchTaskKpis
+  fetchTaskKpis,
+  logCommunication
 } from '@/store/slices/crmSlice';
 import type { CrmAction } from '@/types';
-import { CheckCircle, Clock, AlertTriangle, Users, Repeat } from 'lucide-react';
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { Select } from '@/components/atoms/Select/Select';
+import {
+  CheckCircle, Clock, AlertTriangle, Users, Repeat,
+  PhoneCall, MoreHorizontal, User, Eye, Plus, Edit, X,
+  CornerUpRight, Calendar, Phone
+} from 'lucide-react';
+
+// --- Dialer Component (Reused from OneCustomerDetail) ---
+const DialerModal = ({
+  isOpen,
+  onClose,
+  customerName,
+  phoneNumber,
+  onCallEnded
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  customerName: string;
+  phoneNumber: string;
+  onCallEnded: (duration: number) => void;
+}) => {
+  const [callStatus, setCallStatus] = useState<'dialing' | 'connected' | 'ended'>('dialing');
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isOpen) {
+      setCallStatus('dialing');
+      setDuration(0);
+      timer = setTimeout(() => {
+        setCallStatus('connected');
+      }, 2000);
+    }
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (callStatus === 'connected') {
+      timer = setInterval(() => {
+        setDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [callStatus]);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleEndCall = () => {
+    setCallStatus('ended');
+    setTimeout(() => {
+      onCallEnded(duration);
+    }, 1000);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-gray-700 relative">
+        <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -ml-10 -mt-10" />
+        <div className="absolute bottom-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl -mr-10 -mb-10" />
+
+        <div className="relative z-10 flex flex-col h-[500px]">
+          <div className="p-6 flex justify-between items-center">
+            <div className="text-xs font-bold tracking-widest text-gray-400 uppercase">VoIP Dialer</div>
+            <div className="flex gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-green-400 font-bold">Online</span>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center shadow-inner border border-gray-600 text-2xl font-bold text-gray-300">
+                {customerName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              </div>
+              {callStatus === 'dialing' && (
+                <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping" />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold tracking-tight">{customerName}</h3>
+              <p className="text-lg text-gray-400 font-mono tracking-wider">{phoneNumber}</p>
+            </div>
+
+            <div className="space-y-1">
+              <div className={`text-sm font-bold uppercase tracking-widest px-3 py-1 rounded-full inline-block
+                                ${callStatus === 'dialing' ? 'bg-yellow-500/20 text-yellow-400' :
+                  callStatus === 'connected' ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-red-500/20 text-red-400'}`}>
+                {callStatus === 'dialing' ? 'Dialing...' :
+                  callStatus === 'connected' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      <span>REC {formatDuration(duration)}</span>
+                    </div>
+                  ) : 'Call Ended'}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-8 pb-10 flex justify-center items-center gap-8">
+            <Button
+              variant="ghost"
+              className="w-14 h-14 rounded-full bg-gray-700/50 hover:bg-gray-700 text-white border border-gray-600 backdrop-blur-md"
+              onClick={onClose}
+            >
+              <User className="w-6 h-6" />
+            </Button>
+
+            <Button
+              onClick={handleEndCall}
+              className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/40 border-4 border-gray-800 flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+            >
+              <Phone className="w-8 h-8 fill-current rotate-[135deg]" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-14 h-14 rounded-full bg-gray-700/50 hover:bg-gray-700 text-white border border-gray-600 backdrop-blur-md"
+            >
+              <MoreHorizontal className="w-6 h-6" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface TasksPageProps {
   onViewTask?: (task: any) => void;
@@ -38,7 +172,22 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterDateRange, setFilterDateRange] = useState<string>('all');
   const [selectedTask, setSelectedTask] = useState<CrmAction | null>(null);
+  const [viewingTask, setViewingTask] = useState<CrmAction | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+
+  // Interaction States
+  const [showInteractionModal, setShowInteractionModal] = useState(false);
+  const [interactionTask, setInteractionTask] = useState<CrmAction | null>(null);
+  const [interactionNotes, setInteractionNotes] = useState("");
+  const [showDialer, setShowDialer] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTasks(prev =>
+      prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
+    );
+  };
 
   const [taskFormData, setTaskFormData] = useState<any>({
     title: '',
@@ -66,6 +215,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     setIsEditing(false);
     setSelectedTask(null);
     setTaskFormData({
+      customerId: '',
+      relatedLeadId: '',
       title: '',
       description: '',
       actionType: 'call',
@@ -107,11 +258,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
   const filteredTasks = tasks.filter((task) => {
     // 1. Search term
-    const matchesSearch = !searchTerm || (
+    const matchesSearch = (
       task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.actionType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (task.customer && `${task.customer.firstName} ${task.customer.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()))
+      (task.customer?.customer && `${task.customer.customer.firstName || ''} ${task.customer.customer.lastName || ''}`.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (task.relatedLead && `${task.relatedLead.firstName || ''} ${task.relatedLead.lastName || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     if (!matchesSearch) return false;
@@ -154,9 +306,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
       if (isCompleting) {
         if (task.actionType === 'call' || task.actionType === 'follow_up_call') {
-          // Open Log Communication behavior (handled by parent or state)
-          // For now, alert or redirect
-          if (confirm('Task completed! Would you like to log this communication?')) {
+          if (task.customerId && confirm('Task completed! Would you like to log this communication?')) {
             navigate(`/crm/customers/${task.customerId}?log=true`);
           }
         } else if (task.actionType === 'appointment') {
@@ -167,6 +317,64 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       }
     } catch (error) {
       console.error('Failed to update task status:', error);
+    }
+  };
+
+  const handleSaveInteraction = async () => {
+    if (!interactionTask) return;
+
+    try {
+      // 1. Log the communication
+      await dispatch(logCommunication({
+        customerId: interactionTask.customerId || interactionTask.relatedLeadId || '',
+        salespersonId: currentUserId || '',
+        type: 'call',
+        direction: 'outgoing',
+        status: 'completed',
+        subject: `Follow Up Call: ${interactionTask.title}`,
+        notes: interactionNotes,
+        createdAt: new Date().toISOString()
+      })).unwrap();
+
+      // 2. Complete the task
+      await dispatch(updateAction({
+        id: interactionTask.id,
+        updates: { status: 'completed' }
+      })).unwrap();
+
+      setShowInteractionModal(false);
+      setInteractionNotes("");
+      setInteractionTask(null);
+
+      if (currentUserId) {
+        dispatch(fetchActions({ salespersonId: currentUserId }));
+        dispatch(fetchTaskKpis());
+      }
+    } catch (error) {
+      console.error("Failed to save interaction:", error);
+    }
+  };
+
+  const handleBookingSuccess = async () => {
+    if (!interactionTask) return;
+
+    try {
+      // Complete the task
+      await dispatch(updateAction({
+        id: interactionTask.id,
+        updates: { status: 'completed' }
+      })).unwrap();
+
+      setShowInteractionModal(false);
+      setInteractionTask(null);
+      setInteractionNotes("");
+
+      if (currentUserId) {
+        dispatch(fetchActions({ salespersonId: currentUserId }));
+        dispatch(fetchTaskKpis());
+      }
+    } catch (error) {
+      console.error("Failed to complete task after booking:", error);
     }
   };
 
@@ -308,12 +516,14 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                     >
                       <td className="p-2.5">
                         <div className="flex justify-center">
-                          <input
-                            type="checkbox"
-                            checked={task.status === 'completed'}
-                            onChange={() => handleTaskCompletion(task)}
-                            className="h-4 w-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
-                          />
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-tight
+                            ${task.status === 'completed' ? 'bg-green-100 text-green-700 border border-green-200' :
+                              task.status === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                task.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border border-slate-200' :
+                                  'bg-blue-100 text-blue-700 border border-blue-200'}`}
+                          >
+                            {task.status}
+                          </span>
                         </div>
                       </td>
                       <td className="p-2.5">
@@ -323,13 +533,18 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                         )}
                       </td>
                       <td className="p-2.5">
-                        {task.customerId ? (
+                        {(task.customerId || task.relatedLeadId) ? (
                           <Link
-                            to={`/crm/customers/${task.customerId}`}
-                            className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100/50 hover:bg-slate-200/50 rounded-md text-slate-700 font-bold text-[10px] transition-all"
+                            to={task.customerId ? `/crm/customers/${task.customerId}` : '#'}
+                            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-bold text-[10px] transition-all
+                              ${task.customerId ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-orange-50 text-orange-700'}`}
                           >
-                            <Users className="h-2.5 w-2.5 text-slate-400" />
-                            {task.customer ? `${task.customer.firstName} ${task.customer.lastName}` : 'View Profile'}
+                            <Users className="h-2.5 w-2.5 opacity-60" />
+                            {task.customer?.customer
+                              ? `${task.customer.customer.firstName || ''} ${task.customer.customer.lastName || ''}`
+                              : task.relatedLead
+                                ? `${task.relatedLead.firstName || ''} ${task.relatedLead.lastName || ''}`
+                                : 'View Profile'}
                           </Link>
                         ) : (
                           <span className="text-slate-300 text-[10px] font-medium italic">Unassigned</span>
@@ -370,7 +585,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                       </td>
                       <td className="p-2.5">
                         <div className="flex gap-0.5 justify-end">
-                          <Button size="sm" variant="ghost" onClick={() => onViewTask?.(task)} className="h-7 w-7 p-0">
+                          <Button size="sm" variant="ghost" onClick={() => setViewingTask(task)} className="h-7 w-7 p-0">
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
                           <Button
@@ -380,6 +595,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                               setSelectedTask(task);
                               setTaskFormData({
                                 customerId: task.customerId || '',
+                                relatedLeadId: task.relatedLeadId || '',
                                 title: task.title || '',
                                 description: task.description || '',
                                 actionType: task.actionType,
@@ -397,8 +613,34 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                           >
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-red-500 h-7 w-7 p-0" onClick={() => handleDeleteTask(task.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-green-600 h-7 w-7 p-0 hover:text-green-700 hover:bg-green-50"
+                            onClick={async () => {
+                              try {
+                                // 1. Set status to in_progress in DB
+                                await dispatch(updateAction({
+                                  id: task.id,
+                                  updates: { status: 'in_progress' }
+                                })).unwrap();
+
+                                // 2. Local state update and open modal
+                                setInteractionTask({ ...task, status: 'in_progress' });
+                                setInteractionNotes(task.description || "");
+                                setShowInteractionModal(true);
+
+                                // 3. Refresh list
+                                if (currentUserId) {
+                                  dispatch(fetchActions({ salespersonId: currentUserId }));
+                                }
+                              } catch (err) {
+                                console.error("Failed to start interaction:", err);
+                              }
+                            }}
+                            title="Follow Up"
+                          >
+                            <CornerUpRight className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </td>
@@ -431,6 +673,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <div className="bg-white border-none space-y-0">
                 <ActionForm
                   customerId={taskFormData.customerId || ''}
+                  hideHeader={true}
                   prefilledData={isEditing ? {
                     ...taskFormData,
                     id: selectedTask?.id
@@ -447,6 +690,259 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Task View Modal */}
+      {viewingTask && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-lg font-black text-slate-800">
+                  Task Details
+                </h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{viewingTask.actionType.replace(/_/g, ' ')}</p>
+              </div>
+              <Button variant="ghost" onClick={() => setViewingTask(null)} className="h-10 w-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 text-sm">
+              <div>
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Title</span>
+                <span className="font-bold text-slate-800">{viewingTask.title}</span>
+              </div>
+
+              <div>
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Description</span>
+                <p className="text-slate-700 whitespace-pre-wrap">{viewingTask.description || 'No description provided.'}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</span>
+                  <span className="font-bold text-slate-700 capitalize">{viewingTask.status.replace(/_/g, ' ')}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Priority</span>
+                  <span className="font-bold text-slate-700 capitalize">{viewingTask.priority}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Due Date</span>
+                  <span className="font-bold text-slate-700">{formatDate(viewingTask.dueDate)}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Reminder</span>
+                  <span className="font-bold text-slate-700">{formatDate(viewingTask.reminderDate)}</span>
+                </div>
+              </div>
+
+              {(viewingTask.customer || viewingTask.relatedLead) && (
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Associated Contact</span>
+                  {viewingTask.customerId ? (
+                    <Link
+                      to={`/crm/customers/${viewingTask.customerId}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-700 font-bold transition-all"
+                    >
+                      <Users className="h-4 w-4" />
+                      {viewingTask.customer?.customer
+                        ? `${viewingTask.customer.customer.firstName} ${viewingTask.customer.customer.lastName}`
+                        : 'Customer Record'}
+                    </Link>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-lg text-orange-700 font-bold">
+                      <Users className="h-4 w-4" />
+                      {viewingTask.relatedLead
+                        ? `${viewingTask.relatedLead.firstName} ${viewingTask.relatedLead.lastName}`
+                        : 'Lead'}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {viewingTask.isRecurring && (
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Recurrence</span>
+                  <span className="flex items-center gap-1.5 font-bold text-slate-700 capitalize">
+                    <Repeat className="h-3.5 w-3.5 text-blue-500" />
+                    {viewingTask.recurrenceType} (Every {viewingTask.recurrenceInterval})
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <Button variant="outline" onClick={() => setViewingTask(null)} className="h-9 px-6 font-bold text-xs bg-white text-slate-700 shadow-sm hover:bg-slate-50">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interaction Modal */}
+      {showInteractionModal && interactionTask && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-lg font-black text-slate-800">Interaction Panel</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Patient: {
+                    interactionTask.customer?.customer
+                      ? `${interactionTask.customer.customer.firstName || ''} ${interactionTask.customer.customer.lastName || ''}`
+                      : interactionTask.relatedLead
+                        ? `${interactionTask.relatedLead.firstName || ''} ${interactionTask.relatedLead.lastName || ''}`
+                        : 'Unassigned'
+                  }
+                </p>
+              </div>
+              <Button variant="ghost" onClick={() => setShowInteractionModal(false)} className="h-10 w-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Call Controls */}
+              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex items-center justify-between shadow-sm">
+                <div className="space-y-1">
+                  <div className="text-sm font-bold text-slate-800">Active Outreach</div>
+                  <div className="text-xs text-slate-500 font-medium">Ready to contact patient via dialer</div>
+                </div>
+                <Button
+                  onClick={() => setShowDialer(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold h-12 px-6 rounded-xl shadow-lg shadow-green-200 flex items-center gap-2 transition-all active:scale-95"
+                >
+                  <PhoneCall className="w-5 h-5" /> Let's Call
+                </Button>
+              </div>
+
+              {/* Remarks Box */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Call Remarks / Outcome</span>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[10px] font-bold bg-white text-slate-700 border-slate-200"
+                      onClick={() => setShowBookingModal(true)}
+                    >
+                      <Calendar className="w-3 h-3 mr-1.5 text-blue-500" /> WANTS BOOKING
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[10px] font-bold bg-white text-slate-700 border-slate-200"
+                      onClick={async () => {
+                        try {
+                          // 1. Reset status to pending in DB
+                          await dispatch(updateAction({
+                            id: interactionTask.id,
+                            updates: { status: 'pending' }
+                          })).unwrap();
+
+                          // 2. Open edit form
+                          setSelectedTask(interactionTask);
+                          setTaskFormData({
+                            customerId: interactionTask.customerId || '',
+                            relatedLeadId: interactionTask.relatedLeadId || '',
+                            title: interactionTask.title || '',
+                            description: interactionTask.description || '',
+                            actionType: interactionTask.actionType,
+                            status: 'pending', // Explicitly set to pending
+                            dueDate: interactionTask.dueDate ? new Date(interactionTask.dueDate).toISOString().slice(0, 16) : '',
+                            reminderDate: interactionTask.reminderDate ? new Date(interactionTask.reminderDate).toISOString().slice(0, 16) : '',
+                            priority: interactionTask.priority as any,
+                            isRecurring: interactionTask.isRecurring || false,
+                            recurrenceType: interactionTask.recurrenceType as any || 'weekly',
+                            recurrenceInterval: interactionTask.recurrenceInterval || 1
+                          });
+                          setIsEditing(true);
+
+                          // 3. Close interaction modal
+                          setShowInteractionModal(false);
+
+                          if (currentUserId) {
+                            dispatch(fetchActions({ salespersonId: currentUserId }));
+                          }
+                        } catch (err) {
+                          console.error("Failed to reset task to pending:", err);
+                        }
+                      }}
+                    >
+                      <Edit className="w-3 h-3 mr-1.5 text-slate-400" /> EDIT DETAIL
+                    </Button>
+                  </div>
+                </div>
+                <Textarea
+                  placeholder="Summarize the patient's response and next steps..."
+                  value={interactionNotes}
+                  onChange={(e) => setInteractionNotes(e.target.value)}
+                  className="min-h-[150px] rounded-xl border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all resize-none text-sm p-4"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowInteractionModal(false)} className="h-10 px-6 font-bold text-xs bg-white text-slate-700 shadow-sm border-slate-200 rounded-xl">
+                Discard
+              </Button>
+              <Button
+                onClick={handleSaveInteraction}
+                disabled={!interactionNotes.trim()}
+                className="h-10 px-8 font-black text-xs bg-slate-900 text-white shadow-lg rounded-xl hover:bg-slate-800 transition-all disabled:opacity-50"
+              >
+                Log Interaction & Finish
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dialer Modal */}
+      <DialerModal
+        isOpen={showDialer}
+        onClose={() => setShowDialer(false)}
+        customerName={
+          interactionTask?.customer?.customer
+            ? `${interactionTask.customer.customer.firstName} ${interactionTask.customer.customer.lastName}`
+            : interactionTask?.relatedLead
+              ? `${interactionTask.relatedLead.firstName} ${interactionTask.relatedLead.lastName}`
+              : 'Patient'
+        }
+        phoneNumber={
+          interactionTask?.customer?.customer?.phone ||
+          interactionTask?.relatedLead?.phone ||
+          'Unknown'
+        }
+        onCallEnded={(duration) => {
+          setShowDialer(false);
+          // Auto-append duration to notes?
+          setInteractionNotes(prev => `${prev}\n[Call Duration: ${Math.floor(duration / 60)}m ${duration % 60}s]`.trim());
+        }}
+      />
+
+      {/* Booking Modal */}
+      {showBookingModal && interactionTask && (
+        <CRMBookingModal
+          isOpen={showBookingModal}
+          customerId={interactionTask.customerId || interactionTask.relatedLeadId || ''}
+          customerName={
+            interactionTask.customer?.customer
+              ? `${interactionTask.customer.customer.firstName} ${interactionTask.customer.customer.lastName}`
+              : interactionTask.relatedLead
+                ? `${interactionTask.relatedLead.firstName} ${interactionTask.relatedLead.lastName}`
+                : ''
+          }
+          customerPhone={interactionTask.customer?.customer?.phone || interactionTask.relatedLead?.phone}
+          customerEmail={interactionTask.customer?.customer?.email || interactionTask.relatedLead?.email}
+          onClose={() => setShowBookingModal(false)}
+          onSuccess={handleBookingSuccess}
+        />
       )}
     </div>
   );

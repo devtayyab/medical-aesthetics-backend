@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     ChevronLeft, ChevronRight, Plus, Clock, User, Scissors, CheckCircle2,
@@ -9,7 +10,17 @@ import {
     startOfDay, isToday, addWeeks, subWeeks, subDays, setHours, setMinutes, parseISO
 } from 'date-fns';
 import { AppDispatch, RootState } from '@/store';
-import { fetchClinicAppointments, updateAppointmentStatus, createAppointment, completeAppointment } from '@/store/slices/bookingSlice';
+import {
+    fetchClinicAppointments,
+    updateAppointmentStatus,
+    createAppointment,
+    completeAppointment,
+    setSelectedClinic,
+    setSelectedDate,
+    setSelectedTimeSlot,
+    addService,
+    clearBooking
+} from '@/store/slices/bookingSlice';
 import { fetchLeads, createLead } from '@/store/slices/crmSlice';
 import { Button } from '@/components/atoms/Button/Button';
 import { crmAPI, clinicsAPI, bookingAPI } from '@/services/api';
@@ -26,6 +37,7 @@ const statusLabels: Record<string, { label: string, color: string, icon: any }> 
 
 export const SalesWeekCalendar: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
+    const navigate = useNavigate();
     const { appointments } = useSelector((state: RootState) => state.booking);
     const { user } = useSelector((state: RootState) => state.auth);
     const { leads } = useSelector((state: RootState) => state.crm);
@@ -136,7 +148,8 @@ export const SalesWeekCalendar: React.FC = () => {
     };
 
     const handleSaveWizard = async () => {
-        let clientId = wizardClient?.id;
+        let clientId = wizardClient ? wizardClient.id : null;
+        let clientData = wizardClient || {};
 
         if (isWalkIn) {
             // Create minor contact
@@ -149,6 +162,7 @@ export const SalesWeekCalendar: React.FC = () => {
                 status: 'new'
             })).unwrap();
             clientId = leadRes.id;
+            clientData = leadRes;
         }
 
         if (!clientId || wizardServices.length === 0 || !wizardClinic) return;
@@ -159,20 +173,37 @@ export const SalesWeekCalendar: React.FC = () => {
         const totalDuration = wizardServices.reduce((acc, s) => acc + (s.duration || 30), 0);
         const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60000);
 
-        // Ideally loop to create multiple appointments if multi-service, or single appointment with array of service IDs. Assuming single service per appt for compatibility.
-        for (const srv of wizardServices) {
-            await dispatch(createAppointment({
-                clinicId: wizardClinic.id,
-                serviceId: srv.id,
-                providerId: user?.id,
-                clientId,
-                startTime: startDateTime.toISOString(),
-                endTime: endDateTime.toISOString(),
-            }));
-        }
+        // Populate Booking State for Checkout
+        dispatch(clearBooking());
+        dispatch(setSelectedClinic(wizardClinic));
+        dispatch(setSelectedDate(wizardDate.toISOString()));
+
+        // Checkout expects a TimeSlot object
+        dispatch(setSelectedTimeSlot({
+            startTime: startDateTime.toISOString(),
+            endTime: endDateTime.toISOString(),
+            providerId: user?.id,
+            clinicId: wizardClinic.id,
+            available: true
+        }));
+
+        // Add services
+        wizardServices.forEach(srv => dispatch(addService(srv)));
+
+        // Navigate to checkout with client info
+        navigate('/checkout', {
+            state: {
+                customerId: clientId,
+                customerName: `${clientData.firstName} ${clientData.lastName}`,
+                customerEmail: clientData.email,
+                customerPhone: clientData.phone,
+                name: `${clientData.firstName} ${clientData.lastName}`, // Fallback
+                email: clientData.email,
+                phone: clientData.phone
+            }
+        });
 
         setIsAddWizardOpen(false);
-        dispatch(fetchClinicAppointments({ providerId: user?.id }));
     };
 
     const handleStatusUpdate = async (id: string, st: string) => {

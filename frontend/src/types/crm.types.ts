@@ -111,7 +111,8 @@ export interface CrmAction {
   };
   createdAt: string;
   updatedAt: string;
-  customer?: User;
+  customer?: any; // CustomerRecord with nested customer User
+  relatedLead?: Lead;
   salesperson?: User;
 }
 

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/atoms/Textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 import {
   createAction,
+  updateAction,
   validateAction,
   getRequiredFieldsForAction
 } from '@/store/slices/crmSlice';
@@ -19,18 +20,21 @@ interface ActionFormProps {
   customerId: string;
   onSuccess?: () => void;
   prefilledData?: Partial<CrmAction>;
+  hideHeader?: boolean;
 }
 
 export const ActionForm: React.FC<ActionFormProps> = ({
   customerId: propCustomerId,
   onSuccess,
-  prefilledData
+  prefilledData,
+  hideHeader
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const [customerId, setCustomerId] = useState(propCustomerId);
-  const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
+  const [customers, setCustomers] = useState<{ value: string; label: string; type: 'customer' | 'lead'; email?: string }[]>([]);
   const [formData, setFormData] = useState<Partial<CrmAction>>({
     customerId: propCustomerId,
+    relatedLeadId: prefilledData?.relatedLeadId,
     actionType: prefilledData?.actionType || 'call',
     title: prefilledData?.title || '',
     description: prefilledData?.description || '',
@@ -72,18 +76,39 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await userAPI.getAllUsers({ role: 'client' });
-        const users = Array.isArray(response.data) ? response.data : response.data.users || [];
-        const options = users.map((u: any) => ({
-          value: u.id,
-          label: `${u.firstName} ${u.lastName} (${u.email || 'No email'})`
-        }));
+        // 1. Fetch Customers
+        const customerResponse = await userAPI.getAllUsers({ role: 'client' });
+        const customersData = Array.isArray(customerResponse.data) ? customerResponse.data : customerResponse.data.users || [];
+
+        // 2. Fetch Leads
+        const leadsResponse = await crmAPI.getLeads();
+        const leadsData = leadsResponse.data || [];
+
+        const options = [
+          ...customersData.map((u: any) => ({
+            value: u.id,
+            type: 'customer',
+            email: u.email,
+            label: `${u.email || 'No email'} (${u.firstName} ${u.lastName})`
+          })),
+          ...leadsData.map((l: any) => ({
+            value: l.id,
+            type: 'lead',
+            email: l.email,
+            label: `${l.email || 'No email'} (${l.firstName} ${l.lastName}) - LEAD`
+          }))
+        ];
         setCustomers(options);
 
         // If we have a propCustomerId, set the initial label
-        if (propCustomerId) {
-          const matched = options.find((o: any) => o.value === propCustomerId);
-          if (matched) setSelectedCustomerLabel(matched.label);
+        if (propCustomerId || prefilledData?.relatedLeadId) {
+          const targetId = propCustomerId || prefilledData?.relatedLeadId;
+          const matched = options.find((o: any) => o.value === targetId);
+          if (matched) {
+            const displayLabel = matched.email || matched.label;
+            setSelectedCustomerLabel(displayLabel);
+            setSearchTerm(displayLabel);
+          }
         }
 
         // Fetch clinics
@@ -97,12 +122,14 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       }
     };
     fetchData();
-  }, [propCustomerId]);
+  }, [propCustomerId, prefilledData?.relatedLeadId]);
 
   const handleInputChange = (field: string, value: any) => {
     if (field === 'customerId') {
       setCustomerId(value);
-      setFormData(prev => ({ ...prev, customerId: value }));
+      setFormData(prev => ({ ...prev, customerId: value, relatedLeadId: undefined }));
+    } else if (field === 'relatedLeadId') {
+      setFormData(prev => ({ ...prev, relatedLeadId: value, customerId: undefined }));
     } else if (field.startsWith('metadata.')) {
       const metadataField = field.replace('metadata.', '');
       setFormData(prev => ({
@@ -142,6 +169,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         // Prepare payload according to backend entity structure
         const payload: Partial<CrmAction> = {
           customerId: customerId || propCustomerId || undefined,
+          relatedLeadId: formData.relatedLeadId || prefilledData?.relatedLeadId || undefined,
           salespersonId: formData.salespersonId || prefilledData?.salespersonId || undefined,
           actionType: formData.actionType,
           therapy: formData.therapy,
@@ -164,7 +192,12 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           }
         });
 
-        await dispatch(createAction(payload)).unwrap();
+        if (prefilledData?.id) {
+          await dispatch(updateAction({ id: prefilledData.id, updates: payload })).unwrap();
+        } else {
+          await dispatch(createAction(payload)).unwrap();
+        }
+
         setFormData({
           customerId: customerId || propCustomerId,
           actionType: 'call',
@@ -183,23 +216,27 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         setValidationWarnings([]);
         onSuccess?.();
       } catch (error) {
-        console.error('Failed to create action:', error);
+        console.error(`Failed to ${prefilledData?.id ? 'update' : 'create'} action:`, error);
       }
     }
   };
 
 
   return (
-    <Card>
-      <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-6">
-        <div>
-          <CardTitle className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            Program New Task
-          </CardTitle>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Operation Workflow</p>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-8">
+    <Card className={hideHeader ? 'border-none shadow-none' : ''}>
+      {!hideHeader && (
+        <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-6">
+          <div>
+            <CardTitle className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+              {prefilledData?.id ? 'Modify Task Details' : 'Program New Task'}
+            </CardTitle>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">
+              {prefilledData?.id ? 'Update Strategy' : 'Operation Workflow'}
+            </p>
+          </div>
+        </CardHeader>
+      )}
+      <CardContent className={hideHeader ? 'p-0' : 'pt-8'}>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle className="h-4 w-4 text-emerald-500" />
@@ -242,11 +279,17 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   )
                   .map(c => (
                     <button
-                      key={c.value}
+                      key={`${c.type}-${c.value}`}
                       type="button"
                       onClick={() => {
-                        handleInputChange('customerId', c.value);
-                        setSearchTerm(c.label);
+                        if (c.type === 'customer') {
+                          handleInputChange('customerId', c.value);
+                        } else {
+                          handleInputChange('relatedLeadId', c.value);
+                        }
+                        const displayValue = c.email || c.label;
+                        setSearchTerm(displayValue);
+                        setSelectedCustomerLabel(displayValue);
                         setShowResults(false);
                       }}
                       className="w-full text-left px-5 py-4 hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-none flex items-center gap-4 group"
@@ -305,14 +348,14 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Task Title"
-              value={formData.title}
+              value={formData.title || ''}
               onChange={(e) => handleInputChange('title', e.target.value)}
               placeholder="e.g. Call client for confirmation"
               required
             />
             <Input
               label="Therapy Associated"
-              value={formData.therapy}
+              value={formData.therapy || ''}
               onChange={(e) => handleInputChange('therapy', e.target.value)}
               placeholder="e.g. Botox Treatment"
             />
@@ -323,7 +366,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             <Input
               label="Due Date & Time"
               type="datetime-local"
-              value={formData.dueDate}
+              value={formData.dueDate || ''}
               onChange={(e) => handleInputChange('dueDate', e.target.value)}
               required
             />
@@ -462,10 +505,10 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button type="submit" variant="primary">
+          <div className="flex gap-2 pt-4">
+            <Button type="submit" variant="primary" className="flex-1">
               <CheckCircle className="h-4 w-4 mr-2" />
-              Create Task
+              {prefilledData?.id ? 'Save Changes' : 'Create Task'}
             </Button>
             <Button type="button" variant="secondary" onClick={handleValidate}>
               Validate

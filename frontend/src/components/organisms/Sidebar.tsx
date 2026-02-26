@@ -42,7 +42,6 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/customers", label: "Customers", icon: <Users className="w-5 h-5" />, group: "CRM" },
   { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" />, group: "Sales" },
   { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "Operations" },
-  { path: "/crm/actions", label: "Actions", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/communication", label: "Communication Flow", icon: <Phone className="w-5 h-5" />, group: "Communication" },
   { path: "/crm/analytics", label: "Analytics", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },

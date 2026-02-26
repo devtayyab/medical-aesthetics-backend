@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { CustomerRecord } from './customer-record.entity';
+import { Lead } from './lead.entity';
 
 @Entity('crm_actions')
 export class CrmAction {
@@ -98,6 +99,10 @@ export class CrmAction {
 
   @Column({ type: 'uuid', nullable: true })
   relatedLeadId?: string;
+
+  @ManyToOne(() => Lead, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'relatedLeadId' })
+  relatedLead: Lead;
 
   // Mandatory fields for call actions
   @Column({ nullable: true })

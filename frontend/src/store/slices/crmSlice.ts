@@ -622,6 +622,7 @@ const crmSlice = createSlice({
       // Action/Task Management
       .addCase(createAction.fulfilled, (state, action) => {
         state.tasks.unshift(action.payload);
+        state.actions.unshift(action.payload);
         if (state.customerRecord) {
           state.customerRecord.actions.unshift(action.payload);
         }
@@ -630,6 +631,11 @@ const crmSlice = createSlice({
         const taskIndex = state.tasks.findIndex((t) => t.id === action.payload.id);
         if (taskIndex !== -1) {
           state.tasks[taskIndex] = action.payload;
+        }
+
+        const actionIndexGlobal = state.actions.findIndex((t) => t.id === action.payload.id);
+        if (actionIndexGlobal !== -1) {
+          state.actions[actionIndexGlobal] = action.payload;
         }
 
         if (state.customerRecord) {
@@ -654,6 +660,7 @@ const crmSlice = createSlice({
       })
       .addCase(deleteAction.fulfilled, (state, action) => {
         state.tasks = state.tasks.filter((t) => t.id !== action.payload);
+        state.actions = state.actions.filter((t) => t.id !== action.payload);
         state.pendingTasks = state.pendingTasks.filter((t) => t.id !== action.payload);
         state.overdueTasks = state.overdueTasks.filter((t) => t.id !== action.payload);
 

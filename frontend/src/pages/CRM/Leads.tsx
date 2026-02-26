@@ -13,9 +13,6 @@ import {
   Trash2,
   Copy,
   Users,
-  MoreHorizontal,
-  ArrowUpRight,
-  TrendingUp,
   X,
   Eye,
   User,
@@ -48,7 +45,7 @@ interface LeadsPageProps {
 
 export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreateForm = false, onFormShown }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { leads, leadFilters, duplicateCheck, isLoading, error } = useSelector((state: RootState) => state.crm);
+  const { leads, leadFilters, duplicateCheck, isLoading } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -170,53 +167,53 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
     <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative">
       <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-[0.03] group-hover:scale-110 transition-transform duration-500 ${color.split(' ')[1]}`} style={{ backgroundColor: 'currentColor' }} />
-      <CardContent className="p-6 flex items-start justify-between relative z-10">
-        <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-400 group-hover:text-gray-500 transition-colors">{title}</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-3xl font-extrabold text-gray-900 leading-none">{value}</h3>
+      <CardContent className="p-3 flex items-start justify-between relative z-10">
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 group-hover:text-gray-500 transition-colors">{title}</p>
+          <div className="flex items-baseline gap-1.5">
+            <h3 className="text-xl font-extrabold text-gray-900 leading-none">{value}</h3>
             {trend && (
-              <span className="text-xs font-bold text-emerald-600 flex items-center bg-emerald-50 px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold text-emerald-600 flex items-center bg-emerald-50 px-1 py-0.5 rounded-full">
                 {trend.includes('%') ? trend : `+${trend}`}
               </span>
             )}
           </div>
         </div>
-        <div className={`p-4 rounded-2xl ${color} shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
-          <Icon className="w-6 h-6" />
+        <div className={`p-2 rounded-xl ${color} shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
+          <Icon className="w-5 h-5" />
         </div>
       </CardContent>
     </Card>
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 max-w-7xl mx-auto space-y-4">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Lead Management</h1>
-          <p className="text-gray-500 mt-1">Track, organize, and convert your potential customers.</p>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Lead Management</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Track, organize, and convert your potential customers.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="hidden md:flex">
-            <Filter className="h-4 w-4 mr-2" />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="hidden md:flex h-8 text-xs">
+            <Filter className="h-3.5 w-3.5 mr-2" />
             Filters
           </Button>
-          <Button variant="primary" onClick={() => setShowCreateForm(true)} className="shadow-lg shadow-blue-500/20">
-            <Plus className="h-4 w-4 mr-2" />
+          <Button variant="primary" onClick={() => setShowCreateForm(true)} className="h-8 text-xs shadow-lg shadow-blue-500/20">
+            <Plus className="h-3.5 w-3.5 mr-2" />
             Add New Lead
           </Button>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           title="Total Leads"
           value={leads.length}
           icon={Users}
           color="bg-blue-50 text-blue-600"
-          trend="+12% this month"
+          trend="+12%"
         />
         <StatCard
           title="New Inquiries"
@@ -235,25 +232,25 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
           value={leads.filter(l => l.status === 'converted').length}
           icon={CheckCircle}
           color="bg-emerald-50 text-emerald-600"
-          trend="4.5% conversion rate"
+          trend="4.5%"
         />
       </div>
 
       {/* Filters & Search Bar */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
+      <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-3.5 w-3.5" />
           <Input
             placeholder="Search by name, email, or phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            className="pl-9 bg-gray-50 border-gray-200 focus:bg-white"
+            className="pl-9 h-9 text-xs bg-gray-50 border-gray-200 focus:bg-white"
           />
         </div>
 
         {showFilters && (
-          <div className="flex flex-col md:flex-row gap-3 animate-in slide-in-from-right-2">
+          <div className="flex flex-col md:flex-row gap-2 animate-in slide-in-from-right-2">
             <Select
               value={leadFilters.status || ''}
               onChange={(value) => handleFilterChange('status', value)}
@@ -265,7 +262,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                 { value: 'converted', label: 'Converted' },
                 { value: 'lost', label: 'Lost' }
               ]}
-              className="w-full md:w-40"
+              className="w-full md:w-36 h-9 text-xs"
             />
             <Select
               value={leadFilters.source || ''}
@@ -278,9 +275,9 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                 { value: 'manual', label: 'Manual' },
                 { value: 'website', label: 'Website' }
               ]}
-              className="w-full md:w-40"
+              className="w-full md:w-36 h-9 text-xs"
             />
-            <Button variant="ghost" onClick={() => {
+            <Button variant="ghost" className="h-9 text-xs" onClick={() => {
               dispatch(setLeadFilters({}));
               setSearchTerm('');
             }}>
@@ -292,23 +289,22 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
       {/* Bulk Actions Bar */}
       {selectedLeads.length > 0 && (
-        <div className="bg-white border-2 border-primary/20 p-4 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 shadow-xl shadow-primary/5">
-          <div className="flex items-center gap-4">
-            <div className="bg-primary/10 p-2 rounded-xl">
-              <CheckCircle className="w-5 h-5 text-primary" />
+        <div className="bg-white border-2 border-primary/20 p-2 px-4 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 shadow-xl shadow-primary/5">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 p-1.5 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <span className="text-sm font-bold text-gray-900">{selectedLeads.length} leads selected</span>
-              <p className="text-xs text-gray-500">Perform bulk actions on your selection</p>
+              <span className="text-xs font-bold text-gray-900">{selectedLeads.length} leads selected</span>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="white" size="sm" onClick={() => handleBulkAction('mark_contacted')} className="hover:border-primary/30">
+            <Button variant="white" size="sm" onClick={() => handleBulkAction('mark_contacted')} className="h-8 text-[10px] hover:border-primary/30">
               Mark Contacted
             </Button>
             {user?.role !== 'salesperson' && (
-              <Button variant="white" size="sm" onClick={() => handleBulkAction('delete')} className="text-red-600 hover:bg-red-50 border-red-100">
-                <Trash2 className="w-4 h-4 mr-1" /> Delete
+              <Button variant="white" size="sm" onClick={() => handleBulkAction('delete')} className="h-8 text-[10px] text-red-600 hover:bg-red-50 border-red-100">
+                <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
               </Button>
             )}
           </div>
@@ -319,36 +315,36 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       <Card className="border-none shadow-md overflow-hidden">
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-12 text-center text-gray-500">Loading leads...</div>
+            <div className="p-8 text-center text-xs text-gray-500">Loading leads...</div>
           ) : leads.length === 0 ? (
-            <div className="p-12 text-center flex flex-col items-center justify-center text-gray-400">
-              <Users className="w-12 h-12 mb-3 opacity-20" />
-              <p>No leads found matching your filters.</p>
+            <div className="p-8 text-center flex flex-col items-center justify-center text-gray-400">
+              <Users className="w-8 h-8 mb-2 opacity-20" />
+              <p className="text-xs">No leads found matching your filters.</p>
             </div>
           ) : (
             <Table>
               <TableHeader className="bg-gray-50/50">
-                <TableRow>
-                  <TableHead className="w-[50px]">
+                <TableRow className="h-10">
+                  <TableHead className="w-[40px] px-3">
                     <input
                       type="checkbox"
                       checked={selectedLeads.length === leads.length}
                       onChange={(e) => setSelectedLeads(e.target.checked ? leads.map(l => l.id) : [])}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
                     />
                   </TableHead>
-                  <TableHead>Lead Name</TableHead>
-                  <TableHead>Contact Info</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3">Lead Name</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3">Contact Info</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3">Status</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3">Source</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3">Created</TableHead>
+                  <TableHead className="text-right text-[10px] uppercase font-bold tracking-wider px-3">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {leads.map((lead) => (
-                  <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0">
-                    <TableCell className="py-4">
+                  <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0 h-14">
+                    <TableCell className="py-2 px-3">
                       <input
                         type="checkbox"
                         checked={selectedLeads.includes(lead.id)}
@@ -358,61 +354,61 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                             : selectedLeads.filter(id => id !== lead.id)
                           );
                         }}
-                        className="rounded-md border-gray-300 text-primary focus:ring-primary h-4 w-4 transition-all"
+                        className="rounded border-gray-300 text-primary focus:ring-primary h-3.5 w-3.5 transition-all"
                       />
                     </TableCell>
-                    <TableCell className="py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-100 text-primary flex items-center justify-center font-black text-sm uppercase shadow-sm group-hover:scale-110 transition-transform">
+                    <TableCell className="py-2 px-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-100 text-primary flex items-center justify-center font-black text-xs uppercase shadow-sm group-hover:scale-105 transition-transform">
                           {lead.firstName[0]}{lead.lastName[0]}
                         </div>
                         <div>
-                          <div className="font-bold text-gray-900 group-hover:text-primary transition-colors">{lead.firstName} {lead.lastName}</div>
-                          <div className="text-[10px] text-gray-400 font-mono tracking-tighter uppercase mt-0.5">
+                          <div className="font-bold text-gray-900 group-hover:text-primary transition-colors text-xs">{lead.firstName} {lead.lastName}</div>
+                          <div className="text-[9px] text-gray-400 font-mono tracking-tighter uppercase mt-0.5">
                             ID: {lead.id.slice(0, 8)}
                           </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="py-4">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
-                          <Mail className="h-3.5 w-3.5 text-gray-400" /> {lead.email}
+                    <TableCell className="py-2 px-3">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600 font-medium">
+                          <Mail className="h-3 w-3 text-gray-400" /> {lead.email}
                         </div>
                         {lead.phone && (
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Phone className="h-3.5 w-3.5 text-gray-400" /> {lead.phone}
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <Phone className="h-3 w-3 text-gray-400" /> {lead.phone}
                           </div>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="py-4">
-                      <Badge className={`${getStatusBadge(lead.status)} border px-3 py-1 rounded-full capitalize font-bold text-[10px] tracking-wider`}>
+                    <TableCell className="py-2 px-3">
+                      <Badge className={`${getStatusBadge(lead.status)} border px-2 py-0.5 rounded-full capitalize font-bold text-[9px] tracking-wider`}>
                         {lead.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-4 font-medium text-xs text-gray-500 uppercase tracking-widest">
+                    <TableCell className="py-2 px-3 font-medium text-[10px] text-gray-500 uppercase tracking-widest">
                       {lead.source?.replace('_', ' ')}
                     </TableCell>
-                    <TableCell className="py-4 text-gray-400 text-xs font-semibold">
+                    <TableCell className="py-2 px-3 text-gray-400 text-[10px] font-semibold">
                       {formatDate(lead.createdAt)}
                     </TableCell>
-                    <TableCell className="py-4 text-right">
+                    <TableCell className="py-2 px-3 text-right">
                       <div className="flex justify-end gap-1 items-center">
-                        <div className="flex items-center bg-white border border-gray-100 rounded-xl shadow-sm p-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg" onClick={() => onViewLead && onViewLead(lead)}>
-                            <Eye className="h-4 w-4" />
+                        <div className="flex items-center bg-white border border-gray-100 rounded-lg shadow-sm p-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => onViewLead && onViewLead(lead)}>
+                            <Eye className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg" onClick={() => handleCheckDuplicates(lead)}>
-                            <Copy className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => handleCheckDuplicates(lead)}>
+                            <Copy className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg" onClick={() => handleEditLead(lead)}>
-                            <Edit className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => handleEditLead(lead)}>
+                            <Edit className="h-3.5 w-3.5" />
                           </Button>
-                          <div className="w-px h-4 bg-gray-100 mx-1" />
+                          <div className="w-px h-3 bg-gray-100 mx-0.5" />
                           {user?.role !== 'salesperson' && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg" onClick={() => dispatch(deleteLead(lead.id))}>
-                              <Trash2 className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md" onClick={() => dispatch(deleteLead(lead.id))}>
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           )}
                         </div>
