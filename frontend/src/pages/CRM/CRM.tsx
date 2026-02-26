@@ -49,7 +49,7 @@ import type { Lead } from '@/types/crm.types';
 import type { Task } from '@/types';
 import { TaskDetails } from '@/pages/CRM/TaskDetails';
 import { Analytics } from '@/pages/CRM/Analytics';
-import { SalesDiary } from '@/components/organisms/SalesDiary/SalesDiary';
+import { SalesWeekCalendar } from '@/pages/CRM/SalesWeekCalendar';
 
 export const CRM: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -74,7 +74,7 @@ export const CRM: React.FC = () => {
   const [isAutomationRunning, setIsAutomationRunning] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [showQuickBooking, setShowQuickBooking] = useState(false);
-  const [bookingCustomer, setBookingCustomer] = useState<{ id: string; name: string } | null>(null);
+  const [bookingCustomer, setBookingCustomer] = useState<{ id: string; name: string; email?: string; phone?: string } | null>(null);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<Lead[]>([]);
 
@@ -617,7 +617,7 @@ export const CRM: React.FC = () => {
 
         {/* Sales Tracker / Calendar Tab */}
         <TabsContent value="tracker">
-          <SalesDiary />
+          <SalesWeekCalendar />
         </TabsContent>
 
         {/* Team Management Tab (Admin Only) */}
@@ -751,7 +751,12 @@ export const CRM: React.FC = () => {
                     <div
                       key={customer.id}
                       className="flex items-center justify-between p-3 hover:bg-slate-50 border border-slate-200 rounded-lg cursor-pointer transition-colors"
-                      onClick={() => setBookingCustomer({ id: customer.id, name: `${customer.firstName} ${customer.lastName}` })}
+                      onClick={() => setBookingCustomer({
+                        id: customer.id,
+                        name: `${customer.firstName} ${customer.lastName}`,
+                        email: customer.email,
+                        phone: customer.phone
+                      })}
                     >
                       <div>
                         <div className="font-bold text-slate-900 text-sm">{customer.firstName} {customer.lastName}</div>
@@ -806,6 +811,8 @@ export const CRM: React.FC = () => {
           <CRMBookingModal
             customerId={bookingCustomer.id}
             customerName={bookingCustomer.name}
+            customerEmail={bookingCustomer.email}
+            customerPhone={bookingCustomer.phone}
             onClose={() => {
               setBookingCustomer(null);
               setShowQuickBooking(false);

@@ -440,6 +440,19 @@ export class CrmController {
     return this.crmService.getAdvertisementStats(dateRange);
   }
 
+  @Get('analytics/performance-dashboard')
+  @ApiOperation({ summary: 'Get combined sales performance dashboard data' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  getPerformanceDashboard(
+    @Query() query: { startDate?: string; endDate?: string; salespersonId?: string }
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getPerformanceDashboard(dateRange, query.salespersonId);
+  }
+
   @Get('analytics/:salespersonId')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)

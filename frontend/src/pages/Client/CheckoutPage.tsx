@@ -13,7 +13,7 @@ import { Input } from "@/components/atoms/Input/Input";
 
 import { Select } from "@/components/atoms/Select/Select";
 import { FaBackspace, FaBackward, FaCheckCircle, FaChevronLeft, FaShieldAlt, FaMoneyBillWave } from "react-icons/fa";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { createAppointment, clearBooking } from "@/store/slices/bookingSlice";
 import type { RootState, AppDispatch } from "@/store";
@@ -34,6 +34,8 @@ const roundedTopCorners = css`
 export const CheckoutPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
+    const location = useLocation();
+    const crmState = (location.state || {}) as any;
     const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading, error } = useSelector((state: RootState) => state.booking);
     const { user } = useSelector((state: RootState) => state.auth);
 
@@ -45,9 +47,9 @@ export const CheckoutPage: React.FC = () => {
     const [bookingNote, setBookingNote] = useState('');
 
     const [formData, setFormData] = useState({
-        fullName: '',
-        email: '',
-        phone: '',
+        fullName: crmState.customerName || crmState.name || '',
+        email: crmState.customerEmail || crmState.email || '',
+        phone: crmState.customerPhone || crmState.phone || '',
         countryCode: '+44'
     });
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -151,8 +153,8 @@ export const CheckoutPage: React.FC = () => {
             const appointmentData = {
                 clinicId: selectedClinic.id,
                 serviceId: selectedServices[0].id, // Assuming single service for now
-                clientId: user?.id || 'guest',
-                providerId: user?.id,
+                clientId: crmState?.customerId || user?.id || 'guest',
+                providerId: selectedTimeSlot?.providerId || (user?.role === 'salesperson' ? user.id : undefined),
                 startTime: isoStartTime,
                 endTime: isoEndTime,
                 notes: bookingNote,
@@ -192,8 +194,14 @@ export const CheckoutPage: React.FC = () => {
     };
 
     useEffect(() => {
-        // Pre-fill form data if user is logged in
-        if (user) {
+        if (crmState.customerName || crmState.name) {
+            setFormData(prev => ({
+                ...prev,
+                fullName: crmState.customerName || crmState.name || prev.fullName,
+                email: crmState.customerEmail || crmState.email || prev.email,
+                phone: crmState.customerPhone || crmState.phone || prev.phone,
+            }));
+        } else if (user) {
             setFormData(prev => ({
                 ...prev,
                 fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'John Doe',

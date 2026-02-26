@@ -17,8 +17,10 @@ import {
     Phone,
     Mail,
     MessageSquare,
-    CheckCircle2
+    CheckCircle2,
+    Calendar as CalendarIcon
 } from 'lucide-react';
+import { SalesBookingsModal } from './SalesBookingsModal';
 import { RootState, AppDispatch } from '@/store';
 import { fetchSalespersons, fetchSalesActivities } from '@/store/slices/crmSlice';
 import { Button } from '@/components/atoms/Button/Button';
@@ -38,18 +40,22 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
     const [searchQuery, setSearchQuery] = useState('');
+    const [isBookingsModalOpen, setIsBookingsModalOpen] = useState(false);
 
     const displaySalespersons = useMemo(() => {
         if (!user) return [];
 
         if (salespersonId) {
-            return salespersons.filter(s => s.id === salespersonId);
+            const found = salespersons.filter(s => s.id === salespersonId);
+            return found.length > 0 ? found : [{ id: salespersonId, firstName: 'Sales', lastName: 'Agent' } as any];
         }
 
         if (['admin', 'manager', 'clinic_owner', 'SUPER_ADMIN'].includes(user.role)) {
-            return salespersons;
+            return salespersons.length > 0 ? salespersons : [user];
         }
-        return salespersons.filter(s => s.id === user.id);
+
+        const myProfile = salespersons.filter(s => s.id === user.id);
+        return myProfile.length > 0 ? myProfile : [user];
     }, [salespersons, user, salespersonId]);
 
     const timeSlots = useMemo(() => {
@@ -270,6 +276,12 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
+                    <Button
+                        onClick={() => setIsBookingsModalOpen(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg border-none px-4 mr-2"
+                    >
+                        <CalendarIcon className="w-4 h-4 mr-2" /> Bookings
+                    </Button>
                     <Button className="bg-[#b3d81b] hover:bg-[#a1c218] text-white font-bold rounded-xl shadow-lg shadow-lime-500/20 border-none px-6">
                         <Plus className="w-4 h-4 mr-2" /> Log Activity
                     </Button>
@@ -308,6 +320,11 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                     <div className="w-3 h-3 rounded-full bg-red-500" /> Missed
                 </div>
             </div>
+
+            <SalesBookingsModal
+                isOpen={isBookingsModalOpen}
+                onClose={() => setIsBookingsModalOpen(false)}
+            />
         </div>
     );
 };

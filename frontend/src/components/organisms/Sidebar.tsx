@@ -46,9 +46,9 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/communication", label: "Communication Flow", icon: <Phone className="w-5 h-5" />, group: "Communication" },
   { path: "/crm/analytics", label: "Analytics", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
-  { path: "/crm/calendar", label: "Booking Calendar", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
+  { path: "/crm/sales-analytics", label: "Sales Dashboard", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
+  { path: "/crm/calendar", label: "Sales Week Calendar", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/tag", label: "Tags", icon: <Tag className="w-5 h-5" />, group: "CRM" },
-  { path: "/clinic/sales-diary", label: "Sales Activities", icon: <ClipboardList className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
 ];
 
@@ -58,6 +58,7 @@ const managerLinks: SidebarItem[] = [
   { path: "/admin/manager-crm/calls", label: "CRM Calls", icon: <Phone className="w-5 h-5" />, group: "CRM" },
   { path: "/admin/manager-crm/reports", label: "CRM Reports", icon: <FileText className="w-5 h-5" />, group: "CRM" },
   { path: "/admin/manager-crm/advertising", label: "Advertising", icon: <BarChart2 className="w-5 h-5" />, group: "Marketing" },
+  { path: "/crm/sales-analytics", label: "Sales Dashboard", icon: <BarChart2 className="w-5 h-5" />, group: "Analytics" },
   { path: "/admin/manager-crm/access", label: "Access Control", icon: <Shield className="w-5 h-5" />, group: "Settings" },
   { path: "/admin/manager-crm/benefits", label: "Benefits", icon: <DollarSign className="w-5 h-5" />, group: "Settings" },
   { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <AlertCircle className="w-5 h-5" />, group: "Alerts" },

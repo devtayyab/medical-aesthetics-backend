@@ -3,15 +3,18 @@ import { useDispatch, useSelector } from 'react-redux';
 import { X, Calendar, Clock, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
-import { Input } from '@/components/atoms/Input/Input';
+
 import { clinicsAPI, bookingAPI } from '@/services/api';
-import { createAppointment } from '@/store/slices/bookingSlice';
+import { setSelectedClinic as setReduxClinic, setSelectedDate as setReduxDate, setSelectedTimeSlot as setReduxTimeSlot, addService as addReduxService } from '@/store/slices/bookingSlice';
 import { AppDispatch, RootState } from '@/store';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface CRMBookingModalProps {
     customerId?: string;
     customerName?: string;
+    customerEmail?: string;
+    customerPhone?: string;
     customer?: {
         id: string;
         name: string;
@@ -26,6 +29,8 @@ interface CRMBookingModalProps {
 export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     customerId,
     customerName,
+    customerEmail,
+    customerPhone,
     customer,
     isOpen,
     onClose,
@@ -33,10 +38,13 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 }) => {
     const finalCustomerId = customer?.id || customerId || '';
     const finalCustomerName = customer?.name || customerName || '';
+    const finalCustomerEmail = customerEmail || (customer && 'email' in customer ? customer.email : '') || '';
+    const finalCustomerPhone = customerPhone || (customer && 'phone' in customer ? customer.phone : '') || '';
 
     if (isOpen === false) return null;
     const dispatch = useDispatch<AppDispatch>();
     const { user } = useSelector((state: RootState) => state.auth);
+    const navigate = useNavigate();
 
     // Steps: 1=Clinic, 2=Service, 3=Date/Time, 4=Confirm
     const [step, setStep] = useState(1);
@@ -110,62 +118,27 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
         fetchSlots();
     }, [selectedClinic, selectedService, selectedDate]);
 
-    const handleNext = () => setStep(prev => prev + 1);
-    const handleBack = () => setStep(prev => prev - 1);
+    const handleNext = (e: React.MouseEvent) => { e.preventDefault(); setStep(prev => prev + 1); };
+    const handleBack = (e: React.MouseEvent) => { e.preventDefault(); setStep(prev => prev - 1); };
 
-    const handleSubmit = async () => {
-        if (!selectedClinic || !selectedService || !selectedSlot) return;
+    const handleSubmit = async (e?: React.MouseEvent) => {
+        if (e) e.preventDefault();
+        if (!currentClinic || !currentService || !selectedSlot) return;
 
-        setIsLoading(true);
-        try {
-            const formattedNotes = [
-                notes ? notes.trim() : null,
-                `[Booked By: ${user?.firstName} ${user?.lastName}]`
-            ].filter(Boolean).join('\n\n');
+        dispatch(setReduxClinic(currentClinic));
+        dispatch(addReduxService(currentService));
+        dispatch(setReduxDate(selectedDate));
+        dispatch(setReduxTimeSlot(selectedSlot));
 
-            const payload: any = {
-                clinicId: selectedClinic,
-                serviceId: selectedService,
-                clientId: finalCustomerId,
-                startTime: selectedSlot.startTime.includes('T')
-                    ? selectedSlot.startTime
-                    : `${selectedDate}T${selectedSlot.startTime}${selectedSlot.startTime.length === 5 ? ':00' : ''}`,
-
-                endTime: selectedSlot.endTime.includes('T')
-                    ? selectedSlot.endTime
-                    : `${selectedDate}T${selectedSlot.endTime}${selectedSlot.endTime.length === 5 ? ':00' : ''}`,
-
-                notes: formattedNotes || undefined,
-                paymentMethod: 'pay_at_clinic',
-            };
-
-            // Only add providerId if explicitly selected/available
-            if (selectedSlot.providerId) {
-                payload.providerId = selectedSlot.providerId;
+        onClose();
+        navigate('/checkout', {
+            state: {
+                customerId: finalCustomerId,
+                customerName: finalCustomerName,
+                customerEmail: finalCustomerEmail,
+                customerPhone: finalCustomerPhone
             }
-
-            console.log("SENDING BOOKING PAYLOAD:", payload); // Debug log
-
-            await dispatch(createAppointment(payload)).unwrap();
-
-            alert('Appointment created successfully!');
-            onSuccess?.();
-            onClose();
-        } catch (err: any) {
-            console.error("Booking failed", err);
-            // Log full detailed error for debugging
-            console.log("Error details:", err.response?.data);
-
-            const errorMessage = err.response?.data?.message
-                ? (Array.isArray(err.response.data.message)
-                    ? err.response.data.message.join(', ')
-                    : err.response.data.message)
-                : JSON.stringify(err.response?.data || 'Unknown error');
-
-            alert(`Booking failed: ${errorMessage}`);
-        } finally {
-            setIsLoading(false);
-        }
+        });
     };
 
     // Helper to format time slots
@@ -466,6 +439,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                     <div className="flex justify-between items-center max-w-lg mx-auto w-full">
                         {step > 1 ? (
                             <Button
+                                type="button"
                                 variant="ghost"
                                 onClick={handleBack}
                                 className="group flex items-center gap-2 font-bold text-gray-500 hover:text-gray-900 transition-colors"
@@ -477,6 +451,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 
                         {step < 4 ? (
                             <Button
+                                type="button"
                                 onClick={handleNext}
                                 disabled={(step === 1 && !selectedClinic) || (step === 2 && !selectedService) || (step === 3 && !selectedSlot)}
                                 className="bg-green-600 hover:bg-green-700 text-white px-10 py-6 rounded-2xl shadow-lg hover:shadow-green-200 transition-all font-black text-base flex gap-2 group"
@@ -486,6 +461,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                             </Button>
                         ) : (
                             <Button
+                                type="button"
                                 onClick={handleSubmit}
                                 disabled={isLoading}
                                 className="bg-green-700 hover:bg-green-800 text-white px-12 py-6 rounded-2xl shadow-lg hover:shadow-green-200 transition-all font-black text-base animate-bounce-short"

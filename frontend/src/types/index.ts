@@ -83,6 +83,10 @@ export interface Appointment {
   service: Service;
   provider: User;
   client: User;
+  createdAt?: string;
+  displayName?: string;
+  serviceName?: string;
+  providerName?: string;
 }
 
 export interface TimeSlot {

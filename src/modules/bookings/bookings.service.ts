@@ -12,6 +12,7 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { CrmService } from '../crm/crm.service';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { forwardRef, Inject } from '@nestjs/common';
 
 @Injectable()
@@ -70,7 +71,7 @@ export class BookingsService {
     return this.holdsRepository.save(hold);
   }
 
-  async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker' }): Promise<Appointment> {
+  async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker', bookedById?: string }): Promise<Appointment> {
     let clientId = createAppointmentDto.clientId;
 
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -146,6 +147,7 @@ export class BookingsService {
       endTime: new Date(createAppointmentDto.endTime),
       appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
       clientDetails: createAppointmentDto.clientDetails,
+      bookedById: createAppointmentDto.bookedById,
     };
 
     // Check for conflicts with existing appointments
@@ -300,22 +302,16 @@ export class BookingsService {
     if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       queryBuilder.where('clinic.ownerId = :userId', { userId });
     } else if (userRole === 'manager') {
-      // Managers can view all appointments if they provide a clinicId, 
-      // or potentially all clinics they manage. 
-      // For now, if clinicId is in query, we filter by it.
-      // The base query will be unrestricted by user ID, but we should enforce clinic context.
       if (query['clinicId']) {
         queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query['clinicId'] });
       }
-      // If no clinicId provided, a manager might see nothing or everything? 
-      // Let's assume they need to provide a clinicId for now to see appointments of a specific clinic.
-      // Or if they want to see "all" appointments across system (unlikely for specific clinic view).
-      // We'll leave it as is, effectively showing all if no clinicId (which is dangerous), 
-      // BUT the frontend sends clinicId.
+    } else if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
+      // Admins and SUPER_ADMINs see all appointments. No restrictions.
+      queryBuilder.where('1=1');
     } else {
-      // For other roles (e.g. provider), return appointments where user is involved
+      // For other roles (e.g. provider, salesperson, client), return appointments where user is involved or booked
       queryBuilder.where(
-        '(appointment.providerId = :userId OR appointment.clientId = :userId)',
+        '(appointment.providerId = :userId OR appointment.clientId = :userId OR appointment.bookedById = :userId)',
         { userId }
       );
     }
@@ -342,15 +338,20 @@ export class BookingsService {
       queryBuilder.andWhere('appointment.appointmentSource = :appointmentSource', { appointmentSource: query.appointmentSource });
     }
 
-    const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
+    try {
+      const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
 
-    // Add display name to each appointment
-    return appointments.map(apt => ({
-      ...apt,
-      displayName: this.formatAppointmentDisplayName(apt),
-      serviceName: apt.service?.name,
-      providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
-    })) as Appointment[];
+      // Add display name to each appointment
+      return appointments.map(apt => ({
+        ...apt,
+        displayName: this.formatAppointmentDisplayName(apt),
+        serviceName: apt.service?.name,
+        providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
+      })) as Appointment[];
+    } catch (error) {
+      console.error('Error in findClinicAppointments:', error);
+      throw error;
+    }
   }
 
   async findAppointmentForClinic(

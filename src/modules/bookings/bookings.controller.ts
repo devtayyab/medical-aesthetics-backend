@@ -59,14 +59,23 @@ export class BookingsController {
 
   @Post('appointments')
   @ApiOperation({ summary: 'Confirm appointment booking' })
-  async createAppointment(@Body() createAppointmentDto: CreateAppointmentDto) {
+  async createAppointment(@Body() createAppointmentDto: CreateAppointmentDto, @Request() req: any) {
     try {
-      return await this.bookingsService.createAppointment(createAppointmentDto);
+      const payload = {
+        ...createAppointmentDto,
+        bookedById: req.user?.id,
+      };
+      return await this.bookingsService.createAppointment(payload);
     } catch (error) {
       console.error('Create Appointment Error:', error);
-      throw error; // Let NestJS handle it, but now it's logged.
-      // Or throw new InternalServerErrorException(error.message); if we really want to see it in 500 body.
+      throw error;
     }
+  }
+
+  @Get('appointments/clinic')
+  @ApiOperation({ summary: 'Get clinic appointments with filters' })
+  getClinicAppointments(@Request() req, @Query() query: any) {
+    return this.bookingsService.findClinicAppointments(req.user.id, req.user.role, query);
   }
 
   @Get('appointments/:id')
@@ -118,11 +127,6 @@ export class BookingsController {
     return this.bookingsService.updateAppointmentStatus(id, body.status, req.user.id, req.user.role);
   }
 
-  @Get('appointments/clinic')
-  @ApiOperation({ summary: 'Get clinic appointments with filters' })
-  getClinicAppointments(@Request() req, @Query() query: any) {
-    return this.bookingsService.findClinicAppointments(req.user.id, req.user.role, query);
-  }
 
   @Get('appointments')
   @ApiOperation({ summary: 'Get user appointments' })

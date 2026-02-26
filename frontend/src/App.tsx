@@ -80,8 +80,9 @@ import { Tags } from "./pages/CRM/Tags";
 import { FacebookIntegration } from "./pages/CRM/FacebookIntegration";
 import { Settings as CrmSettings } from "./pages/CRM/Settings";
 import { Notifications as NotificationsCrm } from "./pages/CRM/Notifications";
+import { SalesAnalyticsDashboard } from "./pages/CRM/SalesAnalyticsDashboard";
 import { MessagesPage } from "./pages/Messages/MessagesPage";
-import { BookingCalendar } from "./pages/CRM/BookingCalendar";
+import { SalesWeekCalendar } from "./pages/CRM/SalesWeekCalendar";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -264,7 +265,7 @@ function AppContent() {
           <Route
             path="/checkout"
             element={
-              <ProtectedLayout allowedRoles={["client"]}>
+              <ProtectedLayout allowedRoles={["client", "salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
                 <CheckoutPage />
               </ProtectedLayout>
             }
@@ -272,7 +273,7 @@ function AppContent() {
           <Route
             path="/booking-confirmation"
             element={
-              <ProtectedLayout allowedRoles={["client"]}>
+              <ProtectedLayout allowedRoles={["client", "salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
                 <BookingConfirmation />
               </ProtectedLayout>
             }
@@ -480,7 +481,7 @@ function AppContent() {
             element={
               <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
                 <AdminLayout>
-                  <BookingCalendar />
+                  <SalesWeekCalendar />
                 </AdminLayout>
               </ProtectedLayout>
             }
@@ -532,6 +533,16 @@ function AppContent() {
               <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
                 <AdminLayout>
                   <Analytics />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/crm/sales-analytics"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <SalesAnalyticsDashboard />
                 </AdminLayout>
               </ProtectedLayout>
             }

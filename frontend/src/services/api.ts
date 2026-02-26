@@ -397,6 +397,8 @@ export const crmAPI = {
     endDate: string;
   }) => api.get(`/crm/analytics/${salespersonId}`, { params: dateRange }),
   getCrmMetrics: () => api.get("/crm/metrics"),
+  getPerformanceDashboard: (params?: { startDate?: string; endDate?: string; salespersonId?: string }) =>
+    api.get("/crm/analytics/performance-dashboard", { params }),
 
   // Repeat Customer Management
   identifyRepeatCustomers: (salespersonId?: string) =>
