@@ -1000,6 +1000,11 @@ export class CrmService implements OnModuleInit {
       data.metadata = { ...data.metadata, durationSeconds: data.durationSeconds };
     }
 
+    // Ensure subject is not empty to avoid DB errors
+    if (!data.subject) {
+      data.subject = `${data.type.charAt(0).toUpperCase() + data.type.slice(1)} Log - ${new Date().toLocaleDateString()}`;
+    }
+
     const log = this.communicationLogsRepository.create(data);
     const savedLog = await this.communicationLogsRepository.save(log);
 
@@ -1014,12 +1019,11 @@ export class CrmService implements OnModuleInit {
           lastContactedAt: new Date(),
         });
       } else {
-        await this.updateCustomerRecord(data.customerId, {
+        await this.updateCustomerRecord(originalId, {
           lastContactDate: new Date(),
         });
       }
     }
-
 
     // Emit event for notifications
     this.eventEmitter.emit('communication.logged', savedLog);

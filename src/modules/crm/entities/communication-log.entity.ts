@@ -46,7 +46,7 @@ export class CommunicationLog {
   })
   status: string;
 
-  @Column('text')
+  @Column('text', { nullable: true })
   subject: string;
 
   @Column('text', { nullable: true })
