@@ -2,6 +2,7 @@ import { MigrationInterface, QueryRunner, Table, TableColumn, TableForeignKey } 
 
 export class AddMessagesAndFixAppointments1769600000005 implements MigrationInterface {
     name = 'AddMessagesAndFixAppointments1769600000005'
+    transaction = false;
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         // 1. Create conversations table
@@ -79,7 +80,16 @@ export class AddMessagesAndFixAppointments1769600000005 implements MigrationInte
             }));
         }
 
-        // 4. Update appointments table with missing columns
+        // 4. Update enums
+        const types = await queryRunner.query(`SELECT typname FROM pg_type WHERE typname IN ('users_role_enum', 'user_role_enum', 'crm_actions_status_enum', 'action_status_enum')`);
+        const typeNames = types.map((t: any) => t.typname);
+
+        if (typeNames.includes('users_role_enum')) await queryRunner.query(`ALTER TYPE "public"."users_role_enum" ADD VALUE IF NOT EXISTS 'manager'`);
+        if (typeNames.includes('user_role_enum')) await queryRunner.query(`ALTER TYPE "public"."user_role_enum" ADD VALUE IF NOT EXISTS 'manager'`);
+        if (typeNames.includes('crm_actions_status_enum')) await queryRunner.query(`ALTER TYPE "public"."crm_actions_status_enum" ADD VALUE IF NOT EXISTS 'in_progress'`);
+        if (typeNames.includes('action_status_enum')) await queryRunner.query(`ALTER TYPE "public"."action_status_enum" ADD VALUE IF NOT EXISTS 'in_progress'`);
+
+        // 5. Update appointments table with missing columns
         const appointmentTable = await queryRunner.getTable("appointments");
         if (appointmentTable) {
             if (!appointmentTable.columns.find(c => c.name === "amountPaid")) {
