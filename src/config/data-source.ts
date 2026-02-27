@@ -21,6 +21,9 @@ import { LoyaltyLedger } from '../modules/loyalty/entities/loyalty-ledger.entity
 import { Notification } from '../modules/notifications/entities/notification.entity';
 import { BlockedTimeSlot } from '../modules/bookings/entities/blocked-time-slot.entity';
 import { AgentClinicAccess } from '../modules/crm/entities/agent-clinic-access.entity';
+import { Conversation } from '../modules/messages/entities/conversation.entity';
+import { Message } from '../modules/messages/entities/message.entity';
+import { ConversationParticipant } from '../modules/messages/entities/conversation-participant.entity';
 import * as path from 'path';
 
 config();
@@ -56,6 +59,9 @@ const AppDataSource = new DataSource({
         BlockedTimeSlot,
         Review,
         AgentClinicAccess,
+        Conversation,
+        Message,
+        ConversationParticipant,
     ],
     migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],
     synchronize: false,
