@@ -2,7 +2,6 @@ import { MigrationInterface, QueryRunner, Table, TableColumn, TableForeignKey } 
 
 export class AddMessagesAndFixAppointments1769600000005 implements MigrationInterface {
     name = 'AddMessagesAndFixAppointments1769600000005'
-    transaction = false;
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         // 1. Create conversations table
