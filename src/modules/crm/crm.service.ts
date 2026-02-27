@@ -957,8 +957,8 @@ export class CrmService implements OnModuleInit {
 
   // Communication Log Management
   async logCommunication(data: Partial<CommunicationLog>): Promise<CommunicationLog> {
-    // Check if ID belongs to a Lead (not a Customer/User)
-    const lead = await this.leadsRepository.findOne({ where: { id: data.customerId } });
+    const originalId = data.customerId;
+    const lead = await this.leadsRepository.findOne({ where: { id: originalId } });
 
     if (lead) {
       // Append to Lead notes instead of ONLY metadata
@@ -984,12 +984,15 @@ export class CrmService implements OnModuleInit {
           interactionHistory: updatedHistory
         }
       });
-      // Do NOT return here, continue to save to communication_logs table
+
+      // Move Lead ID to relatedLeadId and clear customerId (User ID) to avoid FK issues
+      data.relatedLeadId = lead.id;
+      data.customerId = null;
     }
 
     // Enforce mandatory field validation for call communications, except click-only logs
     if (data.type === 'call' && !(data.metadata && (data.metadata as any).clickOnly === true)) {
-      await this.mandatoryFieldValidationService.enforceFieldCompletion(data.customerId, data);
+      await this.mandatoryFieldValidationService.enforceFieldCompletion(originalId, data);
     }
 
     // If durationSeconds is provided but not part of schema, ensure it's in metadata

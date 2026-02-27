@@ -7,14 +7,18 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Lead } from './lead.entity';
 
 @Entity('communication_logs')
 export class CommunicationLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  customerId: string; // Can be Lead ID or User ID (client)
+  @Column({ type: 'uuid', nullable: true })
+  customerId?: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  relatedLeadId?: string;
 
   @Column()
   salespersonId: string;
@@ -60,9 +64,13 @@ export class CommunicationLog {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'customerId' })
   customer: User;
+
+  @ManyToOne(() => Lead, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'relatedLeadId' })
+  relatedLead: Lead;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'salespersonId' })
