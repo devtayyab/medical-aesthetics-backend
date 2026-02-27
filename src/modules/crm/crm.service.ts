@@ -1111,12 +1111,18 @@ export class CrmService implements OnModuleInit {
     const oneYearFromNow = new Date();
     oneYearFromNow.setFullYear(now.getFullYear() + 1);
 
-    if (reminderDate < now) {
+    // Allow 5 minutes grace period for past dates
+    const gracePeriodMs = 5 * 60 * 1000;
+    if (reminderDate.getTime() < now.getTime() - gracePeriodMs) {
       throw new BadRequestException('Reminder date cannot be in the past.');
     }
 
     if (reminderDate > oneYearFromNow) {
       throw new BadRequestException('Reminder date cannot be more than 1 year in the future.');
+    }
+
+    if (!data.customerId && !data.relatedLeadId) {
+      throw new BadRequestException('Task must be associated with either a customer or a lead.');
     }
 
     // Resolve customerRecord if customerId (User ID) is provided

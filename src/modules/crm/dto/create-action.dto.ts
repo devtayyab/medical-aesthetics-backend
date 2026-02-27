@@ -3,9 +3,10 @@ import { IsUUID, IsString, IsEnum, IsOptional, IsDate, IsObject } from 'class-va
 import { Type } from 'class-transformer';
 
 export class CreateActionDto {
-  @ApiProperty({ example: 'b3f1c2d0-8f4a-4d3e-a123-56789abcde01', required: true })
+  @ApiProperty({ example: 'b3f1c2d0-8f4a-4d3e-a123-56789abcde01', required: false })
+  @IsOptional()
   @IsUUID()
-  customerId: string;
+  customerId?: string;
 
   @ApiProperty({ example: 'd2e5f6a1-3b4c-4e5f-b678-12345fghij67', required: false })
   @IsOptional()
@@ -14,10 +15,10 @@ export class CreateActionDto {
 
   @ApiProperty({
     example: 'call',
-    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder'],
+    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder', 'follow_up', 'phone_call'],
   })
   @IsString()
-  @IsEnum(['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder'])
+  @IsEnum(['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder', 'follow_up', 'phone_call'])
   actionType: string;
 
   @ApiProperty({ example: 'Facial Therapy', required: false })
@@ -34,9 +35,9 @@ export class CreateActionDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: 'pending', enum: ['pending', 'completed', 'cancelled', 'missed'], required: false })
+  @ApiProperty({ example: 'pending', enum: ['pending', 'in_progress', 'completed', 'cancelled', 'missed'], required: false })
   @IsOptional()
-  @IsEnum(['pending', 'completed', 'cancelled', 'missed'])
+  @IsEnum(['pending', 'in_progress', 'completed', 'cancelled', 'missed'])
   status?: string;
 
   @ApiProperty({ example: 'high', enum: ['low', 'medium', 'high', 'urgent'], required: false })
