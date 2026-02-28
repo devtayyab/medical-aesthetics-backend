@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { Bell, CheckCircle, Clock } from "lucide-react";
-import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { css } from "@emotion/css";
 import type { RootState, AppDispatch } from "@/store";
-import { fetchNotifications, markAsRead, markAllAsRead } from "@/store/slices/notificationsSlice";
+import { fetchNotifications, markAsRead, markAllAsRead, fetchUnreadCount } from "@/store/slices/notificationsSlice";
+import { Button } from "@/components/atoms/Button/Button";
 
 const dropdownStyle = css`
   position: absolute;
@@ -75,6 +76,7 @@ interface NotificationDropdownProps {
 
 export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose }) => {
     const dispatch = useDispatch<AppDispatch>();
+    const navigate = useNavigate();
     const { notifications } = useSelector((state: RootState) => state.notifications);
     const { user } = useSelector((state: RootState) => state.auth);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -93,6 +95,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
     useEffect(() => {
         if (isOpen) {
             dispatch(fetchNotifications(10));
+            dispatch(fetchUnreadCount());
         }
     }, [isOpen, dispatch]);
 
@@ -165,13 +168,16 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
             </div>
 
             <div className="p-3 bg-gray-50 text-center border-t border-gray-100">
-                <Link
-                    to={getNotificationsLink()}
-                    className="text-xs font-bold text-gray-600 hover:text-black"
-                    onClick={onClose}
+                <Button
+                    variant="ghost"
+                    className="w-full text-xs font-bold text-gray-600 hover:text-black hover:bg-gray-100 transition-colors"
+                    onClick={() => {
+                        onClose();
+                        navigate(getNotificationsLink());
+                    }}
                 >
                     View all notifications
-                </Link>
+                </Button>
             </div>
         </div>
     );

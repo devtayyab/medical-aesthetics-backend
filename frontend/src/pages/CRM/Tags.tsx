@@ -9,7 +9,8 @@ import {
   Activity,
   Layers,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Search
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
@@ -46,25 +47,27 @@ export const Tags: React.FC = () => {
   });
 
   const [isSearching, setIsSearching] = useState(false);
+  const [tagSearch, setTagSearch] = useState("");
+  const [resultsSearch, setResultsSearch] = useState("");
+
+  const searchCustomers = async () => {
+    if (!customerSearch.trim() || customerSearch.length < 2) return;
+    setIsSearching(true);
+    try {
+      const res = await userAPI.getAllUsers({ search: customerSearch, limit: 10 });
+      const users = Array.isArray(res.data) ? res.data : res.data.users || [];
+      setSearchResults(users.map((u: any) => ({
+        value: u.id,
+        label: `${u.firstName} ${u.lastName} (${u.email})`
+      })));
+    } catch (err) {
+      console.error("Profile search failed:", err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   useEffect(() => {
-    const searchCustomers = async () => {
-      if (!customerSearch.trim() || customerSearch.length < 2) return;
-      setIsSearching(true);
-      try {
-        const res = await userAPI.getAllUsers({ search: customerSearch, limit: 10 });
-        const users = Array.isArray(res.data) ? res.data : res.data.users || [];
-        setSearchResults(users.map((u: any) => ({
-          value: u.id,
-          label: `${u.firstName} ${u.lastName} (${u.email})`
-        })));
-      } catch (err) {
-        console.error("Profile search failed:", err);
-      } finally {
-        setIsSearching(false);
-      }
-    };
-
     const debounceTimer = setTimeout(() => {
       // Only search if we haven't already selected a customer (indicated by label match)
       const isAlreadySelected = customers.some(c => c.label === customerSearch && c.value === tagData.customerId);
@@ -231,82 +234,91 @@ export const Tags: React.FC = () => {
                     </label>
                     <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded">Required</span>
                   </div>
-                  <div className="relative">
-                    <Input
-                      placeholder="Search by name or email..."
-                      value={customerSearch}
-                      onChange={(e) => handleCustomerSearch(e.target.value)}
-                      className="h-11 border-slate-200 bg-white rounded-lg text-sm font-medium px-4 shadow-sm"
-                    />
-                    {isSearching && (
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                        <div className="animate-spin h-4 w-4 border-b-2 border-blue-500 rounded-full"></div>
-                      </div>
-                    )}
+                  <div className="flex gap-2 relative">
+                    <div className="relative flex-1">
+                      <Input
+                        placeholder="Search by name or email..."
+                        value={customerSearch}
+                        onChange={(e) => handleCustomerSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && searchCustomers()}
+                        className="h-11 border-slate-200 bg-white rounded-lg text-sm font-medium px-4 shadow-sm"
+                      />
+                      {isSearching && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                          <div className="animate-spin h-4 w-4 border-b-2 border-blue-500 rounded-full"></div>
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => searchCustomers()}
+                      className="h-11 px-4 border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-lg shadow-sm border"
+                      title="Find Customer"
+                    >
+                      <Search className="w-4 h-4" />
+                    </Button>
+
                     {searchResults.length > 0 && (
-                      <div className="absolute top-[calc(100%+16px)] left-0 right-0 bg-white/98 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl border border-gray-100/50 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-500 p-3 ring-1 ring-black/5">
-                        {searchResults.length > 0 && (
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-slate-200 z-[100] overflow-hidden p-2">
-                            {searchResults.map((res) => (
-                              <div
-                                key={res.value}
-                                onClick={() => selectCustomer(res)}
-                                className="p-3 hover:bg-slate-50 cursor-pointer flex items-center justify-between rounded-md transition-all"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400 text-xs text-uppercase">
-                                    {res.label[0]}
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <span className="font-bold text-slate-800 text-sm leading-tight">{res.label}</span>
-                                    <span className="text-[10px] text-slate-400 font-medium">Customer Profile</span>
-                                  </div>
-                                </div>
-                                <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-slate-200 z-[100] overflow-hidden p-2">
+                        {searchResults.map((res) => (
+                          <div
+                            key={res.value}
+                            onClick={() => selectCustomer(res)}
+                            className="p-3 hover:bg-slate-50 cursor-pointer flex items-center justify-between rounded-md transition-all"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400 text-xs text-uppercase">
+                                {res.label[0]}
                               </div>
-                            ))}
+                              <div className="flex flex-col">
+                                <span className="font-bold text-slate-800 text-sm leading-tight">{res.label}</span>
+                                <span className="text-[10px] text-slate-400 font-medium">Customer Profile</span>
+                              </div>
+                            </div>
+                            <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
                           </div>
-                        )}
-                      </div>
-                    )}
-                    {tagData.customerId && !searchResults.length && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 flex items-center gap-2 bg-white px-2 py-1 rounded-md border border-emerald-100 shadow-sm">
-                        <CheckCircle className="w-4 h-4" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Matched</span>
+                        ))}
                       </div>
                     )}
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Select Tag
-                  </label>
-                  <Select
-                    value={tagData.tagId}
-                    onChange={(val) => setTagData(prev => ({ ...prev, tagId: val }))}
-                    options={availableTags.map(t => ({ value: t.id, label: t.name }))}
-                    placeholder="Choose tag definition..."
-                    className="h-11 rounded-lg border-slate-200 bg-white focus:ring-blue-500/5 transition-all text-sm font-medium px-4 shadow-sm"
-                  />
+                  {tagData.customerId && !searchResults.length && (
+                    <div className="mt-2 text-emerald-500 flex items-center gap-2 bg-white px-2 py-1 rounded-md border border-emerald-100 shadow-sm w-fit">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Customer Matched</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Internal Notes
-                  </label>
-                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded">Optional</span>
-                </div>
-                <div className="relative h-full">
-                  <textarea
-                    placeholder="Add specific context or rationale for this tag..."
-                    value={tagData.notes}
-                    onChange={(e) => setTagData(prev => ({ ...prev, notes: e.target.value }))}
-                    className="w-full h-full min-h-[140px] p-4 bg-white border border-slate-200 rounded-lg focus:border-blue-300 focus:ring-4 focus:ring-blue-50 outline-none transition-all text-sm font-medium leading-relaxed resize-none shadow-sm"
-                  />
-                </div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Select Tag
+                </label>
+                <Select
+                  value={tagData.tagId}
+                  onChange={(val) => setTagData(prev => ({ ...prev, tagId: val }))}
+                  options={availableTags.map(t => ({ value: t.id, label: t.name }))}
+                  placeholder="Choose tag definition..."
+                  className="h-11 rounded-lg border-slate-200 bg-white focus:ring-blue-500/5 transition-all text-sm font-medium px-4 shadow-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Internal Notes
+                </label>
+                <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded">Optional</span>
+              </div>
+              <div className="relative">
+                <textarea
+                  placeholder="Add specific context or rationale for this tag..."
+                  value={tagData.notes}
+                  onChange={(e) => setTagData(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full min-h-[140px] p-4 bg-white border border-slate-200 rounded-lg focus:border-blue-300 focus:ring-4 focus:ring-blue-50 outline-none transition-all text-sm font-medium leading-relaxed resize-none shadow-sm"
+                />
               </div>
             </div>
 
@@ -338,9 +350,18 @@ export const Tags: React.FC = () => {
                 Tag List
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 pt-1 space-y-6">
+            <CardContent className="p-4 pt-1 space-y-4">
+              <div className="relative">
+                <Input
+                  placeholder="Find tag..."
+                  value={tagSearch}
+                  onChange={(e) => setTagSearch(e.target.value)}
+                  className="h-9 text-xs border-slate-100 bg-slate-50/50 rounded-lg pl-8"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+              </div>
               <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
-                {availableTags.map(tag => (
+                {availableTags.filter(t => t.name.toLowerCase().includes(tagSearch.toLowerCase())).map(tag => (
                   <div
                     key={tag.id}
                     className={`flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer border ${selectedTagHeader?.id === tag.id
@@ -398,7 +419,7 @@ export const Tags: React.FC = () => {
       {/* Results Section */}
       {customersByTag.length > 0 && (
         <div id="results-section" className="space-y-10 pt-16 pb-32 scroll-mt-20">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-2">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2">
             <div className="flex items-center gap-4">
               <div className="p-4 bg-blue-600 rounded-xl shadow-sm">
                 <Users className="w-5 h-5 text-white" />
@@ -409,17 +430,38 @@ export const Tags: React.FC = () => {
                 </h2>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full" style={{ backgroundColor: selectedTagHeader?.color }} />
-                  <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">{customersByTag.length} customers found</span>
+                  <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                    {customersByTag.filter(c =>
+                      c.customer?.firstName?.toLowerCase().includes(resultsSearch.toLowerCase()) ||
+                      c.customer?.lastName?.toLowerCase().includes(resultsSearch.toLowerCase()) ||
+                      c.customer?.email?.toLowerCase().includes(resultsSearch.toLowerCase())
+                    ).length} customers found
+                  </span>
                 </div>
               </div>
             </div>
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-              Filtered List View
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Input
+                  placeholder="Find in results..."
+                  value={resultsSearch}
+                  onChange={(e) => setResultsSearch(e.target.value)}
+                  className="h-10 w-64 border-slate-200 bg-white rounded-lg text-sm pl-9 shadow-sm"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              </div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                Filtered List View
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in slide-in-from-bottom-12 duration-1000">
-            {customersByTag.map((customer: any, idx) => (
+            {customersByTag.filter(customer =>
+              customer.customer?.firstName?.toLowerCase().includes(resultsSearch.toLowerCase()) ||
+              customer.customer?.lastName?.toLowerCase().includes(resultsSearch.toLowerCase()) ||
+              customer.customer?.email?.toLowerCase().includes(resultsSearch.toLowerCase())
+            ).map((customer: any, idx) => (
               <Card
                 key={customer.id}
                 className="group border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white"

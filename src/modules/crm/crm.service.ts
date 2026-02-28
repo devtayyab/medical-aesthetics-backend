@@ -1440,6 +1440,7 @@ export class CrmService implements OnModuleInit {
     const queryBuilder = this.customerTagsRepository
       .createQueryBuilder('customerTag')
       .leftJoinAndSelect('customerTag.customer', 'customer')
+      .leftJoinAndSelect('customer.customer', 'actualUser')
       .leftJoinAndSelect('customerTag.tag', 'tag')
       .where('customerTag.tagId = :tagId', { tagId });
 
@@ -1466,7 +1467,7 @@ export class CrmService implements OnModuleInit {
 
     const tags = await queryBuilder.getMany();
     return tags.map(t => ({
-      customer: t.customer,
+      customer: t.customer?.customer || t.customer, // use nested user or fallback to record
       tag: t.tag,
       notes: t.notes,
       addedAt: t.createdAt,
@@ -1686,9 +1687,18 @@ export class CrmService implements OnModuleInit {
     // Done / Completed 
     let completedQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'completed' });
     if (dateRange) {
-      completedQ = completedQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt) >= :startDate AND COALESCE(apt.completedAt, apt.updatedAt) <= :endDate', dateRange);
+      completedQ = completedQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startDate AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endDate', dateRange);
     }
-    const completedApts = await completedQ.getCount();
+    const completedStats = await completedQ
+      .leftJoin('services', 'svc', 'svc.id = apt.serviceId')
+      .select([
+        'COUNT(apt.id) as count',
+        'SUM(COALESCE(apt.amountPaid, apt.totalAmount, svc.price, 0)) as revenue'
+      ])
+      .getRawOne();
+
+    const completedApts = parseInt(completedStats?.count || '0');
+    const totalRevenueInRange = parseFloat(completedStats?.revenue || '0');
 
     // Returned Appointments
     let returnedQ = aptBaseQ.clone();
@@ -1737,17 +1747,17 @@ export class CrmService implements OnModuleInit {
     let mtdAptQ = this.appointmentsRepository
       .createQueryBuilder('apt')
       .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId')
+      .leftJoin('services', 'svc', 'svc.id = apt.serviceId')
       .select([
-        'COALESCE(SUM(COALESCE(apt.amountPaid, apt.totalAmount, 0)), 0) as "totalRevenue"'
-      ]);
+        'COALESCE(SUM(COALESCE(apt.amountPaid, apt.totalAmount, svc.price, 0)), 0) as "totalRevenue"'
+      ])
+      .where('apt.status = :status', { status: 'completed' });
 
     if (!isAll) {
-      mtdAptQ = mtdAptQ.where('rec.assignedSalespersonId = :salespersonId', { salespersonId });
-    } else {
-      mtdAptQ = mtdAptQ.where('1=1');
+      mtdAptQ = mtdAptQ.andWhere('rec.assignedSalespersonId = :salespersonId', { salespersonId });
     }
 
-    mtdAptQ = mtdAptQ.andWhere('apt.completedAt BETWEEN :startOfMonth AND :now', { startOfMonth, now });
+    mtdAptQ = mtdAptQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) BETWEEN :startOfMonth AND :now', { startOfMonth, now });
 
     const mtdStats = await mtdAptQ.getRawOne();
 
@@ -1771,9 +1781,10 @@ export class CrmService implements OnModuleInit {
     const timeSeriesQ = this.appointmentsRepository
       .createQueryBuilder('apt')
       .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId')
+      .leftJoin('services', 'svc', 'svc.id = apt.serviceId')
       .select([
-        "DATE(COALESCE(apt.completedAt, apt.updatedAt)) as date",
-        "SUM(COALESCE(apt.amountPaid, apt.totalAmount, 0)) as amount",
+        "CAST(COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) AS DATE) as date",
+        "SUM(COALESCE(apt.amountPaid, apt.totalAmount, svc.price, 0)) as amount",
       ])
       .where('apt.status = :status', { status: 'completed' });
 
@@ -1782,13 +1793,13 @@ export class CrmService implements OnModuleInit {
     }
 
     if (dateRange) {
-      timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt) >= :startDate AND COALESCE(apt.completedAt, apt.updatedAt) <= :endDate', dateRange);
+      timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startDate AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endDate', dateRange);
     } else {
-      timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt) >= :startOfMonth AND COALESCE(apt.completedAt, apt.updatedAt) <= :now', { startOfMonth, now });
+      timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startOfMonth AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :now', { startOfMonth, now });
     }
 
     timeSeriesQ
-      .groupBy("DATE(COALESCE(apt.completedAt, apt.updatedAt))")
+      .groupBy("CAST(COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) AS DATE)")
       .orderBy("date", "ASC");
 
     const tsStats = await timeSeriesQ.getRawMany();

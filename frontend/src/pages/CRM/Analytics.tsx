@@ -99,7 +99,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
   }, [user]);
 
   useEffect(() => {
-    dispatch(fetchCrmMetrics());
     dispatch(fetchSalespersons());
   }, [dispatch]);
 
@@ -118,7 +117,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
 
   const handleRefresh = () => {
     dispatch(fetchSalespersons());
-    dispatch(fetchCrmMetrics());
     loadSalespersonData();
   };
 
@@ -420,7 +418,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
                     <div className="mt-3 p-2.5 bg-emerald-50 rounded-lg">
                       <p className="text-[10px] text-emerald-700 font-medium whitespace-nowrap">Lifetime Revenue</p>
                       <p className="text-lg font-black text-emerald-900 mt-0.5">
-                        £{(analytics.customerStats?.totalRevenue || 0).toLocaleString()}
+                        €{(analytics.customerStats?.totalRevenue || 0).toLocaleString()}
                       </p>
                     </div>
 

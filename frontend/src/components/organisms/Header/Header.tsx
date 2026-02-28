@@ -7,6 +7,7 @@ import { Button } from "@/components/atoms/Button/Button";
 import { Input } from "@/components/atoms/Input/Input";
 import type { RootState, AppDispatch } from "@/store";
 import { logout } from "@/store/slices/authSlice";
+import { fetchUnreadCount } from "@/store/slices/notificationsSlice";
 
 import SiteLogo from "@/assets/SiteLogo.png";
 import { NotificationDropdown } from "@/components/molecules/NotificationDropdown";
@@ -178,6 +179,11 @@ export const Header: React.FC = () => {
   );
   const location = useLocation();
 
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchUnreadCount());
+    }
+  }, [isAuthenticated, dispatch]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

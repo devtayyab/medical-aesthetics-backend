@@ -107,10 +107,12 @@ export class NotificationsService implements OnModuleInit {
   }
 
   async markAllAsRead(recipientId: string): Promise<void> {
-    await this.notificationsRepository.update(
-      { recipientId, isRead: false },
-      { isRead: true, readAt: new Date() }
-    );
+    await this.notificationsRepository
+      .createQueryBuilder()
+      .update(Notification)
+      .set({ isRead: true, readAt: new Date() })
+      .where("recipientId = :recipientId AND isRead = false", { recipientId })
+      .execute();
   }
 
   async markAsSent(id: string, externalId?: string): Promise<void> {
