@@ -3,13 +3,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Textarea } from '@/components/atoms/Textarea';
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 
 import type { RootState, AppDispatch } from '@/store';
 import {
-  deleteAction,
   updateAction,
   fetchActions,
   fetchTaskKpis,
@@ -158,11 +157,10 @@ interface TasksPageProps {
 
 
 
-export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
+export const Tasks: React.FC<TasksPageProps> = () => {
   const { actions: tasks, isLoading, taskKpis } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
-  const navigate = useNavigate();
 
   const currentUserId = user?.id;
 
@@ -650,6 +648,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                     ...taskFormData,
                     id: selectedTask?.id
                   } : undefined}
+                  onCancel={resetForm}
                   onSuccess={() => {
                     resetForm();
                     if (currentUserId) {

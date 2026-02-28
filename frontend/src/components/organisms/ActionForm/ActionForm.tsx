@@ -19,6 +19,7 @@ import { userAPI, crmAPI } from '@/services/api';
 interface ActionFormProps {
   customerId: string;
   onSuccess?: () => void;
+  onCancel?: () => void;
   prefilledData?: Partial<CrmAction>;
   hideHeader?: boolean;
 }
@@ -26,6 +27,7 @@ interface ActionFormProps {
 export const ActionForm: React.FC<ActionFormProps> = ({
   customerId: propCustomerId,
   onSuccess,
+  onCancel,
   prefilledData,
   hideHeader
 }) => {
@@ -549,6 +551,11 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 
           {/* Action Buttons */}
           <div className="flex gap-2 pt-4">
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+                Cancel
+              </Button>
+            )}
             <Button type="submit" variant="primary" className="flex-1">
               <CheckCircle className="h-4 w-4 mr-2" />
               {prefilledData?.id ? 'Save Changes' : 'Create Task'}
