@@ -3,13 +3,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Textarea } from '@/components/atoms/Textarea';
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 
 import type { RootState, AppDispatch } from '@/store';
 import {
-  deleteAction,
   updateAction,
   fetchActions,
   fetchTaskKpis,
@@ -158,11 +157,10 @@ interface TasksPageProps {
 
 
 
-export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
+export const Tasks: React.FC<TasksPageProps> = () => {
   const { actions: tasks, isLoading, taskKpis } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
-  const navigate = useNavigate();
 
   const currentUserId = user?.id;
 
@@ -174,7 +172,6 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   const [selectedTask, setSelectedTask] = useState<CrmAction | null>(null);
   const [viewingTask, setViewingTask] = useState<CrmAction | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
 
   // Interaction States
   const [showInteractionModal, setShowInteractionModal] = useState(false);
@@ -183,11 +180,6 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   const [showDialer, setShowDialer] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
 
-  const toggleTaskSelection = (taskId: string) => {
-    setSelectedTasks(prev =>
-      prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
-    );
-  };
 
   const [taskFormData, setTaskFormData] = useState<any>({
     title: '',
@@ -230,15 +222,6 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     });
   };
 
-  const handleDeleteTask = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
-    try {
-      await dispatch(deleteAction(id)).unwrap();
-      dispatch(fetchTaskKpis());
-    } catch (error) {
-      console.error('Failed to delete task:', error);
-    }
-  };
 
   const formatDate = (date?: string) =>
     date
@@ -296,29 +279,6 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     return true;
   });
 
-  const handleTaskCompletion = async (task: CrmAction) => {
-    const isCompleting = task.status !== 'completed';
-    const newStatus = isCompleting ? 'completed' : 'pending';
-
-    try {
-      await dispatch(updateAction({ id: task.id, updates: { status: newStatus } })).unwrap();
-      dispatch(fetchTaskKpis());
-
-      if (isCompleting) {
-        if (task.actionType === 'call' || task.actionType === 'follow_up_call') {
-          if (task.customerId && confirm('Task completed! Would you like to log this communication?')) {
-            navigate(`/crm/customers/${task.customerId}?log=true`);
-          }
-        } else if (task.actionType === 'appointment') {
-          if (confirm('Task completed! Would you like to open the Calendar?')) {
-            navigate('/calendar');
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to update task status:', error);
-    }
-  };
 
   const handleSaveInteraction = async () => {
     if (!interactionTask) return;
@@ -688,6 +648,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                     ...taskFormData,
                     id: selectedTask?.id
                   } : undefined}
+                  onCancel={resetForm}
                   onSuccess={() => {
                     resetForm();
                     if (currentUserId) {

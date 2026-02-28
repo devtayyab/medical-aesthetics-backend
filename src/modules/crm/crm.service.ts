@@ -1195,7 +1195,15 @@ export class CrmService implements OnModuleInit {
       const oneYearFromNow = new Date(action.createdAt || now);
       oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
-      if (reminderDate < now && reminderDate.getTime() !== new Date(action.reminderDate).getTime()) {
+      // Allow 5 minutes grace period for past dates (consistent with createAction)
+      // Also compare at minute level to handle precision loss during frontend transport (ISO slice)
+      const gracePeriodMs = 5 * 60 * 1000;
+      const isPast = reminderDate.getTime() < now.getTime() - gracePeriodMs;
+
+      const currentReminderMin = action.reminderDate ? Math.floor(new Date(action.reminderDate).getTime() / 60000) : null;
+      const newReminderMin = Math.floor(reminderDate.getTime() / 60000);
+
+      if (isPast && newReminderMin !== currentReminderMin) {
         throw new BadRequestException('Reminder date cannot be in the past.');
       }
 

@@ -1523,6 +1523,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                     setShowTaskModal(false);
                                     dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
                                 }}
+                                onCancel={() => setShowTaskModal(false)}
                                 prefilledData={{ salespersonId: user?.id }}
                             />
                         </div>
