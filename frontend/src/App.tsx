@@ -43,6 +43,7 @@ import ReviewsPage from "@/pages/Clinic/ReviewsPage";
 import NotificationsPage from "@/pages/Clinic/NotificationsPage";
 import SettingsPage from "@/pages/Clinic/SettingsPage";
 import { Customers } from "@/pages/CRM/Customers";
+import { ArchivedLeads } from "@/pages/CRM/ArchivedLeads";
 import { CustomerDetails } from "@/pages/CRM/CustomerDetails";
 import { Tasks } from "@/pages/CRM/Tasks";
 import { Actions } from "@/pages/CRM/Action";
@@ -432,6 +433,16 @@ function AppContent() {
               <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
                 <AdminLayout>
                   <Customers />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/crm/archive"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ArchivedLeads />
                 </AdminLayout>
               </ProtectedLayout>
             }
