@@ -587,20 +587,20 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                       <td className="p-2.5">
                         <div className="flex gap-1 items-center justify-center">
                           <Button
-                            size="sm"
-                            variant="ghost"
+                            size="xs"
+                            variant="white"
                             onClick={(e) => {
                               e.stopPropagation();
                               setViewingTask(task);
                             }}
-                            className="h-7 w-7 p-0 bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all"
-                            title="View"
+                            className="h-8 w-8 p-0 bg-white border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-all shadow-sm"
+                            title="View Detail"
                           >
-                            <Eye className="h-3.5 w-3.5" />
+                            <Eye className="h-4 w-4" />
                           </Button>
                           <Button
-                            size="sm"
-                            variant="ghost"
+                            size="xs"
+                            variant="white"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedTask(task);
@@ -620,15 +620,16 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                               });
                               setIsEditing(true);
                             }}
-                            className="h-7 w-7 p-0 bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 transition-all"
-                            title="Edit"
+                            className="h-8 w-8 p-0 bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all shadow-sm"
+                            title="Edit Strategy"
                           >
-                            <Edit className="h-3.5 w-3.5" />
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0 bg-white border border-slate-200 text-green-600 hover:text-green-700 hover:bg-green-50 hover:border-green-400 transition-all"
+                            size="xs"
+                            variant="white"
+                            className="h-8 w-8 p-0 bg-white border-slate-200 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all shadow-sm"
+                            title="Log Interaction"
                             onClick={async (e) => {
                               e.stopPropagation();
                               try {
@@ -648,9 +649,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                                 console.error("Failed to start interaction:", err);
                               }
                             }}
-                            title="Follow Up"
                           >
-                            <CornerUpRight className="h-3.5 w-3.5" />
+                            <CornerUpRight className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>
