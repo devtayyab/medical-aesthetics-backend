@@ -584,13 +584,19 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                         </span>
                       </td>
                       <td className="p-2.5">
-                        <div className="flex gap-0.5 justify-end">
-                          <Button size="sm" variant="ghost" onClick={() => setViewingTask(task)} className="h-7 w-7 p-0">
+                        <div className="flex gap-1 items-center justify-center">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setViewingTask(task)}
+                            className="h-7 w-7 p-0 bg-white border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200"
+                            title="View"
+                          >
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="sm"
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => {
                               setSelectedTask(task);
                               setTaskFormData({
@@ -609,20 +615,22 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                               });
                               setIsEditing(true);
                             }}
-                            className="h-7 w-7 p-0"
+                            className="h-7 w-7 p-0 bg-white border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200"
+                            title="Edit"
                           >
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="sm"
-                            variant="ghost"
-                            className="text-green-600 h-7 w-7 p-0 hover:text-green-700 hover:bg-green-50"
+                            variant="outline"
+                            className="h-7 w-7 p-0 bg-white border-slate-200 text-green-600 hover:text-green-700 hover:bg-green-50 hover:border-green-200"
                             onClick={async () => {
                               try {
                                 // 1. Set status to in_progress in DB
                                 await dispatch(updateAction({
                                   id: task.id,
                                   updates: { status: 'in_progress' }
+                                  // Removed unwrap() if it causes issues, but updateAction is likely thunk
                                 })).unwrap();
 
                                 // 2. Local state update and open modal
