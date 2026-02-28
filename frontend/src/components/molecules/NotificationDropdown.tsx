@@ -128,12 +128,17 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
         <div className={dropdownStyle} ref={dropdownRef}>
             <div className={headerStyle}>
                 <h3 className="font-bold text-gray-900">Notifications</h3>
-                <span
-                    className="text-xs text-blue-600 font-medium cursor-pointer hover:underline"
-                    onClick={handleMarkAllRead}
+                <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs text-blue-600 font-medium hover:underline p-0 h-auto"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkAllRead();
+                    }}
                 >
                     Mark all as read
-                </span>
+                </Button>
             </div>
 
             <div className={scrollAreaStyle}>
@@ -147,7 +152,12 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
                         <div
                             key={notif.id}
                             className={notificationItemStyle(notif.isRead)}
-                            onClick={() => !notif.isRead && dispatch(markAsRead(notif.id))}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (!notif.isRead) {
+                                    dispatch(markAsRead(notif.id));
+                                }
+                            }}
                         >
                             <div className={iconContainerStyle(notif.type || 'general')}>
                                 {getIcon(notif.type || 'general')}
@@ -170,8 +180,10 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
             <div className="p-3 bg-gray-50 text-center border-t border-gray-100">
                 <Button
                     variant="ghost"
+                    fullWidth
                     className="w-full text-xs font-bold text-gray-600 hover:text-black hover:bg-gray-100 transition-colors"
-                    onClick={() => {
+                    onClick={(e) => {
+                        e.stopPropagation();
                         onClose();
                         navigate(getNotificationsLink());
                     }}
