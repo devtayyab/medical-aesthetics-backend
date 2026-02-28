@@ -433,6 +433,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 notes: finalNotes,
                 durationSeconds: callDuration,
                 metadata: {
+                    clickOnly: true,
                     outcome: interactionOutcome,
                     tags: selectedTags,
                     recordingUrl: (interactionType === 'call' && callDuration > 0)
@@ -704,7 +705,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                     <label className="text-[10px] font-bold text-slate-400 uppercase block px-1 text-center">Due Date</label>
                                                     <Input
                                                         type="date"
-                                                        value={autoTask?.date || ''}
+                                                        value={autoTask?.date?.includes('T') ? autoTask.date.split('T')[0] : autoTask?.date || ''}
                                                         onChange={(e) => setAutoTask(prev => ({ ...prev!, date: e.target.value }))}
                                                         className="h-10 bg-white border-slate-200 rounded-lg font-bold px-3 text-xs shadow-sm"
                                                         min={new Date().toISOString().split('T')[0]}

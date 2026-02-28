@@ -333,7 +333,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         status: 'completed',
         subject: `Follow Up Call: ${interactionTask.title}`,
         notes: interactionNotes,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        metadata: { clickOnly: true }
       })).unwrap();
 
       // 2. Complete the task
