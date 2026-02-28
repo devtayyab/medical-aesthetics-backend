@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, BarChart2, Tag, Eye, Settings,
   Calendar, FileText, BarChart, Shield, DollarSign, AlertCircle,
   ClipboardList, Repeat, UserCog, LineChart, ListChecks,
-  Phone, Search, LogOut, MessageSquare
+  Phone, Search, LogOut, MessageSquare, Archive
 } from "lucide-react";
 
 interface SidebarItem {
@@ -40,6 +40,7 @@ const clinicLinks: SidebarItem[] = [
 const crmLinks: SidebarItem[] = [
   { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
   { path: "/crm/customers", label: "Customers", icon: <Users className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/archive", label: "Archive", icon: <Archive className="w-5 h-5" />, group: "CRM" },
   { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" />, group: "Sales" },
   { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
