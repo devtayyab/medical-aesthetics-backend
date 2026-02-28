@@ -45,15 +45,47 @@ export const Tags: React.FC = () => {
     description: ""
   });
 
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    const searchCustomers = async () => {
+      if (!customerSearch.trim() || customerSearch.length < 2) return;
+      setIsSearching(true);
+      try {
+        const res = await userAPI.getAllUsers({ search: customerSearch, limit: 10 });
+        const users = Array.isArray(res.data) ? res.data : res.data.users || [];
+        setSearchResults(users.map((u: any) => ({
+          value: u.id,
+          label: `${u.firstName} ${u.lastName} (${u.email})`
+        })));
+      } catch (err) {
+        console.error("Profile search failed:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(() => {
+      // Only search if we haven't already selected a customer (indicated by label match)
+      const isAlreadySelected = customers.some(c => c.label === customerSearch && c.value === tagData.customerId);
+      if (customerSearch.length >= 2 && !isAlreadySelected) {
+        searchCustomers();
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [customerSearch, tagData.customerId, customers]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [tagsRes, usersRes] = await Promise.all([
           adminAPI.getTags(),
-          userAPI.getAllUsers({ limit: 100 })
+          userAPI.getAllUsers({ limit: 50 })
         ]);
         setAvailableTags(tagsRes.data);
-        setCustomers(usersRes.data.map((u: any) => ({
+        const initialUsers = Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.users || [];
+        setCustomers(initialUsers.map((u: any) => ({
           value: u.id,
           label: `${u.firstName} ${u.lastName} (${u.email})`
         })));
@@ -110,12 +142,7 @@ export const Tags: React.FC = () => {
 
   const handleCustomerSearch = (query: string) => {
     setCustomerSearch(query);
-    if (query.trim().length > 1) {
-      const filtered = (customers || []).filter(c =>
-        c.label.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 5);
-      setSearchResults(filtered);
-    } else {
+    if (!query.trim()) {
       setSearchResults([]);
     }
   };
@@ -211,6 +238,11 @@ export const Tags: React.FC = () => {
                       onChange={(e) => handleCustomerSearch(e.target.value)}
                       className="h-11 border-slate-200 bg-white rounded-lg text-sm font-medium px-4 shadow-sm"
                     />
+                    {isSearching && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <div className="animate-spin h-4 w-4 border-b-2 border-blue-500 rounded-full"></div>
+                      </div>
+                    )}
                     {searchResults.length > 0 && (
                       <div className="absolute top-[calc(100%+16px)] left-0 right-0 bg-white/98 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl border border-gray-100/50 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-500 p-3 ring-1 ring-black/5">
                         {searchResults.length > 0 && (

@@ -37,9 +37,10 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all users' })
   @ApiQuery({ name: 'role', required: false })
+  @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'offset', required: false })
-  findAll(@Query() query: { role?: string; limit?: number; offset?: number }) {
+  findAll(@Query() query: { role?: string; search?: string; limit?: number; offset?: number }) {
     return this.usersService.findAll(query);
   }
 

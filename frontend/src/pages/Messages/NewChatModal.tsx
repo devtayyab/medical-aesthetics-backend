@@ -30,15 +30,9 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
     const searchUsers = async () => {
         setIsLoading(true);
         try {
-            const response = await userAPI.getAllUsers({ limit: 10 });
-            // Filter locally for now as getAllUsers might not support search q yet
+            const response = await userAPI.getAllUsers({ search: searchTerm, limit: 50 });
             const users = Array.isArray(response.data) ? response.data : response.data.users || [];
-            const filtered = users.filter((u: any) =>
-                u.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                u.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                u.email.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-            setResults(filtered);
+            setResults(users);
         } catch (error) {
             console.error('Failed to search users:', error);
         } finally {

@@ -35,12 +35,65 @@ export const Communication: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
 
+  const [isSearching, setIsSearching] = useState(false);
+
   useEffect(() => {
-    const fetchContacts = async () => {
+    const searchContacts = async () => {
+      if (!inputValue.trim() || inputValue.length < 2) return;
+      setIsSearching(true);
       try {
-        // Fetch both customers and leads
         const [usersRes, leadsRes] = await Promise.all([
-          userAPI.getAllUsers({ role: 'client' }),
+          userAPI.getAllUsers({ role: 'client', search: inputValue, limit: 10 }),
+          crmAPI.getLeads({ search: inputValue })
+        ]);
+
+        const users = Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.users || [];
+        const leads = Array.isArray(leadsRes.data) ? leadsRes.data : leadsRes.data.leads || [];
+
+        const userOptions = users.map((user: any) => ({
+          value: user.id,
+          label: `${user.firstName} ${user.lastName} (${user.email || 'No email'}) [Customer]`,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          type: 'Customer',
+          status: 'Active'
+        }));
+
+        const leadOptions = leads.map((lead: any) => ({
+          value: lead.id,
+          label: `${lead.firstName} ${lead.lastName} (${lead.email || 'No email'}) [Lead]`,
+          firstName: lead.firstName,
+          lastName: lead.lastName,
+          email: lead.email,
+          phone: lead.phone,
+          type: 'Lead',
+          status: lead.status
+        }));
+
+        setCustomers([...userOptions, ...leadOptions]);
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(() => {
+      if (inputValue.length >= 2 && !selectedCustomerId) {
+        searchContacts();
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [inputValue, selectedCustomerId]);
+
+  useEffect(() => {
+    const fetchInitialContacts = async () => {
+      try {
+        const [usersRes, leadsRes] = await Promise.all([
+          userAPI.getAllUsers({ role: 'client', limit: 20 }),
           crmAPI.getLeads()
         ]);
 
@@ -75,7 +128,7 @@ export const Communication: React.FC = () => {
       }
     };
 
-    fetchContacts();
+    fetchInitialContacts();
   }, []);
 
   useEffect(() => {
@@ -146,38 +199,38 @@ export const Communication: React.FC = () => {
                 <div className="flex gap-1.5">
                   <Input
                     value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    onChange={(e) => {
+                      setInputValue(e.target.value);
+                      if (selectedCustomerId) {
+                        setSelectedCustomerId("");
+                        setSelectedContact(null);
+                      }
+                    }}
                     placeholder="ID, Name or Email..."
                     className="flex-1 text-xs"
                   />
+                  {isSearching && (
+                    <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                      <div className="animate-spin h-3 w-3 border-b-2 border-primary rounded-full"></div>
+                    </div>
+                  )}
                   <Button
                     onClick={() => {
-                      // 1. Check ID directly
-                      const byId = customers.find(c => c.value === inputValue);
-                      if (byId) {
-                        handleCustomerSelect(byId.value);
-                        setInputValue(byId.label);
-                        return;
-                      }
-
-                      // 2. Exact match in name/email
-                      const byLabel = customers.find(c => c.label.toLowerCase().includes(inputValue.toLowerCase()));
-                      if (byLabel) {
-                        handleCustomerSelect(byLabel.value);
-                        setInputValue(byLabel.label);
-                        return;
-                      }
-
-                      // 3. If UUID format, just let it through
-                      if (UUID_REGEX.test(inputValue)) {
+                      // If we have results, pick the first one matching if not selected
+                      const match = customers.find(c =>
+                        c.label.toLowerCase().includes(inputValue.toLowerCase()) ||
+                        c.value === inputValue
+                      );
+                      if (match) {
+                        handleCustomerSelect(match.value);
+                        setInputValue(match.label);
+                      } else if (UUID_REGEX.test(inputValue)) {
                         handleCustomerSelect(inputValue);
-                        setErrorHeader(null);
-                        return;
+                      } else {
+                        setErrorHeader("Contact not found.");
                       }
-
-                      setErrorHeader("Contact not found.");
                     }}
-                    disabled={!inputValue}
+                    disabled={!inputValue || isSearching}
                     className="px-3"
                   >
                     Find

@@ -168,7 +168,7 @@ export class MessagesService {
             .innerJoinAndSelect('p.user', 'u')
             .leftJoinAndSelect('c.lastMessage', 'lm')
             .where('EXISTS (SELECT 1 FROM conversation_participants cp WHERE cp."conversationId" = c.id AND cp."userId" = :userId)', { userId })
-            .andWhere('(u."firstName" ILIKE :q OR u."lastName" ILIKE :q OR c.title ILIKE :q)', { q: `%${query}%` })
+            .andWhere('(u."firstName" ILIKE :q OR u."lastName" ILIKE :q OR u."email" ILIKE :q OR c.title ILIKE :q)', { q: `%${query}%` })
             .getMany();
     }
 }

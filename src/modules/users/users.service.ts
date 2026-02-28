@@ -13,7 +13,7 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(ConsentRecord)
     private consentRepository: Repository<ConsentRecord>,
-  ) {}
+  ) { }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const existingUser = await this.usersRepository.findOne({
@@ -36,19 +36,28 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email } });
   }
 
-  async findAll(query?: { role?: string; isActive?: boolean; limit?: number; offset?: number }): Promise<User[]> {
+  async findAll(query?: { role?: string; isActive?: boolean; limit?: number; offset?: number; search?: string }): Promise<User[]> {
     const queryBuilder = this.usersRepository.createQueryBuilder('user');
 
     if (query?.role) {
-      queryBuilder.where('user.role = :role', { role: query.role });
+      queryBuilder.andWhere('user.role = :role', { role: query.role });
     }
 
     if (query?.isActive !== undefined) {
       queryBuilder.andWhere('user.isActive = :isActive', { isActive: query.isActive });
     }
 
+    if (query?.search) {
+      queryBuilder.andWhere(
+        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${query.search}%` },
+      );
+    }
+
     if (query?.limit) {
       queryBuilder.limit(query.limit);
+    } else {
+      queryBuilder.limit(100); // Default limit for safety
     }
 
     if (query?.offset) {
@@ -128,7 +137,7 @@ export class UsersService {
     // This should implement GDPR-compliant data deletion
     // In a real application, you might want to anonymize rather than delete
     const user = await this.findById(userId);
-    
+
     // Anonymize user data
     await this.usersRepository.update(userId, {
       email: `deleted-${userId}@deleted.com`,

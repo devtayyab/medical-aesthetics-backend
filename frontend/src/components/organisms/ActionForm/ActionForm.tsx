@@ -73,36 +73,82 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     dispatch(getRequiredFieldsForAction(formData.actionType));
   }, [dispatch, formData.actionType]);
 
-  React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // 1. Fetch Customers
-        const customerResponse = await userAPI.getAllUsers({ role: 'client' });
-        const customersData = Array.isArray(customerResponse.data) ? customerResponse.data : customerResponse.data.users || [];
+  const [isLoading, setIsLoading] = useState(false);
 
-        // 2. Fetch Leads
-        const leadsResponse = await crmAPI.getLeads();
+  useEffect(() => {
+    const searchContacts = async () => {
+      if (!searchTerm.trim() || propCustomerId) return;
+      setIsLoading(true);
+      try {
+        const [customerResponse, leadsResponse] = await Promise.all([
+          userAPI.getAllUsers({ role: 'client', search: searchTerm, limit: 20 }),
+          crmAPI.getLeads({ search: searchTerm })
+        ]);
+
+        const customersData = Array.isArray(customerResponse.data) ? customerResponse.data : customerResponse.data.users || [];
         const leadsData = leadsResponse.data || [];
 
         const options = [
           ...customersData.map((u: any) => ({
             value: u.id,
-            type: 'customer',
+            type: 'customer' as const,
             email: u.email,
             label: `${u.email || 'No email'} (${u.firstName} ${u.lastName})`
           })),
           ...leadsData.map((l: any) => ({
             value: l.id,
-            type: 'lead',
+            type: 'lead' as const,
             email: l.email,
             label: `${l.email || 'No email'} (${l.firstName} ${l.lastName}) - LEAD`
           }))
         ];
         setCustomers(options);
+      } catch (err) {
+        console.error('Search failed:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-        // If we have a propCustomerId, set the initial label
+    const debounceTimer = setTimeout(() => {
+      if (searchTerm.length > 1) {
+        searchContacts();
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, propCustomerId]);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Initial fetch only if we have IDs or to show first few
         if (propCustomerId || prefilledData?.relatedLeadId) {
           const targetId = propCustomerId || prefilledData?.relatedLeadId;
+          const [custRes, leadRes] = await Promise.all([
+            userAPI.getAllUsers({ role: 'client', limit: 50 }),
+            crmAPI.getLeads()
+          ]);
+
+          const customersData = Array.isArray(custRes.data) ? custRes.data : custRes.data.users || [];
+          const leadsData = leadRes.data || [];
+
+          const options = [
+            ...customersData.map((u: any) => ({
+              value: u.id,
+              type: 'customer' as const,
+              email: u.email,
+              label: `${u.email || 'No email'} (${u.firstName} ${u.lastName})`
+            })),
+            ...leadsData.map((l: any) => ({
+              value: l.id,
+              type: 'lead' as const,
+              email: l.email,
+              label: `${l.email || 'No email'} (${l.firstName} ${l.lastName}) - LEAD`
+            }))
+          ];
+          setCustomers(options);
+
           const matched = options.find((o: any) => o.value === targetId);
           if (matched) {
             const displayLabel = matched.email || matched.label;
@@ -272,43 +318,40 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             {/* Floating Search Results */}
             {showResults && !propCustomerId && searchTerm.length > 0 && (
               <div className="absolute z-[100] left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 max-h-[300px] overflow-y-auto">
-                {customers
-                  .filter(c =>
-                    c.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    c.value.toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                  .map(c => (
-                    <button
-                      key={`${c.type}-${c.value}`}
-                      type="button"
-                      onClick={() => {
-                        if (c.type === 'customer') {
-                          handleInputChange('customerId', c.value);
-                        } else {
-                          handleInputChange('relatedLeadId', c.value);
-                        }
-                        const displayValue = c.email || c.label;
-                        setSearchTerm(displayValue);
-                        setSelectedCustomerLabel(displayValue);
-                        setShowResults(false);
-                      }}
-                      className="w-full text-left px-5 py-4 hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-none flex items-center gap-4 group"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 transition-all">
-                        <UserIcon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-black text-slate-800">{c.label}</div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">ID: {c.value}</div>
-                      </div>
-                    </button>
-                  ))}
-                {customers.filter(c =>
-                  c.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  c.value.toLowerCase().includes(searchTerm.toLowerCase())
-                ).length === 0 && (
-                    <div className="p-8 text-center text-slate-400 italic text-sm">No clients found matching your search.</div>
-                  )}
+                {isLoading && (
+                  <div className="p-4 text-center text-slate-400">
+                    <div className="animate-spin h-5 w-5 border-b-2 border-blue-500 rounded-full mx-auto"></div>
+                  </div>
+                )}
+                {customers.map(c => (
+                  <button
+                    key={`${c.type}-${c.value}`}
+                    type="button"
+                    onClick={() => {
+                      if (c.type === 'customer') {
+                        handleInputChange('customerId', c.value);
+                      } else {
+                        handleInputChange('relatedLeadId', c.value);
+                      }
+                      const displayValue = c.email || c.label;
+                      setSearchTerm(displayValue);
+                      setSelectedCustomerLabel(displayValue);
+                      setShowResults(false);
+                    }}
+                    className="w-full text-left px-5 py-4 hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-none flex items-center gap-4 group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 transition-all">
+                      <UserIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-slate-800">{c.label}</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">ID: {c.value}</div>
+                    </div>
+                  </button>
+                ))}
+                {customers.length === 0 && !isLoading && (
+                  <div className="p-8 text-center text-slate-400 italic text-sm">No clients found matching your search.</div>
+                )}
               </div>
             )}
           </div>
