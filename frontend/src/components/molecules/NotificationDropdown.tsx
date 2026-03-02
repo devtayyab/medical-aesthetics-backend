@@ -77,7 +77,7 @@ interface NotificationDropdownProps {
 export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose }) => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
-    const { notifications } = useSelector((state: RootState) => state.notifications);
+    const { notifications, isLoading } = useSelector((state: RootState) => state.notifications);
     const { user } = useSelector((state: RootState) => state.auth);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -128,17 +128,17 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
         <div className={dropdownStyle} ref={dropdownRef}>
             <div className={headerStyle}>
                 <h3 className="font-bold text-gray-900">Notifications</h3>
-                <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs text-blue-600 font-medium hover:underline p-0 h-auto"
-                    onClick={(e) => {
+                <button
+                    className="text-xs text-blue-600 font-bold hover:underline bg-transparent border-none cursor-pointer p-0 h-auto disabled:opacity-50"
+                    disabled={isLoading}
+                    onClick={async (e) => {
+                        e.preventDefault();
                         e.stopPropagation();
-                        handleMarkAllRead();
+                        await dispatch(markAllAsRead());
                     }}
                 >
-                    Mark all as read
-                </Button>
+                    {isLoading ? 'Processing...' : 'Mark all as read'}
+                </button>
             </div>
 
             <div className={scrollAreaStyle}>
@@ -178,23 +178,25 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
             </div>
 
             <div className="p-3 bg-gray-50 text-center border-t border-gray-100">
-                <Button
-                    variant="ghost"
-                    fullWidth
-                    className="w-full text-xs font-bold text-gray-600 hover:text-black hover:bg-gray-100 transition-colors"
+                <button
+                    className="w-full py-2.5 text-xs font-black text-slate-600 hover:text-black hover:bg-slate-100 transition-all rounded-lg border border-transparent flex items-center justify-center bg-slate-50 disabled:opacity-50"
+                    disabled={isLoading}
                     onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         const link = getNotificationsLink();
                         onClose();
                         navigate(link);
-                        // Fallback to ensure navigation happens
-                        if (window.location.pathname !== link) {
-                            window.location.href = link;
-                        }
+                        // Force persistent navigation if router is lazy
+                        setTimeout(() => {
+                            if (window.location.pathname !== link) {
+                                window.location.href = link;
+                            }
+                        }, 50);
                     }}
                 >
                     View all notifications
-                </Button>
+                </button>
             </div>
         </div>
     );
