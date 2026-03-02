@@ -445,12 +445,24 @@ export class CrmController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SALESPERSON)
   @UseGuards(RolesGuard)
   getPerformanceDashboard(
-    @Query() query: { startDate?: string; endDate?: string; salespersonId?: string }
+    @Query() query: { startDate?: string; endDate?: string; salespersonId?: string; clinicId?: string },
+    @Request() req
   ) {
-    const dateRange = query.startDate && query.endDate
-      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
-      : undefined;
-    return this.crmService.getPerformanceDashboard(dateRange, query.salespersonId);
+    let dateRange = undefined;
+    if (query.startDate && query.endDate) {
+      const startDate = new Date(query.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(query.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      dateRange = { startDate, endDate };
+    }
+
+    let salespersonId = query.salespersonId;
+    if (req.user.role === UserRole.SALESPERSON) {
+      salespersonId = req.user.id;
+    }
+
+    return this.crmService.getPerformanceDashboard(dateRange, salespersonId, query.clinicId);
   }
 
   @Get('analytics/:salespersonId')
@@ -460,13 +472,20 @@ export class CrmController {
   getSalespersonAnalyticsById(
     @Param('salespersonId') salespersonId: string,
     @Query() query: { startDate?: string; endDate?: string },
+    @Request() req
   ) {
-    const dateRange = query.startDate && query.endDate
-      ? {
-        startDate: new Date(query.startDate),
-        endDate: new Date(query.endDate),
-      }
-      : undefined;
+    if (req.user.role === UserRole.SALESPERSON) {
+      salespersonId = req.user.id;
+    }
+
+    let dateRange = undefined;
+    if (query.startDate && query.endDate) {
+      const startDate = new Date(query.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(query.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      dateRange = { startDate, endDate };
+    }
     return this.crmService.getSalespersonAnalytics(salespersonId, dateRange);
   }
   // Facebook Integration Endpoints
