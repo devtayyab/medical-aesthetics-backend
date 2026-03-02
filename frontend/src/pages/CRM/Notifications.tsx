@@ -1,11 +1,10 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, CheckCircle, Clock, Trash2, CheckCheck } from "lucide-react";
+import { Bell, CheckCircle, Clock, CheckCheck } from "lucide-react";
 import { fetchNotifications, markAsRead, markAllAsRead } from "@/store/slices/notificationsSlice";
 import type { RootState, AppDispatch } from "@/store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
-import { Button } from "@/components/atoms/Button/Button";
+import { Card, CardContent } from "@/components/molecules/Card/Card";
 
 export const Notifications: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -15,9 +14,6 @@ export const Notifications: React.FC = () => {
         dispatch(fetchNotifications(50)); // Fetch last 50 notifications
     }, [dispatch]);
 
-    const handleMarkAllRead = () => {
-        dispatch(markAllAsRead());
-    };
 
     const getIcon = (type: string) => {
         switch (type) {
@@ -42,14 +38,17 @@ export const Notifications: React.FC = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
                     <p className="text-gray-500">Stay updated with your latest alerts and tasks</p>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={handleMarkAllRead}
-                    className="flex items-center gap-2"
+                <button
+                    onClick={async (e) => {
+                        e.preventDefault();
+                        await dispatch(markAllAsRead());
+                    }}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 transition-all disabled:opacity-50"
                 >
                     <CheckCheck className="w-4 h-4" />
-                    Mark all as read
-                </Button>
+                    {isLoading ? 'Processing...' : 'Mark all as read'}
+                </button>
             </div>
 
             <Card className="border-none shadow-sm">

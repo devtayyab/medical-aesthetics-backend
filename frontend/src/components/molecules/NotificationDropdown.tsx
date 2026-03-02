@@ -1,12 +1,11 @@
 import React, { useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Bell, CheckCircle, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { css } from "@emotion/css";
 import type { RootState, AppDispatch } from "@/store";
 import { fetchNotifications, markAsRead, markAllAsRead, fetchUnreadCount } from "@/store/slices/notificationsSlice";
-import { Button } from "@/components/atoms/Button/Button";
 
 const dropdownStyle = css`
   position: absolute;
@@ -47,13 +46,15 @@ const notificationItemStyle = (isRead: boolean) => css`
   padding: 12px 16px;
   border-bottom: 1px solid #edf2f7;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
   background: ${isRead ? 'white' : '#f0f9ff'};
   display: flex;
   gap: 12px;
+  position: relative;
   &:hover {
-    background: #f7fafc;
+    background: ${isRead ? '#f8fafc' : '#e0f2fe'};
   }
+  ${!isRead ? 'border-left: 3px solid #3b82f6;' : ''}
 `;
 
 const iconContainerStyle = (type: string) => css`
@@ -76,8 +77,7 @@ interface NotificationDropdownProps {
 
 export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose }) => {
     const dispatch = useDispatch<AppDispatch>();
-    const navigate = useNavigate();
-    const { notifications } = useSelector((state: RootState) => state.notifications);
+    const { notifications, isLoading } = useSelector((state: RootState) => state.notifications);
     const { user } = useSelector((state: RootState) => state.auth);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -88,8 +88,10 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
         return '/crm/notifications';
     };
 
-    const handleMarkAllRead = () => {
-        dispatch(markAllAsRead());
+    const handleMarkAllRead = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await dispatch(markAllAsRead());
     };
 
     useEffect(() => {
@@ -101,17 +103,22 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            const path = event.composedPath();
+            if (dropdownRef.current && !path.includes(dropdownRef.current)) {
                 onClose();
             }
         };
 
         if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
+            // Use setTimeout to skip the initial click that opened the dropdown
+            const timeoutId = setTimeout(() => {
+                document.addEventListener('click', handleClickOutside);
+            }, 0);
+            return () => {
+                clearTimeout(timeoutId);
+                document.removeEventListener('click', handleClickOutside);
+            };
         }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
     }, [isOpen, onClose]);
 
     if (!isOpen) return null;
@@ -125,20 +132,17 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
     };
 
     return (
-        <div className={dropdownStyle} ref={dropdownRef}>
+        <div className={dropdownStyle} ref={dropdownRef} onClick={(e) => e.stopPropagation()}>
             <div className={headerStyle}>
                 <h3 className="font-bold text-gray-900">Notifications</h3>
-                <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs text-blue-600 font-medium hover:underline p-0 h-auto"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleMarkAllRead();
-                    }}
+                <button
+                    className="text-xs text-blue-600 font-bold hover:text-blue-800 hover:underline bg-transparent border-none cursor-pointer p-0 h-auto disabled:opacity-50 z-10"
+                    disabled={isLoading}
+                    onClick={handleMarkAllRead}
+                    type="button"
                 >
-                    Mark all as read
-                </Button>
+                    {isLoading ? 'Processing...' : 'Mark all as read'}
+                </button>
             </div>
 
             <div className={scrollAreaStyle}>
@@ -178,18 +182,22 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
             </div>
 
             <div className="p-3 bg-gray-50 text-center border-t border-gray-100">
-                <Button
-                    variant="ghost"
-                    fullWidth
-                    className="w-full text-xs font-bold text-gray-600 hover:text-black hover:bg-gray-100 transition-colors"
+                <Link
+                    to={getNotificationsLink()}
+                    className="w-full py-2.5 text-xs font-black text-white hover:text-white transition-all rounded-lg border border-transparent flex items-center justify-center bg-slate-800 hover:bg-black no-underline shadow-sm"
                     onClick={(e) => {
-                        e.stopPropagation();
                         onClose();
-                        navigate(getNotificationsLink());
+                        // Primary navigation happens via React Router's Link
+                        // Fallback purely for robustness
+                        setTimeout(() => {
+                            if (!window.location.pathname.includes('notifications')) {
+                                window.location.href = getNotificationsLink();
+                            }
+                        }, 1000);
                     }}
                 >
                     View all notifications
-                </Button>
+                </Link>
             </div>
         </div>
     );
