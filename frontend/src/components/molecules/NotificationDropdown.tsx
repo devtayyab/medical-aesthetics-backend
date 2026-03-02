@@ -184,8 +184,13 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
                     className="w-full text-xs font-bold text-gray-600 hover:text-black hover:bg-gray-100 transition-colors"
                     onClick={(e) => {
                         e.stopPropagation();
+                        const link = getNotificationsLink();
                         onClose();
-                        navigate(getNotificationsLink());
+                        navigate(link);
+                        // Fallback to ensure navigation happens
+                        if (window.location.pathname !== link) {
+                            window.location.href = link;
+                        }
                     }}
                 >
                     View all notifications

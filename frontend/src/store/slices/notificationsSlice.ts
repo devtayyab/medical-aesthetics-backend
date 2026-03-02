@@ -44,6 +44,7 @@ export const markAllAsRead = createAsyncThunk(
   'notifications/markAllAsRead',
   async (_, { dispatch }) => {
     await notificationsAPI.markAllAsRead();
+    dispatch(fetchNotifications(10));
     dispatch(fetchUnreadCount());
   }
 );
