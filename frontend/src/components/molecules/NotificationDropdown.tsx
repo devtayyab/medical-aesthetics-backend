@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Bell, CheckCircle, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { css } from "@emotion/css";
@@ -76,7 +76,6 @@ interface NotificationDropdownProps {
 
 export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose }) => {
     const dispatch = useDispatch<AppDispatch>();
-    const navigate = useNavigate();
     const { notifications, isLoading } = useSelector((state: RootState) => state.notifications);
     const { user } = useSelector((state: RootState) => state.auth);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -178,25 +177,21 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
             </div>
 
             <div className="p-3 bg-gray-50 text-center border-t border-gray-100">
-                <button
-                    className="w-full py-2.5 text-xs font-black text-slate-600 hover:text-black hover:bg-slate-100 transition-all rounded-lg border border-transparent flex items-center justify-center bg-slate-50 disabled:opacity-50"
-                    disabled={isLoading}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const link = getNotificationsLink();
+                <Link
+                    to={getNotificationsLink()}
+                    className="w-full py-2.5 text-xs font-black text-slate-600 hover:text-black hover:bg-slate-100 transition-all rounded-lg border border-transparent flex items-center justify-center bg-slate-50 no-underline"
+                    onClick={() => {
                         onClose();
-                        navigate(link);
-                        // Force persistent navigation if router is lazy
+                        // Fallback purely for robustness
                         setTimeout(() => {
-                            if (window.location.pathname !== link) {
-                                window.location.href = link;
+                            if (!window.location.pathname.includes('notifications')) {
+                                window.location.href = getNotificationsLink();
                             }
-                        }, 50);
+                        }, 1000);
                     }}
                 >
                     View all notifications
-                </button>
+                </Link>
             </div>
         </div>
     );

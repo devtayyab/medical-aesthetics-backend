@@ -44,7 +44,6 @@ export const markAllAsRead = createAsyncThunk(
   'notifications/markAllAsRead',
   async (_, { dispatch }) => {
     await notificationsAPI.markAllAsRead();
-    dispatch(fetchNotifications(10));
     dispatch(fetchUnreadCount());
   }
 );
@@ -84,7 +83,21 @@ const notificationsSlice = createSlice({
           readAt: new Date().toISOString()
         }));
         state.unreadCount = 0;
-      });
+        state.isLoading = false;
+      })
+      // Loading states
+      .addMatcher(
+        (action) => action.type.endsWith('/pending'),
+        (state) => {
+          state.isLoading = true;
+        }
+      )
+      .addMatcher(
+        (action) => action.type.endsWith('/fulfilled') || action.type.endsWith('/rejected'),
+        (state) => {
+          state.isLoading = false;
+        }
+      );
   },
 });
 
