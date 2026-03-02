@@ -76,14 +76,22 @@ const notificationsSlice = createSlice({
           state.unreadCount = Math.max(0, state.unreadCount - 1);
         }
       })
-      .addCase(markAllAsRead.fulfilled, (state) => {
+      .addCase(markAllAsRead.pending, (state) => {
+        state.isLoading = true;
+        // Optimistic update: mark all as read immediately
         state.notifications = state.notifications.map(n => ({
           ...n,
           isRead: true,
           readAt: new Date().toISOString()
         }));
         state.unreadCount = 0;
+      })
+      .addCase(markAllAsRead.fulfilled, (state) => {
         state.isLoading = false;
+      })
+      .addCase(markAllAsRead.rejected, (state) => {
+        state.isLoading = false;
+        // Optional: revert optimistic update if needed, but for "read all" it's usually fine to keep it
       })
       // Loading states
       .addMatcher(

@@ -1,12 +1,11 @@
 import React, { useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Bell, CheckCircle, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { css } from "@emotion/css";
 import type { RootState, AppDispatch } from "@/store";
 import { fetchNotifications, markAsRead, markAllAsRead, fetchUnreadCount } from "@/store/slices/notificationsSlice";
-import { Button } from "@/components/atoms/Button/Button";
 
 const dropdownStyle = css`
   position: absolute;
@@ -47,13 +46,15 @@ const notificationItemStyle = (isRead: boolean) => css`
   padding: 12px 16px;
   border-bottom: 1px solid #edf2f7;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
   background: ${isRead ? 'white' : '#f0f9ff'};
   display: flex;
   gap: 12px;
+  position: relative;
   &:hover {
-    background: #f7fafc;
+    background: ${isRead ? '#f8fafc' : '#e0f2fe'};
   }
+  ${!isRead ? 'border-left: 3px solid #3b82f6;' : ''}
 `;
 
 const iconContainerStyle = (type: string) => css`
@@ -87,8 +88,11 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
         return '/crm/notifications';
     };
 
-    const handleMarkAllRead = () => {
-        dispatch(markAllAsRead());
+    const handleMarkAllRead = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("Marking all as read button clicked...");
+        await dispatch(markAllAsRead());
     };
 
     useEffect(() => {
@@ -101,15 +105,17 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                console.log("Clicked outside dropdown, closing...");
                 onClose();
             }
         };
 
         if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
+            // Use 'click' instead of 'mousedown' to avoid race condition where dropdown closes before button onClick can fire
+            document.addEventListener('click', handleClickOutside);
         }
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('click', handleClickOutside);
         };
     }, [isOpen, onClose]);
 
@@ -124,17 +130,14 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
     };
 
     return (
-        <div className={dropdownStyle} ref={dropdownRef}>
+        <div className={dropdownStyle} ref={dropdownRef} onClick={(e) => e.stopPropagation()}>
             <div className={headerStyle}>
                 <h3 className="font-bold text-gray-900">Notifications</h3>
                 <button
-                    className="text-xs text-blue-600 font-bold hover:underline bg-transparent border-none cursor-pointer p-0 h-auto disabled:opacity-50"
+                    className="text-xs text-blue-600 font-bold hover:text-blue-800 hover:underline bg-transparent border-none cursor-pointer p-0 h-auto disabled:opacity-50 z-10"
                     disabled={isLoading}
-                    onClick={async (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        await dispatch(markAllAsRead());
-                    }}
+                    onClick={handleMarkAllRead}
+                    type="button"
                 >
                     {isLoading ? 'Processing...' : 'Mark all as read'}
                 </button>
@@ -179,8 +182,9 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
             <div className="p-3 bg-gray-50 text-center border-t border-gray-100">
                 <Link
                     to={getNotificationsLink()}
-                    className="w-full py-2.5 text-xs font-black text-slate-600 hover:text-black hover:bg-slate-100 transition-all rounded-lg border border-transparent flex items-center justify-center bg-slate-50 no-underline"
-                    onClick={() => {
+                    className="w-full py-2.5 text-xs font-black text-white hover:text-white transition-all rounded-lg border border-transparent flex items-center justify-center bg-slate-800 hover:bg-black no-underline shadow-sm"
+                    onClick={(e) => {
+                        console.log("Navigating to all notifications page...");
                         onClose();
                         // Fallback purely for robustness
                         setTimeout(() => {
