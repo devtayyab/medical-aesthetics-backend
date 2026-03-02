@@ -91,7 +91,6 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
     const handleMarkAllRead = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log("Marking all as read button clicked...");
         await dispatch(markAllAsRead());
     };
 
@@ -104,19 +103,22 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                console.log("Clicked outside dropdown, closing...");
+            const path = event.composedPath();
+            if (dropdownRef.current && !path.includes(dropdownRef.current)) {
                 onClose();
             }
         };
 
         if (isOpen) {
-            // Use 'click' instead of 'mousedown' to avoid race condition where dropdown closes before button onClick can fire
-            document.addEventListener('click', handleClickOutside);
+            // Use setTimeout to skip the initial click that opened the dropdown
+            const timeoutId = setTimeout(() => {
+                document.addEventListener('click', handleClickOutside);
+            }, 0);
+            return () => {
+                clearTimeout(timeoutId);
+                document.removeEventListener('click', handleClickOutside);
+            };
         }
-        return () => {
-            document.removeEventListener('click', handleClickOutside);
-        };
     }, [isOpen, onClose]);
 
     if (!isOpen) return null;
@@ -184,8 +186,8 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
                     to={getNotificationsLink()}
                     className="w-full py-2.5 text-xs font-black text-white hover:text-white transition-all rounded-lg border border-transparent flex items-center justify-center bg-slate-800 hover:bg-black no-underline shadow-sm"
                     onClick={(e) => {
-                        console.log("Navigating to all notifications page...");
                         onClose();
+                        // Primary navigation happens via React Router's Link
                         // Fallback purely for robustness
                         setTimeout(() => {
                             if (!window.location.pathname.includes('notifications')) {
