@@ -4,21 +4,23 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid
 } from 'recharts';
-import { Search, Filter, Download, Activity, Target, TrendingUp, CheckCircle, Clock } from 'lucide-react';
+import { Search, Filter, Download, Activity, Target, TrendingUp, CheckCircle, Clock, Zap, AlertTriangle, Building, PieChart as PieChartIcon, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 import { Button } from '@/components/atoms/Button/Button';
+import { Badge } from '@/components/atoms/Badge/Badge';
 import { crmAPI } from '@/services/api';
 import { RootState } from '@/store';
 import { fetchSalespersons } from '@/store/slices/crmSlice';
+import { searchClinics } from '@/store/slices/clinicsSlice';
 
 export const SalesAnalyticsDashboard = () => {
     const dispatch = useDispatch<any>();
     const { user } = useSelector((state: RootState) => state.auth);
     const { salespersons } = useSelector((state: RootState) => state.crm);
+    const { clinics } = useSelector((state: RootState) => state.clinics);
 
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<'daily' | 'conversion' | 'tasks' | 'performance' | 'report'>('report');
 
     // Filters
     const [dateRange, setDateRange] = useState({
@@ -26,6 +28,7 @@ export const SalesAnalyticsDashboard = () => {
         endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd')
     });
     const [selectedSalesPerson, setSelectedSalesPerson] = useState<string>('');
+    const [selectedClinic, setSelectedClinic] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
 
@@ -34,6 +37,7 @@ export const SalesAnalyticsDashboard = () => {
 
     useEffect(() => {
         dispatch(fetchSalespersons());
+        dispatch(searchClinics({}));
     }, [dispatch]);
 
     const fetchDashboardData = async () => {
@@ -49,6 +53,10 @@ export const SalesAnalyticsDashboard = () => {
                 params.salespersonId = user.id;
             }
 
+            if (selectedClinic) {
+                params.clinicId = selectedClinic;
+            }
+
             const res = await crmAPI.getPerformanceDashboard(params);
             setData(res.data);
         } catch (error) {
@@ -60,7 +68,7 @@ export const SalesAnalyticsDashboard = () => {
 
     useEffect(() => {
         fetchDashboardData();
-    }, [dateRange, selectedSalesPerson]);
+    }, [dateRange, selectedSalesPerson, selectedClinic]);
 
     // Derived states
     const filteredReport = useMemo(() => {
@@ -109,6 +117,11 @@ export const SalesAnalyticsDashboard = () => {
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a288e3', '#ff6b6b'];
 
+    const targetRevenue = data?.monthlyTarget || 125000;
+    const currentRevenue = data?.salesConversionAnalytics?.totalRevenue || 0;
+    const conversionPercentage = (currentRevenue / targetRevenue) * 100;
+    const amountRemaining = Math.max(0, targetRevenue - currentRevenue);
+
     return (
         <div className="p-6 space-y-6 animate-in fade-in bg-gray-50 min-h-screen">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -136,7 +149,7 @@ export const SalesAnalyticsDashboard = () => {
                         <select
                             value={selectedSalesPerson}
                             onChange={(e) => setSelectedSalesPerson(e.target.value)}
-                            className="p-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 min-w-[150px]"
+                            className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 min-w-[150px] shadow-sm"
                         >
                             <option value="">All Agents</option>
                             {salespersons.map(sp => (
@@ -144,6 +157,17 @@ export const SalesAnalyticsDashboard = () => {
                             ))}
                         </select>
                     )}
+
+                    <select
+                        value={selectedClinic}
+                        onChange={(e) => setSelectedClinic(e.target.value)}
+                        className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 min-w-[150px] shadow-sm"
+                    >
+                        <option value="">All Clinics</option>
+                        {clinics.map(clinic => (
+                            <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
+                        ))}
+                    </select>
 
                     <Button onClick={fetchDashboardData} className="bg-blue-600 hover:bg-blue-700 text-white shadow">
                         <Filter className="w-4 h-4 mr-2" /> Apply
@@ -154,412 +178,399 @@ export const SalesAnalyticsDashboard = () => {
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center p-20 gap-4">
                     <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-sm font-black uppercase tracking-widest text-blue-600">Analyzing Data...</span>
+                    <span className="text-sm font-black uppercase tracking-widest text-blue-600">Gathering Intelligence...</span>
                 </div>
             ) : data && (
-                <>
-                    {/* Top Level KPIs */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <Card className="border-none shadow-sm shadow-blue-100/50 bg-white">
-                            <CardContent className="p-5 flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                                    <Target className="w-6 h-6" />
+                <div className="space-y-12">
+                    {/* LAYER 1 — Revenue Control (Performance KPI Bar) */}
+                    <div className="space-y-4 shadow-sm pb-2">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Target className="w-4 h-4 text-slate-800" />
+                            <h2 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em]">01. Revenue Control</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            {/* 1. Monthly Target */}
+                            <Card className="border-none shadow-sm bg-[#0f172a] text-white overflow-hidden relative rounded-xl h-36">
+                                <div className="absolute right-0 top-0 opacity-10 scale-150 rotate-12 -mt-10">
+                                    <Target className="w-32 h-32" />
                                 </div>
-                                <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Leads/Hits</p>
-                                    <h3 className="text-2xl font-black text-gray-800">{data.salesConversionAnalytics?.leads || 0}</h3>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card className="border-none shadow-sm shadow-emerald-100/50 bg-white">
-                            <CardContent className="p-5 flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                                    <CheckCircle className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Confirmed Bookings</p>
-                                    <h3 className="text-2xl font-black text-gray-800">{data.salesConversionAnalytics?.confirmedBookings || 0}</h3>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card className="border-none shadow-sm shadow-purple-100/50 bg-white">
-                            <CardContent className="p-5 flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
-                                    <TrendingUp className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Generated Revenue</p>
-                                    <h3 className="text-2xl font-black text-gray-800">€{data.salesConversionAnalytics?.revenue?.toFixed(2) || '0.00'}</h3>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card className="border-none shadow-sm shadow-amber-100/50 bg-white">
-                            <CardContent className="p-5 flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-                                    <Activity className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Task Completion</p>
-                                    <h3 className="text-2xl font-black text-gray-800">
-                                        {data.salesConversionAnalytics?.assignedTasks > 0 ?
-                                            ((data.salesConversionAnalytics.completedTasks / data.salesConversionAnalytics.assignedTasks) * 100).toFixed(1) : 0}%
-                                    </h3>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                                <CardContent className="p-5 flex flex-col justify-between h-full">
+                                    <div>
+                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Monthly Target</p>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-xl font-bold opacity-60">€</span>
+                                            <h3 className="text-3xl font-black tracking-tighter">{(data.monthlyTarget || 125000).toLocaleString()}</h3>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="text-[8px] font-black uppercase tracking-widest bg-white/10 px-2.5 py-1 rounded">Quota Active</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                    {/* Navigation Tabs */}
-                    <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-100 inline-flex">
-                        {(['report', 'daily', 'conversion', 'tasks', 'performance'] as const).map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
-                                    }`}
-                            >
-                                {tab.replace('-', ' ')}
-                            </button>
-                        ))}
-                    </div>
+                            {/* 2. Revenue Month-to-Date */}
+                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-100 rounded-xl h-36">
+                                <CardContent className="p-5 flex flex-col justify-between h-full">
+                                    <div>
+                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Revenue MTD</p>
+                                        <div className="flex items-baseline gap-1 flex-wrap">
+                                            <span className="text-xl font-bold text-slate-400">€</span>
+                                            <h3 className="text-3xl font-black tracking-tighter text-slate-900">
+                                                {data.salesConversionAnalytics?.totalRevenue?.toLocaleString() || '0'}
+                                            </h3>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase tracking-widest px-2.5 py-1 rounded">
+                                            Live Collections
+                                        </span>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                    {/* Tab 1: Tabular Report */}
-                    {activeTab === 'report' && (
-                        <Card className="border-none shadow-xl shadow-gray-200/50 overflow-hidden">
-                            <CardContent className="p-0">
-                                <div className="p-4 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4 bg-gray-50/50">
-                                    <div className="flex gap-3 items-center w-full md:w-auto">
-                                        <div className="relative flex-1 md:w-64">
-                                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                            <input
-                                                type="text"
-                                                placeholder="Search client, agent, event..."
-                                                className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
+                            {/* 3. Target % */}
+                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-100 rounded-xl h-36">
+                                <CardContent className="p-5 flex flex-col justify-between h-full">
+                                    <div>
+                                        <div className="flex justify-between items-start">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Target Achievement</p>
+                                            <Activity className="w-3 h-3 text-blue-500" />
+                                        </div>
+                                        <h3 className="text-3xl font-black tracking-tighter text-blue-600">
+                                            {conversionPercentage.toFixed(1)}%
+                                        </h3>
+                                    </div>
+                                    <div>
+                                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                            <div
+                                                className="h-full bg-blue-600 rounded-full transition-all duration-1000"
+                                                style={{ width: `${Math.min(100, conversionPercentage)}%` }}
                                             />
                                         </div>
-                                        <select
-                                            value={statusFilter}
-                                            onChange={(e) => setStatusFilter(e.target.value)}
-                                            className="p-2 bg-white border border-gray-200 rounded-lg text-sm min-w-[140px]"
-                                        >
-                                            <option value="">All Statuses</option>
-                                            <option value="completed">Completed</option>
-                                            <option value="confirmed">Confirmed</option>
-                                            <option value="pending">Pending</option>
-                                            <option value="cancelled">Cancelled</option>
-                                            <option value="no_show">No Show</option>
-                                        </select>
+                                        <p className="text-[8px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest">
+                                            €{amountRemaining.toLocaleString()} to Goal
+                                        </p>
                                     </div>
-                                    <Button onClick={handleExport} variant="outline" className="border-gray-200 hover:bg-white text-gray-700 font-bold bg-white text-xs">
-                                        <Download className="w-4 h-4 mr-2" /> Export Excel/CSV
+                                </CardContent>
+                            </Card>
+
+                            {/* 4. Conversion % */}
+                            <Card className="border-none shadow-sm bg-[#3b82f6] text-white overflow-hidden relative rounded-xl h-36">
+                                <CardContent className="p-5 flex flex-col justify-between h-full">
+                                    <div>
+                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-200 mb-1">Conversion Ratio</p>
+                                        <h3 className="text-3xl font-black tracking-tighter">
+                                            {data.salesConversionAnalytics?.leads > 0
+                                                ? ((data.salesConversionAnalytics.confirmedBookings / data.salesConversionAnalytics.leads) * 100).toFixed(0)
+                                                : '0'}%
+                                        </h3>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] font-black mt-2">
+                                        <div className="flex flex-col text-left">
+                                            <span className="text-blue-200 text-[7px] uppercase tracking-widest">Bookings</span>
+                                            <span className="text-base leading-none">{data.salesConversionAnalytics?.confirmedBookings || 0}</span>
+                                        </div>
+                                        <div className="flex flex-col text-right">
+                                            <span className="text-blue-200 text-[7px] uppercase tracking-widest">Leads</span>
+                                            <span className="text-base leading-none">{data.salesConversionAnalytics?.leads || 0}</span>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+
+                    {/* LAYER 2 — Sales Intelligence (Proactive Action Center) */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Zap className="w-4 h-4 text-slate-800" />
+                            <h2 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em]">02. Sales Intelligence</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* 1. Hot Leads */}
+                            <Card className="border-none shadow-sm bg-white hover:bg-slate-50 cursor-pointer transition-all border border-slate-200 rounded-2xl group">
+                                <CardContent className="p-4 flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
+                                        <TrendingUp className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Hot Leads</p>
+                                        <h3 className="text-lg font-black text-slate-900 leading-none mt-1">{data.actionCenter?.hotLeads || 0}</h3>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* 2. Follow-up Today */}
+                            <Card className="border-none shadow-sm bg-white hover:bg-slate-50 cursor-pointer transition-all border border-slate-200 rounded-2xl group">
+                                <CardContent className="p-4 flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                                        <Clock className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-blue-600">Follow-up Today</p>
+                                        <h3 className="text-lg font-black text-slate-900 leading-none mt-1">{data.actionCenter?.followupsDueToday || 0}</h3>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* 3. No Contact 7 Days */}
+                            <Card className="border-none shadow-sm bg-white hover:bg-slate-50 cursor-pointer transition-all border border-slate-200 rounded-2xl group">
+                                <CardContent className="p-4 flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
+                                        <AlertTriangle className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">No Contact 7 Days</p>
+                                        <h3 className="text-lg font-black text-slate-900 leading-none mt-1">{data.actionCenter?.noContact7Days || 0}</h3>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* 4. Overdue Tasks */}
+                            <Card className="border-none shadow-sm bg-white hover:bg-slate-50 cursor-pointer transition-all border border-slate-200 rounded-2xl group">
+                                <CardContent className="p-4 flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0">
+                                        <Activity className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-red-600">Overdue Tasks</p>
+                                        <h3 className="text-lg font-black text-slate-900 leading-none mt-1">{data.actionCenter?.overdueTasks || 0}</h3>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+
+                    {/* LAYER 3 — Pipeline & Distribution (Final strategic view) */}
+                    <div className="space-y-8">
+                        <div className="flex items-center gap-2 mb-2">
+                            <TrendingUp className="w-4 h-4 text-slate-800" />
+                            <h2 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em]">03. Pipeline & Distribution</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* 1. Leads by Status */}
+                            <Card className="border-none shadow-sm bg-white overflow-hidden rounded-xl">
+                                <CardHeader className="pt-6 px-6 pb-2">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Leads by Status Pipeline</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-6 h-72">
+                                    {data.pipeline?.leadsByStatus?.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={data.pipeline.leadsByStatus.map((v: any) => ({ ...v, count: Number(v.count) }))}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+                                                <XAxis dataKey="status" tick={{ fontSize: 9, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />
+                                                <RechartsTooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                                                <Bar dataKey="count" name="Leads" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                                            <TrendingUp className="w-8 h-8 mb-2 opacity-50" />
+                                            <span className="text-[10px] uppercase font-black tracking-widest">No Pipeline Data</span>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* 2. Source Breakdown */}
+                            <Card className="border-none shadow-sm bg-white overflow-hidden rounded-xl">
+                                <CardHeader className="pt-6 px-6 pb-2">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Meta Form Source Intelligence</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-6 h-72">
+                                    {data.pipeline?.sourceBreakdown?.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={data.pipeline.sourceBreakdown.map((v: any) => ({ ...v, count: Number(v.count) }))}
+                                                    cx="50%" cy="50%"
+                                                    innerRadius={60}
+                                                    outerRadius={90}
+                                                    paddingAngle={2}
+                                                    dataKey="count"
+                                                    nameKey="source"
+                                                    label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                                    labelLine={false}
+                                                >
+                                                    {data.pipeline.sourceBreakdown.map((_entry: any, index: number) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="transparent" />
+                                                    ))}
+                                                </Pie>
+                                                <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                                            <PieChartIcon className="w-8 h-8 mb-2 opacity-50" />
+                                            <span className="text-[10px] uppercase font-black tracking-widest">No Source Data</span>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* 3. Clinic Distribution (Revenue) */}
+                            <Card className="border-none shadow-sm bg-white overflow-hidden rounded-xl">
+                                <CardHeader className="pt-6 px-6 pb-2">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Clinic Attribution (Revenue)</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-6 h-72">
+                                    {data.clinicPerformance?.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={data.clinicPerformance.map((v: any) => ({ ...v, revenue: Number(v.revenue) }))} layout="vertical">
+                                                <CartesianGrid strokeDasharray="3 3" horizontal={true} stroke="#f8fafc" />
+                                                <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                                <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fontWeight: 'bold' }} width={80} axisLine={false} tickLine={false} />
+                                                <RechartsTooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} formatter={(val: any) => `€${val.toLocaleString()}`} />
+                                                <Bar dataKey="revenue" name="MTD Revenue" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={30} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                                            <Building className="w-8 h-8 mb-2 opacity-50" />
+                                            <span className="text-[10px] uppercase font-black tracking-widest">No Clinic Data</span>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* 4. Personal Pipeline (Agent Contribution) */}
+                            <Card className="border-none shadow-sm bg-white overflow-hidden rounded-xl">
+                                <CardHeader className="pt-6 px-6 pb-2">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Personal Pipeline (Agent Performance)</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-6 h-72">
+                                    {data.performanceReport?.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={data.performanceReport.map((v: any) => ({ ...v, totalRevenue: Number(v.totalRevenue) }))}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+                                                <XAxis dataKey="salesPersonName" tick={{ fontSize: 9, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />
+                                                <RechartsTooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                                                <Bar dataKey="totalRevenue" name="Revenue Contributed" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                                            <User className="w-8 h-8 mb-2 opacity-50" />
+                                            <span className="text-[10px] uppercase font-black tracking-widest">No Agent Data</span>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* 3C. Live Activity Log */}
+                        <Card className="border-none shadow-2xl bg-white border border-slate-100 overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4 bg-slate-50/30">
+                                <div>
+                                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                                        <Filter className="w-4 h-4 text-blue-600" />
+                                        Performance Execution Log
+                                    </h3>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Real-time Daily Record</p>
+                                </div>
+                                <div className="flex gap-3">
+                                    <div className="relative">
+                                        <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                        <input
+                                            type="text"
+                                            placeholder="Quick Search..."
+                                            className="pl-9 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold w-64 shadow-sm"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                        />
+                                    </div>
+                                    <Button onClick={handleExport} variant="outline" className="border-slate-200 hover:bg-white text-slate-700 font-bold bg-white text-[9px] rounded-lg h-8 shadow-sm">
+                                        <Download className="w-3 h-3 mr-2" /> Export
                                     </Button>
                                 </div>
-
-                                <div className="overflow-x-auto w-full">
-                                    <table className="w-full text-left text-sm whitespace-nowrap">
-                                        <thead className="bg-gray-50/80 text-[10px] uppercase font-black tracking-widest text-gray-400 border-b border-gray-100">
-                                            <tr>
-                                                <th className="p-4">Agent details</th>
-                                                <th className="p-4">Date & Time</th>
-                                                <th className="p-4">Type / Action</th>
-                                                <th className="p-4">Status & Result</th>
-                                                <th className="p-4">Revenue</th>
-                                                <th className="p-4">Exec Status</th>
-                                                <th className="p-4">Rebook</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50 bg-white">
-                                            {paginatedReport.map((row: any) => (
-                                                <tr key={row.id} className="hover:bg-blue-50/30 transition-colors">
-                                                    <td className="p-4">
-                                                        <p className="font-bold text-gray-900">{row.clientName}</p>
-                                                        <p className="text-xs font-medium text-blue-600 mt-0.5">{row.salesPersonName}</p>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <p className="font-bold text-gray-800">{format(new Date(row.date), 'MMM do, yyyy')}</p>
-                                                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><Clock className="w-3 h-3" /> {format(new Date(row.date), 'HH:mm')}</p>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <span className="inline-block px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-wider mb-1 mr-2">{row.eventType}</span>
-                                                        <p className="text-sm font-medium text-gray-700">{row.taskPerformed}</p>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        {row.bookingStatus !== 'N/A' ? (
-                                                            <span className={`inline-flex px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${['completed', 'confirmed', 'arrived'].includes(row.bookingStatus) ? 'bg-emerald-100 text-emerald-700' :
-                                                                ['cancelled', 'no_show', 'missed'].includes(row.bookingStatus) ? 'bg-red-100 text-red-700' :
-                                                                    'bg-amber-100 text-amber-700'
-                                                                }`}>{row.bookingStatus}</span>
-                                                        ) : (
-                                                            <span className={`inline-flex px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${row.taskResult === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
-                                                                }`}>{row.taskResult}</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="p-4 font-black text-gray-900">
-                                                        {row.revenue > 0 ? `€${row.revenue.toFixed(2)}` : '-'}
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <span className={`inline-flex px-2 py-1 rounded text-[10px] font-bold tracking-widest ${row.executionStatus === 'Executed' ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50'
-                                                            }`}>{row.executionStatus}</span>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <span className={`font-bold ${row.rebookingRequest === 'Yes' ? 'text-blue-600' : 'text-gray-400'}`}>
-                                                            {row.rebookingRequest}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {paginatedReport.length === 0 && (
-                                                <tr>
-                                                    <td colSpan={7} className="p-12 text-center text-gray-400 font-medium">No activity records found matching your filters.</td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {/* Pagination Controls */}
-                                <div className="p-4 border-t border-gray-100 flex justify-between items-center bg-gray-50/50">
-                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                        Showing {filteredReport.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredReport.length)} of {filteredReport.length}
-                                    </span>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline" size="sm"
-                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                            disabled={currentPage === 1}
-                                            className="text-xs h-8 bg-white"
-                                        >
-                                            Prev
-                                        </Button>
-                                        <Button
-                                            variant="outline" size="sm"
-                                            onClick={() => setCurrentPage(p => p + 1)}
-                                            disabled={currentPage * itemsPerPage >= filteredReport.length}
-                                            className="text-xs h-8 bg-white"
-                                        >
-                                            Next
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Tab 2: Daily Booking Progress */}
-                    {activeTab === 'daily' && (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                <Card><CardContent className="p-4 text-center">
-                                    <p className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-1">Today Appts</p>
-                                    <p className="text-2xl font-black text-blue-600">{data.dailyStats?.total || 0}</p>
-                                </CardContent></Card>
-                                <Card><CardContent className="p-4 text-center">
-                                    <p className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-1">Confirmed</p>
-                                    <p className="text-2xl font-black text-emerald-600">{data.dailyStats?.confirmed || 0}</p>
-                                </CardContent></Card>
-                                <Card><CardContent className="p-4 text-center">
-                                    <p className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-1">Cancelled</p>
-                                    <p className="text-2xl font-black text-red-500">{data.dailyStats?.cancelled || 0}</p>
-                                </CardContent></Card>
-                                <Card><CardContent className="p-4 text-center">
-                                    <p className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-1">No Show</p>
-                                    <p className="text-2xl font-black text-amber-500">{data.dailyStats?.noShow || 0}</p>
-                                </CardContent></Card>
-                                <Card><CardContent className="p-4 text-center bg-emerald-50">
-                                    <p className="text-xs font-bold text-emerald-600 tracking-widest uppercase mb-1">Revenue</p>
-                                    <p className="text-2xl font-black text-emerald-700">€{data.dailyStats?.revenue?.toFixed(2) || '0.00'}</p>
-                                </CardContent></Card>
                             </div>
 
-                            <Card className="border-none shadow-xl shadow-gray-200/50">
-                                <CardHeader>
-                                    <CardTitle>Daily Bookings Trendline</CardTitle>
-                                </CardHeader>
-                                <CardContent className="h-96">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={data.dailyProgressChart}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                            <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={(val) => format(new Date(val), 'MMM d')} />
-                                            <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-                                            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} tickFormatter={val => `€${val}`} />
-                                            <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                                            <Legend />
-                                            <Line yAxisId="left" type="monotone" dataKey="total" name="Total Appointments" stroke="#8884d8" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                                            <Line yAxisId="left" type="monotone" dataKey="confirmed" name="Confirmed" stroke="#10b981" strokeWidth={3} />
-                                            <Line yAxisId="right" type="monotone" dataKey="revenue" name="Revenue (€)" stroke="#f59e0b" strokeWidth={3} strokeDasharray="5 5" />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
-
-                    {/* Tab 3: Sales Conversion */}
-                    {activeTab === 'conversion' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Card className="border-none shadow-xl shadow-gray-200/50">
-                                <CardHeader>
-                                    <CardTitle>Sales Conversion by Agent</CardTitle>
-                                </CardHeader>
-                                <CardContent className="h-80">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={data.performanceReport} layout="vertical" margin={{ left: 40, right: 20 }}>
-                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
-                                            <XAxis type="number" />
-                                            <YAxis dataKey="salesPerson" type="category" tick={{ fontSize: 11, fontWeight: 'bold' }} width={100} />
-                                            <RechartsTooltip cursor={{ fill: 'transparent' }} />
-                                            <Legend />
-                                            <Bar dataKey="leads" name="Leads" fill="#94a3b8" radius={[0, 4, 4, 0]} />
-                                            <Bar dataKey="confirmedBookings" name="Confirmed Bookings" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border-none shadow-xl shadow-gray-200/50">
-                                <CardHeader>
-                                    <CardTitle>Overall Booking Status Distribution</CardTitle>
-                                </CardHeader>
-                                <CardContent className="h-80 flex justify-center items-center relative">
-                                    {(() => {
-                                        const r = data.dailyProgressChart.reduce((acc: any, d: any) => {
-                                            acc.confirmed += d.confirmed;
-                                            acc.cancelled += d.cancelled;
-                                            acc.noShow += d.noShow;
-                                            acc.pending = d.total - d.confirmed - d.cancelled - d.noShow;
-                                            return acc;
-                                        }, { confirmed: 0, cancelled: 0, noShow: 0, pending: 0 });
-
-                                        const pieData = [
-                                            { name: 'Confirmed', value: r.confirmed },
-                                            { name: 'Cancelled', value: r.cancelled },
-                                            { name: 'No Show', value: r.noShow },
-                                            { name: 'Pending/Other', value: Math.max(0, r.pending) }
-                                        ].filter(i => i.value > 0);
-
-                                        return (
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie
-                                                        data={pieData}
-                                                        cx="50%" cy="50%"
-                                                        innerRadius={70}
-                                                        outerRadius={100}
-                                                        paddingAngle={5}
-                                                        dataKey="value"
-                                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                                        labelLine={false}
-                                                    >
-                                                        {pieData.map((_entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                        ))}
-                                                    </Pie>
-                                                    <RechartsTooltip />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        );
-                                    })()}
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
-
-                    {/* Tab 4: Tasks Progress */}
-                    {activeTab === 'tasks' && (
-                        <Card className="border-none shadow-xl shadow-gray-200/50">
-                            <CardHeader>
-                                <CardTitle>Task Management Progress</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-4">
-                                        {data.performanceReport.map((agent: any) => (
-                                            <div key={agent.salesPerson} className="bg-gray-50 rounded-xl p-4">
-                                                <div className="flex justify-between items-end mb-2">
-                                                    <div>
-                                                        <h4 className="font-black text-gray-800">{agent.salesPerson}</h4>
-                                                        <p className="text-xs text-gray-500 font-medium">{agent.completedTasks} / {agent.assignedTasks} Tasks Completed</p>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm whitespace-nowrap">
+                                    <thead className="bg-slate-50/80 text-[10px] uppercase font-black tracking-widest text-slate-400 border-b border-slate-100">
+                                        <tr>
+                                            <th className="p-4">Customer Details</th>
+                                            <th className="p-4">Agent</th>
+                                            <th className="p-4">Type / Action</th>
+                                            <th className="p-4">Status</th>
+                                            <th className="p-4">Revenue</th>
+                                            <th className="p-4">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50 bg-white">
+                                        {paginatedReport.map((row: any) => (
+                                            <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="p-4">
+                                                    <p className="font-black text-slate-900 text-xs">{row.clientName}</p>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase tracking-wider">
+                                                        {row.salesPersonName}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider font-mono">{row.eventType}</span>
+                                                        <span className="text-xs font-bold text-slate-700">{row.taskPerformed}</span>
                                                     </div>
-                                                    <span className="text-xl font-black text-blue-600">{agent.taskCompletionRate}%</span>
-                                                </div>
-                                                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`h-full rounded-full transition-all duration-1000 ${parseFloat(agent.taskCompletionRate) > 80 ? 'bg-emerald-500' :
-                                                            parseFloat(agent.taskCompletionRate) > 50 ? 'bg-blue-500' : 'bg-amber-500'
-                                                            }`}
-                                                        style={{ width: `${agent.taskCompletionRate}%` }}
-                                                    />
-                                                </div>
-                                            </div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${['completed', 'confirmed', 'arrived'].includes(row.bookingStatus?.toLowerCase()) ? 'bg-emerald-100 text-emerald-700' :
+                                                        ['cancelled', 'no_show', 'missed'].includes(row.bookingStatus?.toLowerCase()) ? 'bg-red-100 text-red-700' :
+                                                            'bg-amber-100 text-amber-700'
+                                                        }`}>
+                                                        {row.bookingStatus !== 'N/A' ? row.bookingStatus : row.taskResult}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className={`text-xs font-black ${row.revenue > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
+                                                        {row.revenue > 0 ? `€${row.revenue.toLocaleString()}` : '—'}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-slate-700">{format(new Date(row.date), 'MMM do')}</span>
+                                                        <span className="text-[10px] text-slate-400 font-medium">{format(new Date(row.date), 'HH:mm')}</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
                                         ))}
-                                    </div>
-                                    <div className="flex flex-col justify-center items-center bg-blue-50 rounded-3xl p-8">
-                                        <div className="text-center">
-                                            <p className="text-sm font-black uppercase tracking-widest text-blue-400 mb-2">Global Task Completion</p>
-                                            <h2 className="text-6xl font-black text-blue-600">
-                                                {data.salesConversionAnalytics?.assignedTasks > 0 ?
-                                                    ((data.salesConversionAnalytics.completedTasks / data.salesConversionAnalytics.assignedTasks) * 100).toFixed(0) : 0}%
-                                            </h2>
-                                            <p className="text-gray-600 font-medium mt-4">
-                                                The team has completed <span className="font-black text-gray-900">{data.salesConversionAnalytics?.completedTasks}</span> out of
-                                                <span className="font-black text-gray-900"> {data.salesConversionAnalytics?.assignedTasks}</span> total workflow activities over this period.
-                                            </p>
-                                        </div>
-                                    </div>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/20">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    Log entries: {filteredReport.length} records found
+                                </span>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline" size="sm"
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="text-[10px] h-8 bg-white font-bold px-4"
+                                    >
+                                        Previous
+                                    </Button>
+                                    <Button
+                                        variant="outline" size="sm"
+                                        onClick={() => setCurrentPage(p => p + 1)}
+                                        disabled={currentPage * itemsPerPage >= filteredReport.length}
+                                        className="text-[10px] h-8 bg-white font-bold px-4"
+                                    >
+                                        Next
+                                    </Button>
                                 </div>
-                            </CardContent>
+                            </div>
                         </Card>
-                    )}
-
-                    {/* Tab 5: Combined Performance */}
-                    {activeTab === 'performance' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {data.performanceReport.map((agent: any) => (
-                                <Card key={agent.salesPerson} className="border-none shadow-xl shadow-gray-200/50 overflow-hidden relative group">
-                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-150 transition-transform duration-500">
-                                        <Target className="w-24 h-24" />
-                                    </div>
-                                    <CardContent className="p-6 relative z-10">
-                                        <h3 className="text-xl font-black text-gray-900 tracking-tight mb-4 flex items-center gap-2">
-                                            <span className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm">{agent.salesPerson.charAt(0)}</span>
-                                            {agent.salesPerson}
-                                        </h3>
-
-                                        <div className="space-y-4 mb-6">
-                                            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Revenue Impact</span>
-                                                <span className="font-black text-emerald-600 tracking-tight">€{agent.revenue.toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Conversion Rate</span>
-                                                <span className="font-bold text-gray-800">{agent.conversionRate}%
-                                                    <span className="text-[10px] text-gray-400 ml-1">({agent.confirmedBookings}/{agent.leads})</span>
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Task Completion</span>
-                                                <span className="font-bold text-gray-800">{agent.taskCompletionRate}%</span>
-                                            </div>
-                                            <div className="flex justify-between items-center pb-2">
-                                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Booking Exec Rate</span>
-                                                <span className="font-bold text-gray-800">{agent.bookingExecutionRate}%</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl p-4 text-white text-center shadow-lg shadow-blue-500/30">
-                                            <p className="text-[10px] uppercase font-black tracking-[0.2em] mb-1 opacity-80">Performance Score</p>
-                                            <div className="text-3xl font-black tracking-tighter">
-                                                {agent.performanceScore} <span className="text-sm opacity-60 font-medium">/ 100</span>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    )}
-                </>
+                    </div>
+                </div>
             )}
         </div>
     );
 };
+
+export default SalesAnalyticsDashboard;

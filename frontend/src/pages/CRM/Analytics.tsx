@@ -185,18 +185,18 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
         </div>
       </div>
 
-      {/* Turnover KPI Section (MTD) */}
-      <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Turnover MTD</h2>
+      {/* Turnover KPI Section */}
+      <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Turnover for Period</h2>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
         <MetricCard
-          title="Monthly Target"
+          title="Period Target"
           value={analytics?.turnoverStats?.targetIsSet ? `€${analytics?.turnoverStats?.monthlyTarget.toLocaleString()}` : 'Not set'}
           icon={<Target className="w-5 h-5 text-gray-600" />}
-          trend={!analytics?.turnoverStats?.targetIsSet ? "Missing target" : "Current monthly goal"}
+          trend={!analytics?.turnoverStats?.targetIsSet ? "Missing target" : "Current period goal"}
           color={analytics?.turnoverStats?.targetIsSet ? "bg-gray-50 text-gray-700" : "bg-red-50 text-red-700"}
         />
         <MetricCard
-          title="Turnover MTD"
+          title="Turnover"
           value={`€${(analytics?.turnoverStats?.achieved || 0).toLocaleString()}`}
           icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
           trend="Euros achieved up to today"
@@ -302,7 +302,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
 
                 {/* Turnover Chart Panel */}
                 <div className="md:col-span-2 mt-1 space-y-2">
-                  <h3 className="font-bold text-gray-500 text-[9px] uppercase tracking-wider">Turnover Trend (MTD)</h3>
+                  <h3 className="font-bold text-gray-500 text-[9px] uppercase tracking-wider">Turnover Trend</h3>
                   <div className="h-48 w-full bg-white border border-gray-100 rounded-lg p-2 shadow-sm overflow-hidden" style={{ minWidth: 0 }}>
                     {turnoverChartData.length > 0 ? (
                       <ResponsiveContainer width="99%" height="100%" debounce={50}>

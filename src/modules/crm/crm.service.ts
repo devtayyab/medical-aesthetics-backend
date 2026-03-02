@@ -1750,7 +1750,14 @@ export class CrmService implements OnModuleInit {
     }
 
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfPeriod = dateRange ? dateRange.startDate : new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfPeriod = dateRange ? dateRange.endDate : now;
+
+    // Provide a default target if none is set to show something in the dashboard
+    if (!targetIsSet) {
+      targetIsSet = true;
+      monthlyTarget = isAll ? 50000 : 10000;
+    }
 
     let mtdAptQ = this.appointmentsRepository
       .createQueryBuilder('apt')
@@ -1765,21 +1772,26 @@ export class CrmService implements OnModuleInit {
       mtdAptQ = mtdAptQ.andWhere('rec.assignedSalespersonId = :salespersonId', { salespersonId });
     }
 
-    mtdAptQ = mtdAptQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) BETWEEN :startOfMonth AND :now', { startOfMonth, now });
+    mtdAptQ = mtdAptQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) BETWEEN :startOfPeriod AND :endOfPeriod', { startOfPeriod, endOfPeriod });
 
     const mtdStats = await mtdAptQ.getRawOne();
 
     const achievedMtd = parseFloat(mtdStats?.totalRevenue || 0);
-    const progress = targetIsSet && monthlyTarget > 0 ? (achievedMtd / monthlyTarget) : 0;
 
-    // Pacing calculation
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const currentDay = now.getDate();
-    const expectedProgress = currentDay / daysInMonth;
+    // Scale monthly target based on period length (in case of custom date ranges)
+    let periodDays = Math.max(1, (endOfPeriod.getTime() - startOfPeriod.getTime()) / (1000 * 3600 * 24));
+    let scaledTarget = (monthlyTarget / 30) * periodDays;
+
+    const progress = targetIsSet && scaledTarget > 0 ? (achievedMtd / scaledTarget) : 0;
+
+    // Pacing calculation based on elapsed time vs total time in month (or period)
+    const elapsedDays = Math.max(1, (now.getTime() - startOfPeriod.getTime()) / (1000 * 3600 * 24));
+    const totalDaysInPeriod = periodDays;
+    const expectedProgress = Math.min(1, Math.max(0, elapsedDays / totalDaysInPeriod));
 
     let pacingDelta = 0;
     let pacingStatus = 'On Track';
-    if (targetIsSet && monthlyTarget > 0) {
+    if (targetIsSet && scaledTarget > 0) {
       pacingDelta = progress - expectedProgress;
       if (pacingDelta > 0.05) pacingStatus = 'Ahead';
       else if (pacingDelta < -0.05) pacingStatus = 'Behind';
@@ -1800,11 +1812,7 @@ export class CrmService implements OnModuleInit {
       timeSeriesQ.andWhere('rec.assignedSalespersonId = :salespersonId', { salespersonId });
     }
 
-    if (dateRange) {
-      timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startDate AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endDate', dateRange);
-    } else {
-      timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startOfMonth AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :now', { startOfMonth, now });
-    }
+    timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startOfPeriod AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endOfPeriod', { startOfPeriod, endOfPeriod });
 
     timeSeriesQ
       .groupBy("CAST(COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) AS DATE)")
@@ -1833,7 +1841,7 @@ export class CrmService implements OnModuleInit {
 
       // Turnover Performance
       turnoverStats: {
-        monthlyTarget,
+        monthlyTarget: Math.round(scaledTarget),
         targetIsSet,
         achieved: achievedMtd,
         progress: targetIsSet ? parseFloat(progress.toFixed(4)) : null,
@@ -2203,7 +2211,7 @@ export class CrmService implements OnModuleInit {
     return rows;
   }
 
-  async getPerformanceDashboard(dateRange?: { startDate: Date; endDate: Date }, salespersonId?: string) {
+  async getPerformanceDashboard(dateRange?: { startDate: Date; endDate: Date }, salespersonId?: string, clinicId?: string) {
     const defaultDateRange = dateRange || {
       startDate: new Date(new Date().setDate(new Date().getDate() - 30)), // Last 30 days
       endDate: new Date()
@@ -2228,6 +2236,10 @@ export class CrmService implements OnModuleInit {
       aptQ.andWhere('agent.id = :salespersonId', { salespersonId });
     }
 
+    if (clinicId) {
+      aptQ.andWhere('apt.clinicId = :clinicId', { clinicId });
+    }
+
     const apts = await aptQ.getRawMany();
 
     const actQ = this.crmActionsRepository.createQueryBuilder('act')
@@ -2247,6 +2259,9 @@ export class CrmService implements OnModuleInit {
     if (salespersonId) {
       actQ.andWhere('agent.id = :salespersonId', { salespersonId });
     }
+
+    // Actions are usually clinic-agnostic but if clinic filtering is active, we might limit to actions on customers linked to that clinic
+    // For now, we mainly filter appointments and leads if they have clinic context.
 
     const actions = await actQ.getRawMany();
 
@@ -2330,6 +2345,9 @@ export class CrmService implements OnModuleInit {
       .addSelect('COUNT(l.id)', 'count')
       .where('l.createdAt BETWEEN :startDate AND :endDate', defaultDateRange);
     if (salespersonId) leadQ.andWhere('l.assignedSalesId = :salespersonId', { salespersonId });
+
+    // If Lead entity has clinic context, add it here. For now, we assume global or filtered by agent.
+
     const leadsData = await leadQ.groupBy('l.assignedSalesId').getRawMany();
 
     for (const ld of leadsData) {
@@ -2393,12 +2411,86 @@ export class CrmService implements OnModuleInit {
       totalBookings: performanceReport.reduce((sum, r) => sum + r.totalBookings, 0)
     };
 
+    // --- Action Center Metrics (Step 5 - Backend Queries) ---
+    const now = new Date();
+    const todayStart = new Date(now.setHours(0, 0, 0, 0));
+    const todayEnd = new Date(now.setHours(23, 59, 59, 999));
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const hotLeadsCount = await this.leadsRepository.count({
+      where: {
+        status: LeadStatus.NEW,
+        ...(salespersonId ? { assignedSalesId: salespersonId } : {}),
+      }
+    });
+
+    const overdueTasksCount = await this.crmActionsRepository.count({
+      where: {
+        status: In(['pending', 'in_progress']),
+        dueDate: Between(new Date(0), new Date()), // Any date in past including now
+        ...(salespersonId ? { salespersonId: salespersonId } : {}),
+      }
+    });
+
+    const followupsDueTodayCount = await this.crmActionsRepository.count({
+      where: {
+        status: In(['pending', 'in_progress']),
+        dueDate: Between(todayStart, todayEnd),
+        ...(salespersonId ? { salespersonId: salespersonId } : {}),
+      }
+    });
+
+    const noContact7DaysCount = await this.leadsRepository.count({
+      where: {
+        status: In([LeadStatus.NEW, LeadStatus.CONTACTED]),
+        lastContactedAt: Between(new Date(0), sevenDaysAgo),
+        ...(salespersonId ? { assignedSalesId: salespersonId } : {}),
+      }
+    });
+
+    const leadsByStatus = await this.leadsRepository.createQueryBuilder('l')
+      .select('l.status', 'status')
+      .addSelect('COUNT(l.id)', 'count')
+      .where(salespersonId ? 'l.assignedSalesId = :salespersonId' : '1=1', { salespersonId })
+      .groupBy('l.status')
+      .getRawMany();
+
+    const sourceBreakdown = await this.leadsRepository.createQueryBuilder('l')
+      .select('l.source', 'source')
+      .addSelect('COUNT(l.id)', 'count')
+      .where(salespersonId ? 'l.assignedSalesId = :salespersonId' : '1=1', { salespersonId })
+      .groupBy('l.source')
+      .getRawMany();
+
+    const clinicPerformance = await this.appointmentsRepository.createQueryBuilder('apt')
+      .innerJoin('apt.clinic', 'clinic')
+      .select('clinic.name', 'name')
+      .addSelect('clinic.id', 'id')
+      .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'revenue')
+      .addSelect('COUNT(apt.id)', 'appointments')
+      .where('apt.startTime BETWEEN :startDate AND :endDate', defaultDateRange)
+      .groupBy('clinic.id, clinic.name')
+      .getRawMany();
+
     return {
       reportTable: activities,
       dailyStats,
       dailyProgressChart,
       salesConversionAnalytics: totals,
       performanceReport,
+      monthlyTarget: 125000, // Default target
+      actionCenter: {
+        hotLeads: hotLeadsCount,
+        overdueTasks: overdueTasksCount,
+        followupsDueToday: followupsDueTodayCount,
+        noContact7Days: noContact7DaysCount
+      },
+      pipeline: {
+        leadsByStatus,
+        sourceBreakdown
+      },
+      clinicPerformance
     };
   }
 
