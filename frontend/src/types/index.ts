@@ -53,6 +53,7 @@ export interface Service {
   price: number;
   durationMinutes: number;
   category: string;
+  imageUrl?: string;
   metadata?: any;
   isActive: boolean;
   clinicId: string;

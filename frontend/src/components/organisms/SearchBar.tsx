@@ -20,17 +20,27 @@ export interface SearchBarProps {
   };
 }
 
-// Dummy data for autocomplete
+// Treatment categories and items for autocomplete
 const SUGGESTIONS = {
+  categories: [
+    { id: "c1", name: "Hair Removal", count: 120 },
+    { id: "c2", name: "Injectables", count: 85 },
+    { id: "c3", name: "Skin Care", count: 210 },
+    { id: "c4", name: "Body", count: 45 },
+    { id: "c5", name: "Surgery", count: 12 },
+    { id: "c6", name: "Dental", count: 32 },
+  ],
   treatments: [
-    { id: "t1", name: "Botox Treatment" },
-    { id: "t2", name: "Dermal Fillers" },
-    { id: "t3", name: "Laser Hair Removal" },
-    { id: "t4", name: "Chemical Peel" },
+    { id: "t1", name: "Botox Treatment", category: "Injectables" },
+    { id: "t2", name: "Dermal Fillers", category: "Injectables" },
+    { id: "t3", name: "Laser Hair Removal", category: "Hair Removal" },
+    { id: "t4", name: "Chemical Peel", category: "Skin Care" },
+    { id: "t5", name: "HydraFacial", category: "Skin Care" },
+    { id: "t6", name: "Fat Dissolving", category: "Body" },
   ],
   clinics: [
-    { id: "c1", name: "Luxe Aesthetics London" },
-    { id: "c2", name: "SkinHealth Clinic" },
+    { id: "cl1", name: "Luxe Aesthetics London" },
+    { id: "cl2", name: "SkinHealth Clinic" },
   ]
 };
 
@@ -130,24 +140,44 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           {showAutocomplete && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
               <div className="p-2">
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 py-2">
-                  Treatments
+                <div className="text-xs font-black text-gray-400 uppercase tracking-widest px-3 py-2">
+                  Browse by Category
+                </div>
+                {SUGGESTIONS.categories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2.5 hover:bg-lime-50 rounded-lg text-sm font-bold text-gray-700 transition-colors flex items-center justify-between group"
+                    onClick={() => {
+                      setQuery(c.name);
+                      setShowAutocomplete(false);
+                      onSearch({ query: c.name, category: c.name });
+                    }}
+                  >
+                    <span className="group-hover:text-lime-700">{c.name}</span>
+                    <span className="text-[10px] text-gray-400 group-hover:text-lime-600 bg-gray-50 px-2 py-0.5 rounded-md">{c.count} venues</span>
+                  </button>
+                ))}
+
+                <div className="text-xs font-black text-gray-400 uppercase tracking-widest px-3 py-2 mt-2 border-t border-gray-100 pt-3">
+                  Popluar Treatments
                 </div>
                 {SUGGESTIONS.treatments.map((t) => (
                   <button
                     key={t.id}
                     type="button"
-                    className="w-full text-left px-3 py-2.5 hover:bg-gray-50 rounded-lg text-sm font-semibold text-gray-700 transition-colors"
+                    className="w-full text-left px-3 py-2.5 hover:bg-gray-50 rounded-lg text-sm font-semibold text-gray-700 transition-colors flex items-center justify-between"
                     onClick={() => {
                       setQuery(t.name);
                       setShowAutocomplete(false);
                     }}
                   >
-                    {t.name}
+                    <span>{t.name}</span>
+                    <span className="text-[10px] text-gray-400">{t.category}</span>
                   </button>
                 ))}
 
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 py-2 mt-2 border-t border-gray-100 pt-3">
+                <div className="text-xs font-black text-gray-400 uppercase tracking-widest px-3 py-2 mt-2 border-t border-gray-100 pt-3">
                   Clinics
                 </div>
                 {SUGGESTIONS.clinics.map((c) => (

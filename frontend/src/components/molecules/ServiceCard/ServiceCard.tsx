@@ -42,6 +42,11 @@ export const ServiceCard: React.FC<{
     <div className="group">
       <div className={serviceRow(isSelected)}>
         <div className="flex-1 pr-6">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2 py-0.5 bg-lime-50 text-[10px] font-black uppercase text-lime-600 rounded-md border border-lime-100">
+              {service.category}
+            </span>
+          </div>
           <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-1 group-hover:text-lime-600 transition-colors">
             {service.name}
           </h4>

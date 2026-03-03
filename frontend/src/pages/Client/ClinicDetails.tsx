@@ -65,6 +65,7 @@ export const ClinicDetails: React.FC = () => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   const [activeTab, setActiveTab] = useState<'treatments' | 'about' | 'reviews'>('treatments');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   useEffect(() => {
     if (id) {
@@ -139,19 +140,52 @@ export const ClinicDetails: React.FC = () => {
               </div>
 
               {activeTab === 'treatments' && (
-                <div className="space-y-4">
-                  <h3 className="text-2xl font-black text-gray-900 uppercase italic mb-6">Popular Treatments</h3>
-                  <div className="divide-y divide-gray-100">
-                    {serviceData.map((service: Service) => (
-                      <ServiceCard
-                        key={service.id}
-                        service={service}
-                        isSelected={selectedServices.some((s) => s.id === service.id)}
-                        onAdd={handleAddService}
-                        onRemove={handleRemoveService}
-                      />
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-400">
+                  <div className="flex flex-wrap gap-2 mb-8">
+                    {['All', ...Array.from(new Set(serviceData.map(s => s.category).filter(Boolean)))].map(category => (
+                      <button
+                        key={category}
+                        onClick={() => setSelectedCategory(category)}
+                        className={`px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all border ${selectedCategory === category
+                          ? 'bg-black text-white border-black shadow-lg'
+                          : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'
+                          }`}
+                      >
+                        {category}
+                      </button>
                     ))}
                   </div>
+
+                  {['All', ...Array.from(new Set(serviceData.map(s => s.category).filter(Boolean)))]
+                    .filter(cat => selectedCategory === 'All' || cat === selectedCategory)
+                    .map(category => {
+                      const categoryServices = serviceData.filter(s =>
+                        selectedCategory === 'All' ? s.category === category : s.category === category
+                      );
+
+                      if (category === 'All') return null;
+                      if (categoryServices.length === 0) return null;
+
+                      return (
+                        <div key={category} className="space-y-6">
+                          <h3 className="text-xl font-black text-gray-900 uppercase italic flex items-center gap-3">
+                            <span className="w-1.5 h-6 bg-lime-500 rounded-full" />
+                            {category}
+                          </h3>
+                          <div className="divide-y divide-gray-100 bg-gray-50/30 rounded-3xl px-6">
+                            {categoryServices.map((service: Service) => (
+                              <ServiceCard
+                                key={service.id}
+                                service={service}
+                                isSelected={selectedServices.some((s) => s.id === service.id)}
+                                onAdd={handleAddService}
+                                onRemove={handleRemoveService}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               )}
 
