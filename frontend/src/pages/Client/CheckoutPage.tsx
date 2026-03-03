@@ -44,7 +44,7 @@ export const CheckoutPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const crmState = (location.state || {}) as any;
-    const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading } = useSelector((state: RootState) => state.booking);
+    const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading, holdId } = useSelector((state: RootState) => state.booking);
     const { user } = useSelector((state: RootState) => state.auth);
 
     const [paymentMethod, setPaymentMethod] = useState<'card' | 'venue' | 'paypal'>('card');
@@ -79,7 +79,8 @@ export const CheckoutPage: React.FC = () => {
                 endTime: selectedTimeSlot.endTime,
                 status: 'confirmed',
                 paymentMethod,
-                clientDetails: formData
+                clientDetails: formData,
+                holdId
             };
 
             const result = await dispatch(createAppointment(appointmentData));
@@ -219,7 +220,7 @@ export const CheckoutPage: React.FC = () => {
                                 <div>
                                     <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Clinic</h4>
                                     <p className="text-base font-black text-gray-900 uppercase italic">{selectedClinic?.name}</p>
-                                    <p className="text-xs text-gray-500 mt-1">{selectedClinic?.address.city}, {selectedClinic?.address.postalCode}</p>
+                                    <p className="text-xs text-gray-500 mt-1">{selectedClinic?.address.city}, {selectedClinic?.address.zipCode}</p>
                                 </div>
 
                                 <div>

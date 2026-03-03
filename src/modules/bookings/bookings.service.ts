@@ -15,8 +15,20 @@ import { UserRole } from '../../common/enums/user-role.enum';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { forwardRef, Inject } from '@nestjs/common';
 
+import * as fs from 'fs';
+import * as path from 'path';
+
 @Injectable()
 export class BookingsService {
+  private readonly logPath = path.join(process.cwd(), 'logs', 'appointment-debug.log');
+
+  private logDebug(msg: string, data?: any) {
+    const timestamp = new Date().toISOString();
+    const line = `[${timestamp}] ${msg} ${data ? JSON.stringify(data) : ''}\n`;
+    if (!fs.existsSync(path.dirname(this.logPath))) fs.mkdirSync(path.dirname(this.logPath), { recursive: true });
+    fs.appendFileSync(this.logPath, line);
+    console.log(msg, data);
+  }
   constructor(
     @InjectRepository(Appointment)
     private appointmentsRepository: Repository<Appointment>,
@@ -89,7 +101,14 @@ export class BookingsService {
           throw new NotFoundException(`Invalid Client ID format: ${clientId}`);
         }
 
-        const lead = await this.crmService.getLead(clientId);
+        let lead = null;
+        try {
+          lead = await this.crmService.getLead(clientId);
+        } catch (err) {
+          if (!(err instanceof NotFoundException)) {
+            throw err;
+          }
+        }
         if (lead) {
           // Check if user with this email already exists
           const existingUser = await this.usersRepository.findOne({ where: { email: lead.email } });
@@ -130,15 +149,46 @@ export class BookingsService {
             }
           }
         } else {
-          throw new NotFoundException(`Client not found as User or Lead: ${clientId}`);
+          // If still not found, and we have client details, create a new customer
+          if (createAppointmentDto.clientDetails) {
+            try {
+              const fullName = createAppointmentDto.clientDetails.fullName || 'Guest Client';
+              const nameParts = fullName.trim().split(/\s+/);
+              const firstName = nameParts[0] || 'Unknown';
+              const lastName = nameParts.slice(1).join(' ') || 'Client';
+
+              const { user: savedUser } = await this.crmService.createCustomer({
+                email: createAppointmentDto.clientDetails.email || `guest-${Date.now()}@example.com`,
+                firstName,
+                lastName,
+                phone: createAppointmentDto.clientDetails.phone || undefined,
+              });
+              clientId = savedUser.id;
+            } catch (createErr) {
+              console.error('Failed to create guest customer during booking:', createErr);
+              const retryWhere: any[] = [{ email: createAppointmentDto.clientDetails.email }];
+              if (createAppointmentDto.clientDetails.phone) {
+                retryWhere.push({ phone: createAppointmentDto.clientDetails.phone });
+              }
+              const retryUser = await this.usersRepository.findOne({
+                where: retryWhere
+              });
+              if (retryUser) {
+                clientId = retryUser.id;
+              } else {
+                throw new BadRequestException(`Failed to create guest record: ${createErr.message}`);
+              }
+            }
+          } else {
+            throw new NotFoundException(`Client not found as User or Lead: ${clientId}`);
+          }
         }
       } catch (e) {
-        if (e instanceof NotFoundException) throw e;
+        if (e instanceof NotFoundException || e instanceof BadRequestException) throw e;
         console.error('Lead lookup/conversion failed:', e);
         throw new BadRequestException(`Lead conversion failed: ${e.message}`);
       }
     }
-
     const appointmentData = {
       ...createAppointmentDto,
       clientId, // Use potentially updated clientId

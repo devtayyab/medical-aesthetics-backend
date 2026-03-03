@@ -80,69 +80,98 @@ const userMenuStyle = css`
   display: inline-block;
 `;
 
-const userMenuButtonStyle = css`
+const notificationButtonStyle = css`
   display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm);
+  position: relative;
+  padding: 10px;
   border: none;
-  background: none;
+  background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
-  border-radius: var(--radius-lg);
-  transition: background-color var(--transition-fast);
-  color: white;
-  font-weight: var(--font-weight-medium);
+  border-radius: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #8c8c8c;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  
   &:hover {
     background-color: #cbff38;
     color: black;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px -10px rgba(203, 255, 56, 0.3);
+    border-color: #cbff38;
+  }
+`;
+
+const userMenuButtonStyle = css`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  border-radius: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: white;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+  
+  &:hover {
+    background-color: #cbff38;
+    color: black;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px -10px rgba(203, 255, 56, 0.3);
+    border-color: #cbff38;
+  }
+
+  span {
+    font-style: italic;
   }
 `;
 
 const userMenuDropdownStyle = css`
   position: absolute;
-  top: 100%;
+  top: calc(100% + 12px);
   right: 0;
-  background-color: var(--color-white);
-  border: 1px solid var(--color-medical-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
-  min-width: 200px;
-  z-index: 50;
-  padding: var(--spacing-sm);
+  background-color: white;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  min-width: 240px;
+  z-index: 1001;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  animation: slide-down 0.2s ease-out;
+
+  @keyframes slide-down {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
 `;
 
 const userMenuItemStyle = css`
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   width: 100%;
-  padding: 0.5rem 1rem;
+  padding: 12px 16px;
   text-align: left;
   border: none;
   background: none;
   cursor: pointer;
-  border-radius: 0.375rem;
-  transition: all 0.2s;
+  border-radius: 12px;
+  transition: all 0.2s ease;
   text-decoration: none;
-  color: #4a5568;
-  font-weight: 500;
+  color: #1a202c;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  
   &:hover {
     background-color: #f7fafc;
-    color: #2d3748;
-  }
-`;
-
-const notificationButtonStyle = css`
-  display: flex;
-  position: relative;
-  padding: var(--spacing-sm);
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: var(--radius-lg);
-  transition: background-color var(--transition-fast);
-  color: white; /* Force white color so it is visible on dark header */
-  &:hover {
-    background-color: #cbff38;
-    color: black;
+    color: #cbff38;
+    background: #000;
   }
 `;
 
@@ -278,7 +307,7 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-[#2D3748] py-3 sm:py-5 sticky top-0 z-50">
+    <header className="bg-[#000000] py-4 sm:py-6 sticky top-0 z-50 border-b border-white/5 backdrop-blur-md">
       <div
         className={css`
           ${containerStyle};
@@ -287,29 +316,29 @@ export const Header: React.FC = () => {
             : ""}
         `}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
-            className="p-1 rounded-full text-white hover:bg-[#CBFF38] hover:text-black transition-colors"
+            className="size-10 rounded-xl text-gray-400 border border-white/10 flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all font-black"
             title="Go Back"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={18} />
           </button>
           <button
             onClick={() => navigate(1)}
-            className="p-1 rounded-full text-white hover:bg-[#CBFF38] hover:text-black transition-colors"
+            className="size-10 rounded-xl text-gray-400 border border-white/10 flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all font-black"
             title="Go Forward"
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={18} />
           </button>
           <Link
             to={
               clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : (user?.role === "SUPER_ADMIN" || user?.role === "manager") ? "/admin/manager-dashboard" : "/"
             }
-            className={`text-[#CBFF38] text-2xl font-bold flex items-center ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
+            className={`flex items-center ml-2 ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
               }`}
           >
-            <img src={SiteLogo} alt="Site Logo" className="w-[140px] sm:w-[200px]" />
+            <img src={SiteLogo} alt="Site Logo" className="w-[180px] sm:w-[240px] drop-shadow-[0_0_15px_rgba(203,255,56,0.1)]" />
           </Link>
         </div>
 
@@ -318,59 +347,26 @@ export const Header: React.FC = () => {
           <>
             {user?.role !== 'salesperson' && (
               <div className={searchContainerStyle}>
-                <ul className="flex justify-center items-center gap-8 text-white font-medium whitespace-nowrap">
-                  {/* <li
-                  className={`cursor-pointer ${location.pathname === "/"
-                    ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                    : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                    }`}
-                >
-                  <Link
-                    to="/"
-                    className={`no-underline ${location.pathname === "/"
-                      ? "text-[#CBFF38]"
-                      : "text-white"
-                      }`}
-                  >
-                    Home
-                  </Link>
-                </li> */}
-                  {/* {(user?.role === "salesperson") && (
-                  <li
-                    className={`cursor-pointer ${location.pathname === "/crm"
-                      ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                      : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                      }`}
-                  >
+                <ul className="flex justify-center items-center gap-10 text-white whitespace-nowrap">
+                  <li className="cursor-pointer">
                     <Link
-                      to="/crm"
-                      className={`no-underline ${location.pathname === "/crm"
-                        ? "text-[#CBFF38]"
-                        : "text-white"
+                      to="/search"
+                      className={`text-[11px] font-black uppercase tracking-[0.15em] italic transition-all ${location.pathname.startsWith("/search")
+                        ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
+                        : "text-gray-400 hover:text-white"
                         }`}
                     >
-                      CRM
+                      Treatments
                     </Link>
                   </li>
-                )} */}
-                  {clinicRoles.includes(user?.role || "") && <>
-                    <li
-                      className={`cursor-pointer ${location.pathname.startsWith("/search")
-                        ? "text-[#CBFF38] border-b-2 border-[#CBFF38]"
-                        : "hover:text-[#CBFF38] hover:border-b-2 border-[#CBFF38]"
-                        }`}
+                  <li className="cursor-pointer">
+                    <Link
+                      to="/search?category=hair"
+                      className="text-[11px] font-black uppercase tracking-[0.15em] italic text-gray-400 hover:text-white transition-all"
                     >
-                      <Link
-                        to="/search"
-                        className={`no-underline ${location.pathname.startsWith("/search")
-                          ? "text-[#CBFF38]"
-                          : "text-white"
-                          }`}
-                      >
-                        Treatments
-                      </Link>
-                    </li>
-                  </>}
+                      Specialty
+                    </Link>
+                  </li>
                 </ul>
               </div>
             )}

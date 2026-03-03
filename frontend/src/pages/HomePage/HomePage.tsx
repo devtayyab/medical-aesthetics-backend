@@ -3,16 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   FaStethoscope,
-  FaHospital,
-  FaSearch,
-  FaMapMarkerAlt,
-  FaCalendarAlt,
   FaApple,
   FaGooglePlay,
   FaStar,
   FaBook,
   FaTh,
+  FaMapMarkerAlt
 } from "react-icons/fa";
+import { SearchBar } from "@/components/organisms/SearchBar";
 
 
 // import { Button } from "@/components/atoms/Button/Button";
@@ -132,8 +130,7 @@ export const HomePage: React.FC = () => {
     (state: RootState) => state.client
   );
 
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [location, setLocation] = React.useState("");
+
 
   const { isAuthenticated, isLoading: authLoading } = useSelector(
     (state: RootState) => state.auth
@@ -146,11 +143,12 @@ export const HomePage: React.FC = () => {
     }
   }, [dispatch, isAuthenticated, authLoading]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = (filters: any) => {
     const params = new URLSearchParams();
-    if (searchQuery) params.set("q", searchQuery);
-    if (location) params.set("location", location);
+    if (filters.query) params.set("q", filters.query);
+    if (filters.location) params.set("location", filters.location);
+    if (filters.date) params.set("date", filters.date);
+    if (filters.time) params.set("time", filters.time);
     navigate(`/search?${params.toString()}`);
   };
 
@@ -172,39 +170,15 @@ export const HomePage: React.FC = () => {
         }}
       >
         <div className="max-w-[1200px] mx-auto grid grid-cols-1 gap-8 items-center h-full px-4 sm:px-6 py-10 sm:py-0">
-          <div className="w-full max-w-[600px] mx-auto bg-white shadow-xl rounded-2xl px-5 py-8 sm:px-8 sm:py-10 border border-gray-100">
-            <h2 className="text-[#33373F] text-2xl sm:text-[32px] font-bold text-center mb-6 sm:mb-8 leading-tight">What would you like to improve?</h2>
+          <div className="w-full max-w-[900px] mx-auto">
+            <h2 className="text-white text-3xl sm:text-[48px] font-black text-center mb-8 leading-tight drop-shadow-md uppercase italic">
+              Book your next <span className="text-[#CBFF38]">beauty treatment</span>
+            </h2>
 
-            <form onSubmit={handleSearch} className="space-y-4">
-              <div className="flex items-center border border-gray-200 rounded-xl px-4 py-3 sm:py-4 bg-gray-50 focus-within:bg-white focus-within:border-lime-400 focus-within:ring-2 focus-within:ring-lime-100 transition-all">
-                <FaSearch className="text-gray-400 mr-3 text-lg" />
-                <input
-                  type="text"
-                  placeholder="Find Treatments (e.g. Botox)"
-                  className="w-full outline-none text-gray-700 bg-transparent placeholder-gray-400 text-base"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <div className="flex items-center border border-gray-200 rounded-xl px-4 py-3 sm:py-4 bg-gray-50 focus-within:bg-white focus-within:border-lime-400 focus-within:ring-2 focus-within:ring-lime-100 transition-all">
-                <FaMapMarkerAlt className="text-gray-400 mr-3 text-lg" />
-                <input
-                  type="text"
-                  placeholder="Location (e.g. London)"
-                  className="w-full outline-none text-gray-700 bg-transparent placeholder-gray-400 text-base"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="!mt-6 sm:!mt-8 w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 bg-[#CBFF38] text-[#203400] hover:bg-[#bce633] transition-all shadow-md hover:shadow-lg transform active:scale-[0.99]"
-              >
-                <FaSearch /> Search
-              </button>
-            </form>
+            <SearchBar
+              onSearch={handleSearch}
+              className="mx-auto !p-6 bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl"
+            />
           </div>
         </div>
       </section>

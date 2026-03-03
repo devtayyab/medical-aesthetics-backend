@@ -108,7 +108,22 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
           <div className="flex items-center gap-2 text-sm">
             <Clock size={16} className="text-lime-600" />
             <span className="font-bold text-gray-900">
-              Next available: <span className="text-lime-700">{searchDate ? new Date(searchDate).toLocaleDateString('en-GB') : "Today"}, 11:00 AM</span>
+              Next available: <span className="text-lime-700">
+                {(() => {
+                  if (!searchDate) return "Today";
+                  const d = new Date(searchDate);
+                  const today = new Date();
+                  const tomorrow = new Date();
+                  tomorrow.setDate(today.getDate() + 1);
+
+                  const isToday = d.toDateString() === today.toDateString();
+                  const isTomorrow = d.toDateString() === tomorrow.toDateString();
+
+                  if (isToday) return "Today";
+                  if (isTomorrow) return "Tomorrow";
+                  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                })()}, 11:00 AM
+              </span>
             </span>
           </div>
           <button
