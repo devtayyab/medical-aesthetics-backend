@@ -196,91 +196,95 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
           {/* Date Picker Popover */}
           {showDatePicker && (
-            <div className="absolute top-14 left-0 w-full min-w-[280px] mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 p-5 z-[60]">
+            <div className="absolute top-14 left-0 w-full md:w-[600px] mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 p-5 z-[60]">
 
-              <div className="mb-5">
-                <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-3">Date</label>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${tempDate === new Date().toISOString().split("T")[0] && dateMode === 'preset' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
-                    onClick={() => setPresetDate(0)}
-                  >
-                    Today
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${tempDate === new Date(Date.now() + 86400000).toISOString().split("T")[0] && dateMode === 'preset' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
-                    onClick={() => setPresetDate(1)}
-                  >
-                    Tomorrow
-                  </Button>
-
-                  {dateMode !== 'custom' ? (
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* Date Section */}
+                <div className="flex-1">
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-3">Date</label>
+                  <div className="flex flex-col gap-2">
                     <Button
                       type="button"
                       variant="outline"
-                      className="justify-start py-3 px-4 text-sm font-bold border-2 border-gray-100 text-gray-600 hover:border-gray-300 rounded-xl transition-all"
-                      onClick={() => setDateMode('custom')}
+                      className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${tempDate === new Date().toISOString().split("T")[0] && dateMode === 'preset' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
+                      onClick={() => setPresetDate(0)}
                     >
-                      Pick date...
+                      Today
                     </Button>
-                  ) : (
-                    <div className="relative border-2 border-[#CBFF38] rounded-xl p-3 flex items-center bg-lime-50/50 mt-1 animate-in fade-in slide-in-from-top-2">
-                      <CalendarIcon className="text-lime-700 w-5 h-5 mr-3 shrink-0" />
-                      <input
-                        type="date"
-                        className="w-full bg-transparent outline-none text-sm font-bold text-gray-800"
-                        value={tempDate || ''}
-                        onChange={(e) => setTempDate(e.target.value)}
-                        autoFocus
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mb-6 pt-5 border-t border-gray-100">
-                <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-3">Time</label>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${timeMode === 'any' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
-                    onClick={() => { setTimeMode('any'); setTempTime(null); }}
-                  >
-                    Any time
-                  </Button>
-
-                  {timeMode !== 'custom' ? (
                     <Button
                       type="button"
                       variant="outline"
-                      className="justify-start py-3 px-4 text-sm font-bold border-2 border-gray-100 text-gray-600 hover:border-gray-300 rounded-xl transition-all"
-                      onClick={() => { setTimeMode('custom'); setTempTime("morning"); }}
+                      className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${tempDate === new Date(Date.now() + 86400000).toISOString().split("T")[0] && dateMode === 'preset' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
+                      onClick={() => setPresetDate(1)}
                     >
-                      Pick time...
+                      Tomorrow
                     </Button>
-                  ) : (
-                    <div className="relative border-2 border-[#CBFF38] rounded-xl p-3 flex items-center bg-lime-50/50 mt-1 animate-in fade-in slide-in-from-top-2">
-                      <Clock className="text-lime-700 w-5 h-5 mr-3 shrink-0" />
-                      <select
-                        className="w-full bg-transparent outline-none text-sm font-bold text-gray-800 cursor-pointer"
-                        value={tempTime || "morning"}
-                        onChange={(e) => setTempTime(e.target.value)}
+
+                    {dateMode !== 'custom' ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="justify-start py-3 px-4 text-sm font-bold border-2 border-gray-100 text-gray-600 hover:border-gray-300 rounded-xl transition-all"
+                        onClick={() => setDateMode('custom')}
                       >
-                        <option value="morning">Morning (8am - 12pm)</option>
-                        <option value="afternoon">Afternoon (12pm - 5pm)</option>
-                        <option value="evening">Evening (5pm on)</option>
-                      </select>
-                    </div>
-                  )}
+                        Pick date...
+                      </Button>
+                    ) : (
+                      <div className="relative border-2 border-[#CBFF38] rounded-xl p-3 flex items-center bg-lime-50/50 mt-1 animate-in fade-in slide-in-from-top-2">
+                        <CalendarIcon className="text-lime-700 w-5 h-5 mr-3 shrink-0" />
+                        <input
+                          type="date"
+                          className="w-full bg-transparent outline-none text-sm font-bold text-gray-800"
+                          value={tempDate || ''}
+                          onChange={(e) => setTempDate(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Time Section */}
+                <div className="flex-1 md:border-l md:border-t-0 border-t border-gray-100 md:pl-6 pt-5 md:pt-0">
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-3">Time</label>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${timeMode === 'any' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
+                      onClick={() => { setTimeMode('any'); setTempTime(null); }}
+                    >
+                      Any time
+                    </Button>
+
+                    {timeMode !== 'custom' ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="justify-start py-3 px-4 text-sm font-bold border-2 border-gray-100 text-gray-600 hover:border-gray-300 rounded-xl transition-all"
+                        onClick={() => { setTimeMode('custom'); setTempTime("morning"); }}
+                      >
+                        Pick time...
+                      </Button>
+                    ) : (
+                      <div className="relative border-2 border-[#CBFF38] rounded-xl p-3 flex items-center bg-lime-50/50 mt-1 animate-in fade-in slide-in-from-top-2">
+                        <Clock className="text-lime-700 w-5 h-5 mr-3 shrink-0" />
+                        <select
+                          className="w-full bg-transparent outline-none text-sm font-bold text-gray-800 cursor-pointer"
+                          value={tempTime || "morning"}
+                          onChange={(e) => setTempTime(e.target.value)}
+                        >
+                          <option value="morning">Morning (8am - 12pm)</option>
+                          <option value="afternoon">Afternoon (12pm - 5pm)</option>
+                          <option value="evening">Evening (5pm on)</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-6 mt-6 border-t border-gray-100">
                 <Button
                   type="button"
                   className="w-full bg-black text-white hover:bg-gray-800 py-4 rounded-xl font-bold transition-all shadow-md active:scale-95"
