@@ -57,6 +57,7 @@ export const createAppointment = createAsyncThunk(
     clientId: string;
     startTime: string;
     endTime: string;
+    status?: string;
     notes?: string;
     paymentMethod?: string;
     advancePaymentAmount?: number;
