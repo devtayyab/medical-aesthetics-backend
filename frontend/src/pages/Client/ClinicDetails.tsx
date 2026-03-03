@@ -215,7 +215,7 @@ export const ClinicDetails: React.FC = () => {
               <div className="mt-8 pt-8 border-t border-gray-100">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-sm font-black uppercase text-gray-400">Total Selected</span>
-                  <span className="text-2xl font-black text-gray-900">£{selectedServices.reduce((acc, s) => acc + s.price, 0)}</span>
+                  <span className="text-2xl font-black text-gray-900">£{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 <Button
                   fullWidth
