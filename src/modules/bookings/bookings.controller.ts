@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
@@ -57,6 +58,7 @@ export class BookingsController {
     return this.bookingsService.holdSlot(holdSlotDto);
   }
 
+  @Public()
   @Post('appointments')
   @ApiOperation({ summary: 'Confirm appointment booking' })
   async createAppointment(@Body() createAppointmentDto: CreateAppointmentDto, @Request() req: any) {
@@ -94,10 +96,17 @@ export class BookingsController {
 
   @Patch('appointments/:id/reschedule')
   @ApiOperation({ summary: 'Reschedule appointment' })
-  reschedule(
+  async reschedule(
     @Param('id') id: string,
     @Body() body: { startTime: string; endTime: string },
+    @Request() req,
   ) {
+    const appointment = await this.bookingsService.findById(id);
+    const timeDiff = new Date(appointment.startTime).getTime() - Date.now();
+    if (timeDiff < 24 * 60 * 60 * 1000 && req.user.role === 'client') {
+      throw new BadRequestException('Cannot reschedule within 24 hours of appointment');
+    }
+
     return this.bookingsService.reschedule(
       id,
       new Date(body.startTime),
@@ -107,7 +116,12 @@ export class BookingsController {
 
   @Patch('appointments/:id/cancel')
   @ApiOperation({ summary: 'Cancel appointment' })
-  cancel(@Param('id') id: string) {
+  async cancel(@Param('id') id: string, @Request() req) {
+    const appointment = await this.bookingsService.findById(id);
+    const timeDiff = new Date(appointment.startTime).getTime() - Date.now();
+    if (timeDiff < 24 * 60 * 60 * 1000 && req.user.role === 'client') {
+      throw new BadRequestException('Cannot cancel within 24 hours of appointment');
+    }
     return this.bookingsService.updateStatus(id, AppointmentStatus.CANCELLED);
   }
 

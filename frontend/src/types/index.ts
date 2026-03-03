@@ -53,6 +53,7 @@ export interface Service {
   price: number;
   durationMinutes: number;
   category: string;
+  imageUrl?: string;
   metadata?: any;
   isActive: boolean;
   clinicId: string;
@@ -111,7 +112,7 @@ export interface LoyaltyBalance {
 export interface Notification {
   id: string;
   recipientId: string;
-  type: 'push' | 'sms' | 'viber' | 'email';
+  type: 'push' | 'sms' | 'viber' | 'email' | 'appointment' | 'task' | 'general';
   title: string;
   message: string;
   data?: any;
@@ -135,6 +136,8 @@ export interface SearchFilters {
   query?: string;
   location?: string;
   category?: string;
+  date?: string;
+  time?: string;
   priceRange?: [number, number];
   rating?: number;
   distance?: number;

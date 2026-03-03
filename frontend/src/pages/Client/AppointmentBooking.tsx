@@ -17,7 +17,6 @@ import {
 import { RootState, AppDispatch } from "@/store";
 import type { TimeSlot } from "@/types";
 import { css } from "@emotion/css";
-import LayeredBG from "@/assets/LayeredBg.svg";
 import {
   format,
   addMonths,
@@ -32,42 +31,20 @@ import {
   isBefore,
   startOfToday
 } from "date-fns";
-import { FaChevronLeft, FaChevronRight, FaClock, FaCheckCircle } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaClock, FaCheckCircle, FaCalendarAlt } from "react-icons/fa";
 
 const containerStyle = css`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px 1rem;
-  position: relative;
-  @media (min-width: 768px) {
-    padding: 40px 2rem;
-  }
+  padding: 40px 1rem;
 `;
 
-const calendarContainerStyle = css`
+const cardStyle = css`
   background: white;
   border-radius: 24px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-  padding: 20px;
+  padding: 32px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.05);
   border: 1px solid #f0f0f0;
-  @media (min-width: 768px) {
-    padding: 30px;
-  }
-`;
-
-const timeSlotStyle = (isSelected: boolean, isAvailable: boolean) => css`
-  padding: 12px;
-  text-align: center;
-  border-radius: 12px;
-  cursor: ${isAvailable ? 'pointer' : 'not-allowed'};
-  border: 1px solid ${isSelected ? '#CBFF38' : '#f0f0f0'};
-  background: ${isSelected ? '#CBFF38' : isAvailable ? 'white' : '#f9f9f9'};
-  color: ${isAvailable ? '#333' : '#ccc'};
-  transition: all 0.2s;
-  font-weight: 500;
-  &:hover {
-    ${isAvailable && !isSelected && 'background: #f7faeb; border-color: #CBFF38;'}
-  }
 `;
 
 const dayStyle = (isCurrentMonth: boolean, isSelected: boolean, isPast: boolean) => css`
@@ -76,13 +53,30 @@ const dayStyle = (isCurrentMonth: boolean, isSelected: boolean, isPast: boolean)
   align-items: center;
   justify-content: center;
   cursor: ${isPast ? 'not-allowed' : 'pointer'};
-  border-radius: 50%;
-  font-weight: ${isSelected ? '600' : '400'};
+  border-radius: 12px;
+  font-weight: ${isSelected ? '900' : '600'};
+  font-size: 14px;
   background: ${isSelected ? '#CBFF38' : 'transparent'};
-  color: ${isPast ? '#ccc' : isCurrentMonth ? '#333' : '#bbb'};
+  color: ${isPast ? '#e2e8f0' : isCurrentMonth ? '#1a202c' : '#cbd5e0'};
   transition: all 0.2s;
   &:hover {
-    ${!isPast && !isSelected && 'background: #f0f0f0;'}
+    ${!isPast && !isSelected && 'background: #f7fafc; color: #CBFF38;'}
+  }
+`;
+
+const slotButton = (isSelected: boolean, isAvailable: boolean) => css`
+  padding: 14px;
+  text-align: center;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  transition: all 0.2s;
+  cursor: ${isAvailable ? 'pointer' : 'not-allowed'};
+  border: 2px solid ${isSelected ? '#CBFF38' : '#f7fafc'};
+  background: ${isSelected ? '#CBFF38' : isAvailable ? 'white' : '#f7fafc'};
+  color: ${isSelected ? '#000' : isAvailable ? '#4a5568' : '#cbd5e0'};
+  &:hover {
+    ${isAvailable && !isSelected && 'border-color: #CBFF38; color: #000;'}
   }
 `;
 
@@ -109,6 +103,7 @@ export const AppointmentBooking: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDateState, setSelectedDateState] = useState(new Date());
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [showMobileTimes, setShowMobileTimes] = useState(false);
 
   const hasProcessedServices = useRef(false);
 
@@ -125,141 +120,52 @@ export const AppointmentBooking: React.FC = () => {
 
   useEffect(() => {
     if (services.length > 0 && serviceIds.length > 0 && clinicId && !hasProcessedServices.current) {
-      console.log('🔍 Processing services:', { services, serviceIds, clinicId });
       const servicesToAdd = services.filter((s) => serviceIds.includes(s.id));
       servicesToAdd.forEach((service) => dispatch(addService(service)));
 
-      // Auto fetch for today or selected date
-      const fetchParams = {
+      dispatch(fetchAvailability({
         clinicId,
         serviceId: serviceIds[0],
         date: format(selectedDateState, "yyyy-MM-dd"),
-      };
-      console.log('📅 Fetching availability with params:', fetchParams);
-      dispatch(fetchAvailability(fetchParams));
+      }));
       hasProcessedServices.current = true;
     }
   }, [dispatch, services, serviceIds, clinicId, selectedDateState]);
 
-  // Debug logging for state changes
-  useEffect(() => {
-    console.log('🔍 Booking State Updated:', {
-      availableSlots: availableSlots.length,
-      selectedSlot,
-      selectedServices: selectedServices.length,
-      clinicId,
-      serviceIds,
-      userId: user?.id,
-      isLoading: bookingLoading
-    });
-  }, [availableSlots, selectedSlot, selectedServices, clinicId, serviceIds, user, bookingLoading]);
-
   const handleDateClick = (day: Date) => {
-    console.log('📅 Date clicked:', format(day, "yyyy-MM-dd"));
-    if (isBefore(day, startOfToday())) {
-      console.warn('⚠️ Past date selected, ignoring');
-      return;
-    }
+    if (isBefore(day, startOfToday())) return;
     setSelectedDateState(day);
     setSelectedSlot(null);
+    setShowMobileTimes(true);
     if (clinicId && serviceIds.length > 0) {
-      const fetchParams = {
+      dispatch(fetchAvailability({
         clinicId,
         serviceId: serviceIds[0],
         date: format(day, "yyyy-MM-dd"),
-      };
-      console.log('📅 Fetching availability for new date:', fetchParams);
-      dispatch(fetchAvailability(fetchParams));
+      }));
     }
   };
 
   const handleSlotClick = async (slot: TimeSlot) => {
-    console.log('🕐 Slot clicked:', slot);
-    if (!slot.available) {
-      console.warn('⚠️ Slot not available');
-      return;
-    }
+    if (!slot.available) return;
     setSelectedSlot(slot);
-
-    // Auto hold slot when selected
     if (clinicId && serviceIds.length > 0 && user?.id) {
-      try {
-        console.log('🔒 Holding slot:', {
-          clinicId,
-          serviceId: serviceIds[0],
-          providerId: slot.providerId || clinicId,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-        });
-        await dispatch(holdTimeSlot({
-          clinicId,
-          serviceId: serviceIds[0],
-          providerId: slot.providerId || clinicId,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-        })).unwrap();
-        console.log('✅ Slot held successfully');
-      } catch (err) {
-        console.error("❌ Failed to hold slot:", err);
-      }
-    } else {
-      console.warn('⚠️ Missing required data for holding slot:', {
+      dispatch(holdTimeSlot({
         clinicId,
-        serviceIdsLength: serviceIds.length,
-        userId: user?.id
-      });
+        serviceId: serviceIds[0],
+        providerId: slot.providerId || undefined,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      }));
     }
   };
 
   const handleProceed = () => {
-    console.log('🚀 Proceed to checkout clicked');
-    console.log('📋 Current state:', { selectedSlot, clinic, selectedServices });
-
-    if (!selectedSlot || !clinic) {
-      console.error('❌ Cannot proceed - missing data:', {
-        hasSelectedSlot: !!selectedSlot,
-        hasClinic: !!clinic
-      });
-      return;
-    }
-
-    console.log('✅ Setting booking data and navigating to checkout');
+    if (!selectedSlot || !clinic) return;
     dispatch(setSelectedClinic(clinic));
     dispatch(setSelectedDate(format(selectedDateState, "yyyy-MM-dd")));
     dispatch(setSelectedTimeSlot(selectedSlot));
-
-    console.log('🔄 Navigating to /checkout');
     navigate('/checkout');
-  };
-
-  // Calendar Helpers
-  const renderHeader = () => {
-    return (
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-[#33373F]">{format(currentMonth, "MMMM yyyy")}</h3>
-        <div className="flex gap-2">
-          <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <FaChevronLeft className="text-gray-600" />
-          </button>
-          <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <FaChevronRight className="text-gray-600" />
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderDays = () => {
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    return (
-      <div className="grid grid-cols-7 mb-2">
-        {days.map(d => (
-          <div key={d} className="text-center text-xs font-semibold text-gray-400 uppercase tracking-wider py-2">
-            {d}
-          </div>
-        ))}
-      </div>
-    );
   };
 
   const renderCells = () => {
@@ -271,159 +177,213 @@ export const AppointmentBooking: React.FC = () => {
     const rows = [];
     let days = [];
     let day = startDate;
-    let formattedDate = "";
 
     while (day <= endDate) {
       for (let i = 0; i < 7; i++) {
-        formattedDate = format(day, "d");
         const cloneDay = day;
         const isPast = isBefore(cloneDay, startOfToday());
-
         days.push(
           <div
             key={day.toISOString()}
             className={dayStyle(isSameMonth(day, monthStart), isSameDay(day, selectedDateState), isPast)}
             onClick={() => handleDateClick(cloneDay)}
           >
-            <span>{formattedDate}</span>
+            <span>{format(day, "d")}</span>
           </div>
         );
         day = addDays(day, 1);
       }
-      rows.push(
-        <div className="grid grid-cols-7 gap-2" key={day.toISOString()}>
-          {days}
-        </div>
-      );
+      rows.push(<div className="grid grid-cols-7 gap-1" key={day.toISOString()}>{days}</div>);
       days = [];
     }
-    return <div className="space-y-2">{rows}</div>;
+    return <div className="space-y-1">{rows}</div>;
   };
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center min-h-[400px]">Loading booking system...</div>;
-  }
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-400 font-black uppercase tracking-tighter animate-pulse">Establishing Connection...</div>;
 
   return (
-    <div className={containerStyle}>
-      <img src={LayeredBG} alt="" className="absolute top-0 left-0 w-full z-[-1] opacity-50" />
+    <div className="min-h-screen bg-[#F7FAFC]">
+      <div className={containerStyle}>
+        <div className="flex items-center justify-between mb-12">
+          <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-sm font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
+            <div className="size-8 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-black transition-all">
+              <FaChevronLeft size={10} />
+            </div>
+            Back to Clinic
+          </button>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-center">
+              <div className="size-8 rounded-full bg-[#CBFF38] text-black flex items-center justify-center font-black text-xs">1</div>
+              <span className="text-[10px] font-black uppercase mt-1">Time</span>
+            </div>
+            <div className="w-12 h-px bg-gray-200 -mt-4" />
+            <div className="flex flex-col items-center">
+              <div className="size-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center font-black text-xs">2</div>
+              <span className="text-[10px] font-black uppercase mt-1">Details</span>
+            </div>
+          </div>
+        </div>
 
-      {/* Navigation Header */}
-      <div className="flex items-center justify-between mb-8">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 hover:text-black font-medium transition-colors">
-          <FaChevronLeft size={14} /> Back
-        </button>
-        <div className="flex items-center gap-2 text-sm text-gray-400">
-          <span className="text-[#CBFF38] font-bold">01</span> Date & Time
-          <FaChevronRight size={10} />
-          <span>02</span> Checkout
-          <FaChevronRight size={10} />
-          <span>03</span> Confirm
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Calendar Section */}
+          <div className="lg:col-span-8 space-y-8">
+            <div className={cardStyle}>
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-black uppercase italic text-gray-900">{format(currentMonth, "MMMM yyyy")}</h2>
+                <div className="flex gap-2">
+                  <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="size-10 rounded-xl border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-all"><FaChevronLeft size={12} /></button>
+                  <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="size-10 rounded-xl border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-all"><FaChevronRight size={12} /></button>
+                </div>
+              </div>
+              <div className="grid grid-cols-7 gap-1 mb-4">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
+                  <div key={d} className="text-center text-[10px] font-black text-gray-300 uppercase tracking-widest py-2">{d}</div>
+                ))}
+              </div>
+              {renderCells()}
+            </div>
+
+            <div className={`${cardStyle} hidden lg:block`}>
+              <div className="flex items-center gap-3 mb-8">
+                <FaClock className="text-lime-500" />
+                <h3 className="text-xl font-black uppercase italic text-gray-900">Available Times</h3>
+              </div>
+              {availableSlots.length > 0 ? (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                  {availableSlots.map((slot) => (
+                    <button
+                      key={slot.startTime}
+                      className={slotButton(selectedSlot?.startTime === slot.startTime, slot.available)}
+                      onClick={() => handleSlotClick(slot)}
+                    >
+                      {format(new Date(slot.startTime), "HH:mm")}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <p className="text-sm font-black uppercase text-gray-400">No availability for this date</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Summary Sidebar */}
+          <div className="lg:col-span-4 sticky top-8">
+            <div className={cardStyle}>
+              <h3 className="text-xl font-black uppercase italic text-gray-900 mb-8 pb-4 border-b border-gray-100">Your Booking</h3>
+
+              <div className="space-y-6 mb-12">
+                <div>
+                  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Clinic</h4>
+                  <p className="text-base font-black text-gray-900 uppercase italic">{clinic?.name}</p>
+                </div>
+
+                <div>
+                  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Treatments</h4>
+                  <div className="space-y-3">
+                    {selectedServices.map(s => (
+                      <div key={s.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
+                        <span className="text-xs font-black uppercase italic">{s.name}</span>
+                        <span className="text-sm font-black text-gray-900">£{Number(s.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedSlot && (
+                  <div className="p-4 rounded-2xl bg-lime-50 border-2 border-[#CBFF38] animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FaCalendarAlt className="text-lime-600" size={12} />
+                      <span className="text-[10px] font-black uppercase text-lime-600 tracking-widest">Scheduled For</span>
+                    </div>
+                    <p className="text-sm font-black text-gray-900 uppercase italic">{format(selectedDateState, "EEEE, MMMM d")}</p>
+                    <p className="text-xl font-black text-gray-900 mt-1">{format(new Date(selectedSlot.startTime), "HH:mm")}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-100 pt-6 mb-8">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-black uppercase text-gray-400">Total Price</span>
+                  <span className="text-3xl font-black text-gray-900">£{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              <Button
+                fullWidth
+                disabled={!selectedSlot || bookingLoading}
+                onClick={handleProceed}
+                className="bg-[#CBFF38] text-black hover:bg-lime-400 h-16 rounded-2xl font-black uppercase tracking-widest text-base shadow-lg shadow-lime-200"
+              >
+                {bookingLoading ? "Establishing..." : "Continue to Checkout"}
+              </Button>
+
+              {holdId && (
+                <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-green-600 font-black uppercase tracking-widest">
+                  <FaCheckCircle /> Slot reserved for 15m
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left: Calendar & Slots */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className={calendarContainerStyle}>
-            {renderHeader()}
-            {renderDays()}
-            {renderCells()}
-          </div>
-
-          <div className={calendarContainerStyle}>
-            <div className="flex items-center gap-2 mb-6">
-              <FaClock className="text-[#CBFF38]" />
-              <h3 className="text-xl font-bold text-[#33373F]">Available Time Slots</h3>
+      {/* Mobile Bottom Sheet for Time Slots */}
+      {showMobileTimes && (
+        <div className="fixed inset-0 z-[100] bg-black/40 lg:hidden flex flex-col justify-end transition-opacity">
+          <div className="bg-white rounded-t-3xl p-6 w-full max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-6 shrink-0">
+              <div>
+                <h3 className="text-xl font-black uppercase italic text-gray-900">Select Time</h3>
+                <p className="text-xs font-bold text-gray-500 mt-1">{format(selectedDateState, "EEEE, MMMM d")}</p>
+              </div>
+              <button onClick={() => setShowMobileTimes(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 hover:bg-gray-200">
+                ✕
+              </button>
             </div>
 
-            {availableSlots.length > 0 ? (
-              <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {availableSlots.map((slot) => (
-                  <div
-                    key={slot.startTime}
-                    className={timeSlotStyle(selectedSlot?.startTime === slot.startTime, slot.available)}
-                    onClick={() => handleSlotClick(slot)}
-                  >
-                    {format(new Date(slot.startTime), "HH:mm")}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-10 text-gray-400">
-                No availability found for this date. Please select another day.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Summary Card */}
-        <div className="lg:col-span-1">
-          <div className={`${calendarContainerStyle} sticky top-8`}>
-            <h3 className="text-xl font-bold text-[#33373F] mb-6 border-b pb-4">Booking Summary</h3>
-
-            <div className="space-y-4 mb-8">
-              <div>
-                <p className="text-xs text-gray-400 uppercase font-bold mb-1">Clinic</p>
-                <p className="font-semibold text-gray-800">{clinic?.name}</p>
-              </div>
-
-              <div>
-                <p className="text-xs text-gray-400 uppercase font-bold mb-1">Services</p>
-                <ul className="space-y-2">
-                  {selectedServices.map(s => (
-                    <li key={s.id} className="flex justify-between text-sm">
-                      <span className="text-gray-600">{s.name}</span>
-                      <span className="font-bold">${s.price}</span>
-                    </li>
+            <div className="flex-1 overflow-y-auto no-scrollbar pb-6 space-y-4">
+              {availableSlots.length > 0 ? (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {availableSlots.map((slot) => (
+                    <button
+                      key={slot.startTime}
+                      className={slotButton(selectedSlot?.startTime === slot.startTime, slot.available)}
+                      onClick={() => {
+                        handleSlotClick(slot);
+                        if (slot.available) {
+                          setTimeout(() => setShowMobileTimes(false), 300);
+                        }
+                      }}
+                    >
+                      {format(new Date(slot.startTime), "HH:mm")}
+                    </button>
                   ))}
-                </ul>
-              </div>
-
-              {selectedSlot && (
-                <div className="bg-[#f7faeb] p-4 rounded-xl border border-[#CBFF38]">
-                  <p className="text-xs text-[#5f8b00] uppercase font-bold mb-1">Selected Slot</p>
-                  <p className="font-bold text-gray-800">
-                    {format(selectedDateState, "EEEE, MMM d")}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {format(new Date(selectedSlot.startTime), "HH:mm")} - {format(new Date(selectedSlot.endTime), "HH:mm")}
-                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <p className="text-sm font-black uppercase text-gray-400">No availability for this date. Try another day.</p>
                 </div>
               )}
             </div>
 
-            <div className="border-t pt-4 mb-8">
-              <div className="flex justify-between items-center text-lg font-bold">
-                <span>Total</span>
-                <span>${selectedServices.reduce((acc, s) => acc + s.price, 0)}</span>
-              </div>
-            </div>
-
-            <Button
-              fullWidth
-              size="lg"
-              disabled={!selectedSlot || bookingLoading}
-              onClick={handleProceed}
-              className="bg-[#CBFF38] text-[#203400] hover:bg-[#A7E52F]"
-            >
-              {bookingLoading ? "Holding slot..." : "Continue to Checkout"}
-            </Button>
-
-            {!selectedSlot && (
-              <p className="text-center text-xs text-gray-400 mt-4 italic">
-                Please select a time slot to continue
-              </p>
-            )}
-
-            {holdId && (
-              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-green-600 font-medium">
-                <FaCheckCircle /> Slot held for 15 minutes
+            {selectedSlot && (
+              <div className="shrink-0 pt-4 border-t border-gray-100">
+                <Button
+                  fullWidth
+                  disabled={bookingLoading}
+                  onClick={() => { setShowMobileTimes(false); handleProceed(); }}
+                  className="bg-[#CBFF38] text-black hover:bg-lime-400 h-16 rounded-2xl font-black uppercase tracking-widest text-base shadow-lg shadow-lime-200"
+                >
+                  {bookingLoading ? "Establishing..." : "Continue"}
+                </Button>
               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
+
     </div>
   );
 };

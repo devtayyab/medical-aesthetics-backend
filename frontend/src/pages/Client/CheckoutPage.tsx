@@ -1,661 +1,276 @@
 import React, { useState, useEffect } from "react";
 import { css } from "@emotion/css";
-import LayeredBG from "@/assets/LayeredBg.svg";
 import VISA from "@/assets/Visa.png";
 import AMEX from "@/assets/Amex.png";
 import Mastercard from "@/assets/paypal.png";
 import Paypal from "@/assets/container.png";
-import { Card } from "@/components/atoms/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
-import { FaArrowRightLong, FaClock } from "react-icons/fa6";
-import { BiError } from "react-icons/bi";
-import { Input } from "@/components/atoms/Input/Input";
-
-import { Select } from "@/components/atoms/Select/Select";
-import { FaBackspace, FaBackward, FaCheckCircle, FaChevronLeft, FaShieldAlt, FaMoneyBillWave } from "react-icons/fa";
+import { FaClock, FaCheckCircle, FaShieldAlt, FaChevronLeft, FaInfoCircle, FaLock } from "react-icons/fa";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Provider, useDispatch, useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { createAppointment, clearBooking } from "@/store/slices/bookingSlice";
 import type { RootState, AppDispatch } from "@/store";
-// Custom class for rounded bottom corners only
-const roundedBottomCorners = css`
-  border-bottom-left-radius: 0.5rem;
-  border-bottom-right-radius: 0.5rem;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
+import { Input } from "@/components/atoms/Input/Input";
+import { format } from "date-fns";
+
+const containerStyle = css`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 1rem;
 `;
 
-const roundedTopCorners = css`
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  border-top-left-radius:  0.5rem;
-  border-top-right-radius:  0.5rem;
+const cardStyle = css`
+  background: white;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+  border: 1px solid #f0f0f0;
 `;
+
+const sectionTitle = css`
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-style: italic;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #1a202c;
+`;
+
 export const CheckoutPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     const location = useLocation();
     const crmState = (location.state || {}) as any;
-    const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading, error } = useSelector((state: RootState) => state.booking);
+    const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading, holdId } = useSelector((state: RootState) => state.booking);
     const { user } = useSelector((state: RootState) => state.auth);
 
-
-    const [cardNumber, setCardNumber] = useState('');
-    const [expirationDate, setExpirationDate] = useState('');
-    const [securityCode, setSecurityCode] = useState('');
-    const [nameOnCard, setNameOnCard] = useState('');
-    const [bookingNote, setBookingNote] = useState('');
-
+    const [paymentMethod, setPaymentMethod] = useState<'card' | 'venue' | 'paypal'>('card');
     const [formData, setFormData] = useState({
         fullName: crmState.customerName || crmState.name || '',
         email: crmState.customerEmail || crmState.email || '',
         phone: crmState.customerPhone || crmState.phone || '',
-        countryCode: '+44'
     });
-    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-
-
-    const validateForm = () => {
-        const errors: Record<string, string> = {};
-
-        if (!formData.fullName.trim()) {
-            errors.fullName = 'Full name is required';
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+                email: user.email || '',
+                phone: user.phone || ''
+            });
         }
-
-        if (!formData.email.trim()) {
-            errors.email = 'Email is required';
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            errors.email = 'Email is invalid';
-        }
-
-        if (!formData.phone.trim()) {
-            errors.phone = 'Phone number is required';
-        } else if (!/^[\d\s\-\(\)]+$/.test(formData.phone)) {
-            errors.phone = 'Phone number is invalid';
-        }
-
-        setFormErrors(errors);
-        return Object.keys(errors).length === 0;
-    };
-
-    const handleInputChange = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        // Clear error for this field when user starts typing
-        if (formErrors[field]) {
-            setFormErrors(prev => ({ ...prev, [field]: '' }));
-        }
-    };
+    }, [user]);
 
     const handleCompleteBooking = async () => {
-        if (!validateForm()) {
-            // Scroll to first error field
-            const firstErrorField = document.querySelector('[data-error="true"]');
-            if (firstErrorField) {
-                firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            return;
-        }
-
-        if (!selectedClinic || !selectedServices.length || !selectedDate || !selectedTimeSlot) {
-            console.log('Missing booking information. Please start over.', selectedClinic, selectedServices, selectedDate, selectedTimeSlot);
-            alert('Missing booking information. Please start over.');
-            return;
-        }
+        if (!selectedClinic || !selectedServices.length || !selectedDate || !selectedTimeSlot) return;
 
         setIsSubmitting(true);
-        console.log(`${selectedDate} ${selectedTimeSlot.startTime}`)
         try {
-            // Robust date construction
-            let isoStartTime: string;
-            let isoEndTime: string;
-
-            // Check if selectedTimeSlot already contains full ISO strings (which backend returns)
-            const isIsoDate = (str: string) => {
-                return str.includes('T') && !isNaN(Date.parse(str));
-            };
-
-            if (isIsoDate(selectedTimeSlot.startTime) && isIsoDate(selectedTimeSlot.endTime)) {
-                // Use the provided ISO strings directly
-                isoStartTime = selectedTimeSlot.startTime;
-                isoEndTime = selectedTimeSlot.endTime;
-                console.log('Using provided ISO time slots:', { isoStartTime, isoEndTime });
-            } else {
-                // Fallback for HH:mm format
-                try {
-                    const datePart = selectedDate.includes('T') ? selectedDate.split('T')[0] : selectedDate;
-                    const startDateTimeString = `${datePart}T${selectedTimeSlot.startTime}`;
-                    const endDateTimeString = `${datePart}T${selectedTimeSlot.endTime}`;
-
-                    const startDateTime = new Date(startDateTimeString);
-                    const endDateTime = new Date(endDateTimeString);
-
-                    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-                        console.error('Invalid date construction fallback:', {
-                            selectedDate,
-                            datePart,
-                            timeSlot: selectedTimeSlot
-                        });
-                        throw new Error('Invalid date/time components');
-                    }
-
-                    isoStartTime = startDateTime.toISOString();
-                    isoEndTime = endDateTime.toISOString();
-                } catch (fallbackError) {
-                    console.error('Date parsing failed:', fallbackError);
-                    alert('There was an issue processing the selected time. Please select the time again.');
-                    setIsSubmitting(false);
-                    return;
-                }
-            }
-
             const appointmentData = {
                 clinicId: selectedClinic.id,
-                serviceId: selectedServices[0].id, // Assuming single service for now
-                clientId: crmState?.customerId || user?.id || 'guest',
-                providerId: selectedTimeSlot?.providerId || (user?.role === 'salesperson' ? user.id : undefined),
-                startTime: isoStartTime,
-                endTime: isoEndTime,
-                notes: bookingNote,
-                paymentMethod: 'card',
-                clientDetails: {
-                    fullName: formData.fullName,
-                    email: formData.email,
-                    phone: `${formData.countryCode}${formData.phone}`
-                }
+                serviceId: selectedServices[0].id,
+                clientId: crmState?.customerId || user?.id || '00000000-0000-0000-0000-000000000000', // Use dummy UUID for guest so validation passes, backend will handle via clientDetails
+                providerId: selectedTimeSlot?.providerId || undefined,
+                startTime: selectedTimeSlot.startTime,
+                endTime: selectedTimeSlot.endTime,
+                status: 'confirmed',
+                paymentMethod,
+                clientDetails: formData,
+                holdId
             };
 
             const result = await dispatch(createAppointment(appointmentData));
-            console.log('Booking result:', result);
             if (result.meta.requestStatus === 'fulfilled') {
-                // Success - redirect to confirmation page
                 dispatch(clearBooking());
-                navigate('/booking-confirmation', {
-                    state: {
-                        appointment: {
-                            ...result.payload,
-                            clientDetails: appointmentData.clientDetails
-                        }
-                    }
-                });
-            } else {
-                console.error('Booking failed:', result);
+                navigate('/booking-confirmation', { state: { appointment: result.payload } });
             }
         } catch (error) {
             console.error('Booking error:', error);
         } finally {
-
-
             setIsSubmitting(false);
-
         }
-
-    };
-
-    useEffect(() => {
-        if (crmState.customerName || crmState.name) {
-            setFormData(prev => ({
-                ...prev,
-                fullName: crmState.customerName || crmState.name || prev.fullName,
-                email: crmState.customerEmail || crmState.email || prev.email,
-                phone: crmState.customerPhone || crmState.phone || prev.phone,
-            }));
-        } else if (user) {
-            setFormData(prev => ({
-                ...prev,
-                fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'John Doe',
-                email: user.email || 'john@gmail.com',
-                phone: user.phone || ''
-            }));
-        }
-
-        // Debug: Log current booking state
-        console.log('Current booking state:', {
-            selectedClinic,
-            selectedServices,
-            selectedDate,
-            selectedTimeSlot,
-            user
-        });
-    }, [user, selectedClinic, selectedServices, selectedDate, selectedTimeSlot]);
-
-    const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setCardNumber(e.target.value);
-    };
-
-    const handleExpirationDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setExpirationDate(e.target.value);
-    };
-
-    const handleSecurityCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSecurityCode(e.target.value);
-    };
-
-    const handleNameOnCardChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setNameOnCard(e.target.value);
-    };
-
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        console.log('Card details:', cardNumber, expirationDate, securityCode, nameOnCard);
-        // You can send the card details to backend here
     };
 
     return (
-        <section
-            className="relative bg-cover bg-center min-h-screen px-4 py-8 md:py-[60px]"
-            style={{
-                backgroundImage: `url(${LayeredBG})`,
-                backgroundPosition: "center",
-                backgroundSize: "cover",
-                backgroundRepeat: "no-repeat",
-            }}
-        >
-
-
-            <div className="flex max-w-7xl mx-auto  items-center text-[#33373F] text-[15px] font-medium mb-6">
-                <Link
-                    to="/search"
-                    className=""
-                >
-                    <span className="px-4 flex">
-                        <FaChevronLeft size={16} className="pt-[6px] text-[#767676]" />  <span>Back</span>
-                    </span>
-
-                </Link>
-            </div>
-            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-
-                <div className="md:col-span-2 space-y-6">
-                    {/* Personal Details Card */}
-                    <Card className="p-4 md:p-8 rounded-xl shadow-lg bg-white border border-gray-100">
-                        <div className="flex items-center mb-6">
-                            <div className="w-12 h-12 bg-lime-400 from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg mr-4">
-                                {user ? (user.firstName || user.email)[0].toUpperCase() : 'U'}
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-bold text-gray-800">Your details</h2>
-                                <p className="text-sm text-gray-600">
-                                    {user ? (
-                                        <>Welcome back {user.firstName || user.email.split('@')[0]}, not your?{" "}
-                                            <Link to="/auth/logout" className="text-blue-600 hover:text-blue-700 underline font-medium">
-                                                Signout
-                                            </Link>
-                                        </>
-                                    ) : (
-                                        "Please provide your details for booking"
-                                    )}
-                                </p>
-                            </div>
+        <div className="min-h-screen bg-[#F7FAFC]">
+            <div className={containerStyle}>
+                <div className="flex items-center justify-between mb-12">
+                    <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-sm font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
+                        <div className="size-8 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-black transition-all">
+                            <FaChevronLeft size={10} />
                         </div>
-                        <form className="space-y-4">
-                            <div>
+                        Back to Time
+                    </button>
+                    <div className="flex items-center gap-4">
+                        <div className="flex flex-col items-center">
+                            <div className="size-8 rounded-full bg-black text-white flex items-center justify-center font-black text-xs"><FaCheckCircle className="text-[#CBFF38]" /></div>
+                            <span className="text-[10px] font-black uppercase mt-1">Time</span>
+                        </div>
+                        <div className="w-12 h-px bg-black -mt-4" />
+                        <div className="flex flex-col items-center">
+                            <div className="size-8 rounded-full bg-[#CBFF38] text-black flex items-center justify-center font-black text-xs">2</div>
+                            <span className="text-[10px] font-black uppercase mt-1">Details</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    <div className="lg:col-span-8 space-y-8">
+                        {/* Personal Details */}
+                        <div className={cardStyle}>
+                            <h3 className={sectionTitle}><FaCheckCircle size={18} className="text-lime-500" /> Personal Details</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <Input
-                                    label=" Full Name"
-                                    id="fullName"
-                                    name="fullName"
-                                    type="text"
+                                    label="Full Name"
                                     value={formData.fullName}
-                                    onChange={(e) => handleInputChange('fullName', e.target.value)}
-                                    data-error={!!formErrors.fullName}
-                                    className={formErrors.fullName ? 'border-red-500' : ''}
+                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                    placeholder="Enter your full name"
+                                    className="rounded-2xl h-14"
                                 />
-                                {formErrors.fullName && (
-                                    <p className="text-red-500 text-sm mt-1">{formErrors.fullName}</p>
-                                )}
-                            </div>
-                            <div>
                                 <Input
-                                    label="Email"
-                                    id="email"
-                                    name="email"
-                                    type="text"
+                                    label="Email Address"
                                     value={formData.email}
-                                    onChange={(e) => handleInputChange('email', e.target.value)}
-                                    data-error={!!formErrors.email}
-                                    className={formErrors.email ? 'border-red-500' : ''}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    placeholder="your@email.com"
+                                    className="rounded-2xl h-14"
                                 />
-                                {formErrors.email && (
-                                    <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>
-                                )}
-                            </div>
-                            <div>
-                                <label
-                                    htmlFor="phone"
-                                    className="block text-sm font-medium text-gray-700"
-                                >
-                                    Phone Number
-                                </label>
-                                <div className="flex gap-2">
-                                    <select
-                                        id="countryCode"
-                                        name="countryCode"
-                                        value={formData.countryCode}
-                                        onChange={(e) => handleInputChange('countryCode', e.target.value)}
-                                        className="rounded-md border border-gray-100 shadow-sm p-2 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:outline-none"
-                                    >
-                                        <option>+44</option>
-                                        <option>+1</option>
-                                        <option>+91</option>
-                                    </select>
-
+                                <div className="md:col-span-2 space-y-4">
                                     <Input
-                                        id="phone"
-                                        name="phone"
-                                        type="tel"
+                                        label="Phone Number"
                                         value={formData.phone}
-                                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                                        placeholder="Enter phone number"
-                                        data-error={!!formErrors.phone}
-                                        className={`flex-grow mt-1 rounded-md shadow-sm p-2 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:outline-none ${formErrors.phone ? 'border-red-500' : ''
-                                            }`}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        placeholder="+44 7000 000000"
+                                        className="rounded-2xl h-14"
                                     />
+
+                                    <label className="flex items-start gap-3 cursor-pointer mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors group">
+                                        <input
+                                            type="checkbox"
+                                            required
+                                            className="mt-1 size-5 rounded border-gray-300 text-lime-500 focus:ring-lime-500 shrink-0"
+                                        />
+                                        <span className="text-xs text-gray-600 leading-relaxed group-hover:text-black">
+                                            I consent to receiving booking confirmations, reminders, and updates via email and SMS. I also agree to the <a href="#" className="underline font-bold">Terms of Service</a> and <a href="#" className="underline font-bold">Privacy Policy</a>.
+                                        </span>
+                                    </label>
                                 </div>
-                                {formErrors.phone && (
-                                    <p className="text-red-500 text-sm mt-1">{formErrors.phone}</p>
-                                )}
                             </div>
-                            <div className="mt-4">
-                                <label
-                                    htmlFor="bookingNote"
-                                    className="block text-sm font-medium text-gray-700 mb-2"
+                        </div>
+
+                        {/* Payment Method */}
+                        <div className={cardStyle}>
+                            <h3 className={sectionTitle}><FaShieldAlt size={18} className="text-lime-500" /> Payment Method</h3>
+                            <div className="space-y-4">
+                                <button
+                                    onClick={() => setPaymentMethod('card')}
+                                    className={`w-full flex items-center justify-between p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'card' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
                                 >
-                                    Booking Note <span className="text-gray-400 font-normal">(Optional)</span>
-                                </label>
-                                <textarea
-                                    id="bookingNote"
-                                    value={bookingNote}
-                                    onChange={(e) => setBookingNote(e.target.value)}
-                                    placeholder="Describe your needs or leave a message for the clinic..."
-                                    rows={3}
-                                    className="w-full rounded-md border border-gray-200 shadow-sm p-3 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:outline-none resize-none text-sm text-gray-700"
-                                />
-                            </div>
-                        </form>
-                    </Card>
-
-                    {/* Beauty Points Discount Card */}
-                    <Card className="p-4 md:p-6 rounded-xl shadow-lg bg-lime-100 from-purple-50 to-pink-50 border border-purple-200">
-                        <div className="flex items-center mb-4">
-                            <div className="w-10 h-10 bg-lime-200 from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white mr-3">
-                                <FaCheckCircle className="text-lg" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-800">
-                                Beauty Points Discount
-                            </h3>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                            Use Beauty Points to get a discount on this treatment
-                        </p>
-                        <div className="bg-white rounded-lg p-4 mb-4 border border-purple-200">
-                            <p className="text-lg font-semibold text-purple-700">You have {0} Beauty Points</p>
-                            <p className="text-sm text-purple-600">Save €{(0) / 10} on this treatment</p>
-                        </div>
-                        <Button variant="outline" className="text-purple-700 border-purple-300 hover:bg-purple-50">
-                            Apply Them Now?
-                            <FaArrowRightLong />
-                        </Button>
-                    </Card>
-                    {/* Payment Card */}
-                    <Card className="p-4 md:p-8 rounded-xl shadow-lg bg-white border border-gray-100">
-                        <div className="flex items-center mb-6">
-                            <div className="w-10 h-10 bg-lime-400 from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white mr-3">
-                                <FaShieldAlt className="text-lg" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-gray-800">Payment</h3>
-                                <p className="text-sm text-gray-600">All transactions are secured and encrypted</p>
-                            </div>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="">
-                            <label className={`flex items-center justify-between cursor-pointer border border-[#1773B0] bg-[#EFF5FF] p-4 ${roundedTopCorners}`}>
-                                <div className="flex items-center gap-3">
-                                    <input type="radio" name="paymentMethod" value="card" className="w-6 h-6 border-2 border-blue-400 checked:bg-blue-500 checked:border-blue-500" defaultChecked />
-                                    <span className="text-base font-medium">Credit or debit card</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <img src={VISA} alt="Visa" className="h-6" />
-                                    <img src={Mastercard} alt="Mastercard" className="h-6" />
-                                    <img src={AMEX} alt="Amex" className="h-6" />
-                                </div>
-                            </label>
-                            <div className="space-y-3">
-                                <fieldset className={`border p-5 bg-[#F5F5F5] ${roundedBottomCorners}`}>
-
-
-                                    <div className="mt-4 space-y-4">
-                                        <Input
-                                            type="text"
-                                            placeholder="Card number"
-                                            value={cardNumber}
-                                            onChange={handleCardNumberChange}
-                                            className=""
-                                        />
-                                        <div className="flex flex-col sm:flex-row gap-4">
-                                            <Input
-                                                type="text"
-                                                placeholder="Expiration date"
-                                                value={expirationDate}
-                                                onChange={handleExpirationDateChange}
-                                                className="flex-1 text-base placeholder-gray-400"
-                                            />
-                                            <Input
-                                                type="text"
-                                                placeholder="Security code"
-                                                value={securityCode}
-                                                onChange={handleSecurityCodeChange}
-                                                className="flex-1 text-base placeholder-gray-400"
-                                            />
+                                    <div className="flex items-center gap-4">
+                                        <div className={`size-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'card' ? 'border-black bg-black' : 'border-gray-300'}`}>
+                                            {paymentMethod === 'card' && <div className="size-2 rounded-full bg-[#CBFF38]" />}
                                         </div>
-                                        <Input
-                                            type="text"
-                                            placeholder="Name on card"
-                                            value={nameOnCard}
-                                            onChange={handleNameOnCardChange}
-                                            className="text-base placeholder-gray-400"
-                                        />
+                                        <span className="font-black uppercase text-sm tracking-tight">Credit or Debit Card</span>
                                     </div>
-                                </fieldset>
+                                    <div className="flex gap-2">
+                                        <img src={VISA} alt="Visa" className="h-5" />
+                                        <img src={AMEX} alt="Amex" className="h-5" />
+                                    </div>
+                                </button>
 
-                                <fieldset className="space-y-3">
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                        <input type="radio" name="paymentMethod" value="paypal" className="w-5 h-5" />
-                                        <span className="flex-grow">PayPal <span className="bg-green-200 text-xs rounded-full px-2 ml-4 py-0.5">90 points</span></span>
-
-                                        <img src={Paypal} alt="PayPal" className="h-5 ml-2" />
-                                    </label>
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                        <input type="radio" name="paymentMethod" value="venue" className="w-5 h-5" />
-                                        <span className="flex-grow">Pay at venue
-                                            <span className="bg-green-200 text-xs rounded-full ml-4 px-2 py-0.5">90 points</span>
-                                        </span>
-                                    </label>
-                                    <label className="flex items-center gap-3 cursor-pointer border-t border-gray-100 pt-3 mt-2">
-                                        <input type="radio" name="paymentMethod" value="cash" className="w-5 h-5" />
-                                        <span className="flex-grow flex items-center gap-2">
-                                            Cash payment
-                                            <span className="bg-gray-100 text-xs text-gray-500 rounded-full px-2 py-0.5">Pay at clinic</span>
-                                        </span>
-                                        <FaMoneyBillWave className="h-5 text-green-600" />
-                                    </label>
-                                </fieldset>
-
-                                <fieldset className="space-y-4 mt-6 text-sm text-gray-600">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" className="w-4 h-4" />
-                                        I consent to my data being used for booking this medical treatment in accordance with GDPR.
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" className="w-4 h-4" />
-                                        Email me receipt and reminders
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        By continuing you agree to our <a href="#" className="text-blue-600 underline">Booking Terms</a>
-                                    </label>
-                                </fieldset>
-                                <button type="submit" className="w-full bg-lime-400 text-black font-bold py-2 rounded hover:bg-lime-500 transition">
-                                    Pay with card
+                                <button
+                                    onClick={() => setPaymentMethod('venue')}
+                                    className={`w-full flex items-center justify-between p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'venue' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`size-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'venue' ? 'border-black bg-black' : 'border-gray-300'}`}>
+                                            {paymentMethod === 'venue' && <div className="size-2 rounded-full bg-[#CBFF38]" />}
+                                        </div>
+                                        <span className="font-black uppercase text-sm tracking-tight">Pay at Venue</span>
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase text-lime-600 bg-lime-100 px-3 py-1 rounded-full">Earn Points</span>
                                 </button>
                             </div>
-                        </form>
-                    </Card>
-                    {/* Venue Policies Card */}
-                    <Card className="p-4 md:p-8 rounded-xl shadow-lg bg-white border border-gray-100">
-                        <div className="flex items-center mb-6">
-                            <div className="w-10 h-10 bg-lime-400 from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white mr-3">
-                                <FaClock className="text-lg" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-800">
-                                Venue policies
-                            </h3>
                         </div>
-                        <div className="space-y-4">
-                            <div>
-                                <h4 className="font-semibold">Reschedule policy</h4>
-                                <p className="text-sm text-gray-500">
-                                    Free rescheduling up to 24 hours before your appointment.
-                                    Within 24 hours, a small fee may apply. Contact the clinic directly for last-minute changes.
-                                </p>
-                            </div>
-                            <div>
-                                <h4 className="font-semibold">Refund policy</h4>
-                                <p className="text-sm text-gray-500">
-                                    Full refund available if cancelled at least 48 hours before appointment.
-                                    50% refund for cancellations made 24-48 hours in advance. No refunds within 24 hours.
-                                </p>
-                            </div>
-                            <div>
-                                <h4 className="font-semibold">Cancellation policy</h4>
-                                <p className="text-sm text-gray-500">
-                                    Cancel online or via app up to 24 hours before your appointment.
-                                    Late cancellations may incur a fee. Please contact the clinic if you need to cancel on short notice.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="bg-blue-50 border border-blue-200 p-4 mt-6 rounded-md flex items-center gap-4">
-                            <BiError className="text-blue-600 text-2xl flex-shrink-0" />
-                            <p className="text-blue-800 text-sm">
-                                Please arrive 10 minutes early for your appointment.
-                                Bring a valid ID and any relevant medical history information.
-                            </p>
-                        </div>
-                    </Card>
 
-                    {/* Terms and Conditions Checkbox Card */}
-                    <Card className="p-6 rounded-lg shadow-md bg-white">
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="terms"
-                                    className="w-5 h-5 border rounded"
-                                />
-                                <label htmlFor="terms" className="text-sm text-gray-700">
-                                    I agree to the <Link to="/terms" className="text-blue-600 underline">Terms and Conditions</Link> and understand the cancellation policy.
-                                </label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="privacy"
-                                    className="w-5 h-5 border rounded"
-                                />
-                                <label htmlFor="privacy" className="text-sm text-gray-700">
-                                    I consent to my data being processed in accordance with the <Link to="/privacy" className="text-blue-600 underline">Privacy Policy</Link>.
-                                </label>
-                            </div>
-                            <p className="text-sm text-gray-600">
-                                By completing this booking, you confirm that you have read and agree to our terms.
-                                Your personal information will be handled securely and in compliance with GDPR regulations.
-                            </p>
-                        </div>
-                    </Card>
-
-
-                </div >
-
-                {/* Right Column: Treatment Summary Card */}
-                <div className="md:col-span-1">
-                    <Card className="p-4 md:p-8 rounded-xl shadow-lg bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 max-w-md mx-auto">
-                        <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-lime-400 from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-4">
-                                {selectedServices && selectedServices.length > 0 ? selectedServices[0].name.charAt(0).toUpperCase() : 'T'}
-                            </div>
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                                {selectedServices && selectedServices.length > 0 ? selectedServices[0].name : 'Treatment'}
-                            </h2>
-                            <p className="text-sm text-gray-600">{selectedClinic?.name || 'Clinic Name'}</p>
-                        </div>
-                        <div className="bg-white rounded-lg p-4 mb-6 border border-blue-200">
-                            <div className="flex justify-between items-center mb-4">
-                                <div className="text-xl font-bold text-blue-600">
-                                    {selectedTimeSlot?.startTime || '17:00'}
+                        {/* Policies */}
+                        <div className="flex gap-4 p-6 rounded-2xl bg-white border border-gray-100 shadow-sm">
+                            <FaInfoCircle className="text-gray-400 shrink-0" size={20} />
+                            <div className="space-y-4">
+                                <div>
+                                    <h4 className="text-xs font-black uppercase text-gray-900 mb-1 italic">Cancellation Policy</h4>
+                                    <p className="text-xs text-gray-500 leading-relaxed">Free cancellation up to 24 hours before your start time. Within 24 hours, the clinic might charge a late fee.</p>
                                 </div>
-                                <div className="border-l border-gray-300 h-8 mx-4"></div>
-                                <div className="text-right">
-                                    <div className="text-sm text-gray-800">
-                                        {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Date'}
+                                <div className="flex items-center gap-2 text-[10px] font-black text-lime-600 uppercase tracking-widest bg-lime-50 rounded-full px-4 py-1 self-start">
+                                    <FaLock size={10} /> Secure Booking via TreatAesthetics
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Summary Sidebar */}
+                    <div className="lg:col-span-4 sticky top-8">
+                        <div className={cardStyle}>
+                            <h3 className="text-xl font-black uppercase italic text-gray-900 mb-8 pb-4 border-b border-gray-100">Order Summary</h3>
+
+                            <div className="space-y-6 mb-12">
+                                <div>
+                                    <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Clinic</h4>
+                                    <p className="text-base font-black text-gray-900 uppercase italic">{selectedClinic?.name}</p>
+                                    <p className="text-xs text-gray-500 mt-1">{selectedClinic?.address.city}, {selectedClinic?.address.zipCode}</p>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Appointment</h4>
+                                    <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                                        <p className="text-sm font-black text-gray-900 uppercase italic mb-1">
+                                            {selectedDate ? format(new Date(selectedDate), "EEEE, MMMM d") : 'Date not set'}
+                                        </p>
+                                        <p className="text-lg font-black text-lime-600">
+                                            {selectedTimeSlot ? format(new Date(selectedTimeSlot.startTime), "HH:mm") : '00:00'}
+                                        </p>
                                     </div>
-                                    <div className="text-xs text-gray-500">
-                                        {selectedServices && selectedServices.length > 0 ? `${selectedServices[0].durationMinutes || 30} mins total` : '30 mins total'}
+                                </div>
+
+                                <div>
+                                    <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Treatments</h4>
+                                    <div className="space-y-2">
+                                        {selectedServices.map(s => (
+                                            <div key={s.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
+                                                <span className="text-xs font-black uppercase italic">{s.name}</span>
+                                                <span className="text-sm font-black text-gray-900">£{Number(s.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
-                            <div className="text-center mb-3">
-                                {selectedClinic && selectedServices && selectedServices.length > 0 ? (
-                                    <Link to={`/appointment/booking?clinicId=${selectedClinic.id}&serviceIds=${selectedServices[0].id}`} className="text-blue-600 hover:text-blue-700 underline text-sm font-medium">
-                                        Choose a different time
-                                    </Link>
-                                ) : (
-                                    <span className="text-gray-400 text-sm">Please select a service first</span>
-                                )}
-                            </div>
-                            <div className="text-sm text-gray-600 mb-4">
-                                With {selectedClinic?.name || 'first available practitioner'}
-                            </div>
-                        </div>
-                        <div className="bg-white rounded-lg p-4 mb-6 border border-blue-200">
-                            <div className="space-y-3">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Treatment Price</span>
-                                    <span className="font-medium">€{selectedServices && selectedServices.length > 0 ? selectedServices[0].price || 120 : 0}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Beauty Points Discount</span>
-                                    <span className="font-medium text-green-600">-€{(user?.beautyPoints || 0) / 10 || 0}</span>
-                                </div>
-                                <div className="flex justify-between font-bold text-lg border-t border-gray-300 pt-3">
-                                    <span className="text-gray-800">Total</span>
-                                    <span className="text-blue-600">€{selectedServices && selectedServices.length > 0 ? (selectedServices[0].price || 120) - ((user?.beautyPoints || 0) / 10 || 0) : 0}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <button
-                            onClick={handleCompleteBooking}
-                            disabled={isSubmitting || isLoading || !selectedClinic || !selectedServices || selectedServices.length === 0}
-                            className="w-full bg-lime-400 from-blue-500 to-purple-600 text-white font-bold py-4 px-6 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                        >
-                            {isSubmitting || isLoading ? (
-                                <span className="flex items-center justify-center">
-                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Processing...
-                                </span>
-                            ) : 'Complete Booking'}
-                        </button>
-                        {error && (
-                            <div className="text-red-500 text-sm mt-2 text-center">
-                                {error}
-                            </div>
-                        )}
 
-                    </Card>
-                </div >
-            </div >
-        </section >
+                            <div className="border-t border-gray-100 pt-6 mb-8">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-black uppercase text-gray-400 tracking-widest">Grand Total</span>
+                                    <span className="text-3xl font-black text-gray-900">£{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                            </div>
+
+                            <Button
+                                fullWidth
+                                disabled={isSubmitting || !selectedClinic}
+                                onClick={handleCompleteBooking}
+                                className="bg-[#CBFF38] text-black hover:bg-lime-400 h-16 rounded-2xl font-black uppercase tracking-widest text-base shadow-lg shadow-lime-200"
+                            >
+                                {isSubmitting ? "Processing..." : "Finish & Book"}
+                            </Button>
+
+                            <p className="text-[9px] text-center text-gray-400 mt-6 uppercase font-bold tracking-widest leading-relaxed">
+                                By completing this booking, you agree to our terms of service and the clinic's own cancellation policy.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 };

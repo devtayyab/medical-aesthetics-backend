@@ -43,8 +43,8 @@ export class Appointment {
   endTime: Date;
 
   @Column({
-    type: 'enum',
-    enum: AppointmentStatus,
+    type: 'varchar',
+    length: 50,
     default: AppointmentStatus.PENDING,
   })
   status: AppointmentStatus;
@@ -80,11 +80,11 @@ export class Appointment {
   noShowMarkedAt: Date;
 
   @Column({
-    type: 'enum',
-    enum: ['clinic_own', 'platform_broker'],
+    type: 'varchar',
+    length: 50,
     default: 'platform_broker',
   })
-  appointmentSource: 'clinic_own' | 'platform_broker'; // Distinguish clinic's own appointments vs platform/broker appointments
+  appointmentSource: 'clinic_own' | 'platform_broker';
 
   @Column({
     type: 'enum',

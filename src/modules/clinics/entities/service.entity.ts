@@ -28,8 +28,11 @@ export class Service {
   @Column()
   durationMinutes: number;
 
-  @Column({ nullable: true })
+  @Column()
   category: string;
+
+  @Column({ nullable: true })
+  imageUrl: string;
 
   @Column('json', { nullable: true })
   metadata: any;
