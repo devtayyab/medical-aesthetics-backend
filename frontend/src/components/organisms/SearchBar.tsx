@@ -1,21 +1,38 @@
-import React, { useState } from "react";
-import { Input } from "@/components/atoms/Input/Input";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/atoms/Button/Button";
-import { Search } from "lucide-react";
+import { Search, MapPin, Calendar as CalendarIcon, Clock, ChevronDown, Check } from "lucide-react";
 
 export interface SearchBarProps {
   onSearch: (filters: {
     query: string;
     location?: string;
     category?: string;
+    search_date?: string | null;
+    search_time_window?: string | null;
   }) => void;
   className?: string;
   initialFilters?: {
     query?: string;
     location?: string;
     category?: string;
+    search_date?: string | null;
+    search_time_window?: string | null;
   };
 }
+
+// Dummy data for autocomplete
+const SUGGESTIONS = {
+  treatments: [
+    { id: "t1", name: "Botox Treatment" },
+    { id: "t2", name: "Dermal Fillers" },
+    { id: "t3", name: "Laser Hair Removal" },
+    { id: "t4", name: "Chemical Peel" },
+  ],
+  clinics: [
+    { id: "c1", name: "Luxe Aesthetics London" },
+    { id: "c2", name: "SkinHealth Clinic" },
+  ]
+};
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   onSearch,
@@ -24,47 +41,267 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   const [query, setQuery] = useState(initialFilters?.query || "");
   const [location, setLocation] = useState(initialFilters?.location || "");
-  const [category, setCategory] = useState(initialFilters?.category || "");
+  const [searchDate, setSearchDate] = useState<string | null>(initialFilters?.search_date || null);
+  const [searchTimeWindow, setSearchTimeWindow] = useState<string | null>(initialFilters?.search_time_window || null);
 
-  React.useEffect(() => {
-    if (initialFilters) {
-      if (initialFilters.query !== undefined) setQuery(initialFilters.query);
-      if (initialFilters.location !== undefined) setLocation(initialFilters.location);
-      if (initialFilters.category !== undefined) setCategory(initialFilters.category);
-    }
-  }, [initialFilters]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Temporary state for the date/time popover
+  const [tempDate, setTempDate] = useState<string | null>(searchDate);
+  const [tempTime, setTempTime] = useState<string | null>(searchTimeWindow);
+
+  const [dateMode, setDateMode] = useState<'preset' | 'custom'>('preset');
+  const [timeMode, setTimeMode] = useState<'any' | 'custom'>('any');
+
+  const searchRef = useRef<HTMLDivElement>(null);
+  const dateRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowAutocomplete(false);
+      }
+      if (dateRef.current && !dateRef.current.contains(e.target as Node)) {
+        setShowDatePicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch({ query, location, category });
+    onSearch({
+      query,
+      location,
+      search_date: searchDate,
+      search_time_window: searchTimeWindow
+    });
+  };
+
+  const setPresetDate = (days: number) => {
+    setDateMode('preset');
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    setTempDate(d.toISOString().split("T")[0]);
+  };
+
+  const applyDateTime = () => {
+    setSearchDate(tempDate);
+    setSearchTimeWindow(timeMode === 'any' ? null : tempTime);
+    setShowDatePicker(false);
+  };
+
+  const getDisplayDateTime = () => {
+    if (!searchDate && !searchTimeWindow) return "Any date, Any time";
+    const dateStr = searchDate ? new Date(searchDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "Any date";
+
+    let timeStr = "Any time";
+    if (searchTimeWindow === "morning") timeStr = "Morning (8am - 12pm)";
+    else if (searchTimeWindow === "afternoon") timeStr = "Afternoon (12pm - 5pm)";
+    else if (searchTimeWindow === "evening") timeStr = "Evening (5pm+)";
+    else if (searchTimeWindow) timeStr = searchTimeWindow;
+
+    return `${dateStr}, ${timeStr}`;
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={`flex flex-col sm:flex-row gap-4 ${className || ""}`}
-    >
-      <Input
-        placeholder="Search treatments or clinics"
-        leftIcon={<Search size={16} />}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        fullWidth
-        style={{ paddingLeft: "35px" }}
-      />
-      <Input
-        placeholder="Location"
-        value={location}
-        onChange={(e) => setLocation(e.target.value)}
-        fullWidth
-      />
-      {/* <Input
-        placeholder="Category"
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-        fullWidth
-      /> */}
-      <Button type="submit">Search</Button>
-    </form>
+    <div className={`bg-white rounded-[24px] p-6 shadow-2xl w-full max-w-[480px] z-20 ${className || ""}`}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+
+        {/* S1: Treatment / Service */}
+        <div className="relative" ref={searchRef}>
+          <div className="border border-gray-200 focus-within:border-[#CBFF38] focus-within:ring-2 focus-within:ring-[#CBFF38]/20 rounded-xl p-3 flex items-center transition-all bg-gray-50/50">
+            <Search className="text-gray-400 w-5 h-5 mr-3 shrink-0" />
+            <input
+              className="w-full outline-none font-bold text-gray-800 bg-transparent placeholder:text-gray-400 placeholder:font-semibold"
+              placeholder="Search treatments / clinics"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setShowAutocomplete(true);
+              }}
+              onFocus={() => setShowAutocomplete(true)}
+            />
+          </div>
+
+          {/* Autocomplete Dropdown */}
+          {showAutocomplete && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
+              <div className="p-2">
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 py-2">
+                  Treatments
+                </div>
+                {SUGGESTIONS.treatments.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2.5 hover:bg-gray-50 rounded-lg text-sm font-semibold text-gray-700 transition-colors"
+                    onClick={() => {
+                      setQuery(t.name);
+                      setShowAutocomplete(false);
+                    }}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 py-2 mt-2 border-t border-gray-100 pt-3">
+                  Clinics
+                </div>
+                {SUGGESTIONS.clinics.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2.5 hover:bg-gray-50 rounded-lg text-sm font-semibold text-gray-700 transition-colors"
+                    onClick={() => {
+                      setQuery(c.name);
+                      setShowAutocomplete(false);
+                    }}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* S2: Location */}
+        <div className="relative border border-gray-200 focus-within:border-[#CBFF38] focus-within:ring-2 focus-within:ring-[#CBFF38]/20 rounded-xl p-3 flex items-center transition-all bg-gray-50/50">
+          <MapPin className="text-gray-400 w-5 h-5 mr-3 shrink-0" />
+          <input
+            className="w-full outline-none font-bold text-gray-800 bg-transparent placeholder:text-gray-400 placeholder:font-semibold"
+            placeholder="Area or Postcode"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          />
+        </div>
+
+        {/* S3: Date & Time */}
+        <div className="relative" ref={dateRef}>
+          <div
+            className="border border-gray-200 hover:border-[#CBFF38] rounded-xl p-3 flex items-center justify-between transition-all bg-gray-50/50 cursor-pointer"
+            onClick={() => setShowDatePicker(!showDatePicker)}
+          >
+            <div className="flex items-center">
+              <CalendarIcon className="text-gray-400 w-5 h-5 mr-3 shrink-0" />
+              <div className={`font-bold ${searchDate || searchTimeWindow ? 'text-gray-800' : 'text-gray-400'} truncate`}>
+                {getDisplayDateTime()}
+              </div>
+            </div>
+            <ChevronDown className="text-gray-400 w-5 h-5 shrink-0" />
+          </div>
+
+          {/* Date Picker Popover */}
+          {showDatePicker && (
+            <div className="absolute top-14 left-0 w-full min-w-[280px] mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 p-5 z-[60]">
+
+              <div className="mb-5">
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-3">Date</label>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${tempDate === new Date().toISOString().split("T")[0] && dateMode === 'preset' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
+                    onClick={() => setPresetDate(0)}
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${tempDate === new Date(Date.now() + 86400000).toISOString().split("T")[0] && dateMode === 'preset' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
+                    onClick={() => setPresetDate(1)}
+                  >
+                    Tomorrow
+                  </Button>
+
+                  {dateMode !== 'custom' ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="justify-start py-3 px-4 text-sm font-bold border-2 border-gray-100 text-gray-600 hover:border-gray-300 rounded-xl transition-all"
+                      onClick={() => setDateMode('custom')}
+                    >
+                      Pick date...
+                    </Button>
+                  ) : (
+                    <div className="relative border-2 border-[#CBFF38] rounded-xl p-3 flex items-center bg-lime-50/50 mt-1 animate-in fade-in slide-in-from-top-2">
+                      <CalendarIcon className="text-lime-700 w-5 h-5 mr-3 shrink-0" />
+                      <input
+                        type="date"
+                        className="w-full bg-transparent outline-none text-sm font-bold text-gray-800"
+                        value={tempDate || ''}
+                        onChange={(e) => setTempDate(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mb-6 pt-5 border-t border-gray-100">
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-3">Time</label>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${timeMode === 'any' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
+                    onClick={() => { setTimeMode('any'); setTempTime(null); }}
+                  >
+                    Any time
+                  </Button>
+
+                  {timeMode !== 'custom' ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="justify-start py-3 px-4 text-sm font-bold border-2 border-gray-100 text-gray-600 hover:border-gray-300 rounded-xl transition-all"
+                      onClick={() => { setTimeMode('custom'); setTempTime("morning"); }}
+                    >
+                      Pick time...
+                    </Button>
+                  ) : (
+                    <div className="relative border-2 border-[#CBFF38] rounded-xl p-3 flex items-center bg-lime-50/50 mt-1 animate-in fade-in slide-in-from-top-2">
+                      <Clock className="text-lime-700 w-5 h-5 mr-3 shrink-0" />
+                      <select
+                        className="w-full bg-transparent outline-none text-sm font-bold text-gray-800 cursor-pointer"
+                        value={tempTime || "morning"}
+                        onChange={(e) => setTempTime(e.target.value)}
+                      >
+                        <option value="morning">Morning (8am - 12pm)</option>
+                        <option value="afternoon">Afternoon (12pm - 5pm)</option>
+                        <option value="evening">Evening (5pm on)</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  className="w-full bg-black text-white hover:bg-gray-800 py-4 rounded-xl font-bold transition-all shadow-md active:scale-95"
+                  onClick={applyDateTime}
+                >
+                  Apply Selection
+                </Button>
+              </div>
+
+            </div>
+          )}
+        </div>
+
+        {/* Action Button */}
+        <Button
+          type="submit"
+          className="w-full bg-[#CBFF38] text-black hover:bg-[#bceb33] py-4 rounded-xl flex items-center justify-center font-black uppercase tracking-widest text-sm transition-all duration-300 shadow-xl shadow-[#CBFF38]/20 mt-2"
+        >
+          Search Availability
+        </Button>
+      </form>
+    </div>
   );
 };
