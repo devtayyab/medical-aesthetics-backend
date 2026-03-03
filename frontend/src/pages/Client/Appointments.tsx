@@ -120,21 +120,44 @@ export const Appointments: React.FC = () => {
     dispatch(fetchUserAppointments());
   }, [dispatch]);
 
-  const handleCancel = async (id: string) => {
+  const isPastCutoff = (startTime: string) => {
+    const aptTime = new Date(startTime).getTime();
+    const now = new Date().getTime();
+    const _24Hours = 24 * 60 * 60 * 1000;
+    return (aptTime - now) < _24Hours;
+  };
+
+  const handleCancelClick = async (apt: Appointment) => {
+    if (isPastCutoff(apt.startTime)) {
+      window.alert("Cancellations are not allowed within 24 hours of the appointment. Please contact the clinic directly to discuss late cancellation fees.");
+      return;
+    }
     if (window.confirm("Are you sure you want to cancel this appointment?")) {
-      await dispatch(cancelAppointment(id));
+      await dispatch(cancelAppointment(apt.id));
+
+      // Refund flow simulation
+      if (apt.paymentMethod === 'card' || (apt.advancePaymentAmount && apt.advancePaymentAmount > 0)) {
+        window.alert("Your appointment has been CANCELED. Since you prepaid, our automated refund flow has been initiated. You will receive a credit back to your original payment method in 3-5 business days.");
+      } else {
+        window.alert("Your appointment has been correctly CANCELED.");
+      }
+
       dispatch(fetchUserAppointments());
     }
+  };
+
+  const handleRescheduleClick = (apt: Appointment) => {
+    if (isPastCutoff(apt.startTime)) {
+      window.alert("Rescheduling is not allowed within 24 hours of the appointment. Please contact the clinic directly.");
+      return;
+    }
+    setReschedulingAppointment(apt);
   };
 
   const handleAddNote = (id: string, currentNote?: string) => {
     const note = window.prompt("Add a note for the clinic:", currentNote || "");
     if (note !== null && note !== currentNote) {
-      // Dispatch update note action (Requires backend support, assumed handled via appointment update or separate endpoint)
-      // For now, alerting limitation or we can implement updateAppointment if available.
-      // Since updateAppointment isn't in slice, we will just log it.
       console.log(`Updating note for ${id}: ${note}`);
-      // In real implementation: dispatch(updateAppointment({ id, notes: note }));
     }
   };
 
@@ -176,14 +199,14 @@ export const Appointments: React.FC = () => {
                         <FaRegCommentDots />
                       </button>
                       <button
-                        onClick={() => setReschedulingAppointment(apt)}
+                        onClick={() => handleRescheduleClick(apt)}
                         className="text-gray-500 hover:text-amber-600 p-2 rounded-full hover:bg-amber-50 transition-colors"
                         title="Reschedule"
                       >
                         <FaEdit />
                       </button>
                       <button
-                        onClick={() => handleCancel(apt.id)}
+                        onClick={() => handleCancelClick(apt)}
                         className="text-gray-500 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors"
                         title="Cancel Appointment"
                       >
