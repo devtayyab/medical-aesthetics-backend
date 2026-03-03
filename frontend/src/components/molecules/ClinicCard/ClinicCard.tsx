@@ -82,13 +82,17 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
         <div className="mt-auto space-y-3 pt-4 border-t border-gray-100 flex-1">
           {displayServices.length > 0 ? (
             displayServices.map((service, idx) => (
-              <div key={idx} className="flex items-center justify-between gap-4 group/service hover:bg-gray-50 -mx-3 px-3 py-2 rounded-xl transition-colors">
+              <div
+                key={idx}
+                onClick={(e) => { e.stopPropagation(); window.location.href = `/appointment/booking?clinicId=${clinic.id}&serviceIds=${service.id}`; }}
+                className="flex items-center justify-between gap-4 group/service hover:bg-gray-50 -mx-3 px-3 py-2 rounded-xl transition-colors cursor-pointer"
+              >
                 <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-bold text-gray-800 truncate group-hover/service:text-black">{service.name}</h4>
+                  <h4 className="text-sm font-bold text-gray-800 truncate group-hover/service:text-black hover:underline">{service.name}</h4>
                   <p className="text-[12px] text-gray-500 mt-0.5">{service.durationMinutes} mins</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[15px] font-black text-gray-900">£{service.price}</p>
+                  <p className="text-[15px] font-black text-lime-700">£{service.price}</p>
                 </div>
               </div>
             ))
