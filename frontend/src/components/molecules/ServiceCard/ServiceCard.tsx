@@ -64,7 +64,7 @@ export const ServiceCard: React.FC<{
 
         <div className="flex items-center gap-8">
           <div className="text-right">
-            <span className="block text-2xl font-black text-gray-900">£{service.price}</span>
+            <span className="block text-2xl font-black text-gray-900">£{Number(service.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             {service.price > 100 && <span className="text-[10px] text-lime-600 font-bold uppercase">Save 10% off-peak</span>}
           </div>
 
