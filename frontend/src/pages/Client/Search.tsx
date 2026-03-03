@@ -5,6 +5,7 @@ import { searchClinics } from "@/store/slices/clientSlice";
 import { RootState, AppDispatch } from "@/store";
 import { SearchBar } from "@/components/organisms/SearchBar";
 import { ClinicCard } from "@/components/molecules/ClinicCard/ClinicCard";
+import { TreatmentCard } from "@/components/molecules/TreatmentCard/TreatmentCard";
 import { Button } from "@/components/atoms/Button/Button";
 import { FaHospital, FaMap, FaList, FaStar, FaChevronDown, FaMapMarkedAlt } from "react-icons/fa";
 
@@ -12,7 +13,7 @@ export const Search: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { clinics, isLoading, total } = useSelector(
+  const { clinics, treatments, isLoading, total } = useSelector(
     (state: RootState) => state.client
   );
 
@@ -115,8 +116,8 @@ export const Search: React.FC = () => {
               <button
                 key={cat}
                 className={`px-5 py-2.5 rounded-full text-sm font-black uppercase tracking-widest transition-all border ${(cat === 'All' && !category) || category === cat
-                    ? 'bg-black text-white border-black shadow-lg'
-                    : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300'
+                  ? 'bg-black text-white border-black shadow-lg'
+                  : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300'
                   }`}
                 onClick={() => handleSearch({ category: cat === 'All' ? '' : cat, q: query })}
               >
@@ -132,25 +133,55 @@ export const Search: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-6">
-              {clinics.length > 0 ? (
-                clinics.map((clinic, index) => (
-                  <ClinicCard
-                    key={clinic.id}
-                    clinic={clinic}
-                    index={index}
-                    onSelect={() => navigate(`/clinic/${clinic.id}`)}
-                    searchQuery={query}
-                    searchDate={searchDate}
-                  />
-                ))
-              ) : (
+            <div className="flex flex-col gap-8">
+              {/* Treatments Section */}
+              {treatments.length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-black uppercase tracking-widest text-gray-400 flex items-center gap-3">
+                    <span className="w-10 h-[2px] bg-gray-200"></span>
+                    Treatments
+                  </h2>
+                  <div className="flex flex-col gap-6">
+                    {treatments.map((treatment) => (
+                      <TreatmentCard
+                        key={treatment.id}
+                        treatment={treatment}
+                        onSelect={() => navigate(`/treatment/${treatment.id}`)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Clinics Section */}
+              {clinics.length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-black uppercase tracking-widest text-gray-400 flex items-center gap-3">
+                    <span className="w-10 h-[2px] bg-gray-200"></span>
+                    Clinics
+                  </h2>
+                  <div className="flex flex-col gap-6">
+                    {clinics.map((clinic, index) => (
+                      <ClinicCard
+                        key={clinic.id}
+                        clinic={clinic}
+                        index={index}
+                        onSelect={() => navigate(`/clinic/${clinic.id}`)}
+                        searchQuery={query}
+                        searchDate={searchDate}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {clinics.length === 0 && treatments.length === 0 && (
                 <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
                   <div className="size-20 bg-white rounded-full flex items-center justify-center text-gray-200 mx-auto mb-4 border border-gray-100 shadow-sm">
                     <FaHospital size={32} />
                   </div>
-                  <h3 className="text-xl font-black text-gray-400 uppercase">No clinics found</h3>
-                  <p className="text-gray-400 text-sm mt-2 font-medium">Try adjusting your area or dates.</p>
+                  <h3 className="text-xl font-black text-gray-400 uppercase">No results found</h3>
+                  <p className="text-gray-400 text-sm mt-2 font-medium">Try adjusting your area or keyword.</p>
                 </div>
               )}
             </div>

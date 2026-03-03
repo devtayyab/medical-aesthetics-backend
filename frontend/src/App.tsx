@@ -21,6 +21,7 @@ import { Register } from "@/pages/Register/Register";
 import { ProtectedLayout } from "@/components/organisms/ProtectedLayout";
 import { Search } from "@/pages/Client/Search";
 import { ClinicDetails } from "@/pages/Client/ClinicDetails";
+import { TreatmentDetails } from "@/pages/Client/TreatmentDetails";
 import { AppointmentBooking } from "@/pages/Client/AppointmentBooking";
 import { Appointments } from "@/pages/Client/Appointments";
 import { History } from "@/pages/Client/History";
@@ -188,6 +189,7 @@ function AppContent() {
           {/* Client Routes - Public clinic browsing */}
           <Route path="/search" element={<Search />} />
           <Route path="/clinic/:id" element={<ClinicDetails />} />
+          <Route path="/treatment/:id" element={<TreatmentDetails />} />
 
           {/* Protected booking route - requires login */}
           <Route

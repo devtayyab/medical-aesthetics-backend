@@ -20,6 +20,12 @@ export class ClinicsController {
     return this.clinicsService.getFeatured();
   }
 
+  @Get('treatments/:id')
+  @ApiOperation({ summary: 'Get treatment details with clinics offering it' })
+  getTreatmentDetails(@Param('id') id: string) {
+    return this.clinicsService.getTreatmentDetails(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get clinic details' })
   findOne(@Param('id') id: string) {

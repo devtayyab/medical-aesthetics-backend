@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import { User } from '../modules/users/entities/user.entity';
 import { Clinic } from '../modules/clinics/entities/clinic.entity';
 import { Service } from '../modules/clinics/entities/service.entity';
+import { Treatment } from '../modules/clinics/entities/treatment.entity';
 import { Lead, CrmAction, CustomerRecord } from '../modules/crm/entities';
 import { Review } from '../modules/clinics/entities/review.entity';
 import { Tag } from '../modules/admin/entities/tag.entity';
@@ -40,6 +41,7 @@ const AppDataSource = new DataSource({
         User,
         Clinic,
         Service,
+        Treatment,
         Lead,
         CommunicationLog,
         CustomerRecord,

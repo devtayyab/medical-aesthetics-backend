@@ -47,22 +47,36 @@ export const ServiceCard: React.FC<{
               {service.category}
             </span>
           </div>
-          <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-1 group-hover:text-lime-600 transition-colors">
-            {service.name}
-          </h4>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">{service.durationMinutes} mins</span>
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="text-[10px] font-black uppercase text-lime-600 hover:underline flex items-center gap-1"
-            >
-              {showDetails ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-              {showDetails ? "Hide Info" : "Show Info"}
-            </button>
+          <div className="flex gap-4">
+            {service.imageUrl && (
+              <img
+                src={service.imageUrl}
+                alt={service.name}
+                className="size-16 rounded-xl object-cover border border-gray-100 shadow-sm"
+              />
+            )}
+            <div>
+              <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-1 group-hover:text-lime-600 transition-colors">
+                {service.name}
+              </h4>
+              <p className="text-xs text-gray-500 mb-2 line-clamp-2 max-w-md">
+                {service.description || service.treatment?.shortDescription}
+              </p>
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">{service.durationMinutes} mins</span>
+                <button
+                  onClick={() => setShowDetails(!showDetails)}
+                  className="text-[10px] font-black uppercase text-lime-600 hover:underline flex items-center gap-1"
+                >
+                  {showDetails ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                  {showDetails ? "Hide Info" : "Show Info"}
+                </button>
+              </div>
+            </div>
           </div>
           {showDetails && (
-            <div className={`${descriptionStyle} animate-in fade-in slide-in-from-top-1`}>
-              {service.description || "Take some time out for yourself with our premium treatment handled by experts."}
+            <div className={`${descriptionStyle} animate-in fade-in slide-in-from-top-1 ml-20`}>
+              {service.treatment?.fullDescription || service.description || "Take some time out for yourself with our premium treatment handled by experts."}
             </div>
           )}
         </div>

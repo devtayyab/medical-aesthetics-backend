@@ -452,7 +452,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   label="Interval"
                   type="number"
                   value={formData.recurrenceInterval || 1}
-                  onChange={(e) => handleInputChange('recurrenceInterval', parseInt(e.target.value))}
+                  onChange={(e) => handleInputChange('recurrenceInterval', e.target.value === '' ? 1 : parseInt(e.target.value))}
                 />
               </div>
             )}
@@ -498,7 +498,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   label="Cost"
                   type="number"
                   value={formData.metadata?.cost || ''}
-                  onChange={(e) => handleInputChange('metadata.cost', parseFloat(e.target.value))}
+                  onChange={(e) => handleInputChange('metadata.cost', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                   placeholder="0.00"
                 />
 

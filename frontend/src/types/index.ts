@@ -46,17 +46,32 @@ export interface Clinic {
   services: Service[];
 }
 
-export interface Service {
+export interface Treatment {
   id: string;
   name: string;
-  description: string;
+  shortDescription: string;
+  fullDescription: string;
+  category: string;
+  imageUrl?: string;
+  isActive: boolean;
+  fromPrice?: number;
+  clinicsCount?: number;
+  availableAt?: string[];
+}
+
+export interface Service {
+  id: string;
+  name?: string;
+  description?: string;
   price: number;
   durationMinutes: number;
-  category: string;
+  category?: string;
   imageUrl?: string;
   metadata?: any;
   isActive: boolean;
   clinicId: string;
+  treatmentId?: string;
+  treatment?: Treatment;
   images?: string[];
 }
 

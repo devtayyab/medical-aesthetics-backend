@@ -8,6 +8,7 @@ import type {
   TimeSlot,
   LoyaltyBalance,
   SearchFilters,
+  Treatment,
 } from "@/types";
 
 interface ClientState {
@@ -19,6 +20,7 @@ interface ClientState {
   appointments: Appointment[];
   loyaltyBalance: LoyaltyBalance | null;
   searchServices: Service[];
+  treatments: Treatment[]; // Treatment results
   isLoading: boolean;
   error: string | null;
   searchFilters: SearchFilters;
@@ -33,6 +35,7 @@ const initialState: ClientState = {
   selectedClinic: null,
   services: [],
   searchServices: [],
+  treatments: [],
   availableSlots: [],
   appointments: [],
   loyaltyBalance: null,
@@ -333,7 +336,8 @@ const clientSlice = createSlice({
       .addCase(searchClinics.fulfilled, (state, action) => {
         state.isLoading = false;
         state.clinics = action.payload.clinics || [];
-        state.searchServices = action.payload.services || [];
+        state.treatments = action.payload.treatments || [];
+        state.searchServices = action.payload.services || []; // Legacy compatibility
         state.total = action.payload.total || 0;
         state.hasMore = action.payload.hasMore || false;
       })

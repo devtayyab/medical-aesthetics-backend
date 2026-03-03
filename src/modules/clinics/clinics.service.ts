@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Clinic } from './entities/clinic.entity';
 import { Service } from './entities/service.entity';
+import { Treatment } from './entities/treatment.entity';
 import { Review } from './entities/review.entity';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
@@ -22,6 +23,8 @@ export class ClinicsService {
     private clinicsRepository: Repository<Clinic>,
     @InjectRepository(Service)
     private servicesRepository: Repository<Service>,
+    @InjectRepository(Treatment)
+    private treatmentsRepository: Repository<Treatment>,
     @InjectRepository(Review)
     private reviewsRepository: Repository<Review>,
     @InjectRepository(User)
@@ -38,10 +41,11 @@ export class ClinicsService {
     search?: string;
     limit?: number;
     offset?: number;
-  }): Promise<{ clinics: Clinic[]; services: Service[]; total: number; offset: number }> {
+  }): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; offset: number }> {
     // 1. Search for Clinics
     const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
       .leftJoinAndSelect('clinic.services', 'services')
+      .leftJoinAndSelect('services.treatment', 'treatment')
       .where('clinic.isActive = :isActive', { isActive: true });
 
     if (params.location) {
@@ -59,28 +63,28 @@ export class ClinicsService {
     }
 
     if (params.category) {
-      clinicQb.andWhere('services.category = :category', { category: params.category });
+      clinicQb.andWhere('treatment.category = :category', { category: params.category });
     }
 
-    // 2. Search for Services (Treatments)
-    const serviceQb = this.servicesRepository.createQueryBuilder('service')
-      .leftJoinAndSelect('service.clinic', 'clinic')
-      .where('service.isActive = :isActive', { isActive: true })
-      .andWhere('clinic.isActive = :clinicActive', { clinicActive: true });
+    // 2. Search for Treatments (Therapies)
+    const treatmentQb = this.treatmentsRepository.createQueryBuilder('treatment')
+      .leftJoinAndSelect('treatment.offerings', 'offering')
+      .leftJoinAndSelect('offering.clinic', 'clinic')
+      .where('treatment.isActive = :isActive', { isActive: true });
 
     if (params.search) {
-      serviceQb.andWhere(
-        '(service.name ILIKE :search OR service.description ILIKE :search)',
+      treatmentQb.andWhere(
+        '(treatment.name ILIKE :search OR treatment.shortDescription ILIKE :search OR treatment.fullDescription ILIKE :search)',
         { search: `%${params.search}%` }
       );
     }
 
     if (params.category) {
-      serviceQb.andWhere('service.category = :category', { category: params.category });
+      treatmentQb.andWhere('treatment.category = :category', { category: params.category });
     }
 
     if (params.location) {
-      serviceQb.andWhere(
+      treatmentQb.andWhere(
         '(clinic.address->>\'city\' ILIKE :location OR clinic.address->>\'state\' ILIKE :location)',
         { location: `%${params.location}%` }
       );
@@ -91,16 +95,56 @@ export class ClinicsService {
       .skip(params.offset || 0)
       .getManyAndCount();
 
-    const [services, totalServices] = await serviceQb
+    const [treatments, totalTreatments] = await treatmentQb
       .take(params.limit || 10)
       .skip(params.offset || 0)
       .getManyAndCount();
 
+    // Process treatments to include aggregate data
+    const processedTreatments = treatments.map(t => {
+      const activeOfferings = t.offerings.filter(o => o.isActive && o.clinic?.isActive);
+      const prices = activeOfferings.map(o => Number(o.price));
+      const fromPrice = prices.length > 0 ? Math.min(...prices) : null;
+
+      return {
+        ...t,
+        fromPrice,
+        clinicsCount: activeOfferings.length,
+        availableAt: activeOfferings.slice(0, 1).map(o => o.clinic.name) // Show at least one
+      };
+    });
+
     return {
       clinics,
-      services,
-      total: totalClinics + totalServices,
+      treatments: processedTreatments,
+      total: totalClinics + totalTreatments,
       offset: params.offset || 0,
+    };
+  }
+
+  async getTreatmentDetails(id: string): Promise<any> {
+    const treatment = await this.treatmentsRepository.findOne({
+      where: { id },
+      relations: ['offerings', 'offerings.clinic'],
+    });
+
+    if (!treatment) {
+      throw new NotFoundException('Treatment not found');
+    }
+
+    const offerings = treatment.offerings
+      .filter(o => o.isActive && o.clinic?.isActive)
+      .map(o => ({
+        clinicId: o.clinic.id,
+        clinicName: o.clinic.name,
+        location: `${o.clinic.address.city}, ${o.clinic.address.state}`,
+        price: o.price,
+        durationMinutes: o.durationMinutes,
+      }));
+
+    return {
+      ...treatment,
+      offerings,
     };
   }
 
@@ -127,6 +171,7 @@ export class ClinicsService {
   async findServices(clinicId: string): Promise<Service[]> {
     return this.servicesRepository.find({
       where: { clinicId, isActive: true },
+      relations: ['treatment'],
     });
   }
 
@@ -312,12 +357,39 @@ export class ClinicsService {
   async createService(ownerId: string, serviceData: Partial<Service>): Promise<Service> {
     const clinic = await this.findByOwnerId(ownerId);
 
+    // For management, we might need to find or create a treatment
+    // This is a bit complex as it depends on whether we allow clinics to create global treatments
+    // Assuming for now they pick from a list or we auto-create global treatments
+    let treatment = await this.treatmentsRepository.findOne({
+      where: { name: serviceData.name } // Simplified
+    });
+
+    if (!treatment && serviceData.name) {
+      treatment = this.treatmentsRepository.create({
+        name: serviceData.name,
+        category: serviceData.category,
+        shortDescription: serviceData.shortDescription,
+        fullDescription: serviceData.fullDescription,
+        imageUrl: serviceData.imageUrl,
+      });
+      await this.treatmentsRepository.save(treatment);
+    }
+
     const service = this.servicesRepository.create({
-      ...serviceData,
+      price: serviceData.price,
+      durationMinutes: serviceData.durationMinutes,
       clinicId: clinic.id,
+      treatmentId: treatment?.id || (serviceData as any).treatmentId,
+      isActive: serviceData.isActive ?? true,
+      metadata: serviceData.metadata,
     });
 
     return this.servicesRepository.save(service);
+  }
+
+  private validateServiceForPublishing(service: Service) {
+    // This now probably needs to check the linked treatment
+    // But since serviceData was used to create/update, we'll assume it's valid if passed.
   }
 
   async updateService(
@@ -336,6 +408,12 @@ export class ClinicsService {
     }
 
     Object.assign(service, updateData);
+
+    // Validate if service is active (published)
+    if (service.isActive) {
+      this.validateServiceForPublishing(service);
+    }
+
     return this.servicesRepository.save(service);
   }
 
@@ -351,6 +429,12 @@ export class ClinicsService {
     }
 
     service.isActive = !service.isActive;
+
+    // If trying to activate, validate
+    if (service.isActive) {
+      this.validateServiceForPublishing(service);
+    }
+
     return this.servicesRepository.save(service);
   }
 

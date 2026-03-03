@@ -10,7 +10,6 @@ import {
   Edit2,
   ToggleLeft,
   ToggleRight,
-  DollarSign,
   Clock,
   X,
 } from "lucide-react";
@@ -100,14 +99,25 @@ const ServicesPage: React.FC = () => {
               {/* Service Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                    {service.name}
-                  </h3>
-                  {service.category && (
-                    <span className="inline-block px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                      {service.category}
-                    </span>
-                  )}
+                  <div className="flex gap-3">
+                    {service.treatment?.imageUrl && (
+                      <img
+                        src={service.treatment.imageUrl}
+                        alt={service.treatment?.name}
+                        className="size-12 rounded-lg object-cover border border-gray-100 shadow-sm"
+                      />
+                    )}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        {service.treatment?.name}
+                      </h3>
+                      {service.treatment?.category && (
+                        <span className="inline-block px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                          {service.treatment.category}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 {canManage && (
                   <button
@@ -123,12 +133,19 @@ const ServicesPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Description */}
-              {service.description && (
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                  {service.description}
-                </p>
-              )}
+              {/* Descriptions */}
+              <div className="space-y-2 mb-4">
+                {service.treatment?.shortDescription && (
+                  <p className="text-sm font-medium text-gray-800 line-clamp-1 italic">
+                    {service.treatment.shortDescription}
+                  </p>
+                )}
+                {service.treatment?.fullDescription && (
+                  <p className="text-xs text-gray-600 line-clamp-2">
+                    {service.treatment.fullDescription}
+                  </p>
+                )}
+              </div>
 
               {/* Price & Duration */}
               <div className="flex items-center justify-between mb-4">
@@ -196,11 +213,13 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   onSave,
 }) => {
   const [formData, setFormData] = useState<CreateServiceDto>({
-    name: service?.name || "",
-    description: service?.description || "",
+    name: service?.treatment?.name || "",
+    shortDescription: service?.treatment?.shortDescription || "",
+    fullDescription: service?.treatment?.fullDescription || "",
     price: service?.price || 0,
     durationMinutes: service?.durationMinutes || 60,
-    category: service?.category || "",
+    category: service?.treatment?.category || "Other",
+    imageUrl: service?.treatment?.imageUrl || "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -209,6 +228,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      if (!formData.category) {
+        alert("Please select a treatment category.");
+        setIsSubmitting(false);
+        return;
+      }
+
       if (service) {
         await clinicApi.services.update(service.id, formData);
       } else {
@@ -258,18 +283,37 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               />
             </div>
 
-            {/* Description */}
+            {/* Short Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
+                Short Description (1-2 lines) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.shortDescription}
+                onChange={(e) =>
+                  setFormData({ ...formData, shortDescription: e.target.value })
+                }
+                placeholder="Brief summary for treatment cards"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            {/* Full Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Full Description <span className="text-red-500">*</span>
               </label>
               <textarea
-                value={formData.description}
+                value={formData.fullDescription}
                 onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
+                  setFormData({ ...formData, fullDescription: e.target.value })
                 }
-                rows={3}
+                rows={4}
+                placeholder="Comprehensive details shown on the detail page"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                required
               />
             </div>
 
@@ -283,11 +327,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.price}
+                  value={formData.price || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      price: parseFloat(e.target.value),
+                      price: e.target.value === "" ? 0 : parseFloat(e.target.value),
                     })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -301,11 +345,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 <input
                   type="number"
                   min="0"
-                  value={formData.durationMinutes}
+                  value={formData.durationMinutes || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      durationMinutes: parseInt(e.target.value),
+                      durationMinutes: e.target.value === "" ? 0 : parseInt(e.target.value),
                     })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -317,17 +361,48 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             {/* Category */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
+                Category <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.category}
                 onChange={(e) =>
                   setFormData({ ...formData, category: e.target.value })
                 }
-                placeholder="e.g., Botox, Fillers, Skin Care"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              >
+                <option value="">Select a category</option>
+                <option value="Hair Removal">Hair Removal</option>
+                <option value="Injectables">Injectables</option>
+                <option value="Skin Care">Skin Care</option>
+                <option value="Body">Body</option>
+                <option value="Surgery">Surgery</option>
+                <option value="Dental">Dental</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {/* Image URL */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Image URL (Required to Publish) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.imageUrl}
+                onChange={(e) =>
+                  setFormData({ ...formData, imageUrl: e.target.value })
+                }
+                placeholder="https://example.com/image.jpg"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
               />
+              {formData.imageUrl && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500 mb-1">Preview:</p>
+                  <img src={formData.imageUrl} alt="Preview" className="h-20 w-auto rounded-lg border border-gray-200" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -343,8 +418,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors font-medium disabled:opacity-50"
-              disabled={isSubmitting}
+              className="flex-1 px-6 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting || !formData.category}
             >
               {isSubmitting
                 ? "Saving..."

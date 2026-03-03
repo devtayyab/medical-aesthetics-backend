@@ -26,7 +26,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
 
   // Filter services if there is a specific search query
   const displayServices = clinic.services?.filter(s =>
-    !searchQuery || s.name.toLowerCase().includes(searchQuery.toLowerCase())
+    !searchQuery || s.treatment?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 3) || [];
 
   return (
@@ -88,7 +88,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
                 className="flex items-center justify-between gap-4 group/service hover:bg-gray-50 -mx-3 px-3 py-2 rounded-xl transition-colors cursor-pointer"
               >
                 <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-bold text-gray-800 truncate group-hover/service:text-black hover:underline">{service.name}</h4>
+                  <h4 className="text-sm font-bold text-gray-800 truncate group-hover/service:text-black hover:underline">{service.treatment?.name}</h4>
                   <p className="text-[12px] text-gray-500 mt-0.5">{service.durationMinutes} mins</p>
                 </div>
                 <div className="text-right shrink-0">

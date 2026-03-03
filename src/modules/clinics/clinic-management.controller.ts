@@ -26,6 +26,8 @@ import {
   RecordPaymentDto,
   AvailabilitySettingsDto,
   ClinicAnalyticsQueryDto,
+  CreateServiceDto,
+  UpdateServiceDto,
 } from './dto/clinic.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -367,7 +369,7 @@ export class ClinicManagementController {
   @ApiOperation({ summary: 'Create new service/treatment' })
   @ApiResponse({ status: 201, description: 'Service created successfully' })
   async createService(
-    @Body() createServiceDto: any,
+    @Body() createServiceDto: CreateServiceDto,
     @Request() req,
   ) {
     return this.clinicsService.createService(req.user.id, createServiceDto);
@@ -379,7 +381,7 @@ export class ClinicManagementController {
   @ApiResponse({ status: 200, description: 'Service updated successfully' })
   async updateService(
     @Param('id') id: string,
-    @Body() updateServiceDto: any,
+    @Body() updateServiceDto: UpdateServiceDto,
     @Request() req,
   ) {
     return this.clinicsService.updateService(req.user.id, id, updateServiceDto);

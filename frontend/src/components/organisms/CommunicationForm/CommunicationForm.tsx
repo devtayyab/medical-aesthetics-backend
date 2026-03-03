@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Phone, Mail, MessageSquare, AlertCircle, CheckCircle, Clock, User } from 'lucide-react';
+import { Phone, AlertCircle, CheckCircle, Clock, User } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Select } from '@/components/atoms/Select/Select';
@@ -206,7 +206,7 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
                 label="Duration (sec)"
                 type="number"
                 value={formData.durationSeconds || ''}
-                onChange={(e) => handleInputChange('durationSeconds', parseInt(e.target.value))}
+                onChange={(e) => handleInputChange('durationSeconds', e.target.value === '' ? 0 : parseInt(e.target.value))}
                 placeholder={Math.floor((Date.now() - startTime) / 1000).toString()}
                 className="bg-white"
               />
@@ -267,7 +267,7 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
             label="Estimated Cost"
             type="number"
             value={formData.metadata?.cost || ''}
-            onChange={(e) => handleInputChange('metadata.cost', parseFloat(e.target.value))}
+            onChange={(e) => handleInputChange('metadata.cost', e.target.value === '' ? 0 : parseFloat(e.target.value))}
             placeholder="0.00"
             required={requiredFields?.cost}
             error={validationErrors.find((error) => error === 'cost')}

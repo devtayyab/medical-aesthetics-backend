@@ -308,14 +308,7 @@ export const Header: React.FC = () => {
 
   return (
     <header className="bg-[#000000] py-4 sm:py-6 sticky top-0 z-50 border-b border-white/5 backdrop-blur-md">
-      <div
-        className={css`
-          ${containerStyle};
-          ${clinicRoles.includes(user?.role || "")
-            ? "justify-content: center;"
-            : ""}
-        `}
-      >
+      <div className={containerStyle}>
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
