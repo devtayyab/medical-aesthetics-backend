@@ -1,17 +1,16 @@
 import React, { useState } from "react";
 import { css } from "@emotion/css";
-import { Plus, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/atoms/Button/Button";
 import type { Service } from "@/types";
 
-const serviceRow = (isSelected: boolean) => css`
+const serviceRow = () => css`
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 24px 0;
   background: white;
   transition: all 0.2s ease;
-  ${isSelected && 'background: #fdfdfd;'}
 `;
 
 const descriptionStyle = css`
@@ -24,40 +23,30 @@ const descriptionStyle = css`
 
 export const ServiceCard: React.FC<{
   service: Service;
-  isSelected?: boolean;
-  onAdd?: (service: Service) => void;
-  onRemove?: (serviceId: string) => void;
-}> = ({ service, isSelected = false, onAdd, onRemove }) => {
+  onBook?: (service: Service) => void;
+}> = ({ service, onBook }) => {
   const [showDetails, setShowDetails] = useState(false);
-
-  const handleToggle = () => {
-    if (isSelected) {
-      onRemove?.(service.id);
-    } else {
-      onAdd?.(service);
-    }
-  };
 
   return (
     <div className="group">
-      <div className={serviceRow(isSelected)}>
+      <div className={serviceRow()}>
         <div className="flex-1 pr-6">
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 bg-lime-50 text-[10px] font-black uppercase text-lime-600 rounded-md border border-lime-100">
-              {service.category}
+              {service.treatment?.category || service.category || 'Treatment'}
             </span>
           </div>
           <div className="flex gap-4">
-            {service.imageUrl && (
+            {(service.treatment?.imageUrl || service.imageUrl) && (
               <img
-                src={service.imageUrl}
-                alt={service.name}
+                src={(service.treatment?.imageUrl || service.imageUrl) as string}
+                alt={service.treatment?.name || service.name}
                 className="size-16 rounded-xl object-cover border border-gray-100 shadow-sm"
               />
             )}
             <div>
               <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-1 group-hover:text-lime-600 transition-colors">
-                {service.name}
+                {service.treatment?.name || service.name || 'Treatment'}
               </h4>
               <p className="text-xs text-gray-500 mb-2 line-clamp-2 max-w-md">
                 {service.description || service.treatment?.shortDescription}
@@ -88,11 +77,10 @@ export const ServiceCard: React.FC<{
           </div>
 
           <Button
-            onClick={handleToggle}
-            className={`size-12 rounded-2xl flex items-center justify-center p-0 transition-all ${isSelected ? 'bg-black text-white' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-              }`}
+            onClick={() => onBook?.(service)}
+            className="px-6 h-12 rounded-xl bg-gray-900 text-white hover:bg-lime-500 transition-colors font-black uppercase tracking-widest text-xs shadow-md"
           >
-            {isSelected ? <Check size={20} /> : <Plus size={20} />}
+            Book
           </Button>
         </div>
       </div>

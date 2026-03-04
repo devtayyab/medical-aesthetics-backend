@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { searchClinics } from "@/store/slices/clientSlice";
@@ -19,6 +19,54 @@ export const Search: React.FC = () => {
 
   const [showDesktopMap, setShowDesktopMap] = useState<boolean>(true);
   const [showMobileMap, setShowMobileMap] = useState<boolean>(false);
+
+  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('treatments');
+
+  // Filter and Sort states
+  const [sortBy, setSortBy] = useState<'recommended' | 'price-asc' | 'price-desc' | 'rating'>('recommended');
+  const [priceFilter, setPriceFilter] = useState<'any' | 'under-50' | '50-100' | 'over-100'>('any');
+  const [ratingFilter, setRatingFilter] = useState<'any' | '4.5-plus' | '4.0-plus'>('any');
+
+  const [openDropdown, setOpenDropdown] = useState<'sort' | 'price' | 'rating' | null>(null);
+
+  // Computed lists
+  const filteredTreatments = useMemo(() => {
+    let result = [...treatments];
+
+    // Filter
+    if (priceFilter !== 'any') {
+      result = result.filter(t => {
+        const price = t.fromPrice || 0;
+        if (priceFilter === 'under-50') return price < 50;
+        if (priceFilter === '50-100') return price >= 50 && price <= 100;
+        if (priceFilter === 'over-100') return price > 100;
+        return true;
+      });
+    }
+
+    // Sort
+    if (sortBy === 'price-asc') result.sort((a, b) => (a.fromPrice || 0) - (b.fromPrice || 0));
+    if (sortBy === 'price-desc') result.sort((a, b) => (b.fromPrice || 0) - (a.fromPrice || 0));
+    return result;
+  }, [treatments, sortBy, priceFilter]);
+
+  const filteredClinics = useMemo(() => {
+    let result = [...clinics];
+
+    // Filter
+    if (ratingFilter !== 'any') {
+      result = result.filter(c => {
+        const r = c.rating || 4.9;
+        if (ratingFilter === '4.5-plus') return r >= 4.5;
+        if (ratingFilter === '4.0-plus') return r >= 4.0;
+        return true;
+      });
+    }
+
+    // Sort
+    if (sortBy === 'rating') result.sort((a, b) => (b.rating || 4.9) - (a.rating || 4.9));
+    return result;
+  }, [clinics, sortBy, ratingFilter]);
 
   const query = searchParams.get("q") || "";
   const location = searchParams.get("location") || "";
@@ -78,16 +126,60 @@ export const Search: React.FC = () => {
         </div>
 
         {/* Filter Chips Row */}
-        <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center gap-3 overflow-x-auto no-scrollbar border-t border-gray-100">
-          <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold text-gray-700 hover:border-black transition-colors whitespace-nowrap">
-            Sort by: Recommended <FaChevronDown size={10} />
-          </button>
-          <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold text-gray-700 hover:border-black transition-colors whitespace-nowrap">
-            Price range <FaChevronDown size={10} />
-          </button>
-          <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold text-gray-700 hover:border-black transition-colors whitespace-nowrap">
-            Rating <FaChevronDown size={10} />
-          </button>
+        <div className="max-w-[1600px] mx-auto px-4 py-3 flex flex-wrap items-center gap-3 border-t border-gray-100 relative">
+
+          <div className="relative">
+            <button
+              onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-bold transition-colors whitespace-nowrap ${sortBy !== 'recommended' ? 'border-lime-500 bg-lime-50 text-lime-800' : 'border-gray-300 text-gray-700 hover:border-black'}`}
+            >
+              Sort by: {sortBy === 'recommended' ? 'Recommended' : sortBy === 'price-asc' ? 'Price: Low' : sortBy === 'price-desc' ? 'Price: High' : 'Rating'} <FaChevronDown size={10} />
+            </button>
+            {openDropdown === 'sort' && (
+              <div className="absolute top-10 left-0 bg-white border border-gray-200 rounded-xl shadow-xl w-48 py-2 z-50">
+                {(['recommended', 'price-asc', 'price-desc', 'rating'] as const).map(option => (
+                  <button key={option} className={`block w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 ${sortBy === option ? 'text-lime-700 font-bold' : 'text-gray-700'}`}
+                    onClick={() => { setSortBy(option); setOpenDropdown(null); }}
+                  >
+                    {option === 'recommended' ? 'Recommended' : option === 'price-asc' ? 'Price: Low to High' : option === 'price-desc' ? 'Price: High to Low' : 'Highest Rating'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => setOpenDropdown(openDropdown === 'price' ? null : 'price')}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-bold transition-colors whitespace-nowrap ${priceFilter !== 'any' ? 'border-lime-500 bg-lime-50 text-lime-800' : 'border-gray-300 text-gray-700 hover:border-black'}`}
+            >
+              Price range {priceFilter !== 'any' && `(${priceFilter.replace('-', ' ')})`} <FaChevronDown size={10} />
+            </button>
+            {openDropdown === 'price' && (
+              <div className="absolute top-10 left-0 bg-white border border-gray-200 rounded-xl shadow-xl w-40 py-2 z-50">
+                <button className={`block w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 ${priceFilter === 'any' ? 'text-lime-700 font-bold' : 'text-gray-700'}`} onClick={() => { setPriceFilter('any'); setOpenDropdown(null); }}>Any price</button>
+                <button className={`block w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 ${priceFilter === 'under-50' ? 'text-lime-700 font-bold' : 'text-gray-700'}`} onClick={() => { setPriceFilter('under-50'); setOpenDropdown(null); }}>Under £50</button>
+                <button className={`block w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 ${priceFilter === '50-100' ? 'text-lime-700 font-bold' : 'text-gray-700'}`} onClick={() => { setPriceFilter('50-100'); setOpenDropdown(null); }}>£50 - £100</button>
+                <button className={`block w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 ${priceFilter === 'over-100' ? 'text-lime-700 font-bold' : 'text-gray-700'}`} onClick={() => { setPriceFilter('over-100'); setOpenDropdown(null); }}>Over £100</button>
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => setOpenDropdown(openDropdown === 'rating' ? null : 'rating')}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-bold transition-colors whitespace-nowrap ${ratingFilter !== 'any' ? 'border-lime-500 bg-lime-50 text-lime-800' : 'border-gray-300 text-gray-700 hover:border-black'}`}
+            >
+              Rating {ratingFilter !== 'any' && `(${ratingFilter.split('-')[0]}+)`} <FaChevronDown size={10} />
+            </button>
+            {openDropdown === 'rating' && (
+              <div className="absolute top-10 left-0 bg-white border border-gray-200 rounded-xl shadow-xl w-32 py-2 z-50">
+                <button className={`block w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 ${ratingFilter === 'any' ? 'text-lime-700 font-bold' : 'text-gray-700'}`} onClick={() => { setRatingFilter('any'); setOpenDropdown(null); }}>Any rating</button>
+                <button className={`block w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 ${ratingFilter === '4.0-plus' ? 'text-lime-700 font-bold' : 'text-gray-700'}`} onClick={() => { setRatingFilter('4.0-plus'); setOpenDropdown(null); }}>4.0+ Stars</button>
+                <button className={`block w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 ${ratingFilter === '4.5-plus' ? 'text-lime-700 font-bold' : 'text-gray-700'}`} onClick={() => { setRatingFilter('4.5-plus'); setOpenDropdown(null); }}>4.5+ Stars</button>
+              </div>
+            )}
+          </div>
           {searchDate && (
             <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border-2 border-lime-500 bg-lime-50 text-sm font-bold text-lime-800 whitespace-nowrap">
               Available on {getDisplayDate()}
@@ -133,55 +225,90 @@ export const Search: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-8">
-              {/* Treatments Section */}
-              {treatments.length > 0 && (
-                <div className="space-y-4">
-                  <h2 className="text-lg font-black uppercase tracking-widest text-gray-400 flex items-center gap-3">
-                    <span className="w-10 h-[2px] bg-gray-200"></span>
-                    Treatments
-                  </h2>
-                  <div className="flex flex-col gap-6">
-                    {treatments.map((treatment) => (
-                      <TreatmentCard
-                        key={treatment.id}
-                        treatment={treatment}
-                        onSelect={() => navigate(`/treatment/${treatment.id}`)}
-                      />
-                    ))}
-                  </div>
+            <div className="flex flex-col gap-6">
+              {/* Tab Navigation */}
+              <div className="flex gap-8 border-b border-gray-100 pb-0">
+                <button
+                  onClick={() => setActiveTab('treatments')}
+                  className={`pb-4 text-sm font-black uppercase tracking-widest transition-all relative ${activeTab === 'treatments'
+                    ? 'text-gray-900'
+                    : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                >
+                  Treatments <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full ml-1 text-gray-500">{filteredTreatments.length}</span>
+                  {activeTab === 'treatments' && (
+                    <span className="absolute bottom-0 left-0 w-full h-[3px] bg-lime-500 rounded-t-lg"></span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveTab('clinics')}
+                  className={`pb-4 text-sm font-black uppercase tracking-widest transition-all relative ${activeTab === 'clinics'
+                    ? 'text-gray-900'
+                    : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                >
+                  Clinics <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full ml-1 text-gray-500">{filteredClinics.length}</span>
+                  {activeTab === 'clinics' && (
+                    <span className="absolute bottom-0 left-0 w-full h-[3px] bg-lime-500 rounded-t-lg"></span>
+                  )}
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              {activeTab === 'treatments' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  {filteredTreatments.length > 0 ? (
+                    <div className="flex flex-col gap-6">
+                      {filteredTreatments.map((treatment) => (
+                        <TreatmentCard
+                          key={treatment.id}
+                          treatment={treatment}
+                          onSelect={() => {
+                            if (treatment.clinicsCount === 1 && treatment.singleClinicId && treatment.singleServiceId) {
+                              navigate(`/appointment/booking?clinicId=${treatment.singleClinicId}&serviceIds=${treatment.singleServiceId}`);
+                            } else {
+                              navigate(`/treatment/${treatment.id}`);
+                            }
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                      <div className="size-20 bg-white rounded-full flex items-center justify-center text-gray-200 mx-auto mb-4 border border-gray-100 shadow-sm">
+                        <FaList size={32} />
+                      </div>
+                      <h3 className="text-xl font-black text-gray-400 uppercase">No treatments found</h3>
+                      <p className="text-gray-400 text-sm mt-2 font-medium">Try adjusting your category or keyword.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Clinics Section */}
-              {clinics.length > 0 && (
-                <div className="space-y-4">
-                  <h2 className="text-lg font-black uppercase tracking-widest text-gray-400 flex items-center gap-3">
-                    <span className="w-10 h-[2px] bg-gray-200"></span>
-                    Clinics
-                  </h2>
-                  <div className="flex flex-col gap-6">
-                    {clinics.map((clinic, index) => (
-                      <ClinicCard
-                        key={clinic.id}
-                        clinic={clinic}
-                        index={index}
-                        onSelect={() => navigate(`/clinic/${clinic.id}`)}
-                        searchQuery={query}
-                        searchDate={searchDate}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {clinics.length === 0 && treatments.length === 0 && (
-                <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                  <div className="size-20 bg-white rounded-full flex items-center justify-center text-gray-200 mx-auto mb-4 border border-gray-100 shadow-sm">
-                    <FaHospital size={32} />
-                  </div>
-                  <h3 className="text-xl font-black text-gray-400 uppercase">No results found</h3>
-                  <p className="text-gray-400 text-sm mt-2 font-medium">Try adjusting your area or keyword.</p>
+              {activeTab === 'clinics' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  {filteredClinics.length > 0 ? (
+                    <div className="flex flex-col gap-6">
+                      {filteredClinics.map((clinic, index) => (
+                        <ClinicCard
+                          key={clinic.id}
+                          clinic={clinic}
+                          index={index}
+                          onSelect={() => navigate(`/clinic/${clinic.id}`)}
+                          searchQuery={query}
+                          searchDate={searchDate}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                      <div className="size-20 bg-white rounded-full flex items-center justify-center text-gray-200 mx-auto mb-4 border border-gray-100 shadow-sm">
+                        <FaHospital size={32} />
+                      </div>
+                      <h3 className="text-xl font-black text-gray-400 uppercase">No clinics found</h3>
+                      <p className="text-gray-400 text-sm mt-2 font-medium">Try adjusting your area or keyword.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

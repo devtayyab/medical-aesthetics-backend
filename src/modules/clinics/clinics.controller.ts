@@ -1,5 +1,9 @@
-import { Controller, Get, Param, Query, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, Body, UseGuards, Request, Patch } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { ReviewStatus } from './enums/review-status.enum';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ClinicsService } from './clinics.service';
 
@@ -53,6 +57,15 @@ export class ClinicsController {
     return this.clinicsService.getServiceProviders(clinicId, serviceId);
   }
 
+  @Get(':id/reviews')
+  @ApiOperation({ summary: 'Get approved reviews for a clinic' })
+  async getPublicReviews(
+    @Param('id') id: string,
+    @Query() query: any,
+  ) {
+    return this.clinicsService.getPublicReviews(id, query);
+  }
+
   @Post(':id/reviews')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Create a review for a clinic' })
@@ -67,6 +80,31 @@ export class ClinicsController {
       body.rating,
       body.comment,
       body.appointmentId,
+    );
+  }
+
+  @Get('reviews/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get pending reviews for moderation' })
+  async getPendingReviews(@Query() query: any) {
+    return this.clinicsService.getPendingReviews(query);
+  }
+
+  @Patch('reviews/:id/moderate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Moderate a review' })
+  async moderateReview(
+    @Param('id') id: string,
+    @Body() body: { status: ReviewStatus; rejectReason?: string },
+    @Request() req,
+  ) {
+    return this.clinicsService.moderateReview(
+      req.user.id,
+      id,
+      body.status,
+      body.rejectReason,
     );
   }
 }

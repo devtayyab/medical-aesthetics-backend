@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { User } from '../modules/users/entities/user.entity';
 import { Clinic } from '../modules/clinics/entities/clinic.entity';
 import { Service } from '../modules/clinics/entities/service.entity';
+import { Treatment } from '../modules/clinics/entities/treatment.entity';
 import { Review } from '../modules/clinics/entities/review.entity';
 import { Lead, CrmAction, CustomerRecord } from '../modules/crm/entities';
 import { Tag } from '../modules/admin/entities/tag.entity';
@@ -42,6 +43,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         User,
         Clinic,
         Service,
+        Treatment,
         Lead,
         CommunicationLog,
         CustomerRecord,

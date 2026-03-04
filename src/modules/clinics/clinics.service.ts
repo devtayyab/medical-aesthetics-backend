@@ -3,6 +3,8 @@ import {
   CreateClinicProfileDto,
   UpdateClinicProfileDto,
   AvailabilitySettingsDto,
+  CreateServiceDto,
+  UpdateServiceDto,
 } from './dto/clinic.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Clinic } from './entities/clinic.entity';
@@ -13,6 +15,8 @@ import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { Appointment } from '../bookings/entities/appointment.entity';
+import { ReviewStatus } from './enums/review-status.enum';
+import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 
@@ -57,7 +61,7 @@ export class ClinicsService {
 
     if (params.search) {
       clinicQb.andWhere(
-        '(clinic.name ILIKE :search OR clinic.description ILIKE :search)',
+        '(clinic.name ILIKE :search OR clinic.description ILIKE :search OR treatment.name ILIKE :search)',
         { search: `%${params.search}%` }
       );
     }
@@ -110,7 +114,9 @@ export class ClinicsService {
         ...t,
         fromPrice,
         clinicsCount: activeOfferings.length,
-        availableAt: activeOfferings.slice(0, 1).map(o => o.clinic.name) // Show at least one
+        availableAt: activeOfferings.slice(0, 1).map(o => o.clinic.name), // Show at least one
+        singleClinicId: activeOfferings.length === 1 ? activeOfferings[0].clinicId : undefined,
+        singleServiceId: activeOfferings.length === 1 ? activeOfferings[0].id : undefined
       };
     });
 
@@ -135,6 +141,7 @@ export class ClinicsService {
     const offerings = treatment.offerings
       .filter(o => o.isActive && o.clinic?.isActive)
       .map(o => ({
+        id: o.id,
         clinicId: o.clinic.id,
         clinicName: o.clinic.name,
         location: `${o.clinic.address.city}, ${o.clinic.address.state}`,
@@ -159,7 +166,7 @@ export class ClinicsService {
 
   async findById(id: string): Promise<Clinic> {
     const clinic = await this.clinicsRepository.findOne({
-      where: { id },
+      where: { id, isActive: true },
       relations: ['services'],
     });
     if (!clinic) {
@@ -170,7 +177,7 @@ export class ClinicsService {
 
   async findServices(clinicId: string): Promise<Service[]> {
     return this.servicesRepository.find({
-      where: { clinicId, isActive: true },
+      where: { clinicId, isActive: true, treatment: { isActive: true } },
       relations: ['treatment'],
     });
   }
@@ -354,7 +361,7 @@ export class ClinicsService {
     });
   }
 
-  async createService(ownerId: string, serviceData: Partial<Service>): Promise<Service> {
+  async createService(ownerId: string, serviceData: CreateServiceDto): Promise<Service> {
     const clinic = await this.findByOwnerId(ownerId);
 
     // For management, we might need to find or create a treatment
@@ -380,7 +387,7 @@ export class ClinicsService {
       durationMinutes: serviceData.durationMinutes,
       clinicId: clinic.id,
       treatmentId: treatment?.id || (serviceData as any).treatmentId,
-      isActive: serviceData.isActive ?? true,
+      isActive: (serviceData as any).isActive ?? true,
       metadata: serviceData.metadata,
     });
 
@@ -395,19 +402,36 @@ export class ClinicsService {
   async updateService(
     ownerId: string,
     serviceId: string,
-    updateData: Partial<Service>,
+    updateData: UpdateServiceDto,
   ): Promise<Service> {
     const clinic = await this.findByOwnerId(ownerId);
 
     const service = await this.servicesRepository.findOne({
       where: { id: serviceId, clinicId: clinic.id },
+      relations: ['treatment'],
     });
 
     if (!service) {
       throw new NotFoundException('Service not found');
     }
 
-    Object.assign(service, updateData);
+    if (updateData.price !== undefined) service.price = updateData.price;
+    if (updateData.durationMinutes !== undefined) service.durationMinutes = updateData.durationMinutes;
+    if (updateData.isActive !== undefined) service.isActive = updateData.isActive;
+    if (updateData.metadata !== undefined) service.metadata = updateData.metadata;
+
+    if (service.treatment) {
+      let treatmentUpdated = false;
+      if (updateData.name !== undefined) { service.treatment.name = updateData.name; treatmentUpdated = true; }
+      if (updateData.shortDescription !== undefined) { service.treatment.shortDescription = updateData.shortDescription; treatmentUpdated = true; }
+      if (updateData.fullDescription !== undefined) { service.treatment.fullDescription = updateData.fullDescription; treatmentUpdated = true; }
+      if (updateData.category !== undefined) { service.treatment.category = updateData.category; treatmentUpdated = true; }
+      if (updateData.imageUrl !== undefined) { service.treatment.imageUrl = updateData.imageUrl; treatmentUpdated = true; }
+
+      if (treatmentUpdated) {
+        await this.treatmentsRepository.save(service.treatment);
+      }
+    }
 
     // Validate if service is active (published)
     if (service.isActive) {
@@ -438,6 +462,28 @@ export class ClinicsService {
     return this.servicesRepository.save(service);
   }
 
+  async getPublicReviews(clinicId: string, query?: { limit?: number; offset?: number }): Promise<any> {
+    const queryBuilder = this.reviewsRepository.createQueryBuilder('review')
+      .leftJoinAndSelect('review.client', 'client')
+      .where('review.clinicId = :clinicId AND review.status = :status', {
+        clinicId,
+        status: ReviewStatus.APPROVED,
+      })
+      .orderBy('review.createdAt', 'DESC');
+
+    if (query?.limit) queryBuilder.limit(query.limit);
+    if (query?.offset) queryBuilder.offset(query.offset);
+
+    const [reviews, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      reviews,
+      total,
+      limit: query?.limit,
+      offset: query?.offset || 0,
+    };
+  }
+
   // Review Management
   async getClinicReviews(ownerId: string, query?: { limit?: number; offset?: number }): Promise<any> {
     const clinic = await this.findByOwnerId(ownerId);
@@ -459,13 +505,13 @@ export class ClinicsService {
     const reviews = await queryBuilder.getMany();
     const total = await queryBuilder.getCount();
 
-    // Calculate average rating
+    // Calculate average rating from approved reviews only
     const avgRating = await this.reviewsRepository
       .createQueryBuilder('review')
       .select('AVG(review.rating)', 'avgRating')
-      .where('review.clinicId = :clinicId AND review.isVisible = :isVisible', {
+      .where('review.clinicId = :clinicId AND review.status = :status', {
         clinicId: clinic.id,
-        isVisible: true,
+        status: ReviewStatus.APPROVED,
       })
       .getRawOne();
 
@@ -498,23 +544,122 @@ export class ClinicsService {
     return this.reviewsRepository.save(review);
   }
 
-  async toggleReviewVisibility(
-    ownerId: string,
+  async moderateReview(
+    adminUserId: string,
     reviewId: string,
+    status: ReviewStatus,
+    rejectReason?: string,
   ): Promise<Review> {
-    const clinic = await this.findByOwnerId(ownerId);
-
     const review = await this.reviewsRepository.findOne({
-      where: { id: reviewId, clinicId: clinic.id },
+      where: { id: reviewId },
+      relations: ['clinic'],
     });
 
     if (!review) {
       throw new NotFoundException('Review not found');
     }
 
-    review.isVisible = !review.isVisible;
-    return this.reviewsRepository.save(review);
+    review.status = status;
+    if (status === ReviewStatus.APPROVED) {
+      review.approvedById = adminUserId;
+      review.approvedAt = new Date();
+      review.rejectReason = null;
+    } else if (status === ReviewStatus.REJECTED) {
+      review.rejectReason = rejectReason;
+      review.approvedById = null;
+      review.approvedAt = null;
+    }
+
+    const savedReview = await this.reviewsRepository.save(review);
+
+    // Recalculate clinic rating immediately
+    await this.recalculateClinicRating(review.clinicId);
+
+    return savedReview;
   }
+
+  async toggleReviewVisibility(ownerId: string, reviewId: string): Promise<Review> {
+    // 1. Find the clinic managed by this user (owner or agent)
+    const clinic = await this.findByOwnerId(ownerId);
+    if (!clinic) {
+      throw new NotFoundException('Clinic not found for this user');
+    }
+
+    // 2. Find the review and ensure it belongs to this clinic
+    const review = await this.reviewsRepository.findOne({
+      where: { id: reviewId },
+      relations: ['clinic'],
+    });
+
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+
+    if (review.clinicId !== clinic.id) {
+      throw new BadRequestException('Review does not belong to your clinic');
+    }
+
+    // 3. Toggle status
+    if (review.status === ReviewStatus.APPROVED) {
+      review.status = ReviewStatus.REJECTED;
+      review.approvedById = null;
+      review.approvedAt = null;
+    } else {
+      review.status = ReviewStatus.APPROVED;
+      review.approvedById = ownerId;
+      review.approvedAt = new Date();
+      review.rejectReason = null;
+    }
+
+    const savedReview = await this.reviewsRepository.save(review);
+
+    // 4. Recalculate clinic rating immediately
+    await this.recalculateClinicRating(clinic.id);
+
+    return savedReview;
+  }
+
+
+  async getPendingReviews(query?: { limit?: number; offset?: number }): Promise<any> {
+    const queryBuilder = this.reviewsRepository.createQueryBuilder('review')
+      .leftJoinAndSelect('review.client', 'client')
+      .leftJoinAndSelect('review.clinic', 'clinic')
+      .leftJoinAndSelect('review.appointment', 'appointment')
+      .where('review.status = :status', { status: ReviewStatus.PENDING })
+      .orderBy('review.createdAt', 'DESC');
+
+    if (query?.limit) queryBuilder.limit(query.limit);
+    if (query?.offset) queryBuilder.offset(query.offset);
+
+    const [reviews, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      reviews,
+      total,
+      limit: query?.limit,
+      offset: query?.offset || 0,
+    };
+  }
+
+  async recalculateClinicRating(clinicId: string): Promise<void> {
+    const stats = await this.reviewsRepository
+      .createQueryBuilder('review')
+      .select([
+        'COUNT(review.id) as count',
+        'AVG(review.rating) as avg',
+      ])
+      .where('review.clinicId = :clinicId AND review.status = :status', {
+        clinicId,
+        status: ReviewStatus.APPROVED,
+      })
+      .getRawOne();
+
+    await this.clinicsRepository.update(clinicId, {
+      rating: parseFloat(stats.avg || '0'),
+      reviewCount: parseInt(stats.count || '0'),
+    });
+  }
+
 
   async getReviewStatistics(ownerId: string): Promise<any> {
     const clinic = await this.findByOwnerId(ownerId);
@@ -530,9 +675,9 @@ export class ClinicsService {
         'COUNT(CASE WHEN review.rating = 2 THEN 1 END) as twoStars',
         'COUNT(CASE WHEN review.rating = 1 THEN 1 END) as oneStar',
       ])
-      .where('review.clinicId = :clinicId AND review.isVisible = :isVisible', {
+      .where('review.clinicId = :clinicId AND review.status = :status', {
         clinicId: clinic.id,
-        isVisible: true,
+        status: ReviewStatus.APPROVED,
       })
       .getRawOne();
 
@@ -557,38 +702,38 @@ export class ClinicsService {
     appointmentId?: string,
   ): Promise<Review> {
     try {
-      // Validate inputs
-      if (!clientId) {
-        throw new BadRequestException('User ID is required');
-      }
-      if (!clinicId) {
-        throw new BadRequestException('Clinic ID is required');
-      }
+      if (!clientId) throw new BadRequestException('User ID is required');
+      if (!clinicId) throw new BadRequestException('Clinic ID is required');
 
-      console.log('Creating review - Payload:', { clinicId, clientId, rating, comment, appointmentId });
+      // 1. Check if Clinic exists
+      const clinic = await this.clinicsRepository.findOne({ where: { id: clinicId } });
+      if (!clinic) throw new NotFoundException('Clinic not found');
 
-      // 1. Check if Client (User) exists
-      const clientExists = await this.usersRepository.findOne({ where: { id: clientId } });
-      if (!clientExists) {
-        console.error(`Review creation failed: User ${clientId} not found`);
-        throw new NotFoundException('User not found. Please log out and log in again.');
+      // 2. Check if Appointment exists and belongs to this client and clinic, and is COMPLETED
+      if (!appointmentId) {
+        throw new BadRequestException('Review must be linked to a completed appointment');
       }
 
-      // 2. Check if Clinic exists
-      const clinicExists = await this.clinicsRepository.findOne({ where: { id: clinicId } });
-      if (!clinicExists) {
-        console.error(`Review creation failed: Clinic ${clinicId} not found`);
-        throw new NotFoundException('Clinic not found');
-      }
-
-      // 3. Check if Appointment exists (if provided)
-      if (appointmentId) {
-        const appointmentExists = await this.appointmentsRepository.findOne({ where: { id: appointmentId } });
-        if (!appointmentExists) {
-          console.warn(`Review creation warning: Appointment ${appointmentId} not found. Proceeding without appointment link.`);
-          appointmentId = null; // Decouple if appointment doesn't exist, or throw error depending on requirements. 
-          // For now, let's allow review but remove invalid appointment link to avoid 500
+      const appointment = await this.appointmentsRepository.findOne({
+        where: {
+          id: appointmentId,
+          clientId,
+          clinicId,
+          status: AppointmentStatus.COMPLETED
         }
+      });
+
+      if (!appointment) {
+        throw new BadRequestException('You can only review clinics after a completed appointment');
+      }
+
+      // 3. Enforce one review per appointment
+      const existingReview = await this.reviewsRepository.findOne({
+        where: { appointmentId }
+      });
+
+      if (existingReview) {
+        throw new BadRequestException('You have already reviewed this appointment');
       }
 
       const review = this.reviewsRepository.create({
@@ -596,20 +741,15 @@ export class ClinicsService {
         clientId,
         rating,
         comment,
-        appointmentId: appointmentId || null,
-        isVisible: true,
+        appointmentId,
+        status: ReviewStatus.PENDING,
       });
 
       return await this.reviewsRepository.save(review);
     } catch (error) {
       console.error('Error creating review:', error);
-      // Re-throw known HTTP exceptions
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
-      }
-      // Handle Foreign Key violations specifically if they slip through
-      if (error.code === '23503') { // Postgres FK violation code
-        throw new BadRequestException('Invalid reference (User, Clinic, or Appointment does not exist)');
       }
       throw new Error(`Failed to create review: ${error.message}`);
     }

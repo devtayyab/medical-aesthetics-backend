@@ -13,9 +13,18 @@ interface BookingModalProps {
     onClose: () => void;
     initialDate?: Date;
     initialProviderId?: string;
+    initialClinicId?: string;
+    initialServiceId?: string;
 }
 
-export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, initialDate, initialProviderId }) => {
+export const BookingModal: React.FC<BookingModalProps> = ({
+    isOpen,
+    onClose,
+    initialDate,
+    initialProviderId,
+    initialClinicId,
+    initialServiceId
+}) => {
     const dispatch = useDispatch<AppDispatch>();
 
     // Store states
@@ -26,8 +35,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, ini
     // Form state
     const [formData, setFormData] = useState({
         clientId: '',
-        clinicId: '',
-        serviceId: '',
+        clinicId: initialClinicId || '',
+        serviceId: initialServiceId || '',
         providerId: initialProviderId === 'all' ? '' : (initialProviderId || ''),
         date: format(initialDate || new Date(), 'yyyy-MM-dd'),
         time: '10:00',
@@ -51,14 +60,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, ini
 
     // Update time/date if initial changes
     useEffect(() => {
-        if (initialDate && isOpen) {
+        if (isOpen) {
             setFormData(prev => ({
                 ...prev,
-                date: format(initialDate, 'yyyy-MM-dd'),
-                providerId: initialProviderId === 'all' ? '' : (initialProviderId || '')
+                date: initialDate ? format(initialDate, 'yyyy-MM-dd') : prev.date,
+                providerId: initialProviderId === 'all' ? '' : (initialProviderId || prev.providerId),
+                clinicId: initialClinicId || prev.clinicId,
+                serviceId: initialServiceId || prev.serviceId,
             }));
         }
-    }, [initialDate, initialProviderId, isOpen]);
+    }, [initialDate, initialProviderId, initialClinicId, initialServiceId, isOpen]);
 
     if (!isOpen) return null;
 

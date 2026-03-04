@@ -672,6 +672,7 @@ export class CrmService implements OnModuleInit {
 
       const leadAppointments = await this.appointmentsRepository.createQueryBuilder('apt')
         .leftJoinAndSelect('apt.service', 'service')
+        .leftJoinAndSelect('service.treatment', 'treatment')
         .leftJoinAndSelect('apt.clinic', 'clinic')
         .where('apt.clientId IN (:...ids)', { ids: idMatchList })
         .orWhere("LOWER(apt.\"clientDetails\"->>'email') = LOWER(:email)", { email: lead.email })
@@ -712,7 +713,7 @@ export class CrmService implements OnModuleInit {
         },
         appointments: leadAppointments.map(apt => ({
           id: apt.id,
-          serviceName: apt.service?.name,
+          serviceName: apt.service?.treatment?.name,
           clinicName: apt.clinic?.name,
           startTime: apt.startTime,
           status: apt.status,
@@ -792,6 +793,7 @@ export class CrmService implements OnModuleInit {
 
     const appointments = await this.appointmentsRepository.createQueryBuilder('apt')
       .leftJoinAndSelect('apt.service', 'service')
+      .leftJoinAndSelect('service.treatment', 'treatment')
       .leftJoinAndSelect('apt.clinic', 'clinic')
       .where('apt.clientId IN (:...ids)', { ids: idMatchList })
       .orWhere("LOWER(apt.\"clientDetails\"->>'email') = LOWER(:email)", { email: record.customer?.email })
@@ -841,7 +843,7 @@ export class CrmService implements OnModuleInit {
       record,
       appointments: appointments.map(apt => ({
         id: apt.id,
-        serviceName: apt.service?.name,
+        serviceName: apt.service?.treatment?.name,
         clinicName: apt.clinic?.name,
         startTime: apt.startTime,
         status: apt.status,

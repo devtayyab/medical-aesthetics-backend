@@ -118,7 +118,7 @@ export class ClinicManagementController {
     return {
       ...appointment,
       displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
-      serviceName: appointment.service?.name,
+      serviceName: appointment.service?.treatment?.name,
       providerName: appointment.provider
         ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
         : null,
@@ -469,7 +469,7 @@ export class ClinicManagementController {
       {
         id: appointment.id,
         time: appointment.startTime,
-        serviceName: appointment.service?.name,
+        serviceName: appointment.service?.treatment?.name,
       },
     );
   }

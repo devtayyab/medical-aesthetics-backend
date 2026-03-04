@@ -57,6 +57,9 @@ export interface Treatment {
   fromPrice?: number;
   clinicsCount?: number;
   availableAt?: string[];
+  singleClinicId?: string;
+  singleServiceId?: string;
+  offerings?: any[];
 }
 
 export interface Service {

@@ -59,6 +59,12 @@ export class Clinic {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
+  rating: number;
+
+  @Column({ default: 0 })
+  reviewCount: number;
+
   @Column()
   ownerId: string;
 

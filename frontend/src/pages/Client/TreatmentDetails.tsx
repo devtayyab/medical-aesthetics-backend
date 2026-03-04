@@ -131,7 +131,7 @@ export const TreatmentDetails: React.FC = () => {
                                             fullWidth
                                             variant="outline"
                                             className="h-10 rounded-xl text-xs font-black uppercase tracking-widest hover:!bg-black hover:!text-white transition-colors"
-                                            onClick={() => navigate(`/appointment/booking?clinicId=${offering.clinicId}&treatmentId=${treatment.id}`)}
+                                            onClick={() => navigate(`/appointment/booking?clinicId=${offering.clinicId}&serviceIds=${offering.id}`)}
                                         >
                                             Book at this clinic
                                         </Button>

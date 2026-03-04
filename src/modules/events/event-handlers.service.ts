@@ -55,7 +55,7 @@ export class EventHandlersService {
     this.logger.log(`Handling appointment created event for appointment ${appointment.id}`);
 
     // Send confirmation to client
-    const serviceName = appointment.service?.name || 'Appointment';
+    const serviceName = appointment.service?.treatment?.name || 'Appointment';
     const providerName = appointment.provider
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
       : 'Professional';
@@ -125,7 +125,7 @@ export class EventHandlersService {
 
     this.logger.log(`Appointment ${appointment.id} status changed from ${oldStatus} to ${newStatus}`);
 
-    const serviceName = appointment.service?.name || 'Appointment';
+    const serviceName = appointment.service?.treatment?.name || 'Appointment';
     const providerName = appointment.provider
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
       : 'Professional';

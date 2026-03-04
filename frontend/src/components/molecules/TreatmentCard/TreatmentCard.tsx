@@ -77,10 +77,10 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                         </div>
 
                         <button
-                            className="size-10 bg-gray-900 text-white rounded-xl flex items-center justify-center group-hover:bg-lime-500 transition-colors shadow-lg"
+                            className="px-5 h-10 bg-gray-900 text-white text-xs font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 group-hover:bg-lime-500 transition-colors shadow-lg"
                             onClick={(e) => { e.stopPropagation(); handleClick(); }}
                         >
-                            <ChevronRight size={20} />
+                            Book Now <ChevronRight size={16} />
                         </button>
                     </div>
                 </div>

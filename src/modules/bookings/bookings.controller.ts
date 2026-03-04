@@ -87,7 +87,7 @@ export class BookingsController {
     return {
       ...appointment,
       displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
-      serviceName: appointment.service?.name,
+      serviceName: appointment.service?.treatment?.name,
       providerName: appointment.provider
         ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
         : null,

@@ -53,6 +53,7 @@ import { Dashboard as AdminDashboard } from "@/pages/Admin/Dashboard";
 import { ManagerDashboard } from "./pages/Admin/ManagerDashboard/ManagerDashboard";
 import { Users as AdminUsers } from "@/pages/Admin/Users";
 import { LoyaltyManagement } from "@/pages/Admin/LoyaltyManagement";
+import { ReviewModeration } from "@/pages/Admin/ReviewModeration";
 import { Monitor } from "@/pages/Admin/Monitor";
 import { MyAccount } from "@/pages/Client/MyAccount";
 import { PersonalDetails } from "@/pages/Client/AccountPages/PersonalDetails";
@@ -599,6 +600,16 @@ function AppContent() {
               <ProtectedLayout allowedRoles={["admin"]}>
                 <AdminLayout>
                   <AdminDashboard />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/reviews"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ReviewModeration />
                 </AdminLayout>
               </ProtectedLayout>
             }

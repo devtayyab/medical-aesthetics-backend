@@ -284,7 +284,7 @@ export const AppointmentBooking: React.FC = () => {
                   <div className="space-y-3">
                     {selectedServices.map(s => (
                       <div key={s.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
-                        <span className="text-xs font-black uppercase italic">{s.name}</span>
+                        <span className="text-xs font-black uppercase italic">{s.treatment?.name || s.name || 'Treatment'}</span>
                         <span className="text-sm font-black text-gray-900">£{Number(s.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                     ))}

@@ -36,11 +36,11 @@ export const Reviews: React.FC = () => {
         }
       })).unwrap();
 
-      setSuccessMessage("Thank you! Your feedback has been submitted.");
+      setSuccessMessage("Thank you! Your review is pending approval.");
       setSelectedAppointment(null);
 
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(null), 3000);
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error) {
       console.error("Failed to submit review:", error);
       alert("Failed to submit review. Please try again.");
