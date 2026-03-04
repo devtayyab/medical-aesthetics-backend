@@ -19,15 +19,35 @@ export const Search: React.FC = () => {
 
   const [showDesktopMap, setShowDesktopMap] = useState<boolean>(true);
   const [showMobileMap, setShowMobileMap] = useState<boolean>(false);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('treatments');
 
   // Filter and Sort states
-  const [sortBy, setSortBy] = useState<'recommended' | 'price-asc' | 'price-desc' | 'rating'>('recommended');
+  const [sortBy, setSortBy] = useState<'recommended' | 'price-asc' | 'price-desc' | 'rating' | 'distance'>('recommended');
   const [priceFilter, setPriceFilter] = useState<'any' | 'under-50' | '50-100' | 'over-100'>('any');
   const [ratingFilter, setRatingFilter] = useState<'any' | '4.5-plus' | '4.0-plus'>('any');
 
   const [openDropdown, setOpenDropdown] = useState<'sort' | 'price' | 'rating' | null>(null);
+
+  // Detect location on mount
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setUserCoords(coords);
+          setSortBy('distance');
+        },
+        (error) => {
+          console.warn("Geolocation denied or failed:", error);
+        }
+      );
+    }
+  }, []);
 
   // Computed lists
   const filteredTreatments = useMemo(() => {
@@ -82,9 +102,12 @@ export const Search: React.FC = () => {
         category,
         search_date: searchDate,
         search_time_window: searchTimeWindow,
+        lat: userCoords?.lat,
+        lng: userCoords?.lng,
+        sortBy,
       } as any)
     );
-  }, [dispatch, query, location, category, searchDate, searchTimeWindow]);
+  }, [dispatch, query, location, category, searchDate, searchTimeWindow, userCoords, sortBy]);
 
   const handleSearch = (filters: any) => {
     const params = new URLSearchParams();
@@ -133,15 +156,20 @@ export const Search: React.FC = () => {
               onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
               className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-bold transition-colors whitespace-nowrap ${sortBy !== 'recommended' ? 'border-lime-500 bg-lime-50 text-lime-800' : 'border-gray-300 text-gray-700 hover:border-black'}`}
             >
-              Sort by: {sortBy === 'recommended' ? 'Recommended' : sortBy === 'price-asc' ? 'Price: Low' : sortBy === 'price-desc' ? 'Price: High' : 'Rating'} <FaChevronDown size={10} />
+              Sort by: {sortBy === 'recommended' ? 'Recommended' : sortBy === 'distance' ? 'Closest' : sortBy === 'price-asc' ? 'Price: Low' : sortBy === 'price-desc' ? 'Price: High' : 'Rating'} <FaChevronDown size={10} />
             </button>
             {openDropdown === 'sort' && (
               <div className="absolute top-10 left-0 bg-white border border-gray-200 rounded-xl shadow-xl w-48 py-2 z-50">
-                {(['recommended', 'price-asc', 'price-desc', 'rating'] as const).map(option => (
-                  <button key={option} className={`block w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 ${sortBy === option ? 'text-lime-700 font-bold' : 'text-gray-700'}`}
-                    onClick={() => { setSortBy(option); setOpenDropdown(null); }}
+                {(['recommended', 'distance', 'price-asc', 'price-desc', 'rating'] as const).map(option => (
+                  <button key={option}
+                    className={`block w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 ${(sortBy === option || (option === 'distance' && !userCoords)) ? 'text-lime-700 font-bold' : 'text-gray-700'} ${option === 'distance' && !userCoords ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => {
+                      if (option === 'distance' && !userCoords) return;
+                      setSortBy(option);
+                      setOpenDropdown(null);
+                    }}
                   >
-                    {option === 'recommended' ? 'Recommended' : option === 'price-asc' ? 'Price: Low to High' : option === 'price-desc' ? 'Price: High to Low' : 'Highest Rating'}
+                    {option === 'recommended' ? 'Recommended' : option === 'distance' ? (userCoords ? 'Closest to you' : 'Enter location to sort by distance') : option === 'price-asc' ? 'Price: Low to High' : option === 'price-desc' ? 'Price: High to Low' : 'Highest Rating'}
                   </button>
                 ))}
               </div>

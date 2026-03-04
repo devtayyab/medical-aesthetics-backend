@@ -39,6 +39,9 @@ export interface Clinic {
   isActive: boolean;
   ownerId: string;
   images?: string[];
+  photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
   rating?: number;
   reviewCount?: number;
   priceRange?: string;
@@ -156,10 +159,14 @@ export interface SearchFilters {
   category?: string;
   date?: string;
   time?: string;
+  search_date?: string;
+  search_time_window?: string;
   priceRange?: [number, number];
   rating?: number;
   distance?: number;
-  sortBy?: 'rating' | 'price' | 'distance' | 'popularity';
+  lat?: number;
+  lng?: number;
+  sortBy?: 'rating' | 'price' | 'distance' | 'popularity' | 'recommended' | 'price-asc' | 'price-desc';
 }
 
 export interface Lead {

@@ -50,6 +50,21 @@ export class CreateClinicProfileDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
 }
 
 export class UpdateClinicProfileDto {
@@ -109,6 +124,21 @@ export class UpdateClinicProfileDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
 }
 
 export class UpdateAppointmentStatusDto {

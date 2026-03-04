@@ -22,7 +22,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
     onSelect?.(clinic);
   };
 
-  const imageUrl = clinic.images?.[index] || clinic.images?.[0] || BotoxImg;
+  const imageUrl = clinic.photoUrl || clinic.images?.[index] || clinic.images?.[0] || BotoxImg;
 
   // Filter services if there is a specific search query
   const displayServices = clinic.services?.filter(s =>
@@ -74,8 +74,12 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
         <div className="flex items-center gap-1.5 text-sm text-gray-500 font-medium mb-5 truncate">
           <MapPin size={14} className="shrink-0" />
           <span className="truncate">{clinic.address?.city}</span>
-          <span className="mx-1">•</span>
-          <span className="shrink-0 text-lime-600">1.2km away</span>
+          {clinic.distance !== undefined && (
+            <>
+              <span className="mx-1">•</span>
+              <span className="shrink-0 text-lime-600">{Number(clinic.distance).toFixed(1)}km away</span>
+            </>
+          )}
         </div>
 
         {/* Services List (Treatwell style) */}

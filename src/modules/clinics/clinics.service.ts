@@ -43,6 +43,8 @@ export class ClinicsService {
     location?: string;
     category?: string;
     search?: string;
+    lat?: number;
+    lng?: number;
     limit?: number;
     offset?: number;
   }): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; offset: number }> {
@@ -70,6 +72,21 @@ export class ClinicsService {
       clinicQb.andWhere('treatment.category = :category', { category: params.category });
     }
 
+    // Distance sorting if coordinates are provided
+    if (params.lat && params.lng) {
+      clinicQb.addSelect(
+        `(6371 * acos(cos(radians(:lat)) * cos(radians(clinic.latitude)) * cos(radians(clinic.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(clinic.latitude))))`,
+        'clinic_distance'
+      );
+      clinicQb.setParameters({ lat: params.lat, lng: params.lng });
+      // Sort by distance, keeping nulls at the end
+      clinicQb.orderBy('CASE WHEN clinic.latitude IS NULL OR clinic.longitude IS NULL THEN 1 ELSE 0 END', 'ASC');
+      clinicQb.addOrderBy('clinic_distance', 'ASC');
+    } else {
+      // Default fallback sorting
+      clinicQb.orderBy('clinic.createdAt', 'DESC');
+    }
+
     // 2. Search for Treatments (Therapies)
     const treatmentQb = this.treatmentsRepository.createQueryBuilder('treatment')
       .leftJoinAndSelect('treatment.offerings', 'offering')
@@ -94,10 +111,31 @@ export class ClinicsService {
       );
     }
 
-    const [clinics, totalClinics] = await clinicQb
+    if (params.lat && params.lng) {
+      treatmentQb.addSelect(
+        `(6371 * acos(cos(radians(:lat)) * cos(radians(clinic.latitude)) * cos(radians(clinic.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(clinic.latitude))))`,
+        'clinic_distance'
+      );
+      treatmentQb.setParameters({ lat: params.lat, lng: params.lng });
+      treatmentQb.orderBy('CASE WHEN clinic.latitude IS NULL OR clinic.longitude IS NULL THEN 1 ELSE 0 END', 'ASC');
+      treatmentQb.addOrderBy('clinic_distance', 'ASC');
+    }
+
+    const { entities: clinics, raw: rawResults } = await clinicQb
       .take(params.limit || 10)
       .skip(params.offset || 0)
-      .getManyAndCount();
+      .getRawAndEntities();
+
+    // Map the distance from raw query results to the entities
+    clinics.forEach((clinic, index) => {
+      // Find the corresponding raw result by ID
+      const raw = rawResults.find(r => r.clinic_id === clinic.id);
+      if (raw && raw.clinic_distance !== null && raw.clinic_distance !== undefined) {
+        (clinic as any).distance = parseFloat(raw.clinic_distance);
+      }
+    });
+
+    const totalClinics = await clinicQb.getCount();
 
     const [treatments, totalTreatments] = await treatmentQb
       .take(params.limit || 10)
