@@ -107,35 +107,50 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
           )}
         </div>
 
-        {/* Availability Snippet & Book CTA */}
-        <div className="mt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-lime-50/50 p-3 rounded-xl border border-lime-100">
-          <div className="flex items-center gap-2 text-sm">
-            <Clock size={16} className="text-lime-600" />
-            <span className="font-bold text-gray-900">
-              Next available: <span className="text-lime-700">
-                {(() => {
-                  if (!searchDate) return "Today";
-                  const d = new Date(searchDate);
-                  const today = new Date();
-                  const tomorrow = new Date();
-                  tomorrow.setDate(today.getDate() + 1);
+        {/* Availability Snippet & CTA Buttons */}
+        <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-lime-50/50 p-3 rounded-xl border border-lime-100">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 text-sm">
+              <Clock size={16} className="text-lime-600" />
+              <span className="font-bold text-gray-900">
+                Next available: <span className="text-lime-700">
+                  {(() => {
+                    if (!searchDate) return "Today";
+                    const d = new Date(searchDate);
+                    const today = new Date();
+                    const tomorrow = new Date();
+                    tomorrow.setDate(today.getDate() + 1);
 
-                  const isToday = d.toDateString() === today.toDateString();
-                  const isTomorrow = d.toDateString() === tomorrow.toDateString();
+                    const isToday = d.toDateString() === today.toDateString();
+                    const isTomorrow = d.toDateString() === tomorrow.toDateString();
 
-                  if (isToday) return "Today";
-                  if (isTomorrow) return "Tomorrow";
-                  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-                })()}, 11:00 AM
+                    if (isToday) return "Today";
+                    if (isTomorrow) return "Tomorrow";
+                    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                  })()}, 11:00 AM
+                </span>
               </span>
-            </span>
+            </div>
+            {clinic.minPrice && (
+              <p className="text-sm font-bold text-lime-800 mt-1">
+                from €{clinic.minPrice}
+              </p>
+            )}
           </div>
-          <button
-            className="w-full sm:w-auto bg-black text-white hover:bg-gray-800 px-6 py-2.5 rounded-xl text-sm font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center whitespace-nowrap"
-            onClick={(e) => { e.stopPropagation(); handleClick(); }}
-          >
-            Book Now
-          </button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              className="flex-1 sm:flex-none border border-black text-black hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-bold transition-all"
+              onClick={(e) => { e.stopPropagation(); handleClick(); }}
+            >
+              View Clinic
+            </button>
+            <button
+              className="flex-1 sm:flex-none bg-black text-white hover:bg-gray-800 px-6 py-2 rounded-xl text-sm font-bold transition-transform active:scale-95 shadow-md"
+              onClick={(e) => { e.stopPropagation(); handleClick(); }}
+            >
+              Book
+            </button>
+          </div>
         </div>
 
       </div>

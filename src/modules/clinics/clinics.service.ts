@@ -50,7 +50,7 @@ export class ClinicsService {
   }): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; offset: number }> {
     // 1. Search for Clinics
     const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
-      .leftJoinAndSelect('clinic.services', 'services')
+      .innerJoinAndSelect('clinic.services', 'services', 'services.isActive = :sActive', { sActive: true })
       .leftJoinAndSelect('services.treatment', 'treatment')
       .where('clinic.isActive = :isActive', { isActive: true });
 
@@ -126,12 +126,18 @@ export class ClinicsService {
       .skip(params.offset || 0)
       .getRawAndEntities();
 
-    // Map the distance from raw query results to the entities
-    clinics.forEach((clinic, index) => {
-      // Find the corresponding raw result by ID
+    // Map the distance from raw query results and calculate minPrice
+    clinics.forEach((clinic) => {
+      // Find the corresponding raw result by ID for distance
       const raw = rawResults.find(r => r.clinic_id === clinic.id);
       if (raw && raw.clinic_distance !== null && raw.clinic_distance !== undefined) {
         (clinic as any).distance = parseFloat(raw.clinic_distance);
+      }
+
+      // Calculate minPrice from active services
+      if (clinic.services && clinic.services.length > 0) {
+        const prices = clinic.services.map(s => Number(s.price));
+        (clinic as any).minPrice = Math.min(...prices);
       }
     });
 

@@ -46,6 +46,7 @@ export interface Clinic {
   reviewCount?: number;
   priceRange?: string;
   distance?: number;
+  minPrice?: number;
   services: Service[];
 }
 
