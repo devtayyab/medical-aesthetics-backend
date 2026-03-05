@@ -58,7 +58,10 @@ import { Monitor } from "@/pages/Admin/Monitor";
 import { MyAccount } from "@/pages/Client/MyAccount";
 import { PersonalDetails } from "@/pages/Client/AccountPages/PersonalDetails";
 import { Rewards } from "@/pages/Client/AccountPages/Rewards";
-import { Wallet } from "@/pages/Client/AccountPages/Wallet";
+import { Payments } from "@/pages/Client/AccountPages/Payments";
+import { GiftCard } from "@/pages/Client/AccountPages/GiftCard";
+import { Blog } from "@/pages/Client/Blog";
+import { Legal, SupportCenter, ChatSupport } from "@/pages/Client/InfoPages/InfoPages";
 import { InviteFriend } from "@/pages/Client/AccountPages/InviteFriend";
 import { Settings } from "@/pages/Client/AccountPages/Settings";
 import type { RootState } from "@/store";
@@ -191,6 +194,7 @@ function AppContent() {
           <Route path="/search" element={<Search />} />
           <Route path="/clinic/:id" element={<ClinicDetails />} />
           <Route path="/treatment/:id" element={<TreatmentDetails />} />
+          <Route path="/blog" element={<Blog />} />
 
           {/* Protected booking route - requires login */}
           <Route
@@ -259,12 +263,32 @@ function AppContent() {
             }
           />
           <Route
-            path="/wallet"
+            path="/payments"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <Wallet />
+                <Payments />
               </ProtectedLayout>
             }
+          />
+          <Route
+            path="/gift-card"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <GiftCard />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/legal"
+            element={<Legal />}
+          />
+          <Route
+            path="/support"
+            element={<SupportCenter />}
+          />
+          <Route
+            path="/chat"
+            element={<ChatSupport />}
           />
           <Route
             path="/checkout"
@@ -728,9 +752,13 @@ function AppContent() {
             path="/messages"
             element={
               <ProtectedLayout allowedRoles={["client", "salesperson", "manager", "admin", "clinic_owner", "doctor", "secretariat", "SUPER_ADMIN"]}>
-                <AdminLayout>
+                {user?.role === "client" ? (
                   <MessagesPage />
-                </AdminLayout>
+                ) : (
+                  <AdminLayout>
+                    <MessagesPage />
+                  </AdminLayout>
+                )}
               </ProtectedLayout>
             }
           />

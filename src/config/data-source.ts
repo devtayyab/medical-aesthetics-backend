@@ -4,6 +4,8 @@ import { User } from '../modules/users/entities/user.entity';
 import { Clinic } from '../modules/clinics/entities/clinic.entity';
 import { Service } from '../modules/clinics/entities/service.entity';
 import { Treatment } from '../modules/clinics/entities/treatment.entity';
+import { GiftCard } from '../modules/clinics/entities/gift-card.entity';
+import { BlogPost, BlogCategory } from '../modules/clinics/entities/blog.entity';
 import { Lead, CrmAction, CustomerRecord } from '../modules/crm/entities';
 import { Review } from '../modules/clinics/entities/review.entity';
 import { Tag } from '../modules/admin/entities/tag.entity';
@@ -64,6 +66,9 @@ const AppDataSource = new DataSource({
         Conversation,
         Message,
         ConversationParticipant,
+        GiftCard,
+        BlogPost,
+        BlogCategory,
     ],
     migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],
     synchronize: false,

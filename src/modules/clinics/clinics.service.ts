@@ -72,18 +72,18 @@ export class ClinicsService {
       clinicQb.andWhere('treatment.category = :category', { category: params.category });
     }
 
-    // Distance sorting if coordinates are provided
-    if (params.lat && params.lng) {
+    const lat = params.lat ? parseFloat(params.lat as any) : null;
+    const lng = params.lng ? parseFloat(params.lng as any) : null;
+
+    if (lat && lng) {
       clinicQb.addSelect(
         `(6371 * acos(cos(radians(:lat)) * cos(radians(clinic.latitude)) * cos(radians(clinic.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(clinic.latitude))))`,
         'clinic_distance'
       );
-      clinicQb.setParameters({ lat: params.lat, lng: params.lng });
-      // Sort by distance, keeping nulls at the end
+      clinicQb.setParameters({ lat, lng });
       clinicQb.orderBy('CASE WHEN clinic.latitude IS NULL OR clinic.longitude IS NULL THEN 1 ELSE 0 END', 'ASC');
       clinicQb.addOrderBy('clinic_distance', 'ASC');
     } else {
-      // Default fallback sorting
       clinicQb.orderBy('clinic.createdAt', 'DESC');
     }
 
@@ -111,65 +111,86 @@ export class ClinicsService {
       );
     }
 
-    if (params.lat && params.lng) {
+    if (lat && lng) {
       treatmentQb.addSelect(
         `(6371 * acos(cos(radians(:lat)) * cos(radians(clinic.latitude)) * cos(radians(clinic.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(clinic.latitude))))`,
         'clinic_distance'
       );
-      treatmentQb.setParameters({ lat: params.lat, lng: params.lng });
+      treatmentQb.setParameters({ lat, lng });
       treatmentQb.orderBy('CASE WHEN clinic.latitude IS NULL OR clinic.longitude IS NULL THEN 1 ELSE 0 END', 'ASC');
       treatmentQb.addOrderBy('clinic_distance', 'ASC');
     }
 
-    const { entities: clinics, raw: rawResults } = await clinicQb
-      .take(params.limit || 10)
-      .skip(params.offset || 0)
-      .getRawAndEntities();
+    try {
+      const { entities: clinics, raw: rawResults } = await clinicQb
+        .take(params.limit || 10)
+        .skip(params.offset || 0)
+        .getRawAndEntities();
 
-    // Map the distance from raw query results and calculate minPrice
-    clinics.forEach((clinic) => {
-      // Find the corresponding raw result by ID for distance
-      const raw = rawResults.find(r => r.clinic_id === clinic.id);
-      if (raw && raw.clinic_distance !== null && raw.clinic_distance !== undefined) {
-        (clinic as any).distance = parseFloat(raw.clinic_distance);
-      }
+      // Map the distance from raw query results and calculate minPrice
+      clinics.forEach((clinic) => {
+        // Calculate minPrice from active services
+        if (clinic.services && clinic.services.length > 0) {
+          const prices = clinic.services
+            .filter(s => s.isActive)
+            .map(s => Number(s.price))
+            .filter(p => !isNaN(p));
 
-      // Calculate minPrice from active services
-      if (clinic.services && clinic.services.length > 0) {
-        const prices = clinic.services.map(s => Number(s.price));
-        (clinic as any).minPrice = Math.min(...prices);
-      }
-    });
+          if (prices.length > 0) {
+            (clinic as any).minPrice = Math.min(...prices);
+          }
+        }
 
-    const totalClinics = await clinicQb.getCount();
+        // Find the corresponding raw result by ID for distance
+        const raw = rawResults.find(r => r.clinic_id === clinic.id || r.id === clinic.id || r.clinic_id_id === clinic.id);
 
-    const [treatments, totalTreatments] = await treatmentQb
-      .take(params.limit || 10)
-      .skip(params.offset || 0)
-      .getManyAndCount();
+        if (raw) {
+          const distAttr = Object.keys(raw).find(k => k.toLowerCase().includes('distance'));
+          if (distAttr && raw[distAttr] !== null) {
+            (clinic as any).distance = parseFloat(raw[distAttr]);
+          }
+        }
 
-    // Process treatments to include aggregate data
-    const processedTreatments = treatments.map(t => {
-      const activeOfferings = t.offerings.filter(o => o.isActive && o.clinic?.isActive);
-      const prices = activeOfferings.map(o => Number(o.price));
-      const fromPrice = prices.length > 0 ? Math.min(...prices) : null;
+        // Calculate minPrice from active services
+        if (clinic.services && clinic.services.length > 0) {
+          const prices = clinic.services.map(s => Number(s.price));
+          (clinic as any).minPrice = Math.min(...prices);
+        }
+      });
+
+      const totalClinics = await clinicQb.getCount();
+
+      const [treatments, totalTreatments] = await treatmentQb
+        .take(params.limit || 10)
+        .skip(params.offset || 0)
+        .getManyAndCount();
+
+      // Process treatments to include aggregate data
+      const processedTreatments = treatments.map(t => {
+        const activeOfferings = t.offerings.filter(o => o.isActive && o.clinic?.isActive);
+        const prices = activeOfferings.map(o => Number(o.price));
+        const fromPrice = prices.length > 0 ? Math.min(...prices) : null;
+
+        return {
+          ...t,
+          fromPrice,
+          clinicsCount: activeOfferings.length,
+          availableAt: activeOfferings.slice(0, 1).map(o => o.clinic.name), // Show at least one
+          singleClinicId: activeOfferings.length === 1 ? activeOfferings[0].clinicId : undefined,
+          singleServiceId: activeOfferings.length === 1 ? activeOfferings[0].id : undefined
+        };
+      });
 
       return {
-        ...t,
-        fromPrice,
-        clinicsCount: activeOfferings.length,
-        availableAt: activeOfferings.slice(0, 1).map(o => o.clinic.name), // Show at least one
-        singleClinicId: activeOfferings.length === 1 ? activeOfferings[0].clinicId : undefined,
-        singleServiceId: activeOfferings.length === 1 ? activeOfferings[0].id : undefined
+        clinics,
+        treatments: processedTreatments,
+        total: totalClinics + totalTreatments,
+        offset: params.offset || 0,
       };
-    });
-
-    return {
-      clinics,
-      treatments: processedTreatments,
-      total: totalClinics + totalTreatments,
-      offset: params.offset || 0,
-    };
+    } catch (error) {
+      console.error('Error in ClinicsService.search:', error);
+      throw error;
+    }
   }
 
   async getTreatmentDetails(id: string): Promise<any> {

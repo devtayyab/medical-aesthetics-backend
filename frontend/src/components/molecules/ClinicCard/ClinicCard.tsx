@@ -57,7 +57,11 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
             </h3>
 
             <div className="flex items-center gap-1 mt-1 font-bold text-sm">
-              <span className="text-gray-900">{clinic.rating ? clinic.rating.toFixed(1) : "4.9"}</span>
+              <span className="text-gray-900">
+                {(clinic.rating !== null && clinic.rating !== undefined)
+                  ? Number(clinic.rating).toFixed(1)
+                  : "4.9"}
+              </span>
               <div className="flex text-yellow-400">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} size={14} fill="currentColor" stroke="none" />
