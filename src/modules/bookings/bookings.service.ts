@@ -242,7 +242,7 @@ export class BookingsService {
   async findById(id: string): Promise<Appointment> {
     const appointment = await this.appointmentsRepository.findOne({
       where: { id },
-      relations: ['clinic', 'service', 'provider', 'client'],
+      relations: ['clinic', 'service', 'service.treatment', 'provider', 'client'],
     });
 
     if (!appointment) {
@@ -254,7 +254,7 @@ export class BookingsService {
 
   // Helper method to format appointment display name
   formatAppointmentDisplayName(appointment: Appointment): string {
-    const serviceName = appointment.service?.name || 'Appointment';
+    const serviceName = appointment.service?.treatment?.name || 'Appointment';
     const providerName = appointment.provider
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
       : 'Professional';
@@ -310,6 +310,7 @@ export class BookingsService {
     const queryBuilder = this.appointmentsRepository.createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.clinic', 'clinic')
       .leftJoinAndSelect('appointment.service', 'service')
+      .leftJoinAndSelect('service.treatment', 'treatment')
       .leftJoinAndSelect('appointment.provider', 'provider')
       .leftJoinAndSelect('appointment.client', 'client');
 
@@ -325,7 +326,7 @@ export class BookingsService {
     return appointments.map(apt => ({
       ...apt,
       displayName: this.formatAppointmentDisplayName(apt),
-      serviceName: apt.service?.name,
+      serviceName: apt.service?.treatment?.name,
       providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
     })) as Appointment[];
   }
@@ -345,6 +346,7 @@ export class BookingsService {
     const queryBuilder = this.appointmentsRepository.createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.clinic', 'clinic')
       .leftJoinAndSelect('appointment.service', 'service')
+      .leftJoinAndSelect('service.treatment', 'treatment')
       .leftJoinAndSelect('appointment.provider', 'provider')
       .leftJoinAndSelect('appointment.client', 'client');
 
@@ -395,7 +397,7 @@ export class BookingsService {
       return appointments.map(apt => ({
         ...apt,
         displayName: this.formatAppointmentDisplayName(apt),
-        serviceName: apt.service?.name,
+        serviceName: apt.service?.treatment?.name,
         providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
       })) as Appointment[];
     } catch (error) {
@@ -412,6 +414,7 @@ export class BookingsService {
     const queryBuilder = this.appointmentsRepository.createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.clinic', 'clinic')
       .leftJoinAndSelect('appointment.service', 'service')
+      .leftJoinAndSelect('service.treatment', 'treatment')
       .leftJoinAndSelect('appointment.provider', 'provider')
       .leftJoinAndSelect('appointment.client', 'client')
       .where('appointment.id = :appointmentId', { appointmentId });
@@ -788,7 +791,7 @@ export class BookingsService {
       },
       appointments: appointments.map(apt => ({
         id: apt.id,
-        serviceName: apt.service?.name,
+        serviceName: apt.service?.treatment?.name,
         providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
         startTime: apt.startTime,
         status: apt.status,

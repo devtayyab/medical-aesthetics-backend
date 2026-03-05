@@ -5,6 +5,7 @@ import { ClinicManagementController } from './clinic-management.controller';
 import { ClinicsService } from './clinics.service';
 import { Clinic } from './entities/clinic.entity';
 import { Service } from './entities/service.entity';
+import { Treatment } from './entities/treatment.entity';
 import { Review } from './entities/review.entity';
 import { User } from '../users/entities/user.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
@@ -15,7 +16,7 @@ import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Clinic, Service, Review, User, Appointment, AgentClinicAccess]),
+    TypeOrmModule.forFeature([Clinic, Service, Treatment, Review, User, Appointment, AgentClinicAccess]),
     forwardRef(() => BookingsModule),
     forwardRef(() => LoyaltyModule),
     NotificationsModule,

@@ -117,8 +117,8 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
                   type="button"
                   onClick={() => setPaymentMethod(method.value)}
                   className={`flex items-center gap-3 p-4 border-2 rounded-lg transition-all ${paymentMethod === method.value
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-blue-600 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
                     }`}
                 >
                   <div
@@ -150,8 +150,8 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
                 type="number"
                 step="0.01"
                 min="0"
-                value={finalAmount}
-                onChange={(e) => setFinalAmount(parseFloat(e.target.value))}
+                value={finalAmount || ""}
+                onChange={(e) => setFinalAmount(e.target.value === "" ? 0 : parseFloat(e.target.value))}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold"
                 required
               />

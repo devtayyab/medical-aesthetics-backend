@@ -22,11 +22,11 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
     onSelect?.(clinic);
   };
 
-  const imageUrl = clinic.images?.[index] || clinic.images?.[0] || BotoxImg;
+  const imageUrl = clinic.photoUrl || clinic.images?.[index] || clinic.images?.[0] || BotoxImg;
 
   // Filter services if there is a specific search query
   const displayServices = clinic.services?.filter(s =>
-    !searchQuery || s.name.toLowerCase().includes(searchQuery.toLowerCase())
+    !searchQuery || s.treatment?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 3) || [];
 
   return (
@@ -57,7 +57,11 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
             </h3>
 
             <div className="flex items-center gap-1 mt-1 font-bold text-sm">
-              <span className="text-gray-900">{clinic.rating ? clinic.rating.toFixed(1) : "4.9"}</span>
+              <span className="text-gray-900">
+                {(clinic.rating !== null && clinic.rating !== undefined)
+                  ? Number(clinic.rating).toFixed(1)
+                  : "4.9"}
+              </span>
               <div className="flex text-yellow-400">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} size={14} fill="currentColor" stroke="none" />
@@ -74,8 +78,12 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
         <div className="flex items-center gap-1.5 text-sm text-gray-500 font-medium mb-5 truncate">
           <MapPin size={14} className="shrink-0" />
           <span className="truncate">{clinic.address?.city}</span>
-          <span className="mx-1">•</span>
-          <span className="shrink-0 text-lime-600">1.2km away</span>
+          {clinic.distance !== undefined && (
+            <>
+              <span className="mx-1">•</span>
+              <span className="shrink-0 text-lime-600">{Number(clinic.distance).toFixed(1)}km away</span>
+            </>
+          )}
         </div>
 
         {/* Services List (Treatwell style) */}
@@ -88,7 +96,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
                 className="flex items-center justify-between gap-4 group/service hover:bg-gray-50 -mx-3 px-3 py-2 rounded-xl transition-colors cursor-pointer"
               >
                 <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-bold text-gray-800 truncate group-hover/service:text-black hover:underline">{service.name}</h4>
+                  <h4 className="text-sm font-bold text-gray-800 truncate group-hover/service:text-black hover:underline">{service.treatment?.name}</h4>
                   <p className="text-[12px] text-gray-500 mt-0.5">{service.durationMinutes} mins</p>
                 </div>
                 <div className="text-right shrink-0">
@@ -103,35 +111,50 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
           )}
         </div>
 
-        {/* Availability Snippet & Book CTA */}
-        <div className="mt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-lime-50/50 p-3 rounded-xl border border-lime-100">
-          <div className="flex items-center gap-2 text-sm">
-            <Clock size={16} className="text-lime-600" />
-            <span className="font-bold text-gray-900">
-              Next available: <span className="text-lime-700">
-                {(() => {
-                  if (!searchDate) return "Today";
-                  const d = new Date(searchDate);
-                  const today = new Date();
-                  const tomorrow = new Date();
-                  tomorrow.setDate(today.getDate() + 1);
+        {/* Availability Snippet & CTA Buttons */}
+        <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-lime-50/50 p-3 rounded-xl border border-lime-100">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 text-sm">
+              <Clock size={16} className="text-lime-600" />
+              <span className="font-bold text-gray-900">
+                Next available: <span className="text-lime-700">
+                  {(() => {
+                    if (!searchDate) return "Today";
+                    const d = new Date(searchDate);
+                    const today = new Date();
+                    const tomorrow = new Date();
+                    tomorrow.setDate(today.getDate() + 1);
 
-                  const isToday = d.toDateString() === today.toDateString();
-                  const isTomorrow = d.toDateString() === tomorrow.toDateString();
+                    const isToday = d.toDateString() === today.toDateString();
+                    const isTomorrow = d.toDateString() === tomorrow.toDateString();
 
-                  if (isToday) return "Today";
-                  if (isTomorrow) return "Tomorrow";
-                  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-                })()}, 11:00 AM
+                    if (isToday) return "Today";
+                    if (isTomorrow) return "Tomorrow";
+                    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                  })()}, 11:00 AM
+                </span>
               </span>
-            </span>
+            </div>
+            {clinic.minPrice && (
+              <p className="text-sm font-bold text-lime-800 mt-1">
+                from €{clinic.minPrice}
+              </p>
+            )}
           </div>
-          <button
-            className="w-full sm:w-auto bg-black text-white hover:bg-gray-800 px-6 py-2.5 rounded-xl text-sm font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center whitespace-nowrap"
-            onClick={(e) => { e.stopPropagation(); handleClick(); }}
-          >
-            Book Now
-          </button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              className="flex-1 sm:flex-none border border-black text-black hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-bold transition-all"
+              onClick={(e) => { e.stopPropagation(); handleClick(); }}
+            >
+              View Clinic
+            </button>
+            <button
+              className="flex-1 sm:flex-none bg-black text-white hover:bg-gray-800 px-6 py-2 rounded-xl text-sm font-bold transition-transform active:scale-95 shadow-md"
+              onClick={(e) => { e.stopPropagation(); handleClick(); }}
+            >
+              Book
+            </button>
+          </div>
         </div>
 
       </div>

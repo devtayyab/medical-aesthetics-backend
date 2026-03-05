@@ -10,6 +10,7 @@ import {
 import { Clinic } from './clinic.entity';
 import { User } from '../../users/entities/user.entity';
 import { Appointment } from '../../bookings/entities/appointment.entity';
+import { ReviewStatus } from '../enums/review-status.enum';
 
 @Entity('reviews')
 export class Review {
@@ -31,8 +32,21 @@ export class Review {
   @Column('text', { nullable: true })
   comment: string;
 
-  @Column({ default: true })
-  isVisible: boolean;
+  @Column({
+    type: 'enum',
+    enum: ReviewStatus,
+    default: ReviewStatus.PENDING,
+  })
+  status: ReviewStatus;
+
+  @Column({ nullable: true })
+  approvedById: string;
+
+  @Column({ nullable: true })
+  approvedAt: Date;
+
+  @Column({ nullable: true })
+  rejectReason: string;
 
   @Column({ nullable: true })
   response: string; // Clinic's response to the review
@@ -53,6 +67,10 @@ export class Review {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'clientId' })
   client: User;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'approvedById' })
+  approvedBy: User;
 
   @ManyToOne(() => Appointment, { nullable: true })
   @JoinColumn({ name: 'appointmentId' })

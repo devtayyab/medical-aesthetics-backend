@@ -39,24 +39,46 @@ export interface Clinic {
   isActive: boolean;
   ownerId: string;
   images?: string[];
+  photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
   rating?: number;
   reviewCount?: number;
   priceRange?: string;
   distance?: number;
+  minPrice?: number;
   services: Service[];
+}
+
+export interface Treatment {
+  id: string;
+  name: string;
+  shortDescription: string;
+  fullDescription: string;
+  category: string;
+  imageUrl?: string;
+  isActive: boolean;
+  fromPrice?: number;
+  clinicsCount?: number;
+  availableAt?: string[];
+  singleClinicId?: string;
+  singleServiceId?: string;
+  offerings?: any[];
 }
 
 export interface Service {
   id: string;
-  name: string;
-  description: string;
+  name?: string;
+  description?: string;
   price: number;
   durationMinutes: number;
-  category: string;
+  category?: string;
   imageUrl?: string;
   metadata?: any;
   isActive: boolean;
   clinicId: string;
+  treatmentId?: string;
+  treatment?: Treatment;
   images?: string[];
 }
 
@@ -138,10 +160,14 @@ export interface SearchFilters {
   category?: string;
   date?: string;
   time?: string;
+  search_date?: string;
+  search_time_window?: string;
   priceRange?: [number, number];
   rating?: number;
   distance?: number;
-  sortBy?: 'rating' | 'price' | 'distance' | 'popularity';
+  lat?: number;
+  lng?: number;
+  sortBy?: 'rating' | 'price' | 'distance' | 'popularity' | 'recommended' | 'price-asc' | 'price-desc';
 }
 
 export interface Lead {

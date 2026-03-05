@@ -17,7 +17,7 @@ export class AppointmentResponseDto {
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Relations
   clinic?: any;
   service?: any;
@@ -34,7 +34,7 @@ export class AppointmentResponseDto {
     Object.assign(dto, appointment);
 
     // Format display name: "Service with Professional"
-    const serviceName = appointment.service?.name || 'Appointment';
+    const serviceName = appointment.service?.treatment?.name || 'Appointment';
     const providerName = appointment.provider
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
       : 'Professional';

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Bell, CheckCircle, Clock, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { css } from "@emotion/css";
@@ -10,7 +10,7 @@ import { fetchNotifications, markAsRead, markAllAsRead, fetchUnreadCount } from 
 const dropdownStyle = css`
   position: absolute;
   top: calc(100% + 12px);
-  right: -10px;
+  right: 0;
   width: 400px;
   background: white;
   border-radius: 24px;
@@ -30,7 +30,8 @@ const dropdownStyle = css`
 
   @media (max-width: 480px) {
     width: calc(100vw - 32px);
-    right: -20px;
+    right: 0;
+    left: auto;
   }
 `;
 
@@ -90,14 +91,20 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
 
     const getNotificationsLink = () => {
         if (['clinic_owner', 'doctor', 'secretariat'].includes(user?.role || '')) {
-            return '/clinic/notifications';
+            return '/clinic/my-notifications';
         }
         return '/crm/notifications';
     };
 
-    const handleMarkAllRead = async (e: React.MouseEvent) => {
+    const handleMarkAllRead = async (e: React.MouseEvent | React.TouchEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        if (e.nativeEvent.stopImmediatePropagation) {
+            e.nativeEvent.stopImmediatePropagation();
+        }
+
+        if (isLoading) return;
+
         try {
             await dispatch(markAllAsRead()).unwrap();
             await dispatch(fetchNotifications(10));
@@ -137,22 +144,31 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
         <div
             className={dropdownStyle}
             ref={dropdownRef}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+                e.stopPropagation();
+            }}
+            onMouseDown={(e) => {
+                e.stopPropagation();
+            }}
         >
             <div className={headerStyle}>
-                <div>
-                    <h3 className="text-lg font-black uppercase italic tracking-tighter text-gray-900 leading-none">Activity</h3>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Updates & Alerts</p>
+                <div className="flex-1 min-w-0 pr-4">
+                    <h3 className="text-lg font-black uppercase italic tracking-tighter text-gray-900 leading-none truncate">Activity</h3>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">Updates & Alerts</p>
                 </div>
-                <button
-                    className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] hover:text-[#CBFF38] transition-colors bg-black px-4 py-2 rounded-full disabled:opacity-50"
-                    disabled={isLoading}
+                <div
+                    role="button"
+                    tabIndex={0}
+                    className="flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-[#CBFF38] hover:bg-white/10 transition-all bg-black px-4 py-2 rounded-full cursor-pointer disabled:opacity-50 border border-transparent hover:border-[#CBFF38]/20 select-none"
                     onClick={handleMarkAllRead}
-                    type="button"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            handleMarkAllRead(e as any);
+                        }
+                    }}
                 >
                     {isLoading ? '...' : 'Clear All'}
-                </button>
+                </div>
             </div>
 
             <div className={scrollAreaStyle}>
@@ -169,7 +185,8 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
                         <div
                             key={notif.id}
                             className={notificationItemStyle(notif.isRead)}
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.stopPropagation();
                                 if (!notif.isRead) {
                                     dispatch(markAsRead(notif.id));
                                 }
@@ -205,16 +222,15 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
             </div>
 
             <div className="p-6 bg-white border-t border-[#f7f7f7]">
-                <button
-                    onClick={() => {
-                        onClose();
-                        navigate(getNotificationsLink());
-                    }}
-                    className="w-full h-14 bg-gray-900 text-[#CBFF38] hover:bg-black transition-all rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-xs"
+                <Link
+                    to={getNotificationsLink()}
+                    onClick={onClose}
+                    className="w-full h-14 bg-gray-900 text-[#CBFF38] hover:bg-black transition-all rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-xs decoration-none"
+                    style={{ textDecoration: 'none' }}
                 >
                     Expand Feed
                     <ExternalLink size={14} />
-                </button>
+                </Link>
             </div>
         </div>
     );

@@ -21,6 +21,7 @@ import { Register } from "@/pages/Register/Register";
 import { ProtectedLayout } from "@/components/organisms/ProtectedLayout";
 import { Search } from "@/pages/Client/Search";
 import { ClinicDetails } from "@/pages/Client/ClinicDetails";
+import { TreatmentDetails } from "@/pages/Client/TreatmentDetails";
 import { AppointmentBooking } from "@/pages/Client/AppointmentBooking";
 import { Appointments } from "@/pages/Client/Appointments";
 import { History } from "@/pages/Client/History";
@@ -52,11 +53,15 @@ import { Dashboard as AdminDashboard } from "@/pages/Admin/Dashboard";
 import { ManagerDashboard } from "./pages/Admin/ManagerDashboard/ManagerDashboard";
 import { Users as AdminUsers } from "@/pages/Admin/Users";
 import { LoyaltyManagement } from "@/pages/Admin/LoyaltyManagement";
+import { ReviewModeration } from "@/pages/Admin/ReviewModeration";
 import { Monitor } from "@/pages/Admin/Monitor";
 import { MyAccount } from "@/pages/Client/MyAccount";
 import { PersonalDetails } from "@/pages/Client/AccountPages/PersonalDetails";
 import { Rewards } from "@/pages/Client/AccountPages/Rewards";
-import { Wallet } from "@/pages/Client/AccountPages/Wallet";
+import { Payments } from "@/pages/Client/AccountPages/Payments";
+import { GiftCard } from "@/pages/Client/AccountPages/GiftCard";
+import { Blog } from "@/pages/Client/Blog";
+import { Legal, SupportCenter, ChatSupport } from "@/pages/Client/InfoPages/InfoPages";
 import { InviteFriend } from "@/pages/Client/AccountPages/InviteFriend";
 import { Settings } from "@/pages/Client/AccountPages/Settings";
 import type { RootState } from "@/store";
@@ -188,6 +193,8 @@ function AppContent() {
           {/* Client Routes - Public clinic browsing */}
           <Route path="/search" element={<Search />} />
           <Route path="/clinic/:id" element={<ClinicDetails />} />
+          <Route path="/treatment/:id" element={<TreatmentDetails />} />
+          <Route path="/blog" element={<Blog />} />
 
           {/* Protected booking route - requires login */}
           <Route
@@ -256,12 +263,32 @@ function AppContent() {
             }
           />
           <Route
-            path="/wallet"
+            path="/payments"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <Wallet />
+                <Payments />
               </ProtectedLayout>
             }
+          />
+          <Route
+            path="/gift-card"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <GiftCard />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/legal"
+            element={<Legal />}
+          />
+          <Route
+            path="/support"
+            element={<SupportCenter />}
+          />
+          <Route
+            path="/chat"
+            element={<ChatSupport />}
           />
           <Route
             path="/checkout"
@@ -602,6 +629,16 @@ function AppContent() {
             }
           />
           <Route
+            path="/admin/reviews"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ReviewModeration />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
             path="/admin/manager-dashboard"
             element={
               <ProtectedLayout allowedRoles={["SUPER_ADMIN", "admin", "clinic_owner", "manager"]}>
@@ -715,9 +752,13 @@ function AppContent() {
             path="/messages"
             element={
               <ProtectedLayout allowedRoles={["client", "salesperson", "manager", "admin", "clinic_owner", "doctor", "secretariat", "SUPER_ADMIN"]}>
-                <AdminLayout>
+                {user?.role === "client" ? (
                   <MessagesPage />
-                </AdminLayout>
+                ) : (
+                  <AdminLayout>
+                    <MessagesPage />
+                  </AdminLayout>
+                )}
               </ProtectedLayout>
             }
           />

@@ -44,6 +44,15 @@ export class Clinic {
   @Column({ nullable: true })
   website: string;
 
+  @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
+  latitude: number;
+
+  @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
+  longitude: number;
+
+  @Column({ nullable: true })
+  photoUrl: string;
+
   @Column('json', { nullable: true })
   businessHours: {
     [day: string]: {
@@ -58,6 +67,12 @@ export class Clinic {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
+  rating: number;
+
+  @Column({ default: 0 })
+  reviewCount: number;
 
   @Column()
   ownerId: string;

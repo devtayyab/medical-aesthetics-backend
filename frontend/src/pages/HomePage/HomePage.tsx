@@ -268,7 +268,11 @@ export const HomePage: React.FC = () => {
                     />
                     <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1">
                       <FaStar className="text-yellow-400" />
-                      <span>{clinic.rating ? clinic.rating.toFixed(1) : "New"}</span>
+                      <span>
+                        {(clinic.rating !== null && clinic.rating !== undefined)
+                          ? Number(clinic.rating).toFixed(1)
+                          : "New"}
+                      </span>
                     </div>
                   </div>
                   <div className="p-5 flex flex-col flex-1">

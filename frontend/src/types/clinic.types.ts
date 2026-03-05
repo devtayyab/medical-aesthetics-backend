@@ -39,26 +39,47 @@ export interface BusinessHours {
   };
 }
 
-// Services/Treatments
-export interface Service {
+// Treatment (Global definition)
+export interface Treatment {
   id: string;
   name: string;
-  description?: string;
-  price: number;
-  durationMinutes: number;
-  category?: string;
+  shortDescription: string;
+  fullDescription: string;
+  category: string;
+  imageUrl?: string;
   isActive: boolean;
-  metadata?: any;
+  fromPrice?: number;
+  clinicsCount?: number;
+  availableAt?: string[];
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CreateServiceDto {
-  name: string;
-  description?: string;
+// Service (Clinic specific offering of a treatment)
+export interface Service {
+  id: string;
+  treatmentId: string;
+  clinicId: string;
   price: number;
   durationMinutes: number;
+  isActive: boolean;
+  metadata?: any;
+  createdAt: string;
+  updatedAt: string;
+  treatment?: Treatment;
+  clinic?: ClinicProfile;
+}
+
+export interface CreateServiceDto {
+  treatmentId?: string; // If picking existing
+  name?: string; // If creating new global one
+  shortDescription?: string;
+  fullDescription?: string;
   category?: string;
+  imageUrl?: string;
+  price: number;
+  durationMinutes: number;
+  isActive?: boolean;
   metadata?: any;
 }
 

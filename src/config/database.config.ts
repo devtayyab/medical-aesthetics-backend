@@ -6,7 +6,10 @@ import { ConfigService } from '@nestjs/config';
 import { User } from '../modules/users/entities/user.entity';
 import { Clinic } from '../modules/clinics/entities/clinic.entity';
 import { Service } from '../modules/clinics/entities/service.entity';
+import { Treatment } from '../modules/clinics/entities/treatment.entity';
 import { Review } from '../modules/clinics/entities/review.entity';
+import { GiftCard } from '../modules/clinics/entities/gift-card.entity';
+import { BlogPost, BlogCategory } from '../modules/clinics/entities/blog.entity';
 import { Lead, CrmAction, CustomerRecord } from '../modules/crm/entities';
 import { Tag } from '../modules/admin/entities/tag.entity';
 import { AuditLog } from '../modules/audit/entities/audit-log.entity';
@@ -42,6 +45,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         User,
         Clinic,
         Service,
+        Treatment,
         Lead,
         CommunicationLog,
         CustomerRecord,
@@ -63,6 +67,9 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         Conversation,
         Message,
         ConversationParticipant,
+        GiftCard,
+        BlogPost,
+        BlogCategory,
       ],
       // Since we are running in Docker on the same network, we don't need SSL
       // If using a managed database like AWS RDS in the future, we might need to enable this again

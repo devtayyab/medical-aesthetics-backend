@@ -1,6 +1,7 @@
 import { AppDataSource } from '../../ormconfig';
 import { Clinic } from '../modules/clinics/entities/clinic.entity';
 import { Service } from '../modules/clinics/entities/service.entity';
+import { Treatment } from '../modules/clinics/entities/treatment.entity';
 import { User } from '../modules/users/entities/user.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 
@@ -81,22 +82,26 @@ async function seed() {
         const savedClinic = await clinicsRepo.save(clinic);
         console.log('Created clinic:', savedClinic.name);
 
-        // Create Services
-        const servicesData = [
-            { name: 'Botox Injection', description: 'Anti-wrinkle treatment', price: 299, durationMinutes: 30, category: 'Injectables' },
-            { name: 'Laser Hair Removal', description: 'Full leg laser hair removal', price: 199, durationMinutes: 60, category: 'Laser' },
-            { name: 'Chemical Peel', description: 'Rejuvenating facial peel', price: 149, durationMinutes: 45, category: 'Facial' },
-            { name: 'Dermal Fillers', description: 'Lip and cheek fillers', price: 499, durationMinutes: 60, category: 'Injectables' }
+        // Create Treatments and Services
+        const treatmentsRepo = AppDataSource.getRepository(Treatment);
+        const treatmentData = [
+            { name: 'Botox Injection', shortDescription: 'Anti-wrinkle treatment', fullDescription: 'Detailed anti-wrinkle treatment...', category: 'Injectables' },
+            { name: 'Laser Hair Removal', shortDescription: 'Full leg laser hair removal', fullDescription: 'Detailed laser hair removal...', category: 'Laser' },
         ];
 
-        for (const s of servicesData) {
+        for (const t of treatmentData) {
+            const treatment = await treatmentsRepo.save(treatmentsRepo.create(t));
+            console.log('Created treatment:', treatment.name);
+
             const service = servicesRepo.create({
-                ...s,
                 clinicId: savedClinic.id,
+                treatmentId: treatment.id,
+                price: t.name === 'Botox Injection' ? 299 : 199,
+                durationMinutes: t.name === 'Botox Injection' ? 30 : 60,
                 isActive: true
             });
             await servicesRepo.save(service);
-            console.log('Created service:', service.name);
+            console.log('Created service for:', treatment.name);
         }
 
         console.log('Seeding complete');

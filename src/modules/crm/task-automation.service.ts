@@ -146,7 +146,7 @@ export class TaskAutomationService {
         startTime: Between(twoDaysFromNowStart, twoDaysFromNowEnd),
         status: AppointmentStatus.CONFIRMED,
       },
-      relations: ['client'],
+      relations: ['client', 'service', 'service.treatment'],
     });
 
     for (const appointment of appointmentsIn2Days) {
@@ -166,7 +166,7 @@ export class TaskAutomationService {
         startTime: Between(tomorrowStart, tomorrowEnd),
         status: AppointmentStatus.CONFIRMED,
       },
-      relations: ['client'],
+      relations: ['client', 'service', 'service.treatment'],
     });
 
     for (const appointment of appointmentsTomorrow) {
@@ -186,7 +186,7 @@ export class TaskAutomationService {
         startTime: Between(yesterday, today),
         status: AppointmentStatus.COMPLETED,
       },
-      relations: ['client'],
+      relations: ['client', 'service', 'service.treatment'],
     });
 
     for (const appointment of completedAppointments) {
@@ -266,12 +266,12 @@ export class TaskAutomationService {
       const lastCompleted = await this.appointmentsRepository.findOne({
         where: { clientId: client.id, status: AppointmentStatus.COMPLETED },
         order: { startTime: 'DESC' },
-        relations: ['service'],
+        relations: ['service', 'service.treatment'],
       });
 
       if (!lastCompleted) continue;
 
-      const serviceName = (lastCompleted.service?.name || '').toLowerCase();
+      const serviceName = (lastCompleted.service?.treatment?.name || '').toLowerCase();
       let ruleId = 'treatment_reminder_6months';
       if (serviceName.includes('botox')) {
         ruleId = 'treatment_reminder_5months';
@@ -286,7 +286,7 @@ export class TaskAutomationService {
         client.id,
         rule,
         {
-          treatment_type: lastCompleted.service?.name || 'treatment',
+          treatment_type: lastCompleted.service?.treatment?.name || 'treatment',
           last_treatment_date: lastCompleted.startTime,
         },
       );
@@ -307,7 +307,7 @@ export class TaskAutomationService {
         startTime: Between(start, end),
         status: AppointmentStatus.NO_SHOW as any,
       },
-      relations: ['client', 'clinic', 'service'],
+      relations: ['client', 'clinic', 'service', 'service.treatment'],
     });
 
     const rule = this.defaultRules.find(r => r.id === 'no_show_alert_2days');
@@ -321,7 +321,7 @@ export class TaskAutomationService {
           appointment_id: appointment.id,
           appointment_date: appointment.startTime,
           clinic_name: appointment.clinic?.name,
-          service_name: appointment.service?.name,
+          service_name: appointment.service?.treatment?.name,
         },
       );
     }
@@ -350,7 +350,7 @@ export class TaskAutomationService {
           appointment_date: appointment.startTime,
           appointment_time: appointment.startTime,
           clinic_name: appointment.clinic?.name,
-          service_name: appointment.service?.name,
+          service_name: appointment.service?.treatment?.name,
         },
       );
     }

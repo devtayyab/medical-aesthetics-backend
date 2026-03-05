@@ -170,6 +170,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     onClick={() => {
                       setQuery(t.name);
                       setShowAutocomplete(false);
+                      onSearch({ query: t.name, location, search_date: searchDate, search_time_window: searchTimeWindow });
                     }}
                   >
                     <span>{t.name}</span>
@@ -188,6 +189,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     onClick={() => {
                       setQuery(c.name);
                       setShowAutocomplete(false);
+                      onSearch({ query: c.name, location, search_date: searchDate, search_time_window: searchTimeWindow });
                     }}
                   >
                     {c.name}

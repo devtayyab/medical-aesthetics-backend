@@ -4,9 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Card } from "@/components/atoms/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
 import { fetchUserAppointments } from "@/store/slices/clientSlice";
-import { userAPI } from "@/services/api";
 import type { RootState, AppDispatch } from "@/store";
-import type { Appointment } from "@/types";
 import { css } from "@emotion/css";
 import { logout } from "@/store/slices/authSlice";
 
@@ -17,13 +15,13 @@ import { IoPersonAdd } from "react-icons/io5";
 import { AiOutlineTrophy } from "react-icons/ai";
 import { RiWalletLine } from "react-icons/ri";
 import { MdOutlineSettings } from "react-icons/md";
-import { FaBalanceScale } from "react-icons/fa";
+import { FaBalanceScale, FaBook, FaStar } from "react-icons/fa";
+import { FaGift } from "react-icons/fa6";
 import { MdOutlineSupportAgent } from "react-icons/md";
 import { MdOutlineMarkUnreadChatAlt } from "react-icons/md";
 // Images
 import LayeredBG from "@/assets/LayeredBg.svg";
 import AvatarImg from "@/assets/Avatar.svg";
-import { CheckCircle } from "lucide-react";
 
 const containerStyle = css`
   display: grid;
@@ -56,7 +54,7 @@ export const MyAccount: React.FC = () => {
   const { user, isAuthenticated } = useSelector(
     (state: RootState) => state.auth
   );
-  const { appointments, isLoading, error } = useSelector(
+  const { appointments } = useSelector(
     (state: RootState) => state.client
   );
 
@@ -66,9 +64,6 @@ export const MyAccount: React.FC = () => {
     }
   }, [dispatch, isAuthenticated, appointments.length]);
 
-  const handleUpdateProfile = () => {
-    navigate("/update-profile"); // Placeholder route for profile update
-  };
 
   if (!isAuthenticated) {
     return null; // Handled by ProtectedLayout
@@ -98,6 +93,9 @@ export const MyAccount: React.FC = () => {
             </h2>
             <p className="text-[#222222] text-[15px]">{user?.email}</p>
           </span>
+          <Button onClick={handleLogout} variant="outline" className="ml-auto text-red-600 border-red-200 hover:bg-red-50 font-bold px-6">
+            Log out
+          </Button>
         </div>
 
         {/* Booking Full Width Box */}
@@ -192,16 +190,56 @@ export const MyAccount: React.FC = () => {
             </Card>
           </Link>
 
-          <Link to="/wallet">
+          <Link to="/payments">
             <Card className={`bg-[#FFFFFF80] ${cardStyle}`}>
               <span className="flex items-center gap-3 mb-2">
                 <RiWalletLine size={27} />
                 <h2 className="text-[#222222] text-[20px] font-semibold">
-                  Wallet
+                  Payments
                 </h2>
               </span>
               <p className="text-[#717171] text-[18px]">
-                Check your wallet balance
+                Check your payment records
+              </p>
+            </Card>
+          </Link>
+          <Link to="/gift-card">
+            <Card className={`bg-[#FFFFFF80] ${cardStyle}`}>
+              <span className="flex items-center gap-3 mb-2">
+                <FaGift size={27} className="text-[#CBFF38]" />
+                <h2 className="text-[#222222] text-[20px] font-semibold">
+                  Gift Card
+                </h2>
+              </span>
+              <p className="text-[#717171] text-[18px]">
+                Purchase or redeem gift cards
+              </p>
+            </Card>
+          </Link>
+          <Link to="/blog">
+            <Card className={`bg-[#FFFFFF80] ${cardStyle}`}>
+              <span className="flex items-center gap-3 mb-2">
+                <FaBook size={27} />
+                <h2 className="text-[#222222] text-[20px] font-semibold">
+                  Blog
+                </h2>
+              </span>
+              <p className="text-[#717171] text-[18px]">
+                Read our latest beauty tips
+              </p>
+            </Card>
+          </Link>
+
+          <Link to="/reviews">
+            <Card className={`bg-[#FFFFFF80] ${cardStyle}`}>
+              <span className="flex items-center gap-3 mb-2">
+                <FaStar size={27} className="text-yellow-400" />
+                <h2 className="text-[#222222] text-[20px] font-semibold">
+                  Reviews
+                </h2>
+              </span>
+              <p className="text-[#717171] text-[18px]">
+                Share your experience
               </p>
             </Card>
           </Link>
@@ -218,25 +256,42 @@ export const MyAccount: React.FC = () => {
               </p>
             </Card>
           </Link>
+          <a href="tel:+44123456789">
+            <Card className={`bg-[#FFFFFF80] ${cardStyle}`}>
+              <span className="flex items-center gap-3 mb-2">
+                <MdOutlineSupportAgent size={27} className="text-lime-600" />
+                <h2 className="text-[#222222] text-[20px] font-semibold">
+                  Call Support
+                </h2>
+              </span>
+              <p className="text-[#717171] text-[18px]">
+                Speak directly with our team
+              </p>
+            </Card>
+          </a>
         </div>
 
         <div className="flex flex-wrap justify-between items-center mt-[50px]">
           <div className="flex items-center flex-wrap gap-5 md:gap-8 mb-5 md:mb-0">
-            <span className="flex items-center gap-3">
-              <FaBalanceScale size={18} className="text-[#717171]" />
-              <p className="text-[#717171] text-[14px]">Legal</p>
-            </span>
-            <span className="flex items-center gap-3">
-              <MdOutlineSupportAgent size={18} className="text-[#717171]" />
-              <p className="text-[#717171] text-[14px]">Customer Help Center</p>
-            </span>
-            <span className="flex items-center gap-3">
+            <Link to="/legal" className="flex items-center gap-3 group">
+              <FaBalanceScale size={18} className="text-[#717171] group-hover:text-lime-600 transition-colors" />
+              <p className="text-[#717171] text-[14px] group-hover:text-black transition-colors font-medium">Legal</p>
+            </Link>
+            <Link to="/support" className="flex items-center gap-3 group">
+              <MdOutlineSupportAgent size={18} className="text-[#717171] group-hover:text-lime-600 transition-colors" />
+              <p className="text-[#717171] text-[14px] group-hover:text-black transition-colors font-medium">Customer Help Center</p>
+            </Link>
+            <Link to="/chat" className="flex items-center gap-3 group">
               <MdOutlineMarkUnreadChatAlt
                 size={18}
-                className="text-[#717171]"
+                className="text-[#717171] group-hover:text-lime-600 transition-colors"
               />
-              <p className="text-[#717171] text-[14px]">Chat Support</p>
-            </span>
+              <p className="text-[#717171] text-[14px] group-hover:text-black transition-colors font-medium">Chat Support</p>
+            </Link>
+            <a href="tel:+44123456789" className="flex items-center gap-3 group">
+              <MdOutlineSupportAgent size={18} className="text-[#717171] group-hover:text-lime-600 transition-colors" />
+              <p className="text-[#717171] text-[14px] group-hover:text-black transition-colors font-medium">Call Support</p>
+            </a>
           </div>
         </div>
       </div>

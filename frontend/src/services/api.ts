@@ -197,12 +197,19 @@ export const clinicsAPI = {
     search?: string;
     limit?: number;
     offset?: number;
-  }) => api.get("/clinics", { params }),
+  }) => api.get("/clinics", { params: { ...params, search: params.search || (params as any).query } }),
   getById: (id: string) => api.get(`/clinics/${id}`),
   getServices: (clinicId: string) => api.get(`/clinics/${clinicId}/services`),
   getFeatured: () => api.get("/clinics/featured"),
+  getTreatmentDetails: (id: string) => api.get(`/clinics/treatments/${id}`),
   createReview: (id: string, data: { rating: number; comment?: string; appointmentId?: string }) =>
     api.post(`/clinics/${id}/reviews`, data),
+  getPublicReviews: (id: string, params?: { limit?: number; offset?: number }) =>
+    api.get(`/clinics/${id}/reviews`, { params }),
+  getPendingReviews: (params?: { limit?: number; offset?: number }) =>
+    api.get("/clinics/reviews/pending", { params }),
+  moderateReview: (id: string, data: { status: 'APPROVED' | 'REJECTED'; rejectReason?: string }) =>
+    api.patch(`/clinics/reviews/${id}/moderate`, data),
 };
 
 export const bookingAPI = {
