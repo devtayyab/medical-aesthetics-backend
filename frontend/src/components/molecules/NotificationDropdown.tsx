@@ -90,10 +90,14 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const getNotificationsLink = () => {
-        if (['clinic_owner', 'doctor', 'secretariat'].includes(user?.role || '')) {
+        const role = user?.role || '';
+        if (['clinic_owner', 'doctor', 'secretariat'].includes(role)) {
             return '/clinic/my-notifications';
         }
-        return '/crm/notifications';
+        if (['salesperson', 'manager', 'admin', 'SUPER_ADMIN'].includes(role)) {
+            return '/crm/notifications';
+        }
+        return '/notifications';
     };
 
     const handleMarkAllRead = async (e: React.MouseEvent | React.TouchEvent) => {

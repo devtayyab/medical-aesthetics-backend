@@ -247,6 +247,14 @@ function AppContent() {
             }
           />
           <Route
+            path="/notifications"
+            element={
+              <ProtectedLayout allowedRoles={["client"]}>
+                <NotificationsCrm />
+              </ProtectedLayout>
+            }
+          />
+          <Route
             path="/personal-details"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
