@@ -34,9 +34,27 @@ export class AddMissingClinicColumns1772702299663 implements MigrationInterface 
         if (hasReviewCount.length === 0) {
             await queryRunner.query(`ALTER TABLE "clinics" ADD "reviewCount" integer NOT NULL DEFAULT 0`);
         }
+
+        // Add timezone if missing
+        const hasTimezone = await queryRunner.query(
+            `SELECT COLUMN_NAME FROM information_schema.columns WHERE table_name='clinics' AND column_name='timezone'`
+        );
+        if (hasTimezone.length === 0) {
+            await queryRunner.query(`ALTER TABLE "clinics" ADD "timezone" character varying`);
+        }
+
+        // Add ownerId if missing
+        const hasOwnerId = await queryRunner.query(
+            `SELECT COLUMN_NAME FROM information_schema.columns WHERE table_name='clinics' AND column_name='ownerId'`
+        );
+        if (hasOwnerId.length === 0) {
+            await queryRunner.query(`ALTER TABLE "clinics" ADD "ownerId" uuid`);
+        }
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`ALTER TABLE "clinics" DROP COLUMN "ownerId"`);
+        await queryRunner.query(`ALTER TABLE "clinics" DROP COLUMN "timezone"`);
         await queryRunner.query(`ALTER TABLE "clinics" DROP COLUMN "reviewCount"`);
         await queryRunner.query(`ALTER TABLE "clinics" DROP COLUMN "rating"`);
         await queryRunner.query(`ALTER TABLE "clinics" DROP COLUMN "treatmentRooms"`);
