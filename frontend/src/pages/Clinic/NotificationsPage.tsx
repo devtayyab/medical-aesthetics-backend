@@ -3,8 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { fetchClients } from '../../store/slices/clinicSlice';
 import clinicApi from '../../services/api/clinicApi';
-import { NotificationType, SendNotificationDto } from '../../types/clinic.types';
-import { Bell, Send, Users, Mail, MessageSquare, Smartphone } from 'lucide-react';
+import { NotificationType } from '../../types/clinic.types';
+import { Bell, Send, Mail } from 'lucide-react';
 
 const NotificationsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -78,7 +78,6 @@ const NotificationsPage: React.FC = () => {
   const notificationTypes = [
     { value: NotificationType.PUSH, label: 'Push Notification', icon: <Bell className="w-5 h-5" /> },
     { value: NotificationType.EMAIL, label: 'Email', icon: <Mail className="w-5 h-5" /> },
-    { value: NotificationType.SMS, label: 'SMS', icon: <MessageSquare className="w-5 h-5" /> },
   ];
 
   return (
@@ -99,25 +98,23 @@ const NotificationsPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Notification Type
             </label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {notificationTypes.map((type) => (
                 <button
                   key={type.value}
                   type="button"
                   onClick={() => setNotificationType(type.value)}
-                  className={`flex items-center justify-center gap-2 p-4 border-2 rounded-lg transition-all ${
-                    notificationType === type.value
-                      ? 'border-lime-300 bg-[#CBFF38]'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  className={`flex items-center justify-center gap-2 p-4 border-2 rounded-lg transition-all ${notificationType === type.value
+                    ? 'border-lime-300 bg-[#CBFF38]'
+                    : 'border-gray-200 hover:border-gray-300'
+                    }`}
                 >
                   <div className={notificationType === type.value ? 'text-[#33373F]' : 'text-gray-400'}>
                     {type.icon}
                   </div>
                   <span
-                    className={`text-sm font-medium ${
-                      notificationType === type.value ? 'text-[#33373F]' : 'text-gray-700'
-                    }`}
+                    className={`text-sm font-medium ${notificationType === type.value ? 'text-[#33373F]' : 'text-gray-700'
+                      }`}
                   >
                     {type.label}
                   </span>
