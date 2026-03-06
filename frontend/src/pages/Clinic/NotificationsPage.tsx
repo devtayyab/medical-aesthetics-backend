@@ -17,7 +17,7 @@ const NotificationsPage: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchClients());
+    dispatch(fetchClients({}));
   }, [dispatch]);
 
   const handleSend = async () => {
