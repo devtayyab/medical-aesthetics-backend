@@ -218,6 +218,11 @@ export class ClinicAnalyticsQueryDto {
 }
 
 export class CreateServiceDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  treatmentId?: string;
+
   @ApiProperty()
   @IsString()
   name: string;
@@ -252,6 +257,11 @@ export class CreateServiceDto {
 }
 
 export class UpdateServiceDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  treatmentId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

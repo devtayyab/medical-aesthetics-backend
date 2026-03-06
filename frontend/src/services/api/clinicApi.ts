@@ -68,6 +68,36 @@ export const servicesApi = {
     const response = await apiClient.patch(`/clinic/services/${id}/toggle`);
     return response.data;
   },
+
+  getCategories: async (): Promise<any[]> => {
+    const response = await apiClient.get('/clinic/treatment-categories');
+    return response.data;
+  },
+
+  getTreatmentsByCategory: async (catId: string): Promise<any[]> => {
+    const response = await apiClient.get(`/clinic/treatments-by-category/${catId}`);
+    return response.data;
+  },
+
+  createManualTreatment: async (data: { name: string; categoryId: string; shortDescription?: string; fullDescription?: string }): Promise<any> => {
+    const response = await apiClient.post('/clinic/manual-treatment', data);
+    return response.data;
+  },
+
+  createManualCategory: async (data: { name: string; description?: string }): Promise<any> => {
+    const response = await apiClient.post('/clinic/manual-category', data);
+    return response.data;
+  },
+
+  getPendingTreatments: async (): Promise<any[]> => {
+    const response = await apiClient.get('/clinics/treatments/pending');
+    return response.data;
+  },
+
+  setTreatmentStatus: async (id: string, status: string): Promise<any> => {
+    const response = await apiClient.patch(`/clinics/treatments/${id}/status`, { status });
+    return response.data;
+  },
 };
 
 // Appointments API

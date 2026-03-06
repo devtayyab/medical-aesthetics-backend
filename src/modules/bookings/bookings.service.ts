@@ -13,6 +13,8 @@ import { CrmService } from '../crm/crm.service';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
+import { CustomerRecord } from '../crm/entities/customer-record.entity';
+import { Lead } from '../crm/entities/lead.entity';
 import { forwardRef, Inject } from '@nestjs/common';
 
 import * as fs from 'fs';
@@ -90,31 +92,57 @@ export class BookingsService {
 
     // Check if client exists as User
     let userExists = null;
-    if (UUID_REGEX.test(clientId)) {
+    const WALK_IN_DUMMY_ID = '00000000-0000-0000-0000-000000000000';
+
+    if (UUID_REGEX.test(clientId) && clientId !== WALK_IN_DUMMY_ID) {
       userExists = await this.usersRepository.findOne({ where: { id: clientId } });
+    }
+
+    // Lookup by Details if Walk-in or Not found as User
+    if (!userExists && createAppointmentDto.clientDetails) {
+      const { email, phone } = createAppointmentDto.clientDetails;
+      userExists = await this.usersRepository.findOne({
+        where: [
+          { email: email || 'never-match' },
+          { phone: phone || 'never-match' }
+        ]
+      });
+      if (userExists) clientId = userExists.id;
     }
 
     if (!userExists) {
       // Try to find as Lead
       try {
-        if (!UUID_REGEX.test(clientId)) {
-          throw new NotFoundException(`Invalid Client ID format: ${clientId}`);
+        let lead = null;
+
+        // 1. Try by provided ID if it's a valid UUID (and not dummy)
+        if (UUID_REGEX.test(clientId) && clientId !== WALK_IN_DUMMY_ID) {
+          try {
+            lead = await this.crmService.getLead(clientId);
+          } catch (err) { }
         }
 
-        let lead = null;
-        try {
-          lead = await this.crmService.getLead(clientId);
-        } catch (err) {
-          if (!(err instanceof NotFoundException)) {
-            throw err;
+        // 2. Try by phone/email from details if not found by ID
+        if (!lead && createAppointmentDto.clientDetails) {
+          const { email, phone } = createAppointmentDto.clientDetails;
+          const leads = await this.crmService.findAll({
+            search: email || phone
+          });
+          if (leads && leads.length > 0) {
+            // Find best match (exact email or phone)
+            lead = leads.find(l => l.email === email || l.phone === phone);
           }
         }
+
         if (lead) {
-          // Check if user with this email already exists
-          const existingUser = await this.usersRepository.findOne({ where: { email: lead.email } });
+          // Check if user with this email already exists (safety)
+          const existingUser = await this.usersRepository.findOne({
+            where: [{ email: lead.email }, { phone: lead.phone }]
+          });
 
           if (existingUser) {
             clientId = existingUser.id;
+            userExists = existingUser;
           } else {
             // Convert Lead to User using CRM Service to ensure proper records
             try {
@@ -122,7 +150,6 @@ export class BookingsService {
               if (salespersonId && UUID_REGEX.test(salespersonId)) {
                 const salesExists = await this.usersRepository.findOne({ where: { id: salespersonId } });
                 if (!salesExists) {
-                  console.warn(`Lead ${clientId} has invalid assignedSalesId ${salespersonId}, ignoring.`);
                   salespersonId = undefined;
                 }
               } else {
@@ -137,12 +164,15 @@ export class BookingsService {
               }, salespersonId);
 
               clientId = savedUser.id;
+              userExists = savedUser;
             } catch (createErr) {
               console.error('createCustomer failed during booking:', createErr);
-              // If createCustomer fails (e.g. race condition on email), try to find again
-              const retryUser = await this.usersRepository.findOne({ where: { email: lead.email } });
+              const retryUser = await this.usersRepository.findOne({
+                where: [{ email: lead.email }, { phone: lead.phone }]
+              });
               if (retryUser) {
                 clientId = retryUser.id;
+                userExists = retryUser;
               } else {
                 throw createErr;
               }
@@ -164,17 +194,17 @@ export class BookingsService {
                 phone: createAppointmentDto.clientDetails.phone || undefined,
               });
               clientId = savedUser.id;
+              userExists = savedUser;
             } catch (createErr) {
               console.error('Failed to create guest customer during booking:', createErr);
-              const retryWhere: any[] = [{ email: createAppointmentDto.clientDetails.email }];
-              if (createAppointmentDto.clientDetails.phone) {
-                retryWhere.push({ phone: createAppointmentDto.clientDetails.phone });
-              }
-              const retryUser = await this.usersRepository.findOne({
-                where: retryWhere
-              });
+              const retryWhere: any[] = [];
+              if (createAppointmentDto.clientDetails.email) retryWhere.push({ email: createAppointmentDto.clientDetails.email });
+              if (createAppointmentDto.clientDetails.phone) retryWhere.push({ phone: createAppointmentDto.clientDetails.phone });
+
+              const retryUser = await this.usersRepository.findOne({ where: retryWhere });
               if (retryUser) {
                 clientId = retryUser.id;
+                userExists = retryUser;
               } else {
                 throw new BadRequestException(`Failed to create guest record: ${createErr.message}`);
               }
@@ -186,9 +216,16 @@ export class BookingsService {
       } catch (e) {
         if (e instanceof NotFoundException || e instanceof BadRequestException) throw e;
         console.error('Lead lookup/conversion failed:', e);
-        throw new BadRequestException(`Lead conversion failed: ${e.message}`);
+        throw new BadRequestException(`Client identification failed: ${e.message}`);
       }
     }
+
+    // MANDATORY FIELD CHECK: Mobile number is required for appointment booking
+    const phone = userExists?.phone || createAppointmentDto.clientDetails?.phone;
+    if (!phone) {
+      throw new BadRequestException('Client mobile number is mandatory for appointment booking');
+    }
+
     const appointmentData = {
       ...createAppointmentDto,
       clientId, // Use potentially updated clientId
@@ -242,7 +279,7 @@ export class BookingsService {
   async findById(id: string): Promise<Appointment> {
     const appointment = await this.appointmentsRepository.findOne({
       where: { id },
-      relations: ['clinic', 'service', 'service.treatment', 'provider', 'client'],
+      relations: ['clinic', 'service', 'service.treatment', 'provider', 'client', 'bookedBy'],
     });
 
     if (!appointment) {
@@ -348,20 +385,31 @@ export class BookingsService {
       .leftJoinAndSelect('appointment.service', 'service')
       .leftJoinAndSelect('service.treatment', 'treatment')
       .leftJoinAndSelect('appointment.provider', 'provider')
-      .leftJoinAndSelect('appointment.client', 'client');
+      .leftJoinAndSelect('appointment.client', 'client')
+      .leftJoinAndSelect('appointment.bookedBy', 'bookedBy');
 
     // Filter based on user role and permissions
-    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      queryBuilder.where('clinic.ownerId = :userId', { userId });
-    } else if (userRole === 'manager') {
-      if (query['clinicId']) {
-        queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query['clinicId'] });
-      }
-    } else if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
+    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
       // Admins and SUPER_ADMINs see all appointments. No restrictions.
       queryBuilder.where('1=1');
+    } else if (userRole === 'clinic_owner' || userRole === 'secretariat') {
+      // Clinic staff see appointments in their clinics
+      queryBuilder.where('clinic.ownerId = :userId', { userId });
+    } else if (userRole === 'salesperson') {
+      // Salespeople see appointments:
+      // 1. They booked themselves
+      // 2. For clients assigned to them in CRM (CustomerRecord or Lead)
+      // 3. For any client whose mobile matches a lead assigned to them
+
+      // We'll broaden the selection and handle the "Blocked Time" logic in the mapping phase
+      // to ensure they see slots in clinics they might have access to, or just their own.
+      // Based on specific requirement: "If it is a Beauty Doctors Client should appear also in... salesperson who is owner"
+
+      queryBuilder.leftJoin('client.lead', 'lead') // Assuming relation exists or we check by phone
+        .leftJoin(CustomerRecord, 'record', 'record.customerId = client.id')
+        .where('(appointment.bookedById = :userId OR record.assignedSalespersonId = :userId OR lead.assignedSalesId = :userId)', { userId });
     } else {
-      // For other roles (e.g. provider, salesperson, client), return appointments where user is involved or booked
+      // For other roles (e.g. provider, client), return appointments where user is involved
       queryBuilder.where(
         '(appointment.providerId = :userId OR appointment.clientId = :userId OR appointment.bookedById = :userId)',
         { userId }
@@ -386,20 +434,68 @@ export class BookingsService {
       queryBuilder.andWhere('appointment.providerId = :providerId', { providerId: query.providerId });
     }
 
-    if (query.appointmentSource) {
-      queryBuilder.andWhere('appointment.appointmentSource = :appointmentSource', { appointmentSource: query.appointmentSource });
+    if (userRole === 'salesperson') {
+      // For salespeople, we want to allow them to see all appointments in a clinic (if clinicId provided)
+      // so they can see availability, but we will "mask" those they don't own.
+      if (query.clinicId) {
+        queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
+      } else {
+        // If no clinicId, only show what they are involved in
+        // Join with CustomerRecord and Lead to check ownership
+        queryBuilder.leftJoin('client.customerRecords', 'records')
+          .leftJoin(Lead, 'lead', 'lead.email = client.email OR lead.phone = client.phone')
+          .where('(appointment.bookedById = :userId OR records.assignedSalespersonId = :userId OR lead.assignedSalesId = :userId)', { userId });
+      }
+
+      // Select customerRecords to check ownership in mapping
+      queryBuilder.leftJoinAndSelect('client.customerRecords', 'customerRecordMap');
     }
 
     try {
       const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
 
-      // Add display name to each appointment
-      return appointments.map(apt => ({
-        ...apt,
-        displayName: this.formatAppointmentDisplayName(apt),
-        serviceName: apt.service?.treatment?.name,
-        providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
-      })) as Appointment[];
+      // Masking logic: If salesperson doesn't own the client, hide details
+      return appointments.map(apt => {
+        let isMasked = false;
+        if (userRole === 'salesperson') {
+          const isBookedByMe = apt.bookedById === userId;
+          const assignedRecord = (apt.client as any)?.customerRecords?.find((r: any) => r.assignedSalespersonId === userId);
+          const isOwnedByMe = !!assignedRecord;
+
+          // Re-check based on requirement: "If it is a Beauty Doctors Client... should appear also in... salesperson who is owner"
+          // If NOT booked by me AND NOT owned by me, mask it.
+          if (!isBookedByMe && !isOwnedByMe) {
+            isMasked = true;
+          }
+        }
+
+        if (isMasked) {
+          return {
+            id: apt.id,
+            startTime: apt.startTime,
+            endTime: apt.endTime,
+            status: apt.status,
+            clinicId: apt.clinicId,
+            isBlocked: true,
+            displayName: 'Blocked Time',
+            serviceName: 'Blocked',
+            providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
+            bookedByInfo: null,
+          };
+        }
+
+        return {
+          ...apt,
+          displayName: this.formatAppointmentDisplayName(apt),
+          serviceName: apt.service?.treatment?.name,
+          providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
+          bookedByInfo: apt.bookedBy ? {
+            id: apt.bookedBy.id,
+            name: `${apt.bookedBy.firstName} ${apt.bookedBy.lastName}`,
+            role: apt.bookedBy.role
+          } : null,
+        };
+      }) as any[];
     } catch (error) {
       console.error('Error in findClinicAppointments:', error);
       throw error;
@@ -479,11 +575,17 @@ export class BookingsService {
       renewalDate?: string;
       notes?: string;
     },
+    serviceId?: string,
   ): Promise<Appointment> {
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
+    const oldStatus = appointment.status;
 
     appointment.status = AppointmentStatus.COMPLETED;
     appointment.completedAt = new Date();
+
+    if (serviceId) {
+      appointment.serviceId = serviceId;
+    }
 
     if (treatmentDetails) {
       appointment.treatmentDetails = treatmentDetails;
@@ -522,7 +624,16 @@ export class BookingsService {
       }
     }
 
-    return this.appointmentsRepository.save(appointment);
+    const savedAppointment = await this.appointmentsRepository.save(appointment);
+
+    // Emit event for notifications and loyalty
+    this.eventEmitter.emit('appointment.status.changed', {
+      appointment: savedAppointment,
+      oldStatus,
+      newStatus: AppointmentStatus.COMPLETED,
+    });
+
+    return savedAppointment;
   }
 
   async recordPayment(

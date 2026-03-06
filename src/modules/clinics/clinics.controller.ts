@@ -4,6 +4,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { ReviewStatus } from './enums/review-status.enum';
+import { TreatmentStatus } from './enums/treatment-status.enum';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ClinicsService } from './clinics.service';
 
@@ -106,5 +107,25 @@ export class ClinicsController {
       body.status,
       body.rejectReason,
     );
+  }
+
+  // Admin Treatment Approval
+  @Get('treatments/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get treatments pending approval' })
+  async getPendingTreatments() {
+    return this.clinicsService.getPendingTreatments();
+  }
+
+  @Patch('treatments/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Approve or reject a treatment' })
+  async setTreatmentStatus(
+    @Param('id') id: string,
+    @Body() body: { status: TreatmentStatus },
+  ) {
+    return this.clinicsService.setTreatmentStatus(id, body.status);
   }
 }

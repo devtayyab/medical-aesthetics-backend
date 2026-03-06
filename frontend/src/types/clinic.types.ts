@@ -39,6 +39,21 @@ export interface BusinessHours {
   };
 }
 
+export enum TreatmentStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
+export interface TreatmentCategory {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  isActive: boolean;
+  treatments?: Treatment[];
+}
+
 // Treatment (Global definition)
 export interface Treatment {
   id: string;
@@ -46,6 +61,8 @@ export interface Treatment {
   shortDescription: string;
   fullDescription: string;
   category: string;
+  categoryId?: string;
+  status: TreatmentStatus;
   imageUrl?: string;
   isActive: boolean;
   fromPrice?: number;
@@ -101,6 +118,7 @@ export interface Appointment {
   startTime: string;
   endTime: string;
   status: AppointmentStatus;
+  appointmentSource: 'clinic_own' | 'platform_broker';
   totalAmount: number;
   notes?: string;
   treatmentDetails?: any;
@@ -122,10 +140,16 @@ export interface Appointment {
     phone: string;
   };
   provider?: {
-    id: string;
     firstName: string;
     lastName: string;
   };
+  bookedByInfo?: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  isBlocked?: boolean;
+  serviceName?: string;
 }
 
 export interface AppointmentFilters {
@@ -163,6 +187,15 @@ export interface RecordPaymentDto {
 export interface CompleteAppointmentDto {
   paymentData?: RecordPaymentDto;
   treatmentDetails?: any;
+  completionReport?: {
+    patientCame: boolean;
+    servicePerformed: string;
+    amountPaid: number;
+    renewalDate?: string;
+    notes?: string;
+  };
+  serviceId?: string;
+  pointsRedeemed?: number;
 }
 
 // Analytics

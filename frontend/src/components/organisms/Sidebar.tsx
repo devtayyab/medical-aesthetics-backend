@@ -69,6 +69,7 @@ const getAdminLinks = (role: string): SidebarItem[] => {
   const baseLinks = [
     { path: "/admin/users", label: "Users", icon: <Users className="w-5 h-5" />, group: "Administration" },
     { path: "/admin/reviews", label: "Review Moderation", icon: <Eye className="w-5 h-5" />, group: "Administration" },
+    { path: "/admin/treatments", label: "Therapy Approvals", icon: <ClipboardList className="w-5 h-5" />, group: "Administration" },
     { path: "/admin/loyalty-management", label: "Loyalty Management", icon: <Tag className="w-5 h-5" />, group: "Settings" },
     { path: "/admin/monitor", label: "Monitor", icon: <BarChart2 className="w-5 h-5" />, group: "Analytics" },
   ];

@@ -4,6 +4,7 @@ import { User } from '../modules/users/entities/user.entity';
 import { Clinic } from '../modules/clinics/entities/clinic.entity';
 import { Service } from '../modules/clinics/entities/service.entity';
 import { Treatment } from '../modules/clinics/entities/treatment.entity';
+import { TreatmentCategory } from '../modules/clinics/entities/treatment-category.entity';
 import { GiftCard } from '../modules/clinics/entities/gift-card.entity';
 import { BlogPost, BlogCategory } from '../modules/clinics/entities/blog.entity';
 import { Lead, CrmAction, CustomerRecord } from '../modules/crm/entities';
@@ -44,6 +45,7 @@ const AppDataSource = new DataSource({
         Clinic,
         Service,
         Treatment,
+        TreatmentCategory,
         Lead,
         CommunicationLog,
         CustomerRecord,

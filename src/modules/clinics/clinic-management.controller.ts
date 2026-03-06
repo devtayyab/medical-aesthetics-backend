@@ -102,10 +102,11 @@ export class ClinicManagementController {
     @Body() createAppointmentDto: any,
     @Request() req,
   ) {
-    // Ensure appointment is marked as clinic_own
+    // Ensure appointment is marked as clinic_own and track who booked it
     return this.bookingsService.createAppointment({
       ...createAppointmentDto,
       appointmentSource: 'clinic_own',
+      bookedById: req.user.id,
     });
   }
 
@@ -126,7 +127,7 @@ export class ClinicManagementController {
   }
 
   @Patch('appointments/:id/status')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Update appointment status' })
   @ApiResponse({ status: 200, description: 'Appointment status updated successfully' })
   async updateAppointmentStatus(
@@ -144,7 +145,7 @@ export class ClinicManagementController {
   }
 
   @Patch('appointments/:id/complete')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Complete appointment with payment recording and completion report' })
   @ApiResponse({ status: 200, description: 'Appointment completed successfully' })
   async completeAppointment(
@@ -159,6 +160,7 @@ export class ClinicManagementController {
         renewalDate?: string;
         notes?: string;
       };
+      serviceId?: string;
     },
     @Request() req,
   ) {
@@ -169,6 +171,7 @@ export class ClinicManagementController {
       body.paymentData,
       body.treatmentDetails,
       body.completionReport,
+      body.serviceId,
     );
   }
 
@@ -400,7 +403,7 @@ export class ClinicManagementController {
 
   // Appointment Reschedule
   @Patch('appointments/:id/reschedule')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Reschedule appointment' })
   @ApiResponse({ status: 200, description: 'Appointment rescheduled successfully' })
   async rescheduleAppointment(
@@ -536,5 +539,38 @@ export class ClinicManagementController {
     @Request() req,
   ) {
     return this.clinicsService.toggleReviewVisibility(req.user.id, id);
+  }
+
+  // Predefined Treatment Management
+  @Get('treatment-categories')
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT)
+  @ApiOperation({ summary: 'Get predefined treatment categories' })
+  async getCategories() {
+    return this.clinicsService.getCategories();
+  }
+
+  @Get('treatments-by-category/:catId')
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT)
+  @ApiOperation({ summary: 'Get approved treatments for a category' })
+  async getTreatmentsByCategory(@Param('catId') catId: string) {
+    return this.clinicsService.getTreatmentsByCategory(catId);
+  }
+
+  @Post('manual-treatment')
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR)
+  @ApiOperation({ summary: 'Create a manual treatment (requires admin approval)' })
+  async createManualTreatment(
+    @Body() body: { name: string; categoryId: string; shortDescription?: string; fullDescription?: string },
+  ) {
+    return this.clinicsService.createManualTreatment(body);
+  }
+
+  @Post('manual-category')
+  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR)
+  @ApiOperation({ summary: 'Create a manual category (requires admin approval)' })
+  async createManualCategory(
+    @Body() body: { name: string; description?: string },
+  ) {
+    return this.clinicsService.createManualCategory(body);
   }
 }

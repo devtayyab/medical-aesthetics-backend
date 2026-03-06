@@ -3119,15 +3119,14 @@ export class CrmService implements OnModuleInit {
   }
 
   @OnEvent('appointment.created')
-  async handleAppointmentCreated(appointment: any) {
+  async handleAppointmentCreated(appointment: Appointment) {
     if (!appointment || !appointment.clientId) return;
 
-    // Check if the client is a lead
+    // 1. Handle Lead Conversion Visibility
     let lead = await this.leadsRepository.findOne({
       where: { id: appointment.clientId },
     });
 
-    // If not found by ID (common if already converted to User), try by email
     if (!lead && (appointment.client?.email || appointment.clientDetails?.email)) {
       const email = appointment.client?.email || appointment.clientDetails?.email;
       lead = await this.leadsRepository.findOne({
@@ -3135,45 +3134,116 @@ export class CrmService implements OnModuleInit {
       });
     }
 
-    if (lead) {
-      if (lead.status !== LeadStatus.CONVERTED) {
-        const oldStatus = lead.status;
-        lead.status = LeadStatus.CONVERTED;
-        lead.convertedAt = new Date();
-        await this.leadsRepository.save(lead);
+    if (lead && lead.status !== LeadStatus.CONVERTED) {
+      const oldStatus = lead.status;
+      lead.status = LeadStatus.CONVERTED;
+      lead.convertedAt = new Date();
+      await this.leadsRepository.save(lead);
 
-        // Emit status change event
-        this.eventEmitter.emit('lead.status.changed', {
-          lead: lead,
-          oldStatus: oldStatus,
-          newStatus: LeadStatus.CONVERTED,
-        });
+      this.eventEmitter.emit('lead.status.changed', {
+        lead: lead,
+        oldStatus: oldStatus,
+        newStatus: LeadStatus.CONVERTED,
+      });
 
-        this.logger.log(`Changed lead status for ${lead.id} from ${oldStatus} to ${LeadStatus.CONVERTED} due to appointment created`);
+      this.logger.log(`Changed lead status for ${lead.id} from ${oldStatus} to ${LeadStatus.CONVERTED} due to appointment created`);
+    }
+
+    // 2. Update Customer Record Summary
+    // Note: Booked appointments should be "supposed" / credited to the client record immediately
+    const customerId = appointment.clientId;
+    let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
+
+    // If no record found (likely a new guest), search by phone/email to avoid duplicates
+    if (!record && (appointment.client?.phone || appointment.clientDetails?.phone)) {
+      const email = appointment.client?.email || appointment.clientDetails?.email;
+      const phone = appointment.client?.phone || appointment.clientDetails?.phone;
+
+      const existingUser = await this.usersRepository.findOne({
+        where: [{ email }, { phone }]
+      });
+
+      if (existingUser) {
+        record = await this.customerRecordsRepository.findOne({ where: { customerId: existingUser.id } });
       }
+    }
+
+    if (record) {
+      // Increment total visits (booked)
+      record.totalAppointments = (record.totalAppointments || 0) + 1;
+
+      const aptDate = new Date(appointment.startTime);
+
+      // Update visit dates
+      if (!record.lastAppointmentDate || aptDate > record.lastAppointmentDate) {
+        record.lastAppointmentDate = aptDate;
+      }
+
+      // Update next appointment if it's in the future
+      if (aptDate > new Date()) {
+        if (!record.nextAppointmentDate || aptDate < record.nextAppointmentDate) {
+          record.nextAppointmentDate = aptDate;
+        }
+      }
+
+      // Track clinic history
+      record.lastClinicId = appointment.clinicId;
+      if (appointment.providerId) record.lastDoctorId = appointment.providerId;
+
+      await this.customerRecordsRepository.save(record);
+      this.logger.log(`Updated CustomerRecord ${record.id} for client ${customerId} due to booking`);
     }
   }
 
   @OnEvent('appointment.status.changed')
   async handleAppointmentStatusChanged(eventData: any) {
-    const { appointment, newStatus } = eventData;
+    const { appointment, newStatus, oldStatus } = eventData;
     if (!appointment || !appointment.clientId) return;
 
     if (newStatus === 'completed') {
+      // 1. Conversion check (redundant but safe)
       const lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
       if (lead && lead.status !== LeadStatus.CONVERTED) {
-        const oldStatus = lead.status;
         lead.status = LeadStatus.CONVERTED;
         lead.convertedAt = new Date();
         await this.leadsRepository.save(lead);
+      }
 
-        this.eventEmitter.emit('lead.status.changed', {
-          lead: lead,
-          oldStatus: oldStatus,
-          newStatus: LeadStatus.CONVERTED,
-        });
+      // 2. Update Customer Record execution stats
+      const record = await this.customerRecordsRepository.findOne({
+        where: { customerId: appointment.clientId }
+      });
 
-        this.logger.log(`Changed lead status for ${lead.id} to ${LeadStatus.CONVERTED} due to appointment completed`);
+      if (record) {
+        record.completedAppointments = (record.completedAppointments || 0) + 1;
+        record.lifetimeValue = Number(record.lifetimeValue || 0) + Number(appointment.totalAmount || 0);
+        record.isRepeatCustomer = record.completedAppointments > 1;
+        await this.customerRecordsRepository.save(record);
+
+        // 3. Update Clinic/Doctor Affiliation history
+        try {
+          const treatmentName = appointment.service?.treatment?.name || appointment.service?.name;
+          await this.customerAffiliationService.updateClinicAffiliation(
+            appointment.clientId,
+            appointment.clinicId,
+            appointment.providerId || undefined,
+            {
+              totalAmount: appointment.totalAmount,
+              treatment: treatmentName,
+              appointmentId: appointment.id
+            }
+          );
+        } catch (affError) {
+          this.logger.error(`Failed to update affiliation for client ${appointment.clientId}:`, affError);
+        }
+      }
+    } else if (newStatus === 'cancelled') {
+      const record = await this.customerRecordsRepository.findOne({
+        where: { customerId: appointment.clientId }
+      });
+      if (record) {
+        record.cancelledAppointments = (record.cancelledAppointments || 0) + 1;
+        await this.customerRecordsRepository.save(record);
       }
     }
   }

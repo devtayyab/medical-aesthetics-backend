@@ -16,9 +16,10 @@ export const permissions = {
   canViewServices: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER],
 
   // Appointments
-  canConfirmAppointments: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT],
-  canRescheduleAppointments: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT],
-  canCompleteAppointments: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT],
+  canConfirmAppointments: [UserRole.ADMIN, UserRole.SALESPERSON],
+  canMarkNoShow: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.ADMIN, UserRole.SALESPERSON],
+  canRescheduleAppointments: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.ADMIN, UserRole.SALESPERSON],
+  canCompleteAppointments: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.ADMIN, UserRole.SALESPERSON],
   canViewAppointments: [
     UserRole.CLINIC_OWNER,
     UserRole.DOCTOR,
@@ -92,12 +93,6 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
       label: 'Appointments',
       path: '/clinic/appointments',
       icon: 'Calendar',
-    });
-    menuItems.push({
-      id: 'diary',
-      label: 'Staff Diary',
-      path: '/clinic/diary',
-      icon: 'Clock',
     });
   }
 

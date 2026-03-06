@@ -68,6 +68,11 @@ export const CheckoutPage: React.FC = () => {
     const handleCompleteBooking = async () => {
         if (!selectedClinic || !selectedServices.length || !selectedDate || !selectedTimeSlot) return;
 
+        if (!formData.phone) {
+            alert('Mobile number is mandatory for appointment booking.');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const appointmentData = {
