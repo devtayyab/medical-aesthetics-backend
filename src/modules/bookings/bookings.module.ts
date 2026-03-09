@@ -10,6 +10,7 @@ import { ClinicsModule } from '../clinics/clinics.module';
 import { UsersModule } from '../users/users.module';
 import { CrmModule } from '../crm/crm.module';
 import { User } from '../users/entities/user.entity';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { User } from '../users/entities/user.entity';
     forwardRef(() => ClinicsModule),
     UsersModule,
     forwardRef(() => CrmModule),
+    PaymentsModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, AvailabilityService],

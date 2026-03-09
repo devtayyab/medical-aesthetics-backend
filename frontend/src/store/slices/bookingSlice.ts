@@ -67,9 +67,14 @@ export const createAppointment = createAsyncThunk(
       email: string;
       phone: string;
     };
-  }) => {
-    const response = await bookingAPI.createAppointment(data);
-    return response.data;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await bookingAPI.createAppointment(data);
+      return response.data;
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err?.message || 'Failed to create appointment';
+      return rejectWithValue(message);
+    }
   }
 );
 

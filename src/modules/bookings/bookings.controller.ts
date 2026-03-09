@@ -52,6 +52,7 @@ export class BookingsController {
     }
   }
 
+  @Public()
   @Post('appointments/hold')
   @ApiOperation({ summary: 'Hold a slot temporarily' })
   holdSlot(@Body() holdSlotDto: HoldSlotDto) {
@@ -84,7 +85,7 @@ export class BookingsController {
   @ApiOperation({ summary: 'Get appointment details' })
   async getAppointment(@Param('id') id: string) {
     const appointment = await this.bookingsService.findById(id);
-    return {
+    const result: any = {
       ...appointment,
       displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
       serviceName: appointment.service?.treatment?.name,
@@ -92,6 +93,18 @@ export class BookingsController {
         ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
         : null,
     };
+
+    // If pending payment, generate a fresh Viva Wallet redirect URL
+    if ((appointment.status as string) === 'pending_payment') {
+      try {
+        const redirectUrl = await this.bookingsService.generateVivaPaymentUrl(appointment);
+        if (redirectUrl) result.redirectUrl = redirectUrl;
+      } catch (err) {
+        console.error('[Viva Wallet] Failed to regenerate payment URL:', err?.message);
+      }
+    }
+
+    return result;
   }
 
   @Patch('appointments/:id/reschedule')

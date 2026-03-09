@@ -52,10 +52,17 @@ import { RepeatManagement } from "@/pages/CRM/RepeatManagement";
 import { Dashboard as AdminDashboard } from "@/pages/Admin/Dashboard";
 import { ManagerDashboard } from "./pages/Admin/ManagerDashboard/ManagerDashboard";
 import { Users as AdminUsers } from "@/pages/Admin/Users";
+import { Clinics as AdminClinics } from "@/pages/Admin/Clinics";
 import { LoyaltyManagement } from "@/pages/Admin/LoyaltyManagement";
 import { ReviewModeration } from "@/pages/Admin/ReviewModeration";
-import { TreatmentApproval } from "@/pages/Admin/TreatmentApproval";
+import { TherapyCatalog as AdminTherapyCatalog } from "@/pages/Admin/TherapyCatalog";
 import { Monitor } from "@/pages/Admin/Monitor";
+import { Wallet as AdminWallet } from "@/pages/Admin/Wallet";
+import { Payments as AdminPayments } from "@/pages/Admin/Payments";
+import { GiftCards as AdminGiftCards } from "@/pages/Admin/GiftCards";
+import { BlogManagement as AdminBlogManagement } from "@/pages/Admin/BlogManagement";
+import { Integrations as AdminIntegrations } from "@/pages/Admin/Integrations";
+
 import { MyAccount } from "@/pages/Client/MyAccount";
 import { PersonalDetails } from "@/pages/Client/AccountPages/PersonalDetails";
 import { Rewards } from "@/pages/Client/AccountPages/Rewards";
@@ -72,6 +79,7 @@ import SiteLogo from "@/assets/SiteLogo.png";
 import { CRM } from "./pages/CRM/CRM";
 import { CheckoutPage } from "./pages/Client/CheckoutPage";
 import BookingConfirmation from "./pages/Client/BookingConfirmation";
+import { PaymentResultPage } from "./pages/Client/PaymentResultPage";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import { Calls as ManagerCrmCalls } from "@/pages/Admin/ManagerCRM/Calls";
 import { Reports as ManagerCrmReports } from "@/pages/Admin/ManagerCRM/Reports";
@@ -315,6 +323,9 @@ function AppContent() {
               </ProtectedLayout>
             }
           />
+          {/* Viva Wallet Payment Result Pages - must be PUBLIC so Viva can redirect here */}
+          <Route path="/payment/success" element={<PaymentResultPage />} />
+          <Route path="/payment/failure" element={<PaymentResultPage />} />
           <Route
             path="/invite-friend"
             element={
@@ -650,9 +661,9 @@ function AppContent() {
           <Route
             path="/admin/treatments"
             element={
-              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN"]}>
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
                 <AdminLayout>
-                  <TreatmentApproval />
+                  <AdminTherapyCatalog />
                 </AdminLayout>
               </ProtectedLayout>
             }
@@ -740,9 +751,19 @@ function AppContent() {
           <Route
             path="/admin/users"
             element={
-              <ProtectedLayout allowedRoles={["admin"]}>
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
                 <AdminLayout>
                   <AdminUsers />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/clinics"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <AdminClinics />
                 </AdminLayout>
               </ProtectedLayout>
             }
@@ -763,6 +784,56 @@ function AppContent() {
               <ProtectedLayout allowedRoles={["admin"]}>
                 <AdminLayout>
                   <Monitor />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/wallet"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <AdminWallet />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/payments"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <AdminPayments />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/gift-cards"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <AdminGiftCards />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/blog"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <AdminBlogManagement />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/integrations"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <AdminIntegrations />
                 </AdminLayout>
               </ProtectedLayout>
             }

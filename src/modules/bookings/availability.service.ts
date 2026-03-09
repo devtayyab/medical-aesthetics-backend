@@ -338,7 +338,7 @@ export class AvailabilityService {
     let clinic;
     if (userRole === 'clinic_owner' || userRole === 'secretariat') {
       clinic = await this.clinicsService.findByOwnerId(userId);
-    } else if (userRole === 'manager' && query?.clinicId) {
+    } else if ((userRole === 'manager' || userRole === 'admin' || userRole === 'SUPER_ADMIN') && query?.clinicId) {
       clinic = await this.clinicsService.findById(query.clinicId);
     } else {
       // For other roles, we need to find their clinic

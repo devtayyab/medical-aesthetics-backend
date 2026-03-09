@@ -2,9 +2,10 @@ import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { css } from "@emotion/css";
-import { FaCalendarAlt, FaClock, FaClinicMedical, FaTimes, FaEdit, FaRegCommentDots, FaStar } from "react-icons/fa";
+import { FaCalendarAlt, FaClock, FaClinicMedical, FaTimes, FaEdit, FaRegCommentDots, FaStar, FaCreditCard } from "react-icons/fa";
 import { MdNotes } from "react-icons/md";
 import { fetchUserAppointments, cancelAppointment } from "@/store/slices/bookingSlice";
+import { bookingAPI } from "@/services/api";
 
 import { RootState, AppDispatch } from "@/store";
 import type { Appointment } from "@/types";
@@ -97,6 +98,26 @@ const statusBadge = css`
   border: 1px solid #5f8b00;
 `;
 
+const pendingPaymentBadge = css`
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  &:hover {
+    background-color: #fde68a;
+    transform: scale(1.03);
+  }
+`;
+
 const emptyState = css`
   text-align: center;
   color: #717171;
@@ -161,7 +182,23 @@ export const Appointments: React.FC = () => {
     }
   };
 
-  // Combine dummy data with fetched data
+  const handleRetryPayment = async (apt: Appointment) => {
+    // Re-fetch the appointment to get a fresh redirectUrl from Viva Wallet
+    try {
+      window.alert('Redirecting you to the payment page...');
+      const res = await bookingAPI.getAppointment(apt.id);
+      const redirectUrl = (res.data as any)?.redirectUrl;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      } else {
+        window.alert('Could not retrieve payment link. Please contact support or try again later.');
+      }
+    } catch (err) {
+      window.alert('Failed to retrieve payment link. Please contact support.');
+    }
+  };
+
+  // Combine: prefer freshly fetched user appointments
   const appointments =
     bookingAppointments.length > 0 ? bookingAppointments : clientAppointments;
 
@@ -185,7 +222,18 @@ export const Appointments: React.FC = () => {
                     <FaClinicMedical className="text-[#5F8B00]" size={20} />
                     {apt.clinic?.name || "Unnamed Clinic"}
                   </div>
-                  <span className={statusBadge}>{apt.status}</span>
+                  {(apt.status as string) === 'pending_payment' ? (
+                    <button
+                      className={pendingPaymentBadge}
+                      onClick={() => handleRetryPayment(apt)}
+                      title="Click to complete your payment"
+                    >
+                      <FaCreditCard size={12} />
+                      Pay Now
+                    </button>
+                  ) : (
+                    <span className={statusBadge}>{apt.status}</span>
+                  )}
                 </div>
 
                 <div className="flex gap-2 justify-end mb-4 border-b border-gray-100 pb-3">
@@ -226,7 +274,7 @@ export const Appointments: React.FC = () => {
                 </div>
 
                 <p className={serviceName}>
-                  <strong>Service:</strong> {apt.service?.name || "N/A"}
+                  <strong>Service:</strong> {(apt as any).serviceName || apt.service?.treatment?.name || apt.service?.name || "N/A"}
                 </p>
 
                 <div className={details}>

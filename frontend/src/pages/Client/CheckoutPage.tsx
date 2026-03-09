@@ -56,6 +56,19 @@ export const CheckoutPage: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
+        // Redirect if state is missing (e.g. on refresh)
+        if (!selectedClinic || !selectedServices.length || !selectedDate || !selectedTimeSlot) {
+            console.warn('Booking state missing, redirecting to search');
+            // Allow a small delay for state to potentially hydrate if needed, 
+            // but usually this means we lost the wizard state.
+            const timer = setTimeout(() => {
+                if (!selectedClinic) navigate('/search');
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [selectedClinic, selectedServices, selectedDate, selectedTimeSlot, navigate]);
+
+    useEffect(() => {
         if (user) {
             setFormData({
                 fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
@@ -75,10 +88,14 @@ export const CheckoutPage: React.FC = () => {
 
         setIsSubmitting(true);
         try {
+            if (!formData.fullName || !formData.email) {
+                alert('Please provide your full name and email address.');
+                return;
+            }
             const appointmentData = {
                 clinicId: selectedClinic.id,
                 serviceId: selectedServices[0].id,
-                clientId: crmState?.customerId || user?.id || '00000000-0000-0000-0000-000000000000', // Use dummy UUID for guest so validation passes, backend will handle via clientDetails
+                clientId: crmState?.customerId || user?.id || '00000000-0000-0000-0000-000000000000',
                 providerId: selectedTimeSlot?.providerId || undefined,
                 startTime: selectedTimeSlot.startTime,
                 endTime: selectedTimeSlot.endTime,
@@ -90,11 +107,22 @@ export const CheckoutPage: React.FC = () => {
 
             const result = await dispatch(createAppointment(appointmentData));
             if (result.meta.requestStatus === 'fulfilled') {
+                const payload = result.payload as any;
+
+                if (payload.redirectUrl) {
+                    window.location.href = payload.redirectUrl;
+                    return;
+                }
+
                 dispatch(clearBooking());
-                navigate('/booking-confirmation', { state: { appointment: result.payload } });
+                navigate('/booking-confirmation', { state: { appointment: payload } });
+            } else {
+                const errorMsg = (result.payload as any) || 'Failed to create appointment. Please try again.';
+                alert(errorMsg);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Booking error:', error);
+            alert('An unexpected error occurred: ' + (error.message || 'Unknown error'));
         } finally {
             setIsSubmitting(false);
         }
@@ -171,6 +199,7 @@ export const CheckoutPage: React.FC = () => {
                             <h3 className={sectionTitle}><FaShieldAlt size={18} className="text-lime-500" /> Payment Method</h3>
                             <div className="space-y-4">
                                 <button
+                                    type="button"
                                     onClick={() => setPaymentMethod('card')}
                                     className={`w-full flex items-center justify-between p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'card' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
                                 >
@@ -186,7 +215,16 @@ export const CheckoutPage: React.FC = () => {
                                     </div>
                                 </button>
 
+                                {paymentMethod === 'card' && (
+                                    <div className="p-4 bg-lime-100/50 rounded-xl border border-lime-200">
+                                        <p className="text-[10px] font-bold text-lime-700 uppercase tracking-tight leading-relaxed">
+                                            SECURE CHECKOUT: You will be redirected to the secure Viva Wallet payment page after clicking "Finish & Book" at the bottom right.
+                                        </p>
+                                    </div>
+                                )}
+
                                 <button
+                                    type="button"
                                     onClick={() => setPaymentMethod('venue')}
                                     className={`w-full flex items-center justify-between p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'venue' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
                                 >
