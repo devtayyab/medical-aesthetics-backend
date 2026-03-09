@@ -213,6 +213,30 @@ export class NotificationsService implements OnModuleInit {
     };
   }
 
+  async notifyPlatformStaff(
+    title: string,
+    message: string,
+    data?: any,
+  ): Promise<{ sentTo: number }> {
+    // Find all admin and salesperson users
+    const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true });
+    const salespersons = await this.usersService.findAll({ role: UserRole.SALESPERSON, isActive: true });
+
+    const recipientIds = [...admins, ...salespersons].map(u => u.id);
+
+    if (recipientIds.length === 0) return { sentTo: 0 };
+
+    await this.sendBulk(
+      recipientIds,
+      NotificationType.PUSH,
+      title,
+      message,
+      data
+    );
+
+    return { sentTo: recipientIds.length };
+  }
+
   async sendWelcomeCredentials(
     recipientId: string,
     email: string,

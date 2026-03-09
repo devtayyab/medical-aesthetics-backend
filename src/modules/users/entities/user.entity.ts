@@ -106,6 +106,9 @@ export class User {
   @OneToMany(() => Clinic, (clinic) => clinic.owner)
   ownedClinics: Clinic[];
 
+  @OneToMany(() => CustomerRecord, (record) => record.customer)
+  customerRecords: CustomerRecord[];
+
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword() {

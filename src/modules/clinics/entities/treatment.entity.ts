@@ -5,8 +5,12 @@ import {
     CreateDateColumn,
     UpdateDateColumn,
     OneToMany,
+    ManyToOne,
+    JoinColumn,
 } from 'typeorm';
 import { Service } from './service.entity';
+import { TreatmentCategory } from './treatment-category.entity';
+import { TreatmentStatus } from '../enums/treatment-status.enum';
 
 @Entity('treatments')
 export class Treatment {
@@ -16,14 +20,28 @@ export class Treatment {
     @Column()
     name: string;
 
-    @Column('text')
+    @Column('text', { nullable: true })
     shortDescription: string;
 
-    @Column('text')
+    @Column('text', { nullable: true })
     fullDescription: string;
 
-    @Column()
-    category: string;
+    @Column({ nullable: true })
+    category: string; // Legacy / Fallback
+
+    @Column({ nullable: true })
+    categoryId: string;
+
+    @ManyToOne(() => TreatmentCategory, (cat) => cat.treatments)
+    @JoinColumn({ name: 'categoryId' })
+    categoryRef: TreatmentCategory;
+
+    @Column({
+        type: 'enum',
+        enum: TreatmentStatus,
+        default: TreatmentStatus.APPROVED,
+    })
+    status: TreatmentStatus;
 
     @Column({ nullable: true })
     imageUrl: string;

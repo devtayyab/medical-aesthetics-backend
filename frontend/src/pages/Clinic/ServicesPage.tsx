@@ -11,6 +11,7 @@ import {
   ToggleLeft,
   ToggleRight,
   Clock,
+  Settings,
   X,
 } from "lucide-react";
 
@@ -212,32 +213,126 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const [categories, setCategories] = useState<any[]>([]);
+  const [treatments, setTreatments] = useState<any[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [selectedTreatmentId, setSelectedTreatmentId] = useState<string>("");
+  const [isManualEntry, setIsManualEntry] = useState(false);
+  const [isManualCategory, setIsManualCategory] = useState(false);
+  const [manualCategoryName, setManualCategoryName] = useState("");
+
   const [formData, setFormData] = useState<CreateServiceDto>({
+    treatmentId: service?.treatmentId || "",
     name: service?.treatment?.name || "",
     shortDescription: service?.treatment?.shortDescription || "",
     fullDescription: service?.treatment?.fullDescription || "",
     price: service?.price || 0,
     durationMinutes: service?.durationMinutes || 60,
-    category: service?.treatment?.category || "Other",
+    category: service?.treatment?.category || "",
     imageUrl: service?.treatment?.imageUrl || "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCategoryId && selectedCategoryId !== "manual_cat") {
+      fetchTreatments(selectedCategoryId);
+      const cat = categories.find((c) => c.id === selectedCategoryId);
+      if (cat) setFormData((prev) => ({ ...prev, category: cat.name }));
+    } else if (selectedCategoryId === "manual_cat") {
+      setTreatments([]);
+    }
+  }, [selectedCategoryId]);
+
+  const fetchCategories = async () => {
+    try {
+      const cats = await clinicApi.services.getCategories();
+      setCategories(cats);
+      if (service?.treatment?.categoryId) {
+        setSelectedCategoryId(service.treatment.categoryId);
+      }
+    } catch (err) {
+      console.error("Failed to fetch categories", err);
+    }
+  };
+
+  const fetchTreatments = async (catId: string) => {
+    try {
+      const ts = await clinicApi.services.getTreatmentsByCategory(catId);
+      setTreatments(ts);
+      if (service?.treatmentId) {
+        setSelectedTreatmentId(service.treatmentId);
+      }
+    } catch (err) {
+      console.error("Failed to fetch treatments", err);
+    }
+  };
+
+  const handleTreatmentChange = (tId: string) => {
+    setSelectedTreatmentId(tId);
+    if (tId === "manual") {
+      setIsManualEntry(true);
+      setFormData((prev) => ({
+        ...prev,
+        treatmentId: "",
+        name: "",
+        shortDescription: "",
+        fullDescription: "",
+      }));
+    } else {
+      setIsManualEntry(false);
+      const t = treatments.find((item) => item.id === tId);
+      if (t) {
+        setFormData((prev) => ({
+          ...prev,
+          treatmentId: t.id,
+          name: t.name,
+          shortDescription: t.shortDescription,
+          fullDescription: t.fullDescription,
+          imageUrl: t.imageUrl || prev.imageUrl,
+        }));
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      if (!formData.category) {
-        alert("Please select a treatment category.");
-        setIsSubmitting(false);
-        return;
+      let finalTreatmentId = selectedTreatmentId;
+      let finalCategoryId = selectedCategoryId;
+
+      if (isManualCategory) {
+        const manualC = await clinicApi.services.createManualCategory({
+          name: manualCategoryName,
+        });
+        finalCategoryId = manualC.id;
       }
 
+      if (isManualEntry || (selectedTreatmentId === "manual")) {
+        // Create manual treatment first
+        const manualT = await clinicApi.services.createManualTreatment({
+          name: formData.name || "",
+          categoryId: finalCategoryId,
+          shortDescription: formData.shortDescription,
+          fullDescription: formData.fullDescription,
+        });
+        finalTreatmentId = manualT.id;
+      }
+
+      const payload = {
+        ...formData,
+        treatmentId: finalTreatmentId,
+      };
+
       if (service) {
-        await clinicApi.services.update(service.id, formData);
+        await clinicApi.services.update(service.id, payload);
       } else {
-        await clinicApi.services.create(formData);
+        await clinicApi.services.create(payload);
       }
       onSave();
     } catch (error) {
@@ -249,183 +344,209 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border-t-8 border-blue-600">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
-            {service ? "Edit Service" : "Add New Service"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-6 h-6" />
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {service ? "Edit Service" : "Add New Service"}
+            </h2>
+            <p className="text-sm text-gray-500">Configure your treatment offering</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <X className="w-6 h-6 text-gray-400" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Service Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100 space-y-5">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="size-6 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                <Settings className="w-3.5 h-3.5" />
+              </div>
+              <h3 className="text-sm font-black text-blue-900 uppercase tracking-tighter italic">Selection Workflow</h3>
             </div>
 
-            {/* Short Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Short Description (1-2 lines) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.shortDescription}
-                onChange={(e) =>
-                  setFormData({ ...formData, shortDescription: e.target.value })
-                }
-                placeholder="Brief summary for treatment cards"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            {/* Category Dropdown */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest pl-1">1. Professional Category</label>
+              <select
+                value={selectedCategoryId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedCategoryId(val);
+                  if (val === "manual_cat") {
+                    setIsManualCategory(true);
+                    setSelectedTreatmentId("manual");
+                    setIsManualEntry(true);
+                    setFormData(prev => ({
+                      ...prev,
+                      treatmentId: "",
+                      name: "",
+                      shortDescription: "",
+                      fullDescription: ""
+                    }));
+                  } else {
+                    setIsManualCategory(false);
+                  }
+                }}
+                className="w-full px-4 py-3 border-2 border-white rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none bg-white font-bold text-gray-800 shadow-sm transition-all"
                 required
-              />
+              >
+                <option value="">Select Medical Category...</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+                <option value="manual_cat" className="font-bold text-blue-600">+ Add New Category (Needs Approval)</option>
+              </select>
             </div>
 
-            {/* Full Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Description <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={formData.fullDescription}
-                onChange={(e) =>
-                  setFormData({ ...formData, fullDescription: e.target.value })
-                }
-                rows={4}
-                placeholder="Comprehensive details shown on the detail page"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                required
-              />
-            </div>
+            {isManualCategory && (
+              <div className="space-y-1.5 animate-in fade-in duration-300 relative">
+                <div className="absolute -left-3 top-1/2 -mt-px w-2 h-0.5 bg-blue-300"></div>
+                <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest pl-1">New Category Name</label>
+                <input
+                  type="text"
+                  value={manualCategoryName}
+                  onChange={(e) => setManualCategoryName(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none bg-blue-50/30 font-bold"
+                  required
+                  placeholder="e.g. Advanced Laser Types..."
+                />
+              </div>
+            )}
 
-            {/* Price & Duration */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price ($) <span className="text-red-500">*</span>
-                </label>
+            {/* Treatment Dropdown (Show context even if disabled) */}
+            <div className={`space-y-1.5 transition-all duration-300 ${(!selectedCategoryId || isManualCategory) ? 'opacity-50' : 'opacity-100'}`}>
+              <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest pl-1">2. Specific Therapy Name</label>
+              <select
+                value={selectedTreatmentId}
+                onChange={(e) => handleTreatmentChange(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-white rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none bg-white font-bold text-gray-800 shadow-sm transition-all italic"
+                disabled={!selectedCategoryId || isManualCategory}
+                required
+              >
+                <option value="">{selectedCategoryId ? 'Choose Treatment...' : '--- Select Category First ---'}</option>
+                {treatments.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+                <option value="manual" className="font-bold text-blue-600">+ Add Custom Therapy (Needs Approval)</option>
+              </select>
+            </div>
+          </div>
+
+          {(isManualEntry || (selectedTreatmentId === "manual")) && (
+            <div className="space-y-4 p-5 bg-amber-50/50 rounded-2xl border-2 border-dashed border-amber-200 animate-in zoom-in-95 duration-300">
+              <div className="flex items-center gap-2 mb-2 text-amber-800 font-black text-[10px] uppercase tracking-widest">
+                <ToggleLeft className="w-4 h-4" />
+                <span>Manual Therapy Request</span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Proposed Therapy Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-4 py-2 border-2 border-white rounded-lg focus:ring-4 focus:ring-amber-100 focus:border-amber-300 outline-none bg-white font-medium"
+                  required
+                  placeholder="e.g. Advanced Bio-Filler"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Short Preview</label>
+                <input
+                  type="text"
+                  value={formData.shortDescription}
+                  onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
+                  className="w-full px-4 py-2 border-2 border-white rounded-lg focus:ring-4 focus:ring-amber-100 focus:border-amber-300 outline-none bg-white font-medium"
+                  placeholder="Brief 1-sentence summary..."
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Complete Details</label>
+                <textarea
+                  value={formData.fullDescription}
+                  onChange={(e) => setFormData({ ...formData, fullDescription: e.target.value })}
+                  rows={2}
+                  className="w-full px-4 py-2 border-2 border-white rounded-lg focus:ring-4 focus:ring-amber-100 focus:border-amber-300 outline-none bg-white resize-none font-medium"
+                  placeholder="Tell admin about this treatment..."
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Price & Duration */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pricing ($)</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   value={formData.price || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      price: e.target.value === "" ? 0 : parseFloat(e.target.value),
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                  className="w-full pl-8 pr-4 py-3 border border-gray-100 rounded-xl focus:ring-4 focus:ring-gray-50 focus:border-gray-300 outline-none font-black text-xl text-gray-900"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Duration (min) <span className="text-red-500">*</span>
-                </label>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Time (MIN)</label>
+              <div className="relative">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs uppercase">Min</span>
                 <input
                   type="number"
-                  min="0"
+                  min="1"
                   value={formData.durationMinutes || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      durationMinutes: e.target.value === "" ? 0 : parseInt(e.target.value),
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) || 0 })}
+                  className="w-full px-4 py-3 border border-gray-100 rounded-xl focus:ring-4 focus:ring-gray-50 focus:border-gray-300 outline-none font-black text-xl text-gray-900"
                   required
                 />
               </div>
-            </div>
-
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="">Select a category</option>
-                <option value="Hair Removal">Hair Removal</option>
-                <option value="Injectables">Injectables</option>
-                <option value="Skin Care">Skin Care</option>
-                <option value="Body">Body</option>
-                <option value="Surgery">Surgery</option>
-                <option value="Dental">Dental</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-
-            {/* Image URL */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Image URL (Required to Publish) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.imageUrl}
-                onChange={(e) =>
-                  setFormData({ ...formData, imageUrl: e.target.value })
-                }
-                placeholder="https://example.com/image.jpg"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-              {formData.imageUrl && (
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">Preview:</p>
-                  <img src={formData.imageUrl} alt="Preview" className="h-20 w-auto rounded-lg border border-gray-200" />
-                </div>
-              )}
             </div>
           </div>
 
+          {/* Image URL */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Representation Image URL</label>
+            <input
+              type="text"
+              value={formData.imageUrl}
+              onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-100 rounded-xl focus:ring-4 focus:ring-gray-50 focus:border-gray-300 outline-none text-sm text-blue-600 underline"
+              placeholder="https://images.unsplash.com/..."
+            />
+          </div>
+
           {/* Actions */}
-          <div className="flex gap-3 mt-6">
+          <div className="flex gap-4 pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              className="flex-1 h-14 bg-gray-50 text-gray-600 rounded-2xl hover:bg-gray-100 transition-all font-black uppercase text-xs tracking-widest border border-gray-100"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSubmitting || !formData.category}
+              className="flex-[2] h-14 bg-[#CBFF38] text-gray-900 rounded-2xl hover:bg-lime-300 transition-all font-black uppercase text-xs tracking-widest shadow-xl shadow-lime-100 disabled:opacity-50 disabled:grayscale"
+              disabled={
+                isSubmitting ||
+                (!selectedCategoryId && !isManualCategory) ||
+                (isManualCategory && !manualCategoryName) ||
+                ((isManualEntry || selectedTreatmentId === "manual") && !formData.name) ||
+                (selectedCategoryId && selectedCategoryId !== "manual_cat" && !selectedTreatmentId)
+              }
             >
-              {isSubmitting
-                ? "Saving..."
-                : service
-                  ? "Update Service"
-                  : "Create Service"}
+              {isSubmitting ? "Syncing..." : (service ? "Update Service Offer" : ((isManualEntry || isManualCategory) ? "Submit Request" : "Publish Online Service"))}
             </button>
           </div>
         </form>

@@ -17,6 +17,8 @@ export class AppointmentResponseDto {
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  isBlocked?: boolean;
+  bookedByInfo?: any;
 
   // Relations
   clinic?: any;
@@ -42,6 +44,14 @@ export class AppointmentResponseDto {
     dto.displayName = `${serviceName} with ${providerName}`;
     dto.serviceName = serviceName;
     dto.providerName = providerName;
+
+    if (appointment.bookedBy) {
+      dto.bookedByInfo = {
+        id: appointment.bookedBy.id,
+        name: `${appointment.bookedBy.firstName} ${appointment.bookedBy.lastName}`,
+        role: appointment.bookedBy.role
+      };
+    }
 
     return dto;
   }

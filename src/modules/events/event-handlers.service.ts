@@ -155,6 +155,14 @@ export class EventHandlersService {
           dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toDateString(), // 7 days later
         });
       }
+
+      // Notify Sales and Admin on every completion as requested
+      const clinicName = appointment.clinic?.name || 'Clinic';
+      await this.notificationsService.notifyPlatformStaff(
+        'Appointment Executed',
+        `${serviceName} executed at ${clinicName} for ${appointment.client?.firstName || 'Client'}`,
+        { appointmentId: appointment.id, clinicId: appointment.clinicId }
+      );
     }
 
     // Send status update notification to client

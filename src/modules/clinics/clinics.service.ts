@@ -10,7 +10,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Clinic } from './entities/clinic.entity';
 import { Service } from './entities/service.entity';
 import { Treatment } from './entities/treatment.entity';
+import { TreatmentCategory } from './entities/treatment-category.entity';
 import { Review } from './entities/review.entity';
+import { TreatmentStatus } from './enums/treatment-status.enum';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
@@ -29,6 +31,8 @@ export class ClinicsService {
     private servicesRepository: Repository<Service>,
     @InjectRepository(Treatment)
     private treatmentsRepository: Repository<Treatment>,
+    @InjectRepository(TreatmentCategory)
+    private categoryRepository: Repository<TreatmentCategory>,
     @InjectRepository(Review)
     private reviewsRepository: Repository<Review>,
     @InjectRepository(User)
@@ -482,6 +486,7 @@ export class ClinicsService {
 
     if (updateData.price !== undefined) service.price = updateData.price;
     if (updateData.durationMinutes !== undefined) service.durationMinutes = updateData.durationMinutes;
+    if (updateData.treatmentId !== undefined) service.treatmentId = updateData.treatmentId;
     if (updateData.isActive !== undefined) service.isActive = updateData.isActive;
     if (updateData.metadata !== undefined) service.metadata = updateData.metadata;
 
@@ -818,5 +823,79 @@ export class ClinicsService {
       }
       throw new Error(`Failed to create review: ${error.message}`);
     }
+  }
+
+  // Treatment Predefined Management
+  async getCategories(): Promise<TreatmentCategory[]> {
+    return this.categoryRepository.find({
+      where: { isActive: true, status: TreatmentStatus.APPROVED },
+      order: { name: 'ASC' },
+    });
+  }
+
+  async createManualCategory(data: { name: string; description?: string }): Promise<TreatmentCategory> {
+    const category = this.categoryRepository.create({
+      ...data,
+      status: TreatmentStatus.PENDING,
+      isActive: true,
+    });
+    return this.categoryRepository.save(category);
+  }
+
+  async getTreatmentsByCategory(categoryId: string): Promise<Treatment[]> {
+    return this.treatmentsRepository.find({
+      where: { categoryId, status: TreatmentStatus.APPROVED, isActive: true },
+      order: { name: 'ASC' },
+    });
+  }
+
+  async createManualTreatment(data: {
+    name: string;
+    categoryId: string;
+    shortDescription?: string;
+    fullDescription?: string;
+  }): Promise<Treatment> {
+    const category = await this.categoryRepository.findOne({ where: { id: data.categoryId } });
+    if (!category) throw new NotFoundException('Category not found');
+
+    const treatment = this.treatmentsRepository.create({
+      ...data,
+      status: TreatmentStatus.PENDING,
+      isActive: true,
+      category: category.name, // Support legacy
+    });
+
+    return this.treatmentsRepository.save(treatment);
+  }
+
+  async setTreatmentStatus(treatmentId: string, status: TreatmentStatus): Promise<Treatment> {
+    const treatment = await this.treatmentsRepository.findOne({ where: { id: treatmentId } });
+    if (!treatment) throw new NotFoundException('Treatment not found');
+
+    treatment.status = status;
+    return this.treatmentsRepository.save(treatment);
+  }
+
+  async getPendingTreatments(): Promise<Treatment[]> {
+    return this.treatmentsRepository.find({
+      where: { status: TreatmentStatus.PENDING },
+      relations: ['categoryRef'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getPendingCategories(): Promise<TreatmentCategory[]> {
+    return this.categoryRepository.find({
+      where: { status: TreatmentStatus.PENDING },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async setCategoryStatus(categoryId: string, status: TreatmentStatus): Promise<TreatmentCategory> {
+    const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
+    if (!category) throw new NotFoundException('Category not found');
+
+    category.status = status;
+    return this.categoryRepository.save(category);
   }
 }
