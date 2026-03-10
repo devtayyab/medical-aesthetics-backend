@@ -46,4 +46,9 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   referralCode?: string;
+
+  @ApiProperty({ example: 'uuid-of-clinic', required: false })
+  @IsOptional()
+  @IsString()
+  assignedClinicId?: string;
 }

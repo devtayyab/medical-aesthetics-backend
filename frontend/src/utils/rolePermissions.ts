@@ -4,6 +4,8 @@ export const permissions = {
   // Profile Management
   canEditProfile: [UserRole.CLINIC_OWNER],
   canViewProfile: [
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
     UserRole.CLINIC_OWNER,
     UserRole.DOCTOR,
     UserRole.SECRETARIAT,
@@ -21,6 +23,8 @@ export const permissions = {
   canRescheduleAppointments: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.ADMIN, UserRole.SALESPERSON],
   canCompleteAppointments: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.ADMIN, UserRole.SALESPERSON],
   canViewAppointments: [
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
     UserRole.CLINIC_OWNER,
     UserRole.DOCTOR,
     UserRole.SECRETARIAT,
@@ -54,6 +58,18 @@ export const permissions = {
 
   // Availability
   canManageAvailability: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER],
+
+  // Staff Management
+  canManageStaff: [UserRole.CLINIC_OWNER, UserRole.ADMIN],
+
+  // Messages
+  canViewMessages: [
+    UserRole.CLINIC_OWNER,
+    UserRole.DOCTOR,
+    UserRole.SECRETARIAT,
+    UserRole.SALESPERSON,
+    UserRole.MANAGER,
+  ],
 };
 
 export const hasPermission = (
@@ -66,6 +82,8 @@ export const hasPermission = (
 
 export const canAccessClinicDashboard = (userRole: UserRole | string): boolean => {
   return [
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
     UserRole.CLINIC_OWNER,
     UserRole.DOCTOR,
     UserRole.SECRETARIAT,
@@ -116,6 +134,26 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     });
   }
 
+  // Messages - available to all clinic roles
+  if (hasPermission(userRole, 'canViewMessages')) {
+    menuItems.push({
+      id: 'messages',
+      label: 'Messages',
+      path: '/clinic/messages',
+      icon: 'MessageSquare',
+    });
+  }
+
+  // Clinic Diary (Appointment Diary)
+  if (hasPermission(userRole, 'canViewAppointments')) {
+    menuItems.push({
+      id: 'diary',
+      label: 'Diary',
+      path: '/clinic/diary',
+      icon: 'BookOpen',
+    });
+  }
+
   // Services - only for clinic owner and secretariat
   if (hasPermission(userRole, 'canViewServices')) {
     menuItems.push({
@@ -133,12 +171,6 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
       label: 'Analytics & Reports',
       path: '/clinic/analytics',
       icon: 'BarChart3',
-    });
-    menuItems.push({
-      id: 'sales-diary',
-      label: 'Sales Diary',
-      path: '/clinic/sales-diary',
-      icon: 'Calendar',
     });
   }
 
@@ -162,6 +194,16 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     });
   }
 
+  // Staff Management - only for owner and admin
+  if (hasPermission(userRole, 'canManageStaff')) {
+    menuItems.push({
+      id: 'staff',
+      label: 'Staff Management',
+      path: '/clinic/staff',
+      icon: 'UserCog',
+    });
+  }
+
   // Settings - only for clinic owner
   if (hasPermission(userRole, 'canEditProfile')) {
     menuItems.push({
@@ -172,5 +214,18 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     });
   }
 
+  // Final fallback for clinic_owner to ensure nothing is missed
+  if (userRole === UserRole.CLINIC_OWNER || userRole === 'clinic_owner') {
+    if (!menuItems.find(m => m.id === 'messages')) {
+      menuItems.push({ id: 'messages', label: 'Messages', path: '/clinic/messages', icon: 'MessageSquare' });
+    }
+    if (!menuItems.find(m => m.id === 'staff')) {
+      menuItems.push({ id: 'staff', label: 'Staff Management', path: '/clinic/staff', icon: 'UserCog' });
+    }
+    if (!menuItems.find(m => m.id === 'diary')) {
+      menuItems.push({ id: 'diary', label: 'Diary', path: '/clinic/diary', icon: 'BookOpen' });
+    }
+  }
+
   return menuItems;
-};
+}

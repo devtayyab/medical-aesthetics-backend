@@ -32,10 +32,17 @@ const clientLinks: SidebarItem[] = [
 const clinicLinks: SidebarItem[] = [
   { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
   { path: "/clinic/profile", label: "Profile", icon: <UserCog className="w-5 h-5" />, group: "Account" },
+  { path: "/clinic/staff", label: "Staff Management", icon: <Users className="w-5 h-5" />, group: "Account" },
   { path: "/clinic/diary", label: "Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
   { path: "/clinic/availability", label: "Availability", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
   { path: "/clinic/execution", label: "Execution", icon: <ListChecks className="w-5 h-5" />, group: "Operations" },
   { path: "/clinic/reports", label: "Reports", icon: <BarChart className="w-5 h-5" />, group: "Operations" },
+];
+
+const doctorLinks: SidebarItem[] = [
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
+  { path: "/clinic/diary", label: "My Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
+  { path: "/appointments", label: "Appointments", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
 ];
 
 const crmLinks: SidebarItem[] = [
@@ -114,17 +121,19 @@ export const Sidebar: React.FC = () => {
   const links =
     role === "client"
       ? clientLinks
-      : role === "clinic_owner" || role === "doctor" || role === "secretariat"
+      : role === "clinic_owner" || role === "secretariat"
         ? clinicLinks
-        : role === "admin"
-          ? getAdminLinks(role)
-          : role === "SUPER_ADMIN"
+        : role === "doctor"
+          ? doctorLinks
+          : role === "admin"
             ? getAdminLinks(role)
-            : role === "salesperson"
-              ? crmLinks
-              : role === "manager"
-                ? managerLinks
-                : [];
+            : role === "SUPER_ADMIN"
+              ? getAdminLinks(role)
+              : role === "salesperson"
+                ? crmLinks
+                : role === "manager"
+                  ? managerLinks
+                  : [];
 
   // Group links by their group property
   const groupedLinks = links.reduce<Record<string, SidebarItem[]>>((acc, link) => {

@@ -76,7 +76,7 @@ export const updateClinicProfile = createAsyncThunk(
 
 export const fetchServices = createAsyncThunk(
   'clinic/fetchServices',
-  async (clinicId: string | undefined, { rejectWithValue }) => {
+  async (clinicId: string | undefined = undefined, { rejectWithValue }) => {
     try {
       return await clinicApi.services.getAll(clinicId);
     } catch (error: any) {
@@ -87,7 +87,7 @@ export const fetchServices = createAsyncThunk(
 
 export const fetchAppointments = createAsyncThunk(
   'clinic/fetchAppointments',
-  async (filters: AppointmentFilters | undefined, { rejectWithValue }) => {
+  async (filters: AppointmentFilters | undefined = undefined, { rejectWithValue }) => {
     try {
       return await clinicApi.appointments.getAll(filters);
     } catch (error: any) {
@@ -158,7 +158,7 @@ export const rescheduleAppointment = createAsyncThunk(
 
 export const fetchClients = createAsyncThunk(
   'clinic/fetchClients',
-  async (params: { limit?: number; offset?: number } | undefined, { rejectWithValue }) => {
+  async (params: { limit?: number; offset?: number } | undefined = undefined, { rejectWithValue }) => {
     try {
       const response = await clinicApi.clients.getAll(params);
       // Map raw response to Client type
@@ -182,7 +182,7 @@ export const fetchClients = createAsyncThunk(
 
 export const fetchReviews = createAsyncThunk(
   'clinic/fetchReviews',
-  async (params: { limit?: number; offset?: number } | undefined, { rejectWithValue }) => {
+  async (params: { limit?: number; offset?: number } | undefined = undefined, { rejectWithValue }) => {
     try {
       const data = await clinicApi.reviews.getAll(params);
       return data;
@@ -205,7 +205,7 @@ export const fetchReviewStatistics = createAsyncThunk(
 
 export const fetchAvailability = createAsyncThunk(
   'clinic/fetchAvailability',
-  async (clinicId: string | undefined, { rejectWithValue }) => {
+  async (clinicId: string | undefined = undefined, { rejectWithValue }) => {
     try {
       return await clinicApi.availability.get(clinicId);
     } catch (error: any) {

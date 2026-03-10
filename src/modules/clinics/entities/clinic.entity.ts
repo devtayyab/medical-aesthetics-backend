@@ -92,4 +92,7 @@ export class Clinic {
 
   @OneToMany(() => Appointment, (appointment) => appointment.clinic)
   appointments: Appointment[];
+
+  @OneToMany(() => User, (user) => user.assignedClinic)
+  staff: User[];
 }

@@ -38,12 +38,18 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     if (profile) {
       setFormData({
-        name: profile.name,
-        description: profile.description,
-        phone: profile.phone,
-        email: profile.email,
-        website: profile.website,
-        address: profile.address,
+        name: profile.name || "",
+        description: profile.description || "",
+        phone: profile.phone || "",
+        email: profile.email || "",
+        website: profile.website || "",
+        address: {
+          street: profile.address?.street || "",
+          city: profile.address?.city || "",
+          state: profile.address?.state || "",
+          zipCode: profile.address?.zipCode || "",
+          country: profile.address?.country || "",
+        },
       });
     }
   }, [profile]);
@@ -102,7 +108,7 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.name}
+                  value={formData.name || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
@@ -116,7 +122,7 @@ const SettingsPage: React.FC = () => {
                   Description
                 </label>
                 <textarea
-                  value={formData.description}
+                  value={formData.description || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
@@ -140,7 +146,7 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <input
                   type="tel"
-                  value={formData.phone}
+                  value={formData.phone || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
@@ -155,7 +161,7 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <input
                   type="email"
-                  value={formData.email}
+                  value={formData.email || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
@@ -170,7 +176,7 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <input
                   type="url"
-                  value={formData.website}
+                  value={formData.website || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, website: e.target.value })
                   }
@@ -194,7 +200,7 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.address?.street}
+                  value={formData.address?.street || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -211,7 +217,7 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.address?.city}
+                  value={formData.address?.city || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -228,7 +234,7 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.address?.state}
+                  value={formData.address?.state || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -245,7 +251,7 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.address?.zipCode}
+                  value={formData.address?.zipCode || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -265,7 +271,7 @@ const SettingsPage: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.address?.country}
+                  value={formData.address?.country || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,

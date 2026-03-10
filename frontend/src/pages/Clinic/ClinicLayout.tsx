@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { getMenuItemsForRole } from '../../utils/rolePermissions';
 import { logout } from "@/store/slices/authSlice";
+import { fetchClinicProfile } from '@/store/slices/clinicSlice';
 import {
   LayoutDashboard,
   Calendar,
@@ -17,6 +18,10 @@ import {
   Clock,
   Menu,
   X,
+  MessageSquare,
+  BookOpen,
+  UserCog,
+  FileText,
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -29,6 +34,10 @@ const iconMap: Record<string, React.ReactNode> = {
   Bell: <Bell className="w-5 h-5" />,
   Settings: <Settings className="w-5 h-5" />,
   Clock: <Clock className="w-5 h-5" />,
+  MessageSquare: <MessageSquare className="w-5 h-5" />,
+  BookOpen: <BookOpen className="w-5 h-5" />,
+  UserCog: <UserCog className="w-5 h-5" />,
+  FileText: <FileText className="w-5 h-5" />,
 };
 
 const ClinicLayout: React.FC = () => {
@@ -37,6 +46,12 @@ const ClinicLayout: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
   const { profile } = useSelector((state: RootState) => state.clinic);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (!profile) {
+      dispatch(fetchClinicProfile());
+    }
+  }, [dispatch, profile]);
 
   const menuItems = getMenuItemsForRole(user?.role || '');
 

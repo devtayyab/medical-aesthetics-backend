@@ -112,6 +112,13 @@ export class User {
   @OneToMany(() => CustomerRecord, (record) => record.customer)
   customerRecords: CustomerRecord[];
 
+  @Column({ nullable: true })
+  assignedClinicId: string;
+
+  @ManyToOne(() => Clinic, { nullable: true })
+  @JoinColumn({ name: 'assignedClinicId' })
+  assignedClinic: Clinic;
+
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword() {

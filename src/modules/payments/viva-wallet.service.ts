@@ -10,33 +10,51 @@ export class VivaWalletService {
     private readonly merchantId: string;
     private readonly sourceCode: string;
 
+    private readonly apiKey: string;
+
     constructor() {
         this.apiUrl = process.env.VIVA_API_URL || 'https://demo-api.vivapayments.com';
         this.accountsUrl = process.env.VIVA_ACCOUNTS_URL || 'https://demo-accounts.vivapayments.com';
         this.clientId = process.env.VIVA_CLIENT_ID;
         this.clientSecret = process.env.VIVA_CLIENT_SECRET;
         this.merchantId = process.env.VIVA_MERCHANT_ID;
+        this.apiKey = process.env.VIVA_API_KEY;
         this.sourceCode = process.env.VIVA_SOURCE_CODE || 'Default';
     }
 
-    async getAccessToken(): Promise<string> {
-        try {
-            const auth = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
-            const response = await axios.post(
-                `${this.accountsUrl}/connect/token`,
-                'grant_type=client_credentials',
-                {
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        Authorization: `Basic ${auth}`,
+    /**
+     * Get the appropriate authorization header value based on available credentials.
+     * Prefers OAuth2 (Bearer token) if Client ID/Secret are present,
+     * otherwise falls back to Basic Auth (Merchant ID/API Key).
+     */
+    async getAuthHeader(): Promise<string> {
+        // Option 1: Prefer OAuth2 (if Client ID & Secret are available)
+        if (this.clientId && this.clientSecret) {
+            try {
+                const auth = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
+                const response = await axios.post(
+                    `${this.accountsUrl}/connect/token`,
+                    'grant_type=client_credentials',
+                    {
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            Authorization: `Basic ${auth}`,
+                        },
                     },
-                },
-            );
-            return response.data.access_token;
-        } catch (error) {
-            console.error('Viva Wallet Auth Error:', error.response?.data || error.message);
-            throw new InternalServerErrorException('Failed to authenticate with Viva Wallet');
+                );
+                return `Bearer ${response.data.access_token}`;
+            } catch (error) {
+                console.error('Viva Wallet OAuth Error (falling back):', error.response?.data || error.message);
+            }
         }
+
+        // Option 2: Fallback to Basic Auth (Merchant ID & API Key)
+        if (this.merchantId && this.apiKey) {
+            const auth = Buffer.from(`${this.merchantId}:${this.apiKey}`).toString('base64');
+            return `Basic ${auth}`;
+        }
+
+        throw new InternalServerErrorException('No valid Viva Wallet credentials found (need ClientID/Secret or MerchantID/APIKey)');
     }
 
     async createPaymentOrder(params: {
@@ -44,14 +62,14 @@ export class VivaWalletService {
         customerEmail: string;
         customerPhone: string;
         customerName: string;
-        merchantTrns: string; // Internal Order ID / Appointment ID
+        merchantTrns: string;
     }): Promise<string> {
         try {
-            const token = await this.getAccessToken();
+            const authHeader = await this.getAuthHeader();
             const response = await axios.post(
                 `${this.apiUrl}/checkout/v2/orders`,
                 {
-                    amount: Math.round(params.amount * 100), // In cents
+                    amount: Math.round(params.amount * 100),
                     customerTrns: params.customerName,
                     customer: {
                         email: params.customerEmail,
@@ -66,23 +84,16 @@ export class VivaWalletService {
                     disablePayAtHome: true,
                     merchantTrns: params.merchantTrns,
                     sourceCode: this.sourceCode,
-                    // Where Viva redirects after payment completes
-                    // In development: http://localhost:5173/payment/success
-                    // In production: https://yourdomain.com/payment/success
                     successUrl: `${process.env.APP_FRONTEND_URL || 'http://localhost:5173'}/payment/success`,
                     failureUrl: `${process.env.APP_FRONTEND_URL || 'http://localhost:5173'}/payment/failure`,
                 },
                 {
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        Authorization: authHeader,
                     },
                 },
             );
 
-            // Return the orderCode or complete redirect URL
-            // Viva Wallet smart checkout URL format: 
-            // Sandbox: https://demo.vivapayments.com/web/checkout?ref={orderCode}
-            // Production: https://www.vivapayments.com/web/checkout?ref={orderCode}
             const orderCode = response.data.orderCode;
             const checkoutBaseUrl = this.apiUrl.includes('demo')
                 ? 'https://demo.vivapayments.com/web/checkout'
@@ -95,17 +106,13 @@ export class VivaWalletService {
         }
     }
 
-    /**
-     * Verify a completed transaction by its ID.
-     * Called after the success redirect to confirm the payment is genuine.
-     */
     async verifyTransaction(transactionId: string): Promise<any> {
         try {
-            const token = await this.getAccessToken();
+            const authHeader = await this.getAuthHeader();
             const response = await axios.get(
                 `${this.apiUrl}/checkout/v2/transactions/${transactionId}`,
                 {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: authHeader },
                 },
             );
             return response.data;
@@ -114,4 +121,5 @@ export class VivaWalletService {
             return null;
         }
     }
+
 }

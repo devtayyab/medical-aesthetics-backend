@@ -43,6 +43,7 @@ import ClientsPage from "@/pages/Clinic/ClientsPage";
 import ReviewsPage from "@/pages/Clinic/ReviewsPage";
 import NotificationsPage from "@/pages/Clinic/NotificationsPage";
 import SettingsPage from "@/pages/Clinic/SettingsPage";
+import StaffPage from "@/pages/Clinic/StaffPage";
 import { Customers } from "@/pages/CRM/Customers";
 import { ArchivedLeads } from "@/pages/CRM/ArchivedLeads";
 import { CustomerDetails } from "@/pages/CRM/CustomerDetails";
@@ -362,6 +363,7 @@ function AppContent() {
               element={<Navigate to="/clinic/dashboard" replace />}
             />
             <Route path="dashboard" element={<ClinicDashboard />} />
+            <Route path="profile" element={<ClinicProfile />} />
             <Route path="appointments" element={<AppointmentsPage />} />
             <Route
               path="services"
@@ -420,59 +422,64 @@ function AppContent() {
                 </ProtectedLayout>
               }
             />
+            <Route
+              path="diary"
+              element={
+                <ProtectedLayout allowedRoles={["clinic_owner", "doctor", "secretariat"]}>
+                  <Diary />
+                </ProtectedLayout>
+              }
+            />
+            <Route
+              path="messages"
+              element={
+                <ProtectedLayout allowedRoles={["clinic_owner", "doctor", "secretariat"]}>
+                  <MessagesPage />
+                </ProtectedLayout>
+              }
+            />
+            <Route
+              path="sales-diary"
+              element={
+                <ProtectedLayout allowedRoles={["clinic_owner", "manager", "admin", "salesperson"]}>
+                  <SalesDiaryPage />
+                </ProtectedLayout>
+              }
+            />
+            <Route
+              path="availability"
+              element={
+                <ProtectedLayout allowedRoles={["clinic_owner"]}>
+                  <Availability />
+                </ProtectedLayout>
+              }
+            />
+            <Route
+              path="execution"
+              element={
+                <ProtectedLayout allowedRoles={["clinic_owner"]}>
+                  <Execution />
+                </ProtectedLayout>
+              }
+            />
+            <Route
+              path="reports"
+              element={
+                <ProtectedLayout allowedRoles={["clinic_owner"]}>
+                  <Reports />
+                </ProtectedLayout>
+              }
+            />
+            <Route
+              path="staff"
+              element={
+                <ProtectedLayout allowedRoles={["clinic_owner", "admin"]}>
+                  <StaffPage />
+                </ProtectedLayout>
+              }
+            />
           </Route>
 
-          {/* Old Clinic Routes - Keep for backward compatibility */}
-          <Route
-            path="/clinic/profile"
-            element={
-              <ProtectedLayout allowedRoles={["clinic_owner"]}>
-                <ClinicProfile />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/clinic/diary"
-            element={
-              <ProtectedLayout allowedRoles={["clinic_owner", "doctor", "secretariat"]}>
-                <Diary />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/clinic/sales-diary"
-            element={
-              <ProtectedLayout allowedRoles={["clinic_owner", "manager", "admin", "salesperson"]}>
-                <AdminLayout>
-                  <SalesDiaryPage />
-                </AdminLayout>
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/clinic/availability"
-            element={
-              <ProtectedLayout allowedRoles={["clinic_owner"]}>
-                <Availability />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/clinic/execution"
-            element={
-              <ProtectedLayout allowedRoles={["clinic_owner"]}>
-                <Execution />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/clinic/reports"
-            element={
-              <ProtectedLayout allowedRoles={["clinic_owner"]}>
-                <Reports />
-              </ProtectedLayout>
-            }
-          />
           {/* CRM Routes */}
           <Route
             path="/crm/customers"

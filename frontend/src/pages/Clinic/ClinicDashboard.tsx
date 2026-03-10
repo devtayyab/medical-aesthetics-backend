@@ -40,7 +40,7 @@ const ClinicDashboard: React.FC = () => {
 
     // Fetch data
     dispatch(fetchClinicProfile());
-    dispatch(fetchAppointments());
+    dispatch(fetchAppointments(undefined));
   }, [dispatch, user, navigate]);
 
   // Calculate statistics
@@ -63,7 +63,7 @@ const ClinicDashboard: React.FC = () => {
       ).length,
       totalRevenue: appointments
         .filter((apt) => apt.status === AppointmentStatus.COMPLETED)
-        .reduce((sum, apt) => sum + apt.totalAmount, 0),
+        .reduce((sum, apt) => sum + (Number(apt.totalAmount) || 0), 0),
     };
   }, [appointments]);
 
@@ -109,7 +109,7 @@ const ClinicDashboard: React.FC = () => {
         />
         <StatCard
           title="Total Revenue"
-          value={`$${parseFloat(stats.totalRevenue).toFixed(2)}`}
+          value={`$${stats.totalRevenue.toFixed(2)}`}
           icon={<DollarSign className="w-6 h-6" />}
           color="purple"
         />
@@ -149,10 +149,10 @@ const ClinicDashboard: React.FC = () => {
                 apt.startTime.split("T")[0] ===
                 new Date().toISOString().split("T")[0]
             ).length === 0 && (
-              <p className="text-gray-500 text-center py-4">
-                No appointments today
-              </p>
-            )}
+                <p className="text-gray-500 text-center py-4">
+                  No appointments today
+                </p>
+              )}
           </div>
         </div>
 
@@ -277,9 +277,8 @@ const AppointmentItem: React.FC<AppointmentItemProps> = ({ appointment }) => {
         </p>
       </div>
       <span
-        className={`px-2 py-1 rounded-full text-xs font-medium ${
-          statusColors[appointment.status as keyof typeof statusColors]
-        }`}
+        className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[appointment.status as keyof typeof statusColors]
+          }`}
       >
         {appointment.status}
       </span>

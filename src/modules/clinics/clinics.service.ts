@@ -291,6 +291,12 @@ export class ClinicsService {
       return this.findById(agentAccess.clinic.id);
     }
 
+    // 3. Check if user is staff for a clinic (assignedClinicId)
+    const user = await this.usersRepository.findOne({ where: { id: ownerId } });
+    if (user && user.assignedClinicId) {
+      return this.findById(user.assignedClinicId);
+    }
+
     throw new NotFoundException('Clinic not found for this owner');
   }
 
@@ -316,37 +322,99 @@ export class ClinicsService {
     return this.clinicsRepository.save(clinic);
   }
 
-  async getClinicStaff(clinicId: string): Promise<any[]> {
-    // This would typically join with user table to get staff members
-    // For now, return basic clinic info
-    const clinic = await this.findById(clinicId);
-    return [
-      {
-        id: clinic.ownerId,
-        role: 'clinic_owner',
-        name: 'Clinic Owner', // This would come from user table
-      },
-    ];
+  async getClinicStaff(ownerId: string, role?: string, clinicId?: string): Promise<User[]> {
+    let clinicIdToUse: string;
+
+    if (clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
+      clinicIdToUse = clinicId;
+    } else if (role === UserRole.DOCTOR || role === UserRole.SECRETARIAT) {
+      // Find clinic they are assigned to
+      const user = await this.usersRepository.findOne({
+        where: { id: ownerId },
+        select: ['id', 'assignedClinicId'],
+      });
+      if (!user || !user.assignedClinicId) {
+        throw new NotFoundException('Clinic assignment not found');
+      }
+      clinicIdToUse = user.assignedClinicId;
+    } else {
+      const clinic = await this.findByOwnerId(ownerId);
+      clinicIdToUse = clinic.id;
+    }
+
+    return this.usersRepository.find({
+      where: { assignedClinicId: clinicIdToUse },
+      order: { firstName: 'ASC' },
+    });
+  }
+
+  async createClinicStaff(
+    ownerId: string,
+    role: string,
+    staffData: any,
+  ): Promise<User> {
+    let clinic;
+    if (staffData.clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
+      clinic = await this.findById(staffData.clinicId);
+    } else {
+      clinic = await this.findByOwnerId(ownerId);
+    }
+
+    // Check if user already exists
+    const existingUser = await this.usersRepository.findOne({
+      where: { email: staffData.email },
+    });
+
+    if (existingUser) {
+      if (existingUser.assignedClinicId === clinic.id) {
+        throw new BadRequestException('User is already staff at this clinic');
+      }
+      // If they exist but not in this clinic, we might want to reassign or invite?
+      // For now, let's treat as error or simple update
+      existingUser.assignedClinicId = clinic.id;
+      existingUser.role = staffData.role || UserRole.DOCTOR;
+      return this.usersRepository.save(existingUser);
+    }
+
+    const newUser = this.usersRepository.create({
+      ...staffData,
+      role: staffData.role || UserRole.DOCTOR,
+      assignedClinicId: clinic.id,
+      passwordHash: staffData.password || 'TemporaryPassword123!',
+      isActive: true,
+    } as any);
+
+    return this.usersRepository.save(newUser) as unknown as Promise<User>;
+  }
+
+  async removeStaff(ownerId: string, role: string, staffId: string): Promise<void> {
+    const clinic = await this.findByOwnerId(ownerId);
+    const staff = await this.usersRepository.findOne({
+      where: { id: staffId, assignedClinicId: clinic.id },
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Staff member not found in your clinic');
+    }
+
+    // Do NOT delete the user, just unbind from clinic and maybe deactivate?
+    // User requested "bound to specific clinic", so unbinding is enough.
+    staff.assignedClinicId = null;
+    await this.usersRepository.save(staff);
   }
 
   async getClinicProviders(clinicId: string): Promise<any[]> {
-    // 1. Get all providers from appointments
-    const providersFromAppointments = await this.usersRepository
-      .createQueryBuilder('user')
-      .innerJoin('user.providerAppointments', 'appointment')
-      .where('appointment.clinicId = :clinicId', { clinicId })
-      .getMany();
-
-    // 2. Get clinic owner
-    const clinic = await this.clinicsRepository.findOne({
-      where: { id: clinicId },
-      relations: ['owner'],
-    });
-
     const uniqueProviders = new Map();
 
-    // Add providers from appointments
-    providersFromAppointments.forEach((user) => {
+    // 1. Get all users who have the role of doctor and are assigned to this clinic
+    const assignedStaff = await this.usersRepository.find({
+      where: [
+        { assignedClinicId: clinicId, role: UserRole.DOCTOR },
+        { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER }
+      ]
+    });
+
+    assignedStaff.forEach((user) => {
       uniqueProviders.set(user.id, {
         id: user.id,
         firstName: user.firstName,
@@ -359,7 +427,12 @@ export class ClinicsService {
       });
     });
 
-    // Add owner if they are a doctor or clinic_owner
+    // 2. Get clinic owner (just in case they aren't marked as assigned to their own clinic)
+    const clinic = await this.clinicsRepository.findOne({
+      where: { id: clinicId },
+      relations: ['owner'],
+    });
+
     if (clinic?.owner) {
       const owner = clinic.owner;
       if (
@@ -378,6 +451,28 @@ export class ClinicsService {
         });
       }
     }
+
+    // 3. Get any other users who already have appointments at this clinic (legacy/fallback)
+    const providersFromAppointments = await this.usersRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.providerAppointments', 'appointment')
+      .where('appointment.clinicId = :clinicId', { clinicId })
+      .getMany();
+
+    providersFromAppointments.forEach((user) => {
+      if (!uniqueProviders.has(user.id)) {
+        uniqueProviders.set(user.id, {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          profilePictureUrl: user.profilePictureUrl,
+        });
+      }
+    });
 
     return Array.from(uniqueProviders.values());
   }
