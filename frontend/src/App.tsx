@@ -97,7 +97,9 @@ import { FacebookIntegration } from "./pages/CRM/FacebookIntegration";
 import { Settings as CrmSettings } from "./pages/CRM/Settings";
 import { Notifications as NotificationsCrm } from "./pages/CRM/Notifications";
 import { SalesAnalyticsDashboard } from "./pages/CRM/SalesAnalyticsDashboard";
-import { MessagesPage } from "./pages/Messages/MessagesPage";
+import ClinicAnalyticsPage from "./pages/Admin/ClinicAnalyticsPage";
+import { ChangePassword } from "@/pages/Account/ChangePassword";
+import { MessagesPage } from "@/pages/Messages/MessagesPage";
 import { SalesWeekCalendar } from "./pages/CRM/SalesWeekCalendar";
 
 const AuthHeader: React.FC = () => (
@@ -613,6 +615,16 @@ function AppContent() {
             }
           />
           <Route
+            path="/admin/clinic-analytics"
+            element={
+              <ProtectedLayout allowedRoles={["manager", "admin", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <ClinicAnalyticsPage />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
             path="/crm/tag"
             element={
               <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
@@ -756,6 +768,16 @@ function AppContent() {
             }
           />
           <Route
+            path="/admin/broadcast"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN", "admin", "manager"]}>
+                <AdminLayout>
+                  <NotificationsPage />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
             path="/admin/users"
             element={
               <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
@@ -854,6 +876,20 @@ function AppContent() {
                 ) : (
                   <AdminLayout>
                     <MessagesPage />
+                  </AdminLayout>
+                )}
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/change-password"
+            element={
+              <ProtectedLayout allowedRoles={["client", "salesperson", "manager", "admin", "clinic_owner", "doctor", "secretariat", "SUPER_ADMIN"]}>
+                {user?.role === "client" ? (
+                  <ChangePassword />
+                ) : (
+                  <AdminLayout>
+                    <ChangePassword />
                   </AdminLayout>
                 )}
               </ProtectedLayout>

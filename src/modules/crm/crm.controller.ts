@@ -28,6 +28,7 @@ import { FacebookWebhookDto } from './dto/facebook-webhook.dto';
 import { CommunicationLog } from './entities/communication-log.entity';
 import { CrmAction } from './entities';
 import { CreateActionDto } from './dto/create-action.dto';
+
 @ApiTags('CRM')
 @Controller('crm')
 @UseGuards(JwtAuthGuard)
@@ -139,40 +140,38 @@ export class CrmController {
     return this.crmService.getCommunicationHistory(customerId, { ...filters, _requesterId: req.user.id });
   }
 
+  @Patch('communications/:id')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Update communication log' })
+  updateCommunication(@Param('id') id: string, @Body() updateData: any) {
+    return this.crmService.updateCommunication(id, updateData);
+  }
+
+  @Delete('communications/:id')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Delete communication log' })
+  deleteCommunication(@Param('id') id: string) {
+    return this.crmService.deleteCommunication(id);
+  }
+
   // Action/Task Management
   @Post('actions')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  @UsePipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-    transformOptions: {
-      enableImplicitConversion: true,
-    },
-  }))
-  @ApiOperation({ summary: 'Create action/task (phone call, follow-up, etc.)' })
-  async createAction(@Body() createActionDto: CreateActionDto, @Request() req) {
-    const action = await this.crmService.createAction({
-      ...createActionDto,
-      salespersonId: req.user.id, // attach logged-in user
+  @ApiOperation({ summary: 'Create manual CRM action/task' })
+  createAction(@Body() actionData: CreateActionDto, @Request() req) {
+    return this.crmService.createAction({
+      ...actionData,
+      salespersonId: actionData.salespersonId || req.user.id,
     });
-    return action;
   }
-
-  @Post('recurring-appointments')
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Schedule recurring appointments' })
-  async createRecurringAppointment(@Body() data: any, @Request() req) {
-    return this.crmService.scheduleRecurringAppointment(data);
-  }
-
-
 
   @Patch('actions/:id')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Update action/task' })
+  @ApiOperation({ summary: 'Update CRM action' })
   updateAction(@Param('id') id: string, @Body() updateData: any) {
     return this.crmService.updateAction(id, updateData);
   }
@@ -180,58 +179,62 @@ export class CrmController {
   @Delete('actions/:id')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Delete action/task' })
-  deleteAction(@Param('id', new ParseUUIDPipe()) id: string) {
+  @ApiOperation({ summary: 'Delete CRM action' })
+  deleteAction(@Param('id') id: string) {
     return this.crmService.deleteAction(id);
   }
 
   @Get('actions')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Get actions/tasks with filters' })
+  @ApiOperation({ summary: 'Get actions with filters' })
   getActions(@Query() filters: any, @Request() req) {
     return this.crmService.getActions(req.user.id, filters);
+  }
+
+  @Get('actions/:salespersonId/pending')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get pending actions for salesperson' })
+  getPendingActions(@Param('salespersonId') salespersonId: string) {
+    return this.crmService.getPendingActions(salespersonId);
+  }
+
+  @Get('tasks/overdue')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get overdue tasks' })
+  getOverdueTasks(@Query('salespersonId') salespersonId: string, @Request() req) {
+    const sid = salespersonId || (req.user.role === UserRole.SALESPERSON ? req.user.id : undefined);
+    return this.crmService.getOverdueTasks(sid);
   }
 
   @Get('tasks/kpis')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Get task KPIs for the logged-in user' })
-  getTaskKpis(@Request() req) {
-    return this.crmService.getTaskKpis(req.user.id);
+  @ApiOperation({ summary: 'Get task management KPIs' })
+  getTaskKpis(@Query('salespersonId') salespersonId: string, @Request() req) {
+    const sid = salespersonId || (req.user.role === UserRole.SALESPERSON ? req.user.id : undefined);
+    return this.crmService.getTaskKpis(sid);
   }
 
-  @Get('actions/pending')
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Get pending actions/tasks' })
-  getPendingActions(@Request() req) {
-    return this.crmService.getPendingActions(req.user.id);
-  }
-
-
-  // Customer Tag Management
+  // Tag Management
   @Post('customers/:id/tags')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Add characterization tag to customer' })
+  @ApiOperation({ summary: 'Add tag to customer' })
   addCustomerTag(
     @Param('id') customerId: string,
-    @Body() body: { tagId: string; notes?: string },
+    @Body() tagData: { tagId: string; notes?: string },
     @Request() req,
   ) {
-    return this.crmService.addCustomerTag(
-      customerId,
-      body.tagId,
-      req.user.id,
-      body.notes,
-    );
+    return this.crmService.addCustomerTag(customerId, tagData.tagId, req.user.id, tagData.notes);
   }
 
-  @Delete('customer-tags/:id')
+  @Delete('tags/:id')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Remove customer tag' })
+  @ApiOperation({ summary: 'Remove tag from customer' })
   removeCustomerTag(@Param('id') id: string) {
     return this.crmService.removeCustomerTag(id);
   }
@@ -244,53 +247,180 @@ export class CrmController {
     return this.crmService.getCustomersByTag(tagId, req.user.id);
   }
 
-  // Repeat Customer Management
+  // Task Automation
+  @Get('automation/rules')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get automation rules' })
+  getAutomationRules() {
+    return this.crmService.getAutomationRules();
+  }
+
+  @Post('automation/run-check')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Trigger manual automation check' })
+  runAutomationCheck() {
+    return this.crmService.runTaskAutomationCheck();
+  }
+
+  // Repeat Customers
   @Get('customers/repeat')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Get repeat customers' })
-  getRepeatCustomers(@Request() req) {
+  @ApiOperation({ summary: 'Identify potential repeat customers' })
+  identifyRepeatCustomers(@Request() req) {
     return this.crmService.identifyRepeatCustomers(req.user.id);
   }
 
-  @Get('customers/follow-up')
+  @Get('follow-up')
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get customers due for follow-up' })
-  getCustomersDueForFollowUp(
-    @Query('daysThreshold') daysThreshold: number,
-    @Request() req,
+  getFollowUpDue(@Query('days') days: string, @Request() req) {
+    return this.crmService.getCustomersDueForFollowUp(req.user.id, days ? parseInt(days) : 30);
+  }
+
+  // Field Validation
+  @Get('validation/required-fields/call')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get mandatory fields for logging calls' })
+  getRequiredFieldsForCall() {
+    return this.crmService.getRequiredFieldsForCall();
+  }
+
+  @Get('validation/required-fields/action/:type')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get mandatory fields for specific action' })
+  getRequiredFieldsForAction(@Param('type') type: string) {
+    return this.crmService.getRequiredFieldsForAction(type);
+  }
+
+  // Analytics
+  @Get('analytics/clinic-return-rates')
+  @ApiOperation({ summary: 'Get clinic-wise return rates' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  getClinicReturnRates() {
+    return this.crmService.getClinicReturnRates();
+  }
+
+  @Get('analytics/service-performance')
+  @ApiOperation({ summary: 'Get service-wise performance' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  getServicePerformance(@Query() query: { startDate?: string; endDate?: string }) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getServicePerformance(dateRange);
+  }
+
+  @Get('analytics/advertisement-stats')
+  @ApiOperation({ summary: 'Get advertisement campaign stats' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  getAdvertisementStats(@Query() query: { startDate?: string; endDate?: string }) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getAdvertisementStats(dateRange);
+  }
+
+  @Get('analytics/performance-dashboard')
+  @ApiOperation({ summary: 'Combined performance dashboard' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  getPerformanceDashboard(
+    @Query() query: { startDate?: string; endDate?: string; salespersonId?: string },
+    @Request() req
   ) {
-    return this.crmService.getCustomersDueForFollowUp(
-      req.user.id,
-      daysThreshold || 30,
-    );
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    const salespersonId = req.user.role === UserRole.SALESPERSON ? req.user.id : query.salespersonId;
+    return this.crmService.getPerformanceDashboard(dateRange, salespersonId);
+  }
+
+  @Get('analytics/:salespersonId')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get core salesperson KPIs' })
+  getSalespersonAnalytics(
+    @Param('salespersonId') salespersonId: string,
+    @Query() query: { startDate?: string; endDate?: string }
+  ) {
+    const dateRange = query.startDate && query.endDate
+      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
+      : undefined;
+    return this.crmService.getSalespersonAnalytics(salespersonId, dateRange);
   }
 
   @Get('metrics')
-  @ApiOperation({ summary: 'Get general CRM metrics' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Global CRM efficiency metrics' })
   getCrmMetrics() {
     return this.crmService.getCrmMetrics();
   }
 
-  // Salesperson Analytics
-  @Get('analytics/salesperson')
+  // Facebook Integration
+  @Post('facebook/webhook')
+  @Public()
+  @ApiOperation({ summary: 'Messenger/Lead Ads Webhook' })
+  handleFacebookWebhook(@Body() data: FacebookWebhookDto) {
+    return this.crmService.handleFacebookWebhook(data);
+  }
+
+  @Post('facebook/import/:formId')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Manual lead import' })
+  importFacebookLeads(@Param('formId') formId: string, @Query('limit') limit?: number) {
+    return this.crmService.importFacebookLeads(formId, limit);
+  }
+
+  @Get('facebook/forms')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  getFacebookForms() {
+    return this.crmService.getFacebookForms();
+  }
+
+  @Get('customer/:id')
+  @ApiOperation({ summary: 'Get customer details' })
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Get salesperson performance analytics' })
-  getSalespersonAnalytics(
-    @Query() query: { startDate?: string; endDate?: string },
-    @Request() req,
-  ) {
-    const dateRange = query.startDate && query.endDate
-      ? {
-        startDate: new Date(query.startDate),
-        endDate: new Date(query.endDate),
-      }
-      : undefined;
-    return this.crmService.getSalespersonAnalytics(req.user.id, dateRange);
+  getCustomer(@Param('id') id: string) {
+    return this.crmService.getCustomer(id);
+  }
+
+  @Get('duplicates/check')
+  @ApiOperation({ summary: 'Check for potential duplicates' })
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  checkForDuplicates(@Query() query: { email?: string; phone?: string; firstName?: string; lastName?: string }) {
+    return this.crmService.checkForDuplicates(
+      query.email,
+      query.phone,
+      query.firstName,
+      query.lastName,
+    );
+  }
+
+  @Get('duplicates/suggestions')
+  @ApiOperation({ summary: 'Get duplicate suggestions' })
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  getDuplicateSuggestions(@Query() query: { email?: string; phone?: string; firstName?: string; lastName?: string }) {
+    return this.crmService.getDuplicateSuggestions(
+      query.email,
+      query.phone,
+      query.firstName,
+      query.lastName,
+    );
   }
 
   // Manager analytics and reports (admin/super admin only)
@@ -332,21 +462,21 @@ export class CrmController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)
   getClinicAnalytics(
-    @Query() query: { startDate?: string; endDate?: string },
+    @Query() query: { startDate?: string; endDate?: string; clinicId?: string },
     @Request() req
   ) {
     const dateRange = query.startDate && query.endDate
       ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
       : undefined;
-    return this.crmService.getClinicAnalytics(dateRange);
+    return this.crmService.getClinicAnalytics(dateRange, query.clinicId);
   }
 
   @Get('analytics/campaigns')
-  @ApiOperation({ summary: 'Campaign performance with spend and revenue' })
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Get Facebook campaign performance' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)
   getCampaignPerformance(
-    @Query() query: { startDate?: string; endDate?: string }
+    @Query() query: { startDate?: string; endDate?: string },
   ) {
     const dateRange = query.startDate && query.endDate
       ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
@@ -354,391 +484,12 @@ export class CrmController {
     return this.crmService.getCampaignPerformance(dateRange);
   }
 
-  @Get('analytics/agent-forms')
-  @ApiOperation({ summary: 'Get agent form statistics' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  getAgentFormStats(
-    @Query() query: { startDate?: string; endDate?: string }
-  ) {
-    const dateRange = query.startDate && query.endDate
-      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
-      : undefined;
-    return this.crmService.getAgentFormStats(dateRange);
-  }
-
-  @Get('analytics/agent-communications')
-  @ApiOperation({ summary: 'Get agent communication statistics' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  getAgentCommunicationStats(
-    @Query() query: { startDate?: string; endDate?: string }
-  ) {
-    const dateRange = query.startDate && query.endDate
-      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
-      : undefined;
-    return this.crmService.getAgentCommunicationStats(dateRange);
-  }
-
-  @Get('analytics/agent-appointments')
-  @ApiOperation({ summary: 'Get agent appointment statistics' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  getAgentAppointmentStats(
-    @Query() query: { startDate?: string; endDate?: string }
-  ) {
-    const dateRange = query.startDate && query.endDate
-      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
-      : undefined;
-    return this.crmService.getAgentAppointmentStats(dateRange);
-  }
-
-  @Get('analytics/agent-cashflow')
-  @ApiOperation({ summary: 'Get agent cashflow statistics' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  getAgentCashflow(
-    @Query() query: { startDate?: string; endDate?: string }
-  ) {
-    const dateRange = query.startDate && query.endDate
-      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
-      : undefined;
-    return this.crmService.getAgentCashflow(dateRange);
-  }
-
-  @Get('analytics/clinic-return-rates')
-  @ApiOperation({ summary: 'Get clinic return rates' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  getClinicReturnRates() {
-    return this.crmService.getClinicReturnRates();
-  }
-
-  @Get('analytics/service-performance')
-  @ApiOperation({ summary: 'Get service performance statistics' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  getServicePerformance(
-    @Query() query: { startDate?: string; endDate?: string }
-  ) {
-    const dateRange = query.startDate && query.endDate
-      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
-      : undefined;
-    return this.crmService.getServicePerformance(dateRange);
-  }
-
-  @Get('analytics/advertisement-stats')
-  @ApiOperation({ summary: 'Get advertisement statistics' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  getAdvertisementStats(
-    @Query() query: { startDate?: string; endDate?: string }
-  ) {
-    const dateRange = query.startDate && query.endDate
-      ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
-      : undefined;
-    return this.crmService.getAdvertisementStats(dateRange);
-  }
-
-  @Get('analytics/performance-dashboard')
-  @ApiOperation({ summary: 'Get combined sales performance dashboard data' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SALESPERSON)
-  @UseGuards(RolesGuard)
-  getPerformanceDashboard(
-    @Query() query: { startDate?: string; endDate?: string; salespersonId?: string; clinicId?: string },
-    @Request() req
-  ) {
-    let dateRange = undefined;
-    if (query.startDate && query.endDate) {
-      const startDate = new Date(query.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(query.endDate);
-      endDate.setHours(23, 59, 59, 999);
-      dateRange = { startDate, endDate };
-    }
-
-    let salespersonId = query.salespersonId;
-    if (req.user.role === UserRole.SALESPERSON) {
-      salespersonId = req.user.id;
-    }
-
-    return this.crmService.getPerformanceDashboard(dateRange, salespersonId, query.clinicId);
-  }
-
-  @Get('analytics/:salespersonId')
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Get analytics for a specific salesperson' })
-  getSalespersonAnalyticsById(
-    @Param('salespersonId') salespersonId: string,
-    @Query() query: { startDate?: string; endDate?: string },
-    @Request() req
-  ) {
-    if (req.user.role === UserRole.SALESPERSON) {
-      salespersonId = req.user.id;
-    }
-
-    let dateRange = undefined;
-    if (query.startDate && query.endDate) {
-      const startDate = new Date(query.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(query.endDate);
-      endDate.setHours(23, 59, 59, 999);
-      dateRange = { startDate, endDate };
-    }
-    return this.crmService.getSalespersonAnalytics(salespersonId, dateRange);
-  }
-  // Facebook Integration Endpoints
-  @Get('facebook/webhook')
-  @Public()
-  @ApiOperation({ summary: 'Verify Facebook webhook' })
-  verifyWebhook(
-    @Query('hub.mode') mode: string,
-    @Query('hub.verify_token') verifyToken: string,
-    @Query('hub.challenge') challenge: string,
-  ) {
-    return this.crmService.verifyWebhook(mode, verifyToken, challenge);
-  }
-
-  @Post('facebook/webhook')
-  @ApiOperation({ summary: 'Handle Facebook webhook for lead generation' })
-  @Public() // Allow Facebook to call this without JWT
-  async handleFacebookWebhook(
-    @Body() webhookData: FacebookWebhookDto,
-    @Request() req: any,
-  ) {
-    // Facebook sends X-Hub-Signature in headers
-    const signature = req.headers['x-hub-signature'];
-
-    // In a real production app with body-parser, getting the raw body for HMAC can be tricky.
-    // For this implementation, we will pass the signature to the service.
-    // Ideally, we need the raw buffer. If the app is set up with standard JSON body parser,
-    // verify might need a middleware or interceptor. 
-    // For now, we'll delegate to the service to check if it can validate or if we skip securely.
-
-    // Check signature if provided
-    if (signature) {
-      const isValid = this.crmService.validateFacebookSignature(signature, webhookData);
-      if (!isValid) {
-        // throw new ForbiddenException('Invalid Facebook signature');
-        // For now, just log warning as user doesn't have secret yet
-        console.warn('Invalid or missing Facebook App Secret for signature verification');
-      }
-    }
-
-    return this.crmService.handleFacebookWebhook(webhookData);
-  }
-
-  @Post('facebook/import/:formId')
-  @ApiOperation({ summary: 'Import leads from Facebook form' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  importFacebookLeads(
-    @Param('formId') formId: string,
-    @Query('limit') limit?: number,
-  ) {
-    return this.crmService.importFacebookLeads(formId, limit);
-  }
-
-  @Get('facebook/test')
-  @ApiOperation({ summary: 'Test Facebook API connection' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  testFacebookConnection() {
-    return this.crmService.testFacebookConnection();
-  }
-
-  @Get('facebook/forms')
-  @ApiOperation({ summary: 'Get available Facebook lead forms' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.ADMIN)
-  @UseGuards(RolesGuard)
-  getFacebookForms() {
-    return this.crmService.getFacebookForms();
-  }
-
-  @Get('customer/:id')
-  @ApiOperation({ summary: 'Get customer details' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  getCustomer(@Param('id') id: string) {
-    return this.crmService.getCustomer(id);
-  }
-
-
-
-  @Get('duplicates/check')
-  @ApiOperation({ summary: 'Check for potential duplicates' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  checkForDuplicates(@Query() query: { email?: string; phone?: string; firstName?: string; lastName?: string }) {
-    return this.crmService.checkForDuplicates(
-      query.email,
-      query.phone,
-      query.firstName,
-      query.lastName,
-    );
-  }
-
-  @Get('duplicates/suggestions')
-  @ApiOperation({ summary: 'Get duplicate suggestions' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  getDuplicateSuggestions(@Query() query: { email?: string; phone?: string; firstName?: string; lastName?: string }) {
-    return this.crmService.getDuplicateSuggestions(
-      query.email,
-      query.phone,
-      query.firstName,
-      query.lastName,
-    );
-  }
-
-  @Get('validation/required-fields/call')
-  @ApiOperation({ summary: 'Get required fields for call communications' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  getRequiredFieldsForCall() {
-    return this.crmService.getRequiredFieldsForCall();
-  }
-
-  @Get('validation/required-fields/action/:actionType')
-  @ApiOperation({ summary: 'Get required fields for action type' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  getRequiredFieldsForAction(@Param('actionType') actionType: string) {
-    return this.crmService.getRequiredFieldsForAction(actionType);
-  }
-
-  @Post('validation/validate-communication')
-  @ApiOperation({ summary: 'Validate communication data' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  validateCommunication(@Body() data: { customerId: string; communicationData: Partial<CommunicationLog> }) {
-    return this.crmService.validateCommunicationFields(data.customerId, data.communicationData);
-  }
-
-  @Post('validation/validate-action')
-  @ApiOperation({ summary: 'Validate action data' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  validateAction(@Body() data: { customerId: string; actionData: Partial<CrmAction> }) {
-    return this.crmService.validateActionFields(data.customerId, data.actionData);
-  }
-
-  @Get('tasks/overdue')
-  @ApiOperation({ summary: 'Get overdue tasks' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  getOverdueTasks(@Query('salespersonId') salespersonId?: string) {
-    return this.crmService.getOverdueTasks(salespersonId);
-  }
-
-  @Get('automation/rules')
-  @ApiOperation({ summary: 'Get automation rules' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  getAutomationRules() {
-    return this.crmService.getAutomationRules();
-  }
-
-  @Post('automation/run-check')
-  @ApiOperation({ summary: 'Run task automation check' })
-  @Roles(UserRole.ADMIN, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
-  @UseGuards(RolesGuard)
-  runTaskAutomationCheck() {
-    return this.crmService.runTaskAutomationCheck();
-  }
-
   @Get('accessible-clinics')
-  @ApiOperation({ summary: 'List clinics accessible to the current user' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get accessible clinics for current user' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   getAccessibleClinics(@Request() req) {
     return this.crmService.getAccessibleClinicsForUser(req.user.id);
-  }
-
-
-
-  @Post('reports/weekly/agents')
-  @ApiOperation({ summary: 'Send weekly reports to agents' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  sendWeeklyReports() {
-    return this.crmService.sendWeeklyAgentReports();
-  }
-
-  // Agent Management Endpoints
-  @Get('agents/emails')
-  @ApiOperation({ summary: 'Get all agent emails' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  getAgentEmails() {
-    return this.crmService.getAgentEmails();
-  }
-
-
-
-  // Access Control Endpoints
-  @Get('access-matrix')
-  @ApiOperation({ summary: 'Get agent access matrix' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  getAccessMatrix() {
-    return this.crmService.getAccessMatrix();
-  }
-
-  @Put('access-matrix/:agentId')
-  @ApiOperation({ summary: 'Update agent access matrix' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  updateAgentAccess(
-    @Param('agentId') agentId: string,
-    @Body() data: { clinicAccess: { clinicId: string; hasAccess: boolean }[] }
-  ) {
-    return this.crmService.updateAgentAccess(agentId, data.clinicAccess);
-  }
-
-  // Client Benefits Endpoints
-  @Get('client-benefits')
-  @ApiOperation({ summary: 'Get client benefits' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  getClientBenefits(
-    @Query() query: { search?: string; clinicId?: string }
-  ) {
-    return this.crmService.getClientBenefits(query);
-  }
-
-  @Put('client-benefits/:customerId')
-  @ApiOperation({ summary: 'Update client benefit' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  updateClientBenefit(
-    @Param('customerId') customerId: string,
-    @Body() data: any
-  ) {
-    return this.crmService.updateClientBenefit(customerId, data);
-  }
-
-  // No-Show Management Endpoints
-  @Get('no-show-alerts')
-  @ApiOperation({ summary: 'Get no-show alerts' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  getNoShowAlerts(
-    @Query() query: { daysAgo?: number; status?: 'pending' | 'resolved' }
-  ) {
-    return this.crmService.getNoShowAlerts(query);
-  }
-
-  @Post('no-show-alerts/:appointmentId/resolve')
-  @ApiOperation({ summary: 'Resolve no-show alert' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  resolveNoShowAlert(
-    @Param('appointmentId') appointmentId: string,
-    @Body() data: { actionTaken: string }
-  ) {
-    return this.crmService.resolveNoShowAlert(appointmentId, data.actionTaken);
   }
 
   @Get('salespersons')
@@ -756,5 +507,24 @@ export class CrmController {
   getSalesActivities(@Query('date') date: string, @Request() req) {
     const salespersonId = req.user.role === UserRole.SALESPERSON ? req.user.id : undefined;
     return this.crmService.getSalesActivities(date ? new Date(date) : undefined, salespersonId);
+  }
+
+  @Get('manager-crm/calls')
+  @ApiOperation({ summary: 'Get global call logs for manager view' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  getGlobalCallLogs(@Query() query: { startDate?: string; endDate?: string; salespersonId?: string }) {
+    const filters = {
+      startDate: query.startDate ? new Date(query.startDate) : undefined,
+      endDate: query.endDate ? new Date(query.endDate) : undefined,
+      salespersonId: query.salespersonId
+    };
+    return this.crmService.getGlobalCallLogs(filters);
+  }
+  @Get('manager-crm/seed-mock-data')
+  @Public()
+  @ApiOperation({ summary: 'Seed mock CRM data for testing' })
+  seedMockData() {
+    return this.crmService.seedMockCrmData();
   }
 }

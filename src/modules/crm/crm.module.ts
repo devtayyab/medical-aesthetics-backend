@@ -18,6 +18,7 @@ import { AdSpendLog } from './entities/ad-spend-log.entity';
 import { AdAttribution } from './entities/ad-attribution.entity';
 import { AgentClinicAccess } from './entities/agent-clinic-access.entity';
 import { ClinicOwnership } from './entities/clinic-ownership.entity';
+import { LeadClinicStatus } from './entities/lead-clinic-status.entity';
 import { TasksModule } from '../tasks/tasks.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -48,6 +49,7 @@ import { CrmListener } from './crm.listener';
       AdCampaign,
       AdSpendLog,
       AdAttribution,
+      LeadClinicStatus,
     ]),
     TasksModule,
     forwardRef(() => BookingsModule),

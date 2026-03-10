@@ -65,7 +65,6 @@ export class ScheduledTasksService {
             id: apt.id,
             time: timeStr
           });
-
           if (apt.client.phone) {
             await this.smsService.sendSms(
               apt.client.phone,
@@ -101,7 +100,6 @@ export class ScheduledTasksService {
             'Appointment Today!',
             `Your appointment is in a few hours at ${timeStr}.`
           );
-
           if (apt.client.phone) {
             await this.smsService.sendSms(
               apt.client.phone,

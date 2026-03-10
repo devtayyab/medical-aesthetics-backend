@@ -251,6 +251,8 @@ export const bookingAPI = {
     api.patch(`/appointments/${id}/reschedule`, { startTime, endTime }),
   cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
   complete: (id: string, data?: any) => api.patch(`/appointments/${id}/complete`, data),
+  updateStatus: (id: string, status: string) =>
+    api.patch(`/appointments/${id}/status`, { status }),
 };
 
 export const userAPI = {
@@ -261,6 +263,7 @@ export const userAPI = {
   getAllUsers: (params: { limit?: number; offset?: number; role?: string; search?: string }) =>
     api.get("/users", { params }),
   createUser: (userData: any) => api.post("/users", userData),
+  changePassword: (data: any) => api.post("/users/me/change-password", data),
 };
 
 export const loyaltyAPI = {
@@ -356,6 +359,11 @@ export const crmAPI = {
     endDate?: string;
   }) => api.get(`/crm/customers/${customerId}/communications`, { params: filters }),
 
+  updateCommunication: (id: string, data: Partial<CommunicationLog>) =>
+    api.patch(`/crm/communications/${id}`, data),
+
+  deleteCommunication: (id: string) => api.delete(`/crm/communications/${id}`),
+
   // Action/Task Management
   createAction: (data: Partial<CrmAction>) =>
     api.post("/crm/actions", data),
@@ -371,7 +379,7 @@ export const crmAPI = {
     api.get(`/crm/actions/${salespersonId}/pending`),
   getOverdueTasks: (salespersonId?: string) =>
     api.get("/crm/tasks/overdue", { params: { salespersonId } }),
-  getTaskKpis: () => api.get("/crm/tasks/kpis"),
+  getTaskKpis: (salespersonId?: string) => api.get("/crm/tasks/kpis", { params: { salespersonId } }),
 
   // Tag Management
   addCustomerTag: (customerId: string, tagId: string, notes?: string) =>
@@ -406,6 +414,8 @@ export const crmAPI = {
   getCrmMetrics: () => api.get("/crm/metrics"),
   getPerformanceDashboard: (params?: { startDate?: string; endDate?: string; salespersonId?: string }) =>
     api.get("/crm/analytics/performance-dashboard", { params }),
+  getClinicAnalytics: (params?: { startDate?: string; endDate?: string; clinicId?: string }) =>
+    api.get("/crm/analytics/manager/clinics", { params }),
 
   // Repeat Customer Management
   identifyRepeatCustomers: (salespersonId?: string) =>
@@ -490,6 +500,14 @@ export const adminAPI = {
 
   getPendingTreatments: () => api.get("/clinics/treatments/pending"),
   setTreatmentStatus: (id: string, status: string) => api.patch(`/clinics/treatments/${id}/status`, { status }),
+
+  // Global calendar (admin/sales oversight)
+  getGlobalCalendar: (params: {
+    startDate: string;
+    endDate: string;
+    clinicId?: string;
+    providerId?: string;
+  }) => api.get("/admin/calendar", { params }),
 };
 
 export const TaskAPI = {

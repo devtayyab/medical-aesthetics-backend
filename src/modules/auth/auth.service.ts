@@ -114,16 +114,18 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     console.log(
       "[AuthService] Registering user:",
-      registerDto.email,
-      "with role:",
-      registerDto.role
+      registerDto.email
     );
 
-    // Create user
-    const user = await this.usersService.create({
+    // Force role to CLIENT for public registration
+    const userData = {
       ...registerDto,
+      role: UserRole.CLIENT,
       referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
-    });
+    };
+
+    // Create user
+    const user = await this.usersService.create(userData);
 
     // Handle referral if code provided
     if (registerDto.referralCode) {
@@ -134,32 +136,6 @@ export class AuthService {
       }
     }
 
-    // If role is clinic_owner and clinicData is provided, create clinic
-    if (
-      registerDto.role === UserRole.CLINIC_OWNER ||
-      (registerDto.role === UserRole.SECRETARIAT && registerDto?.clinicData)
-    ) {
-      console.log("[AuthService] Creating clinic for user:", user.id);
-      try {
-        // Ensure required fields are present
-        if (!registerDto.clinicData?.address) {
-          throw new Error("Address is required for clinic creation");
-        }
-
-        await this.clinicsService.createClinic({
-          name: registerDto.clinicData.name,
-          description: registerDto.clinicData.description || "", // Provide default empty description
-          address: registerDto.clinicData.address,
-          phone: registerDto.clinicData.phone,
-          email: registerDto.clinicData.email,
-          ownerId: user.id,
-        });
-        console.log("[AuthService] Clinic created successfully");
-      } catch (error) {
-        console.error("[AuthService] Failed to create clinic:", error.message);
-        // Continue with registration even if clinic creation fails
-      }
-    }
 
     // If appointment data is provided during registration (for clients), create appointment
     if (registerDto.appointmentData && registerDto.role === UserRole.CLIENT) {

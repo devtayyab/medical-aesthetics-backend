@@ -26,7 +26,16 @@ export interface Lead {
     createdAt: string;
     updatedAt: string;
   };
-  tags?: string[];
+  multiOwners?: User[];
+  /** Write-only: pass an array of user IDs to sync the multiOwners relation */
+  multiOwnerIds?: string[];
+  clinics?: any[];
+  clinicStatuses?: Array<{ id: string; clinicId: string; status: string; clinic: any }>;
+  /** Write-only: pass clinic affiliation objects to sync clinic-status relations */
+  clinicAffiliations?: Array<{ clinicId: string; status: string }>;
+  facebookAdName?: string;
+  lastMetaFormName?: string;
+  lastMetaFormSubmittedAt?: string;
   metadata?: any;
   createdAt: string;
   updatedAt: string;

@@ -70,6 +70,7 @@ interface CrmState {
     completed: number;
   } | null;
   salespersons: User[];
+  clinics: any[]; // Add this
   diaryActivities: any[];
   // UI State
   isLoading: boolean;
@@ -107,6 +108,7 @@ const initialState: CrmState = {
   analytics: null,
   taskKpis: null,
   salespersons: [],
+  clinics: [], // Add this
   diaryActivities: [],
   lastUpdated: null,
 };
@@ -215,6 +217,22 @@ export const logCommunication = createAsyncThunk(
   }
 );
 
+export const updateCommunication = createAsyncThunk(
+  "crm/updateCommunication",
+  async (data: { id: string; updates: Partial<CommunicationLog> }) => {
+    const response = await crmAPI.updateCommunication(data.id, data.updates);
+    return response.data;
+  }
+);
+
+export const deleteCommunication = createAsyncThunk(
+  "crm/deleteCommunication",
+  async (id: string) => {
+    await crmAPI.deleteCommunication(id);
+    return id;
+  }
+);
+
 export const fetchCommunicationHistory = createAsyncThunk(
   "crm/fetchCommunicationHistory",
   async (data: { customerId: string; filters?: any }) => {
@@ -282,8 +300,8 @@ export const fetchTasks = createAsyncThunk(
 
 export const fetchTaskKpis = createAsyncThunk(
   "crm/fetchTaskKpis",
-  async () => {
-    const response = await crmAPI.getTaskKpis();
+  async (salespersonId?: string) => {
+    const response = await crmAPI.getTaskKpis(salespersonId);
     return response.data;
   }
 );
@@ -293,6 +311,14 @@ export const checkForDuplicates = createAsyncThunk(
   "crm/checkForDuplicates",
   async (data: { email?: string; phone?: string; firstName?: string; lastName?: string }) => {
     const response = await crmAPI.checkForDuplicates(data);
+    return response.data;
+  }
+);
+
+export const fetchClinics = createAsyncThunk(
+  "crm/fetchClinics",
+  async () => {
+    const response = await crmAPI.getAccessibleClinics();
     return response.data;
   }
 );
@@ -601,6 +627,24 @@ const crmSlice = createSlice({
           state.customerRecord.communications.unshift(action.payload);
         }
       })
+      .addCase(updateCommunication.fulfilled, (state, action) => {
+        const index = state.communications.findIndex((c) => c.id === action.payload.id);
+        if (index !== -1) {
+          state.communications[index] = action.payload;
+        }
+        if (state.customerRecord) {
+          const cIndex = state.customerRecord.communications.findIndex((c) => c.id === action.payload.id);
+          if (cIndex !== -1) {
+            state.customerRecord.communications[cIndex] = action.payload;
+          }
+        }
+      })
+      .addCase(deleteCommunication.fulfilled, (state, action) => {
+        state.communications = state.communications.filter((c) => c.id !== action.payload);
+        if (state.customerRecord) {
+          state.customerRecord.communications = state.customerRecord.communications.filter((c) => c.id !== action.payload);
+        }
+      })
       .addCase(fetchCommunicationHistory.fulfilled, (state, action) => {
         state.communications = action.payload;
       })
@@ -689,6 +733,9 @@ const crmSlice = createSlice({
       // Duplicate Management
       .addCase(checkForDuplicates.fulfilled, (state, action) => {
         state.duplicateCheck = action.payload;
+      })
+      .addCase(fetchClinics.fulfilled, (state, action) => {
+        state.clinics = action.payload;
       })
       .addCase(getDuplicateSuggestions.fulfilled, (state, action) => {
         state.duplicateSuggestions = action.payload;

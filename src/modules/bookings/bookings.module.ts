@@ -12,6 +12,7 @@ import { CrmModule } from '../crm/crm.module';
 import { User } from '../users/entities/user.entity';
 import { CustomerRecord } from '../crm/entities/customer-record.entity';
 import { Lead } from '../crm/entities/lead.entity';
+import { Service } from '../clinics/entities/service.entity';
 import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { PaymentsModule } from '../payments/payments.module';
       User,
       CustomerRecord,
       Lead,
+      Service,
     ]),
 
     forwardRef(() => ClinicsModule),

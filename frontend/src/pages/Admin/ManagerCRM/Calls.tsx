@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/atoms/Button/Button";
+import { Input } from "@/components/atoms/Input/Input";
 import {
   PhoneCall,
   Clock,
@@ -13,23 +15,42 @@ import {
   PhoneIncoming,
   Timer,
   Calendar,
-  UserCheck
+  UserCheck,
+  Filter,
+  Users
 } from "lucide-react";
 import { fetchCallLogs, initiateCall, CallLog } from "@/services/managerCrm.service";
+import { fetchSalespersons } from "@/store/slices/crmSlice";
+import { RootState, AppDispatch } from "@/store";
 import { cn } from "@/lib/utils";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 
 export const Calls: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { salespersons } = useSelector((state: RootState) => state.crm);
+
   const [rows, setRows] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Filter States
+  const [dateRange, setDateRange] = useState({
+    startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+  });
+  const [selectedAgent, setSelectedAgent] = useState<string>("all");
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setIsRefreshing(true);
     else setLoading(true);
 
     try {
-      const data = await fetchCallLogs();
+      const data = await fetchCallLogs({
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+        salespersonId: selectedAgent === 'all' ? undefined : selectedAgent
+      });
       setRows(data);
       setError(null);
     } catch (e) {
@@ -38,7 +59,11 @@ export const Calls: React.FC = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [dateRange, selectedAgent]);
+
+  useEffect(() => {
+    dispatch(fetchSalespersons());
+  }, [dispatch]);
 
   useEffect(() => {
     loadData();
@@ -61,7 +86,7 @@ export const Calls: React.FC = () => {
       cell: ({ row }: any) => (
         <div className="flex items-center gap-1.5 text-xs text-gray-500">
           <Calendar className="h-3.5 w-3.5" />
-          {row.original.timestamp}
+          {new Date(row.original.timestamp).toLocaleString()}
         </div>
       )
     },
@@ -145,7 +170,7 @@ export const Calls: React.FC = () => {
   return (
     <div className="p-6 space-y-8 bg-gray-50/50 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-3">
             <Headphones className="h-8 w-8 text-[#CBFF38]" />
@@ -154,72 +179,119 @@ export const Calls: React.FC = () => {
           <p className="text-muted-foreground mt-1">Monitor agent-client voice interactions and call performance.</p>
         </div>
 
-        <Button
-          variant="outline"
-          onClick={() => loadData(true)}
-          disabled={loading || isRefreshing}
-          className="flex items-center gap-2 bg-white"
-        >
-          <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-          Refresh Logs
-        </Button>
+        <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
+          {/* Date Range Picker */}
+          <div className="flex items-center gap-2 px-3 border-r border-slate-100">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="date"
+              value={dateRange.startDate}
+              onChange={(e) => setDateRange(p => ({ ...p, startDate: e.target.value }))}
+              className="bg-transparent border-none text-[11px] font-black text-slate-700 focus:ring-0 p-0"
+            />
+            <span className="text-[10px] text-slate-300 font-bold px-1">TO</span>
+            <input
+              type="date"
+              value={dateRange.endDate}
+              onChange={(e) => setDateRange(p => ({ ...p, endDate: e.target.value }))}
+              className="bg-transparent border-none text-[11px] font-black text-slate-700 focus:ring-0 p-0"
+            />
+          </div>
+
+          {/* Salesperson Filter */}
+          <div className="flex items-center gap-2 px-3 border-r border-slate-100 min-w-[180px]">
+            <Users className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={selectedAgent}
+              onChange={(e) => setSelectedAgent(e.target.value)}
+              className="bg-transparent border-none text-[11px] font-black text-slate-700 focus:ring-0 p-0 flex-1 appearance-none cursor-pointer"
+            >
+              <option value="all">Overall Data (All Agents)</option>
+              {salespersons.map(s => (
+                <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
+              ))}
+            </select>
+          </div>
+
+          <Button
+            variant="ghost"
+            onClick={() => loadData(true)}
+            disabled={loading || isRefreshing}
+            className="flex items-center gap-2 h-9 px-4 rounded-xl hover:bg-slate-50 transition-all font-black text-[10px] uppercase tracking-widest text-slate-600"
+          >
+            <RefreshCcw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
+            Update Logs
+          </Button>
+        </div>
       </div>
 
       {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-muted-foreground font-medium text-xs uppercase tracking-wider text-gray-500">
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="hover:shadow-lg transition-all border-none shadow-sm overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+            <Activity className="h-12 w-12 text-blue-500" />
+          </div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-muted-foreground font-black text-[9px] uppercase tracking-[0.2em] text-slate-400">
             Total Volume
-            <Activity className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{totalCalls}</div>
-            <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1 font-medium">
-              Calls logged this period
+            <div className="text-3xl font-black text-slate-900 tracking-tighter">{totalCalls}</div>
+            <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-bold italic">
+              Logged engagements
             </p>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-muted-foreground font-medium text-xs uppercase tracking-wider text-gray-500">
-            Avg. Engagement
-            <Clock className="h-4 w-4 text-[#CBFF38]" />
+        <Card className="hover:shadow-lg transition-all border-none shadow-sm overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+            <Clock className="h-12 w-12 text-[#CBFF38]" />
+          </div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-muted-foreground font-black text-[9px] uppercase tracking-[0.2em] text-slate-400">
+            Avg. Interaction
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{formatDuration(avgDuration)}</div>
-            <p className="text-[10px] text-muted-foreground mt-1 font-medium text-emerald-600">
-              Per successful connection
+            <div className="text-3xl font-black text-slate-900 tracking-tighter">{formatDuration(avgDuration)}</div>
+            <p className="text-[10px] text-emerald-600 mt-1 font-black uppercase tracking-wider">
+              Success Efficiency
             </p>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-muted-foreground font-medium text-xs uppercase tracking-wider text-gray-500">
+        <Card className="hover:shadow-lg transition-all border-none shadow-sm overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+            <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+          </div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-muted-foreground font-black text-[9px] uppercase tracking-[0.2em] text-slate-400">
             Connection Rate
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{successRate}%</div>
-            <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1 font-medium">
-              Successful call delivery
+            <div className="text-3xl font-black text-slate-900 tracking-tighter">{successRate}%</div>
+            <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-bold italic">
+              Conversion probability
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Main Table */}
-      <Card className="shadow-sm border-gray-200/60 overflow-hidden">
-        <CardHeader className="bg-gray-50/50 border-b">
-          <div className="flex items-center gap-2">
-            <PhoneIncoming className="h-4 w-4 text-gray-500" />
-            <CardTitle className="text-lg">Recent Call Activity</CardTitle>
+      <Card className="shadow-2xl shadow-slate-200/50 border-none rounded-3xl overflow-hidden bg-white">
+        <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
+              <PhoneIncoming className="h-5 w-5 text-slate-400" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Interaction Database</CardTitle>
+              <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Comprehensive audit log of platform communications</CardDescription>
+            </div>
           </div>
-          <CardDescription>Comprehensive log of all outgoing and incoming agent communications.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {error && <div className="p-8 text-center text-red-600 font-medium">{error}</div>}
+          {error && <div className="p-20 text-center text-red-600 font-black uppercase tracking-widest">{error}</div>}
           {!error && (
-            <DataTable columns={columns as any} data={rows as any} searchKey="customerName" />
+            <div className="Calls-DataTable-Container">
+              <DataTable columns={columns as any} data={rows as any} searchKey="customerName" />
+            </div>
           )}
         </CardContent>
       </Card>

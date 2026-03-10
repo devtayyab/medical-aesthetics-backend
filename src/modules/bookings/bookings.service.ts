@@ -1,5 +1,5 @@
 import { RecordPaymentDto } from '../clinics/dto/clinic.dto';
-import { ConflictException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { Between, Repository, MoreThan } from 'typeorm';
@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { HoldSlotDto } from './dto/hold-slot.dto';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
+import { Service } from '../clinics/entities/service.entity';
 
 import { CrmService } from '../crm/crm.service';
 import { User } from '../users/entities/user.entity';
@@ -39,6 +40,8 @@ export class BookingsService {
     private holdsRepository: Repository<AppointmentHold>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Service)
+    private servicesRepository: Repository<Service>,
     @Inject(forwardRef(() => CrmService))
     private crmService: CrmService,
     private eventEmitter: EventEmitter2,
@@ -251,6 +254,14 @@ export class BookingsService {
       bookedById: createAppointmentDto.bookedById,
     };
 
+    // Auto-set totalAmount based on service price if not already provided
+    if (!appointmentData.totalAmount) {
+      const service = await this.servicesRepository.findOne({ where: { id: createAppointmentDto.serviceId } });
+      if (service) {
+        appointmentData.totalAmount = service.price;
+      }
+    }
+
     // Check for conflicts with existing appointments
     const conflictingAppointment = await this.appointmentsRepository.findOne({
       where: {
@@ -402,6 +413,8 @@ export class BookingsService {
       }
       if (data?.totalAmount) {
         updateData.totalAmount = data.totalAmount;
+      } else if (!appointment.totalAmount && appointment.service?.price) {
+        updateData.totalAmount = appointment.service.price;
       }
     } else if (status === AppointmentStatus.CANCELLED) {
       updateData.cancelledAt = new Date();
@@ -649,6 +662,16 @@ export class BookingsService {
   ): Promise<Appointment> {
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
 
+    // Only Admin / Super Admin / Salesperson can CONFIRM appointments
+    if (
+      status === AppointmentStatus.CONFIRMED &&
+      userRole !== UserRole.ADMIN &&
+      userRole !== UserRole.SUPER_ADMIN &&
+      userRole !== UserRole.SALESPERSON
+    ) {
+      throw new ForbiddenException('Only Admin or Sales can confirm appointments');
+    }
+
     appointment.status = status;
 
     if (updateData?.notes) {
@@ -760,7 +783,16 @@ export class BookingsService {
     appointment.paymentMethod = paymentData.paymentMethod;
     appointment.notes = paymentData.notes || appointment.notes;
 
-    return this.appointmentsRepository.save(appointment);
+    const savedAppointment = await this.appointmentsRepository.save(appointment);
+
+    // Emit event to update CRM metrics (lifetime value, etc.)
+    this.eventEmitter.emit('appointment.status.changed', {
+      appointment: savedAppointment,
+      oldStatus: appointment.status,
+      newStatus: appointment.status,
+    });
+
+    return savedAppointment;
   }
 
   async getAppointmentPayments(
@@ -1144,6 +1176,117 @@ export class BookingsService {
         status: AppointmentStatus.CONFIRMED,
       },
       relations: ['clinic', 'service', 'provider', 'client'],
+    });
+  }
+
+  /**
+   * Global calendar view for Admin/Sales with clinic privacy logic.
+   * - Admin / Sales: see all clinics, but clinic-only clients are masked as Blocked Time.
+   * - Clinic staff (owner/secretariat/doctor): see full details for their clinics.
+   */
+  async getGlobalCalendarAppointments(
+    userId: string,
+    userRole: string,
+    query: { startDate: string; endDate: string; clinicId?: string; providerId?: string },
+  ): Promise<any[]> {
+    const startDate = new Date(query.startDate);
+    const endDate = new Date(query.endDate);
+
+    const qb = this.appointmentsRepository
+      .createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.clinic', 'clinic')
+      .leftJoinAndSelect('appointment.service', 'service')
+      .leftJoinAndSelect('service.treatment', 'treatment')
+      .leftJoinAndSelect('appointment.provider', 'provider')
+      .leftJoinAndSelect('appointment.client', 'client')
+      .leftJoinAndSelect('client.customerRecords', 'customerRecords')
+      .where('appointment.startTime BETWEEN :start AND :end', { start: startDate, end: endDate });
+
+    if (query.clinicId) {
+      qb.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
+    }
+
+    if (query.providerId) {
+      qb.andWhere('appointment.providerId = :providerId', { providerId: query.providerId });
+    }
+
+    // For clinic roles, restrict to their clinics only
+    if (userRole === UserRole.CLINIC_OWNER || userRole === UserRole.SECRETARIAT || userRole === UserRole.DOCTOR) {
+      const user = await this.usersRepository.findOne({
+        where: { id: userId },
+        relations: ['ownedClinics'],
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const clinicIds = (user.ownedClinics || []).map(c => c.id);
+      if ((user as any).assignedClinicId) {
+        clinicIds.push((user as any).assignedClinicId);
+      }
+
+      if (clinicIds.length > 0) {
+        qb.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds });
+      }
+    }
+
+    const appointments = await qb.orderBy('appointment.startTime', 'ASC').getMany();
+
+    return appointments.map((apt) => {
+      const serviceName = apt.service?.treatment?.name || 'Appointment';
+      const providerName = apt.provider
+        ? `${apt.provider.firstName} ${apt.provider.lastName}`
+        : 'Professional';
+
+      // BeautyDoctors client heuristic:
+      // - appointmentSource from platform
+      // - OR client has any customer record
+      const isBeautyDoctorsClient =
+        apt.appointmentSource === 'platform_broker' ||
+        !!(apt.client as any)?.customerRecords?.length;
+
+      // Admin / Super Admin / Salesperson privacy masking for clinic-only clients
+      const isAdminLike =
+        userRole === UserRole.ADMIN ||
+        userRole === UserRole.SUPER_ADMIN ||
+        userRole === UserRole.SALESPERSON;
+
+      if (isAdminLike && !isBeautyDoctorsClient) {
+        // Show as blocked time only
+        return {
+          id: apt.id,
+          clinicId: apt.clinicId,
+          providerId: apt.providerId,
+          startTime: apt.startTime,
+          endTime: apt.endTime,
+          status: apt.status,
+          isBlocked: true,
+          isBeautyDoctorsClient: false,
+          displayName: 'Blocked Time',
+          serviceName: 'Blocked',
+          providerName,
+        };
+      }
+
+      // Full details (include serviceId for reschedule/actions)
+      return {
+        id: apt.id,
+        clinicId: apt.clinicId,
+        serviceId: apt.serviceId,
+        providerId: apt.providerId,
+        clientId: apt.clientId,
+        startTime: apt.startTime,
+        endTime: apt.endTime,
+        status: apt.status,
+        isBlocked: false,
+        isBeautyDoctorsClient,
+        serviceName,
+        providerName,
+        clientName: apt.client
+          ? `${apt.client.firstName} ${apt.client.lastName}`
+          : apt.clientDetails?.fullName || 'Client',
+      };
     });
   }
 }

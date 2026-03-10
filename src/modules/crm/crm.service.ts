@@ -17,6 +17,7 @@ import { AdCampaign } from './entities/ad-campaign.entity';
 import { AdSpendLog } from './entities/ad-spend-log.entity';
 import { AdAttribution } from './entities/ad-attribution.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
+import { LeadClinicStatus } from './entities/lead-clinic-status.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
@@ -30,6 +31,8 @@ import { QueueService } from '../queue/queue.service';
 import { DuplicateDetectionService } from './duplicate-detection.service';
 import { CustomerAffiliationService } from './customer-affiliation.service';
 import { MandatoryFieldValidationService } from './mandatory-field-validation.service';
+import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
+import { Service } from '../clinics/entities/service.entity';
 
 @Injectable()
 export class CrmService implements OnModuleInit {
@@ -60,6 +63,8 @@ export class CrmService implements OnModuleInit {
     private adCampaignsRepository: Repository<AdCampaign>,
     @InjectRepository(AdSpendLog)
     private adSpendLogsRepository: Repository<AdSpendLog>,
+    @InjectRepository(LeadClinicStatus)
+    private leadClinicStatusesRepository: Repository<LeadClinicStatus>,
     private eventEmitter: EventEmitter2,
     private notificationsService: NotificationsService,
     private facebookService: FacebookService,
@@ -165,13 +170,96 @@ export class CrmService implements OnModuleInit {
       return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
     }
 
-    const lead = this.leadsRepository.create(createLeadDto);
+    const { multiOwnerIds, clinicAffiliations, ...baseDto } = createLeadDto;
+    const lead = this.leadsRepository.create(baseDto);
     const savedLead = await this.leadsRepository.save(lead);
 
-    // Emit event for notifications and task creation
-    this.eventEmitter.emit('lead.created', savedLead);
+    // Initial sync of relations
+    await this.syncLeadRelations(savedLead.id, { multiOwnerIds, clinicAffiliations });
 
-    return savedLead;
+    const finalLead = await this.findById(savedLead.id);
+
+    // Emit event for notifications and task creation
+    this.eventEmitter.emit('lead.created', finalLead);
+
+    return finalLead;
+  }
+
+  async update(id: string, updateLeadDto: UpdateLeadDto): Promise<Lead> {
+    const lead = await this.findById(id);
+
+    // Check for status changes
+    if (updateLeadDto.status && updateLeadDto.status !== lead.status) {
+      if (updateLeadDto.status === LeadStatus.CONVERTED) {
+        updateLeadDto['convertedAt'] = new Date();
+      }
+
+      this.eventEmitter.emit('lead.status.changed', {
+        lead,
+        oldStatus: lead.status,
+        newStatus: updateLeadDto.status,
+      });
+    }
+
+    const { multiOwnerIds, clinicAffiliations, ...baseUpdates } = updateLeadDto;
+
+    // Apply base updates
+    await this.leadsRepository.update(id, baseUpdates);
+
+    // Sync complex relations if provided
+    if (multiOwnerIds !== undefined || clinicAffiliations !== undefined) {
+      await this.syncLeadRelations(id, { multiOwnerIds, clinicAffiliations });
+    }
+
+    return this.findById(id);
+  }
+
+  private async syncLeadRelations(
+    leadId: string,
+    data: { multiOwnerIds?: string[]; clinicAffiliations?: Array<{ clinicId: string; status: LeadStatus }> }
+  ) {
+    const lead = await this.leadsRepository.findOne({
+      where: { id: leadId },
+      relations: ['multiOwners', 'clinics', 'clinicStatuses']
+    });
+
+    if (!lead) return;
+
+    // Handle Owners
+    if (data.multiOwnerIds !== undefined) {
+      if (data.multiOwnerIds.length > 0) {
+        lead.multiOwners = await this.usersRepository.find({ where: { id: In(data.multiOwnerIds) } });
+      } else {
+        lead.multiOwners = [];
+      }
+    }
+
+    // Handle Clinics and Statuses
+    if (data.clinicAffiliations !== undefined) {
+      const clinicIds = data.clinicAffiliations.map(a => a.clinicId);
+      if (clinicIds.length > 0) {
+        lead.clinics = await this.clinicsRepository.find({ where: { id: In(clinicIds) } });
+
+        // Update clinic-specific statuses
+        // Clear old ones
+        await this.leadClinicStatusesRepository.delete({ leadId });
+
+        // Create new ones
+        const statuses = data.clinicAffiliations.map(aff => {
+          return this.leadClinicStatusesRepository.create({
+            leadId,
+            clinicId: aff.clinicId,
+            status: aff.status || lead.status
+          });
+        });
+        await this.leadClinicStatusesRepository.save(statuses);
+      } else {
+        lead.clinics = [];
+        await this.leadClinicStatusesRepository.delete({ leadId });
+      }
+    }
+
+    await this.leadsRepository.save(lead);
   }
 
   async scheduleRecurringAppointment(data: any): Promise<any> {
@@ -461,6 +549,7 @@ export class CrmService implements OnModuleInit {
       facebookAdSetId: parsedLead.facebookAdSetId,
       facebookAdId: parsedLead.facebookAdId,
       facebookLeadData: parsedLead.facebookLeadData,
+      facebookAdName: facebookAdName, // Direct column
       status: LeadStatus.NEW,
       metadata: {
         importedFromFacebook: true,
@@ -597,7 +686,7 @@ export class CrmService implements OnModuleInit {
   async findById(id: string): Promise<Lead> {
     const lead = await this.leadsRepository.findOne({
       where: { id },
-      relations: ['assignedSales', 'tags', 'tasks'],
+      relations: ['assignedSales', 'tags', 'tasks', 'multiOwners', 'clinics', 'clinicStatuses', 'clinicStatuses.clinic'],
     });
 
     if (!lead) {
@@ -607,25 +696,6 @@ export class CrmService implements OnModuleInit {
     return lead;
   }
 
-  async update(id: string, updateLeadDto: UpdateLeadDto): Promise<Lead> {
-    const lead = await this.findById(id);
-
-    // Check for status changes
-    if (updateLeadDto.status && updateLeadDto.status !== lead.status) {
-      if (updateLeadDto.status === LeadStatus.CONVERTED) {
-        updateLeadDto['convertedAt'] = new Date();
-      }
-
-      this.eventEmitter.emit('lead.status.changed', {
-        lead,
-        oldStatus: lead.status,
-        newStatus: updateLeadDto.status,
-      });
-    }
-
-    await this.leadsRepository.update(id, updateLeadDto);
-    return this.findById(id);
-  }
 
   async findUserByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });
@@ -1108,7 +1178,79 @@ export class CrmService implements OnModuleInit {
     }
   }
 
-  // Action/Task Management
+  async updateCommunication(id: string, updates: Partial<CommunicationLog>): Promise<CommunicationLog> {
+    const log = await this.communicationLogsRepository.findOne({ where: { id } });
+    if (!log) {
+      throw new NotFoundException('Communication log not found');
+    }
+
+    Object.assign(log, updates);
+    return this.communicationLogsRepository.save(log);
+  }
+
+  async deleteCommunication(id: string): Promise<void> {
+    await this.communicationLogsRepository.delete(id);
+  }
+
+  // Call Log Management - Get calls with filters
+  async getCallLogs(
+    customerId: string,
+    filters?: {
+      status?: string;
+      salespersonId?: string;
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ): Promise<CommunicationLog[]> {
+    try {
+      const qb = this.communicationLogsRepository.createQueryBuilder('log')
+        .leftJoinAndSelect('log.salesperson', 'salesperson')
+        .where('log.customerId = :customerId', { customerId })
+        .andWhere('log.type = :type', { type: 'call' });
+
+      if (filters?.status) {
+        qb.andWhere('log.status = :status', { status: filters.status });
+      }
+
+      if (filters?.salespersonId) {
+        qb.andWhere('log.salespersonId = :salespersonId', { salespersonId: filters.salespersonId });
+      }
+
+      if (filters?.startDate) {
+        qb.andWhere('log.createdAt >= :startDate', { startDate: filters.startDate });
+      }
+
+      if (filters?.endDate) {
+        qb.andWhere('log.createdAt <= :endDate', { endDate: filters.endDate });
+      }
+
+      return qb.orderBy('log.createdAt', 'DESC').getMany();
+    } catch (error) {
+      this.logger.error(`Error fetching call logs for customer ${customerId}:`, error);
+      return [];
+    }
+  }
+
+  // Update a specific call log entry
+  async updateCallLog(id: string, updateData: Partial<CommunicationLog>): Promise<CommunicationLog> {
+    const callLog = await this.communicationLogsRepository.findOne({ where: { id } });
+
+    if (!callLog || callLog.type !== 'call') {
+      throw new NotFoundException('Call log not found');
+    }
+
+    Object.assign(callLog, updateData);
+    return this.communicationLogsRepository.save(callLog);
+  }
+
+  // Delete a specific call log entry  
+  async deleteCallLog(id: string): Promise<void> {
+    const result = await this.communicationLogsRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Call log with ID "${id}" not found`);
+    }
+  }
+
   async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
     // 1. Mandatory Reminder Logic
     if (!data.reminderDate) {
@@ -1348,11 +1490,16 @@ export class CrmService implements OnModuleInit {
     }
   }
 
-  async getTaskKpis(salespersonId: string): Promise<any> {
+  async getTaskKpis(salespersonId?: string): Promise<any> {
     const now = new Date();
 
-    const stats = await this.crmActionsRepository.createQueryBuilder('action')
-      .where('action.salespersonId = :sid', { sid: salespersonId })
+    const qb = this.crmActionsRepository.createQueryBuilder('action');
+    
+    if (salespersonId && salespersonId !== 'all') {
+      qb.where('action.salespersonId = :sid', { sid: salespersonId });
+    }
+
+    const stats = await qb
       .select('action.status', 'status')
       .addSelect('action.dueDate', 'dueDate')
       .getRawMany();
@@ -1920,13 +2067,14 @@ export class CrmService implements OnModuleInit {
       .createQueryBuilder('apt')
       .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId')
       .innerJoin('users', 'agent', 'agent.id = rec.assignedSalespersonId')
+      .leftJoin('services', 'svc', 'svc.id = apt.serviceId')
       .select('rec.assignedSalespersonId', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COUNT(apt.id)', 'totalAppointments')
       .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'completedAppointments')
       .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShows')
       .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancellations')
-      .addSelect('COALESCE(SUM(CASE WHEN apt.status = \'completed\' THEN apt.totalAmount ELSE 0 END), 0)', 'totalRevenue')
+      .addSelect('COALESCE(SUM(CASE WHEN apt.status IN (\'completed\', \'confirmed\') THEN COALESCE(apt.totalAmount, svc.price, 0) ELSE 0 END), 0)', 'totalRevenue')
       .where('rec.assignedSalespersonId IS NOT NULL')
       .groupBy('rec.assignedSalespersonId, agent.firstName, agent.lastName');
 
@@ -2057,7 +2205,7 @@ export class CrmService implements OnModuleInit {
       .leftJoin('service.treatment', 'treatment')
       .select('treatment.name', 'serviceName')
       .addSelect('COUNT(apt.id)', 'count')
-      .addSelect('SUM(apt.totalAmount)', 'revenue')
+      .addSelect('SUM(COALESCE(apt.totalAmount, service.price, 0))', 'revenue')
       .groupBy('treatment.name');
     if (dateRange) {
       q = q.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
@@ -2065,26 +2213,34 @@ export class CrmService implements OnModuleInit {
     return q.getRawMany();
   }
 
-  async getClinicAnalytics(dateRange?: { startDate: Date; endDate: Date }): Promise<any[]> {
-    // 1. Get all active clinics
+  async getClinicAnalytics(dateRange?: { startDate: Date; endDate: Date }, clinicId?: string): Promise<any[]> {
+    // 1. Get clinics
     const clinics = await this.clinicsRepository.find({
-      where: { isActive: true },
+      where: { 
+        isActive: true,
+        ...(clinicId ? { id: clinicId } : {})
+      },
     });
 
     // 2. Get appointment stats
     let qb = this.appointmentsRepository
       .createQueryBuilder('apt')
+      .leftJoin('apt.service', 'svc')
       .select('apt.clinicId', 'clinicId')
       .addSelect('COUNT(apt.id)', 'totalAppointments')
       .addSelect('COUNT(DISTINCT apt.clientId)', 'uniqueClients')
       .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'completed')
       .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
       .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShow')
-      .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'totalRevenue')
+      .addSelect('COALESCE(SUM(COALESCE(apt.totalAmount, svc.price, 0)), 0)', 'totalRevenue')
       .groupBy('apt.clinicId');
 
     if (dateRange) {
-      qb = qb.where('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+      qb = qb.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+    }
+
+    if (clinicId) {
+      qb = qb.andWhere('apt.clinicId = :clinicId', { clinicId });
     }
 
     const stats = await qb.getRawMany();
@@ -3043,14 +3199,32 @@ export class CrmService implements OnModuleInit {
     return accesses.map(a => a.clinic).filter(c => c && c.isActive);
   }
 
-  async getSalespersons(): Promise<User[]> {
-    return this.usersRepository.find({
+  async getSalespersons(): Promise<any[]> {
+    const users = await this.usersRepository.find({
       where: {
         role: In([UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER]),
         isActive: true
       },
       select: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePictureUrl', 'role'],
     });
+
+    const pendingCounts = await this.crmActionsRepository
+      .createQueryBuilder('action')
+      .select('action.salespersonId', 'salespersonId')
+      .addSelect('COUNT(action.id)', 'count')
+      .where('action.status = :status', { status: 'pending' })
+      .groupBy('action.salespersonId')
+      .getRawMany();
+
+    const countMap = pendingCounts.reduce((acc, curr) => {
+      acc[curr.salespersonId] = parseInt(curr.count);
+      return acc;
+    }, {});
+
+    return users.map(user => ({
+      ...user,
+      pendingTasksCount: countMap[user.id] || 0
+    }));
   }
 
   async getSalesActivities(date?: Date, salespersonId?: string): Promise<any[]> {
@@ -3249,5 +3423,112 @@ export class CrmService implements OnModuleInit {
         await this.customerRecordsRepository.save(record);
       }
     }
+  }
+
+  async getGlobalCallLogs(filters?: { startDate?: Date; endDate?: Date; salespersonId?: string }): Promise<any> {
+    const qb = this.communicationLogsRepository.createQueryBuilder("log")
+      .leftJoinAndSelect("log.salesperson", "salesperson")
+      .leftJoinAndSelect("log.customer", "customer")
+      .leftJoinAndSelect("log.relatedLead", "lead")
+      .where("log.type = 'call'");
+
+    if (filters?.startDate && filters?.endDate) {
+      qb.andWhere("log.createdAt BETWEEN :startDate AND :endDate", {
+        startDate: filters.startDate,
+        endDate: filters.endDate
+      });
+    }
+
+    if (filters?.salespersonId && filters.salespersonId !== 'all') {
+      qb.andWhere("log.salespersonId = :salespersonId", { salespersonId: filters.salespersonId });
+    }
+
+    qb.orderBy("log.createdAt", "DESC").limit(150);
+
+    const logs = await qb.getMany();
+
+    return logs.map(log => {
+      const agentName = log.salesperson ? `${log.salesperson.firstName} ${log.salesperson.lastName}` : "System";
+      const custName = log.customer ? `${log.customer.firstName} ${log.customer.lastName}` : (log.relatedLead ? `${log.relatedLead.firstName} ${log.relatedLead.lastName}` : "Unknown");
+      const phone = log.customer?.phone || log.relatedLead?.phone || (log.metadata as any)?.phone || "N/A";
+
+      return {
+        id: log.id,
+        timestamp: log.createdAt.toISOString(),
+        agentName: agentName,
+        customerName: custName,
+        customerPhone: phone,
+        outcome: log.status === "completed" ? "answered" : (log.status === "missed" ? "no_answer" : log.status),
+        durationSec: log.durationSeconds || 0
+      };
+    });
+  }
+
+  async seedMockCrmData(): Promise<any> {
+    const clinics = await this.clinicsRepository.find();
+    const agents = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON } });
+    const servicesRepository = this.dataSource.getRepository(Service);
+    const services = await servicesRepository.find();
+
+    const results = {
+      leads: 0,
+      calls: 0,
+      appointments: 0
+    };
+
+    if (agents.length > 0) {
+      const leadNames = [['John', 'Doe'], ['Jane', 'Smith'], ['Michael', 'Brown'], ['Emily', 'Davis'], ['Robert', 'Wilson']];
+      for (const [f, l] of leadNames) {
+        const lead = this.leadsRepository.create({
+          firstName: f,
+          lastName: l,
+          email: `${f.toLowerCase()}@test_${Date.now()}_${Math.floor(Math.random() * 1000)}.com`,
+          phone: '+44' + Math.floor(Math.random() * 1000000000).toString(),
+          status: LeadStatus.NEW,
+          assignedSalesId: agents[Math.floor(Math.random() * agents.length)].id,
+          source: 'facebook_ads',
+          createdAt: new Date(new Date().setDate(new Date().getDate() - Math.floor(Math.random() * 30)))
+        });
+        const savedLead = await this.leadsRepository.save(lead);
+        results.leads++;
+
+        for (let i = 0; i < 3; i++) {
+          await this.communicationLogsRepository.save({
+            relatedLeadId: savedLead.id,
+            salespersonId: savedLead.assignedSalesId,
+            type: 'call',
+            status: Math.random() > 0.3 ? 'completed' : 'missed',
+            notes: `Follow up call ${i + 1} for lead ${savedLead.firstName}`,
+            durationSeconds: Math.floor(Math.random() * 300),
+            createdAt: new Date(new Date().getTime() - Math.random() * 1000000)
+          });
+          results.calls++;
+        }
+      }
+
+      if (services.length > 0 && clinics.length > 0) {
+        for (let i = 0; i < 50; i++) {
+          const clinic = clinics[Math.floor(Math.random() * clinics.length)];
+          const agent = agents[Math.floor(Math.random() * agents.length)];
+          const service = services[Math.floor(Math.random() * services.length)];
+
+          const apt = this.appointmentsRepository.create({
+            clinicId: clinic.id,
+            serviceId: service.id,
+            clientId: agents[0].id,
+            bookedById: agent.id,
+            startTime: new Date(new Date().getTime() - (Math.random() * 30 * 24 * 60 * 60 * 1000)),
+            endTime: new Date(),
+            status: AppointmentStatus.COMPLETED,
+            totalAmount: 150 + Math.random() * 500,
+            amountPaid: 150 + Math.random() * 500,
+            createdAt: new Date(),
+          });
+          await this.appointmentsRepository.save(apt);
+          results.appointments++;
+        }
+      }
+    }
+    return { message: 'Mock data seeded successfully', ...results };
   }
 }
