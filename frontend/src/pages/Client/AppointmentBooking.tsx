@@ -84,7 +84,6 @@ export const AppointmentBooking: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useSelector((state: RootState) => state.auth);
   const {
     availableSlots,
     holdId,
@@ -149,14 +148,18 @@ export const AppointmentBooking: React.FC = () => {
   const handleSlotClick = async (slot: TimeSlot) => {
     if (!slot.available) return;
     setSelectedSlot(slot);
-    if (clinicId && serviceIds.length > 0 && user?.id) {
-      dispatch(holdTimeSlot({
-        clinicId,
-        serviceId: serviceIds[0],
-        providerId: slot.providerId || undefined,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-      }));
+    if (clinicId && serviceIds.length > 0) {
+      try {
+        await dispatch(holdTimeSlot({
+          clinicId,
+          serviceId: serviceIds[0],
+          providerId: slot.providerId || undefined,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        })).unwrap();
+      } catch (err) {
+        console.error('Failed to hold slot:', err);
+      }
     }
   };
 

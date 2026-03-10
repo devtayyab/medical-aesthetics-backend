@@ -12,6 +12,8 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   beautyPoints?: number;
+  monthlyTarget?: number;
+  assignedClinics?: Clinic[];
 }
 
 export interface Clinic {

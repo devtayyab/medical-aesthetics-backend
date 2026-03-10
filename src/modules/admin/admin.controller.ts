@@ -133,6 +133,20 @@ export class AdminController {
     return this.adminService.toggleClinicStatus(id);
   }
 
+  @Post('clinics')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create a new clinic' })
+  createClinic(@Body() clinicData: any) {
+    return this.adminService.createClinic(clinicData);
+  }
+
+  @Put('clinics/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update clinic profile' })
+  updateClinic(@Param('id') id: string, @Body() clinicData: any) {
+    return this.adminService.updateClinic(id, clinicData);
+  }
+
   @Get('clinics/:id/analytics')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
   @ApiOperation({ summary: 'Get clinic analytics' })

@@ -7,6 +7,14 @@ export interface AdminState {
   users: User[];
   loyaltyTiers: LoyaltyTier[];
   logs: { id: string; userId: string; action: string; timestamp: string }[];
+  walletSummary: { totalPointsIssued: number; totalEuroValueIssued: number; totalPointsRedeemed: number };
+  recentTransactions: any[];
+  giftCardsSummary: { activeCards: number; totalLiability: number };
+  giftCards: any[];
+  paymentsLedger: any[];
+  blogCategories: any[];
+  blogPosts: any[];
+  clinics: any[];
   isLoading: boolean;
   error: string | null;
 }
@@ -16,6 +24,14 @@ const initialState: AdminState = {
   users: [],
   loyaltyTiers: [],
   logs: [],
+  walletSummary: { totalPointsIssued: 0, totalEuroValueIssued: 0, totalPointsRedeemed: 0 },
+  recentTransactions: [],
+  giftCardsSummary: { activeCards: 0, totalLiability: 0 },
+  giftCards: [],
+  paymentsLedger: [],
+  blogCategories: [],
+  blogPosts: [],
+  clinics: [],
   isLoading: false,
   error: null,
 };
@@ -30,10 +46,19 @@ export const fetchUsers = createAsyncThunk("admin/fetchUsers", async () => {
   return response.data.users;
 });
 
-export const updateUserRole = createAsyncThunk(
-  "admin/updateUserRole",
-  async (data: { id: string; role: string }) => {
-    const response = await adminAPI.updateRole(data.id, data.role);
+export const createNewUser = createAsyncThunk(
+  "admin/createNewUser",
+  async (userData: any) => {
+    const response = await adminAPI.createUser(userData);
+    return response.data;
+  }
+);
+
+export const updateUserDetails = createAsyncThunk(
+  "admin/updateUserDetails",
+  async (updateData: { id: string; role?: string; monthlyTarget?: number; assignedClinicIds?: string[] }) => {
+    const { id, ...data } = updateData;
+    const response = await adminAPI.updateUser(id, data);
     return response.data;
   }
 );
@@ -67,6 +92,84 @@ export const fetchLogs = createAsyncThunk("admin/fetchLogs", async () => {
   return response.data;
 });
 
+export const fetchWalletSummary = createAsyncThunk("admin/fetchWalletSummary", async () => {
+  const response = await adminAPI.getWalletSummary();
+  return response.data;
+});
+
+export const fetchRecentTransactions = createAsyncThunk("admin/fetchRecentTransactions", async () => {
+  const response = await adminAPI.getRecentTransactions();
+  return response.data;
+});
+
+export const fetchGiftCardsSummary = createAsyncThunk("admin/fetchGiftCardsSummary", async () => {
+  const response = await adminAPI.getGiftCardsSummary();
+  return response.data;
+});
+
+export const fetchGiftCards = createAsyncThunk("admin/fetchGiftCards", async (search?: string) => {
+  const response = await adminAPI.getGiftCards(search);
+  return response.data;
+});
+
+export const generateGiftCard = createAsyncThunk("admin/generateGiftCard", async (data: any) => {
+  const response = await adminAPI.generateGiftCard(data);
+  return response.data;
+});
+
+export const fetchPaymentsLedger = createAsyncThunk(
+  "admin/fetchPaymentsLedger",
+  async (params?: { type?: string; date?: string }) => {
+    const response = await adminAPI.getPaymentsLedger(params);
+    return response.data;
+  }
+);
+
+export const fetchBlogCategories = createAsyncThunk("admin/fetchBlogCategories", async () => {
+  const response = await adminAPI.getBlogCategories();
+  return response.data;
+});
+
+export const fetchBlogPosts = createAsyncThunk("admin/fetchBlogPosts", async (search?: string) => {
+  const response = await adminAPI.getBlogPosts(search);
+  return response.data;
+});
+
+export const createBlogCategory = createAsyncThunk("admin/createBlogCategory", async (data: any) => {
+  const response = await adminAPI.createBlogCategory(data);
+  return response.data;
+});
+
+export const createBlogPost = createAsyncThunk("admin/createBlogPost", async (data: any) => {
+  const response = await adminAPI.createBlogPost(data);
+  return response.data;
+});
+
+export const toggleBlogPostStatus = createAsyncThunk("admin/toggleBlogPostStatus", async (post: any) => {
+  const response = await adminAPI.updateBlogPost(post.id, { isPublished: !post.isPublished });
+  return response.data;
+});
+
+export const deleteBlogPost = createAsyncThunk("admin/deleteBlogPost", async (id: string) => {
+  await adminAPI.deleteBlogPost(id);
+  return id;
+});
+
+export const fetchAdminClinics = createAsyncThunk("admin/fetchAdminClinics", async () => {
+  const response = await adminAPI.getClinics();
+  return response.data.clinics;
+});
+
+export const createAdminClinic = createAsyncThunk("admin/createAdminClinic", async (data: any) => {
+  const response = await adminAPI.createClinic(data);
+  return response.data;
+});
+
+export const updateAdminClinic = createAsyncThunk("admin/updateAdminClinic", async (updateData: { id: string, data: any }) => {
+  const response = await adminAPI.updateClinic(updateData.id, updateData.data);
+  return response.data;
+});
+
 const adminSlice = createSlice({
   name: "admin",
   initialState,
@@ -83,7 +186,10 @@ const adminSlice = createSlice({
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.users = action.payload;
       })
-      .addCase(updateUserRole.fulfilled, (state, action) => {
+      .addCase(createNewUser.fulfilled, (state, action) => {
+        state.users.unshift(action.payload.user || action.payload);
+      })
+      .addCase(updateUserDetails.fulfilled, (state, action) => {
         const index = state.users.findIndex((u) => u.id === action.payload.id);
         if (index !== -1) {
           state.users[index] = action.payload;
@@ -103,6 +209,59 @@ const adminSlice = createSlice({
       })
       .addCase(fetchLogs.fulfilled, (state, action) => {
         state.logs = action.payload;
+      })
+      .addCase(fetchWalletSummary.fulfilled, (state, action) => {
+        state.walletSummary = action.payload;
+      })
+      .addCase(fetchRecentTransactions.fulfilled, (state, action) => {
+        state.recentTransactions = action.payload;
+      })
+      .addCase(fetchGiftCardsSummary.fulfilled, (state, action) => {
+        state.giftCardsSummary = action.payload;
+      })
+      .addCase(fetchGiftCards.fulfilled, (state, action) => {
+        state.giftCards = action.payload;
+      })
+      .addCase(generateGiftCard.fulfilled, (state, action) => {
+        state.giftCards.unshift(action.payload);
+        state.giftCardsSummary.activeCards += 1;
+        state.giftCardsSummary.totalLiability += Number(action.payload.balance);
+      })
+      .addCase(fetchPaymentsLedger.fulfilled, (state, action) => {
+        state.paymentsLedger = action.payload;
+      })
+      .addCase(fetchBlogCategories.fulfilled, (state, action) => {
+        state.blogCategories = action.payload;
+      })
+      .addCase(fetchBlogPosts.fulfilled, (state, action) => {
+        state.blogPosts = action.payload;
+      })
+      .addCase(createBlogCategory.fulfilled, (state, action) => {
+        state.blogCategories.push(action.payload);
+      })
+      .addCase(createBlogPost.fulfilled, (state, action) => {
+        state.blogPosts.unshift(action.payload);
+      })
+      .addCase(toggleBlogPostStatus.fulfilled, (state, action) => {
+        const index = state.blogPosts.findIndex((p) => p.id === action.payload.id);
+        if (index !== -1) {
+          state.blogPosts[index] = action.payload;
+        }
+      })
+      .addCase(deleteBlogPost.fulfilled, (state, action) => {
+        state.blogPosts = state.blogPosts.filter((p) => p.id !== action.payload);
+      })
+      .addCase(fetchAdminClinics.fulfilled, (state, action) => {
+        state.clinics = action.payload;
+      })
+      .addCase(createAdminClinic.fulfilled, (state, action) => {
+        state.clinics.unshift(action.payload);
+      })
+      .addCase(updateAdminClinic.fulfilled, (state, action) => {
+        const index = state.clinics.findIndex((c) => c.id === action.payload.id);
+        if (index !== -1) {
+          state.clinics[index] = action.payload;
+        }
       });
   },
 });

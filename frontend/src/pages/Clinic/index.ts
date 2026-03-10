@@ -9,3 +9,4 @@ export { default as ClientsPage } from './ClientsPage';
 export { default as ReviewsPage } from './ReviewsPage';
 export { default as NotificationsPage } from './NotificationsPage';
 export { default as SettingsPage } from './SettingsPage';
+export { default as StaffPage } from './StaffPage';

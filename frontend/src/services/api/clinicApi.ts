@@ -282,6 +282,24 @@ export const availabilityApi = {
 
 };
 
+// Staff Management API
+export const staffApi = {
+  getAll: async (clinicId?: string): Promise<any[]> => {
+    const params = clinicId ? { clinicId } : {};
+    const response = await apiClient.get('/clinic/staff', { params });
+    return response.data;
+  },
+
+  create: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/clinic/staff', data);
+    return response.data;
+  },
+
+  remove: async (id: string): Promise<void> => {
+    await apiClient.delete(`/clinic/staff/${id}`);
+  },
+};
+
 export default {
   clinicProfile: clinicProfileApi,
   services: servicesApi,
@@ -291,4 +309,5 @@ export default {
   reviews: reviewsApi,
   notifications: notificationsApi,
   availability: availabilityApi,
+  staff: staffApi,
 };

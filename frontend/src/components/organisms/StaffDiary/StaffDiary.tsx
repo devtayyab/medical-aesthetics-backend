@@ -34,7 +34,34 @@ interface StaffDiaryProps {
 
 export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointment }) => {
     const dispatch = useDispatch<AppDispatch>();
-    const { appointments, staff, profile, isLoading } = useSelector((state: RootState) => state.clinic);
+    const { appointments, staff: allStaff, profile, isLoading } = useSelector((state: RootState) => state.clinic);
+    const { user } = useSelector((state: RootState) => state.auth);
+
+    const filteredAppointments = useMemo(() => {
+        if (user?.role === 'doctor') {
+            return appointments.filter(apt => apt.providerId === user.id);
+        }
+        return appointments;
+    }, [appointments, user]);
+
+    const staff = useMemo(() => {
+        let baseStaff = [...allStaff];
+
+        // If user is a doctor, only show their own column
+        if (user?.role === 'doctor') {
+            return baseStaff.filter(s => s.id === user.id);
+        }
+
+        // For others (Admin, Owner), show "Unassigned" column as well
+        const unassigned = {
+            id: 'unassigned',
+            fullName: 'Unassigned',
+            role: 'No Provider',
+            profilePictureUrl: null
+        };
+
+        return [unassigned, ...baseStaff];
+    }, [allStaff, user]);
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
@@ -42,8 +69,8 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
 
     const timeSlots = useMemo(() => {
         const slots = [];
-        let current = setMinutes(setHours(new Date(), 8), 0); // Start at 8 AM
-        const end = setMinutes(setHours(new Date(), 20), 0); // End at 8 PM
+        let current = setMinutes(setHours(new Date(), 0), 0); // Start at 12 AM
+        const end = setMinutes(setHours(new Date(), 23), 30); // End at 11:30 PM
 
         while (current <= end) {
             slots.push(format(current, 'HH:mm'));
@@ -73,10 +100,13 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     };
 
     const getAppointmentsForProvider = (providerId: string, date: Date) => {
-        return appointments.filter(apt =>
-            apt.providerId === providerId &&
-            isSameDay(new Date(apt.startTime), date)
-        );
+        return filteredAppointments.filter(apt => {
+            const matchesProvider =
+                (providerId === 'unassigned' && !apt.providerId) ||
+                (apt.providerId === providerId);
+
+            return matchesProvider && isSameDay(new Date(apt.startTime), date);
+        });
     };
 
     const renderWeekView = () => {
@@ -105,11 +135,11 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                 {timeSlots.map(time => (
                                     <div key={time} className="diary-slot-cell"></div>
                                 ))}
-                                {appointments.filter(apt => isSameDay(new Date(apt.startTime), day)).map(apt => {
+                                {filteredAppointments.filter(apt => isSameDay(new Date(apt.startTime), day)).map(apt => {
                                     const start = new Date(apt.startTime);
                                     const end = new Date(apt.endTime);
                                     const startMinutes = start.getHours() * 60 + start.getMinutes();
-                                    const dayStartMinutes = 8 * 60;
+                                    const dayStartMinutes = 0 * 60;
                                     const top = ((startMinutes - dayStartMinutes) / 30) * 60;
                                     const duration = (end.getTime() - start.getTime()) / (1000 * 60);
                                     const height = (duration / 30) * 60;
@@ -120,7 +150,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                             className={`appointment-block compact status-${apt.status}`}
                                             style={{ top: `${top + 60}px`, height: `${height - 2}px` }}
                                         >
-                                            <div className="text-[9px] font-black leading-tight text-gray-900 truncate">{apt.service?.name}</div>
+                                            <div className="text-[9px] font-black leading-tight text-gray-900 truncate">{apt.serviceName || (apt.service as any)?.treatment?.name || (apt.service as any)?.name}</div>
                                             <div className="text-[8px] font-bold text-gray-500 truncate">{apt.clientDetails?.fullName || 'Client'}</div>
                                         </div>
                                     );
@@ -170,7 +200,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                     const start = new Date(apt.startTime);
                                     const end = new Date(apt.endTime);
                                     const startMinutes = start.getHours() * 60 + start.getMinutes();
-                                    const dayStartMinutes = 8 * 60;
+                                    const dayStartMinutes = 0 * 60;
                                     const top = ((startMinutes - dayStartMinutes) / 30) * 60; // 60px per 30 mins
                                     const duration = (end.getTime() - start.getTime()) / (1000 * 60);
                                     const height = (duration / 30) * 60;
@@ -183,7 +213,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                         >
                                             <div className="flex justify-between items-start">
                                                 <div className="apt-info">
-                                                    <span className="apt-service">{apt.service?.name}</span>
+                                                    <span className="apt-service">{apt.serviceName || (apt.service as any)?.treatment?.name || (apt.service as any)?.name}</span>
                                                     <span className="apt-client">{apt.clientDetails?.fullName || 'Walk-in'}</span>
                                                 </div>
                                                 <button className="p-1 hover:bg-black/5 rounded-md">
@@ -207,7 +237,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
             {/* Toolbar */}
             <div className="diary-toolbar">
                 <div className="toolbar-left">
-                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">Diary</h1>
+                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">Clinic Schedule</h1>
                     <div className="date-nav">
                         <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')} className="nav-btn">
                             <ChevronLeft className="w-5 h-5" />
@@ -243,12 +273,14 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button
-                        onClick={onNewAppointment}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20"
-                    >
-                        <Plus className="w-4 h-4 mr-2" /> New Appointment
-                    </Button>
+                    {user?.role !== 'doctor' && (
+                        <Button
+                            onClick={onNewAppointment}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20"
+                        >
+                            <Plus className="w-4 h-4 mr-2" /> New Appointment
+                        </Button>
+                    )}
                 </div>
             </div>
 

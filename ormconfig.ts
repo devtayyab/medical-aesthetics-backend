@@ -7,6 +7,11 @@ config();
 import { User } from './src/modules/users/entities/user.entity';
 import { Clinic } from './src/modules/clinics/entities/clinic.entity';
 import { Service } from './src/modules/clinics/entities/service.entity';
+import { Treatment } from './src/modules/clinics/entities/treatment.entity';
+import { TreatmentCategory } from './src/modules/clinics/entities/treatment-category.entity';
+import { Review } from './src/modules/clinics/entities/review.entity';
+import { GiftCard } from './src/modules/clinics/entities/gift-card.entity';
+import { BlogPost, BlogCategory } from './src/modules/clinics/entities/blog.entity';
 import { Lead, CrmAction, CustomerRecord } from './src/modules/crm/entities';
 import { Tag } from './src/modules/admin/entities/tag.entity';
 import { AuditLog } from './src/modules/audit/entities/audit-log.entity';
@@ -22,6 +27,9 @@ import { LoyaltyLedger } from './src/modules/loyalty/entities/loyalty-ledger.ent
 import { Notification } from './src/modules/notifications/entities/notification.entity';
 import { BlockedTimeSlot } from './src/modules/bookings/entities/blocked-time-slot.entity';
 import { AgentClinicAccess } from './src/modules/crm/entities/agent-clinic-access.entity';
+import { Conversation } from './src/modules/messages/entities/conversation.entity';
+import { Message } from './src/modules/messages/entities/message.entity';
+import { ConversationParticipant } from './src/modules/messages/entities/conversation-participant.entity';
 
 export const AppDataSource = new DataSource({
     type: "postgres",
@@ -34,6 +42,8 @@ export const AppDataSource = new DataSource({
         User,
         Clinic,
         Service,
+        Treatment,
+        TreatmentCategory,
         Lead,
         CommunicationLog,
         CustomerRecord,
@@ -50,8 +60,16 @@ export const AppDataSource = new DataSource({
         AdAttribution,
         AdCampaign,
         BlockedTimeSlot,
-        AgentClinicAccess
+        Review,
+        AgentClinicAccess,
+        Conversation,
+        Message,
+        ConversationParticipant,
+        GiftCard,
+        BlogPost,
+        BlogCategory,
     ],
+    migrations: ["src/migrations/*.ts"],
     synchronize: false, // Don't auto-sync in production
     logging: true,
 });

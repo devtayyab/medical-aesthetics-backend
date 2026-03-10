@@ -1,4 +1,4 @@
-import { IsString, IsDateString, IsUUID } from 'class-validator';
+import { IsString, IsDateString, IsUUID, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class HoldSlotDto {
@@ -11,6 +11,7 @@ export class HoldSlotDto {
   serviceId: string;
 
   @ApiProperty()
+  @IsOptional()
   @IsUUID()
   providerId?: string;
 

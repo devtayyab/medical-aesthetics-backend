@@ -2054,12 +2054,13 @@ export class CrmService implements OnModuleInit {
     let q = this.appointmentsRepository
       .createQueryBuilder('apt')
       .leftJoin('apt.service', 'service')
-      .select('service.name', 'serviceName')
+      .leftJoin('service.treatment', 'treatment')
+      .select('treatment.name', 'serviceName')
       .addSelect('COUNT(apt.id)', 'count')
       .addSelect('SUM(apt.totalAmount)', 'revenue')
-      .groupBy('service.name');
+      .groupBy('treatment.name');
     if (dateRange) {
-      q = q.where('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
+      q = q.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
     }
     return q.getRawMany();
   }
@@ -2222,10 +2223,11 @@ export class CrmService implements OnModuleInit {
     const aptQ = this.appointmentsRepository.createQueryBuilder('apt')
       .leftJoin('apt.client', 'client')
       .leftJoin('apt.service', 'service')
+      .leftJoin('service.treatment', 'treatment')
       .leftJoin('users', 'agent', 'agent.id = apt.bookedById OR apt.providerId = agent.id')
       .select('apt.id', 'id')
       .addSelect('apt.startTime', 'date')
-      .addSelect('service.name', 'eventType')
+      .addSelect('treatment.name', 'eventType')
       .addSelect('apt.status', 'status')
       .addSelect('apt.totalAmount', 'revenue')
       .addSelect('apt.notes', 'notes')
@@ -2909,8 +2911,9 @@ export class CrmService implements OnModuleInit {
     let query = this.appointmentsRepository
       .createQueryBuilder('apt')
       .leftJoin('apt.service', 'service')
+      .leftJoin('service.treatment', 'treatment')
       .select('service.id', 'serviceId')
-      .addSelect('service.name', 'serviceName')
+      .addSelect('treatment.name', 'serviceName')
       .addSelect('COUNT(apt.id)', 'totalAppointments')
       .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'totalRevenue')
       .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancellations')
@@ -2920,7 +2923,7 @@ export class CrmService implements OnModuleInit {
       query = query.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
     }
 
-    query = query.groupBy('service.id, service.name');
+    query = query.groupBy('service.id, treatment.name');
 
     const results = await query.getRawMany();
     return results.map(row => ({

@@ -13,7 +13,7 @@ import { Treatment } from './entities/treatment.entity';
 import { TreatmentCategory } from './entities/treatment-category.entity';
 import { Review } from './entities/review.entity';
 import { TreatmentStatus } from './enums/treatment-status.enum';
-import { Repository } from 'typeorm';
+import { Repository, DeepPartial } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { Appointment } from '../bookings/entities/appointment.entity';
@@ -91,11 +91,13 @@ export class ClinicsService {
       clinicQb.orderBy('clinic.createdAt', 'DESC');
     }
 
-    // 2. Search for Treatments (Therapies)
     const treatmentQb = this.treatmentsRepository.createQueryBuilder('treatment')
       .leftJoinAndSelect('treatment.offerings', 'offering')
       .leftJoinAndSelect('offering.clinic', 'clinic')
-      .where('treatment.isActive = :isActive', { isActive: true });
+      .where('treatment.isActive = :isActive AND treatment.status = :status', {
+        isActive: true,
+        status: TreatmentStatus.APPROVED
+      });
 
     if (params.search) {
       treatmentQb.andWhere(
@@ -253,16 +255,18 @@ export class ClinicsService {
 
   // New clinic management methods
   async createClinic(createClinicDto: CreateClinicProfileDto & { ownerId: string }): Promise<Clinic> {
-    // Check if user already has a clinic
-    const existingClinic = await this.clinicsRepository.findOne({
-      where: { ownerId: createClinicDto.ownerId },
-    });
-
-    if (existingClinic) {
-      throw new BadRequestException('User already owns a clinic');
-    }
-
     const clinic = this.clinicsRepository.create(createClinicDto);
+    return this.clinicsRepository.save(clinic);
+  }
+
+  async updateClinicById(
+    clinicId: string,
+    updateClinicDto: UpdateClinicProfileDto,
+  ): Promise<Clinic> {
+    const clinic = await this.clinicsRepository.findOne({ where: { id: clinicId } });
+    if (!clinic) throw new NotFoundException('Clinic not found');
+
+    Object.assign(clinic, updateClinicDto);
     return this.clinicsRepository.save(clinic);
   }
 
@@ -285,6 +289,12 @@ export class ClinicsService {
 
     if (agentAccess && agentAccess.clinic) {
       return this.findById(agentAccess.clinic.id);
+    }
+
+    // 3. Check if user is staff for a clinic (assignedClinicId)
+    const user = await this.usersRepository.findOne({ where: { id: ownerId } });
+    if (user && user.assignedClinicId) {
+      return this.findById(user.assignedClinicId);
     }
 
     throw new NotFoundException('Clinic not found for this owner');
@@ -312,37 +322,99 @@ export class ClinicsService {
     return this.clinicsRepository.save(clinic);
   }
 
-  async getClinicStaff(clinicId: string): Promise<any[]> {
-    // This would typically join with user table to get staff members
-    // For now, return basic clinic info
-    const clinic = await this.findById(clinicId);
-    return [
-      {
-        id: clinic.ownerId,
-        role: 'clinic_owner',
-        name: 'Clinic Owner', // This would come from user table
-      },
-    ];
+  async getClinicStaff(ownerId: string, role?: string, clinicId?: string): Promise<User[]> {
+    let clinicIdToUse: string;
+
+    if (clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
+      clinicIdToUse = clinicId;
+    } else if (role === UserRole.DOCTOR || role === UserRole.SECRETARIAT) {
+      // Find clinic they are assigned to
+      const user = await this.usersRepository.findOne({
+        where: { id: ownerId },
+        select: ['id', 'assignedClinicId'],
+      });
+      if (!user || !user.assignedClinicId) {
+        throw new NotFoundException('Clinic assignment not found');
+      }
+      clinicIdToUse = user.assignedClinicId;
+    } else {
+      const clinic = await this.findByOwnerId(ownerId);
+      clinicIdToUse = clinic.id;
+    }
+
+    return this.usersRepository.find({
+      where: { assignedClinicId: clinicIdToUse },
+      order: { firstName: 'ASC' },
+    });
+  }
+
+  async createClinicStaff(
+    ownerId: string,
+    role: string,
+    staffData: any,
+  ): Promise<User> {
+    let clinic;
+    if (staffData.clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
+      clinic = await this.findById(staffData.clinicId);
+    } else {
+      clinic = await this.findByOwnerId(ownerId);
+    }
+
+    // Check if user already exists
+    const existingUser = await this.usersRepository.findOne({
+      where: { email: staffData.email },
+    });
+
+    if (existingUser) {
+      if (existingUser.assignedClinicId === clinic.id) {
+        throw new BadRequestException('User is already staff at this clinic');
+      }
+      // If they exist but not in this clinic, we might want to reassign or invite?
+      // For now, let's treat as error or simple update
+      existingUser.assignedClinicId = clinic.id;
+      existingUser.role = staffData.role || UserRole.DOCTOR;
+      return this.usersRepository.save(existingUser);
+    }
+
+    const newUser = this.usersRepository.create({
+      ...staffData,
+      role: staffData.role || UserRole.DOCTOR,
+      assignedClinicId: clinic.id,
+      passwordHash: staffData.password || 'TemporaryPassword123!',
+      isActive: true,
+    } as any);
+
+    return this.usersRepository.save(newUser) as unknown as Promise<User>;
+  }
+
+  async removeStaff(ownerId: string, role: string, staffId: string): Promise<void> {
+    const clinic = await this.findByOwnerId(ownerId);
+    const staff = await this.usersRepository.findOne({
+      where: { id: staffId, assignedClinicId: clinic.id },
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Staff member not found in your clinic');
+    }
+
+    // Do NOT delete the user, just unbind from clinic and maybe deactivate?
+    // User requested "bound to specific clinic", so unbinding is enough.
+    staff.assignedClinicId = null;
+    await this.usersRepository.save(staff);
   }
 
   async getClinicProviders(clinicId: string): Promise<any[]> {
-    // 1. Get all providers from appointments
-    const providersFromAppointments = await this.usersRepository
-      .createQueryBuilder('user')
-      .innerJoin('user.providerAppointments', 'appointment')
-      .where('appointment.clinicId = :clinicId', { clinicId })
-      .getMany();
-
-    // 2. Get clinic owner
-    const clinic = await this.clinicsRepository.findOne({
-      where: { id: clinicId },
-      relations: ['owner'],
-    });
-
     const uniqueProviders = new Map();
 
-    // Add providers from appointments
-    providersFromAppointments.forEach((user) => {
+    // 1. Get all users who have the role of doctor and are assigned to this clinic
+    const assignedStaff = await this.usersRepository.find({
+      where: [
+        { assignedClinicId: clinicId, role: UserRole.DOCTOR },
+        { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER }
+      ]
+    });
+
+    assignedStaff.forEach((user) => {
       uniqueProviders.set(user.id, {
         id: user.id,
         firstName: user.firstName,
@@ -355,7 +427,12 @@ export class ClinicsService {
       });
     });
 
-    // Add owner if they are a doctor or clinic_owner
+    // 2. Get clinic owner (just in case they aren't marked as assigned to their own clinic)
+    const clinic = await this.clinicsRepository.findOne({
+      where: { id: clinicId },
+      relations: ['owner'],
+    });
+
     if (clinic?.owner) {
       const owner = clinic.owner;
       if (
@@ -374,6 +451,28 @@ export class ClinicsService {
         });
       }
     }
+
+    // 3. Get any other users who already have appointments at this clinic (legacy/fallback)
+    const providersFromAppointments = await this.usersRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.providerAppointments', 'appointment')
+      .where('appointment.clinicId = :clinicId', { clinicId })
+      .getMany();
+
+    providersFromAppointments.forEach((user) => {
+      if (!uniqueProviders.has(user.id)) {
+        uniqueProviders.set(user.id, {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          profilePictureUrl: user.profilePictureUrl,
+        });
+      }
+    });
 
     return Array.from(uniqueProviders.values());
   }
@@ -416,9 +515,9 @@ export class ClinicsService {
   }
 
   // Service/Treatment Management
-  async getClinicServices(ownerId: string, clinicId?: string): Promise<Service[]> {
+  async getClinicServices(ownerId: string, role?: string, clinicId?: string): Promise<Service[]> {
     let clinic;
-    if (clinicId) {
+    if (clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
       clinic = await this.findById(clinicId);
     } else {
       clinic = await this.findByOwnerId(ownerId);
@@ -426,16 +525,20 @@ export class ClinicsService {
 
     return this.servicesRepository.find({
       where: { clinicId: clinic.id },
+      relations: ['treatment'],
       order: { createdAt: 'DESC' },
     });
   }
 
-  async createService(ownerId: string, serviceData: CreateServiceDto): Promise<Service> {
-    const clinic = await this.findByOwnerId(ownerId);
+  async createService(ownerId: string, role: string, serviceData: CreateServiceDto & { clinicId?: string }): Promise<Service> {
+    let clinic;
+    if (serviceData.clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
+      clinic = await this.findById(serviceData.clinicId);
+    } else {
+      clinic = await this.findByOwnerId(ownerId);
+    }
 
     // For management, we might need to find or create a treatment
-    // This is a bit complex as it depends on whether we allow clinics to create global treatments
-    // Assuming for now they pick from a list or we auto-create global treatments
     let treatment = await this.treatmentsRepository.findOne({
       where: { name: serviceData.name } // Simplified
     });
@@ -460,20 +563,55 @@ export class ClinicsService {
       metadata: serviceData.metadata,
     });
 
+    if (service.isActive) {
+      const serviceWithRelations = await this.servicesRepository.findOne({
+        where: { id: service.id },
+        relations: ['treatment'],
+      });
+      // But service is not saved yet, so we can't find it by ID.
+      // Let's just pass the treatment we found/created.
+      service.treatment = treatment;
+      this.validateServiceForPublishing(service);
+    }
+
     return this.servicesRepository.save(service);
   }
 
   private validateServiceForPublishing(service: Service) {
-    // This now probably needs to check the linked treatment
-    // But since serviceData was used to create/update, we'll assume it's valid if passed.
+    if (!service.treatment) {
+      throw new BadRequestException('Service must be linked to a treatment master record to be active');
+    }
+
+    const t = service.treatment;
+    const errors: string[] = [];
+
+    if (!t.categoryId && !t.category) errors.push('category');
+    if (!t.shortDescription && !t.fullDescription) errors.push('description');
+    if (!t.imageUrl) errors.push('photo');
+
+    if (errors.length > 0) {
+      throw new BadRequestException(
+        `This service cannot be published (made active) because the underlying therapy record is incomplete. Missing: ${errors.join(', ')}.`
+      );
+    }
+
+    if (t.status !== TreatmentStatus.APPROVED) {
+      throw new BadRequestException('This therapy is pending admin approval and cannot be published yet.');
+    }
   }
 
   async updateService(
     ownerId: string,
+    role: string,
     serviceId: string,
-    updateData: UpdateServiceDto,
+    updateData: UpdateServiceDto & { clinicId?: string },
   ): Promise<Service> {
-    const clinic = await this.findByOwnerId(ownerId);
+    let clinic;
+    if (updateData.clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
+      clinic = await this.findById(updateData.clinicId);
+    } else {
+      clinic = await this.findByOwnerId(ownerId);
+    }
 
     const service = await this.servicesRepository.findOne({
       where: { id: serviceId, clinicId: clinic.id },
@@ -511,11 +649,17 @@ export class ClinicsService {
     return this.servicesRepository.save(service);
   }
 
-  async toggleServiceStatus(ownerId: string, serviceId: string): Promise<Service> {
-    const clinic = await this.findByOwnerId(ownerId);
+  async toggleServiceStatus(ownerId: string, role: string, serviceId: string, clinicId?: string): Promise<Service> {
+    let clinic;
+    if (clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
+      clinic = await this.findById(clinicId);
+    } else {
+      clinic = await this.findByOwnerId(ownerId);
+    }
 
     const service = await this.servicesRepository.findOne({
       where: { id: serviceId, clinicId: clinic.id },
+      relations: ['treatment'],
     });
 
     if (!service) {
@@ -891,11 +1035,94 @@ export class ClinicsService {
     });
   }
 
-  async setCategoryStatus(categoryId: string, status: TreatmentStatus): Promise<TreatmentCategory> {
-    const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
-    if (!category) throw new NotFoundException('Category not found');
+  async getAllCategories(query?: { search?: string; status?: TreatmentStatus }): Promise<TreatmentCategory[]> {
+    const qb = this.categoryRepository.createQueryBuilder('category');
+    if (query?.search) {
+      qb.andWhere('category.name ILIKE :search', { search: `%${query.search}%` });
+    }
+    if (query?.status) {
+      qb.andWhere('category.status = :status', { status: query.status });
+    }
+    qb.orderBy('category.name', 'ASC');
+    return qb.getMany();
+  }
 
-    category.status = status;
+  async updateCategory(id: string, data: any): Promise<TreatmentCategory> {
+    const category = await this.categoryRepository.findOne({ where: { id } });
+    if (!category) throw new NotFoundException('Category not found');
+    Object.assign(category, data);
     return this.categoryRepository.save(category);
   }
+
+  async deleteCategory(id: string): Promise<void> {
+    const treatmentsCount = await this.treatmentsRepository.count({ where: { categoryId: id } });
+    if (treatmentsCount > 0) {
+      throw new BadRequestException('Cannot delete category with associated treatments');
+    }
+    await this.categoryRepository.delete(id);
+  }
+
+  async getAllTreatmentsMaster(query?: { search?: string; status?: TreatmentStatus; categoryId?: string }): Promise<Treatment[]> {
+    const qb = this.treatmentsRepository.createQueryBuilder('treatment')
+      .leftJoinAndSelect('treatment.categoryRef', 'category');
+
+    if (query?.search) {
+      qb.andWhere('(treatment.name ILIKE :search OR treatment.shortDescription ILIKE :search)', { search: `%${query.search}%` });
+    }
+    if (query?.status) {
+      qb.andWhere('treatment.status = :status', { status: query.status });
+    }
+    if (query?.categoryId) {
+      qb.andWhere('treatment.categoryId = :categoryId', { categoryId: query.categoryId });
+    }
+
+    qb.orderBy('treatment.name', 'ASC');
+    return qb.getMany();
+  }
+
+  async updateTreatment(id: string, data: any): Promise<Treatment> {
+    const treatment = await this.treatmentsRepository.findOne({ where: { id } });
+    if (!treatment) throw new NotFoundException('Treatment not found');
+
+    if (data.categoryId) {
+      const category = await this.categoryRepository.findOne({ where: { id: data.categoryId } });
+      if (!category) throw new NotFoundException('Category not found');
+      treatment.category = category.name;
+    }
+
+    Object.assign(treatment, data);
+    return this.treatmentsRepository.save(treatment);
+  }
+
+  async deleteTreatment(id: string): Promise<void> {
+    const offeringsCount = await this.servicesRepository.count({ where: { treatmentId: id } });
+    if (offeringsCount > 0) {
+      throw new BadRequestException('Cannot delete treatment with associated clinic offerings. Disable it instead.');
+    }
+    await this.treatmentsRepository.delete(id);
+  }
+
+  async createMasterTreatment(data: DeepPartial<Treatment>): Promise<Treatment> {
+    const category = await this.categoryRepository.findOne({ where: { id: data.categoryId as any } });
+    if (!category) throw new NotFoundException('Category not found');
+
+    const treatment = this.treatmentsRepository.create({
+      ...data,
+      status: TreatmentStatus.APPROVED,
+      category: category.name,
+      isActive: true,
+    } as DeepPartial<Treatment>) as unknown as Treatment;
+    return await this.treatmentsRepository.save(treatment);
+  }
+
+  async createMasterCategory(data: DeepPartial<TreatmentCategory>): Promise<TreatmentCategory> {
+    const category = this.categoryRepository.create({
+      ...data,
+      status: TreatmentStatus.APPROVED,
+      isActive: true,
+    } as DeepPartial<TreatmentCategory>) as unknown as TreatmentCategory;
+    return await this.categoryRepository.save(category);
+  }
+
+
 }

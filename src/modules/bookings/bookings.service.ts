@@ -19,6 +19,7 @@ import { forwardRef, Inject } from '@nestjs/common';
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { VivaWalletService } from '../payments/viva-wallet.service';
 
 @Injectable()
 export class BookingsService {
@@ -41,6 +42,7 @@ export class BookingsService {
     @Inject(forwardRef(() => CrmService))
     private crmService: CrmService,
     private eventEmitter: EventEmitter2,
+    private vivaWalletService: VivaWalletService,
   ) { }
 
   async holdSlot(holdSlotDto: HoldSlotDto): Promise<AppointmentHold> {
@@ -85,7 +87,7 @@ export class BookingsService {
     return this.holdsRepository.save(hold);
   }
 
-  async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker', bookedById?: string }): Promise<Appointment> {
+  async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker', bookedById?: string }): Promise<any> {
     let clientId = createAppointmentDto.clientId;
 
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -226,10 +228,22 @@ export class BookingsService {
       throw new BadRequestException('Client mobile number is mandatory for appointment booking');
     }
 
-    const appointmentData = {
+    let providerId = createAppointmentDto.providerId;
+
+    // Auto-assign to doctor if only one exists and none provided
+    if (!providerId) {
+      const clinicDoctors = await this.usersRepository.find({
+        where: { assignedClinicId: createAppointmentDto.clinicId, role: UserRole.DOCTOR }
+      });
+      if (clinicDoctors.length === 1) {
+        providerId = clinicDoctors[0].id;
+      }
+    }
+
+    const appointmentData: Partial<Appointment> = {
       ...createAppointmentDto,
       clientId, // Use potentially updated clientId
-      providerId: createAppointmentDto.providerId ?? null,
+      providerId: providerId ?? null,
       startTime: new Date(createAppointmentDto.startTime),
       endTime: new Date(createAppointmentDto.endTime),
       appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
@@ -264,11 +278,71 @@ export class BookingsService {
       await this.holdsRepository.delete(hold.id);
     }
 
-    const appointment = this.appointmentsRepository.create(appointmentData);
-    const savedAppointment = await this.appointmentsRepository.save(appointment);
+    // Set status to pending_payment if card is chosen
+    if (createAppointmentDto.paymentMethod === 'card') {
+      appointmentData.status = AppointmentStatus.PENDING_PAYMENT;
+    }
+
+    const appointment: Appointment = this.appointmentsRepository.create(appointmentData);
+    const savedAppointment: Appointment = await this.appointmentsRepository.save(appointment);
 
     // Load full relations before emitting event for notifications
     const appointmentWithRelations = await this.findById(savedAppointment.id);
+
+    // If card payment, generate Viva Wallet redirect URL
+    if (createAppointmentDto.paymentMethod === 'card') {
+      const clientName = appointmentWithRelations.client
+        ? `${appointmentWithRelations.client.firstName} ${appointmentWithRelations.client.lastName}`
+        : (createAppointmentDto.clientDetails?.fullName || 'Guest');
+
+      const amount = Number(appointmentWithRelations.service?.price || 0);
+      const customerEmail = appointmentWithRelations.client?.email || createAppointmentDto.clientDetails?.email || '';
+      const customerPhone = appointmentWithRelations.client?.phone || createAppointmentDto.clientDetails?.phone || '';
+
+      // DEMO MODE: If Viva credentials not configured yet, use a test redirect
+      const vivaClientId = process.env.VIVA_CLIENT_ID;
+      if (!vivaClientId || vivaClientId === 'your-viva-client-id') {
+        console.warn('[Viva Wallet] ⚠️  DEMO MODE — No real credentials set. Using test redirect.');
+        const frontendUrl = process.env.APP_FRONTEND_URL || 'http://localhost:5173';
+        const demoRedirectUrl = `${frontendUrl}/payment/success?t=DEMO_TXN_${savedAppointment.id}&s=DEMO_ORDER&paid=true&appointmentId=${savedAppointment.id}`;
+        // Mark appointment as confirmed in demo mode
+        await this.appointmentsRepository.update(savedAppointment.id, {
+          status: AppointmentStatus.CONFIRMED,
+        });
+        return {
+          ...appointmentWithRelations,
+          redirectUrl: demoRedirectUrl,
+        };
+      }
+
+      console.log(`[Viva Wallet] Creating payment order for appointment ${savedAppointment.id}, amount=${amount}, email=${customerEmail}`);
+
+      try {
+        const redirectUrl = await this.vivaWalletService.createPaymentOrder({
+          amount,
+          customerEmail,
+          customerPhone,
+          customerName: clientName,
+          merchantTrns: savedAppointment.id,
+        });
+
+        console.log(`[Viva Wallet] Payment order created. Redirect URL: ${redirectUrl}`);
+
+        return {
+          ...appointmentWithRelations,
+          redirectUrl,
+        };
+      } catch (err) {
+        // Log the full error details so we can debug
+        console.error('[Viva Wallet] Order creation FAILED:', err?.response?.data || err?.message || err);
+        // Delete the saved appointment since payment setup failed
+        await this.appointmentsRepository.delete(savedAppointment.id);
+        throw new BadRequestException(
+          `Payment setup failed: ${err?.message || 'Could not connect to Viva Wallet. Please verify VIVA_CLIENT_ID and VIVA_CLIENT_SECRET in .env'}`
+        );
+      }
+    }
+
 
     // Emit event for notifications with full relations
     this.eventEmitter.emit('appointment.created', appointmentWithRelations);
@@ -296,6 +370,24 @@ export class BookingsService {
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
       : 'Professional';
     return `${serviceName} with ${providerName}`;
+  }
+
+  // Generate a Viva Wallet payment URL for an existing pending_payment appointment
+  async generateVivaPaymentUrl(appointment: Appointment): Promise<string | null> {
+    const clientName = appointment.client
+      ? `${appointment.client.firstName} ${appointment.client.lastName}`
+      : (appointment.clientDetails?.fullName || 'Guest');
+    const customerEmail = appointment.client?.email || appointment.clientDetails?.email || '';
+    const customerPhone = appointment.client?.phone || appointment.clientDetails?.phone || '';
+    const amount = Number(appointment.service?.price || 0);
+
+    return this.vivaWalletService.createPaymentOrder({
+      amount,
+      customerEmail,
+      customerPhone,
+      customerName: clientName,
+      merchantTrns: appointment.id,
+    });
   }
 
   async updateStatus(id: string, status: AppointmentStatus, data?: any): Promise<Appointment> {
@@ -393,8 +485,25 @@ export class BookingsService {
       // Admins and SUPER_ADMINs see all appointments. No restrictions.
       queryBuilder.where('1=1');
     } else if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      // Clinic staff see appointments in their clinics
-      queryBuilder.where('clinic.ownerId = :userId', { userId });
+      // For clinical owners/secretariat, we want to show all appointments for their clinic
+      const user = await this.usersRepository.findOne({
+        where: { id: userId },
+        relations: ['ownedClinics'],
+      });
+
+      if (!user) throw new NotFoundException('User not found');
+
+      const clinicIds = (user.ownedClinics || []).map(c => c.id);
+      if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
+
+      if (clinicIds.length > 0) {
+        queryBuilder.where('appointment.clinicId IN (:...clinicIds)', { clinicIds });
+      } else {
+        queryBuilder.where('appointment.providerId = :userId', { userId });
+      }
+    } else if (userRole === 'doctor') {
+      // Doctors ONLY see their own appointments
+      queryBuilder.where('appointment.providerId = :userId', { userId });
     } else if (userRole === 'salesperson') {
       // Salespeople see appointments:
       // 1. They booked themselves
@@ -405,11 +514,25 @@ export class BookingsService {
       // to ensure they see slots in clinics they might have access to, or just their own.
       // Based on specific requirement: "If it is a Beauty Doctors Client should appear also in... salesperson who is owner"
 
-      queryBuilder.leftJoin('client.lead', 'lead') // Assuming relation exists or we check by phone
-        .leftJoin(CustomerRecord, 'record', 'record.customerId = client.id')
-        .where('(appointment.bookedById = :userId OR record.assignedSalespersonId = :userId OR lead.assignedSalesId = :userId)', { userId });
+      if (query.clinicId || query.providerId) {
+        // Broaden selection for mapping later (masking results they don't own)
+        queryBuilder.leftJoin(Lead, 'lead', 'lead.phone = client.phone OR (client.email IS NOT NULL AND lead.email = client.email)')
+          .leftJoin(CustomerRecord, 'record', 'record.customerId = client.id');
+
+        if (query.clinicId) {
+          queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
+        }
+      } else {
+        // Restrictive selection when no scope provided
+        queryBuilder.leftJoin(Lead, 'lead', 'lead.phone = client.phone OR (client.email IS NOT NULL AND lead.email = client.email)')
+          .leftJoin(CustomerRecord, 'record', 'record.customerId = client.id')
+          .where('(appointment.bookedById = :userId OR record.assignedSalespersonId = :userId OR lead.assignedSalesId = :userId)', { userId });
+      }
+      // Select customerRecords to check ownership in mapping
+      queryBuilder.leftJoinAndSelect('client.customerRecords', 'customerRecords');
+
     } else {
-      // For other roles (e.g. provider, client), return appointments where user is involved
+      // For other roles (e.g. client), return appointments where user is involved
       queryBuilder.where(
         '(appointment.providerId = :userId OR appointment.clientId = :userId OR appointment.bookedById = :userId)',
         { userId }
@@ -434,23 +557,6 @@ export class BookingsService {
       queryBuilder.andWhere('appointment.providerId = :providerId', { providerId: query.providerId });
     }
 
-    if (userRole === 'salesperson') {
-      // For salespeople, we want to allow them to see all appointments in a clinic (if clinicId provided)
-      // so they can see availability, but we will "mask" those they don't own.
-      if (query.clinicId) {
-        queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
-      } else {
-        // If no clinicId, only show what they are involved in
-        // Join with CustomerRecord and Lead to check ownership
-        queryBuilder.leftJoin('client.customerRecords', 'records')
-          .leftJoin(Lead, 'lead', 'lead.email = client.email OR lead.phone = client.phone')
-          .where('(appointment.bookedById = :userId OR records.assignedSalespersonId = :userId OR lead.assignedSalesId = :userId)', { userId });
-      }
-
-      // Select customerRecords to check ownership in mapping
-      queryBuilder.leftJoinAndSelect('client.customerRecords', 'customerRecordMap');
-    }
-
     try {
       const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
 
@@ -459,14 +565,16 @@ export class BookingsService {
         let isMasked = false;
         if (userRole === 'salesperson') {
           const isBookedByMe = apt.bookedById === userId;
+          const isProvidedByMe = apt.providerId === userId;
           const assignedRecord = (apt.client as any)?.customerRecords?.find((r: any) => r.assignedSalespersonId === userId);
           const isOwnedByMe = !!assignedRecord;
 
           // Re-check based on requirement: "If it is a Beauty Doctors Client... should appear also in... salesperson who is owner"
-          // If NOT booked by me AND NOT owned by me, mask it.
-          if (!isBookedByMe && !isOwnedByMe) {
+          // If NOT booked by me AND NOT owned by me AND NOT provided by me, mask it.
+          if (!isBookedByMe && !isOwnedByMe && !isProvidedByMe) {
             isMasked = true;
           }
+
         }
 
         if (isMasked) {
@@ -688,14 +796,36 @@ export class BookingsService {
         'appointment.status',
       ])
       .groupBy('appointment.status');
+    // Filter analytics based on user role and clinical association
+    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
+      // Admins and SUPER_ADMINs see all. No restrictions.
+      baseQuery.where('1=1');
+    } else if (userRole === 'clinic_owner' || userRole === 'secretariat') {
+      // Get the user to check their clinic associations
+      const user = await this.usersRepository.findOne({
+        where: { id: userId },
+        relations: ['ownedClinics'],
+      });
 
-    // SECRETARIAT and CLINIC_OWNER have same permissions
-    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
-        .where('clinic.ownerId = :userId', { userId });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const clinicIds = (user.ownedClinics || []).map(c => c.id);
+      if (user.assignedClinicId) {
+        clinicIds.push(user.assignedClinicId);
+      }
+
+      if (clinicIds.length > 0) {
+        baseQuery = baseQuery.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds });
+      } else {
+        // Fallback: If no clinic assigned, only show their own
+        baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
+      }
     } else if (userRole === 'manager' && query.clinicId) {
       baseQuery = baseQuery.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
     } else {
+      // For salespeople and others, only show those where they are provider or involved
       baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
     }
 
@@ -733,14 +863,36 @@ export class BookingsService {
         'COUNT(CASE WHEN appointment.paymentMethod = \'card\' THEN 1 END) as cardPayments',
       ])
       .groupBy('appointment.paymentMethod');
+    // Filter revenue based on user role and clinical association
+    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
+      // Admins and SUPER_ADMINs see all. No restrictions.
+      baseQuery.where('1=1');
+    } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
+      // Get the user to check their clinic associations
+      const user = await this.usersRepository.findOne({
+        where: { id: userId },
+        relations: ['ownedClinics'],
+      });
 
-    // SECRETARIAT and CLINIC_OWNER have same permissions
-    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
-        .where('clinic.ownerId = :userId', { userId });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const clinicIds = (user.ownedClinics || []).map(c => c.id);
+      if (user.assignedClinicId) {
+        clinicIds.push(user.assignedClinicId);
+      }
+
+      if (clinicIds.length > 0) {
+        baseQuery = baseQuery.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds });
+      } else {
+        // Fallback: If no clinic assigned, only show their own
+        baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
+      }
     } else if (userRole === 'manager' && query.clinicId) {
       baseQuery = baseQuery.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
     } else {
+      // For salespeople and others, only show those where they are provider or involved
       baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
     }
 
@@ -825,13 +977,37 @@ export class BookingsService {
       .leftJoin('appointment.client', 'client')
       .groupBy('appointment.clientId, client.firstName, client.lastName, client.email, client.phone, client.createdAt');
 
-    // SECRETARIAT and CLINIC_OWNER have same permissions
-    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
-        .where('clinic.ownerId = :userId', { userId });
+    // Filter clients based on user role and clinical association
+    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
+      // Admins and SUPER_ADMINs see all. No restrictions.
+      baseQuery.where('1=1');
+    } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
+      // Get the user to check their clinic associations
+      const user = await this.usersRepository.findOne({
+        where: { id: userId },
+        relations: ['ownedClinics'],
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const clinicIds = (user.ownedClinics || []).map(c => c.id);
+      if (user.assignedClinicId) {
+        clinicIds.push(user.assignedClinicId);
+      }
+
+      if (clinicIds.length > 0) {
+        baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
+          .where('appointment.clinicId IN (:...clinicIds)', { clinicIds });
+      } else {
+        // Fallback: If no clinic assigned, only show their own
+        baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
+      }
     } else if (userRole === 'manager' && query.clinicId) {
       baseQuery = baseQuery.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
     } else {
+      // For salespeople and others, only show those where they are provider or involved
       baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
     }
 

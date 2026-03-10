@@ -9,6 +9,8 @@ import { User } from '../users/entities/user.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
+import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
+import { ClinicsService } from '../clinics/clinics.service';
 
 @Injectable()
 export class AdminService {
@@ -29,6 +31,9 @@ export class AdminService {
     private appointmentsRepository: Repository<Appointment>,
     @InjectRepository(LoyaltyLedger)
     private loyaltyRepository: Repository<LoyaltyLedger>,
+    @InjectRepository(AgentClinicAccess)
+    private agentClinicAccessRepository: Repository<AgentClinicAccess>,
+    private clinicsService: ClinicsService,
   ) { }
 
   async createTag(name: string, color?: string, description?: string): Promise<Tag> {
@@ -131,11 +136,26 @@ export class AdminService {
         'user.lastName',
         'user.role',
         'user.isActive',
+        'user.monthlyTarget',
         'user.createdAt',
         'user.lastLoginAt',
       ])
       .orderBy('user.createdAt', 'DESC')
       .getMany();
+
+    // Load clinic accesses for users where applicable
+    for (const u of users) {
+      if (u.role === 'clinic_owner') {
+        const owned = await this.usersRepository.findOne({
+          where: { id: u.id },
+          relations: ['ownedClinics']
+        });
+        (u as any).assignedClinics = owned?.ownedClinics || [];
+      } else {
+        const accesses = await this.agentClinicAccessRepository.find({ where: { agentUserId: u.id }, relations: ['clinic'] });
+        (u as any).assignedClinics = accesses.map(a => a.clinic);
+      }
+    }
 
     return { users, total, limit: query?.limit, offset: query?.offset || 0 };
   }
@@ -150,11 +170,33 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
+    if (user.role === 'clinic_owner') {
+      (user as any).assignedClinics = user.ownedClinics || [];
+    } else {
+      const accesses = await this.agentClinicAccessRepository.find({ where: { agentUserId: user.id }, relations: ['clinic'] });
+      (user as any).assignedClinics = accesses.map(a => a.clinic);
+    }
+
     return user;
   }
 
-  async updateUser(id: string, updateData: Partial<User>): Promise<User> {
-    await this.usersRepository.update(id, updateData);
+  async updateUser(id: string, updateData: Partial<User> & { assignedClinicIds?: string[] }): Promise<User> {
+    const { assignedClinicIds, ...dataToUpdate } = updateData;
+
+    await this.usersRepository.update(id, dataToUpdate);
+
+    if (assignedClinicIds !== undefined) {
+      // Clear all existing accesses
+      await this.agentClinicAccessRepository.delete({ agentUserId: id });
+
+      // Save new ones
+      for (const clinicId of assignedClinicIds) {
+        await this.agentClinicAccessRepository.save(
+          this.agentClinicAccessRepository.create({ agentUserId: id, clinicId })
+        );
+      }
+    }
+
     return this.getUserById(id);
   }
 
@@ -220,6 +262,14 @@ export class AdminService {
     const clinic = await this.getClinicById(id);
     clinic.isActive = !clinic.isActive;
     return this.clinicsRepository.save(clinic);
+  }
+
+  async createClinic(clinicData: any): Promise<Clinic> {
+    return this.clinicsService.createClinic(clinicData);
+  }
+
+  async updateClinic(id: string, clinicData: any): Promise<Clinic> {
+    return this.clinicsService.updateClinicById(id, clinicData);
   }
 
   async getClinicAnalytics(id: string, dateRange?: { startDate: string; endDate: string }): Promise<any> {

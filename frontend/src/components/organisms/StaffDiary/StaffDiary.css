@@ -191,6 +191,16 @@
     border-color: #10b981;
 }
 
+.appointment-block.status-pending_payment {
+    background: #f0f9ff;
+    border-color: #0ea5e9;
+}
+
+.appointment-block.status-pending_confirmation {
+    background: #fdf2f8;
+    border-color: #ec4899;
+}
+
 .appointment-block.status-arrived {
     background: #fffbeb;
     border-color: #f59e0b;

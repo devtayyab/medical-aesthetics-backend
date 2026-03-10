@@ -10,13 +10,25 @@ import { ClinicsModule } from '../clinics/clinics.module';
 import { UsersModule } from '../users/users.module';
 import { CrmModule } from '../crm/crm.module';
 import { User } from '../users/entities/user.entity';
+import { CustomerRecord } from '../crm/entities/customer-record.entity';
+import { Lead } from '../crm/entities/lead.entity';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Appointment, AppointmentHold, BlockedTimeSlot, User]),
+    TypeOrmModule.forFeature([
+      Appointment,
+      AppointmentHold,
+      BlockedTimeSlot,
+      User,
+      CustomerRecord,
+      Lead,
+    ]),
+
     forwardRef(() => ClinicsModule),
     UsersModule,
     forwardRef(() => CrmModule),
+    PaymentsModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, AvailabilityService],

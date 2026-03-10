@@ -7,8 +7,9 @@ import { useEffect } from "react";
 
 import {
   LayoutDashboard, Users, BarChart2, Tag, Eye, Settings,
-  Calendar, FileText, BarChart, Shield, DollarSign, AlertCircle,
-  ClipboardList, Repeat, UserCog, LineChart, ListChecks,
+  Building2,
+  Calendar, FileText, BarChart, Shield, DollarSign,
+  ClipboardList, Repeat, UserCog, ListChecks,
   Phone, Search, LogOut, MessageSquare, Archive
 } from "lucide-react";
 
@@ -31,10 +32,17 @@ const clientLinks: SidebarItem[] = [
 const clinicLinks: SidebarItem[] = [
   { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
   { path: "/clinic/profile", label: "Profile", icon: <UserCog className="w-5 h-5" />, group: "Account" },
+  { path: "/clinic/staff", label: "Staff Management", icon: <Users className="w-5 h-5" />, group: "Account" },
   { path: "/clinic/diary", label: "Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
   { path: "/clinic/availability", label: "Availability", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
   { path: "/clinic/execution", label: "Execution", icon: <ListChecks className="w-5 h-5" />, group: "Operations" },
   { path: "/clinic/reports", label: "Reports", icon: <BarChart className="w-5 h-5" />, group: "Operations" },
+];
+
+const doctorLinks: SidebarItem[] = [
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
+  { path: "/clinic/diary", label: "My Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
+  { path: "/appointments", label: "Appointments", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
 ];
 
 const crmLinks: SidebarItem[] = [
@@ -53,35 +61,39 @@ const crmLinks: SidebarItem[] = [
 ];
 
 const managerLinks: SidebarItem[] = [
-  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
-  { path: "/admin/manager-dashboard", label: "Manager Dashboard", icon: <LayoutDashboard className="w-5 h-5" />, group: "Overview" },
-  { path: "/admin/manager-crm/calls", label: "CRM Calls", icon: <Phone className="w-5 h-5" />, group: "CRM" },
-  { path: "/admin/manager-crm/reports", label: "CRM Reports", icon: <FileText className="w-5 h-5" />, group: "CRM" },
-  { path: "/admin/manager-crm/advertising", label: "Advertising", icon: <BarChart2 className="w-5 h-5" />, group: "Marketing" },
-  { path: "/crm/sales-analytics", label: "Sales Dashboard", icon: <BarChart2 className="w-5 h-5" />, group: "Analytics" },
-  { path: "/admin/manager-crm/access", label: "Access Control", icon: <Shield className="w-5 h-5" />, group: "Settings" },
-  { path: "/admin/manager-crm/benefits", label: "Benefits", icon: <DollarSign className="w-5 h-5" />, group: "Settings" },
-  { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <AlertCircle className="w-5 h-5" />, group: "Alerts" },
-  { path: "/admin/manager-crm/clinic-stats", label: "Clinic Stats", icon: <LineChart className="w-5 h-5" />, group: "Analytics" },
+  { path: "/admin/dashboard", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, group: "Main" },
+  { path: "/admin/clinics", label: "Clinics", icon: <Building2 className="w-5 h-5" />, group: "Main" },
+  { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Main" },
+
+  { path: "/crm/sales-analytics", label: "CRM & Sales", icon: <BarChart2 className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/calendar", label: "Calendar", icon: <Calendar className="w-5 h-5" />, group: "Sales" },
+  { path: "/admin/manager-crm/calls", label: "Calls", icon: <Phone className="w-5 h-5" />, group: "Sales" },
+
+  { path: "/admin/payments", label: "Payments & Turnover", icon: <DollarSign className="w-5 h-5" />, group: "Finance" },
+  { path: "/admin/gift-cards", label: "Gift Cards", icon: <Tag className="w-5 h-5" />, group: "Finance" },
+  { path: "/admin/wallet", label: "Loyalty & Wallet", icon: <ClipboardList className="w-5 h-5" />, group: "Finance" },
+
+  { path: "/admin/reviews", label: "Review Approvals", icon: <Eye className="w-5 h-5" />, group: "Content & Approvals" },
+  { path: "/admin/treatments", label: "Therapy Catalog", icon: <ListChecks className="w-5 h-5" />, group: "Content & Approvals" },
+  { path: "/admin/blog", label: "Blog & Content", icon: <FileText className="w-5 h-5" />, group: "Content & Approvals" },
+
+  { path: "/admin/integrations", label: "Integrations", icon: <Settings className="w-5 h-5" />, group: "System" },
+  { path: "/admin/manager-crm/clinic-stats", label: "Audit Logs", icon: <Shield className="w-5 h-5" />, group: "System" },
 ];
 
 const getAdminLinks = (role: string): SidebarItem[] => {
-  const baseLinks = [
-    { path: "/admin/users", label: "Users", icon: <Users className="w-5 h-5" />, group: "Administration" },
-    { path: "/admin/reviews", label: "Review Moderation", icon: <Eye className="w-5 h-5" />, group: "Administration" },
-    { path: "/admin/treatments", label: "Therapy Approvals", icon: <ClipboardList className="w-5 h-5" />, group: "Administration" },
-    { path: "/admin/loyalty-management", label: "Loyalty Management", icon: <Tag className="w-5 h-5" />, group: "Settings" },
-    { path: "/admin/monitor", label: "Monitor", icon: <BarChart2 className="w-5 h-5" />, group: "Analytics" },
-  ];
-
   if (role === 'SUPER_ADMIN' || role === 'manager') {
     return managerLinks;
   }
 
+  // Fallback for regular `admin` 
   return [
-    { path: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-    { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" /> },
-    ...baseLinks,
+    { path: "/admin/dashboard", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, group: "Main" },
+    { path: "/admin/clinics", label: "Clinics", icon: <Building2 className="w-5 h-5" />, group: "Main" },
+    { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Main" },
+    { path: "/admin/reviews", label: "Review Moderation", icon: <Eye className="w-5 h-5" />, group: "Approvals" },
+    { path: "/admin/treatments", label: "Therapy Catalog", icon: <ListChecks className="w-5 h-5" />, group: "Approvals" },
   ];
 };
 
@@ -109,17 +121,19 @@ export const Sidebar: React.FC = () => {
   const links =
     role === "client"
       ? clientLinks
-      : role === "clinic_owner" || role === "doctor" || role === "secretariat"
+      : role === "clinic_owner" || role === "secretariat"
         ? clinicLinks
-        : role === "admin"
-          ? getAdminLinks(role)
-          : role === "SUPER_ADMIN"
+        : role === "doctor"
+          ? doctorLinks
+          : role === "admin"
             ? getAdminLinks(role)
-            : role === "salesperson"
-              ? crmLinks
-              : role === "manager"
-                ? managerLinks
-                : [];
+            : role === "SUPER_ADMIN"
+              ? getAdminLinks(role)
+              : role === "salesperson"
+                ? crmLinks
+                : role === "manager"
+                  ? managerLinks
+                  : [];
 
   // Group links by their group property
   const groupedLinks = links.reduce<Record<string, SidebarItem[]>>((acc, link) => {

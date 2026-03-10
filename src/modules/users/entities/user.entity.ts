@@ -62,6 +62,9 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  monthlyTarget: number;
+
   @Column({ unique: true, nullable: true })
   referralCode: string;
 
@@ -108,6 +111,13 @@ export class User {
 
   @OneToMany(() => CustomerRecord, (record) => record.customer)
   customerRecords: CustomerRecord[];
+
+  @Column({ nullable: true })
+  assignedClinicId: string;
+
+  @ManyToOne(() => Clinic, { nullable: true })
+  @JoinColumn({ name: 'assignedClinicId' })
+  assignedClinic: Clinic;
 
   @BeforeInsert()
   @BeforeUpdate()

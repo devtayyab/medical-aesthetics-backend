@@ -25,6 +25,26 @@ export class ClinicsController {
     return this.clinicsService.getFeatured();
   }
 
+  // Admin Treatment Approval
+  @Get('treatments/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get treatments pending approval' })
+  async getPendingTreatments() {
+    return this.clinicsService.getPendingTreatments();
+  }
+
+  @Patch('treatments/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Approve or reject a treatment' })
+  async setTreatmentStatus(
+    @Param('id') id: string,
+    @Body() body: { status: TreatmentStatus },
+  ) {
+    return this.clinicsService.setTreatmentStatus(id, body.status);
+  }
+
   @Get('treatments/:id')
   @ApiOperation({ summary: 'Get treatment details with clinics offering it' })
   getTreatmentDetails(@Param('id') id: string) {
@@ -109,23 +129,4 @@ export class ClinicsController {
     );
   }
 
-  // Admin Treatment Approval
-  @Get('treatments/pending')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get treatments pending approval' })
-  async getPendingTreatments() {
-    return this.clinicsService.getPendingTreatments();
-  }
-
-  @Patch('treatments/:id/status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Approve or reject a treatment' })
-  async setTreatmentStatus(
-    @Param('id') id: string,
-    @Body() body: { status: TreatmentStatus },
-  ) {
-    return this.clinicsService.setTreatmentStatus(id, body.status);
-  }
 }

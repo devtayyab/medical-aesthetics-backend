@@ -442,15 +442,54 @@ export const adminAPI = {
   getMetrics: () => api.get("/admin/metrics"),
   getTags: () => api.get("/admin/tags"),
   createTag: (data: { name: string; color?: string; description?: string }) => api.post("/admin/tags", data),
+  getClinics: () => api.get("/admin/clinics"),
+  createClinic: (data: any) => api.post("/admin/clinics", data),
+  updateClinic: (id: string, data: any) => api.put(`/admin/clinics/${id}`, data),
+  getClinicServices: (clinicId: string) => api.get(`/clinic/services?clinicId=${clinicId}`),
+  createClinicService: (data: any) => api.post(`/clinic/services`, data),
+  updateClinicService: (id: string, data: any) => api.put(`/clinic/services/${id}`, data),
+  toggleServiceStatus: (id: string, clinicId: string) => api.patch(`/clinic/services/${id}/toggle?clinicId=${clinicId}`),
+  getBlockedSlots: (clinicId: string) => api.get(`/clinic/availability/blocked-slots?clinicId=${clinicId}`),
+  blockSlot: (data: any) => api.post(`/clinic/availability/block-time-slot`, data),
+  unblockSlot: (id: string) => api.delete(`/clinic/availability/block-time-slot/${id}`),
+  createUser: (data: any) => api.post("/auth/register", data),
   getUsers: () => api.get("/admin/users"),
-  updateRole: (id: string, role: string) =>
-    api.patch(`/admin/users/${id}/role`, { role }),
+  updateUser: (id: string, updateData: any) =>
+    api.put(`/admin/users/${id}`, updateData),
   getLoyalty: () => api.get("/admin/loyalty"),
   updateLoyalty: (data: {
     tiers: { name: string; points: number; rewards: string[] }[];
   }) => api.patch("/admin/loyalty", data),
   getLogs: () => api.get("/admin/monitor"),
   toggleUserStatus: (id: string) => api.patch(`/admin/users/${id}/toggle-status`),
+  getWalletSummary: () => api.get("/admin/wallet/summary"),
+  getRecentTransactions: () => api.get("/admin/wallet/transactions"),
+  getPaymentsLedger: (params?: { type?: string; date?: string }) => api.get("/admin/payments/ledger", { params }),
+  getGiftCardsSummary: () => api.get("/admin/gift-cards/summary"),
+  getGiftCards: (search?: string) => api.get("/admin/gift-cards", { params: { search } }),
+  generateGiftCard: (data: { amount: number; recipientEmail?: string; message?: string; expiresAt?: string }) =>
+    api.post("/admin/gift-cards/generate", data),
+  getBlogCategories: () => api.get("/admin/blogs/categories"),
+  createBlogCategory: (data: { name: string; slug: string }) => api.post("/admin/blogs/categories", data),
+  getBlogPosts: (search?: string) => api.get("/admin/blogs/posts", { params: { search } }),
+  getBlogPost: (id: string) => api.get(`/admin/blogs/posts/${id}`),
+  createBlogPost: (data: any) => api.post("/admin/blogs/posts", data),
+  updateBlogPost: (id: string, data: any) => api.put(`/admin/blogs/posts/${id}`, data),
+  deleteBlogPost: (id: string) => api.delete(`/admin/blogs/posts/${id}`),
+
+  // Master Catalog (Therapies/Treatments)
+  getMasterCategories: (params?: { search?: string; status?: string }) => api.get("/clinic/master/categories", { params }),
+  createMasterCategory: (data: any) => api.post("/clinic/master/categories", data),
+  updateMasterCategory: (id: string, data: any) => api.put(`/clinic/master/categories/${id}`, data),
+  deleteMasterCategory: (id: string) => api.delete(`/clinic/master/categories/${id}`),
+
+  getMasterTreatments: (params?: { search?: string; status?: string; categoryId?: string }) => api.get("/clinic/master/treatments", { params }),
+  createMasterTreatment: (data: any) => api.post("/clinic/master/treatments", data),
+  updateMasterTreatment: (id: string, data: any) => api.put(`/clinic/master/treatments/${id}`, data),
+  deleteMasterTreatment: (id: string) => api.delete(`/clinic/master/treatments/${id}`),
+
+  getPendingTreatments: () => api.get("/clinics/treatments/pending"),
+  setTreatmentStatus: (id: string, status: string) => api.patch(`/clinics/treatments/${id}/status`, { status }),
 };
 
 export const TaskAPI = {
