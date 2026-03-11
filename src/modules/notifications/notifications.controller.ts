@@ -16,6 +16,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { NotificationType } from '../../common/enums/notification-type.enum';
+import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 
 @ApiTags('Notifications')
 @Controller('notifications')
@@ -60,5 +61,34 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Mark notification as read' })
   markAsRead(@Param('id') id: string) {
     return this.notificationsService.markAsRead(id);
+  }
+
+  // Template Management
+  @Get('templates')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  getTemplates() {
+    return this.notificationsService.getTemplates();
+  }
+
+  @Post('templates')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  createTemplate(@Body() data: any) {
+    return this.notificationsService.createTemplate(data);
+  }
+
+  @Patch('templates/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  updateTemplate(@Param('id') id: string, @Body() data: any) {
+    return this.notificationsService.updateTemplate(id, data);
+  }
+
+  @Post('templates/reset-defaults')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  resetDefaultTemplates() {
+    return this.notificationsService.seedDefaultTemplates();
   }
 }

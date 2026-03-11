@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VivaWalletService } from './viva-wallet.service';
+import { FinancialService } from './financial.service';
 import { VivaWalletController } from './viva-wallet.controller';
+import { PaymentsController } from './payments.controller';
 import { Appointment } from '../bookings/entities/appointment.entity';
+import { PaymentRecord } from './entities/payment-record.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Appointment])],
-    controllers: [VivaWalletController],
-    providers: [VivaWalletService],
-    exports: [VivaWalletService],
+    imports: [TypeOrmModule.forFeature([Appointment, PaymentRecord])],
+    controllers: [VivaWalletController, PaymentsController],
+    providers: [VivaWalletService, FinancialService],
+    exports: [VivaWalletService, FinancialService, TypeOrmModule],
 })
 export class PaymentsModule { }

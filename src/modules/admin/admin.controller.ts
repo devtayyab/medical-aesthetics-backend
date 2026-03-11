@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
+import { AuditService } from '../audit/audit.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -23,7 +24,27 @@ import { UserRole } from '../../common/enums/user-role.enum';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) { }
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly auditService: AuditService,
+  ) {}
+
+  @Get('audit-logs')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get system audit logs (who changed what, when, before/after)' })
+  getAuditLogs(
+    @Query() query: {
+      resource?: string;
+      action?: string;
+      userId?: string;
+      resourceId?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      limit?: number;
+    },
+  ) {
+    return this.auditService.getAuditLogs(query);
+  }
 
   @Get('metrics')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
@@ -35,6 +56,13 @@ export class AdminController {
       conversions: reports.leadsToConversions.conversions,
       revenue: reports.revenueStats.totalRevenue
     };
+  }
+
+  @Get('integrations/logs')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get integration status and error logs (Meta, HubSpot, etc.)' })
+  getIntegrationLogs() {
+    return this.adminService.getIntegrationLogs();
   }
 
   @Post('tags')
@@ -108,6 +136,57 @@ export class AdminController {
   @ApiOperation({ summary: 'Delete user' })
   deleteUser(@Param('id') id: string) {
     return this.adminService.deleteUser(id);
+  }
+
+  // Treatment Category Management
+  @Get('categories')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Get all treatment categories' })
+  getCategories() {
+    return this.adminService.getCategories();
+  }
+
+  @Post('categories')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create treatment category' })
+  createCategory(@Body() body: any) {
+    return this.adminService.createCategory(body);
+  }
+
+  @Put('categories/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update treatment category' })
+  updateCategory(@Param('id') id: string, @Body() body: any) {
+    return this.adminService.updateCategory(id, body);
+  }
+
+  @Delete('categories/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Delete treatment category' })
+  deleteCategory(@Param('id') id: string) {
+    return this.adminService.deleteCategory(id);
+  }
+
+  // Therapy (Treatment) Management
+  @Get('treatments')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Get all therapies (treatments)' })
+  getTreatments(@Query() query: any) {
+    return this.adminService.getTreatments(query);
+  }
+
+  @Post('treatments')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create new therapy/treatment' })
+  createTreatment(@Body() body: any) {
+    return this.adminService.createTreatment(body);
+  }
+
+  @Put('treatments/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update therapy/treatment' })
+  updateTreatment(@Param('id') id: string, @Body() body: any) {
+    return this.adminService.updateTreatment(id, body);
   }
 
   // Clinic Management

@@ -30,6 +30,8 @@ import { LeadClinicStatus } from '../modules/crm/entities/lead-clinic-status.ent
 import { Conversation } from '../modules/messages/entities/conversation.entity';
 import { Message } from '../modules/messages/entities/message.entity';
 import { ConversationParticipant } from '../modules/messages/entities/conversation-participant.entity';
+import { PaymentRecord } from '../modules/payments/entities/payment-record.entity';
+import { NotificationTemplate } from '../modules/notifications/entities/notification-template.entity';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
@@ -74,6 +76,8 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         GiftCard,
         BlogPost,
         BlogCategory,
+        PaymentRecord,
+        NotificationTemplate,
       ],
       // Since we are running in Docker on the same network, we don't need SSL
       // If using a managed database like AWS RDS in the future, we might need to enable this again

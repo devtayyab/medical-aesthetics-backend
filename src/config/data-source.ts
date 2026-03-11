@@ -7,9 +7,12 @@ import { Treatment } from '../modules/clinics/entities/treatment.entity';
 import { TreatmentCategory } from '../modules/clinics/entities/treatment-category.entity';
 import { GiftCard } from '../modules/clinics/entities/gift-card.entity';
 import { BlogPost, BlogCategory } from '../modules/clinics/entities/blog.entity';
-import { Lead, CrmAction, CustomerRecord } from '../modules/crm/entities';
+import { Lead, CrmAction, CustomerRecord, LeadClinicStatus, ClinicOwnership } from '../modules/crm/entities';
 import { Review } from '../modules/clinics/entities/review.entity';
 import { Tag } from '../modules/admin/entities/tag.entity';
+import { PlatformSettings } from '../modules/admin/entities/platform-settings.entity';
+import { PaymentRecord } from '../modules/payments/entities/payment-record.entity';
+
 import { AuditLog } from '../modules/audit/entities/audit-log.entity';
 import { ConsentRecord } from '../modules/users/entities/consent-record.entity';
 import { CommunicationLog } from '../modules/crm/entities/communication-log.entity';
@@ -71,7 +74,12 @@ const AppDataSource = new DataSource({
         GiftCard,
         BlogPost,
         BlogCategory,
+        LeadClinicStatus,
+        ClinicOwnership,
+        PlatformSettings,
+        PaymentRecord,
     ],
+
     migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],
     synchronize: false,
     logging: true,

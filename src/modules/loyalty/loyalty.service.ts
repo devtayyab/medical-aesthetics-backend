@@ -76,6 +76,7 @@ export class LoyaltyService {
     clinicId: string,
     points: number,
     description: string,
+    recordedById?: string,
   ): Promise<LoyaltyLedger> {
     const balance = await this.getClientBalance(clientId, clinicId);
 
@@ -92,6 +93,15 @@ export class LoyaltyService {
     });
 
     const savedEntry = await this.ledgerRepository.save(ledgerEntry);
+
+    this.eventEmitter.emit('audit.log', {
+      userId: recordedById,
+      action: 'POINTS_REDEEM',
+      resource: 'loyalty',
+      resourceId: savedEntry.id,
+      changes: { before: { balance: balance.totalPoints }, after: { balance: balance.totalPoints - points, pointsRedeemed: points } },
+      data: { clientId, clinicId, points, description },
+    });
 
     this.eventEmitter.emit('loyalty.points.redeemed', {
       clientId,

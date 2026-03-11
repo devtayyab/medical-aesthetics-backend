@@ -4,7 +4,8 @@ import { BookingsService } from '../bookings/bookings.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { TasksService } from '../tasks/tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { SmsService } from '../notifications/services/sms.service';
+import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
+import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 @Injectable()
 export class ScheduledTasksService {
@@ -15,7 +16,6 @@ export class ScheduledTasksService {
     private loyaltyService: LoyaltyService,
     private tasksService: TasksService,
     private notificationsService: NotificationsService,
-    private smsService: SmsService,
   ) { }
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -61,16 +61,13 @@ export class ScheduledTasksService {
         if (apt.clientId && apt.client) {
           // Send 1 day before reminder
           const timeStr = apt.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          await this.notificationsService.sendAppointmentReminder(apt.clientId, {
-            id: apt.id,
-            time: timeStr
+          await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_REMINDER, apt.clientId, {
+            customerName: `${apt.client?.firstName || 'Customer'}`,
+            serviceName: apt.service?.treatment?.name || 'Treatment',
+            appointmentDate: apt.startTime.toLocaleDateString(),
+            appointmentTime: timeStr,
+            clinicName: apt.clinic?.name,
           });
-          if (apt.client.phone) {
-            await this.smsService.sendSms(
-              apt.client.phone,
-              `Reminder: You have an appointment tomorrow at ${timeStr} with ${apt.provider?.firstName || 'our professional'}.`
-            );
-          }
           this.logger.log(`Sent 1-day reminder for appointment ${apt.id}`);
         }
       }
@@ -94,18 +91,13 @@ export class ScheduledTasksService {
         if (apt.clientId && apt.client) {
           const timeStr = apt.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           // Simple notification logic
-          await this.notificationsService.create(
-            apt.clientId,
-            'appointment' as any,
-            'Appointment Today!',
-            `Your appointment is in a few hours at ${timeStr}.`
-          );
-          if (apt.client.phone) {
-            await this.smsService.sendSms(
-              apt.client.phone,
-              `Reminder: Your appointment is today at ${timeStr}. We look forward to seeing you!`
-            );
-          }
+          await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_REMINDER, apt.clientId, {
+            customerName: `${apt.client?.firstName || 'Customer'}`,
+            serviceName: apt.service?.treatment?.name || 'Treatment',
+            appointmentDate: apt.startTime.toLocaleDateString(),
+            appointmentTime: timeStr,
+            clinicName: apt.clinic?.name,
+          });
           this.logger.log(`Sent same-day reminder for appointment ${apt.id}`);
         }
       }
@@ -121,10 +113,44 @@ export class ScheduledTasksService {
       this.logger.log(`Found ${overdueTasks.length} overdue tasks`);
 
       for (const task of overdueTasks) {
-        this.logger.log(`Task ${task.id} is overdue`);
+        if (task.assigneeId) {
+          await this.notificationsService.sendTriggeredNotification(NotificationTrigger.TASK_REMINDER, task.assigneeId, {
+            taskTitle: task.description,
+            dueDate: task.dueDate.toLocaleDateString(),
+          });
+        }
+        this.logger.log(`Task ${task.id} is overdue, notification sent.`);
       }
     } catch (error) {
       this.logger.error('Failed to check overdue tasks:', error);
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_7PM)
+  async sendPostVisitThankYou() {
+    try {
+      this.logger.log('Running post-visit thank you messages...');
+      
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const appointments = await this.bookingsService.findAppointmentsInRange(todayStart, todayEnd, AppointmentStatus.COMPLETED);
+
+      for (const apt of appointments) {
+        if (apt.clientId) {
+          await this.notificationsService.sendTriggeredNotification(NotificationTrigger.POST_VISIT_THANK_YOU, apt.clientId, {
+            customerName: apt.client?.firstName || 'Customer',
+            clinicName: apt.clinic?.name,
+            serviceName: apt.service?.treatment?.name || 'your treatment',
+          });
+          this.logger.log(`Sent thank you for appointment ${apt.id}`);
+        }
+      }
+    } catch (error) {
+      this.logger.error('Failed to send post-visit thank you:', error);
     }
   }
 }

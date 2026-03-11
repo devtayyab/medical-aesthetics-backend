@@ -23,13 +23,15 @@ export class EventHandlersService {
     this.logger.log(`Handling lead created event for lead ${lead.id}`);
 
     // Create follow-up task
+    const followUpDue = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
     await this.tasksService.create({
       title: `Initial contact with ${lead.fullName}`,
       description: `New lead from ${lead.source}. Contact within 24 hours.`,
       type: TaskType.FOLLOW_UP_CALL,
       customerId: lead.id,
       assigneeId: lead.assignedSalesId,
-      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toDateString(), // 24 hours from now
+      reminderAt: followUpDue.toISOString(),
+      dueDate: followUpDue.toISOString(),
     });
 
     // Send notification to assigned salesperson
@@ -46,7 +48,7 @@ export class EventHandlersService {
     // Schedule follow-up reminder
     await this.queueService.scheduleLeadFollowUp(
       lead.id,
-      new Date(Date.now() + 24 * 60 * 60 * 1000),
+      followUpDue,
     );
   }
 
@@ -146,13 +148,15 @@ export class EventHandlersService {
 
       // Create follow-up task for after-care
       if (appointment.client) {
+        const afterCareDue = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days later
         await this.tasksService.create({
           title: `Follow-up call for ${appointment.client.fullName || 'Client'}`,
           description: `Check on client satisfaction and recovery after ${serviceName}`,
           type: TaskType.TREATMENT_FOLLOW_UP,
           customerId: appointment.clientId,
           assigneeId: appointment.providerId,
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toDateString(), // 7 days later
+          reminderAt: afterCareDue.toISOString(),
+          dueDate: afterCareDue.toISOString(),
         });
       }
 

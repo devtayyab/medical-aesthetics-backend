@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -17,11 +17,28 @@ export class PaymentsController {
     @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
     @ApiOperation({ summary: 'Get unified ledger transactions for payments and turnover' })
     getLedger(
-        @Query('type') type?: string,
+        @Query('clinicId') clinicId?: string,
+        @Query('providerId') providerId?: string,
+        @Query('salespersonId') salespersonId?: string,
         @Query('date') date?: string,
+        @Query('method') method?: string,
         @Query('limit') limit?: number,
         @Query('offset') offset?: number
     ) {
-        return this.paymentsService.getLedger({ type, date, limit, offset });
+        return this.paymentsService.getLedger({ clinicId, providerId, salespersonId, date, method, limit, offset });
+    }
+
+    @Post(':id/refund')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @ApiOperation({ summary: 'Refund a payment' })
+    refund(@Param('id') id: string, @Body('notes') notes: string, @Req() req: any) {
+        return this.paymentsService.refund(id, notes, req.user.id);
+    }
+
+    @Post(':id/void')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    @ApiOperation({ summary: 'Void a payment' })
+    void(@Param('id') id: string, @Body('notes') notes: string, @Req() req: any) {
+        return this.paymentsService.void(id, notes, req.user.id);
     }
 }

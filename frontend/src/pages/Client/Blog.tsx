@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { publicBlogsAPI } from "@/services/api";
 import { css } from "@emotion/css";
 import LayeredBG from "@/assets/LayeredBg.svg";
 import { FaChevronRight } from "react-icons/fa6";
@@ -13,22 +14,35 @@ const containerStyle = css`
   padding: 0 16px;
 `;
 
-const categories = ["Dermatology", "Aesthetics", "Anti-Aging", "Beauty Tips", "Skincare", "Surgery"];
-
-const blogPosts = [
-    { id: "1", title: "Top 5 Benefits of Botox Treatments", date: "2024-03-01", category: "Dermatology", author: "Dr. Smith", summary: "Learn about the most common and surprising benefits of Botox treatments, from aesthetics to medical applications.", image: "https://placehold.co/600x400?text=Botox+Benefits" },
-    { id: "2", title: "Skincare Routine for Sensitive Skin", date: "2024-02-15", category: "Skincare", author: "Aesthetics Nurse Jane", summary: "Discover a gentle yet effective skincare routine specifically designed for individuals with sensitive skin.", image: "https://placehold.co/600x400?text=Skincare+Tips" },
-    { id: "3", title: "What to Expect During Your Lip Filler Appointment", date: "2024-01-20", category: "Surgery", author: "Dr. Lee", summary: "A comprehensive guide on what happens during a lip filler session, from consultation to post-treatment care.", image: "https://placehold.co/600x400?text=Lip+Fillers" },
-    { id: "4", title: "Anti-Aging Strategies for Your 30s", date: "2024-01-05", category: "Anti-Aging", author: "Dr. Maria", summary: "Explore proactive steps you can take in your 30s to maintain a youthful appearance and prevent early signs of aging.", image: "https://placehold.co/600x400?text=Anti-Aging" },
-];
-
 export const Blog: React.FC = () => {
-    const [selectedCategory, setSelectedCategory] = useState<string>("All");
+    const [selectedCategoryId, setSelectedCategoryId] = useState<string>("All");
     const [searchQuery, setSearchQuery] = useState("");
+    const [categories, setCategories] = useState<any[]>([]);
+    const [blogPosts, setBlogPosts] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            try {
+                const [cats, posts] = await Promise.all([
+                    publicBlogsAPI.getCategories(),
+                    publicBlogsAPI.getPosts()
+                ]);
+                setCategories(cats.data || []);
+                setBlogPosts(posts.data || []);
+            } catch (err) {
+                console.error("Failed to load blog data", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchInitialData();
+    }, []);
 
     const filteredPosts = blogPosts.filter(post =>
-        (selectedCategory === "All" || post.category === selectedCategory) &&
-        (post.title.toLowerCase().includes(searchQuery.toLowerCase()) || post.summary.toLowerCase().includes(searchQuery.toLowerCase()))
+        (selectedCategoryId === "All" || post.categoryId === selectedCategoryId) &&
+        (post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (post.content && post.content.toLowerCase().includes(searchQuery.toLowerCase())))
     );
 
     return (
@@ -76,18 +90,18 @@ export const Blog: React.FC = () => {
                         <h3 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Categories</h3>
                         <ul className="space-y-2 font-medium">
                             <li
-                                className={`cursor-pointer px-4 py-2.5 rounded-xl transition-all ${selectedCategory === "All" ? 'bg-lime-100 text-lime-900 font-bold border-l-4 border-lime-700' : 'text-gray-500 hover:bg-gray-50'}`}
-                                onClick={() => setSelectedCategory("All")}
+                                className={`cursor-pointer px-4 py-2.5 rounded-xl transition-all ${selectedCategoryId === "All" ? 'bg-lime-100 text-lime-900 font-bold border-l-4 border-lime-700' : 'text-gray-500 hover:bg-gray-50'}`}
+                                onClick={() => setSelectedCategoryId("All")}
                             >
                                 All Articles
                             </li>
                             {categories.map(cat => (
                                 <li
-                                    key={cat}
-                                    className={`cursor-pointer px-4 py-2.5 rounded-xl transition-all ${selectedCategory === cat ? 'bg-lime-100 text-lime-900 font-bold border-l-4 border-lime-700' : 'text-gray-500 hover:bg-gray-50'}`}
-                                    onClick={() => setSelectedCategory(cat)}
+                                    key={cat.id}
+                                    className={`cursor-pointer px-4 py-2.5 rounded-xl transition-all ${selectedCategoryId === cat.id ? 'bg-lime-100 text-lime-900 font-bold border-l-4 border-lime-700' : 'text-gray-500 hover:bg-gray-50'}`}
+                                    onClick={() => setSelectedCategoryId(cat.id)}
                                 >
-                                    {cat}
+                                    {cat.name}
                                 </li>
                             ))}
                         </ul>
@@ -95,28 +109,39 @@ export const Blog: React.FC = () => {
 
                     {/* Main Content */}
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {filteredPosts.length > 0 ? (
+                        {isLoading ? (
+                            <div className="col-span-2 text-center py-[100px]">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lime-600 mx-auto"></div>
+                            </div>
+                        ) : filteredPosts.length > 0 ? (
                             filteredPosts.map((post) => (
                                 <Card key={post.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 flex flex-col group">
                                     <div className="h-52 bg-gray-200 relative overflow-hidden">
                                         <img
-                                            src={post.image}
+                                            src={post.imageUrl || `https://placehold.co/600x400?text=${post.title.replace(/\s/g, '+')}`}
                                             alt={post.title}
                                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                         />
-                                        <div className="absolute top-4 left-4">
-                                            <span className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-black text-lime-900 shadow-sm border border-gray-100 uppercase tracking-wider">
-                                                {post.category}
-                                            </span>
-                                        </div>
+                                        {post.category && (
+                                            <div className="absolute top-4 left-4">
+                                                <span className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-black text-lime-900 shadow-sm border border-gray-100 uppercase tracking-wider">
+                                                    {post.category.name}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="p-6 flex flex-col flex-1">
-                                        <p className="text-[10px] uppercase font-black tracking-widest text-[#717171] mb-2">{post.date} • {post.author}</p>
+                                        <p className="text-[10px] uppercase font-black tracking-widest text-[#717171] mb-2">
+                                            {new Date(post.publishedAt || post.createdAt).toLocaleDateString()}
+                                            {post.author ? ` • ${post.author.firstName} ${post.author.lastName}` : ''}
+                                        </p>
                                         <h4 className="text-xl font-black text-gray-900 group-hover:text-lime-700 transition-colors mb-4 line-clamp-2">{post.title}</h4>
-                                        <p className="text-sm text-gray-500 line-clamp-3 mb-6 flex-1 italic leading-relaxed">{post.summary}</p>
-                                        <button className="text-lime-700 font-black text-sm group-hover:translate-x-2 transition-transform inline-flex items-center gap-2">
+                                        <p className="text-sm text-gray-500 line-clamp-3 mb-6 flex-1 italic leading-relaxed">
+                                            {post.content.replace(/<[^>]*>?/gm, '').substring(0, 150)}...
+                                        </p>
+                                        <Link to={`/blog/${post.slug}`} className="text-lime-700 font-black text-sm group-hover:translate-x-2 transition-transform inline-flex items-center gap-2 w-fit">
                                             READ MORE <span>→</span>
-                                        </button>
+                                        </Link>
                                     </div>
                                 </Card>
                             ))

@@ -117,6 +117,11 @@ export const generateGiftCard = createAsyncThunk("admin/generateGiftCard", async
   return response.data;
 });
 
+export const redeemGiftCardThunk = createAsyncThunk("admin/redeemGiftCard", async (data: { code: string; amount: number }) => {
+  const response = await adminAPI.redeemGiftCard(data);
+  return response.data;
+});
+
 export const fetchPaymentsLedger = createAsyncThunk(
   "admin/fetchPaymentsLedger",
   async (params?: { type?: string; date?: string }) => {
@@ -227,8 +232,21 @@ const adminSlice = createSlice({
         state.giftCardsSummary.activeCards += 1;
         state.giftCardsSummary.totalLiability += Number(action.payload.balance);
       })
+      .addCase(redeemGiftCardThunk.fulfilled, (state, action) => {
+        const payload = action.payload;
+        const index = state.giftCards.findIndex((c) => c.code === payload.code);
+        if (index !== -1) {
+          state.giftCards[index].balance = payload.remainingBalance;
+          if (payload.remainingBalance <= 0) {
+            state.giftCards[index].isActive = false;
+            state.giftCardsSummary.activeCards -= 1;
+          }
+        }
+        state.giftCardsSummary.totalLiability -= payload.redeemedAmount;
+        (state.giftCardsSummary as any).totalRedeemed = ((state.giftCardsSummary as any).totalRedeemed || 0) + payload.redeemedAmount;
+      })
       .addCase(fetchPaymentsLedger.fulfilled, (state, action) => {
-        state.paymentsLedger = action.payload;
+        state.paymentsLedger = action.payload; // I'll keep the whole object in state or just items based on existing usage
       })
       .addCase(fetchBlogCategories.fulfilled, (state, action) => {
         state.blogCategories = action.payload;

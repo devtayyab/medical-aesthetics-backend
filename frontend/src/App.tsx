@@ -63,6 +63,9 @@ import { Payments as AdminPayments } from "@/pages/Admin/Payments";
 import { GiftCards as AdminGiftCards } from "@/pages/Admin/GiftCards";
 import { BlogManagement as AdminBlogManagement } from "@/pages/Admin/BlogManagement";
 import { Integrations as AdminIntegrations } from "@/pages/Admin/Integrations";
+import { NotificationSettings as AdminNotificationSettings } from "@/pages/Admin/NotificationSettings";
+import { AuditLogs as AdminAuditLogs } from "@/pages/Admin/AuditLogs";
+import { SystemLists } from './pages/Admin/SystemLists';
 
 import { MyAccount } from "@/pages/Client/MyAccount";
 import { PersonalDetails } from "@/pages/Client/AccountPages/PersonalDetails";
@@ -70,6 +73,7 @@ import { Rewards } from "@/pages/Client/AccountPages/Rewards";
 import { Payments } from "@/pages/Client/AccountPages/Payments";
 import { GiftCard } from "@/pages/Client/AccountPages/GiftCard";
 import { Blog } from "@/pages/Client/Blog";
+import { BlogPost } from "@/pages/Client/BlogPost";
 import { Legal, SupportCenter, ChatSupport } from "@/pages/Client/InfoPages/InfoPages";
 import { InviteFriend } from "@/pages/Client/AccountPages/InviteFriend";
 import { Settings } from "@/pages/Client/AccountPages/Settings";
@@ -99,6 +103,7 @@ import { Notifications as NotificationsCrm } from "./pages/CRM/Notifications";
 import { SalesAnalyticsDashboard } from "./pages/CRM/SalesAnalyticsDashboard";
 import ClinicAnalyticsPage from "./pages/Admin/ClinicAnalyticsPage";
 import { ChangePassword } from "@/pages/Account/ChangePassword";
+import { Toaster } from "react-hot-toast";
 import { MessagesPage } from "@/pages/Messages/MessagesPage";
 import { SalesWeekCalendar } from "./pages/CRM/SalesWeekCalendar";
 
@@ -207,6 +212,7 @@ function AppContent() {
           <Route path="/clinic/:id" element={<ClinicDetails />} />
           <Route path="/treatment/:id" element={<TreatmentDetails />} />
           <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
 
           {/* Protected booking route - requires login */}
           <Route
@@ -848,11 +854,31 @@ function AppContent() {
             }
           />
           <Route
+            path="/admin/reviews"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <ReviewModeration />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
             path="/admin/blog"
             element={
               <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
                 <AdminLayout>
                   <AdminBlogManagement />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/notification-settings"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <AdminNotificationSettings />
                 </AdminLayout>
               </ProtectedLayout>
             }
@@ -895,6 +921,26 @@ function AppContent() {
               </ProtectedLayout>
             }
           />
+          <Route
+            path="/admin/audit-logs"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <AdminAuditLogs />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/system-lists"
+            element={
+              <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <SystemLists />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
         </Routes>
       </main>
       {location.pathname !== "/login" && location.pathname !== "/register" && (
@@ -907,6 +953,7 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
+      <Toaster position="top-right" reverseOrder={false} />
       <Router>
         <AppContent />
       </Router>
