@@ -34,13 +34,22 @@ export class TasksController {
   @ApiQuery({ name: 'assigneeId', required: false })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'type', required: false })
+  @ApiQuery({ name: 'overdueOnly', required: false, type: Boolean })
   @ApiQuery({ name: 'dueDateFrom', required: false })
   @ApiQuery({ name: 'dueDateTo', required: false })
   findAll(@Query() filters: any, @Request() req) {
-    // If no specific assignee filter, show user's own tasks
-    if (!filters.assigneeId && req.user.role !== 'admin') {
+    // If no specific assignee filter, show user's own tasks, except for admin/super admin
+    const isAdminLike =
+      req.user.role === 'admin' || req.user.role === 'SUPER_ADMIN';
+
+    if (!filters.assigneeId && !isAdminLike) {
       filters.assigneeId = req.user.id;
     }
+
+    if (typeof filters.overdueOnly === 'string') {
+      filters.overdueOnly = filters.overdueOnly === 'true';
+    }
+
     return this.tasksService.findAll(filters);
   }
 

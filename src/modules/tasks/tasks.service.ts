@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -15,10 +15,42 @@ export class TasksService {
     private eventEmitter: EventEmitter2,
   ) { }
 
+  private validateReminderAndDueDates(reminderAt: Date, dueDate: Date) {
+    if (!reminderAt) {
+      throw new BadRequestException('Reminder time (reminderAt) is required for all tasks');
+    }
+
+    const now = new Date();
+    const maxReminderDate = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+
+    if (reminderAt > maxReminderDate) {
+      throw new BadRequestException('Reminder time cannot be more than 1 year in the future');
+    }
+
+    if (reminderAt > dueDate) {
+      throw new BadRequestException('Reminder time cannot be after the task due date');
+    }
+  }
+
+  private validateRecurringConfig(dto: CreateTaskDto | UpdateTaskDto) {
+    if (dto.isRecurring) {
+      if (!dto.recurringIntervalDays) {
+        throw new BadRequestException('Recurring tasks must have recurringIntervalDays set');
+      }
+    }
+  }
+
   async create(createTaskDto: CreateTaskDto): Promise<Task> {
+    const dueDate = new Date(createTaskDto.dueDate);
+    const reminderAt = new Date(createTaskDto.reminderAt);
+
+    this.validateReminderAndDueDates(reminderAt, dueDate);
+    this.validateRecurringConfig(createTaskDto);
+
     const task = this.tasksRepository.create({
       ...createTaskDto,
-      dueDate: new Date(createTaskDto.dueDate),
+      reminderAt,
+      dueDate,
     });
 
     const savedTask = await this.tasksRepository.save(task);
@@ -61,7 +93,22 @@ export class TasksService {
       });
     }
 
-    return queryBuilder.orderBy('task.dueDate', 'ASC').getMany();
+    if (filters.overdueOnly) {
+      queryBuilder.andWhere('task.status = :pendingStatus', {
+        pendingStatus: TaskStatus.PENDING,
+      });
+      queryBuilder.andWhere('task.dueDate < NOW()');
+    }
+
+    queryBuilder
+      .orderBy(
+        "CASE WHEN task.status = :pendingStatus AND task.dueDate < NOW() THEN 0 ELSE 1 END",
+        'ASC',
+      )
+      .addOrderBy('task.dueDate', 'ASC')
+      .setParameter('pendingStatus', TaskStatus.PENDING);
+
+    return queryBuilder.getMany();
   }
 
   async findById(id: string): Promise<Task> {
@@ -85,6 +132,20 @@ export class TasksService {
     if (updateTaskDto.dueDate) {
       updateData.dueDate = new Date(updateTaskDto.dueDate);
     }
+
+    if (updateTaskDto.reminderAt || updateTaskDto.dueDate) {
+      const newDueDate = updateTaskDto.dueDate
+        ? new Date(updateTaskDto.dueDate)
+        : task.dueDate;
+      const newReminderAt = updateTaskDto.reminderAt
+        ? new Date(updateTaskDto.reminderAt)
+        : task.reminderAt;
+
+      this.validateReminderAndDueDates(newReminderAt, newDueDate);
+      updateData.reminderAt = newReminderAt;
+    }
+
+    this.validateRecurringConfig(updateTaskDto);
 
     // Check for status changes
     if (updateTaskDto.status && updateTaskDto.status !== task.status) {
@@ -111,12 +172,15 @@ export class TasksService {
   }
 
   async findOverdueTasks(): Promise<Task[]> {
-    return this.tasksRepository.find({
-      where: {
-        status: TaskStatus.PENDING,
-        dueDate: new Date(),
-      },
-      relations: ['assignee', 'customer'],
-    });
+    const now = new Date();
+
+    return this.tasksRepository
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.assignee', 'assignee')
+      .leftJoinAndSelect('task.customer', 'customer')
+      .where('task.status = :status', { status: TaskStatus.PENDING })
+      .andWhere('task.dueDate < :now', { now })
+      .orderBy('task.dueDate', 'ASC')
+      .getMany();
   }
 }

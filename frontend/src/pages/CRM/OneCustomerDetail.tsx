@@ -26,7 +26,11 @@ import {
     addCustomerTag,
     deleteLead,
     updateAction,
-    deleteAction
+    deleteAction,
+    updateCommunication,
+    deleteCommunication,
+    fetchSalespersons,
+    fetchClinics
 } from "@/store/slices/crmSlice";
 import { AuthState } from "@/store/slices/authSlice";
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
@@ -225,6 +229,17 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const [emailDate, setEmailDate] = useState(new Date().toISOString().substring(0, 16));
 
     const [showDiaryModal, setShowDiaryModal] = useState(false);
+    const [editingCallId, setEditingCallId] = useState<string | null>(null);
+
+    // New CRM Properties State
+    const [isEditingClinics, setIsEditingClinics] = useState(false);
+    const [isEditingOwners, setIsEditingOwners] = useState(false);
+    const [callSearchTerm, setCallSearchTerm] = useState('');
+
+    const { salespersons } = crmState;
+    const { clinics } = useSelector((state: RootState) => state.clinics);
+
+    const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager';
 
     useEffect(() => {
         if (SelectedCustomer?.id) {
@@ -233,6 +248,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 salespersonId: user?.id
             }));
         }
+        dispatch(fetchSalespersons());
+        dispatch(fetchClinics());
     }, [SelectedCustomer, dispatch, user]);
 
     // --- UI/UX Helpers ---
@@ -260,16 +277,24 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const handleSavePhoneCallNotes = async () => {
         if (!phoneCallNotes.trim()) return;
         try {
-            await dispatch(logCommunication({
-                customerId: customer.id,
-                salespersonId: user?.id,
-                type: 'call',
-                status: 'completed',
-                notes: phoneCallNotes,
-                direction: 'outgoing',
-                metadata: { clickOnly: true }
-            })).unwrap();
+            if (editingCallId) {
+                await dispatch(updateCommunication({
+                    id: editingCallId,
+                    updates: { notes: phoneCallNotes }
+                })).unwrap();
+            } else {
+                await dispatch(logCommunication({
+                    customerId: customer.id,
+                    salespersonId: user?.id,
+                    type: 'call',
+                    status: 'completed',
+                    notes: phoneCallNotes,
+                    direction: 'outgoing',
+                    metadata: { clickOnly: true }
+                })).unwrap();
+            }
             setPhoneCallNotes("");
+            setEditingCallId(null);
             setShowPhoneCallModal(false);
             dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
         } catch (error) {
@@ -870,8 +895,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     { id: 'overview', label: 'Overview', icon: Activity },
                     { id: 'appointments', label: 'Appointments', icon: Calendar },
                     { id: 'communications', label: 'Communications', icon: Mail },
+                    { id: 'calls', label: 'Calls', icon: PhoneCall },
                     { id: 'tasks', label: 'Tasks', icon: CheckCircle }
-                ].map(tab => (
+                ].filter(tab => tab.id !== 'calls' || user?.role !== 'salesperson').map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
@@ -949,9 +975,50 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                             <label className="text-gray-400 font-medium">Customer ID</label>
                                             <div className="font-bold text-gray-800">{customer.id.slice(-6).toUpperCase()}</div>
                                         </div>
+
+                                        {/* New CRM Properties */}
+                                        <div className="space-y-1 pb-2 border-t pt-2 mt-2">
+                                            <label className="text-gray-400 font-medium text-[10px]">Facebook Ad Name</label>
+                                            <div className="font-bold text-slate-800 text-xs">
+                                                {(customer as any).facebookAdName || (customer as any).metadata?.facebookAdName || '--'}
+                                            </div>
+                                        </div>
+
                                         <div className="space-y-1 pb-2">
-                                            <label className="text-gray-400 font-medium">Contact owner</label>
-                                            <div className="font-bold text-blue-600">{user?.firstName} {user?.lastName}</div>
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-gray-400 font-medium text-[10px]">Clinic Affiliations</label>
+                                                {isAdmin && <button onClick={() => setIsEditingClinics(true)} className="text-[9px] text-blue-600 font-bold hover:underline">Edit</button>}
+                                            </div>
+                                            <div className="flex flex-col gap-1.5 mt-1">
+                                                {(customer as any).clinicStatuses?.length > 0 ? (
+                                                    (customer as any).clinicStatuses.map((aff: any) => (
+                                                        <div key={aff.id} className="flex items-center justify-between bg-slate-50 p-1.5 rounded border border-slate-100">
+                                                            <span className="text-[10px] font-bold text-slate-700">{aff.clinic?.name || 'Clinic'}</span>
+                                                            <Badge className="text-[9px] px-1.5 h-4 bg-white border border-slate-200 text-slate-600 font-bold">{aff.status}</Badge>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-[10px] text-slate-400 italic">No clinics assigned</div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1 pb-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-gray-400 font-medium text-[10px]">Assigned Owners</label>
+                                                {isAdmin && <button onClick={() => setIsEditingOwners(true)} className="text-[9px] text-blue-600 font-bold hover:underline">Edit</button>}
+                                            </div>
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {(customer as any).multiOwners?.length > 0 ? (
+                                                    (customer as any).multiOwners.map((owner: any) => (
+                                                        <Badge key={owner.id} className="bg-blue-50 text-blue-700 text-[9px] font-bold py-0.5 px-2 hover:bg-blue-100">
+                                                            {owner.firstName} {owner.lastName}
+                                                        </Badge>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-[10px] text-slate-400 italic">No owners assigned</div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1375,6 +1442,102 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                             </Card>
                         </div>
                     )}
+                    {activeTab === 'calls' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-200">
+                                <CardHeader className="bg-slate-50/50 border-b border-slate-100 flex flex-row items-center justify-between">
+                                    <CardTitle className="text-sm font-black text-slate-800">Phone Call Logs</CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                placeholder="Search calls..."
+                                                className="h-8 pl-8 pr-4 text-[10px] font-bold bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all w-48 shadow-sm"
+                                                id="call-search"
+                                                value={callSearchTerm}
+                                                onChange={(e) => setCallSearchTerm(e.target.value)}
+                                            />
+                                            <Activity className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    {summary?.communications?.filter(c => c.type === 'call' && (c.notes?.toLowerCase().includes(callSearchTerm.toLowerCase()) || !callSearchTerm)).length === 0 ? (
+                                        <div className="p-12 text-center text-slate-400 italic text-xs">No phone calls found.</div>
+                                    ) : (
+                                        <div className="divide-y divide-slate-100" id="calls-list">
+                                            {summary?.communications?.filter(c => c.type === 'call' && (c.notes?.toLowerCase().includes(callSearchTerm.toLowerCase()) || !callSearchTerm)).map((comm) => (
+                                                <div key={comm.id} className="p-5 hover:bg-slate-50/50 transition-all group/call">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50 shadow-sm">
+                                                                <PhoneCall className="w-4 h-4" />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs font-black text-slate-800 uppercase tracking-tight">Outgoing Call</span>
+                                                                <span className="text-[10px] font-bold text-slate-400">{new Date(comm.createdAt).toLocaleString()}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {comm.durationSeconds && (
+                                                                <Badge className="bg-slate-100 text-slate-500 text-[9px] font-bold border border-slate-200 px-2 h-6 flex items-center gap-1">
+                                                                    <Clock className="w-2.5 h-2.5" /> {Math.floor(comm.durationSeconds / 60)}m {comm.durationSeconds % 60}s
+                                                                </Badge>
+                                                            )}
+                                                            <div className="flex items-center gap-1 opacity-0 group-hover/call:opacity-100 transition-opacity">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-7 w-7 p-0 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg"
+                                                                    onClick={() => {
+                                                                        setEditingCallId(comm.id);
+                                                                        setPhoneCallNotes(comm.notes || "");
+                                                                        setShowPhoneCallModal(true);
+                                                                    }}
+                                                                >
+                                                                    <FileText className="w-3.5 h-3.5" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-7 w-7 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                                                                    onClick={async () => {
+                                                                        if (window.confirm("Delete this call log?")) {
+                                                                            await dispatch(deleteCommunication(comm.id)).unwrap();
+                                                                            dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="relative overflow-hidden">
+                                                        <p className="text-xs text-slate-600 leading-relaxed font-medium bg-white p-3 rounded-lg border border-slate-100 shadow-sm group-hover/call:border-blue-100 transition-colors">{comm.notes}</p>
+                                                    </div>
+                                                    {(comm.metadata?.outcome || (comm.metadata?.tags && comm.metadata?.tags.length > 0)) && (
+                                                        <div className="mt-4 flex flex-wrap gap-2">
+                                                            {comm.metadata.outcome && (
+                                                                <Badge className="bg-slate-800 text-white text-[9px] font-bold uppercase py-0.5 px-2.5 rounded shadow-sm border-none">
+                                                                    {comm.metadata.outcome.replace('_', ' ')}
+                                                                </Badge>
+                                                            )}
+                                                            {comm.metadata.tags && comm.metadata.tags.map((t: string) => (
+                                                                <span key={t} className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-lg border border-indigo-100 shadow-sm">
+                                                                    #{t}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
                 </div>
             </div >
 
@@ -1420,8 +1583,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-bold text-slate-800 flex items-center gap-2"><PhoneCall className="w-4 h-4 text-slate-400" /> Add Phone Call Notes</h3>
-                            <Button variant="ghost" size="sm" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); }} className="h-8 w-8 p-0">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <PhoneCall className="w-4 h-4 text-slate-400" /> {editingCallId ? "Edit Phone Call Notes" : "Add Phone Call Notes"}
+                            </h3>
+                            <Button variant="ghost" size="sm" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); setEditingCallId(null); }} className="h-8 w-8 p-0">
                                 <X className="w-4 h-4" />
                             </Button>
                         </div>
@@ -1433,8 +1598,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                 className="min-h-[120px] resize-none"
                             />
                             <div className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); }}>Cancel</Button>
-                                <Button className="bg-slate-800 hover:bg-slate-900 text-white" onClick={handleSavePhoneCallNotes}>Save Notes</Button>
+                                <Button variant="outline" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); setEditingCallId(null); }}>Cancel</Button>
+                                <Button className="bg-slate-800 hover:bg-slate-900 text-white" onClick={handleSavePhoneCallNotes}>
+                                    {editingCallId ? "Update Notes" : "Save Notes"}
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -1538,6 +1705,133 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 phoneNumber={customer.phone || 'No Number'}
                 onCallEnded={handleCallEnded}
             />
+            {/* Edit Multi-Owners Modal */}
+            {isEditingOwners && (
+                <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <Card className="w-full max-w-md bg-white rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
+                        <CardHeader className="border-b border-slate-100 pb-4">
+                            <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                <Users className="w-5 h-5 text-blue-600" /> Manage Owners
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4">
+                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                                {salespersons?.map((sp: any) => {
+                                    const isSelected = (customer as any).multiOwners?.some((o: any) => o.id === sp.id);
+                                    return (
+                                        <div key={sp.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+                                                    {sp.firstName[0]}{sp.lastName[0]}
+                                                </div>
+                                                <span className="text-sm font-bold text-slate-700">{sp.firstName} {sp.lastName}</span>
+                                            </div>
+                                            <Button
+                                                variant={isSelected ? "outline" : "primary"}
+                                                size="sm"
+                                                className={`h-8 px-4 rounded-lg text-[10px] font-bold ${isSelected ? 'border-red-200 text-red-600 hover:bg-red-50' : 'bg-blue-600 text-white'}`}
+                                                onClick={async () => {
+                                                    const currentOwnerIds = (customer as any).multiOwners?.map((o: any) => o.id) || [];
+                                                    const newOwnerIds = isSelected
+                                                        ? currentOwnerIds.filter((id: string) => id !== sp.id)
+                                                        : [...currentOwnerIds, sp.id];
+
+                                                    try {
+                                                        await dispatch(updateLead({ id: customer.id, updates: { multiOwnerIds: newOwnerIds } })).unwrap();
+                                                        dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                                    } catch (e) { alert("Failed to update owners"); }
+                                                }}
+                                            >
+                                                {isSelected ? 'Remove' : 'Assign'}
+                                            </Button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <Button className="w-full bg-slate-900 text-white rounded-xl h-12 font-bold mt-4" onClick={() => setIsEditingOwners(false)}>Done</Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Edit Clinic Affiliations Modal */}
+            {isEditingClinics && (
+                <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <Card className="w-full max-w-xl bg-white rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
+                        <CardHeader className="border-b border-slate-100 pb-4">
+                            <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                <Activity className="w-5 h-5 text-emerald-600" /> Clinic Affiliations & Statuses
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6">
+                            <div className="grid grid-cols-1 gap-4 max-h-[500px] overflow-y-auto pr-2">
+                                {clinics?.map((clinic: any) => {
+                                    const affiliation = (customer as any).clinicStatuses?.find((cs: any) => cs.clinicId === clinic.id);
+                                    const isAffiliated = !!affiliation;
+
+                                    return (
+                                        <div key={clinic.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-bold text-slate-800">{clinic.name}</span>
+                                                <Button
+                                                    variant={isAffiliated ? "outline" : "primary"}
+                                                    size="sm"
+                                                    className={`h-7 px-3 rounded-lg text-[9px] font-bold ${isAffiliated ? 'text-red-600 border-red-200' : 'bg-emerald-600 text-white'}`}
+                                                    onClick={async () => {
+                                                        const currentAffiliations = (customer as any).clinicStatuses?.map((cs: any) => ({
+                                                            clinicId: cs.clinicId,
+                                                            status: cs.status
+                                                        })) || [];
+
+                                                        let newAffiliations;
+                                                        if (isAffiliated) {
+                                                            newAffiliations = currentAffiliations.filter((a: any) => a.clinicId !== clinic.id);
+                                                        } else {
+                                                            newAffiliations = [...currentAffiliations, { clinicId: clinic.id, status: 'new' }];
+                                                        }
+
+                                                        try {
+                                                            await dispatch(updateLead({ id: customer.id, updates: { clinicAffiliations: newAffiliations } })).unwrap();
+                                                            dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                                        } catch (e) { alert("Failed to update clinics"); }
+                                                    }}
+                                                >
+                                                    {isAffiliated ? 'Remove' : 'Add Clinic'}
+                                                </Button>
+                                            </div>
+
+                                            {isAffiliated && (
+                                                <div className="flex items-center gap-2 pt-2 border-t border-slate-200/50">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Status:</span>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {['new', 'contacted', 'qualified', 'lost', 'converted'].map(s => (
+                                                            <button
+                                                                key={s}
+                                                                onClick={async () => {
+                                                                    const currentAffs = (customer as any).clinicStatuses?.map((cs: any) => ({
+                                                                        clinicId: cs.clinicId,
+                                                                        status: cs.clinicId === clinic.id ? s : cs.status
+                                                                    })) || [];
+                                                                    await dispatch(updateLead({ id: customer.id, updates: { clinicAffiliations: currentAffs } })).unwrap();
+                                                                    dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                                                }}
+                                                                className={`px-2 py-1 rounded text-[9px] font-bold border transition-all ${affiliation.status === s ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300'}`}
+                                                            >
+                                                                {s}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <Button className="w-full bg-slate-900 text-white rounded-xl h-12 font-bold mt-4" onClick={() => setIsEditingClinics(false)}>Close</Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div >
     );
 };

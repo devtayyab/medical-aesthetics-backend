@@ -39,6 +39,10 @@ export class Task {
   })
   status: TaskStatus;
 
+  // When the user should be reminded about this task
+  @Column({ type: 'timestamptz', nullable: true })
+  reminderAt: Date | null;
+
   @Column({ type: 'timestamptz' })
   dueDate: Date;
 
@@ -50,6 +54,16 @@ export class Task {
 
   @Column('json', { nullable: true })
   metadata: any;
+
+  // Recurring task configuration
+  @Column({ default: false })
+  isRecurring: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  recurringIntervalDays: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  recurringUntil: Date | null;
 
   @Column({ type: 'timestamptz', nullable: true })
   completedAt: Date;

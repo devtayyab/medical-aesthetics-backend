@@ -10,6 +10,7 @@ import { UsersModule } from '../users/users.module';
 import { ClinicsModule } from '../clinics/clinics.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { User } from '../users/entities/user.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
@@ -48,6 +49,7 @@ import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
     ClinicsModule,
     BookingsModule,
     LoyaltyModule,
+    NotificationsModule,
   ],
   controllers: [AdminController, WalletController, GiftCardsController, PaymentsController, BlogsController],
   providers: [AdminService, WalletService, GiftCardsService, PaymentsService, BlogsService],

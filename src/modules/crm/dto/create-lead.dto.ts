@@ -100,4 +100,18 @@ export class CreateLeadDto {
   @IsOptional()
   @IsEnum(LeadStatus)
   status?: LeadStatus;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  facebookAdName?: string;
+
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsString({ each: true })
+  multiOwnerIds?: string[];
+
+  @ApiProperty({ required: false, type: 'array', items: { type: 'object' } })
+  @IsOptional()
+  clinicAffiliations?: Array<{ clinicId: string; status: LeadStatus }>;
 }

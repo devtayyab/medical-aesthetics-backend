@@ -28,6 +28,7 @@ import { Analytics } from '@/pages/CRM/Analytics';
 import { fetchServices, fetchAvailability, fetchClinicProviders } from '@/store/slices/clinicSlice';
 import { RootState } from '@/store';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
+import { GlobalCalendar } from '@/components/organisms/GlobalCalendar/GlobalCalendar';
 import { DataTable } from '../../../components/ui/DataTable';
 import { fetchAgentKpis, fetchServiceStats, fetchClinicAnalytics, ClinicAnalytics } from '../../../services/managerAnalytics.service';
 import { Input } from '@/components/atoms/Input/Input';
@@ -98,8 +99,14 @@ export const ManagerDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod] = useState('30');
-  const [activeTab, setActiveTab] = useState('overview');
   const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') || 'overview';
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
+
+  // Sync activeTab when URL tab param changes (e.g. sidebar link)
+  useEffect(() => {
+    setActiveTab(tabFromUrl);
+  }, [tabFromUrl]);
 
   // Agent Management State
   const [selectedAgent, setSelectedAgent] = useState<AgentKpi | null>(null);
@@ -574,7 +581,7 @@ export const ManagerDashboard = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-gray-100/50 p-1.5 rounded-xl border border-gray-200/50 w-full max-w-[500px]">
+        <TabsList className="bg-gray-100/50 p-1.5 rounded-xl border border-gray-200/50 w-full max-w-[650px]">
           <TabsTrigger value="overview" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
             <BarChart3 className="h-4 w-4" />
             Overview
@@ -583,11 +590,19 @@ export const ManagerDashboard = () => {
             <Building2 className="h-4 w-4" />
             Clinics
           </TabsTrigger>
+          <TabsTrigger value="calendar-global" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
+            <Calendar className="h-4 w-4" />
+            Global Calendar
+          </TabsTrigger>
           <TabsTrigger value="agents" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
             <Users className="h-4 w-4" />
             Agents
           </TabsTrigger>
         </TabsList>
+        <TabsContent value="calendar-global">
+          <GlobalCalendar />
+        </TabsContent>
+
 
         <TabsContent value="clinics">
           <Card>

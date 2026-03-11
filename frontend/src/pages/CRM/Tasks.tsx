@@ -12,7 +12,8 @@ import {
   updateAction,
   fetchActions,
   fetchTaskKpis,
-  logCommunication
+  logCommunication,
+  fetchSalespersons
 } from '@/store/slices/crmSlice';
 import type { CrmAction } from '@/types';
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
@@ -158,7 +159,7 @@ interface TasksPageProps {
 
 
 export const Tasks: React.FC<TasksPageProps> = () => {
-  const { actions: tasks, isLoading, taskKpis } = useSelector((state: RootState) => state.crm);
+  const { actions: tasks, isLoading, taskKpis, salespersons } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
 
@@ -169,6 +170,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterDateRange, setFilterDateRange] = useState<string>('all');
+  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>(user?.role === 'salesperson' ? user.id : 'all');
   const [selectedTask, setSelectedTask] = useState<CrmAction | null>(null);
   const [viewingTask, setViewingTask] = useState<CrmAction | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -196,11 +198,14 @@ export const Tasks: React.FC<TasksPageProps> = () => {
   });
 
   useEffect(() => {
-    if (currentUserId) {
-      dispatch(fetchActions({ salespersonId: currentUserId }));
-      dispatch(fetchTaskKpis());
-    }
-  }, [dispatch, currentUserId]);
+    dispatch(fetchSalespersons());
+  }, [dispatch]);
+
+  useEffect(() => {
+    const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+    dispatch(fetchActions({ salespersonId: sid }));
+    dispatch(fetchTaskKpis(sid));
+  }, [dispatch, selectedSalespersonId]);
 
   const resetForm = () => {
     setShowCreateForm(false);
@@ -309,7 +314,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
 
       if (currentUserId) {
         dispatch(fetchActions({ salespersonId: currentUserId }));
-        dispatch(fetchTaskKpis());
+        dispatch(fetchTaskKpis(currentUserId));
       }
     } catch (error) {
       console.error("Failed to save interaction:", error);
@@ -332,7 +337,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
 
       if (currentUserId) {
         dispatch(fetchActions({ salespersonId: currentUserId }));
-        dispatch(fetchTaskKpis());
+        dispatch(fetchTaskKpis(currentUserId));
       }
     } catch (error) {
       console.error("Failed to complete task after booking:", error);
@@ -406,7 +411,20 @@ export const Tasks: React.FC<TasksPageProps> = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 flex-2 min-w-[50%] w-full">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 flex-2 min-w-[65%] w-full">
+          <Select
+            placeholder="Select Salesperson"
+            options={[
+              { value: 'all', label: 'All Salespersons' },
+              ...(salespersons || []).map(sp => ({
+                value: sp.id,
+                label: `${sp.firstName} ${sp.lastName} (${sp.pendingTasksCount || 0} Pending)`
+              }))
+            ]}
+            value={selectedSalespersonId}
+            onChange={(val) => setSelectedSalespersonId(val)}
+            className="flex-1"
+          />
           <Select
             options={[
               { value: 'all', label: 'All Statuses' },
@@ -653,7 +671,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                     resetForm();
                     if (currentUserId) {
                       dispatch(fetchActions({ salespersonId: currentUserId }));
-                      dispatch(fetchTaskKpis());
+                      dispatch(fetchTaskKpis(currentUserId));
                     }
                   }}
                 />

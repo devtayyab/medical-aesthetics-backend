@@ -250,4 +250,34 @@ export class NotificationsService implements OnModuleInit {
       { email, passwordType: 'temporary' },
     );
   }
+
+  /**
+   * Helper for sending BOTH push + email to a single user in one call.
+   * Useful for admin broadcasts or important alerts.
+   */
+  async sendEmailAndPushToUser(
+    recipientId: string,
+    title: string,
+    message: string,
+    emailBody?: string,
+    data?: any,
+  ): Promise<{ push: Notification; email: Notification }> {
+    const push = await this.create(
+      recipientId,
+      NotificationType.PUSH,
+      title,
+      message,
+      data,
+    );
+
+    const email = await this.create(
+      recipientId,
+      NotificationType.EMAIL,
+      title,
+      emailBody ?? message,
+      { ...data, channel: 'email' },
+    );
+
+    return { push, email };
+  }
 }

@@ -11,6 +11,8 @@ import { Appointment } from '../bookings/entities/appointment.entity';
 import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 import { ClinicsService } from '../clinics/clinics.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { BookingsService } from '../bookings/bookings.service';
 
 @Injectable()
 export class AdminService {
@@ -34,6 +36,8 @@ export class AdminService {
     @InjectRepository(AgentClinicAccess)
     private agentClinicAccessRepository: Repository<AgentClinicAccess>,
     private clinicsService: ClinicsService,
+    private notificationsService: NotificationsService,
+    private bookingsService: BookingsService,
   ) { }
 
   async createTag(name: string, color?: string, description?: string): Promise<Tag> {
@@ -567,5 +571,40 @@ export class AdminService {
       { id: '2', userId: 'u2', action: 'Update Profile', timestamp: new Date().toISOString() },
       { id: '3', userId: 'u3', action: 'Book Appointment', timestamp: new Date().toISOString() },
     ];
+  }
+
+  /**
+   * Admin helper to send both email + push to a specific user.
+   */
+  async sendEmailAndPushToUser(payload: {
+    userId: string;
+    title: string;
+    message: string;
+    emailBody?: string;
+    data?: any;
+  }) {
+    const { userId, title, message, emailBody, data } = payload;
+    const result = await this.notificationsService.sendEmailAndPushToUser(
+      userId,
+      title,
+      message,
+      emailBody,
+      data,
+    );
+
+    return {
+      userId,
+      title,
+      pushId: result.push.id,
+      emailId: result.email.id,
+    };
+  }
+
+  async getGlobalCalendarAppointments(
+    userId: string,
+    userRole: string,
+    query: { startDate: string; endDate: string; clinicId?: string; providerId?: string },
+  ) {
+    return this.bookingsService.getGlobalCalendarAppointments(userId, userRole, query);
   }
 }

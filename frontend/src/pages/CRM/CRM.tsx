@@ -50,6 +50,7 @@ import type { Task } from '@/types';
 import { TaskDetails } from '@/pages/CRM/TaskDetails';
 import { Analytics } from '@/pages/CRM/Analytics';
 import { SalesWeekCalendar } from '@/pages/CRM/SalesWeekCalendar';
+import { Calls as ManagerCrmCalls } from '@/pages/Admin/ManagerCRM/Calls';
 
 export const CRM: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -299,14 +300,17 @@ export const CRM: React.FC = () => {
         className='w-full'
       >
         <Card className="border-none shadow-sm p-1 bg-slate-100/80 rounded-lg mb-8">
-          <TabsList className="grid grid-cols-2 lg:grid-cols-6 bg-transparent h-auto gap-1">
+          <TabsList className="grid grid-cols-2 lg:grid-cols-7 bg-transparent h-auto gap-1">
             <TabsTrigger value="dashboard" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Dashboard</TabsTrigger>
             <TabsTrigger value="leads" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Leads</TabsTrigger>
             <TabsTrigger value="tasks" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Tasks</TabsTrigger>
             <TabsTrigger value="tracker" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">My Tracker</TabsTrigger>
             <TabsTrigger value="customers" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Customers</TabsTrigger>
+            {user?.role !== 'salesperson' && (
+              <TabsTrigger value="calls" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Calls</TabsTrigger>
+            )}
             {(user?.role === 'admin' || user?.role === 'manager') && (
-              <TabsTrigger value="team" className="rounded-xl py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">Team</TabsTrigger>
+              <TabsTrigger value="team" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Team</TabsTrigger>
             )}
           </TabsList>
         </Card>
@@ -447,6 +451,11 @@ export const CRM: React.FC = () => {
         <TabsContent value="tracker">
           <SalesWeekCalendar />
         </TabsContent>
+        {user?.role !== 'salesperson' && (
+          <TabsContent value="calls">
+            <ManagerCrmCalls />
+          </TabsContent>
+        )}
 
         {/* Team Management Tab (Admin Only) */}
         {(user?.role === 'admin' || user?.role === 'manager') && (

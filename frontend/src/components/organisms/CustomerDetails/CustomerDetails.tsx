@@ -24,7 +24,10 @@ import {
   Layout,
   Check,
   ChevronRight,
-  Activity
+  Activity,
+  Search,
+  Trash2,
+  Edit2
 } from 'lucide-react';
 
 // Helper component for properties
@@ -44,7 +47,14 @@ const PropertyItem = ({ icon, label, value }: { icon: React.ReactNode, label: st
 import { Textarea } from "@/components/atoms/Textarea";
 import { Input } from "@/components/atoms/Input/Input";
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
-import { logCommunication, fetchSalespersons, updateLead, updateCustomerRecord } from "@/store/slices/crmSlice";
+import {
+  logCommunication,
+  fetchSalespersons,
+  updateLead,
+  updateCustomerRecord,
+  updateCommunication,
+  deleteCommunication
+} from "@/store/slices/crmSlice";
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
 import { Badge } from '@/components/atoms/Badge';
@@ -164,9 +174,11 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   const [showDiaryModal, setShowDiaryModal] = useState(false);
   const [showPhoneCallModal, setShowPhoneCallModal] = useState(false);
   const [phoneCallNotes, setPhoneCallNotes] = useState("");
+  const [editingCallId, setEditingCallId] = useState<string | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailNotes, setEmailNotes] = useState("");
   const [emailDate, setEmailDate] = useState(new Date().toISOString().substring(0, 16));
+  const [callSearchTerm, setCallSearchTerm] = useState('');
 
   const tabsRef = useRef<HTMLDivElement>(null);
   const { record, appointments, communications, actions, tags, summary } = customerData;
@@ -241,20 +253,46 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   const handleSavePhoneCallNotes = async () => {
     if (!phoneCallNotes.trim()) return;
     try {
-      await dispatch(logCommunication({
-        customerId: record.customerId,
-        salespersonId: user?.id,
-        type: 'call',
-        status: 'completed',
-        notes: phoneCallNotes,
-        direction: 'outgoing'
-      })).unwrap();
+      if (editingCallId) {
+        await dispatch(updateCommunication({
+          id: editingCallId,
+          updates: { notes: phoneCallNotes }
+        })).unwrap();
+      } else {
+        await dispatch(logCommunication({
+          customerId: record.customerId,
+          salespersonId: user?.id,
+          type: 'call',
+          status: 'completed',
+          notes: phoneCallNotes,
+          direction: 'outgoing'
+        })).unwrap();
+      }
       setPhoneCallNotes("");
+      setEditingCallId(null);
       setShowPhoneCallModal(false);
       onUpdate?.();
     } catch (error) {
       console.error("Failed to save phone call note", error);
       alert("Failed to save.");
+    }
+  };
+
+  const handleEditCall = (call: any) => {
+    setEditingCallId(call.id);
+    setPhoneCallNotes(call.notes || "");
+    setShowPhoneCallModal(true);
+  };
+
+  const handleDeleteCommunication = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this log?")) {
+      try {
+        await dispatch(deleteCommunication(id)).unwrap();
+        onUpdate?.();
+      } catch (error) {
+        console.error("Failed to delete communication", error);
+        alert("Failed to delete.");
+      }
     }
   };
 
@@ -393,11 +431,12 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
       {/* Main Content Tabs */}
       <div ref={tabsRef} className="scroll-mt-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="appointments">Appointments</TabsTrigger>
             <TabsTrigger value="communications">Communications</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="calls">Calls</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab - Refactored to 2-column HubSpot style */}
@@ -865,6 +904,93 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             </Card>
           </TabsContent>
 
+          {/* Calls Tab */}
+          <TabsContent value="calls" className="space-y-4">
+            <Card className="border-none shadow-premium bg-white rounded-3xl overflow-hidden border border-slate-100">
+              <div className="bg-slate-50/50 border-b border-slate-100 py-4 px-6 flex items-center justify-between">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Phone Call Logs</h3>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder="Search call notes..."
+                    value={callSearchTerm}
+                    onChange={(e) => setCallSearchTerm(e.target.value)}
+                    className="pl-9 h-9 text-xs"
+                  />
+                </div>
+              </div>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {communications
+                    .filter(c => c.type === 'call')
+                    .filter(c => !callSearchTerm || (c.notes || '').toLowerCase().includes(callSearchTerm.toLowerCase()))
+                    .map((call) => (
+                      <div key={call.id} className="group flex items-start gap-4 p-4 border border-slate-100 rounded-2xl hover:border-indigo-100 hover:bg-slate-50/50 transition-all duration-300">
+                        <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center flex-shrink-0">
+                          <PhoneCall className="h-5 w-5 text-indigo-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                              {new Date(call.createdAt).toLocaleString()}
+                            </span>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                                onClick={() => handleEditCall(call)}
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                onClick={() => handleDeleteCommunication(call.id)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-sm font-bold text-slate-700 leading-relaxed">
+                            {call.notes || <span className="text-slate-400 italic font-normal">No notes provided.</span>}
+                          </p>
+                          {call.salesperson && (
+                            <div className="mt-2 flex items-center gap-1.5">
+                              <div className="w-4 h-4 bg-slate-200 rounded-full flex items-center justify-center text-[8px] font-black text-slate-500">
+                                {call.salesperson.firstName?.charAt(0)}
+                              </div>
+                              <span className="text-[10px] font-bold text-slate-500 capitalize">
+                                Logged by {call.salesperson.firstName} {call.salesperson.lastName}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                  {communications.filter(c => c.type === 'call').length === 0 && (
+                    <div className="text-center py-12">
+                      <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <PhoneCall className="w-6 h-6 text-slate-200" />
+                      </div>
+                      <p className="text-sm font-bold text-slate-400">No phone calls logged yet.</p>
+                      <p className="text-xs text-slate-300">Every call interaction recorded will appear here.</p>
+                    </div>
+                  )}
+
+                  {communications.filter(c => c.type === 'call').length > 0 &&
+                    communications.filter(c => c.type === 'call').filter(c => !callSearchTerm || (c.notes || '').toLowerCase().includes(callSearchTerm.toLowerCase())).length === 0 && (
+                      <div className="text-center py-12">
+                        <p className="text-sm font-bold text-slate-400">No calls found matching "{callSearchTerm}"</p>
+                      </div>
+                    )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
 
         </Tabs>
       </div>
@@ -910,9 +1036,9 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
             <div className="flex justify-between items-center mb-2">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <PhoneCall className="w-4 h-4 text-slate-400" /> Add Phone Call Notes
+                <PhoneCall className="w-4 h-4 text-slate-400" /> {editingCallId ? "Edit Phone Call Notes" : "Add Phone Call Notes"}
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); }} className="h-8 w-8 p-0">
+              <Button variant="ghost" size="sm" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); setEditingCallId(null); }} className="h-8 w-8 p-0">
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -924,8 +1050,10 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 className="min-h-[120px] resize-none"
               />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); }}>Cancel</Button>
-                <Button className="bg-slate-800 hover:bg-slate-900 text-white" onClick={handleSavePhoneCallNotes}>Save Notes</Button>
+                <Button variant="outline" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); setEditingCallId(null); }}>Cancel</Button>
+                <Button className="bg-slate-800 hover:bg-slate-900 text-white" onClick={handleSavePhoneCallNotes}>
+                  {editingCallId ? "Update Notes" : "Save Notes"}
+                </Button>
               </div>
             </div>
           </div>

@@ -15,6 +15,9 @@ import { LeadStatus } from '../../../common/enums/lead-status.enum';
 import { User } from '../../users/entities/user.entity';
 import { Tag } from '../../admin/entities/tag.entity';
 import { Task } from '../../tasks/entities/task.entity';
+import { Clinic } from '../../clinics/entities/clinic.entity';
+
+import { LeadClinicStatus } from './lead-clinic-status.entity';
 
 @Entity('leads')
 export class Lead {
@@ -74,6 +77,9 @@ export class Lead {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   estimatedValue: number;
 
+  @Column({ nullable: true })
+  facebookAdName: string;
+
   @Column({ type: 'timestamptz', nullable: true })
   lastContactedAt: Date;
 
@@ -99,6 +105,24 @@ export class Lead {
   @JoinColumn({ name: 'assignedSalesId' })
   assignedSales: User;
 
+  @ManyToMany(() => User)
+  @JoinTable({
+    name: 'lead_owners',
+    joinColumn: { name: 'leadId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'userId', referencedColumnName: 'id' },
+  })
+  multiOwners: User[];
+
+  @ManyToMany(() => Clinic)
+  @JoinTable({
+    name: 'lead_clinics',
+    joinColumn: { name: 'leadId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'clinicId', referencedColumnName: 'id' },
+  })
+  clinics: Clinic[];
+
+  @OneToMany(() => LeadClinicStatus, (status) => status.lead)
+  clinicStatuses: LeadClinicStatus[];
 
   @ManyToMany(() => Tag)
   @JoinTable({

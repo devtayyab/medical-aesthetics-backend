@@ -107,38 +107,25 @@ export interface ClinicReturnRate {
   last90Days: number;
 }
 
-export const fetchCallLogs = async (): Promise<CallLog[]> => {
-  const now = new Date();
-  return [
-    {
-      id: "c1",
-      agentId: "a1",
-      agentName: "Alice",
-      customerName: "John Doe",
-      customerPhone: "+1 555-1234",
-      clinicName: "Downtown Clinic",
-      outcome: "answered",
-      durationSec: 284,
-      timestamp: format(now, "yyyy-MM-dd HH:mm:ss"),
-    },
-    {
-      id: "c2",
-      agentId: "a2",
-      agentName: "Bob",
-      customerName: "Mary Sue",
-      customerPhone: "+1 555-9876",
-      clinicName: "Westside Clinic",
-      outcome: "no_answer",
-      timestamp: format(new Date(now.getTime() - 86400000), "yyyy-MM-dd HH:mm:ss"),
-    },
-  ];
+export const fetchCallLogs = async (params?: {
+  startDate?: string;
+  endDate?: string;
+  salespersonId?: string;
+}): Promise<CallLog[]> => {
+  try {
+    const response = await api.get('/crm/manager-crm/calls', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching global call logs:', error);
+    return [];
+  }
 };
 
 export const initiateCall = async (phone: string): Promise<{ ok: boolean; providerHint: string }> => {
-  // Placeholder: integrate Twilio/Plivo/Vonage later
+  console.log('Initiating redial to:', phone);
   return {
     ok: false,
-    providerHint: "Integrate a telephony provider (Twilio/Plivo/Vonage) via backend to place calls from the CRM UI.",
+    providerHint: "Telephony integration pending. Target: " + phone,
   };
 };
 

@@ -8,9 +8,9 @@ import { useEffect } from "react";
 import {
   LayoutDashboard, Users, BarChart2, Tag, Eye, Settings,
   Building2,
-  Calendar, FileText, BarChart, Shield, DollarSign,
+  Calendar, CalendarRange, FileText, BarChart, Shield, DollarSign,
   ClipboardList, Repeat, UserCog, ListChecks,
-  Phone, Search, LogOut, MessageSquare, Archive
+  Phone, Search, LogOut, MessageSquare, Archive, Bell, Key
 } from "lucide-react";
 
 interface SidebarItem {
@@ -27,6 +27,7 @@ const clientLinks: SidebarItem[] = [
   { path: "/history", label: "History", icon: <ClipboardList className="w-5 h-5" /> },
   { path: "/reviews", label: "Reviews", icon: <Eye className="w-5 h-5" /> },
   { path: "/loyalty", label: "Loyalty", icon: <Tag className="w-5 h-5" /> },
+  { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "Account" },
 ];
 
 const clinicLinks: SidebarItem[] = [
@@ -37,12 +38,14 @@ const clinicLinks: SidebarItem[] = [
   { path: "/clinic/availability", label: "Availability", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
   { path: "/clinic/execution", label: "Execution", icon: <ListChecks className="w-5 h-5" />, group: "Operations" },
   { path: "/clinic/reports", label: "Reports", icon: <BarChart className="w-5 h-5" />, group: "Operations" },
+  { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "Account" },
 ];
 
 const doctorLinks: SidebarItem[] = [
   { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
   { path: "/clinic/diary", label: "My Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
   { path: "/appointments", label: "Appointments", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
+  { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "Account" },
 ];
 
 const crmLinks: SidebarItem[] = [
@@ -58,17 +61,29 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/calendar", label: "Sales Week Calendar", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/tag", label: "Tags", icon: <Tag className="w-5 h-5" />, group: "CRM" },
   { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
+  { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "Account" },
 ];
 
 const managerLinks: SidebarItem[] = [
-  { path: "/admin/dashboard", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, group: "Main" },
+  { path: "/admin/manager-dashboard", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, group: "Main" },
   { path: "/admin/clinics", label: "Clinics", icon: <Building2 className="w-5 h-5" />, group: "Main" },
   { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Main" },
 
-  { path: "/crm/sales-analytics", label: "CRM & Sales", icon: <BarChart2 className="w-5 h-5" />, group: "Sales" },
-  { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "Sales" },
-  { path: "/crm/calendar", label: "Calendar", icon: <Calendar className="w-5 h-5" />, group: "Sales" },
-  { path: "/admin/manager-crm/calls", label: "Calls", icon: <Phone className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/customers", label: "Contacts", icon: <Users className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/archive", label: "Archive", icon: <Archive className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "CRM" },
+
+  { path: "/crm/analytics", label: "Sales Analytics", icon: <BarChart2 className="w-5 h-5" />, group: "Sales" },
+  { path: "/admin/clinic-analytics", label: "Clinic Analytics", icon: <Building2 className="w-5 h-5" />, group: "Sales" },
+   { path: "/admin/manager-dashboard?tab=calendar-global", label: "Global Calendar", icon: <CalendarRange className="w-5 h-5" />, group: "Sales" },
+   { path: "/admin/manager-crm/calls", label: "Calls", icon: <Phone className="w-5 h-5" />, group: "Sales" },
+   { path: "/admin/manager-crm/reports", label: "Reports", icon: <FileText className="w-5 h-5" />, group: "Analytics" },
+   { path: "/admin/manager-crm/advertising", label: "Advertising", icon: <BarChart className="w-5 h-5" />, group: "Analytics" },
+   { path: "/admin/broadcast", label: "Broadcast", icon: <Bell className="w-5 h-5" />, group: "Marketing" },
+   { path: "/admin/manager-crm/access", label: "Access Control", icon: <Shield className="w-5 h-5" />, group: "CRM Management" },
+   { path: "/admin/manager-crm/benefits", label: "Client Benefits", icon: <Tag className="w-5 h-5" />, group: "CRM Management" },
+   { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <Eye className="w-5 h-5" />, group: "CRM Management" },
 
   { path: "/admin/payments", label: "Payments & Turnover", icon: <DollarSign className="w-5 h-5" />, group: "Finance" },
   { path: "/admin/gift-cards", label: "Gift Cards", icon: <Tag className="w-5 h-5" />, group: "Finance" },
@@ -80,6 +95,7 @@ const managerLinks: SidebarItem[] = [
 
   { path: "/admin/integrations", label: "Integrations", icon: <Settings className="w-5 h-5" />, group: "System" },
   { path: "/admin/manager-crm/clinic-stats", label: "Audit Logs", icon: <Shield className="w-5 h-5" />, group: "System" },
+  { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "System" },
 ];
 
 const getAdminLinks = (role: string): SidebarItem[] => {
@@ -94,6 +110,7 @@ const getAdminLinks = (role: string): SidebarItem[] => {
     { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Main" },
     { path: "/admin/reviews", label: "Review Moderation", icon: <Eye className="w-5 h-5" />, group: "Approvals" },
     { path: "/admin/treatments", label: "Therapy Catalog", icon: <ListChecks className="w-5 h-5" />, group: "Approvals" },
+    { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "System" },
   ];
 };
 
@@ -180,7 +197,9 @@ export const Sidebar: React.FC = () => {
             )}
             <ul className="space-y-1">
               {groupLinks.map((link) => {
-                const isActive = location.pathname === link.path;
+                const isActive = link.path.includes('?')
+                  ? location.pathname + (location.search || '') === link.path
+                  : location.pathname === link.path;
                 return (
                   <li key={link.path}>
                     <Link

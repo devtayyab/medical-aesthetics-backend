@@ -9,6 +9,7 @@ import {
   Query,
   Patch,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
@@ -285,10 +286,45 @@ export class AdminController {
   updateLoyalty(@Body() body: any) {
     return this.adminService.updateLoyalty(body);
   }
+
   @Get('monitor')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get monitor logs' })
   getLogs() {
     return this.adminService.getLogs();
+  }
+
+  // Global calendar (week view) with cross-clinic oversight
+  @Get('calendar')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.SALESPERSON)
+  @ApiOperation({ summary: 'Get global calendar appointments (week view) with privacy rules' })
+  getGlobalCalendar(
+    @Query()
+    query: {
+      startDate: string;
+      endDate: string;
+      clinicId?: string;
+      providerId?: string;
+    },
+    @Request() req,
+  ) {
+    return this.adminService.getGlobalCalendarAppointments(req.user.id, req.user.role, query);
+  }
+
+  // Notifications: send both email + push to a specific user
+  @Post('notifications/email-push')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Send both email and push notification to a user' })
+  sendEmailAndPushToUser(
+    @Body()
+    body: {
+      userId: string;
+      title: string;
+      message: string;
+      emailBody?: string;
+      data?: any;
+    },
+  ) {
+    return this.adminService.sendEmailAndPushToUser(body);
   }
 }

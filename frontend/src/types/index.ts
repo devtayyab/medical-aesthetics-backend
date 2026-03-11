@@ -14,6 +14,7 @@ export interface User {
   beautyPoints?: number;
   monthlyTarget?: number;
   assignedClinics?: Clinic[];
+  pendingTasksCount?: number;
 }
 
 export interface Clinic {
