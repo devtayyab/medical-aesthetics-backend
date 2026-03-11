@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/atoms/Button/Button";
-import { Input } from "@/components/atoms/Input/Input";
 import {
   PhoneCall,
   Clock,
@@ -16,14 +15,144 @@ import {
   Timer,
   Calendar,
   UserCheck,
-  Filter,
-  Users
+  Users,
+  User,
+  MoreHorizontal,
+  Phone
 } from "lucide-react";
-import { fetchCallLogs, initiateCall, CallLog } from "@/services/managerCrm.service";
-import { fetchSalespersons } from "@/store/slices/crmSlice";
+import { fetchCallLogs, CallLog } from "@/services/managerCrm.service";
+import { fetchSalespersons, logCommunication } from "@/store/slices/crmSlice";
 import { RootState, AppDispatch } from "@/store";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+
+// --- Dialer Component (Reused from Tasks/OneCustomerDetail) ---
+const DialerModal = ({
+  isOpen,
+  onClose,
+  customerName,
+  phoneNumber,
+  onCallEnded
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  customerName: string;
+  phoneNumber: string;
+  onCallEnded: (duration: number) => void;
+}) => {
+  const [callStatus, setCallStatus] = useState<'dialing' | 'connected' | 'ended'>('dialing');
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isOpen) {
+      setCallStatus('dialing');
+      setDuration(0);
+      timer = setTimeout(() => {
+        setCallStatus('connected');
+      }, 2000);
+    }
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (callStatus === 'connected') {
+      timer = setInterval(() => {
+        setDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [callStatus]);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleEndCall = () => {
+    setCallStatus('ended');
+    setTimeout(() => {
+      onCallEnded(duration);
+    }, 1000);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-gray-700 relative">
+        <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -ml-10 -mt-10" />
+        <div className="absolute bottom-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl -mr-10 -mb-10" />
+
+        <div className="relative z-10 flex flex-col h-[500px]">
+          <div className="p-6 flex justify-between items-center">
+            <div className="text-xs font-bold tracking-widest text-gray-400 uppercase">VoIP Dialer</div>
+            <div className="flex gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-green-400 font-bold">Online</span>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center shadow-inner border border-gray-600 text-2xl font-bold text-gray-300 text-center leading-none">
+                {customerName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              </div>
+              {callStatus === 'dialing' && (
+                <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping" />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold tracking-tight">{customerName}</h3>
+              <p className="text-lg text-gray-400 font-mono tracking-wider">{phoneNumber}</p>
+            </div>
+
+            <div className="space-y-1">
+              <div className={`text-sm font-bold uppercase tracking-widest px-3 py-1 rounded-full inline-block
+                                ${callStatus === 'dialing' ? 'bg-yellow-500/20 text-yellow-400' :
+                  callStatus === 'connected' ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-red-500/20 text-red-400'}`}>
+                {callStatus === 'dialing' ? 'Dialing...' :
+                  callStatus === 'connected' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      <span>REC {formatDuration(duration)}</span>
+                    </div>
+                  ) : 'Call Ended'}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-8 pb-10 flex justify-center items-center gap-8">
+            <Button
+              variant="ghost"
+              className="w-14 h-14 rounded-full bg-gray-700/50 hover:bg-gray-700 text-white border border-gray-600 backdrop-blur-md"
+              onClick={onClose}
+            >
+              <User className="w-6 h-6" />
+            </Button>
+
+            <Button
+              onClick={handleEndCall}
+              className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/40 border-4 border-gray-800 flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+            >
+              <Phone className="w-8 h-8 fill-current rotate-[135deg]" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-14 h-14 rounded-full bg-gray-700/50 hover:bg-gray-700 text-white border border-gray-600 backdrop-blur-md"
+            >
+              <MoreHorizontal className="w-6 h-6" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const Calls: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -40,6 +169,10 @@ export const Calls: React.FC = () => {
     endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
   });
   const [selectedAgent, setSelectedAgent] = useState<string>("all");
+
+  // Dialer State
+  const [showDialer, setShowDialer] = useState(false);
+  const [dialerTarget, setDialerTarget] = useState({ name: "", phone: "", customerId: "", relatedLeadId: "" });
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setIsRefreshing(true);
@@ -149,10 +282,15 @@ export const Calls: React.FC = () => {
       cell: ({ row }: any) => (
         <Button
           size="sm"
-          className="h-8 bg-[#CBFF38] text-black hover:bg-[#b8e632] font-bold gap-2 px-4"
-          onClick={async () => {
-            const res = await initiateCall(row.original.customerPhone);
-            if (!res.ok) alert(res.providerHint);
+          className="h-8 bg-[#CBFF38] text-black hover:bg-[#b8e632] font-bold gap-2 px-4 shadow-sm active:scale-95 transition-all"
+          onClick={() => {
+            setDialerTarget({
+              name: row.original.customerName,
+              phone: row.original.customerPhone,
+              customerId: row.original.customerId || "",
+              relatedLeadId: row.original.relatedLeadId || ""
+            });
+            setShowDialer(true);
           }}
         >
           <PhoneCall className="h-3.5 w-3.5" />
@@ -295,6 +433,28 @@ export const Calls: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      <DialerModal
+        isOpen={showDialer}
+        onClose={() => setShowDialer(false)}
+        customerName={dialerTarget.name}
+        phoneNumber={dialerTarget.phone}
+        onCallEnded={(duration) => {
+          setShowDialer(false);
+          // Auto-log the redial as a new communication
+          dispatch(logCommunication({
+            customerId: dialerTarget.customerId || null,
+            relatedLeadId: dialerTarget.relatedLeadId || null,
+            type: 'call',
+            direction: 'outgoing',
+            status: 'completed',
+            durationSeconds: duration,
+            notes: `Redialed from Communication Hub. Duration: ${Math.floor(duration / 60)}m ${duration % 60}s`,
+            metadata: { provider: 'Twilio', clickOnly: true }
+          }));
+          loadData(true);
+        }}
+      />
     </div>
   );
 };

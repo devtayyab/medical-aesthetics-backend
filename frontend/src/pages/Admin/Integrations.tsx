@@ -18,6 +18,7 @@ export const Integrations: React.FC = () => {
     viva_stripe_mode: 'test',
     hubspot_sync_enabled: false,
     google_calendar_sync_enabled: false,
+    payments_enabled: true,
     stripe_public_key: '',
     stripe_secret_key: '',
     viva_merchant_id: '',
@@ -132,7 +133,7 @@ export const Integrations: React.FC = () => {
                     <input 
                       type="checkbox" 
                       className="sr-only peer" 
-                      checked={settings[intg.enabledKey]} 
+                      checked={!!settings[intg.enabledKey]} 
                       onChange={() => handleToggle(intg.enabledKey)}
                     />
                     <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#CBFF38]"></div>

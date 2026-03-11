@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState, cloneElement, ReactNode, ReactElement } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { SalesDiary } from '@/components/organisms/SalesDiary/SalesDiary';
 import { Analytics } from '@/pages/CRM/Analytics';
 import { fetchServices, fetchAvailability, fetchClinicProviders } from '@/store/slices/clinicSlice';
@@ -30,7 +31,7 @@ import { RootState } from '@/store';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
 import { GlobalCalendar } from '@/components/organisms/GlobalCalendar/GlobalCalendar';
 import { DataTable } from '../../../components/ui/DataTable';
-import { fetchAgentKpis, fetchServiceStats, fetchClinicAnalytics, ClinicAnalytics } from '../../../services/managerAnalytics.service';
+import { fetchAgentKpis, fetchServiceStats, fetchClinicAnalytics, ClinicAnalytics, fetchPerformanceDashboard } from '../../../services/managerAnalytics.service';
 import { Input } from '@/components/atoms/Input/Input';
 import { LeadsPage } from '../../CRM/Leads';
 import { userAPI } from '../../../services/api';
@@ -96,6 +97,7 @@ export const ManagerDashboard = () => {
   const [agentKpis, setAgentKpis] = useState<AgentKpi[]>([]);
   const [serviceStats, setServiceStats] = useState<ServiceStat[]>([]);
   const [clinicStats, setClinicStats] = useState<ClinicAnalytics[]>([]);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod] = useState('30');
@@ -132,14 +134,18 @@ export const ManagerDashboard = () => {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const [agents, services, clinics] = await Promise.all([
+        const [agents, services, clinics, performance] = await Promise.all([
           fetchAgentKpis(),
           fetchServiceStats(),
           fetchClinicAnalytics(),
+          fetchPerformanceDashboard()
         ]);
         setAgentKpis(agents);
         setServiceStats(services);
         setClinicStats(clinics);
+        if (performance && performance.dailyProgressChart) {
+          setRevenueData(performance.dailyProgressChart);
+        }
 
         // Handle deep-linking to an agent
         const paramAgentId = searchParams.get('agentId');
@@ -364,10 +370,10 @@ export const ManagerDashboard = () => {
                       <tbody>
                         {clinicServices.map((service, index) => (
                           <tr key={service.id || index} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                            <td className="p-4 align-middle font-medium">{service.name}</td>
-                            <td className="p-4 align-middle text-muted-foreground">{service.category || 'General'}</td>
-                            <td className="p-4 align-middle">{service.durationMinutes} min</td>
-                            <td className="p-4 align-middle text-right">${service.price}</td>
+                            <td className="p-4 align-middle font-medium">{(service.name?.trim() || service.treatment?.name || 'Unnamed Service')}</td>
+                            <td className="p-4 align-middle text-muted-foreground">{service.treatment?.category || service.category || 'General'}</td>
+                            <td className="p-4 align-middle">{service.durationMinutes || 0} min</td>
+                            <td className="p-4 align-middle text-right">{service.price !== undefined && service.price !== null ? formatCurrency(Number(service.price)) : '$0'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -627,10 +633,30 @@ export const ManagerDashboard = () => {
                 <CardTitle>Revenue Overview</CardTitle>
                 <CardDescription>Revenue trends over time</CardDescription>
               </CardHeader>
-              <CardContent className="h-[300px]">
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  Revenue chart will be displayed here
-                </div>
+              <CardContent className="h-[300px] w-full mt-4">
+                {revenueData && revenueData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={revenueData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => {
+                        const date = new Date(value);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                      }} />
+                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                      <Tooltip
+                        cursor={{ fill: 'transparent' }}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                        labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                      />
+                      <Bar dataKey="revenue" fill="#CBFF38" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    No revenue data available for this period.
+                  </div>
+                )}
               </CardContent>
             </Card>
             <Card className="col-span-3">
