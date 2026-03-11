@@ -26,6 +26,7 @@ export class BlogsService {
     async getPosts(query?: { search?: string }) {
         const qb = this.blogPostRepository.createQueryBuilder('post')
             .leftJoinAndSelect('post.category', 'category')
+            .leftJoinAndSelect('post.author', 'author')
             .orderBy('post.createdAt', 'DESC');
 
         if (query?.search) {
@@ -38,7 +39,35 @@ export class BlogsService {
     }
 
     async getPostById(id: string) {
-        const post = await this.blogPostRepository.findOne({ where: { id }, relations: ['category'] });
+        const post = await this.blogPostRepository.findOne({ where: { id }, relations: ['category', 'author'] });
+        if (!post) throw new NotFoundException('Post not found');
+        return post;
+    }
+
+    async getPublicPosts(query?: { search?: string; categoryId?: string }) {
+        const qb = this.blogPostRepository.createQueryBuilder('post')
+            .leftJoinAndSelect('post.category', 'category')
+            .leftJoinAndSelect('post.author', 'author')
+            .where('post.isPublished = :isPublished', { isPublished: true })
+            .orderBy('post.publishedAt', 'DESC');
+
+        if (query?.search) {
+            qb.andWhere('(post.title ILIKE :search OR category.name ILIKE :search)', {
+                search: `%${query.search}%`,
+            });
+        }
+        if (query?.categoryId) {
+            qb.andWhere('post.categoryId = :categoryId', { categoryId: query.categoryId });
+        }
+
+        return qb.getMany();
+    }
+
+    async getPublicPostBySlug(slug: string) {
+        const post = await this.blogPostRepository.findOne({
+            where: { slug, isPublished: true },
+            relations: ['category', 'author']
+        });
         if (!post) throw new NotFoundException('Post not found');
         return post;
     }

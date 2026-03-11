@@ -10,9 +10,15 @@ import { Clinic } from '../clinics/entities/clinic.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
+import { PaymentRecord, PaymentStatus, PaymentType } from '../payments/entities/payment-record.entity';
+import { Lead } from '../crm/entities/lead.entity';
+import { Treatment } from '../clinics/entities/treatment.entity';
+import { TreatmentCategory } from '../clinics/entities/treatment-category.entity';
+import { AuditLog } from '../audit/entities/audit-log.entity';
 import { ClinicsService } from '../clinics/clinics.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
+import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 @Injectable()
 export class AdminService {
@@ -31,14 +37,45 @@ export class AdminService {
     private clinicsRepository: Repository<Clinic>,
     @InjectRepository(Appointment)
     private appointmentsRepository: Repository<Appointment>,
+    @InjectRepository(PaymentRecord)
+    private paymentRecordsRepository: Repository<PaymentRecord>,
     @InjectRepository(LoyaltyLedger)
     private loyaltyRepository: Repository<LoyaltyLedger>,
     @InjectRepository(AgentClinicAccess)
     private agentClinicAccessRepository: Repository<AgentClinicAccess>,
+    @InjectRepository(Lead)
+    private leadsRepository: Repository<Lead>,
+    @InjectRepository(Treatment)
+    private treatmentsRepository: Repository<Treatment>,
+    @InjectRepository(TreatmentCategory)
+    private categoryRepository: Repository<TreatmentCategory>,
+    @InjectRepository(AuditLog)
+    private auditLogRepository: Repository<AuditLog>,
     private clinicsService: ClinicsService,
     private notificationsService: NotificationsService,
     private bookingsService: BookingsService,
   ) { }
+
+  private resolveDateRange(dateRange?: { startDate?: string; endDate?: string }) {
+    const now = new Date();
+    if (dateRange?.startDate && dateRange?.endDate) {
+      return { startDate: new Date(dateRange.startDate), endDate: new Date(dateRange.endDate) };
+    }
+
+    // Default to Month-To-Date (UTC-ish; stored as timestamptz)
+    const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));
+    const endDate = now;
+    return { startDate, endDate };
+  }
+
+  private paymentNetExpression(alias = 'p') {
+    // Net turnover: payments/deposits add, refunds/voids subtract
+    return `SUM(CASE
+      WHEN ${alias}.type IN ('${PaymentType.PAYMENT}', '${PaymentType.DEPOSIT}') THEN ${alias}.amount
+      WHEN ${alias}.type IN ('${PaymentType.REFUND}', '${PaymentType.VOID}') THEN -${alias}.amount
+      ELSE 0
+    END)`;
+  }
 
   async createTag(name: string, color?: string, description?: string): Promise<Tag> {
     const tag = this.tagsRepository.create({
@@ -80,27 +117,42 @@ export class AdminService {
   }
 
   async getSettings(): Promise<any> {
-    // Platform-wide settings would be stored in a separate entity
-    // For now, return mock settings
-    return {
+    const settings = await this.settingsRepository.find();
+    // Convert array of entities to a key-value object
+    const settingsMap: Record<string, any> = {};
+    settings.forEach(s => {
+      settingsMap[s.key] = s.value;
+    });
+
+    // Merge with defaults if not present
+    const defaults = {
       loyaltyPointsPerDollar: 1,
       pointsExpirationMonths: 12,
       appointmentReminderHours: 24,
-      businessHours: {
-        monday: { open: '09:00', close: '17:00', isOpen: true },
-        tuesday: { open: '09:00', close: '17:00', isOpen: true },
-        wednesday: { open: '09:00', close: '17:00', isOpen: true },
-        thursday: { open: '09:00', close: '17:00', isOpen: true },
-        friday: { open: '09:00', close: '17:00', isOpen: true },
-        saturday: { open: '10:00', close: '15:00', isOpen: true },
-        sunday: { open: '10:00', close: '15:00', isOpen: false },
-      },
+      meta_ingestion_enabled: true,
+      viva_stripe_mode: 'test',
+      hubspot_sync_enabled: false,
+      google_calendar_sync_enabled: false,
     };
+
+    return { ...defaults, ...settingsMap };
   }
 
-  async updateSettings(settings: any): Promise<any> {
-    // In a real implementation, this would update settings in the database
-    return settings;
+  async updateSettings(settings: Record<string, any>): Promise<any> {
+    for (const [key, value] of Object.entries(settings)) {
+      let setting = await this.settingsRepository.findOne({ where: { key } });
+      if (setting) {
+        setting.value = value;
+      } else {
+        setting = this.settingsRepository.create({
+          key,
+          value,
+          category: 'system'
+        });
+      }
+      await this.settingsRepository.save(setting);
+    }
+    return this.getSettings();
   }
 
   // User Management
@@ -182,6 +234,51 @@ export class AdminService {
     }
 
     return user;
+  }
+
+  // Treatment Category Management
+  async getCategories(): Promise<TreatmentCategory[]> {
+    return this.categoryRepository.find({ order: { name: 'ASC' } });
+  }
+
+  async createCategory(data: Partial<TreatmentCategory>): Promise<TreatmentCategory> {
+    const category = this.categoryRepository.create(data);
+    return this.categoryRepository.save(category);
+  }
+
+  async updateCategory(id: string, data: Partial<TreatmentCategory>): Promise<TreatmentCategory> {
+    await this.categoryRepository.update(id, data);
+    return this.categoryRepository.findOne({ where: { id } });
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    await this.categoryRepository.delete(id);
+  }
+
+  // Therapy (Treatment) Management
+  async getTreatments(query?: { search?: string; categoryId?: string }): Promise<Treatment[]> {
+    const qb = this.treatmentsRepository.createQueryBuilder('treatment')
+      .leftJoinAndSelect('treatment.categoryRef', 'categoryRef');
+
+    if (query?.search) {
+      qb.andWhere('treatment.name ILIKE :search', { search: `%${query.search}%` });
+    }
+
+    if (query?.categoryId) {
+      qb.andWhere('treatment.categoryId = :cid', { cid: query.categoryId });
+    }
+
+    return qb.orderBy('treatment.name', 'ASC').getMany();
+  }
+
+  async createTreatment(data: Partial<Treatment>): Promise<Treatment> {
+    const treatment = this.treatmentsRepository.create(data);
+    return this.treatmentsRepository.save(treatment);
+  }
+
+  async updateTreatment(id: string, data: Partial<Treatment>): Promise<Treatment> {
+    await this.treatmentsRepository.update(id, data);
+    return this.treatmentsRepository.findOne({ where: { id }, relations: ['categoryRef'] });
   }
 
   async updateUser(id: string, updateData: Partial<User> & { assignedClinicIds?: string[] }): Promise<User> {
@@ -316,6 +413,8 @@ export class AdminService {
 
   // Platform-wide Analytics
   async getPlatformAnalytics(dateRange?: { startDate: string; endDate: string }): Promise<any> {
+    const { startDate, endDate } = this.resolveDateRange(dateRange);
+
     // User statistics
     const userStats = await this.usersRepository
       .createQueryBuilder('user')
@@ -339,38 +438,223 @@ export class AdminService {
     // Appointment statistics
     let appointmentQuery = this.appointmentsRepository.createQueryBuilder('appointment');
 
-    if (dateRange?.startDate && dateRange?.endDate) {
-      appointmentQuery = appointmentQuery.where(
-        'appointment.startTime BETWEEN :startDate AND :endDate',
-        {
-          startDate: new Date(dateRange.startDate),
-          endDate: new Date(dateRange.endDate),
-        }
-      );
-    }
+    appointmentQuery = appointmentQuery.where('appointment.startTime BETWEEN :startDate AND :endDate', { startDate, endDate });
 
     const appointmentStats = await appointmentQuery
       .select([
         'COUNT(appointment.id) as totalAppointments',
-        'SUM(appointment.totalAmount) as totalRevenue',
-        'AVG(appointment.totalAmount) as avgAppointmentValue',
-        'COUNT(CASE WHEN appointment.status = \'completed\' THEN 1 END) as completedAppointments',
-        'COUNT(CASE WHEN appointment.status = \'cancelled\' THEN 1 END) as cancelledAppointments',
+        'COUNT(CASE WHEN appointment.status = :completed THEN 1 END) as completedAppointments',
+        'COUNT(CASE WHEN appointment.status = :cancelled THEN 1 END) as cancelledAppointments',
+        'COUNT(CASE WHEN appointment.status = :noShow THEN 1 END) as noShowAppointments',
+      ])
+      .setParameters({
+        completed: AppointmentStatus.COMPLETED,
+        cancelled: AppointmentStatus.CANCELLED,
+        noShow: AppointmentStatus.NO_SHOW,
+      })
+      .getRawOne();
+
+    // Turnover (payments-derived) in the same period
+    const turnoverRow = await this.paymentRecordsRepository
+      .createQueryBuilder('p')
+      .where('p.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .andWhere('p.status IN (:...statuses)', { statuses: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED, PaymentStatus.VOIDED] })
+      .select([
+        `${this.paymentNetExpression('p')} as netRevenue`,
+        'COUNT(p.id) as paymentCount',
       ])
       .getRawOne();
+
+    // Turnover MTD (€) vs target per salesperson
+    const salespersonTurnoverRows = await this.paymentRecordsRepository
+      .createQueryBuilder('p')
+      .leftJoin(User, 'u', 'u.id = p.salespersonId')
+      .where('p.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .andWhere('p.salespersonId IS NOT NULL')
+      .andWhere('p.status IN (:...statuses)', { statuses: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED, PaymentStatus.VOIDED] })
+      .select([
+        'p.salespersonId as salespersonId',
+        `COALESCE(u.firstName, '') as firstName`,
+        `COALESCE(u.lastName, '') as lastName`,
+        `COALESCE(u.monthlyTarget, 0) as monthlyTarget`,
+        `${this.paymentNetExpression('p')} as turnoverMTD`,
+      ])
+      .groupBy('p.salespersonId')
+      .addGroupBy('u.firstName')
+      .addGroupBy('u.lastName')
+      .addGroupBy('u.monthlyTarget')
+      .orderBy('turnoverMTD', 'DESC')
+      .getRawMany();
+
+    const turnoverMTDBySalesperson = salespersonTurnoverRows.map((r: any) => {
+      const turnover = Number(r.turnovermtd ?? r.turnoverMTD ?? 0);
+      const target = Number(r.monthlytarget ?? r.monthlyTarget ?? 0);
+      return {
+        salespersonId: r.salespersonId,
+        name: `${r.firstName || ''} ${r.lastName || ''}`.trim() || r.salespersonId,
+        turnoverMTD: turnover,
+        targetMonthly: target,
+        targetDelta: turnover - target,
+        targetAchievement: target > 0 ? turnover / target : null,
+      };
+    });
+
+    // Appointment funnel by status (booked/canceled/no-show/done/returned)
+    const funnelBookedStatuses = [
+      AppointmentStatus.PENDING,
+      AppointmentStatus.PENDING_PAYMENT,
+      AppointmentStatus.CONFIRMED,
+      AppointmentStatus.ARRIVED,
+      AppointmentStatus.IN_PROGRESS,
+    ];
+
+    const funnelRow = await this.appointmentsRepository
+      .createQueryBuilder('a')
+      .where('a.startTime BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .select([
+        `COUNT(CASE WHEN a.status IN (:...booked) THEN 1 END) as booked`,
+        `COUNT(CASE WHEN a.status = :cancelled THEN 1 END) as canceled`,
+        `COUNT(CASE WHEN a.status = :noShow THEN 1 END) as noShow`,
+        `COUNT(CASE WHEN a.status = :completed THEN 1 END) as done`,
+      ])
+      .setParameters({
+        booked: funnelBookedStatuses,
+        cancelled: AppointmentStatus.CANCELLED,
+        noShow: AppointmentStatus.NO_SHOW,
+        completed: AppointmentStatus.COMPLETED,
+      })
+      .getRawOne();
+
+    // Returned = appointments in range for clients who had any completed appointment before this period
+    const returnedRow = await this.appointmentsRepository
+      .createQueryBuilder('a')
+      .where('a.startTime BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .andWhere(
+        `EXISTS (
+          SELECT 1 FROM appointments prev
+          WHERE prev.clientId = a.clientId
+            AND prev.status = :completed
+            AND prev.startTime < :startDate
+        )`,
+      )
+      .setParameters({ completed: AppointmentStatus.COMPLETED, startDate })
+      .select(['COUNT(a.id) as returned'])
+      .getRawOne();
+
+    const appointmentFunnel = {
+      booked: parseInt(funnelRow?.booked, 10) || 0,
+      canceled: parseInt(funnelRow?.canceled, 10) || 0,
+      noShow: parseInt(funnelRow?.noShow, 10) || 0,
+      done: parseInt(funnelRow?.done, 10) || 0,
+      returned: parseInt(returnedRow?.returned, 10) || 0,
+    };
+
+    // Clinic-level performance (appointments + payments net)
+    const clinicAppointmentRows = await this.appointmentsRepository
+      .createQueryBuilder('a')
+      .leftJoin(Clinic, 'c', 'c.id = a.clinicId')
+      .where('a.startTime BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .select([
+        'a.clinicId as clinicId',
+        'COALESCE(c.name, \'\') as clinicName',
+        'COUNT(a.id) as appointments',
+        'COUNT(DISTINCT a.clientId) as uniqueClients',
+        `COUNT(CASE WHEN a.status = :completed THEN 1 END) as done`,
+        `COUNT(CASE WHEN a.status = :cancelled THEN 1 END) as canceled`,
+        `COUNT(CASE WHEN a.status = :noShow THEN 1 END) as noShow`,
+      ])
+      .setParameters({
+        completed: AppointmentStatus.COMPLETED,
+        cancelled: AppointmentStatus.CANCELLED,
+        noShow: AppointmentStatus.NO_SHOW,
+      })
+      .groupBy('a.clinicId')
+      .addGroupBy('c.name')
+      .getRawMany();
+
+    const clinicRevenueRows = await this.paymentRecordsRepository
+      .createQueryBuilder('p')
+      .where('p.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .andWhere('p.status IN (:...statuses)', { statuses: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED, PaymentStatus.VOIDED] })
+      .select(['p.clinicId as clinicId', `${this.paymentNetExpression('p')} as netRevenue`])
+      .groupBy('p.clinicId')
+      .getRawMany();
+
+    const clinicRevenueById = new Map<string, number>(
+      clinicRevenueRows.map((r: any) => [r.clinicId, Number(r.netrevenue ?? r.netRevenue ?? 0)]),
+    );
+
+    const clinicPerformance = clinicAppointmentRows
+      .map((r: any) => {
+        const appointments = parseInt(r.appointments, 10) || 0;
+        const canceled = parseInt(r.canceled, 10) || 0;
+        const noShow = parseInt(r.noShow, 10) || 0;
+        const done = parseInt(r.done, 10) || 0;
+        const netRevenue = clinicRevenueById.get(r.clinicId) ?? 0;
+        return {
+          clinicId: r.clinicId,
+          clinicName: r.clinicName,
+          appointments,
+          uniqueClients: parseInt(r.uniqueclients ?? r.uniqueClients, 10) || 0,
+          done,
+          canceled,
+          noShow,
+          netRevenue,
+          cancelRate: appointments > 0 ? canceled / appointments : 0,
+          noShowRate: appointments > 0 ? noShow / appointments : 0,
+          avgRevenuePerAppointment: appointments > 0 ? netRevenue / appointments : 0,
+        };
+      })
+      .sort((a: any, b: any) => b.netRevenue - a.netRevenue);
+
+    // Source attribution (Meta form name, ad name) derived by mapping client -> latest lead meta
+    // Link rule: Lead.metadata.convertedToCustomerId or mergedIntoCustomerId equals payment.clientId
+    const attributionRows = await this.paymentRecordsRepository
+      .createQueryBuilder('p')
+      .leftJoin(
+        (qb) =>
+          qb
+            .from(Lead, 'l')
+            .select([
+              `COALESCE(l.metadata->>'convertedToCustomerId', l.metadata->>'mergedIntoCustomerId') as customerId`,
+              'l.lastMetaFormName as metaFormName',
+              'l.facebookAdName as adName',
+              'l.updatedAt as updatedAt',
+            ])
+            .where(`(l.metadata ? 'convertedToCustomerId' OR l.metadata ? 'mergedIntoCustomerId')`)
+            // Postgres: pick the most recently updated lead per customerId
+            .distinctOn([`COALESCE(l.metadata->>'convertedToCustomerId', l.metadata->>'mergedIntoCustomerId')`])
+            .orderBy(`COALESCE(l.metadata->>'convertedToCustomerId', l.metadata->>'mergedIntoCustomerId')`, 'ASC')
+            .addOrderBy('l.updatedAt', 'DESC'),
+        'lm',
+        'lm.customerId = p.clientId',
+      )
+      .where('p.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .andWhere('p.status IN (:...statuses)', { statuses: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED, PaymentStatus.VOIDED] })
+      .select([
+        `COALESCE(lm.metaFormName, 'Unknown') as metaFormName`,
+        `COALESCE(lm.adName, 'Unknown') as adName`,
+        'COUNT(DISTINCT p.clientId) as uniqueClients',
+        'COUNT(p.id) as paymentCount',
+        `${this.paymentNetExpression('p')} as netRevenue`,
+      ])
+      .groupBy('metaFormName')
+      .addGroupBy('adName')
+      .orderBy('netRevenue', 'DESC')
+      .getRawMany();
+
+    const sourceAttribution = attributionRows.map((r: any) => ({
+      metaFormName: r.metaformname ?? r.metaFormName,
+      adName: r.adname ?? r.adName,
+      uniqueClients: parseInt(r.uniqueclients ?? r.uniqueClients, 10) || 0,
+      paymentCount: parseInt(r.paymentcount ?? r.paymentCount, 10) || 0,
+      netRevenue: Number(r.netrevenue ?? r.netRevenue ?? 0),
+    }));
 
     // Loyalty statistics
     let loyaltyQuery = this.loyaltyRepository.createQueryBuilder('loyalty');
 
-    if (dateRange?.startDate && dateRange?.endDate) {
-      loyaltyQuery = loyaltyQuery.where(
-        'loyalty.createdAt BETWEEN :startDate AND :endDate',
-        {
-          startDate: new Date(dateRange.startDate),
-          endDate: new Date(dateRange.endDate),
-        }
-      );
-    }
+    loyaltyQuery = loyaltyQuery.where('loyalty.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate });
 
     const loyaltyStats = await loyaltyQuery
       .select([
@@ -381,7 +665,7 @@ export class AdminService {
       .getRawOne();
 
     return {
-      period: dateRange,
+      period: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
       users: {
         total: parseInt(userStats.totalUsers) || 0,
         clients: parseInt(userStats.totalClients) || 0,
@@ -396,11 +680,16 @@ export class AdminService {
         total: parseInt(appointmentStats.totalAppointments) || 0,
         completed: parseInt(appointmentStats.completedAppointments) || 0,
         cancelled: parseInt(appointmentStats.cancelledAppointments) || 0,
+        noShow: parseInt(appointmentStats.noShowAppointments) || 0,
       },
       revenue: {
-        total: parseFloat(appointmentStats.totalRevenue) || 0,
-        avgPerAppointment: parseFloat(appointmentStats.avgAppointmentValue) || 0,
+        total: Number(turnoverRow?.netrevenue ?? turnoverRow?.netRevenue ?? 0),
+        paymentCount: parseInt(turnoverRow?.paymentcount ?? turnoverRow?.paymentCount, 10) || 0,
       },
+      turnoverMTDBySalesperson,
+      appointmentFunnel,
+      clinicPerformance,
+      sourceAttribution,
       loyalty: {
         totalPointsIssued: parseInt(loyaltyStats.totalPointsIssued) || 0,
         clientsWithPoints: parseInt(loyaltyStats.clientsWithPoints) || 0,
@@ -543,11 +832,24 @@ export class AdminService {
   }
 
   async getAllSettings(category?: string): Promise<PlatformSettings[]> {
-    const query: any = {};
+    const where: any = {};
     if (category) {
-      query.category = category;
+      where.category = category;
     }
-    return this.settingsRepository.find({ where: query });
+    return this.settingsRepository.find({ where });
+  }
+
+  async getIntegrationLogs(): Promise<AuditLog[]> {
+    // Fetch integration-related logs using QueryBuilder for better reliability
+    return this.auditLogRepository.createQueryBuilder('audit')
+      .where('audit.action LIKE :action1 OR audit.action LIKE :action2 OR audit.action LIKE :action3', {
+        action1: '%INGESTION%',
+        action2: '%SYNC%',
+        action3: '%INTEGRATION%'
+      })
+      .orderBy('audit.createdAt', 'DESC')
+      .limit(100)
+      .getMany();
   }
   async getLoyalty(): Promise<any> {
     // Return loyalty tiers configuration

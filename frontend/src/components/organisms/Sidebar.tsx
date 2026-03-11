@@ -94,7 +94,9 @@ const managerLinks: SidebarItem[] = [
   { path: "/admin/blog", label: "Blog & Content", icon: <FileText className="w-5 h-5" />, group: "Content & Approvals" },
 
   { path: "/admin/integrations", label: "Integrations", icon: <Settings className="w-5 h-5" />, group: "System" },
-  { path: "/admin/manager-crm/clinic-stats", label: "Audit Logs", icon: <Shield className="w-5 h-5" />, group: "System" },
+  { path: "/admin/system-lists", label: "System-wide Lists", icon: <ListChecks className="w-5 h-5" />, group: "System" },
+  { path: "/admin/notification-settings", label: "Notification Templates", icon: <Bell className="w-5 h-5" />, group: "System" },
+  { path: "/admin/audit-logs", label: "Audit Logs", icon: <Shield className="w-5 h-5" />, group: "System" },
   { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "System" },
 ];
 
@@ -110,6 +112,9 @@ const getAdminLinks = (role: string): SidebarItem[] => {
     { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Main" },
     { path: "/admin/reviews", label: "Review Moderation", icon: <Eye className="w-5 h-5" />, group: "Approvals" },
     { path: "/admin/treatments", label: "Therapy Catalog", icon: <ListChecks className="w-5 h-5" />, group: "Approvals" },
+    { path: "/admin/notification-settings", label: "Notification Settings", icon: <Bell className="w-5 h-5" />, group: "System" },
+    { path: "/admin/system-lists", label: "System Lists", icon: <ListChecks className="w-5 h-5" />, group: "System" },
+    { path: "/admin/audit-logs", label: "Audit Logs", icon: <Shield className="w-5 h-5" />, group: "System" },
     { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "System" },
   ];
 };

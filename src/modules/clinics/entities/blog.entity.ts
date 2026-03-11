@@ -9,6 +9,7 @@ import {
     JoinColumn,
     Index,
 } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('blog_categories')
 export class BlogCategory {
@@ -46,11 +47,21 @@ export class BlogPost {
     @Column({ nullable: true })
     imageUrl: string;
 
-    @Column({ default: true })
+    @Column({ default: false })
     isPublished: boolean;
 
     @Column({ nullable: true })
+    scheduledAt: Date;
+
+    @Column({ nullable: true })
     categoryId: string;
+
+    @Column({ nullable: true })
+    authorId: string;
+
+    @ManyToOne(() => User)
+    @JoinColumn({ name: 'authorId' })
+    author: User;
 
     @ManyToOne(() => BlogCategory, (category) => category.posts)
     @JoinColumn({ name: 'categoryId' })

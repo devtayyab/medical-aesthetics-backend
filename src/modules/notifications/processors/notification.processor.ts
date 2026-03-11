@@ -5,8 +5,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from '../entities/notification.entity';
 import { FirebaseService } from '../services/firebase.service';
-import { SmsService } from '../services/sms.service';
-import { ViberService } from '../services/viber.service';
 import { NotificationType } from '../../../common/enums/notification-type.enum';
 
 @Processor('notifications')
@@ -17,8 +15,6 @@ export class NotificationProcessor {
     @InjectRepository(Notification)
     private notificationsRepository: Repository<Notification>,
     private firebaseService: FirebaseService,
-    private smsService: SmsService,
-    private viberService: ViberService,
   ) {}
 
   @Process('send-notification')
@@ -48,24 +44,6 @@ export class NotificationProcessor {
               notification.title,
               notification.message,
               notification.data,
-            );
-          }
-          break;
-
-        case NotificationType.SMS:
-          if (notification.recipient.phone) {
-            externalId = await this.smsService.sendSms(
-              notification.recipient.phone,
-              notification.message,
-            );
-          }
-          break;
-
-        case NotificationType.VIBER:
-          if (notification.recipient.phone) {
-            externalId = await this.viberService.sendViberMessage(
-              notification.recipient.phone,
-              notification.message,
             );
           }
           break;

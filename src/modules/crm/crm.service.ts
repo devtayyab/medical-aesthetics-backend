@@ -356,7 +356,12 @@ export class CrmService implements OnModuleInit {
           }
         } catch (error) {
           console.error(`Error processing Facebook lead ${leadgenId}:`, error);
-          // Continue processing other leads even if one fails
+          this.eventEmitter.emit('audit.log', {
+            action: 'META_INGESTION_ERROR',
+            resource: 'leads',
+            resourceId: leadgenId,
+            data: { error: error.message, leadgen_id: leadgenId },
+          });
         }
       }
     }
@@ -2748,7 +2753,7 @@ export class CrmService implements OnModuleInit {
       .select('log.salespersonId', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COUNT(log.id)', 'totalContacts')
-      .addSelect("COUNT(CASE WHEN log.type = 'call' AND (log.metadata->>'callOutcome') <> 'no_answer' THEN 1 END)", 'realCommunications')
+      .addSelect("COUNT(CASE WHEN log.type = 'call' AND (log.status NOT IN ('missed', 'no_answer', 'voicemail') OR (log.metadata->>'callOutcome') = 'answered') THEN 1 END)", 'realCommunications')
       .where('log.salespersonId IS NOT NULL');
 
     if (dateRange) {
@@ -2769,22 +2774,21 @@ export class CrmService implements OnModuleInit {
   async getAgentAppointmentStats(dateRange?: { startDate: Date; endDate: Date }) {
     let query = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .innerJoin('customer_records', 'cr', 'cr.customerId = apt.clientId')
-      .leftJoin('users', 'agent', 'agent.id = cr.assignedSalespersonId')
-      .select('cr.assignedSalespersonId', 'agentId')
+      .leftJoin('users', 'agent', 'agent.id = apt.bookedById')
+      .select('apt.bookedById', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COUNT(apt.id)', 'booked')
       .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'attended')
-      .addSelect("COUNT(CASE WHEN apt.status = 'completed' AND apt.treatmentDetails IS NOT NULL THEN 1 END)", 'treatmentsCompleted')
+      .addSelect("COUNT(CASE WHEN apt.status = 'completed' AND (apt.treatmentDetails IS NOT NULL OR apt.serviceExecuted = true) THEN 1 END)", 'treatmentsCompleted')
       .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
       .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShows')
-      .where('cr.assignedSalespersonId IS NOT NULL');
+      .where('apt.bookedById IS NOT NULL');
 
     if (dateRange) {
       query = query.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
     }
 
-    query = query.groupBy('cr.assignedSalespersonId, agent.firstName, agent.lastName');
+    query = query.groupBy('apt.bookedById, agent.firstName, agent.lastName');
 
     const results = await query.getRawMany();
     return results.map(row => ({
@@ -2801,19 +2805,18 @@ export class CrmService implements OnModuleInit {
   async getAgentCashflow(dateRange?: { startDate: Date; endDate: Date }) {
     let query = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .innerJoin('customer_records', 'cr', 'cr.customerId = apt.clientId')
-      .leftJoin('users', 'agent', 'agent.id = cr.assignedSalespersonId')
-      .select('cr.assignedSalespersonId', 'agentId')
+      .leftJoin('users', 'agent', 'agent.id = apt.bookedById')
+      .select('apt.bookedById', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'revenue')
       .addSelect('COALESCE(SUM(CASE WHEN apt.status = \'cancelled\' AND apt.totalAmount > 0 THEN apt.totalAmount ELSE 0 END), 0)', 'refunds')
-      .where('cr.assignedSalespersonId IS NOT NULL');
+      .where('apt.bookedById IS NOT NULL');
 
     if (dateRange) {
       query = query.andWhere('apt.startTime BETWEEN :startDate AND :endDate', dateRange);
     }
 
-    query = query.groupBy('cr.assignedSalespersonId, agent.firstName, agent.lastName');
+    query = query.groupBy('apt.bookedById, agent.firstName, agent.lastName');
 
     const results = await query.getRawMany();
     return results.map(row => ({
@@ -3531,4 +3534,7 @@ export class CrmService implements OnModuleInit {
     }
     return { message: 'Mock data seeded successfully', ...results };
   }
+
+
+
 }

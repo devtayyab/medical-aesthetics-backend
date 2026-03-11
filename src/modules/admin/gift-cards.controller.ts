@@ -5,7 +5,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
-import { Request } from 'express';
 
 @ApiTags('Admin Gift Cards')
 @Controller('admin/gift-cards')
@@ -39,5 +38,12 @@ export class GiftCardsController {
             ...body,
             expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined
         });
+    }
+
+    @Post('redeem')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+    @ApiOperation({ summary: 'Redeem a gift card manually at proxy checkout' })
+    redeemGiftCard(@Body() body: { code: string; amount: number }, @Req() req: any) {
+        return this.giftCardsService.redeemGiftCard(body.code, body.amount, req.user?.id);
     }
 }

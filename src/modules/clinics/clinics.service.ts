@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   CreateClinicProfileDto,
   UpdateClinicProfileDto,
@@ -41,7 +42,8 @@ export class ClinicsService {
     private appointmentsRepository: Repository<Appointment>,
     @InjectRepository(AgentClinicAccess)
     private agentAccessRepository: Repository<AgentClinicAccess>,
-  ) { }
+    private eventEmitter: EventEmitter2,
+  ) {}
 
   async search(params: {
     location?: string;
@@ -622,6 +624,13 @@ export class ClinicsService {
       throw new NotFoundException('Service not found');
     }
 
+    const before = {
+      price: Number(service.price ?? 0),
+      durationMinutes: service.durationMinutes,
+      name: service.treatment?.name,
+      isActive: service.isActive,
+    };
+
     if (updateData.price !== undefined) service.price = updateData.price;
     if (updateData.durationMinutes !== undefined) service.durationMinutes = updateData.durationMinutes;
     if (updateData.treatmentId !== undefined) service.treatmentId = updateData.treatmentId;
@@ -646,7 +655,26 @@ export class ClinicsService {
       this.validateServiceForPublishing(service);
     }
 
-    return this.servicesRepository.save(service);
+    const saved = await this.servicesRepository.save(service);
+    const after = {
+      price: Number(saved.price ?? 0),
+      durationMinutes: saved.durationMinutes,
+      name: saved.treatment?.name,
+      isActive: saved.isActive,
+    };
+
+    if (before.price !== after.price || before.durationMinutes !== after.durationMinutes || before.name !== after.name || before.isActive !== after.isActive) {
+      this.eventEmitter.emit('audit.log', {
+        userId: ownerId,
+        action: 'SERVICE_EDIT',
+        resource: 'services',
+        resourceId: serviceId,
+        changes: { before, after },
+        data: { clinicId: clinic.id, serviceName: after.name },
+      });
+    }
+
+    return saved;
   }
 
   async toggleServiceStatus(ownerId: string, role: string, serviceId: string, clinicId?: string): Promise<Service> {

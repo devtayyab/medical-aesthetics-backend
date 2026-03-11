@@ -135,13 +135,13 @@ export class BookingsController {
     if (timeDiff < 24 * 60 * 60 * 1000 && req.user.role === 'client') {
       throw new BadRequestException('Cannot cancel within 24 hours of appointment');
     }
-    return this.bookingsService.updateStatus(id, AppointmentStatus.CANCELLED);
+    return this.bookingsService.updateStatus(id, AppointmentStatus.CANCELLED, undefined, req.user?.id);
   }
 
   @Patch('appointments/:id/complete')
   @ApiOperation({ summary: 'Mark appointment as completed' })
-  complete(@Param('id') id: string, @Body() data: any) {
-    return this.bookingsService.updateStatus(id, AppointmentStatus.COMPLETED, data);
+  complete(@Param('id') id: string, @Body() data: any, @Request() req) {
+    return this.bookingsService.updateStatus(id, AppointmentStatus.COMPLETED, data, req.user?.id);
   }
 
   @Patch('appointments/:id/status')

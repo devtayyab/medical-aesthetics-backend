@@ -8,6 +8,8 @@ import { NotificationType } from '../../common/enums/notification-type.enum';
 import { UsersService } from '../users/users.service';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { NotificationsGateway } from './gateways/notifications.gateway';
+import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
+import { NotificationTemplate } from './entities/notification-template.entity';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
@@ -16,6 +18,8 @@ export class NotificationsService implements OnModuleInit {
   constructor(
     @InjectRepository(Notification)
     private notificationsRepository: Repository<Notification>,
+    @InjectRepository(NotificationTemplate)
+    private templateRepository: Repository<NotificationTemplate>,
     @InjectQueue('notifications')
     private notificationsQueue: Queue,
     private usersService: UsersService,
@@ -57,7 +61,7 @@ export class NotificationsService implements OnModuleInit {
       });
     }
 
-    // Queue for processing (push, SMS, etc.)
+    // Queue for processing (push, email, etc.)
     await this.notificationsQueue.add('send-notification', {
       notificationId: savedNotification.id,
     });
@@ -279,5 +283,89 @@ export class NotificationsService implements OnModuleInit {
     );
 
     return { push, email };
+  }
+
+  // Template Management
+  async getTemplates() {
+    return this.templateRepository.find({ order: { trigger: 'ASC', type: 'ASC' } });
+  }
+
+  async createTemplate(data: any) {
+    const template = this.templateRepository.create(data);
+    return this.templateRepository.save(template);
+  }
+
+  async updateTemplate(id: string, data: any) {
+    await this.templateRepository.update(id, data);
+    return this.templateRepository.findOne({ where: { id } });
+  }
+
+  async sendTriggeredNotification(
+    trigger: NotificationTrigger,
+    recipientId: string,
+    context: any,
+  ): Promise<Notification[]> {
+    const templates = await this.templateRepository.find({
+      where: { trigger, isActive: true },
+    });
+
+    const notifications: Notification[] = [];
+
+    for (const template of templates) {
+      const title = this.replacePlaceholders(template.subject, context);
+      const message = this.replacePlaceholders(template.content, context);
+
+      const notification = await this.create(
+        recipientId,
+        template.type,
+        title,
+        message,
+        { ...context, trigger },
+      );
+      notifications.push(notification);
+    }
+
+    return notifications;
+  }
+
+  private replacePlaceholders(text: string, context: any): string {
+    return text.replace(/\{\{(.*?)\}\}/g, (match, key) => {
+      const value = key.split('.').reduce((obj, k) => obj?.[k.trim()], context);
+      return value !== undefined ? value : match;
+    });
+  }
+
+  async seedDefaultTemplates() {
+    const defaults = [
+      {
+        trigger: NotificationTrigger.APPOINTMENT_BOOKED,
+        type: NotificationType.EMAIL,
+        subject: 'Appointment Booked: {{serviceName}}',
+        content: 'Hi {{customerName}},\n\nYour appointment for {{serviceName}} has been booked for {{appointmentDate}} at {{appointmentTime}} at {{clinicName}}.\n\nThank you!',
+      },
+      {
+        trigger: NotificationTrigger.APPOINTMENT_CONFIRMED,
+        type: NotificationType.PUSH,
+        subject: 'Appointment Confirmed!',
+        content: 'Your {{serviceName}} at {{clinicName}} is confirmed for {{appointmentDate}} at {{appointmentTime}}.',
+      },
+      {
+        trigger: NotificationTrigger.TASK_REMINDER,
+        type: NotificationType.PUSH,
+        subject: 'Task Reminder',
+        content: 'Reminder: Task "{{taskTitle}}" is due on {{dueDate}}.',
+      },
+      // Add more as per user request
+    ];
+
+    for (const data of defaults) {
+      const existing = await this.templateRepository.findOne({
+        where: { trigger: data.trigger, type: data.type },
+      });
+
+      if (!existing) {
+        await this.templateRepository.save(this.templateRepository.create(data));
+      }
+    }
   }
 }

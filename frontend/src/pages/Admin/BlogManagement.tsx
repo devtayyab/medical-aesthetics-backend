@@ -7,13 +7,14 @@ import {
     createBlogCategory,
     createBlogPost,
     toggleBlogPostStatus,
-    deleteBlogPost
+    deleteBlogPost,
+    fetchUsers
 } from '@/store/slices/adminSlice';
 import type { AppDispatch, RootState } from '@/store';
 
 export const BlogManagement: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-    const { blogCategories, blogPosts, isLoading } = useSelector((state: RootState) => state.admin);
+    const { blogCategories, blogPosts, users, isLoading } = useSelector((state: RootState) => state.admin);
     const [searchTerm, setSearchTerm] = useState('');
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showPostModal, setShowPostModal] = useState(false);
@@ -21,13 +22,26 @@ export const BlogManagement: React.FC = () => {
     // Forms state
     const [catName, setCatName] = useState('');
     const [postTitle, setPostTitle] = useState('');
+    const [postSlug, setPostSlug] = useState('');
     const [postContent, setPostContent] = useState('');
     const [postCategory, setPostCategory] = useState('');
+    const [postImageUrl, setPostImageUrl] = useState('');
+    const [postAuthorId, setPostAuthorId] = useState('');
+    const [postScheduledAt, setPostScheduledAt] = useState('');
+
+    useEffect(() => {
+        if (postTitle && !postSlug) {
+            setPostSlug(postTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+        }
+    }, [postTitle]);
 
     useEffect(() => {
         dispatch(fetchBlogCategories());
         dispatch(fetchBlogPosts(''));
-    }, [dispatch]);
+        if (!users || users.length === 0) {
+            dispatch(fetchUsers());
+        }
+    }, [dispatch, users?.length]);
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -45,19 +59,26 @@ export const BlogManagement: React.FC = () => {
 
     const handleSavePost = () => {
         if (!postTitle.trim() || !postContent.trim() || !postCategory) return;
-        const slug = postTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const finalSlug = postSlug.trim() || postTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
         dispatch(createBlogPost({
             title: postTitle,
-            slug,
+            slug: finalSlug,
             content: postContent,
             categoryId: postCategory,
+            imageUrl: postImageUrl,
+            authorId: postAuthorId,
+            scheduledAt: postScheduledAt || null,
             isPublished: false
         }));
 
         setPostTitle('');
+        setPostSlug('');
         setPostContent('');
         setPostCategory('');
+        setPostImageUrl('');
+        setPostAuthorId('');
+        setPostScheduledAt('');
         setShowPostModal(false);
     };
 
@@ -212,7 +233,7 @@ export const BlogManagement: React.FC = () => {
             {/* Post Modal */}
             {showPostModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6">
+                    <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
                         <h3 className="text-lg font-bold text-gray-900 mb-4">New Article</h3>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
@@ -226,6 +247,19 @@ export const BlogManagement: React.FC = () => {
                                 />
                             </div>
                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Slug URL</label>
+                                <input
+                                    type="text"
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                                    placeholder="your-custom-slug"
+                                    value={postSlug}
+                                    onChange={(e) => setPostSlug(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                                 <select
                                     className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
@@ -237,22 +271,55 @@ export const BlogManagement: React.FC = () => {
                                     ) : (
                                         <>
                                             <option value="">Select a category</option>
-                                            {blogCategories.map(c => (
+                                            {blogCategories.map((c: any) => (
                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                             ))}
                                         </>
                                     )}
                                 </select>
-                                {(!blogCategories || blogCategories.length === 0) && (
-                                    <p className="text-xs text-red-500 mt-1">Please close this modal and click "New Category" first.</p>
-                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
+                                <select
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={postAuthorId}
+                                    onChange={(e) => setPostAuthorId(e.target.value)}
+                                >
+                                    <option value="">Select an Author</option>
+                                    {users?.map((u: any) => (
+                                        <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image URL</label>
+                                <input
+                                    type="url"
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="https://example.com/image.jpg"
+                                    value={postImageUrl}
+                                    onChange={(e) => setPostImageUrl(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Schedule Publication (Optional)</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={postScheduledAt}
+                                    onChange={(e) => setPostScheduledAt(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Content (Markdown / HTML)</label>
                             <textarea
                                 rows={8}
-                                className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                                className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm leading-relaxed"
                                 placeholder="Write the content here..."
                                 value={postContent}
                                 onChange={(e) => setPostContent(e.target.value)}
@@ -260,7 +327,7 @@ export const BlogManagement: React.FC = () => {
                         </div>
                         <div className="flex justify-end gap-3 mt-6">
                             <button onClick={() => setShowPostModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-                            <button onClick={handleSavePost} className="px-4 py-2 bg-[#CBFF38] text-[#0B1120] font-bold rounded-lg hover:bg-[#A3D900] transition-colors">Save as Draft</button>
+                            <button onClick={handleSavePost} disabled={!postTitle || !postCategory || !postContent} className="px-4 py-2 bg-[#CBFF38] text-[#0B1120] font-bold rounded-lg hover:bg-[#A3D900] transition-colors disabled:opacity-50">Save as Draft</button>
                         </div>
                     </div>
                 </div>

@@ -17,10 +17,14 @@ import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { CustomerRecord } from '../crm/entities/customer-record.entity';
 import { Lead } from '../crm/entities/lead.entity';
 import { forwardRef, Inject } from '@nestjs/common';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { VivaWalletService } from '../payments/viva-wallet.service';
+import { FinancialService } from '../payments/financial.service';
+import { PaymentMethod as RecordPaymentMethod, PaymentType } from '../payments/entities/payment-record.entity';
 
 @Injectable()
 export class BookingsService {
@@ -46,6 +50,8 @@ export class BookingsService {
     private crmService: CrmService,
     private eventEmitter: EventEmitter2,
     private vivaWalletService: VivaWalletService,
+    private financialService: FinancialService,
+    private notificationsService: NotificationsService,
   ) { }
 
   async holdSlot(holdSlotDto: HoldSlotDto): Promise<AppointmentHold> {
@@ -300,6 +306,17 @@ export class BookingsService {
     // Load full relations before emitting event for notifications
     const appointmentWithRelations = await this.findById(savedAppointment.id);
 
+    // Trigger Notification for Booked
+    if (appointmentWithRelations.clientId) {
+      await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_BOOKED, appointmentWithRelations.clientId, {
+        customerName: `${appointmentWithRelations.client?.firstName || 'Customer'}`,
+        serviceName: appointmentWithRelations.service?.treatment?.name || 'Treatment',
+        appointmentDate: appointmentWithRelations.startTime.toLocaleDateString(),
+        appointmentTime: appointmentWithRelations.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        clinicName: appointmentWithRelations.clinic?.name,
+      });
+    }
+
     // If card payment, generate Viva Wallet redirect URL
     if (createAppointmentDto.paymentMethod === 'card') {
       const clientName = appointmentWithRelations.client
@@ -401,8 +418,9 @@ export class BookingsService {
     });
   }
 
-  async updateStatus(id: string, status: AppointmentStatus, data?: any): Promise<Appointment> {
+  async updateStatus(id: string, status: AppointmentStatus, data?: any, userId?: string): Promise<Appointment> {
     const appointment = await this.findById(id);
+    const oldStatus = appointment.status;
 
     const updateData: any = { status };
 
@@ -426,12 +444,40 @@ export class BookingsService {
 
     const updatedAppointment = await this.findById(id);
 
+    // Trigger Notification
+    let trigger: NotificationTrigger;
+    if (status === AppointmentStatus.CONFIRMED) trigger = NotificationTrigger.APPOINTMENT_CONFIRMED;
+    else if (status === AppointmentStatus.CANCELLED) trigger = NotificationTrigger.APPOINTMENT_CANCELED;
+    else if (status === AppointmentStatus.COMPLETED) trigger = NotificationTrigger.EXECUTION_NOTIFICATION;
+
+    if (trigger && updatedAppointment.clientId) {
+      await this.notificationsService.sendTriggeredNotification(trigger, updatedAppointment.clientId, {
+        customerName: `${updatedAppointment.client?.firstName || 'Customer'}`,
+        serviceName: updatedAppointment.service?.treatment?.name || 'Treatment',
+        appointmentDate: updatedAppointment.startTime.toLocaleDateString(),
+        appointmentTime: updatedAppointment.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        clinicName: updatedAppointment.clinic?.name,
+      });
+    }
+
     // Emit events for different status changes
     this.eventEmitter.emit('appointment.status.changed', {
       appointment: updatedAppointment,
-      oldStatus: appointment.status,
+      oldStatus: oldStatus,
       newStatus: status,
     });
+
+    // Audit log for status changes (Done/Canceled/No-show)
+    if (['completed', 'cancelled', 'no_show'].includes(status)) {
+      this.eventEmitter.emit('audit.log', {
+        userId,
+        action: 'APPOINTMENT_STATUS_CHANGE',
+        resource: 'appointments',
+        resourceId: id,
+        changes: { before: { status: oldStatus }, after: { status } },
+        data: { appointmentId: id, clientId: appointment.clientId, clinicId: appointment.clinicId },
+      });
+    }
 
     return updatedAppointment;
   }
@@ -443,6 +489,18 @@ export class BookingsService {
     });
 
     const appointment = await this.findById(id);
+
+    // Trigger Notification
+    if (appointment.clientId) {
+      await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_RESCHEDULED, appointment.clientId, {
+        customerName: `${appointment.client?.firstName || 'Customer'}`,
+        serviceName: appointment.service?.treatment?.name || 'Treatment',
+        appointmentDate: appointment.startTime.toLocaleDateString(),
+        appointmentTime: appointment.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        clinicName: appointment.clinic?.name,
+      });
+    }
+
     this.eventEmitter.emit('appointment.rescheduled', appointment);
 
     return appointment;
@@ -690,7 +748,39 @@ export class BookingsService {
       appointment.noShowMarkedAt = new Date();
     }
 
-    return this.appointmentsRepository.save(appointment);
+    const oldStatus = appointment.status;
+    const saved = await this.appointmentsRepository.save(appointment);
+    const updated = await this.findById(saved.id);
+
+    // Audit log for status changes (Done/Canceled/No-show)
+    if (['completed', 'cancelled', 'no_show'].includes(status)) {
+      this.eventEmitter.emit('audit.log', {
+        userId,
+        action: 'APPOINTMENT_STATUS_CHANGE',
+        resource: 'appointments',
+        resourceId: appointmentId,
+        changes: { before: { status: oldStatus }, after: { status } },
+        data: { appointmentId, clientId: appointment.clientId, clinicId: appointment.clinicId },
+      });
+    }
+
+    // Trigger Notification
+    let trigger: NotificationTrigger;
+    if (status === AppointmentStatus.CONFIRMED) trigger = NotificationTrigger.APPOINTMENT_CONFIRMED;
+    else if (status === AppointmentStatus.CANCELLED) trigger = NotificationTrigger.APPOINTMENT_CANCELED;
+    else if (status === AppointmentStatus.COMPLETED) trigger = NotificationTrigger.EXECUTION_NOTIFICATION;
+
+    if (trigger && updated.clientId) {
+      await this.notificationsService.sendTriggeredNotification(trigger, updated.clientId, {
+        customerName: `${updated.client?.firstName || 'Customer'}`,
+        serviceName: updated.service?.treatment?.name || 'Treatment',
+        appointmentDate: updated.startTime.toLocaleDateString(),
+        appointmentTime: updated.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        clinicName: updated.clinic?.name,
+      });
+    }
+
+    return updated;
   }
 
   async completeAppointmentWithPayment(
@@ -710,6 +800,8 @@ export class BookingsService {
   ): Promise<Appointment> {
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
     const oldStatus = appointment.status;
+    const oldTotal = Number(appointment.totalAmount ?? 0);
+    const oldAdvance = Number(appointment.advancePaymentAmount ?? 0);
 
     appointment.status = AppointmentStatus.COMPLETED;
     appointment.completedAt = new Date();
@@ -730,6 +822,19 @@ export class BookingsService {
         appointment.totalAmount = paymentData.amount;
       }
       appointment.notes = paymentData.notes || appointment.notes;
+
+      // Record in PaymentRecord
+      await this.financialService.recordPayment({
+        appointmentId: appointment.id,
+        clinicId: appointment.clinicId,
+        clientId: appointment.clientId,
+        providerId: appointment.providerId,
+        amount: paymentData.amount,
+        method: paymentData.paymentMethod as any, // assuming compatible
+        type: paymentData.isAdvancePayment ? PaymentType.DEPOSIT : PaymentType.PAYMENT,
+        notes: paymentData.notes,
+        recordedById: userId,
+      });
     }
 
     // Handle completion report
@@ -757,6 +862,22 @@ export class BookingsService {
 
     const savedAppointment = await this.appointmentsRepository.save(appointment);
 
+    const newTotal = Number(savedAppointment.totalAmount ?? 0);
+    const newAdvance = Number(savedAppointment.advancePaymentAmount ?? 0);
+
+    // Audit log: appointment completed + payment amount
+    this.eventEmitter.emit('audit.log', {
+      userId,
+      action: 'APPOINTMENT_COMPLETE_WITH_PAYMENT',
+      resource: 'appointments',
+      resourceId: appointmentId,
+      changes: {
+        before: { status: oldStatus, totalAmount: oldTotal, advancePaymentAmount: oldAdvance },
+        after: { status: AppointmentStatus.COMPLETED, totalAmount: newTotal, advancePaymentAmount: newAdvance },
+      },
+      data: { appointmentId, clientId: appointment.clientId, clinicId: appointment.clinicId, paymentMethod: savedAppointment.paymentMethod },
+    });
+
     // Emit event for notifications and loyalty
     this.eventEmitter.emit('appointment.status.changed', {
       appointment: savedAppointment,
@@ -773,6 +894,8 @@ export class BookingsService {
     paymentData: RecordPaymentDto,
   ): Promise<Appointment> {
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, 'admin');
+    const beforeAdvance = Number(appointment.advancePaymentAmount ?? 0);
+    const beforeTotal = Number(appointment.totalAmount ?? 0);
 
     if (paymentData.isAdvancePayment) {
       appointment.advancePaymentAmount = paymentData.amount;
@@ -784,6 +907,34 @@ export class BookingsService {
     appointment.notes = paymentData.notes || appointment.notes;
 
     const savedAppointment = await this.appointmentsRepository.save(appointment);
+
+    this.eventEmitter.emit('audit.log', {
+      userId,
+      action: 'APPOINTMENT_PAYMENT_RECORD',
+      resource: 'appointments',
+      resourceId: appointmentId,
+      changes: {
+        before: { advancePaymentAmount: beforeAdvance, totalAmount: beforeTotal },
+        after: {
+          advancePaymentAmount: Number(savedAppointment.advancePaymentAmount ?? 0),
+          totalAmount: Number(savedAppointment.totalAmount ?? 0),
+        },
+      },
+      data: { appointmentId, amount: paymentData.amount, method: paymentData.paymentMethod, isAdvance: paymentData.isAdvancePayment },
+    });
+
+    // Record in PaymentRecord
+    await this.financialService.recordPayment({
+      appointmentId: appointment.id,
+      clinicId: appointment.clinicId,
+      clientId: appointment.clientId,
+      providerId: appointment.providerId,
+      amount: paymentData.amount,
+      method: paymentData.paymentMethod as any,
+      type: paymentData.isAdvancePayment ? PaymentType.DEPOSIT : PaymentType.PAYMENT,
+      notes: paymentData.notes,
+      recordedById: userId,
+    });
 
     // Emit event to update CRM metrics (lifetime value, etc.)
     this.eventEmitter.emit('appointment.status.changed', {
@@ -1169,13 +1320,16 @@ export class BookingsService {
     return updatedAppointment;
   }
 
-  async findAppointmentsInRange(startDate: Date, endDate: Date): Promise<Appointment[]> {
+  async findAppointmentsInRange(startDate: Date, endDate: Date, status?: AppointmentStatus): Promise<Appointment[]> {
+    const where: any = {
+      startTime: Between(startDate, endDate),
+    };
+    if (status) {
+      where.status = status;
+    }
     return this.appointmentsRepository.find({
-      where: {
-        startTime: Between(startDate, endDate),
-        status: AppointmentStatus.CONFIRMED,
-      },
-      relations: ['clinic', 'service', 'provider', 'client'],
+      where,
+      relations: ['client', 'clinic', 'service', 'service.treatment', 'provider'],
     });
   }
 

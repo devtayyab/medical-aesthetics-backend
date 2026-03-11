@@ -4,17 +4,16 @@ import { BullModule } from '@nestjs/bull';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { FirebaseService } from './services/firebase.service';
-import { SmsService } from './services/sms.service';
-import { ViberService } from './services/viber.service';
 import { NotificationProcessor } from './processors/notification.processor';
 import { NotificationsGateway } from './gateways/notifications.gateway';
 import { Notification } from './entities/notification.entity';
+import { NotificationTemplate } from './entities/notification-template.entity';
 import { UsersModule } from '../users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification]),
+    TypeOrmModule.forFeature([Notification, NotificationTemplate]),
     BullModule.registerQueue({
       name: 'notifications',
     }),
@@ -26,10 +25,8 @@ import { JwtModule } from '@nestjs/jwt';
     NotificationsService,
     NotificationsGateway,
     FirebaseService,
-    SmsService,
-    ViberService,
     NotificationProcessor,
   ],
-  exports: [NotificationsService, NotificationsGateway, SmsService],
+  exports: [NotificationsService, NotificationsGateway],
 })
 export class NotificationsModule { }

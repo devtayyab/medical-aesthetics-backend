@@ -283,15 +283,11 @@ export const loyaltyAPI = {
   }) => api.post("/loyalty/redeem", data),
 };
 
-export const notificationsAPI = {
-  getNotifications: (limit?: number) => {
-    const params = limit ? { limit } : {};
-    return api.get("/notifications", { params });
-  },
-  getUnreadCount: () => api.get("/notifications/unread-count"),
-  markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
-  markAllAsRead: () => api.patch("/notifications/read-all"),
+export const paymentsAPI = {
+  getMyWallet: (params?: { limit?: number; offset?: number }) => api.get("/payments/my-wallet", { params }),
 };
+
+
 
 export const crmAPI = {
   // Lead Management
@@ -474,11 +470,23 @@ export const adminAPI = {
   toggleUserStatus: (id: string) => api.patch(`/admin/users/${id}/toggle-status`),
   getWalletSummary: () => api.get("/admin/wallet/summary"),
   getRecentTransactions: () => api.get("/admin/wallet/transactions"),
-  getPaymentsLedger: (params?: { type?: string; date?: string }) => api.get("/admin/payments/ledger", { params }),
+  getPaymentsLedger: (params?: {
+    clinicId?: string;
+    providerId?: string;
+    salespersonId?: string;
+    date?: string;
+    method?: string;
+    limit?: number;
+    offset?: number;
+  }) => api.get("/admin/payments/ledger", { params }),
+  refundPayment: (id: string, notes: string) => api.post(`/admin/payments/${id}/refund`, { notes }),
+  voidPayment: (id: string, notes: string) => api.post(`/admin/payments/${id}/void`, { notes }),
   getGiftCardsSummary: () => api.get("/admin/gift-cards/summary"),
   getGiftCards: (search?: string) => api.get("/admin/gift-cards", { params: { search } }),
   generateGiftCard: (data: { amount: number; recipientEmail?: string; message?: string; expiresAt?: string }) =>
     api.post("/admin/gift-cards/generate", data),
+  redeemGiftCard: (data: { code: string; amount: number }) =>
+    api.post("/admin/gift-cards/redeem", data),
   getBlogCategories: () => api.get("/admin/blogs/categories"),
   createBlogCategory: (data: { name: string; slug: string }) => api.post("/admin/blogs/categories", data),
   getBlogPosts: (search?: string) => api.get("/admin/blogs/posts", { params: { search } }),
@@ -510,6 +518,25 @@ export const adminAPI = {
   }) => api.get("/admin/calendar", { params }),
 };
 
+export const notificationsAPI = {
+  getNotifications: (limit?: number) => api.get("/notifications", { params: { limit } }),
+  getUnreadCount: () => api.get("/notifications/unread-count"),
+  markAllAsRead: () => api.patch("/notifications/read-all"),
+  markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+
+  // Template Management (Admin)
+  getTemplates: () => api.get("/notifications/templates"),
+  createTemplate: (data: any) => api.post("/notifications/templates", data),
+  updateTemplate: (id: string, data: any) => api.patch(`/notifications/templates/${id}`, data),
+  resetDefaultTemplates: () => api.post("/notifications/templates/reset-defaults"),
+};
+
+export const publicBlogsAPI = {
+  getCategories: () => api.get("/public/blogs/categories"),
+  getPosts: (params?: { search?: string; categoryId?: string }) => api.get("/public/blogs/posts", { params }),
+  getPostBySlug: (slug: string) => api.get(`/public/blogs/posts/${slug}`),
+};
+
 export const TaskAPI = {
   createTask: (data: {
     description: string;
@@ -534,6 +561,27 @@ export const messagesAPI = {
   createConversation: (participantIds: string[], title?: string, isGroup?: boolean) =>
     api.post("/messages/conversations", { participantIds, title, isGroup }),
   search: (query: string) => api.get("/messages/search", { params: { q: query } }),
+};
+
+export const adminAuditLogsAPI = {
+  getAuditLogs: (params?: any) => api.get("/admin/audit-logs", { params }),
+};
+
+export const adminSettingsAPI = {
+  getSettings: () => api.get("/admin/settings"),
+  updateSettings: (settings: any) => api.patch("/admin/settings", settings),
+  getIntegrationLogs: () => api.get("/admin/integrations/logs"),
+};
+
+export const adminSystemListsAPI = {
+  getCategories: () => api.get("/admin/categories"),
+  createCategory: (data: any) => api.post("/admin/categories", data),
+  updateCategory: (id: string, data: any) => api.put(`/admin/categories/${id}`, data),
+  deleteCategory: (id: string) => api.delete(`/admin/categories/${id}`),
+
+  getTreatments: (params?: any) => api.get("/admin/treatments", { params }),
+  createTreatment: (data: any) => api.post("/admin/treatments", data),
+  updateTreatment: (id: string, data: any) => api.put(`/admin/treatments/${id}`, data),
 };
 
 export default api;

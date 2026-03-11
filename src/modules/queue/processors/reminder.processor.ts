@@ -15,7 +15,7 @@ export class ReminderProcessor {
       // This would integrate with NotificationsService
       this.logger.log(`Processing appointment reminder for ${appointmentId}`);
       
-      // Send push notification, SMS, or email
+      // Send push notification or email
       // await this.notificationsService.sendAppointmentReminder(recipientId, appointmentDetails);
       
     } catch (error) {

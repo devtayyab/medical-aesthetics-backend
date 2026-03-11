@@ -46,7 +46,7 @@ export class Notification {
   readAt: Date;
 
   @Column({ nullable: true })
-  externalId: string; // ID from external service (Firebase, SMS gateway, etc.)
+  externalId: string; // ID from external service (Firebase, Email services, etc.)
 
   @Column('json', { nullable: true })
   metadata: any;

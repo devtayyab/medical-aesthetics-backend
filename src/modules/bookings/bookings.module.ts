@@ -14,6 +14,7 @@ import { CustomerRecord } from '../crm/entities/customer-record.entity';
 import { Lead } from '../crm/entities/lead.entity';
 import { Service } from '../clinics/entities/service.entity';
 import { PaymentsModule } from '../payments/payments.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PaymentsModule } from '../payments/payments.module';
     UsersModule,
     forwardRef(() => CrmModule),
     PaymentsModule,
+    forwardRef(() => NotificationsModule),
   ],
   controllers: [BookingsController],
   providers: [BookingsService, AvailabilityService],

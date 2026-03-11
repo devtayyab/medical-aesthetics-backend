@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GiftCard } from '../clinics/entities/gift-card.entity';
 import * as crypto from 'crypto';
 
@@ -9,7 +10,8 @@ export class GiftCardsService {
     constructor(
         @InjectRepository(GiftCard)
         private giftCardRepository: Repository<GiftCard>,
-    ) { }
+        private eventEmitter: EventEmitter2,
+    ) {}
 
     async getSummary() {
         const { totalActiveCards } = await this.giftCardRepository
@@ -24,9 +26,15 @@ export class GiftCardsService {
             .where('gc.isActive = :isActive', { isActive: true })
             .getRawOne();
 
+        const { totalRedeemed } = await this.giftCardRepository
+            .createQueryBuilder('gc')
+            .select('SUM(gc.amount - gc.balance)', 'totalRedeemed')
+            .getRawOne();
+
         return {
             activeCards: parseInt(totalActiveCards) || 0,
             totalLiability: parseFloat(totalLiability) || 0,
+            totalRedeemed: parseFloat(totalRedeemed) || 0,
         };
     }
 
@@ -59,5 +67,53 @@ export class GiftCardsService {
         });
 
         return this.giftCardRepository.save(giftCard);
+    }
+
+    async redeemGiftCard(code: string, amount: number, recordedById?: string) {
+        const giftCard = await this.giftCardRepository.findOne({
+            where: { code, isActive: true },
+        });
+
+        if (!giftCard) {
+            throw new NotFoundException('Gift card not found, inactive, or invalid code');
+        }
+
+        if (giftCard.expiresAt && giftCard.expiresAt < new Date()) {
+            giftCard.isActive = false;
+            await this.giftCardRepository.save(giftCard);
+            throw new NotFoundException('Gift card has expired');
+        }
+
+        const redeemAmount = Number(amount);
+        const currentBalance = Number(giftCard.balance);
+
+        if (redeemAmount > currentBalance) {
+            throw new NotFoundException(`Insufficient gift card balance. Available: €${currentBalance.toFixed(2)}`);
+        }
+
+        const beforeBalance = currentBalance;
+        giftCard.balance = currentBalance - redeemAmount;
+        if (giftCard.balance <= 0.01) {
+            giftCard.balance = 0;
+            giftCard.isActive = false;
+        }
+
+        await this.giftCardRepository.save(giftCard);
+
+        this.eventEmitter.emit('audit.log', {
+            userId: recordedById,
+            action: 'GIFT_CARD_REDEEM',
+            resource: 'gift_cards',
+            resourceId: giftCard.id,
+            changes: { before: { balance: beforeBalance }, after: { balance: giftCard.balance, redeemedAmount: redeemAmount } },
+            data: { code: giftCard.code, redeemAmount, remainingBalance: giftCard.balance },
+        });
+
+        return {
+            success: true,
+            redeemedAmount: redeemAmount,
+            remainingBalance: giftCard.balance,
+            code: giftCard.code
+        };
     }
 }

@@ -1,0 +1,93 @@
+﻿
+> medical-aesthetics-platform@1.0.0 migration:run
+> npx typeorm-ts-node-commonjs migration:run -d src/config/data-source.ts
+
+[dotenv@17.2.3] injecting env (32) from .env -- tip: ≡ƒöÉ prevent building .env in docker: https://dotenvx.com/prebuild
+[90m[4mquery:[24m[39m [94mSELECT[0m [95mversion[0m[37m([0m[37m)[0m
+[90m[4mquery:[24m[39m [94mSELECT[0m [37m*[0m [94mFROM[0m [95mcurrent_schema[0m[37m([0m[37m)[0m
+[90m[4mquery:[24m[39m [94mCREATE[0m [37mEXTENSION[0m [94mIF[0m [94mNOT[0m [94mEXISTS[0m [37m"uuid-ossp"[0m
+[90m[4mquery:[24m[39m [94mSELECT[0m [37m*[0m [94mFROM[0m [37m"information_schema"[0m[37m.[0m[37m"tables"[0m [94mWHERE[0m [37m"table_schema"[0m [37m=[0m [37m'public'[0m [94mAND[0m [37m"table_name"[0m [37m=[0m [37m'migrations'[0m
+[90m[4mquery:[24m[39m [94mSELECT[0m [37m*[0m [94mFROM[0m [37m"migrations"[0m [37m"migrations"[0m [94mORDER BY[0m [37m"id"[0m [94mDESC[0m
+[4m23 migrations are already loaded in the database.[24m
+[4m26 migrations were found in the source code.[24m
+[4mCreateTreatmentsAndLinkServices1772532232765 is the last executed migration. It was executed on Tue Mar 03 2026 15:03:52 GMT+0500 (Pakistan Standard Time).[24m
+[4m4 migrations are new migrations must be executed.[24m
+[90m[4mquery:[24m[39m [37mSTART[0m [37mTRANSACTION[0m
+[90m[4mquery:[24m[39m [94mALTER TABLE[0m [37m"clinics"[0m [94mADD[0m [37m"latitude"[0m [95mnumeric[0m[37m([0m[32m10[0m[37m,[0m[32m8[0m[37m)[0m
+[4m[31mquery failed:[39m[24m [94mALTER TABLE[0m [37m"clinics"[0m [94mADD[0m [37m"latitude"[0m [95mnumeric[0m[37m([0m[32m10[0m[37m,[0m[32m8[0m[37m)[0m
+[4m[31merror:[39m[24m error: column "latitude" of relation "clinics" already exists
+[4mMigration "AddCoordinatesToClinic1772700913745" failed, error: column "latitude" of relation "clinics" already exists[24m
+[90m[4mquery:[24m[39m [37mROLLBACK[0m
+[30m[41mError during migration run:[49m[39m
+node.exe : QueryFailedError: column "latitude" of relation "clinics" already 
+exists
+At C:\Users\ahsan\AppData\Roaming\npm\npm.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/npm/bin/npm-cli.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (QueryFailedErro... already exists: 
+   String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at PostgresQueryRunner.query (E:\ebizz\medical-aesthetics-backend\node_modul
+es\typeorm\src\driver\postgres\PostgresQueryRunner.ts:325:19)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AddCoordinatesToClinic1772700913745.up (E:\ebizz\medical-aesthetics
+-backend\src\migrations\1772700913745-AddCoordinatesToClinic.ts:7:9)
+    at async MigrationExecutor.executePendingMigrations (E:\ebizz\medical-aesthe
+tics-backend\node_modules\src\migration\MigrationExecutor.ts:336:17)
+    at async DataSource.runMigrations (E:\ebizz\medical-aesthetics-backend\node_
+modules\src\data-source\DataSource.ts:404:13)
+    at async Object.handler (E:\ebizz\medical-aesthetics-backend\node_modules\sr
+c\commands\MigrationRunCommand.ts:76:13) {
+  query: 'ALTER TABLE "clinics" ADD "latitude" numeric(10,8)',
+  parameters: undefined,
+  driverError: error: column "latitude" of relation "clinics" already exists
+      at 
+E:\ebizz\medical-aesthetics-backend\node_modules\pg\lib\client.js:545:17
+      at processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async PostgresQueryRunner.query (E:\ebizz\medical-aesthetics-backend\no
+de_modules\typeorm\src\driver\postgres\PostgresQueryRunner.ts:254:25)
+      at async AddCoordinatesToClinic1772700913745.up (E:\ebizz\medical-aestheti
+cs-backend\src\migrations\1772700913745-AddCoordinatesToClinic.ts:7:9)
+      at async MigrationExecutor.executePendingMigrations (E:\ebizz\medical-aest
+hetics-backend\node_modules\src\migration\MigrationExecutor.ts:336:17)
+      at async DataSource.runMigrations (E:\ebizz\medical-aesthetics-backend\nod
+e_modules\src\data-source\DataSource.ts:404:13)
+      at async Object.handler (E:\ebizz\medical-aesthetics-backend\node_modules\
+src\commands\MigrationRunCommand.ts:76:13) {
+    length: 134,
+    severity: 'ERROR',
+    code: '42701',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'tablecmds.c',
+    line: '7279',
+    routine: 'check_for_column_name_collision'
+  },
+  length: 134,
+  severity: 'ERROR',
+  code: '42701',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'tablecmds.c',
+  line: '7279',
+  routine: 'check_for_column_name_collision'
+}

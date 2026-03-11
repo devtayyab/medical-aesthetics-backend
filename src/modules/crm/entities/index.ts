@@ -6,3 +6,5 @@ export { AdSpendLog } from './ad-spend-log.entity';
 export { AdAttribution } from './ad-attribution.entity';
 export { AgentClinicAccess } from './agent-clinic-access.entity';
 export { ClinicOwnership } from './clinic-ownership.entity';
+export { LeadClinicStatus } from './lead-clinic-status.entity';
+

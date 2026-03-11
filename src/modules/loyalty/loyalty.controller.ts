@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { LoyaltyService } from './loyalty.service';
@@ -39,12 +40,13 @@ export class LoyaltyController {
 
   @Post('redeem')
   @ApiOperation({ summary: 'Redeem points for discount' })
-  redeemPoints(@Body() redeemPointsDto: RedeemPointsDto) {
+  redeemPoints(@Body() redeemPointsDto: RedeemPointsDto, @Request() req: any) {
     return this.loyaltyService.redeemPoints(
       redeemPointsDto.clientId,
       redeemPointsDto.clinicId,
       redeemPointsDto.points,
       redeemPointsDto.description,
+      req.user?.id,
     );
   }
 }
