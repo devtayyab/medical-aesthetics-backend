@@ -66,7 +66,6 @@ import { CrmListener } from './crm.listener';
     MandatoryFieldValidationService,
     TaskAutomationService,
     AdAttributionService,
-    AdAttributionService,
     CrmScheduler,
     CrmListener
   ],

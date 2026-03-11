@@ -588,12 +588,28 @@ export class CrmController {
     return this.crmService.getClientBenefits(filters);
   }
 
+  @Put('client-benefits/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Update client benefit' })
+  updateClientBenefit(@Param('id') id: string, @Body() body: any) {
+    return this.crmService.updateClientBenefit(id, body);
+  }
+
   @Get('no-show-alerts')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get no-show alerts' })
   getNoShowAlerts(@Query() filters: any) {
     return this.crmService.getNoShowAlerts(filters);
+  }
+
+  @Post('no-show-alerts/:id/resolve')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Resolve a no-show alert' })
+  resolveNoShowAlert(@Param('id') id: string, @Body('actionTaken') actionTaken: string) {
+    return this.crmService.resolveNoShowAlert(id, actionTaken);
   }
 
   @Get('agents/emails')

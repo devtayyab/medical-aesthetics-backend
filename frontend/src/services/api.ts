@@ -94,7 +94,10 @@ api.interceptors.response.use(
             if (refreshError) {
               reject(refreshError);
             } else if (token) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
+              originalRequest.headers = {
+                ...originalRequest.headers,
+                Authorization: `Bearer ${token}`,
+              };
               resolve(api(originalRequest));
             }
           });
@@ -120,8 +123,19 @@ api.interceptors.response.use(
             );
           }
 
+          console.log("Token refresh successful, retrying original request:", originalRequest.url);
+          
+          // Re-set flag before retrying to avoid the race condition where new requests
+          // during the retry think a refresh is still in progress
+          isRefreshing = false;
           onRefreshed(accessToken);
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+          // Standard way to update headers for retry
+          originalRequest.headers = {
+            ...originalRequest.headers,
+            Authorization: `Bearer ${accessToken}`,
+          };
+          
           return api(originalRequest);
         } catch (refreshError: any) {
           console.error("Refresh failed:", {
@@ -129,18 +143,17 @@ api.interceptors.response.use(
             status: refreshError.response?.status,
           });
 
+          isRefreshing = false;
           onRefreshFailed(refreshError);
-          isRefreshing = false; // Reset flag before rejecting
 
           if (store && logoutAction) {
             store.dispatch(logoutAction());
           }
           window.location.href = "/login";
           return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
         }
       } else {
+        console.warn("No refresh token found, logging out");
         if (store && logoutAction) {
           store.dispatch(logoutAction());
         }

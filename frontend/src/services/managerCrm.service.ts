@@ -7,6 +7,8 @@ import { api } from './api';
 
 export interface CallLog {
   id: string;
+  customerId?: string;
+  relatedLeadId?: string;
   agentId: string;
   agentName: string;
   customerName: string;

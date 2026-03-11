@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Search,
@@ -44,6 +45,7 @@ interface LeadsPageProps {
 }
 
 export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreateForm = false, onFormShown }) => {
+  const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { leads, leadFilters, duplicateCheck, isLoading } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
@@ -510,7 +512,13 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     <TableCell className="py-2 px-3 text-right">
                       <div className="flex justify-end gap-1 items-center">
                         <div className="flex items-center bg-white border border-gray-100 rounded-lg shadow-sm p-0.5">
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => onViewLead && onViewLead(lead)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => {
+                            if (onViewLead) {
+                              onViewLead(lead);
+                            } else {
+                              navigate(`/crm/customer/${lead.id}`);
+                            }
+                          }}>
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => handleCheckDuplicates(lead)}>

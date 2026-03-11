@@ -312,10 +312,9 @@ export const Tasks: React.FC<TasksPageProps> = () => {
       setInteractionNotes("");
       setInteractionTask(null);
 
-      if (currentUserId) {
-        dispatch(fetchActions({ salespersonId: currentUserId }));
-        dispatch(fetchTaskKpis(currentUserId));
-      }
+      const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+      dispatch(fetchActions({ salespersonId: sid }));
+      dispatch(fetchTaskKpis(sid));
     } catch (error) {
       console.error("Failed to save interaction:", error);
     }
@@ -335,13 +334,31 @@ export const Tasks: React.FC<TasksPageProps> = () => {
       setInteractionTask(null);
       setInteractionNotes("");
 
-      if (currentUserId) {
-        dispatch(fetchActions({ salespersonId: currentUserId }));
-        dispatch(fetchTaskKpis(currentUserId));
-      }
+      const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+      dispatch(fetchActions({ salespersonId: sid }));
+      dispatch(fetchTaskKpis(sid));
     } catch (error) {
       console.error("Failed to complete task after booking:", error);
     }
+  };
+
+  const handleCloseInteraction = async () => {
+    if (interactionTask) {
+      try {
+        await dispatch(updateAction({
+          id: interactionTask.id,
+          updates: { status: 'pending' }
+        })).unwrap();
+        const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+        dispatch(fetchActions({ salespersonId: sid }));
+        dispatch(fetchTaskKpis(sid));
+      } catch (err) {
+        console.error("Failed to revert task status:", err);
+      }
+    }
+    setShowInteractionModal(false);
+    setInteractionTask(null);
+    setInteractionNotes("");
   };
 
   return (
@@ -620,8 +637,9 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                                 setInteractionNotes(task.description || "");
                                 setShowInteractionModal(true);
 
-                                if (currentUserId) {
-                                  dispatch(fetchActions({ salespersonId: currentUserId }));
+                                if (true) {
+                                  const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+                                  dispatch(fetchActions({ salespersonId: sid }));
                                 }
                               } catch (err) {
                                 console.error("Failed to start interaction:", err);
@@ -669,10 +687,9 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                   onCancel={resetForm}
                   onSuccess={() => {
                     resetForm();
-                    if (currentUserId) {
-                      dispatch(fetchActions({ salespersonId: currentUserId }));
-                      dispatch(fetchTaskKpis(currentUserId));
-                    }
+                    const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+                    dispatch(fetchActions({ salespersonId: sid }));
+                    dispatch(fetchTaskKpis(sid));
                   }}
                 />
               </div>
@@ -789,7 +806,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                   }
                 </p>
               </div>
-              <Button variant="ghost" onClick={() => setShowInteractionModal(false)} className="h-10 w-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+              <Button variant="ghost" onClick={handleCloseInteraction} className="h-10 w-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
                 <X className="h-6 w-6" />
               </Button>
             </div>
@@ -855,9 +872,8 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                           // 3. Close interaction modal
                           setShowInteractionModal(false);
 
-                          if (currentUserId) {
-                            dispatch(fetchActions({ salespersonId: currentUserId }));
-                          }
+                          const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+                          dispatch(fetchActions({ salespersonId: sid }));
                         } catch (err) {
                           console.error("Failed to reset task to pending:", err);
                         }
@@ -877,7 +893,11 @@ export const Tasks: React.FC<TasksPageProps> = () => {
             </div>
 
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowInteractionModal(false)} className="h-10 px-6 font-bold text-xs bg-white text-slate-700 shadow-sm border-slate-200 rounded-xl">
+              <Button
+                variant="outline"
+                onClick={handleCloseInteraction}
+                className="h-10 px-6 font-bold text-xs bg-white text-slate-700 shadow-sm border-slate-200 rounded-xl"
+              >
                 Discard
               </Button>
               <Button

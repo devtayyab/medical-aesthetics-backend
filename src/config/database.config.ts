@@ -13,6 +13,9 @@ import { GiftCard } from '../modules/clinics/entities/gift-card.entity';
 import { BlogPost, BlogCategory } from '../modules/clinics/entities/blog.entity';
 import { Lead, CrmAction, CustomerRecord } from '../modules/crm/entities';
 import { Tag } from '../modules/admin/entities/tag.entity';
+import { Offer } from '../modules/admin/entities/offer.entity';
+import { Reward } from '../modules/admin/entities/reward.entity';
+import { PlatformSettings } from '../modules/admin/entities/platform-settings.entity';
 import { AuditLog } from '../modules/audit/entities/audit-log.entity';
 import { ConsentRecord } from '../modules/users/entities/consent-record.entity';
 import { CommunicationLog } from '../modules/crm/entities/communication-log.entity';
@@ -62,6 +65,9 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         LoyaltyLedger,
         Notification,
         Tag,
+        Offer,
+        Reward,
+        PlatformSettings,
         AuditLog,
         ConsentRecord,
         AdAttribution,

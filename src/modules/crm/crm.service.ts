@@ -1034,8 +1034,17 @@ export class CrmService implements OnModuleInit {
 
   // Communication Log Management
   async logCommunication(data: Partial<CommunicationLog>): Promise<CommunicationLog> {
+    // Sanitize IDs from frontend to avoid UUID syntax errors
+    if (data.customerId === '' || data.customerId === 'undefined') data.customerId = null;
+    if (data.relatedLeadId === '' || data.relatedLeadId === 'undefined') data.relatedLeadId = null;
+
     const originalId = data.customerId;
-    const lead = await this.leadsRepository.findOne({ where: { id: originalId } });
+    const leadId = data.customerId || data.relatedLeadId;
+
+    let lead = null;
+    if (leadId && leadId.length === 36) { // Basic UUID length check to avoid DB crash
+      lead = await this.leadsRepository.findOne({ where: { id: leadId } });
+    }
 
     if (lead) {
       // Append to Lead notes instead of ONLY metadata
@@ -1077,9 +1086,14 @@ export class CrmService implements OnModuleInit {
       data.metadata = { ...data.metadata, durationSeconds: data.durationSeconds };
     }
 
-    // Ensure subject is not empty to avoid DB errors
+    // Ensure subject and type are not empty to avoid DB errors
+    if (!data.type) {
+      data.type = 'note';
+    }
+
     if (!data.subject) {
-      data.subject = `${data.type.charAt(0).toUpperCase() + data.type.slice(1)} Log - ${new Date().toLocaleDateString()}`;
+      const typeStr = String(data.type);
+      data.subject = `${typeStr.charAt(0).toUpperCase() + typeStr.slice(1)} Log - ${new Date().toLocaleDateString()}`;
     }
 
     const log = this.communicationLogsRepository.create(data);
@@ -3457,6 +3471,8 @@ export class CrmService implements OnModuleInit {
 
       return {
         id: log.id,
+        customerId: log.customerId,
+        relatedLeadId: log.relatedLeadId,
         timestamp: log.createdAt.toISOString(),
         agentName: agentName,
         customerName: custName,

@@ -10,9 +10,11 @@ const ds = new DataSource({
   database: process.env.DATABASE_NAME || 'medical_aesthetics'
 });
 ds.initialize().then(async () => {
-  const apts = await ds.query('SELECT status, "totalAmount", sum(1) as cnt FROM appointments GROUP BY status, "totalAmount";');
-  console.log('Appointments:', apts);
-  const leads = await ds.query('SELECT status, count(id) as cnt FROM leads GROUP BY status;');
-  console.log('Leads:', leads);
+  const agentIds = await ds.query('SELECT "assignedSalespersonId", count(*) FROM customer_records GROUP BY "assignedSalespersonId";');
+  console.log('Customer Recs assigned:', agentIds);
+
+  const testApt = await ds.query('SELECT count(*) FROM appointments apt INNER JOIN customer_records rec ON rec."customerId" = apt."clientId";');
+  console.log('Appointments linked to customer_records:', testApt);
+
   process.exit(0);
 }).catch(console.error);

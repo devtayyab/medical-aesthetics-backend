@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 dotenv.config();
+
 const ds = new DataSource({
   type: 'postgres',
   host: process.env.DATABASE_HOST || 'localhost',
@@ -9,10 +10,12 @@ const ds = new DataSource({
   password: process.env.DATABASE_PASSWORD || 'postgres',
   database: process.env.DATABASE_NAME || 'medical_aesthetics'
 });
+
 ds.initialize().then(async () => {
-  const apts = await ds.query('SELECT status, "totalAmount", sum(1) as cnt FROM appointments GROUP BY status, "totalAmount";');
-  console.log('Appointments:', apts);
-  const leads = await ds.query('SELECT status, count(id) as cnt FROM leads GROUP BY status;');
-  console.log('Leads:', leads);
+  const users = await ds.query(`SELECT id, email, role, "isActive" FROM users`);
+  console.log('Users:', users);
   process.exit(0);
-}).catch(console.error);
+}).catch(err => {
+  console.error(err);
+  process.exit(1);
+});

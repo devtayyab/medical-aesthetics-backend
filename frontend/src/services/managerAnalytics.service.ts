@@ -80,12 +80,12 @@ export const fetchServiceStats = async (startDate?: string, endDate?: string): P
 
     // Transform the data to match the ServiceStat interface
     return response.data.map(service => ({
-      serviceId: service.serviceId || '',
+      serviceId: service.serviceId || service.serviceName || '',
       serviceName: service.serviceName || 'Unknown',
-      totalAppointments: parseInt(service.totalAppointments) || 0,
-      totalRevenue: parseFloat(service.totalRevenue) || 0,
-      avgRevenuePerAppointment: service.totalAppointments > 0
-        ? parseFloat(service.totalRevenue) / parseInt(service.totalAppointments)
+      totalAppointments: parseInt(service.count) || parseInt(service.totalAppointments) || 0,
+      totalRevenue: parseFloat(service.revenue) || parseFloat(service.totalRevenue) || 0,
+      avgRevenuePerAppointment: (parseInt(service.count) || parseInt(service.totalAppointments) || 0) > 0
+        ? (parseFloat(service.revenue) || parseFloat(service.totalRevenue) || 0) / (parseInt(service.count) || parseInt(service.totalAppointments) || 1)
         : 0
     }));
   } catch (error: any) {
@@ -155,4 +155,14 @@ export const fetchClinicAnalytics = async (startDate?: string, endDate?: string)
     noShow: parseInt(clinic.noShow) || 0,
     totalRevenue: parseFloat(clinic.totalRevenue) || 0
   }));
+};
+
+export const fetchPerformanceDashboard = async (startDate?: string, endDate?: string): Promise<any> => {
+  const params: { startDate?: string; endDate?: string } = {};
+  if (startDate && endDate) {
+    params.startDate = startDate;
+    params.endDate = endDate;
+  }
+  const response = await api.get('/crm/analytics/performance-dashboard', { params });
+  return response.data;
 };

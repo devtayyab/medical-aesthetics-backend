@@ -82,6 +82,8 @@ export interface Service {
   durationMinutes: number;
   isActive: boolean;
   metadata?: any;
+  name?: string;
+  category?: string;
   createdAt: string;
   updatedAt: string;
   treatment?: Treatment;

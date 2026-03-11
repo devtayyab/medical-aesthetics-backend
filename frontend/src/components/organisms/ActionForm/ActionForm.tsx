@@ -83,8 +83,8 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       setIsLoading(true);
       try {
         const [customerResponse, leadsResponse] = await Promise.all([
-          userAPI.getAllUsers({ role: 'client', search: searchTerm, limit: 20 }),
-          crmAPI.getLeads({ search: searchTerm })
+          userAPI.getAllUsers({ role: 'client', search: searchTerm, limit: 20 }).catch(() => ({ data: { users: [] } })),
+          crmAPI.getLeads({ search: searchTerm }).catch(() => ({ data: [] }))
         ]);
 
         const customersData = Array.isArray(customerResponse.data) ? customerResponse.data : customerResponse.data.users || [];
@@ -128,8 +128,8 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         if (propCustomerId || prefilledData?.relatedLeadId) {
           const targetId = propCustomerId || prefilledData?.relatedLeadId;
           const [custRes, leadRes] = await Promise.all([
-            userAPI.getAllUsers({ role: 'client', limit: 50 }),
-            crmAPI.getLeads()
+            userAPI.getAllUsers({ role: 'client', limit: 50 }).catch(() => ({ data: { users: [] } })),
+            crmAPI.getLeads().catch(() => ({ data: [] }))
           ]);
 
           const customersData = Array.isArray(custRes.data) ? custRes.data : custRes.data.users || [];
