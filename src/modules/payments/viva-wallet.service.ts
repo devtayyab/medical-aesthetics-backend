@@ -29,7 +29,8 @@ export class VivaWalletService {
      */
     async getAuthHeader(): Promise<string> {
         // Option 1: Prefer OAuth2 (if Client ID & Secret are available)
-        if (this.clientId && this.clientSecret) {
+        if (this.clientId && this.clientSecret && this.clientId !== 'your-viva-client-id') {
+            console.log('[Viva Wallet] Attempting OAuth2 authentication...');
             try {
                 const auth = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
                 const response = await axios.post(
@@ -42,18 +43,21 @@ export class VivaWalletService {
                         },
                     },
                 );
+                console.log('[Viva Wallet] OAuth2 token obtained successfully.');
                 return `Bearer ${response.data.access_token}`;
             } catch (error) {
-                console.error('Viva Wallet OAuth Error (falling back):', error.response?.data || error.message);
+                console.error('[Viva Wallet] OAuth2 authentication FAILED:', error.response?.data || error.message);
             }
         }
 
         // Option 2: Fallback to Basic Auth (Merchant ID & API Key)
-        if (this.merchantId && this.apiKey) {
+        if (this.merchantId && this.apiKey && this.merchantId !== 'your-viva-merchant-id') {
+            console.log('[Viva Wallet] Using Basic Auth with Merchant ID and API Key.');
             const auth = Buffer.from(`${this.merchantId}:${this.apiKey}`).toString('base64');
             return `Basic ${auth}`;
         }
 
+        console.error('[Viva Wallet] No valid credentials found in .env');
         throw new InternalServerErrorException('No valid Viva Wallet credentials found (need ClientID/Secret or MerchantID/APIKey)');
     }
 
