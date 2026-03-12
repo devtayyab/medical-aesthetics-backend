@@ -1,5 +1,7 @@
-import { IsString, IsOptional, IsBoolean, IsObject, IsUUID, IsArray, IsDateString, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsObject, IsUUID, IsArray, IsDateString, IsNumber, IsEnum } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { AppointmentStatus } from '../../../common/enums/appointment-status.enum';
 
 export class CreateClinicProfileDto {
   @ApiProperty()
@@ -142,9 +144,10 @@ export class UpdateClinicProfileDto {
 }
 
 export class UpdateAppointmentStatusDto {
-  @ApiProperty()
-  @IsString()
-  status: string;
+  @ApiProperty({ enum: AppointmentStatus })
+  @IsEnum(AppointmentStatus)
+  @Transform(({ value }) => typeof value === 'string' ? value.toUpperCase() : value)
+  status: AppointmentStatus;
 
   @ApiPropertyOptional()
   @IsOptional()

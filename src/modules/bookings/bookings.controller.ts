@@ -95,7 +95,7 @@ export class BookingsController {
     };
 
     // If pending payment, generate a fresh Viva Wallet redirect URL
-    if ((appointment.status as string) === 'pending_payment') {
+    if (appointment.status === AppointmentStatus.PENDING_PAYMENT) {
       try {
         const redirectUrl = await this.bookingsService.generateVivaPaymentUrl(appointment);
         if (redirectUrl) result.redirectUrl = redirectUrl;
