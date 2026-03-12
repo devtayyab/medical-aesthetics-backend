@@ -43,7 +43,7 @@ export class ClinicsService {
     @InjectRepository(AgentClinicAccess)
     private agentAccessRepository: Repository<AgentClinicAccess>,
     private eventEmitter: EventEmitter2,
-  ) {}
+  ) { }
 
   async search(params: {
     location?: string;
@@ -255,8 +255,8 @@ export class ClinicsService {
     });
     console.log(`[ClinicsService] Found ${services.length} active services for clinicId: ${clinicId}`);
     if (services.length === 0) {
-        const totalServices = await this.servicesRepository.count({ where: { clinicId } });
-        console.log(`[ClinicsService] DEBUG: Total services for this clinic (including inactive): ${totalServices}`);
+      const totalServices = await this.servicesRepository.count({ where: { clinicId } });
+      console.log(`[ClinicsService] DEBUG: Total services for this clinic (including inactive): ${totalServices}`);
     }
     return services;
   }
@@ -575,7 +575,7 @@ export class ClinicsService {
     }
 
     if (!treatment) {
-       throw new NotFoundException('Treatment master record not found');
+      throw new NotFoundException('Treatment master record not found');
     }
 
     const service = this.servicesRepository.create({
