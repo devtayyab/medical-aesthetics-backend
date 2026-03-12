@@ -249,10 +249,16 @@ export class ClinicsService {
   }
 
   async findServices(clinicId: string): Promise<Service[]> {
-    return this.servicesRepository.find({
+    const services = await this.servicesRepository.find({
       where: { clinicId, isActive: true, treatment: { isActive: true } },
       relations: ['treatment'],
     });
+    console.log(`[ClinicsService] Found ${services.length} active services for clinicId: ${clinicId}`);
+    if (services.length === 0) {
+        const totalServices = await this.servicesRepository.count({ where: { clinicId } });
+        console.log(`[ClinicsService] DEBUG: Total services for this clinic (including inactive): ${totalServices}`);
+    }
+    return services;
   }
 
   // New clinic management methods
