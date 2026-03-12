@@ -7,6 +7,7 @@ import {
   IsUUID,
   IsObject,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { AppointmentStatus } from '../../../common/enums/appointment-status.enum';
 
@@ -39,6 +40,7 @@ export class CreateAppointmentDto {
   @ApiProperty({ enum: AppointmentStatus, required: false })
   @IsOptional()
   @IsEnum(AppointmentStatus)
+  @Transform(({ value }) => typeof value === 'string' ? value.toUpperCase() : value)
   status?: AppointmentStatus;
 
   @ApiProperty({ required: false })
