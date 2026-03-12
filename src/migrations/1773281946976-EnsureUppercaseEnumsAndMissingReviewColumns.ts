@@ -1,6 +1,10 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class EnsureUppercaseEnumsAndMissingReviewColumns1773281946976 implements MigrationInterface {
+    // Disable transaction for this migration because PostgreSQL does not allow
+    // using a newly added enum value within the same transaction.
+    public transaction = false;
+
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         // 1. Ensure action_status_enum includes 'overdue'

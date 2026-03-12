@@ -2,26 +2,28 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 import * as bcrypt from 'bcrypt';
 
 export class FixMissingTablesAndEnums1773275827310 implements MigrationInterface {
+    public transaction = false;
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         // 1. Fix Appointment Status Enum - Add 'pending_payment'
-        // PostgreSQL doesn't allow adding values to enum in a transaction easily without COMMIT, 
-        // but we can check if it exists and add it.
-        const checkEnum = await queryRunner.query(`
-            SELECT EXISTS (
-                SELECT 1 FROM pg_enum 
-                WHERE enumtypid = 'appointments_status_enum'::regtype 
-                AND enumlabel = 'pending_payment'
-            )
-        `);
+        // First check if type exists to avoid cast errors
+        const typeExists = await queryRunner.query(`SELECT 1 FROM pg_type WHERE typname = 'appointments_status_enum'`);
         
-        if (!checkEnum[0].exists) {
-            // We use ALTER TYPE ... ADD VALUE but it must be run outside of a multi-statement transaction in some PG versions
-            // However TypeORM runs this in a transaction. Let's try to add it.
-            try {
-                await queryRunner.query(`ALTER TYPE "appointments_status_enum" ADD VALUE IF NOT EXISTS 'pending_payment'`);
-            } catch (e) {
-                console.log('Skipping enum update, might already exist or handled by TypeORM');
+        if (typeExists.length > 0) {
+            const checkEnum = await queryRunner.query(`
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_enum 
+                    WHERE enumtypid = 'appointments_status_enum'::regtype 
+                    AND enumlabel = 'pending_payment'
+                )
+            `);
+            
+            if (!checkEnum[0].exists) {
+                try {
+                    await queryRunner.query(`ALTER TYPE "appointments_status_enum" ADD VALUE IF NOT EXISTS 'pending_payment'`);
+                } catch (e) {
+                    console.log('Skipping enum update, might already exist');
+                }
             }
         }
 
