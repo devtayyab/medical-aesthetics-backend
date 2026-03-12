@@ -474,7 +474,7 @@ export class BookingsService {
     });
 
     // Audit log for status changes (Done/Canceled/No-show)
-    if (['completed', 'cancelled', 'no_show'].includes(status)) {
+    if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(status as any)) {
       this.eventEmitter.emit('audit.log', {
         userId,
         action: 'APPOINTMENT_STATUS_CHANGE',
@@ -759,7 +759,7 @@ export class BookingsService {
     const updated = await this.findById(saved.id);
 
     // Audit log for status changes (Done/Canceled/No-show)
-    if (['completed', 'cancelled', 'no_show'].includes(status)) {
+    if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(status as any)) {
       this.eventEmitter.emit('audit.log', {
         userId,
         action: 'APPOINTMENT_STATUS_CHANGE',
