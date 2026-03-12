@@ -81,6 +81,7 @@ const AppDataSource = new DataSource({
     ],
 
     migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],
+    migrationsTransactionMode: 'each',
     synchronize: false,
     logging: true,
 });
