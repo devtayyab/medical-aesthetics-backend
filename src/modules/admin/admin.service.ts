@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, DeepPartial } from 'typeorm';
 import { Tag } from './entities/tag.entity';
 import { Offer } from './entities/offer.entity';
 import { Reward } from './entities/reward.entity';
@@ -271,14 +271,43 @@ export class AdminService {
     return qb.orderBy('treatment.name', 'ASC').getMany();
   }
 
-  async createTreatment(data: Partial<Treatment>): Promise<Treatment> {
-    const treatment = this.treatmentsRepository.create(data);
+  async createTreatment(data: Partial<Treatment> & { description?: string }): Promise<Treatment> {
+    const { description, ...rest } = data;
+    const finalData = { ...rest };
+    if (description !== undefined && finalData.fullDescription === undefined) {
+      finalData.fullDescription = description;
+    }
+    const treatment = this.treatmentsRepository.create(finalData as DeepPartial<Treatment>);
     return this.treatmentsRepository.save(treatment);
   }
 
-  async updateTreatment(id: string, data: Partial<Treatment>): Promise<Treatment> {
-    await this.treatmentsRepository.update(id, data);
-    return this.treatmentsRepository.findOne({ where: { id }, relations: ['categoryRef'] });
+  async updateTreatment(id: string, data: Partial<Treatment> & { description?: string }): Promise<Treatment> {
+    const { description, ...rest } = data;
+    const finalData = { ...rest };
+    
+    // Map description to fullDescription if provided
+    if (description !== undefined && finalData.fullDescription === undefined) {
+      finalData.fullDescription = description;
+    }
+
+    // Filter to only included properties in the entity to avoid crashes
+    const validProperties = ['name', 'shortDescription', 'fullDescription', 'categoryId', 'status', 'imageUrl', 'isActive'];
+    const filteredData: any = {};
+    for (const key of validProperties) {
+      if (finalData[key] !== undefined) {
+        filteredData[key] = finalData[key];
+      }
+    }
+
+    if (Object.keys(filteredData).length > 0) {
+      await this.treatmentsRepository.update(id, filteredData);
+    }
+    
+    const updated = await this.treatmentsRepository.findOne({ where: { id }, relations: ['categoryRef'] });
+    if (!updated) {
+      throw new NotFoundException('Treatment not found');
+    }
+    return updated;
   }
 
   async updateUser(id: string, updateData: Partial<User> & { assignedClinicIds?: string[] }): Promise<User> {
