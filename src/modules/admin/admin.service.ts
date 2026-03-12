@@ -271,13 +271,38 @@ export class AdminService {
     return qb.orderBy('treatment.name', 'ASC').getMany();
   }
 
-  async createTreatment(data: Partial<Treatment>): Promise<Treatment> {
-    const treatment = this.treatmentsRepository.create(data);
+  async createTreatment(data: any): Promise<Treatment> {
+    const { description, ...rest } = data;
+    const finalData = { ...rest };
+    if (description !== undefined && finalData.fullDescription === undefined) {
+      finalData.fullDescription = description;
+    }
+    const treatment = this.treatmentsRepository.create(finalData);
     return this.treatmentsRepository.save(treatment);
   }
 
-  async updateTreatment(id: string, data: Partial<Treatment>): Promise<Treatment> {
-    await this.treatmentsRepository.update(id, data);
+  async updateTreatment(id: string, data: any): Promise<Treatment> {
+    const { description, ...rest } = data;
+    const finalData = { ...rest };
+    
+    // Map description to fullDescription if provided
+    if (description !== undefined && finalData.fullDescription === undefined) {
+      finalData.fullDescription = description;
+    }
+
+    // Filter to only included properties in the entity to avoid crashes
+    const validProperties = ['name', 'shortDescription', 'fullDescription', 'categoryId', 'status', 'imageUrl', 'isActive'];
+    const filteredData: any = {};
+    for (const key of validProperties) {
+      if (finalData[key] !== undefined) {
+        filteredData[key] = finalData[key];
+      }
+    }
+
+    if (Object.keys(filteredData).length > 0) {
+      await this.treatmentsRepository.update(id, filteredData);
+    }
+    
     return this.treatmentsRepository.findOne({ where: { id }, relations: ['categoryRef'] });
   }
 
