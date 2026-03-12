@@ -617,7 +617,8 @@ export class BookingsService {
     }
 
     if (query.status) {
-      queryBuilder.andWhere('appointment.status = :status', { status: query.status });
+      const normalizedStatus = typeof query.status === 'string' ? query.status.toUpperCase() : query.status;
+      queryBuilder.andWhere('appointment.status = :status', { status: normalizedStatus });
     }
 
     if (query.date) {
