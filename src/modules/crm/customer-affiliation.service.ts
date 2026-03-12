@@ -135,6 +135,10 @@ export class CustomerAffiliationService {
 
     if (!record) return;
 
+    if (!record.doctorHistory) {
+      record.doctorHistory = [];
+    }
+
     const existingDoctorIndex = record.doctorHistory.findIndex(
       (aff: any) => aff.doctorId === doctorId,
     );
