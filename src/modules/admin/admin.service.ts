@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, DeepPartial } from 'typeorm';
 import { Tag } from './entities/tag.entity';
 import { Offer } from './entities/offer.entity';
 import { Reward } from './entities/reward.entity';
@@ -271,17 +271,17 @@ export class AdminService {
     return qb.orderBy('treatment.name', 'ASC').getMany();
   }
 
-  async createTreatment(data: any): Promise<Treatment> {
+  async createTreatment(data: Partial<Treatment> & { description?: string }): Promise<Treatment> {
     const { description, ...rest } = data;
     const finalData = { ...rest };
     if (description !== undefined && finalData.fullDescription === undefined) {
       finalData.fullDescription = description;
     }
-    const treatment = this.treatmentsRepository.create(finalData);
+    const treatment = this.treatmentsRepository.create(finalData as DeepPartial<Treatment>);
     return this.treatmentsRepository.save(treatment);
   }
 
-  async updateTreatment(id: string, data: any): Promise<Treatment> {
+  async updateTreatment(id: string, data: Partial<Treatment> & { description?: string }): Promise<Treatment> {
     const { description, ...rest } = data;
     const finalData = { ...rest };
     
@@ -303,7 +303,11 @@ export class AdminService {
       await this.treatmentsRepository.update(id, filteredData);
     }
     
-    return this.treatmentsRepository.findOne({ where: { id }, relations: ['categoryRef'] });
+    const updated = await this.treatmentsRepository.findOne({ where: { id }, relations: ['categoryRef'] });
+    if (!updated) {
+      throw new NotFoundException('Treatment not found');
+    }
+    return updated;
   }
 
   async updateUser(id: string, updateData: Partial<User> & { assignedClinicIds?: string[] }): Promise<User> {
