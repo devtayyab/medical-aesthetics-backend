@@ -256,6 +256,7 @@ export class AvailabilityService {
           reason = 'No doctors are available for the selected date. They might be fully booked or out of office.';
         }
       }
+      log(`✅ Found ${slots.length} slots for clinic: ${clinic.name}`);
 
       return {
         slots,
