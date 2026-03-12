@@ -9,7 +9,7 @@
     "start:dev": "ts-node-dev -r tsconfig-paths/register --respawn --transpile-only src/main.ts",
     "start:debug": "NODE_OPTIONS='--inspect' ts-node-dev -r tsconfig-paths/register --respawn --transpile-only src/main.ts",
     "prestart:prod": "npm run build",
-    "start:prod": "node dist/src/main.js",
+    "start:prod": "node dist/main.js",
     "migration:create": "npx typeorm-ts-node-commonjs migration:create",
     "migration:generate": "npx typeorm-ts-node-commonjs migration:generate -d src/config/data-source.ts",
     "migration:run": "npx typeorm-ts-node-commonjs migration:run -d src/config/data-source.ts",
@@ -18,7 +18,7 @@
     "db:reset": "npm run migration:revert && npm run migration:run",
     "deploy:staging": "NODE_ENV=staging npm run migration:run && NODE_ENV=staging npm run start:prod",
     "deploy:prod": "NODE_ENV=production npm run migration:run && NODE_ENV=production npm run start:prod",
-    "migration:prod": "npx typeorm migration:run -d dist/src/config/data-source.js"
+    "migration:prod": "npx typeorm migration:run -d dist/config/data-source.js"
   },
   "dependencies": {
     "@nestjs/bull": "^11.0.3",
