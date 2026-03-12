@@ -329,7 +329,13 @@ export class BookingsService {
 
       // DEMO MODE: If Viva credentials not configured yet, use a test redirect
       const vivaClientId = process.env.VIVA_CLIENT_ID;
-      if (!vivaClientId || vivaClientId === 'your-viva-client-id') {
+      const vivaMerchantId = process.env.VIVA_MERCHANT_ID;
+      const vivaApiKey = process.env.VIVA_API_KEY;
+
+      const hasOAuth = vivaClientId && vivaClientId !== 'your-viva-client-id';
+      const hasBasicAuth = vivaMerchantId && vivaApiKey && vivaMerchantId !== 'your-viva-merchant-id';
+
+      if (!hasOAuth && !hasBasicAuth) {
         console.warn('[Viva Wallet] ⚠️  DEMO MODE — No real credentials set. Using test redirect.');
         const frontendUrl = process.env.APP_FRONTEND_URL || 'http://localhost:5173';
         const demoRedirectUrl = `${frontendUrl}/payment/success?t=DEMO_TXN_${savedAppointment.id}&s=DEMO_ORDER&paid=true&appointmentId=${savedAppointment.id}`;
