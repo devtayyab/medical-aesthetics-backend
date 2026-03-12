@@ -366,19 +366,35 @@ export const Header: React.FC = () => {
 
             {/* Contact Support Box */}
             {user?.role !== 'salesperson' && (
-              <a
-                href="mailto:support@medicalaesthetics.com"
-                className="hidden lg:flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 hover:bg-gray-100 transition-colors mr-2 group decoration-0"
-                style={{ textDecoration: 'none' }}
-              >
-                <div className="size-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 group-hover:border-[#CBFF38] transition-colors">
-                  <MessageCircle size={16} className="text-gray-600 group-hover:text-black" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5">Don't know what you need?</span>
-                  <span className="text-sm font-bold text-gray-900 leading-none">Contact Us</span>
-                </div>
-              </a>
+              <div className="hidden lg:flex items-center gap-6 mr-4">
+                <a
+                  href="tel:6948880498"
+                  className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-2 hover:bg-[#CBFF38] transition-all group decoration-0"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <div className="size-8 bg-white/10 rounded-full flex items-center justify-center shadow-sm border border-white/10 group-hover:border-black/20 transition-colors">
+                    <span className="text-white group-hover:text-black font-bold text-xs">📞</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5 group-hover:text-black/60">Call Us</span>
+                    <span className="text-sm font-bold text-white group-hover:text-black leading-none">6948880498</span>
+                  </div>
+                </a>
+
+                <a
+                  href="mailto:info@beautydoctors.gr"
+                  className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-2 hover:bg-[#CBFF38] transition-all group decoration-0"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <div className="size-8 bg-white/10 rounded-full flex items-center justify-center shadow-sm border border-white/10 group-hover:border-black/20 transition-colors">
+                    <MessageCircle size={16} className="text-white group-hover:text-black" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5 group-hover:text-black/60">Email</span>
+                    <span className="text-sm font-bold text-white group-hover:text-black leading-none">info@beautydoctors.gr</span>
+                  </div>
+                </a>
+              </div>
             )}
 
             {/* Mobile Notification Bell */}
@@ -494,50 +510,63 @@ export const Header: React.FC = () => {
 
       {/* if user is not logged in , add Home , face and Body medical aesthetics , Asthetics Gynacology , Asthetics Dermatology , Asthetics Plastic Surgery , Hair Removal laser */}
       {!isAuthenticated && (
-        <div className="hidden md:flex items-center gap-5 justify-center mt-5 relative z-10">
+        <div className="hidden md:flex items-center gap-4 justify-center mt-5 relative z-10 flex-wrap px-4">
           <Link
             to="/"
-            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
+            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1 transition-all text-xs font-bold uppercase tracking-wider"
           >
             Home
           </Link>
 
-          {/* Medical Aesthetics – Face & Body with Dropdown */}
+          {/* Hair Removal Dropdown */}
           <div className="relative group">
-            <button className="text-white rounded bg-[#2D3748] group-hover:bg-[#CBFF38] group-hover:text-black px-3 py-1 flex items-center gap-1 cursor-pointer">
-              Medical Aesthetics – Face & Body
+            <button className="text-white rounded bg-[#2D3748] group-hover:bg-[#CBFF38] group-hover:text-black px-3 py-1 flex items-center gap-1 cursor-pointer transition-all text-xs font-bold uppercase tracking-wider">
+              Hair Removal
             </button>
-            <div className="absolute top-full left-0 mt-0 w-48 bg-white rounded shadow-lg overflow-hidden hidden group-hover:block border border-gray-200">
-              <Link
-                to="/search?q=Face Medical Aesthetics"
-                className="block px-4 py-2 text-gray-800 hover:bg-[#CBFF38] hover:text-black"
-              >
-                Face
-              </Link>
-              <Link
-                to="/search?q=Body Medical Aesthetics"
-                className="block px-4 py-2 text-gray-800 hover:bg-[#CBFF38] hover:text-black"
-              >
-                Body
-              </Link>
+            <div className="absolute top-full left-0 mt-0 w-56 bg-[#1a202c] rounded-xl shadow-2xl overflow-hidden hidden group-hover:block border border-white/10 z-50">
+              <Link to="/search?q=Laser Alexandrite" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Laser Alexandrite</Link>
+              <Link to="/search?q=Triple Wave Laser" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all">Triple Wave Laser</Link>
+            </div>
+          </div>
+
+          {/* Facial Medical Aesthetics Dropdown */}
+          <div className="relative group">
+            <button className="text-white rounded bg-[#2D3748] group-hover:bg-[#CBFF38] group-hover:text-black px-3 py-1 flex items-center gap-1 cursor-pointer transition-all text-xs font-bold uppercase tracking-wider">
+              Facial Aesthetics
+            </button>
+            <div className="absolute top-full left-0 mt-0 w-64 bg-[#1a202c] rounded-xl shadow-2xl overflow-hidden hidden group-hover:block border border-white/10 z-50">
+              <Link to="/search?q=Botox" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Botox-Dysport</Link>
+              <Link to="/search?q=Hyaluronic Acid" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Hyaluronic Acid</Link>
+              <Link to="/search?q=Fractional Laser" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Fractional Laser</Link>
+              <Link to="/search?q=Thread Lift" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Thread Lift (Threads)</Link>
+              <Link to="/search?q=Dermapen" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Dermapen</Link>
+              <Link to="/search?q=PRP" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all">PRP Therapy</Link>
+            </div>
+          </div>
+
+          {/* Body Medical Aesthetics Dropdown */}
+          <div className="relative group">
+            <button className="text-white rounded bg-[#2D3748] group-hover:bg-[#CBFF38] group-hover:text-black px-3 py-1 flex items-center gap-1 cursor-pointer transition-all text-xs font-bold uppercase tracking-wider">
+              Body Aesthetics
+            </button>
+            <div className="absolute top-full left-0 mt-0 w-60 bg-[#1a202c] rounded-xl shadow-2xl overflow-hidden hidden group-hover:block border border-white/10 z-50">
+              <Link to="/search?q=Aqualyx" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Aqualyx (Lipolysis)</Link>
+              <Link to="/search?q=Cryolipolysis" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Cryolipolysis</Link>
+              <Link to="/search?q=Mesotherapy" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Mesotherapy</Link>
+              <Link to="/search?q=Body Thread Lift" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all">Body Thread Lift</Link>
             </div>
           </div>
 
           <Link
-            to="/search?q=Aesthetic %26 Reconstructive Gynecology"
-            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
-          >
-            Aesthetic & Reconstructive Gynecology
-          </Link>
-          <Link
             to="/search?q=Clinical Dermatology"
-            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
+            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1 transition-all text-xs font-bold uppercase tracking-wider"
           >
             Clinical Dermatology
           </Link>
+          
           <Link
             to="/search?q=Plastic Surgery"
-            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1"
+            className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1 transition-all text-xs font-bold uppercase tracking-wider"
           >
             Plastic Surgery
           </Link>
@@ -673,41 +702,37 @@ export const Header: React.FC = () => {
                 Home
               </Link>
 
-              <div className="flex flex-col gap-2 pl-4 border-l-2 border-gray-100">
-                <span className="text-gray-500 font-medium text-sm">Medical Aesthetics – Face & Body</span>
-                <Link
-                  to="/search?q=Face Medical Aesthetics"
-                  className="text-black pl-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Face
-                </Link>
-                <Link
-                  to="/search?q=Body Medical Aesthetics"
-                  className="text-black pl-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Body
-                </Link>
+              <div className="flex flex-col gap-3 pl-4 border-l-2 border-gray-100">
+                <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Hair Removal</span>
+                <Link to="/search?q=Laser Alexandrite" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Laser Alexandrite</Link>
+                <Link to="/search?q=Triple Wave Laser" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Triple Wave Laser</Link>
+              </div>
+
+              <div className="flex flex-col gap-3 pl-4 border-l-2 border-gray-100">
+                <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Facial Aesthetics</span>
+                <Link to="/search?q=Botox" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Botox-Dysport</Link>
+                <Link to="/search?q=Hyaluronic Acid" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Hyaluronic Acid</Link>
+                <Link to="/search?q=Fractional Laser" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Fractional Laser</Link>
+                <Link to="/search?q=Thread Lift" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Thread Lift (Threads)</Link>
+              </div>
+
+              <div className="flex flex-col gap-3 pl-4 border-l-2 border-gray-100">
+                <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Body Aesthetics</span>
+                <Link to="/search?q=Aqualyx" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Aqualyx (Lipolysis)</Link>
+                <Link to="/search?q=Cryolipolysis" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Cryolipolysis</Link>
+                <Link to="/search?q=Mesotherapy" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Mesotherapy</Link>
               </div>
 
               <Link
-                to="/search?q=Aesthetic %26 Reconstructive Gynecology"
-                className="text-black"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Aesthetic & Reconstructive Gynecology
-              </Link>
-              <Link
                 to="/search?q=Clinical Dermatology"
-                className="text-black"
+                className="text-black font-bold text-sm uppercase"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Clinical Dermatology
               </Link>
               <Link
                 to="/search?q=Plastic Surgery"
-                className="text-black"
+                className="text-black font-bold text-sm uppercase"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Plastic Surgery

@@ -623,8 +623,11 @@ export class BookingsService {
 
     if (query.date) {
       const date = new Date(query.date);
-      const startOfDay = new Date(date.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      
       queryBuilder.andWhere('appointment.startTime BETWEEN :startOfDay AND :endOfDay', {
         startOfDay,
         endOfDay,
