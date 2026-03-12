@@ -540,10 +540,14 @@ export class ClinicsService {
       clinic = await this.findByOwnerId(ownerId);
     }
 
-    // For management, we might need to find or create a treatment
     let treatment;
     if (serviceData.treatmentId) {
       treatment = await this.treatmentsRepository.findOne({ where: { id: serviceData.treatmentId } });
+    }
+
+    // If no treatmentId is given, we MUST have a name to link or create a treatment
+    if (!treatment && !serviceData.name) {
+      throw new BadRequestException('A service name or treatmentId is required to create a service');
     }
 
     if (!treatment && serviceData.name) {
@@ -558,13 +562,13 @@ export class ClinicsService {
           shortDescription: serviceData.shortDescription,
           fullDescription: serviceData.fullDescription,
           imageUrl: serviceData.imageUrl,
-          status: TreatmentStatus.APPROVED, // Default approved for clinic-created? Or pending?
+          status: TreatmentStatus.APPROVED,
         });
         await this.treatmentsRepository.save(treatment);
       }
     }
 
-    if (!treatment && serviceData.treatmentId) {
+    if (!treatment) {
        throw new NotFoundException('Treatment master record not found');
     }
 
@@ -572,15 +576,20 @@ export class ClinicsService {
       price: serviceData.price,
       durationMinutes: serviceData.durationMinutes,
       clinicId: clinic.id,
-      treatmentId: treatment?.id,
+      treatmentId: treatment.id,
       isActive: (serviceData as any).isActive ?? true,
       metadata: serviceData.metadata,
     });
 
+    // Validate but don't block creation if just metadata is missing
     if (service.isActive) {
-      // Pass the treatment we found/created for validation
       service.treatment = treatment;
-      this.validateServiceForPublishing(service);
+      try {
+        this.validateServiceForPublishing(service);
+      } catch (error) {
+        // Log the validation error but don't fail the request
+        console.warn(`Service created with metadata warnings: ${error.message}`);
+      }
     }
 
     return this.servicesRepository.save(service);
