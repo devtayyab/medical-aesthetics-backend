@@ -47,7 +47,7 @@ export class TaskAutomationService {
       actionType: 'appointment_confirmation',
       priority: 'high',
       template: 'Confirm appointment scheduled for {appointment_date} at {appointment_time}',
-      conditions: { appointmentStatus: 'confirmed' },
+      conditions: { appointmentStatus: AppointmentStatus.CONFIRMED },
     },
     {
       id: 'appointment_confirmation_1day',
@@ -57,7 +57,7 @@ export class TaskAutomationService {
       actionType: 'appointment_confirmation',
       priority: 'urgent',
       template: 'URGENT: Confirm appointment for tomorrow {appointment_date} at {appointment_time}',
-      conditions: { appointmentStatus: 'confirmed' },
+      conditions: { appointmentStatus: AppointmentStatus.CONFIRMED },
     },
     {
       id: 'post_appointment_followup',

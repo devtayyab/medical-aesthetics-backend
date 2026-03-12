@@ -755,7 +755,7 @@ export class CrmService implements OnModuleInit {
         .orderBy('apt.startTime', 'DESC')
         .getMany();
 
-      const compApts = leadAppointments.filter(a => a.status === 'completed');
+      const compApts = leadAppointments.filter(a => a.status === AppointmentStatus.COMPLETED);
       const ltv = compApts.reduce((sum, apt) => sum + Number(apt.totalAmount || 0), 0);
       const isRepeat = compApts.length > 1;
 
@@ -2456,7 +2456,7 @@ export class CrmService implements OnModuleInit {
         taskResult: a.status,
         bookingStatus: a.status,
         revenue: parseFloat(a.revenue) || 0,
-        executionStatus: ['completed', 'cancelled', 'no_show'].includes(a.status) ? 'Executed' : 'Not Executed',
+        executionStatus: [AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(a.status as any) ? 'Executed' : 'Not Executed',
         rebookingRequest: a.notes?.toLowerCase().includes('rebook') ? 'Yes' : 'No'
       })),
       ...actions.map(a => ({
@@ -2490,18 +2490,18 @@ export class CrmService implements OnModuleInit {
       if (dateMap.has(dStr)) {
         const m = dateMap.get(dStr);
         m.total++;
-        if (a.status === 'completed' || a.status === 'confirmed') m.confirmed++;
-        if (a.status === 'cancelled') m.cancelled++;
-        if (a.status === 'no_show') m.noShow++;
+        if (a.status === AppointmentStatus.COMPLETED || a.status === AppointmentStatus.CONFIRMED) m.confirmed++;
+        if (a.status === AppointmentStatus.CANCELLED) m.cancelled++;
+        if (a.status === AppointmentStatus.NO_SHOW) m.noShow++;
         m.revenue += parseFloat(a.revenue) || 0;
         dateMap.set(dStr, m);
       }
 
       if (dStr === todayStr) {
         dailyStats.total++;
-        if (a.status === 'completed' || a.status === 'confirmed') dailyStats.confirmed++;
-        if (a.status === 'cancelled') dailyStats.cancelled++;
-        if (a.status === 'no_show') dailyStats.noShow++;
+        if (a.status === AppointmentStatus.COMPLETED || a.status === AppointmentStatus.CONFIRMED) dailyStats.confirmed++;
+        if (a.status === AppointmentStatus.CANCELLED) dailyStats.cancelled++;
+        if (a.status === AppointmentStatus.NO_SHOW) dailyStats.noShow++;
         dailyStats.revenue += parseFloat(a.revenue) || 0;
       }
     }
@@ -2541,7 +2541,7 @@ export class CrmService implements OnModuleInit {
       const sp = getSpObj(a.salesPersonId, a.salesPersonName);
       if (a.eventType === 'Appointment') {
         sp.totalBookings++;
-        if (a.bookingStatus === 'completed' || a.bookingStatus === 'confirmed') sp.confirmedBookings++;
+        if (a.bookingStatus === AppointmentStatus.COMPLETED || a.bookingStatus === AppointmentStatus.CONFIRMED) sp.confirmedBookings++;
         sp.revenue += a.revenue;
         if (a.executionStatus === 'Executed') sp.executedBookings++;
       } else {
@@ -2792,10 +2792,10 @@ export class CrmService implements OnModuleInit {
       .select('apt.bookedById', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COUNT(apt.id)', 'booked')
-      .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'attended')
-      .addSelect("COUNT(CASE WHEN apt.status = 'completed' AND (apt.treatmentDetails IS NOT NULL OR apt.serviceExecuted = true) THEN 1 END)", 'treatmentsCompleted')
-      .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
-      .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShows')
+      .addSelect("COUNT(CASE WHEN apt.status = 'COMPLETED' THEN 1 END)", 'attended')
+      .addSelect("COUNT(CASE WHEN apt.status = 'COMPLETED' AND (apt.treatmentDetails IS NOT NULL OR apt.serviceExecuted = true) THEN 1 END)", 'treatmentsCompleted')
+      .addSelect("COUNT(CASE WHEN apt.status = 'CANCELLED' THEN 1 END)", 'cancelled')
+      .addSelect("COUNT(CASE WHEN apt.status = 'NO_SHOW' THEN 1 END)", 'noShows')
       .where('apt.bookedById IS NOT NULL');
 
     if (dateRange) {
@@ -2970,7 +2970,7 @@ export class CrmService implements OnModuleInit {
       .addSelect('apt.startTime', 'date')
       .addSelect('EXTRACT(DAY FROM CURRENT_DATE - apt.startTime)', 'daysAgo')
       .addSelect("CONCAT(COALESCE(client.firstName, ''), ' ', COALESCE(client.lastName, ''))", 'patientName')
-      .where('apt.status = :status', { status: 'no_show' })
+      .where('apt.status = :status', { status: AppointmentStatus.NO_SHOW })
       .andWhere('apt.startTime >= :thresholdDate', { thresholdDate });
 
     // Note: Since Appointment doesn't have metadata field, we'll return all no-shows
@@ -3026,7 +3026,7 @@ export class CrmService implements OnModuleInit {
             .createQueryBuilder('apt')
             .select('DISTINCT apt.clientId')
             .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
-            .andWhere('apt.status = :status', { status: 'completed' })
+            .andWhere('apt.status = :status', { status: AppointmentStatus.COMPLETED })
             .andWhere('apt.startTime >= :date', { date: thirtyDaysAgo })
             .getRawMany();
 
@@ -3035,7 +3035,7 @@ export class CrmService implements OnModuleInit {
             .createQueryBuilder('apt')
             .select('DISTINCT apt.clientId')
             .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
-            .andWhere('apt.status = :status', { status: 'completed' })
+            .andWhere('apt.status = :status', { status: AppointmentStatus.COMPLETED })
             .andWhere('apt.startTime >= :date', { date: ninetyDaysAgo })
             .getRawMany();
 
@@ -3044,7 +3044,7 @@ export class CrmService implements OnModuleInit {
             .createQueryBuilder('apt')
             .select('DISTINCT apt.clientId')
             .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
-            .andWhere('apt.status = :status', { status: 'completed' })
+            .andWhere('apt.status = :status', { status: AppointmentStatus.COMPLETED })
             .getRawMany();
 
           // Count repeat clients in last 30 days (clients who had more than one appointment)
@@ -3053,7 +3053,7 @@ export class CrmService implements OnModuleInit {
             .select('apt.clientId')
             .addSelect('COUNT(apt.id)', 'appointmentCount')
             .where('apt.clinicId = :clinicId', { clinicId: clinic.id })
-            .andWhere('apt.status = :status', { status: 'completed' })
+            .andWhere('apt.status = :status', { status: AppointmentStatus.COMPLETED })
             .andWhere('apt.startTime >= :date', { date: thirtyDaysAgo })
             .groupBy('apt.clientId')
             .having('COUNT(apt.id) > 1')
@@ -3089,7 +3089,7 @@ export class CrmService implements OnModuleInit {
       .addSelect('treatment.name', 'serviceName')
       .addSelect('COUNT(apt.id)', 'totalAppointments')
       .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'totalRevenue')
-      .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancellations')
+      .addSelect("COUNT(CASE WHEN apt.status = 'CANCELLED' THEN 1 END)", 'cancellations')
       .where('service.id IS NOT NULL');
 
     if (dateRange) {
@@ -3148,7 +3148,7 @@ export class CrmService implements OnModuleInit {
             .leftJoin('customer_records', 'cr', 'cr.customerId = client.id')
             .leftJoin('ad_attributions', 'aa', 'aa.customerRecordId = cr.id')
             .select('COUNT(apt.id)', 'patientsCame')
-            .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
+            .addSelect("COUNT(CASE WHEN apt.status = 'CANCELLED' THEN 1 END)", 'cancelled')
             .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'totalRevenue')
             .where('aa.adCampaignId = :campaignId', { campaignId: row.adId });
 
@@ -3394,7 +3394,7 @@ export class CrmService implements OnModuleInit {
     const { appointment, newStatus, oldStatus } = eventData;
     if (!appointment || !appointment.clientId) return;
 
-    if (newStatus === 'completed') {
+    if (newStatus === AppointmentStatus.COMPLETED) {
       // 1. Conversion check (redundant but safe)
       const lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
       if (lead && lead.status !== LeadStatus.CONVERTED) {
@@ -3431,7 +3431,7 @@ export class CrmService implements OnModuleInit {
           this.logger.error(`Failed to update affiliation for client ${appointment.clientId}:`, affError);
         }
       }
-    } else if (newStatus === 'cancelled') {
+    } else if (newStatus === AppointmentStatus.CANCELLED) {
       const record = await this.customerRecordsRepository.findOne({
         where: { customerId: appointment.clientId }
       });

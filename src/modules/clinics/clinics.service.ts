@@ -541,37 +541,44 @@ export class ClinicsService {
     }
 
     // For management, we might need to find or create a treatment
-    let treatment = await this.treatmentsRepository.findOne({
-      where: { name: serviceData.name } // Simplified
-    });
+    let treatment;
+    if (serviceData.treatmentId) {
+      treatment = await this.treatmentsRepository.findOne({ where: { id: serviceData.treatmentId } });
+    }
 
     if (!treatment && serviceData.name) {
-      treatment = this.treatmentsRepository.create({
-        name: serviceData.name,
-        category: serviceData.category,
-        shortDescription: serviceData.shortDescription,
-        fullDescription: serviceData.fullDescription,
-        imageUrl: serviceData.imageUrl,
+      treatment = await this.treatmentsRepository.findOne({
+        where: { name: serviceData.name }
       });
-      await this.treatmentsRepository.save(treatment);
+
+      if (!treatment) {
+        treatment = this.treatmentsRepository.create({
+          name: serviceData.name,
+          category: serviceData.category,
+          shortDescription: serviceData.shortDescription,
+          fullDescription: serviceData.fullDescription,
+          imageUrl: serviceData.imageUrl,
+          status: TreatmentStatus.APPROVED, // Default approved for clinic-created? Or pending?
+        });
+        await this.treatmentsRepository.save(treatment);
+      }
+    }
+
+    if (!treatment && serviceData.treatmentId) {
+       throw new NotFoundException('Treatment master record not found');
     }
 
     const service = this.servicesRepository.create({
       price: serviceData.price,
       durationMinutes: serviceData.durationMinutes,
       clinicId: clinic.id,
-      treatmentId: treatment?.id || (serviceData as any).treatmentId,
+      treatmentId: treatment?.id,
       isActive: (serviceData as any).isActive ?? true,
       metadata: serviceData.metadata,
     });
 
     if (service.isActive) {
-      const serviceWithRelations = await this.servicesRepository.findOne({
-        where: { id: service.id },
-        relations: ['treatment'],
-      });
-      // But service is not saved yet, so we can't find it by ID.
-      // Let's just pass the treatment we found/created.
+      // Pass the treatment we found/created for validation
       service.treatment = treatment;
       this.validateServiceForPublishing(service);
     }
