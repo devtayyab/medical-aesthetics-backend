@@ -223,17 +223,20 @@ export class CreateServiceDto {
   @IsString()
   treatmentId?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  shortDescription: string;
+  shortDescription?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  fullDescription: string;
+  fullDescription?: string;
 
   @ApiProperty()
   @IsNumber()
@@ -243,13 +246,15 @@ export class CreateServiceDto {
   @IsNumber()
   durationMinutes: number;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  category: string;
+  category?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  imageUrl: string;
+  imageUrl?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
