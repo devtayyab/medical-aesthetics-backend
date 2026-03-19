@@ -4,71 +4,54 @@ import {
   Users,
   Phone,
   Calendar,
-  TrendingUp,
-  AlertTriangle,
   Plus,
-  Filter,
-  Building,
-  Target,
-  Award,
-  Clock,
-  ChevronDown,
   Loader2,
   Search,
   X,
-  CheckCircle,
-  Mail,
   ArrowUpRight,
   FileText,
-  Trash2,
-  Activity
+  ChevronDown,
+  Target
 } from 'lucide-react';
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
-import { Badge } from '@/components/atoms/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/molecules/Tabs';
 import { LeadsPage } from '@/pages/CRM/Leads';
+import { Customers } from '@/pages/CRM/Customers';
 import { Tasks } from '@/pages/CRM/Tasks';
 import { OneCustomerDetail } from '@/pages/CRM/OneCustomerDetail';
 import {
   fetchOverdueTasks,
   fetchAutomationRules,
   runTaskAutomationCheck,
-  deleteLead,
   fetchSalespersons,
   fetchLeads,
   fetchActions,
   fetchSalespersonAnalytics,
-  fetchCrmMetrics,
-  fetchRepeatCustomers
+  fetchCrmMetrics
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
-import type { Task } from '@/types';
-import { TaskDetails } from '@/pages/CRM/TaskDetails';
+import type { Task, AuthState } from '@/types';
 import { Analytics } from '@/pages/CRM/Analytics';
 import { SalesWeekCalendar } from '@/pages/CRM/SalesWeekCalendar';
 import { Calls as ManagerCrmCalls } from '@/pages/Admin/ManagerCRM/Calls';
 
 export const CRM: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth as AuthState);
   const {
     leads,
-    analytics,
-    automationRules,
-    isLoading,
-    error
+    isLoading
   } = useSelector((state: RootState) => state.crm);
-
 
   const { actions: tasks } = useSelector((state: RootState) => state.crm);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCustomer, setSelectedCustomer] = useState<Lead | null>(null);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [setSelectedTask] = useState<Task | null>(null);
   const [forceShowCreateForm, setForceShowCreateForm] = useState(false);
 
   // New state for buttons
@@ -87,10 +70,10 @@ export const CRM: React.FC = () => {
   const handleFormShown = () => {
     setForceShowCreateForm(false);
   };
+
   useEffect(() => {
     if (user) {
       dispatch(fetchLeads({}));
-
       dispatch(fetchActions({ salespersonId: user.id }));
       dispatch(fetchOverdueTasks(user.id));
       dispatch(fetchAutomationRules());
@@ -98,55 +81,17 @@ export const CRM: React.FC = () => {
       if (user.role === 'admin' || user.role === 'manager') {
         dispatch(fetchSalespersons());
       }
-
-      // Fetch Analytics
-      dispatch(fetchSalespersonAnalytics({ salespersonId: user.id }));
-      dispatch(fetchCrmMetrics());
-      dispatch(fetchRepeatCustomers(user.id));
     }
+    dispatch(fetchCrmMetrics());
   }, [dispatch, user]);
 
-  const handleDeleteCustomer = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
-      try {
-        await dispatch(deleteLead(id)).unwrap();
-      } catch (error) {
-        console.error('Failed to delete customer:', error);
-        alert('Failed to delete customer.');
-      }
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string | Date | undefined) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
   const handleRunAutomation = async () => {
-    if (isAutomationRunning) return;
-
     setIsAutomationRunning(true);
     try {
       await dispatch(runTaskAutomationCheck()).unwrap();
-      // Refresh data after automation
-      if (user) {
-        dispatch(fetchActions({ salespersonId: user.id }));
-        dispatch(fetchOverdueTasks(user.id));
-      }
-      // Simple alert for feedback since we don't have a global toast yet
-      alert('Automation check completed successfully!');
+      alert('Automation check completed. Any required tasks have been created.');
+      dispatch(fetchActions({ salespersonId: user?.id }));
+      dispatch(fetchOverdueTasks(user?.id!));
     } catch (error) {
       console.error('Failed to run automation:', error);
       alert('Failed to run automation check.');
@@ -164,32 +109,29 @@ export const CRM: React.FC = () => {
     setSelectedTask(task);
     setActiveTab('task');
   };
-  const updatedTasks = tasks.map(task => {
-    const dueDate = new Date(task.dueDate);
-    const now = new Date();
 
-    // Check if due date is in the past and task is not completed
-    if (dueDate < now && task.status !== 'completed' && task.status !== 'cancelled') {
-      return { ...task, status: 'overdue' };
-    }
-
-    return task;
-  });
-
-
-  const [customersTabSearchTerm, setCustomersTabSearchTerm] = useState('');
-
-  const filteredCustomers = leads.filter(customer => {
-    if (!customersTabSearchTerm) return true;
-    const term = customersTabSearchTerm.toLowerCase();
+  if (selectedCustomer) {
     return (
-      customer.id.toLowerCase().includes(term) ||
-      customer.firstName.toLowerCase().includes(term) ||
-      customer.lastName.toLowerCase().includes(term) ||
-      customer.email.toLowerCase().includes(term) ||
-      (customer.phone && customer.phone.includes(term))
+      <div className="min-h-screen bg-gray-50/50 p-4 md:p-8 animate-in fade-in duration-500">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-4 mb-8">
+            <Button 
+              variant="ghost" 
+              onClick={() => setSelectedCustomer(null)}
+              className="p-2 hover:bg-white rounded-full transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 leading-none">Customer Profile</h1>
+              <p className="text-xs text-gray-400 mt-1 uppercase font-black tracking-widest">Selected Record</p>
+            </div>
+          </div>
+          <OneCustomerDetail SelectedCustomer={selectedCustomer} />
+        </div>
+      </div>
     );
-  });
+  }
 
   return (
     <div className="space-y-6">
@@ -198,24 +140,21 @@ export const CRM: React.FC = () => {
         <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/30 rounded-full -mr-32 -mt-32 blur-3xl" />
         </div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between p-8 gap-6 relative z-10">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">CRM Dashboard</h1>
-            <p className="text-slate-500 mt-1 font-medium text-sm">
-              Manage leads, customers, and sales activities
-            </p>
+        <div className="px-8 py-10 flex flex-col md:flex-row justify-between items-center gap-6 relative z-10 bg-white/40 backdrop-blur-sm rounded-xl border border-slate-100/50">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-200 animate-in zoom-in-50 duration-700">
+              <Users className="text-white w-8 h-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">CRM Console</h1>
+              <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                Premium Sales Management
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <Button
-              variant="outline"
-              className="bg-white text-slate-700 border-slate-200 hover:bg-slate-50 font-bold px-4 h-10 shadow-sm transition-all text-xs"
-              onClick={() => setShowQuickBooking(true)}
-            >
-              <Calendar className="h-3.5 w-3.5 mr-2 text-slate-400" />
-              Direct Booking
-            </Button>
-
+          <div className="flex items-center gap-4 flex-wrap justify-center">
             <Button
               variant="outline"
               className={`bg-white text-slate-700 border-slate-200 hover:bg-slate-50 font-bold h-10 px-4 shadow-sm text-xs ${isAutomationRunning ? 'animate-pulse opacity-80' : ''}`}
@@ -232,7 +171,6 @@ export const CRM: React.FC = () => {
 
             <div className="relative">
               <Button
-                variant="primary"
                 className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-bold px-4 h-10 text-xs"
                 onClick={() => setShowQuickActions(!showQuickActions)}
               >
@@ -292,8 +230,8 @@ export const CRM: React.FC = () => {
           </div>
         </div>
       </Card>
+      
       {/* Main Navigation Tabs */}
-
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
@@ -336,121 +274,14 @@ export const CRM: React.FC = () => {
 
         {/* Customers Tab */}
         <TabsContent value="customers">
-          <div className="space-y-6">
-            {/* Customer Search and Filters */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex gap-4">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      placeholder="Search by ID, Name, Email, or Phone..."
-                      value={customersTabSearchTerm}
-                      onChange={(e) => setCustomersTabSearchTerm(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                  <Button variant="outline">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filters
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Customer List */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle>Customer Management</CardTitle>
-                <div className="text-xs text-gray-500 font-medium">
-                  Showing {filteredCustomers.length} results
-                </div>
-              </CardHeader>
-              <CardContent>
-                {filteredCustomers.length > 0 ? (
-                  <div className="divide-y divide-gray-100">
-                    <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-gray-50 rounded-lg text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                      <div className="col-span-3">Customer</div>
-                      <div className="col-span-3">Contact</div>
-                      <div className="col-span-2">ID</div>
-                      <div className="col-span-2">Status</div>
-                      <div className="col-span-2 text-right">Action</div>
-                    </div>
-                    {filteredCustomers.map(customer => (
-                      <div
-                        key={customer.id}
-                        className="grid grid-cols-12 gap-4 px-4 py-4 items-center hover:bg-gray-50 transition-colors rounded-lg cursor-pointer group"
-                        onClick={() => handleViewCustomer(customer)}
-                      >
-                        <div className="col-span-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs ring-4 ring-white group-hover:ring-blue-50 transition-all">
-                              {customer.firstName?.[0]}{customer.lastName?.[0]}
-                            </div>
-                            <div>
-                              <div className="font-bold text-gray-900">{customer.firstName} {customer.lastName}</div>
-                              <div className="text-xs text-gray-400">Since {new Date(customer.createdAt).toLocaleDateString()}</div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-span-3">
-                          <div className="text-sm text-gray-700 flex items-center gap-2"><Mail className="w-3 h-3 text-gray-400" /> {customer.email}</div>
-                          {customer.phone && <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2"><Phone className="w-3 h-3 text-gray-400" /> {customer.phone}</div>}
-                        </div>
-                        <div className="col-span-2">
-                          <code className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[10px] font-mono whitespace-nowrap overflow-hidden text-ellipsis max-w-full block">
-                            {customer.id}
-                          </code>
-                        </div>
-                        <div className="col-span-2">
-                          <Badge
-                            variant="secondary"
-                            className={`
-                              ${customer.status === 'converted' ? 'bg-emerald-100 text-emerald-800' :
-                                customer.status === 'new' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}
-                            `}
-                          >
-                            {customer.status}
-                          </Badge>
-                        </div>
-                        <div className="col-span-2 text-right flex items-center justify-end gap-2">
-                          <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            View <ArrowUpRight className="w-3 h-3 ml-1" />
-                          </Button>
-                          {(user?.role === 'admin' || user?.role === 'manager') && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => handleDeleteCustomer(e, customer.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center border border-dashed border-gray-200">
-                      <Users className="w-8 h-8 text-gray-300" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">No customers found</h3>
-                      <p className="text-sm text-gray-500">Try searching for a different ID, name, or email.</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <Customers />
         </TabsContent>
 
         {/* Sales Tracker / Calendar Tab */}
         <TabsContent value="tracker">
           <SalesWeekCalendar />
         </TabsContent>
+
         {user?.role !== 'salesperson' && (
           <TabsContent value="calls">
             <ManagerCrmCalls />
@@ -472,7 +303,6 @@ export const CRM: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Placeholder for Salespersons List relying on crm.salespersons */}
                   <div className="text-center py-8 text-gray-500 col-span-full">
                     Salesperson management interface loading...
                   </div>
@@ -482,70 +312,6 @@ export const CRM: React.FC = () => {
           </TabsContent>
         )}
       </Tabs>
-
-      {/* s Modal/Tab */}
-      {
-        selectedCustomer && activeTab === 'customer' && (
-
-          <div className="space-y-6">
-            <Card>
-              <div className="px-8">
-
-                <div className="flex  justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                      Customer Details
-                    </h2></div>
-                  <div>
-                    <Button variant="outline" onClick={() => setActiveTab('leads')}>
-                      ← Back to Leads
-                    </Button>
-                  </div>
-                </div>
-
-              </div>
-              <OneCustomerDetail
-                SelectedCustomer={selectedCustomer as any}
-                isLoading={isLoading}
-                error={error}
-
-
-              />
-            </Card>
-
-          </div>
-        )
-      }
-
-      {/* s Modal/Tab */}
-      {
-        selectedTask && activeTab === 'task' && (
-
-          <div className="space-y-6">
-            <Card>
-              <div className="px-8">
-
-                <div className="flex  justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                      Task Details
-                    </h2></div>
-                  <div>
-                    <Button variant="outline" onClick={() => setActiveTab('tasks')}>
-                      ← Back to Tasks
-                    </Button>
-                  </div>
-                </div>
-
-              </div>
-              <TaskDetails
-                selectedTask={selectedTask}
-              />
-            </Card>
-
-          </div>
-        )
-      }
 
       {/* Quick Booking Customer Search Modal */}
       {
@@ -599,53 +365,20 @@ export const CRM: React.FC = () => {
                         <div className="font-bold text-slate-900 text-sm">{customer.firstName} {customer.lastName}</div>
                         <div className="text-[11px] text-slate-500 font-medium">{customer.email}</div>
                       </div>
-                      <Button size="sm" variant="ghost" className="text-blue-600 font-bold text-xs px-2">Select</Button>
+                      <ArrowUpRight className="w-4 h-4 text-slate-300" />
                     </div>
                   ))}
-
-                  {customerSearchTerm.length > 2 && searchResults.length === 0 && (
-                    <div className="text-center py-4 text-gray-500 text-sm">
-                      No customers found.
-                      <button
-                        className="text-blue-600 font-bold ml-1 hover:underline"
-                        onClick={() => {
-                          handleAddNewLead();
-                          setShowQuickBooking(false);
-                        }}
-                      >
-                        Create new lead first?
-                      </button>
-                    </div>
-                  )}
-
-                  {customerSearchTerm.length <= 2 && (
-                    <div className="text-center py-8 text-gray-400 text-sm">
-                      Start typing to find a customer...
-                    </div>
-                  )}
                 </div>
               </CardContent>
-              <div className="p-4 border-t border-gray-100 flex justify-between gap-2 bg-gray-50 rounded-b-xl">
-                <button
-                  className="text-sm text-blue-600 font-medium hover:underline"
-                  onClick={() => {
-                    handleAddNewLead();
-                    setShowQuickBooking(false);
-                  }}
-                >
-                  + Add New Customer
-                </button>
-                <Button variant="outline" onClick={() => setShowQuickBooking(false)}>Cancel</Button>
-              </div>
             </Card>
           </div>
         )
       }
 
-      {/* Actual Booking Modal */}
       {
-        bookingCustomer && (
+        showQuickBooking && bookingCustomer && (
           <CRMBookingModal
+            isOpen={true}
             customerId={bookingCustomer.id}
             customerName={bookingCustomer.name}
             customerEmail={bookingCustomer.email}
@@ -661,55 +394,5 @@ export const CRM: React.FC = () => {
         )
       }
     </div >
-  );
-};
-
-// Subcomponents for Analytics
-const AnalyticsCard = ({ title, value, icon, trend, color }: any) => {
-  const colors: any = {
-    blue: "bg-slate-50 text-blue-600 border-slate-100",
-    emerald: "bg-slate-50 text-emerald-600 border-slate-100",
-    indigo: "bg-slate-50 text-indigo-600 border-slate-100",
-    purple: "bg-slate-50 text-purple-600 border-slate-100",
-  };
-
-  return (
-    <Card className="border shadow-sm border-slate-200 bg-white rounded-lg">
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className={`p-2.5 rounded-lg border ${colors[color]}`}>
-            {icon}
-          </div>
-        </div>
-        <div>
-          <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">{title}</h3>
-          <p className="text-2xl font-bold text-slate-900 mt-2 leading-none">{value}</p>
-          <p className="text-[10px] text-slate-400 font-medium mt-3 flex items-center gap-1">
-            {trend}
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-const TaskMetric = ({ label, value, total, color }: any) => {
-  const percent = Math.min(100, Math.round((value / total) * 100));
-  return (
-    <div className="space-y-1.5">
-      <div className="flex justify-between items-end">
-        <div>
-          <span className="text-xs font-bold text-slate-700 block leading-tight">{label}</span>
-          <span className="text-[10px] text-slate-400 font-medium">{value} of {total} tasks</span>
-        </div>
-        <span className="text-xs font-bold text-slate-900">{percent}%</span>
-      </div>
-      <div className="w-full bg-gray-50 h-2 rounded-full overflow-hidden border border-gray-100">
-        <div
-          className={`${color} h-full rounded-full transition-all duration-1000 ease-out`}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-    </div>
   );
 };

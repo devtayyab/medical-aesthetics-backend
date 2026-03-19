@@ -208,21 +208,73 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
           <p className="text-gray-500 text-xs font-medium">Manage and convert your Meta form submissions</p>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && (
             <Button
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
-              className={`h-9 text-[10px] font-bold border-gray-200 hover:bg-gray-50 transition-all ${showFilters ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-white text-gray-600'}`}
+              className={`h-9 text-[10px] font-bold border-gray-200 hover:bg-gray-50 transition-all ${showFilters ? 'bg-slate-900 text-white hover:bg-slate-800 border-slate-900' : 'bg-white text-gray-600'}`}
             >
               <Filter className={`w-3.5 h-3.5 mr-1.5 ${showFilters ? 'text-white' : 'text-gray-400'}`} />
               {showFilters ? 'Hide Filters' : 'Advanced Filters'}
+              {Object.keys(leadFilters).filter(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search').length > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-[9px] min-w-[18px]">
+                  {Object.keys(leadFilters).filter(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search').length}
+                </span>
+              )}
             </Button>
-          )}
           <Button onClick={() => setShowCreateForm(true)} className="h-9 px-4 bg-slate-900 text-white hover:bg-slate-800 shadow-sm border-none rounded-xl font-bold text-[10px] transition-all hover:scale-[1.02] active:scale-[0.98]">
             <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Lead
           </Button>
         </div>
       </div>
+
+      {/* Filter Chips */}
+      {Object.keys(leadFilters).some(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search') && (
+        <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+          {Object.entries(leadFilters).map(([key, value]) => {
+            if (!value || key === 'search') return null;
+            let label = key;
+            let displayValue = value as string;
+
+            if (key === 'status') label = 'Status';
+            if (key === 'source') {
+              label = 'Source';
+              displayValue = displayValue.replace('_', ' ');
+            }
+            if (key === 'metaFormName') label = 'Form';
+            if (key === 'submissionDateFrom') label = 'From';
+            if (key === 'submissionDateTo') label = 'To';
+            if (key === 'lastContactedFrom') label = 'Contact From';
+            if (key === 'lastContactedTo') label = 'Contact To';
+
+            return (
+              <Badge 
+                key={key} 
+                variant="secondary" 
+                className="pl-2 pr-1 py-1 h-7 flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-100 font-medium text-[10px] rounded-lg"
+              >
+                <span className="opacity-60">{label}:</span> {displayValue}
+                <button 
+                  onClick={() => handleFilterChange(key, '')} 
+                  className="ml-1 hover:bg-blue-100 rounded-full p-0.5 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )
+          })}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => {
+              dispatch(setLeadFilters({}));
+              setSearchTerm('');
+            }}
+            className="h-7 px-2 text-[10px] font-bold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+          >
+            Clear All
+          </Button>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -277,15 +329,16 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
-                <div className="relative">
-                  <Input
-                    placeholder="Search form name..."
-                    value={leadFilters.formNames?.[0] || ''}
-                    onChange={(e) => handleFilterChange('formNames', e.target.value ? [e.target.value] : [])}
-                    className="h-9 text-xs pl-8"
-                  />
-                  <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                </div>
+                <Select
+                  value={leadFilters.formNames?.[0] || ''}
+                  onChange={(val) => handleFilterChange('formNames', val ? [val] : [])}
+                  placeholder="Select form..."
+                  options={[
+                    { value: '', label: 'All Forms' },
+                    ...Array.from(new Set(leads.map(l => l.lastMetaFormName).filter(Boolean))).map(f => ({ value: f!, label: f! }))
+                  ]}
+                  className="h-9 text-xs border-gray-200"
+                />
               </div>
 
               <div className="md:col-span-1 space-y-1.5">
@@ -349,7 +402,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         </Card>
       )}
 
-      {/* Main Search & Actions */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Input
@@ -363,27 +415,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         </div>
         <Button onClick={handleSearch} className="h-10 px-6 bg-[#b3d81b] hover:bg-[#a1c218] text-white shadow-sm border-none rounded-xl font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]">
           Find
-        </Button>
-      </div>
-      <div className="flex flex-col md:flex-row gap-3 items-center pt-2">
-        <Select
-          value={leadFilters.source || ''}
-          onChange={(value) => handleFilterChange('source', value)}
-          options={[
-            { value: '', label: 'All Sources' },
-            { value: 'facebook_ads', label: 'Facebook Ads' },
-            { value: 'google_ads', label: 'Google Ads' },
-            { value: 'referral', label: 'Referral' },
-            { value: 'manual', label: 'Manual' },
-            { value: 'website', label: 'Website' }
-          ]}
-          className="w-full md:w-36 h-9 text-xs"
-        />
-        <Button variant="ghost" className="h-9 text-[10px] font-bold text-gray-400 hover:text-red-500" onClick={() => {
-          dispatch(setLeadFilters({}));
-          setSearchTerm('');
-        }}>
-          Reset All
         </Button>
       </div>
 

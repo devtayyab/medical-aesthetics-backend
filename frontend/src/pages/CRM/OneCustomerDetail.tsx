@@ -39,7 +39,8 @@ import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
 
 interface OneCustomerDetailProps {
-    SelectedCustomer: Customer | Lead;
+    SelectedCustomer?: Customer | Lead;
+    customerId?: string;
     isLoading?: boolean;
     error?: string | null;
 }
@@ -182,12 +183,20 @@ const DialerModal = ({
 
 export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     SelectedCustomer,
+    customerId,
+    isLoading,
+    error
 }) => {
     const dispatch = useDispatch<AppDispatch>();
     const crmState = useSelector((state: RootState) => state.crm);
     const { customerRecord } = crmState;
     const { user } = useSelector((state: RootState) => state.auth as AuthState);
 
+    // Dynamic derivation of the customer object
+    // If we have SelectedCustomer (from props), use it.
+    // Otherwise, try to get the basic info from customerRecord.record.customer
+    const customer = SelectedCustomer || (customerRecord?.record?.customer as any) || (customerRecord?.record as any);
+    
     // State for Workflow
     const [workflowStep, setWorkflowStep] = useState<1 | 2 | 3 | 4>(1);
     const [interactionType, setInteractionType] = useState<'call' | 'meeting' | 'email'>('call');
@@ -207,11 +216,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const [callbackDate, setCallbackDate] = useState('');
     const [wrongNumberRemakes, setWrongNumberRemakes] = useState(''); // "Remakes" as per user request (Remarks)
 
-    const customer = SelectedCustomer;
-    const isConverted = customer.status === 'converted' || (customer as any).role === 'customer' || (customer as any).role === 'client';
+    const isConverted = customer?.status === 'converted' || (customer as any)?.role === 'customer' || (customer as any)?.role === 'client';
     const summary = customerRecord as CustomerSummary | null;
     const pendingTask = summary?.actions?.find(a => a.status === 'pending');
-    const isBlocked = !isConverted && customer.status !== 'lost' && !pendingTask;
+    const isBlocked = !isConverted && customer?.status !== 'lost' && !pendingTask;
 
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [activeTab, setActiveTab] = useState("overview");
@@ -242,15 +250,46 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager';
 
     useEffect(() => {
-        if (SelectedCustomer?.id) {
+        const idToFetch = SelectedCustomer?.id || customerId;
+        if (idToFetch) {
             dispatch(fetchCustomerRecord({
-                customerId: SelectedCustomer.id,
+                customerId: idToFetch,
                 salespersonId: user?.id
             }));
         }
         dispatch(fetchSalespersons());
         dispatch(fetchClinics());
-    }, [SelectedCustomer, dispatch, user]);
+    }, [SelectedCustomer, customerId, dispatch, user]);
+
+    if (isLoading && !customer) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-500">
+                <div className="w-12 h-12 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mb-4" />
+                <p className="text-slate-500 font-bold text-sm tracking-tight">Initializing premium detail view...</p>
+            </div>
+        );
+    }
+
+    if (error && !customer) {
+        return (
+            <div className="p-8 text-center bg-red-50 border border-red-100 rounded-2xl mx-auto max-w-md my-20">
+                <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+                <h3 className="text-red-800 font-bold mb-1">Load Error</h3>
+                <p className="text-red-600/70 text-sm font-medium">{error}</p>
+                <Button onClick={() => window.location.reload()} variant="outline" className="mt-4 border-red-200 text-red-700 bg-white">Retry</Button>
+            </div>
+        );
+    }
+
+    if (!customer) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <Users className="w-12 h-12 mb-4 opacity-20" />
+                <p className="font-bold text-sm">Customer Record Not Found</p>
+                <Button variant="ghost" className="mt-2 text-blue-600 font-bold text-xs" onClick={() => window.history.back()}>Go Back</Button>
+            </div>
+        );
+    }
 
     // --- UI/UX Helpers ---
 
@@ -775,608 +814,561 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     );
 
     return (
-        <div className="max-w-[1500px] mx-auto pb-10 space-y-6 animate-in fade-in slide-in-from-top-4 duration-1000">
-            {/* 1. Header Card (Ultra-Premium Redesign) */}
-            <div className="relative overflow-hidden rounded-xl bg-slate-900 shadow-2xl shadow-blue-900/20 group border border-white/10">
-                <div className="absolute inset-0 mesh-gradient opacity-40 mix-blend-overlay pointer-events-none" />
-                <div className="absolute top-0 right-0 w-[600px] h-full bg-gradient-to-l from-blue-500/10 to-transparent pointer-events-none" />
-                <div className="absolute -left-20 -top-20 w-80 h-80 bg-blue-600/20 rounded-full blur-[120px] animate-pulse" />
-
-                <div className="p-5 relative z-10">
-                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
-                        <div className="flex items-center gap-5">
-                            <div className="relative group/avatar">
-                                <div className="relative w-16 h-16 rounded-xl bg-slate-800 text-white flex items-center justify-center font-bold text-xl shadow-xl border border-white/10 overflow-hidden text-center leading-none">
-                                    {getInitials(customer.firstName, customer.lastName)}
-                                </div>
-                                <div className={`absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full border-2 border-slate-900 shadow-xl ${isConverted ? 'bg-emerald-400' : 'bg-blue-400'} ring-1 ring-white/10`} />
+        <div className="max-w-[1600px] mx-auto pb-10 space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
+            {/* 1. Sleek Header Banner */}
+            <div className="relative overflow-hidden rounded-2xl bg-slate-900 border border-white/10 shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 mix-blend-overlay pointer-events-none" />
+                <div className="absolute -left-20 -top-20 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px]" />
+                <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-[100px]" />
+                
+                <div className="p-6 relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="flex items-center gap-5">
+                        <div className="relative">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-700 border border-white/5 flex items-center justify-center font-bold text-xl text-white shadow-xl">
+                                {getInitials(customer.firstName, customer.lastName)}
                             </div>
-
-                            <div className="space-y-2">
-                                <div className="flex flex-col gap-0.5">
-                                    <div className="flex items-center gap-3">
-                                        <h1 className="text-xl font-bold text-white tracking-tight leading-none">
-                                            {customer.firstName} <span className="text-slate-300 font-medium">{customer.lastName}</span>
-                                        </h1>
-                                        <Badge className={`text-[10px] font-bold px-3 py-1 rounded-full border-none shadow ${isConverted ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'}`}>
-                                            {customer.status}
-                                        </Badge>
-                                    </div>
-                                    <p className="text-slate-400 text-[11px] font-medium flex items-center gap-1.5">
-                                        Active Profile
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-lg border border-white/5 group/link cursor-pointer hover:bg-white/10 transition-all">
-                                        <Mail className="w-3 h-3 text-slate-400 group-hover/link:text-white transition-colors" />
-                                        <span className="text-[11px] font-medium text-slate-300 group-hover/link:text-white">{customer.email}</span>
-                                    </div>
-                                    {customer.phone && (
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-lg border border-white/5 group/link cursor-pointer hover:bg-white/10 transition-all">
-                                            <Phone className="w-3 h-3 text-slate-400 group-hover/link:text-white transition-colors" />
-                                            <span className="text-[11px] font-medium text-slate-300 group-hover/link:text-white">{customer.phone}</span>
-                                        </div>
-                                    )}
-                                    <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-lg border border-white/5">
-                                        <Users className="w-3 h-3 text-slate-500" />
-                                        <span className="text-[11px] font-medium text-slate-400">ID {customer.id.slice(-6).toUpperCase()}</span>
-                                    </div>
-                                </div>
+                            <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-slate-900 ${isConverted ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-3 mb-1">
+                                <h1 className="text-2xl font-bold text-white tracking-tight">
+                                    {customer.firstName} {customer.lastName}
+                                </h1>
+                                <Badge className={`h-5 text-[9px] font-black uppercase border-none tracking-widest px-2.5 ${isConverted ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                                    {customer.status}
+                                </Badge>
+                            </div>
+                            <div className="flex items-center gap-4 text-slate-400 text-xs font-medium">
+                                <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-slate-500" /> {customer.email}</span>
+                                {customer.phone && <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-slate-500" /> {customer.phone}</span>}
+                                <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-slate-500" /> ID: {customer.id.slice(0, 8).toUpperCase()}</span>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-                            {user?.role === 'admin' && (
-                                <Button
-                                    variant="ghost"
-                                    className="flex-1 lg:flex-none h-10 px-4 bg-white/5 hover:bg-red-500/10 hover:text-red-400 text-slate-400 border border-white/5 rounded-lg font-bold transition-all text-xs"
-                                    onClick={async () => {
-                                        if (confirm('Permanently delete this customer record?')) {
-                                            try {
-                                                await dispatch(deleteLead(customer.id)).unwrap();
-                                                window.location.reload();
-                                            } catch (error) {
-                                                console.error('Delete failed:', error);
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
-                                </Button>
-                            )}
-                            <Button
-                                className="flex-1 lg:flex-none h-10 px-6 bg-white text-slate-900 hover:bg-slate-100 shadow-md rounded-lg font-bold text-xs transition-all active:scale-[0.98] border border-slate-200"
-                                onClick={() => setShowBookingModal(true)}
+                    <div className="flex items-center gap-3">
+                        {isAdmin && (
+                            <Button 
+                                variant="ghost" 
+                                className="h-10 px-4 text-slate-400 hover:text-red-400 hover:bg-red-400/10 font-bold text-xs rounded-xl transition-all"
+                                onClick={async () => {
+                                    if(confirm('Delete this record?')) {
+                                        await dispatch(deleteLead(customer.id));
+                                        window.location.href = '/crm/leads';
+                                    }
+                                }}
                             >
-                                <Calendar className="w-3.5 h-3.5 mr-2" /> Book Appointment
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
                             </Button>
+                        )}
+                        <Button 
+                            className="h-10 px-6 bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95"
+                            onClick={() => setShowBookingModal(true)}
+                        >
+                            <Calendar className="w-4 h-4 mr-2" /> Book Appointment
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* 2. Quick Action Toolbar */}
+            <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm sticky top-0 z-30 animate-in slide-in-from-top-5 duration-1000">
+                <div className="flex items-center gap-2">
+                    <Button 
+                        onClick={() => handleStartInteraction('call')} 
+                        className="h-11 px-5 bg-[#b3d81b] hover:bg-[#a1c218] text-white border-none rounded-xl font-bold text-sm shadow-md transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2"
+                    >
+                        <PhoneCall className="w-4 h-4" /> Log Call
+                    </Button>
+                    <Button 
+                        onClick={() => setShowEmailModal(true)} 
+                        variant="outline" 
+                        className="h-11 px-5 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all"
+                    >
+                        <Mail className="w-4 h-4 mr-2 text-slate-400" /> Email
+                    </Button>
+                    <Button 
+                        onClick={() => setShowTaskModal(true)} 
+                        variant="outline" 
+                        className="h-11 px-5 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all"
+                    >
+                        <Clock className="w-4 h-4 mr-2 text-slate-400" /> Follow Up
+                    </Button>
+                    <Button 
+                        onClick={() => setShowDiaryModal(true)} 
+                        variant="outline" 
+                        className="h-11 px-5 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all"
+                    >
+                        <Calendar className="w-4 h-4 mr-2 text-slate-400" /> Scheduling
+                    </Button>
+                </div>
+
+                <div className="hidden lg:flex items-center gap-5 px-6 border-l border-slate-100 h-10">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none">Last Form</span>
+                        <span className="text-[11px] font-bold text-slate-800 mt-1">{(customer as any).lastMetaFormName || 'None'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none">Status</span>
+                        <div className="flex items-center gap-1.5 mt-1">
+                            <div className={`w-1.5 h-1.5 rounded-full ${isConverted ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                            <span className="text-[11px] font-bold text-slate-800 uppercase tracking-tighter">{customer.status}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* KPI Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6">
-                <Card className="border-none shadow-sm bg-white overflow-hidden p-4">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Total Appointments</div>
-                    <div className="text-xl font-bold text-slate-900">{summary?.appointments?.length || 0}</div>
-                </Card>
-                <Card className="border-none shadow-sm bg-white overflow-hidden p-4">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Completed</div>
-                    <div className="text-xl font-bold text-slate-900">{summary?.appointments?.filter(a => a.status === 'completed').length || 0}</div>
-                </Card>
-                <Card className="border-none shadow-sm bg-white overflow-hidden p-4">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1.5">Lifetime Value</div>
-                    <div className="text-xl font-bold text-slate-900">€{summary?.summary?.lifetimeValue || 0}</div>
-                </Card>
-                <Card className="border-none shadow-sm bg-white overflow-hidden p-4">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> Repeat Visits</div>
-                    <div className="text-xl font-bold text-slate-900">{summary?.summary?.repeatCount || 0}</div>
-                </Card>
-            </div>
-
-            {/* Quick Actions Bar */}
-            <div className="flex flex-wrap gap-2 bg-white p-3 rounded-lg shadow-sm border border-slate-200 mb-6">
-                <Button variant="primary" size="sm" onClick={() => handleStartInteraction('call')} className="bg-[#b3d81b] hover:bg-[#a1c218] text-white border-none text-xs px-4 shadow-sm">
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Log Communication
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowPhoneCallModal(true)} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs px-4 shadow-sm">
-                    <PhoneCall className="w-3.5 h-3.5 mr-1" /> Add Phone Call Notes
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowEmailModal(true)} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs px-4 shadow-sm">
-                    <Mail className="w-3.5 h-3.5 mr-1" /> Log Email Sent
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowTaskModal(true)} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs px-4 shadow-sm">
-                    <Clock className="w-3.5 h-3.5 mr-1" /> Follow Up
-                </Button>
-            </div>
-
-            {/* Tabs Navigation */}
-            <div className="flex items-center gap-1 border-b border-slate-200 mb-6">
+            {/* 3. Main Navigation Tabs */}
+            <div className="flex items-center gap-1 border-b border-slate-200">
                 {[
                     { id: 'overview', label: 'Overview', icon: Activity },
                     { id: 'appointments', label: 'Appointments', icon: Calendar },
                     { id: 'communications', label: 'Communications', icon: Mail },
-                    { id: 'calls', label: 'Calls', icon: PhoneCall },
                     { id: 'tasks', label: 'Tasks', icon: CheckCircle }
-                ].filter(tab => tab.id !== 'calls' || user?.role !== 'salesperson').map(tab => (
+                ].map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-6 py-3 text-xs font-bold transition-all relative
+                        className={`flex items-center gap-2 px-8 py-4 text-xs font-black uppercase tracking-widest transition-all relative
                             ${activeTab === tab.id ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                     >
-                        <tab.icon className="w-3.5 h-3.5" />
+                        <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-blue-500' : 'text-slate-300'}`} />
                         {tab.label}
                         {activeTab === tab.id && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+                            <div className="absolute bottom-[-1px] left-0 right-0 h-1 bg-blue-600 rounded-t-full shadow-[0_-2px_10px_rgba(37,99,235,0.4)]" />
                         )}
                     </button>
                 ))}
             </div>
-
-            {/* Main Layout - Conditional Rendering based on Tabs */}
+            {/* 4. Main Two-Column Content Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-                {/* Left Column: Properties (Always visible in Overview, hidden or minimized in others if needed) */}
-                <div className={`lg:col-span-4 xl:col-span-3 space-y-6 ${activeTab !== 'overview' && 'hidden lg:block opacity-50 pointer-events-none'}`}>
-                    <Card className="border-none shadow-sm bg-white rounded-lg overflow-hidden border border-slate-200">
-                        <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-5">
-                            <CardTitle className="text-xs font-bold text-slate-600 flex items-center justify-between">
-                                Customer Profile
-                                <User className="w-3.5 h-3.5 text-slate-400" />
-                            </CardTitle>
+                
+                {/* ---------- LEFT COLUMN: CRM PROPERTIES (4 COLS) ---------- */}
+                <div className="lg:col-span-4 space-y-6">
+                    {/* A. Core Info Card */}
+                    <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
+                        <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Contact Details</CardTitle>
+                            <User className="w-4 h-4 text-slate-300" />
                         </CardHeader>
-                        <CardContent className="space-y-4 p-5">
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] text-gray-300 font-bold uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Activity className="w-2.5 h-2.5" /> Source Origin
-                                </label>
-                                <div className="font-bold text-gray-800 capitalize bg-gray-50/80 px-4 py-2.5 rounded-xl border border-gray-100 text-xs shadow-inner group-hover:border-blue-100 transition-colors">
-                                    {customer.source?.replace('_', ' ') || 'Direct / Walk-in'}
+                        <CardContent className="p-6 space-y-5">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">First Name</label>
+                                    <div className="text-sm font-bold text-slate-800">{customer.firstName}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">Last Name</label>
+                                    <div className="text-sm font-bold text-slate-800">{customer.lastName || '--'}</div>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] text-gray-300 font-bold uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Tag className="w-2.5 h-2.5" /> Active Spectrum
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {customerRecord?.tags?.map((t: any) => (
-                                        <Badge key={t.id || t} className="bg-blue-50/50 text-blue-600 text-[10px] font-bold border border-blue-100/50 px-2.5 py-0.5 rounded-lg">
-                                            #{t.tagId || t}
-                                        </Badge>
-                                    ))}
-                                    {(!customerRecord?.tags || customerRecord.tags.length === 0) && (
-                                        <div className="text-gray-400 text-[11px] font-bold italic bg-gray-50/50 p-3 rounded-xl w-full text-center border border-dashed border-gray-200">
-                                            No segments assigned
+                            <div className="space-y-4 pt-4 border-t border-slate-50">
+                                <div className="flex items-center justify-between group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500"><Mail className="w-4 h-4" /></div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Email</span>
+                                            <span className="text-xs font-bold text-slate-700">{customer.email}</span>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
-                                <div className="space-y-4 pt-4 border-t border-slate-100">
-                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-2 mb-2">
-                                        <Activity className="w-3 h-3" /> Core Properties
-                                    </label>
-                                    <div className="space-y-3 text-xs">
-                                        <div className="space-y-1 pb-2">
-                                            <label className="text-gray-400 font-medium">First Name</label>
-                                            <div className="font-bold text-gray-800">{customer.firstName}</div>
-                                        </div>
-                                        <div className="space-y-1 pb-2">
-                                            <label className="text-gray-400 font-medium">Last Name</label>
-                                            <div className="font-bold text-gray-800">{customer.lastName || '--'}</div>
-                                        </div>
-                                        <div className="space-y-1 pb-2">
-                                            <label className="text-gray-400 font-medium">Phone Number</label>
-                                            <div className="font-bold text-blue-600">{customer.phone || '--'}</div>
-                                        </div>
-                                        <div className="space-y-1 pb-2">
-                                            <label className="text-gray-400 font-medium">Email</label>
-                                            <div className="font-bold text-blue-600">{customer.email || '--'}</div>
-                                        </div>
-                                        <div className="space-y-1 pb-2">
-                                            <label className="text-gray-400 font-medium">Customer ID</label>
-                                            <div className="font-bold text-gray-800">{customer.id.slice(-6).toUpperCase()}</div>
-                                        </div>
-
-                                        {/* New CRM Properties */}
-                                        <div className="space-y-1 pb-2 border-t pt-2 mt-2">
-                                            <label className="text-gray-400 font-medium text-[10px]">Facebook Ad Name</label>
-                                            <div className="font-bold text-slate-800 text-xs">
-                                                {(customer as any).facebookAdName || (customer as any).metadata?.facebookAdName || '--'}
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-1 pb-2">
-                                            <div className="flex items-center justify-between">
-                                                <label className="text-gray-400 font-medium text-[10px]">Clinic Affiliations</label>
-                                                {isAdmin && <button onClick={() => setIsEditingClinics(true)} className="text-[9px] text-blue-600 font-bold hover:underline">Edit</button>}
-                                            </div>
-                                            <div className="flex flex-col gap-1.5 mt-1">
-                                                {(customer as any).clinicStatuses?.length > 0 ? (
-                                                    (customer as any).clinicStatuses.map((aff: any) => (
-                                                        <div key={aff.id} className="flex items-center justify-between bg-slate-50 p-1.5 rounded border border-slate-100">
-                                                            <span className="text-[10px] font-bold text-slate-700">{aff.clinic?.name || 'Clinic'}</span>
-                                                            <Badge className="text-[9px] px-1.5 h-4 bg-white border border-slate-200 text-slate-600 font-bold">{aff.status}</Badge>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="text-[10px] text-slate-400 italic">No clinics assigned</div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-1 pb-2">
-                                            <div className="flex items-center justify-between">
-                                                <label className="text-gray-400 font-medium text-[10px]">Assigned Owners</label>
-                                                {isAdmin && <button onClick={() => setIsEditingOwners(true)} className="text-[9px] text-blue-600 font-bold hover:underline">Edit</button>}
-                                            </div>
-                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                {(customer as any).multiOwners?.length > 0 ? (
-                                                    (customer as any).multiOwners.map((owner: any) => (
-                                                        <Badge key={owner.id} className="bg-blue-50 text-blue-700 text-[9px] font-bold py-0.5 px-2 hover:bg-blue-100">
-                                                            {owner.firstName} {owner.lastName}
-                                                        </Badge>
-                                                    ))
-                                                ) : (
-                                                    <div className="text-[10px] text-slate-400 italic">No owners assigned</div>
-                                                )}
-                                            </div>
+                                <div className="flex items-center justify-between group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500"><Phone className="w-4 h-4" /></div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Phone</span>
+                                            <span className="text-xs font-bold text-slate-700">{customer.phone || '--'}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* B. Metadata & Origin Card */}
+                    <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
+                        <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Origin & Tracking</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6">
+                            <div className="space-y-4">
+                                <div className="flex flex-col py-3 px-4 bg-slate-50 rounded-xl border border-slate-100 group hover:border-blue-200 transition-all">
+                                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1.5 flex items-center gap-1.5">
+                                        <Activity className="w-3 h-3" /> Acquisition Source
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-800 capitalize">{customer.source?.replace('_', ' ') || 'Direct / Unknown'}</span>
+                                </div>
+                                <div className="flex flex-col py-3 px-4 bg-slate-50 rounded-xl border border-slate-100 group hover:border-blue-200 transition-all">
+                                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1.5 flex items-center gap-1.5">
+                                        <FileText className="w-3 h-3" /> Last Meta Form
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-800">{(customer as any).lastMetaFormName || 'N/A'}</span>
+                                    { (customer as any).lastMetaFormSubmittedAt && (
+                                        <span className="text-[10px] text-slate-400 font-medium mt-1">Submitted: {new Date((customer as any).lastMetaFormSubmittedAt).toLocaleDateString()}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* C. Assignments Card (Multi-select) */}
+                    <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
+                        <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Ownership & Clinics</CardTitle>
+                            <Tag className="w-4 h-4 text-slate-300" />
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6">
+                            {/* Owners Section */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Assigned Owners</label>
+                                    <Button variant="ghost" size="sm" onClick={() => setIsEditingOwners(!isEditingOwners)} className="h-6 px-2 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
+                                        {isEditingOwners ? 'Done' : 'Edit'}
+                                    </Button>
+                                </div>
+                                {isEditingOwners ? (
+                                    <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100 max-h-40 overflow-y-auto">
+                                        {salespersons?.map(sp => (
+                                            <label key={sp.id} className="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded transition-colors">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={(customer as any).multiOwners?.some((o: any) => o.id === sp.id)}
+                                                    onChange={async (e) => {
+                                                        const currentIds = (customer as any).multiOwners?.map((o: any) => o.id) || [];
+                                                        const newIds = e.target.checked 
+                                                            ? [...currentIds, sp.id]
+                                                            : currentIds.filter((id: string) => id !== sp.id);
+                                                        
+                                                        await dispatch(updateLead({ 
+                                                            id: customer.id, 
+                                                            updates: { multiOwnerIds: newIds } as any 
+                                                        })).unwrap();
+                                                        dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                                    }}
+                                                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                                                />
+                                                <span className="text-xs font-bold text-slate-700">{sp.firstName} {sp.lastName}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-wrap gap-2">
+                                        {(customer as any).multiOwners?.map((owner: any) => (
+                                            <Badge key={owner.id} className="bg-blue-50 text-blue-600 text-[10px] font-bold border-blue-100/50 rounded-lg px-2.5 py-1">
+                                                {owner.firstName} {owner.lastName}
+                                            </Badge>
+                                        ))}
+                                        {(!(customer as any).multiOwners || (customer as any).multiOwners.length === 0) && (
+                                            <div className="text-[10px] text-slate-400 italic font-medium py-2 px-3 bg-slate-50 rounded-lg border border-dashed border-slate-200 w-full text-center">No owners assigned</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Clinics Section */}
+                            <div className="space-y-3 pt-6 border-t border-slate-50">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Linked Clinics</label>
+                                    <Button variant="ghost" size="sm" onClick={() => setIsEditingClinics(!isEditingClinics)} className="h-6 px-2 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
+                                        {isEditingClinics ? 'Done' : 'Edit'}
+                                    </Button>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {(customer as any).clinicStatuses?.map((aff: any) => (
+                                        <div key={aff.id} className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100 group hover:border-blue-100 transition-all">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                                <span className="text-xs font-bold text-slate-700">{aff.clinic?.name || 'Unknown Clinic'}</span>
+                                            </div>
+                                            {isEditingClinics ? (
+                                                <Select 
+                                                    value={aff.status}
+                                                    onChange={async (val) => {
+                                                        const currentAffs = (customer as any).clinicStatuses || [];
+                                                        const updatedAffs = currentAffs.map((a: any) => 
+                                                            a.clinicId === aff.clinicId ? { clinicId: a.clinicId, status: val } : { clinicId: a.clinicId, status: a.status }
+                                                        );
+                                                        
+                                                        await dispatch(updateLead({ 
+                                                            id: customer.id, 
+                                                            updates: { clinicAffiliations: updatedAffs } as any 
+                                                        })).unwrap();
+                                                        dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                                    }}
+                                                    options={[
+                                                        { value: 'new', label: 'New' },
+                                                        { value: 'contacted', label: 'Contacted' },
+                                                        { value: 'qualified', label: 'Qualified' },
+                                                        { value: 'converted', label: 'Converted' },
+                                                        { value: 'lost', label: 'Lost' },
+                                                    ]}
+                                                    className="h-7 text-[8px] border-slate-200"
+                                                />
+                                            ) : (
+                                                <Badge className="bg-white border-slate-200 text-slate-600 text-[9px] font-black px-2 py-0.5 rounded-lg shadow-sm">
+                                                    {aff.status.replace('_', ' ')}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {(!(customer as any).clinicStatuses || (customer as any).clinicStatuses.length === 0) && (
+                                        <div className="text-[10px] text-slate-400 italic font-medium py-2 px-3 bg-slate-50 rounded-lg border border-dashed border-slate-200 w-full text-center">No clinic affiliations</div>
+                                    )}
+                                    {isEditingClinics && (
+                                         <div className="pt-2">
+                                            <Select 
+                                                placeholder="Link new clinic..."
+                                                onChange={async (val) => {
+                                                    const currentAffs = (customer as any).clinicStatuses || [];
+                                                    const updatedAffs = [...currentAffs.map((a:any) => ({ clinicId: a.clinicId, status: a.status })), { clinicId: val, status: 'new' }];
+                                                    
+                                                    await dispatch(updateLead({ 
+                                                        id: customer.id, 
+                                                        updates: { clinicAffiliations: updatedAffs } as any 
+                                                    })).unwrap();
+                                                    dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                                }}
+                                                options={(clinics || []).filter((c:any) => !(customer as any).clinicStatuses?.some((a:any) => a.clinicId === c.id)).map((c:any) => ({ value: c.id, label: c.name }))}
+                                                className="h-9 text-xs border-slate-200 font-bold"
+                                            />
+                                         </div>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
-                {/* Right Column: Dynamic Content */}
-                <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+                {/* ---------- RIGHT COLUMN: DYNAMIC TABS & TIMELINE (8 COLS) ---------- */}
+                <div className="lg:col-span-8 space-y-6">
 
                     {activeTab === 'overview' && (
                         <div className="space-y-6 animate-in fade-in duration-500">
-                            {/* Interaction Logger Drop-in */}
-                            <div className="mb-6">
+                            {/* I. Quick Log / Interaction Flow */}
+                            <div className="mb-0">
                                 {renderInteractionFlow()}
                             </div>
-                            <Card className="border-none shadow-sm h-[650px] flex flex-col bg-white rounded-lg overflow-hidden border border-slate-200">
-                                <CardHeader className="border-b border-gray-100/30 pb-3 pt-4 px-5 bg-white/40">
-                                    <CardTitle className="text-[10px] uppercase font-bold text-slate-500 flex items-center justify-between">
-                                        Activity History
-                                        <div className="px-2 py-1 bg-slate-100 rounded-lg text-[9px] font-bold text-slate-600 border border-slate-200">
-                                            {((summary?.communications?.length || 0) +
-                                                (summary?.appointments?.length || 0) +
-                                                (summary?.actions?.length || 0) +
-                                                (summary?.tags?.length || 0))} Activities
-                                        </div>
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="flex-1 overflow-y-auto p-0 relative custom-scrollbar bg-slate-50/10">
-                                    <div className="absolute left-[29px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-blue-500/0 via-blue-500/10 to-blue-500/0 z-0" />
 
-                                    <div className="py-6 space-y-6">
-                                        {(() => {
-                                            const actionEvents = (summary?.actions || []).flatMap(a => {
-                                                const events = [];
-                                                // 1. Task Created
-                                                events.push({ type: 'action_created', date: new Date(a.createdAt), data: a });
+                            {/* II. Unified Activity Timeline (Vertical Thread) */}
+                            <div className="relative pl-8 pr-2 py-4">
+                                {/* Vertical Line Track */}
+                                <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-slate-100 rounded-full" />
+                                
+                                <div className="space-y-8">
+                                    {(() => {
+                                        const actionEvents = (summary?.actions || []).flatMap(a => {
+                                            const events = [];
+                                            events.push({ type: 'action_created', date: new Date(a.createdAt), data: a });
+                                            if (a.status === 'completed' && a.completedAt) {
+                                                events.push({ type: 'action_completed', date: new Date(a.completedAt), data: a });
+                                            }
+                                            if (a.status !== 'completed' && a.dueDate && new Date(a.dueDate) < new Date()) {
+                                                events.push({ type: 'action_overdue', date: new Date(a.dueDate), data: a });
+                                            }
+                                            return events;
+                                        });
 
-                                                // 2. Task Completed
-                                                if (a.status === 'completed' && a.completedAt) {
-                                                    events.push({ type: 'action_completed', date: new Date(a.completedAt), data: a });
-                                                }
+                                        const timelineItems = [
+                                            ...(summary?.communications?.map(c => ({ type: 'communication', date: new Date(c.createdAt), data: c })) || []),
+                                            ...(summary?.appointments?.map(a => ({ type: 'appointment', date: new Date(a.startTime), data: a })) || []),
+                                            ...actionEvents,
+                                            // Form Submissions
+                                            ...((customer as any).lastMetaFormName ? [{
+                                                type: 'form',
+                                                date: new Date((customer as any).lastMetaFormSubmittedAt || customer.createdAt),
+                                                data: { formName: (customer as any).lastMetaFormName }
+                                            }] : [])
+                                        ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
-                                                // 3. Task Overdue (if pending and past due)
-                                                if (a.status !== 'completed' && a.dueDate && new Date(a.dueDate) < new Date()) {
-                                                    events.push({ type: 'action_overdue', date: new Date(a.dueDate), data: a });
-                                                }
-                                                return events;
-                                            });
+                                        if (timelineItems.length === 0) {
+                                            return (
+                                                <div className="text-center py-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                                                    <Activity className="w-8 h-8 text-slate-200 mx-auto mb-3" />
+                                                    <p className="text-xs font-bold text-slate-400">No activity thread found for this contact.</p>
+                                                </div>
+                                            );
+                                        }
 
-                                            const timelineItems = [
-                                                ...(summary?.communications?.map(c => ({ type: 'communication', date: new Date(c.createdAt), data: c })) || []),
-                                                ...(summary?.appointments?.map(a => ({ type: 'appointment', date: new Date(a.startTime), data: a })) || []),
-                                                ...actionEvents,
-                                                ...(summary?.tags?.map(t => ({ type: 'tag', date: new Date(t.createdAt), data: t })) || []),
-                                                // Fake Form Submission if they have customer.metadata.lastMetaFormName
-                                                ...((customer as any).metadata?.lastMetaFormName ? [{
-                                                    type: 'form',
-                                                    date: new Date((customer as any).metadata.lastMetaFormSubmittedAt || customer.createdAt),
-                                                    data: { formName: (customer as any).metadata.lastMetaFormName }
-                                                }] : [])
-                                            ].sort((a, b) => b.date.getTime() - a.date.getTime());
+                                        return timelineItems.map((item: any, idx) => {
+                                            let icon = <Activity className="w-3.5 h-3.5" />;
+                                            let iconBg = 'bg-slate-100 text-slate-500';
+                                            let title = 'Activity Event';
+                                            let content = '';
+                                            let meta = '';
 
-                                            if (timelineItems.length === 0) {
-                                                return (
-                                                    <div className="text-center text-slate-400 py-12 text-xs">
-                                                        No activity recorded yet.
-                                                    </div>
-                                                );
+                                            if (item.type === 'communication') {
+                                                const c = item.data as CommunicationLog;
+                                                const isCall = c.type === 'call';
+                                                icon = isCall ? <PhoneCall className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />;
+                                                iconBg = isCall ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20';
+                                                title = isCall ? 'Logged Phone Call' : 'Outgoing Email Message';
+                                                content = c.notes;
+                                                meta = c.metadata?.outcome ? `Outcome: ${c.metadata.outcome.replace('_', ' ')}` : '';
+                                            } else if (item.type === 'appointment') {
+                                                const a = item.data as any;
+                                                icon = <Calendar className="w-3.5 h-3.5" />;
+                                                iconBg = 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20';
+                                                title = `Meeting / Procedure Scheduled`;
+                                                content = a.serviceName || 'Consultation';
+                                                meta = `Clinic: ${a.clinicName || 'N/A'} • Status: ${a.status}`;
+                                            } else if (item.type === 'form') {
+                                                icon = <FileText className="w-3.5 h-3.5" />;
+                                                iconBg = 'bg-amber-500 text-white shadow-lg shadow-amber-500/20';
+                                                title = 'Meta Lead Form Submitted';
+                                                content = `Interaction via form: ${item.data.formName}`;
+                                            } else if (item.type.startsWith('action_')) {
+                                                const act = item.data as CrmAction;
+                                                const isCompleted = item.type === 'action_completed';
+                                                icon = isCompleted ? <CheckCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />;
+                                                iconBg = isCompleted ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-800 text-white';
+                                                title = isCompleted ? `Task Completed: ${act.title}` : `New Task Assigned: ${act.title}`;
+                                                content = act.description || '';
                                             }
 
-                                            return timelineItems.map((item: any, idx) => {
-
-                                                // Renderer for Form Submission
-                                                if (item.type === 'form') {
-                                                    return (
-                                                        <div key={`form-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
-                                                            <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-100 border border-slate-200 shadow-sm flex items-center justify-center">
-                                                                <FileText className="w-3 h-3 text-slate-600" />
+                                            return (
+                                                <div key={`${item.type}-${idx}`} className="relative group">
+                                                    {/* Node */}
+                                                    <div className={`absolute left-[-25px] top-1 w-4.5 h-4.5 rounded-full border-4 border-white flex items-center justify-center z-10 transition-transform group-hover:scale-110 ${iconBg} w-[18px] h-[18px]`}>
+                                                        <div className="scale-75">{icon}</div>
+                                                    </div>
+                                                    
+                                                    {/* Card Content (Glassmorphic) */}
+                                                    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow group-hover:border-slate-200">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] font-black uppercase text-slate-800 tracking-tight">{title}</span>
                                                             </div>
-                                                            <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm mb-4">
-                                                                <div className="flex items-center gap-2 mb-2">
-                                                                    <span className="font-bold text-slate-800 text-sm">Form submission</span>
-                                                                    <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
-                                                                </div>
-                                                                <div className="text-xs text-slate-600">
-                                                                    <strong>{customer.firstName}</strong> submitted <strong>{item.data.formName}</strong>
-                                                                </div>
-                                                            </div>
+                                                            <span className="text-[9px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
                                                         </div>
-                                                    )
-                                                }
-                                                if (item.type === 'communication') {
-                                                    const comm = item.data as CommunicationLog;
-                                                    const isCall = comm.type === 'call';
-                                                    return (
-                                                        <div key={`comm-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
-                                                            <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-100 border border-slate-200 shadow-sm z-10 flex items-center justify-center">
-                                                                {isCall ? <PhoneCall className="w-3 h-3 text-slate-600" /> : <Mail className="w-3 h-3 text-slate-600" />}
+                                                        <p className="text-xs text-slate-600 leading-relaxed font-medium mb-2">{content}</p>
+                                                        {meta && (
+                                                            <div className="flex flex-wrap gap-2 pt-2 mt-2 border-t border-slate-50">
+                                                                <Badge className="bg-slate-50 text-slate-400 border border-slate-100 text-[8px] px-1.5 font-bold uppercase">{meta}</Badge>
+                                                                {item.data.metadata?.tags?.map((t: string) => (
+                                                                    <Badge key={t} className="bg-blue-50/50 text-blue-500 text-[8px] font-bold rounded">#{t}</Badge>
+                                                                ))}
                                                             </div>
-                                                            <div className="space-y-2 mb-4">
-                                                                <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <span className="font-bold text-slate-800 text-sm">{isCall ? 'Call logged' : 'Message logged'}</span>
-                                                                        <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
-                                                                    </div>
-                                                                    <p className="text-xs text-slate-700 leading-relaxed font-medium mb-3">{comm.notes}</p>
-                                                                    {(comm.metadata?.outcome || (comm.metadata?.tags && comm.metadata?.tags.length > 0)) && (
-                                                                        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
-                                                                            {comm.metadata.outcome && (
-                                                                                <Badge className="bg-slate-700 text-white text-[9px] font-semibold px-2 py-0.5 rounded">
-                                                                                    {comm.metadata.outcome.replace('_', ' ')}
-                                                                                </Badge>
-                                                                            )}
-                                                                            {comm.metadata.tags && comm.metadata.tags.map((t: string) => (
-                                                                                <span key={t} className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                                                                                    #{t}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
+                                                        )}
+                                                        
+                                                        {item.type === 'appointment' && item.data.status?.toLowerCase() !== 'completed' && (
+                                                            <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-slate-50">
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    onClick={() => handleUpdateAppointmentStatus(item.data.id, 'COMPLETED', item.data)}
+                                                                    className="h-7 text-[9px] font-black uppercase bg-emerald-500 hover:bg-emerald-600 text-white border-none rounded-lg px-3"
+                                                                >
+                                                                    Complete
+                                                                </Button>
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    variant="outline"
+                                                                    onClick={() => handleUpdateAppointmentStatus(item.data.id, 'NO_SHOW', item.data)}
+                                                                    className="h-7 text-[9px] font-black uppercase border-amber-200 text-amber-600 hover:bg-amber-50 rounded-lg px-3"
+                                                                >
+                                                                    No Show
+                                                                </Button>
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    variant="outline"
+                                                                    onClick={() => handleUpdateAppointmentStatus(item.data.id, 'CANCELLED', item.data)}
+                                                                    className="h-7 text-[9px] font-black uppercase border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-3"
+                                                                >
+                                                                    Cancel
+                                                                </Button>
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="sm" 
+                                                                    onClick={() => setShowDiaryModal(true)}
+                                                                    className="h-7 text-[9px] font-black uppercase border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg px-3"
+                                                                >
+                                                                    Edit
+                                                                </Button>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                } else if (item.type === 'appointment') {
-                                                    const apt = item.data as any;
-                                                    return (
-                                                        <div key={`apt-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
-                                                            <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-emerald-50 border border-emerald-200 shadow-sm z-10 flex items-center justify-center">
-                                                                <Calendar className="w-3 h-3 text-emerald-600" />
-                                                            </div>
-                                                            <div className="space-y-2 mb-4">
-                                                                <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <span className="font-bold text-slate-800 text-sm">Meeting</span>
-                                                                        <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
-                                                                    </div>
-                                                                    <p className="text-sm font-bold text-slate-900 leading-tight mb-3">{apt.serviceName || 'Procedure'}</p>
-                                                                    <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <Badge className="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded border border-emerald-100">
-                                                                                {apt.status}
-                                                                            </Badge>
-                                                                            <span className="text-[10px] font-medium text-slate-400">{apt.clinicName || 'Clinic'}</span>
-                                                                        </div>
-                                                                        {apt.status?.toLowerCase() !== 'completed' && apt.status?.toLowerCase() !== 'cancelled' && apt.status?.toLowerCase() !== 'no_show' && (
-                                                                             <div className="flex flex-wrap gap-2">
-                                                                                 <Button
-                                                                                     size="sm"
-                                                                                     className="h-7 px-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded font-bold text-[10px] transition-all shadow-sm"
-                                                                                     onClick={() => setShowDiaryModal(true)}
-                                                                                 >
-                                                                                     <Calendar className="w-3 h-3 mr-1.5" /> Edit
-                                                                                 </Button>
-                                                                                 <Button
-                                                                                     size="sm"
-                                                                                     className="h-7 px-3 bg-slate-800 hover:bg-emerald-600 text-white rounded font-bold text-[10px] transition-all shadow-sm"
-                                                                                     onClick={() => handleUpdateAppointmentStatus(apt.id, 'COMPLETED', apt)}
-                                                                                 >
-                                                                                     <Check className="w-3 h-3 mr-1.5" /> Complete
-                                                                                 </Button>
-                                                                                 <Button
-                                                                                     size="sm"
-                                                                                     variant="outline"
-                                                                                     className="h-7 px-2 border-red-200 text-red-600 hover:bg-red-50 text-[10px] font-bold"
-                                                                                     onClick={() => handleUpdateAppointmentStatus(apt.id, 'NO_SHOW', apt)}
-                                                                                 >
-                                                                                     No Show
-                                                                                 </Button>
-                                                                                 <Button
-                                                                                     size="sm"
-                                                                                     variant="outline"
-                                                                                     className="h-7 px-2 border-amber-200 text-amber-600 hover:bg-amber-50 text-[10px] font-bold"
-                                                                                     onClick={() => handleUpdateAppointmentStatus(apt.id, 'PENDING_PAYMENT', apt)}
-                                                                                 >
-                                                                                     Pending Payment
-                                                                                 </Button>
-                                                                                 <Button
-                                                                                     size="sm"
-                                                                                     variant="ghost"
-                                                                                     className="h-7 px-2 text-slate-400 hover:text-red-500 hover:bg-slate-50 text-[10px] font-bold"
-                                                                                     onClick={() => handleUpdateAppointmentStatus(apt.id, 'CANCELLED', apt)}
-                                                                                 >
-                                                                                     Cancel
-                                                                                 </Button>
-                                                                             </div>
-                                                                         )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                } else if (item.type.startsWith('action_')) {
-                                                    const act = item.data as CrmAction;
-                                                    const isConfirmation = act.actionType === 'confirmation_call_reminder';
-                                                    const isCompleted = item.type === 'action_completed';
-                                                    const isOverdue = item.type === 'action_overdue';
-                                                    const isCreated = item.type === 'action_created';
-
-                                                    // Use different styling based on event type
-                                                    let icon = <CheckCircle className="w-3 h-3 text-amber-600" />;
-                                                    let iconBg = 'bg-amber-50 border-amber-200';
-                                                    let titleLabel = `Task Created: ${act.title}`;
-
-                                                    if (isConfirmation) {
-                                                        icon = <PhoneCall className="w-3 h-3 text-indigo-600" />;
-                                                        iconBg = 'bg-indigo-50 border-indigo-200';
-                                                    }
-
-                                                    if (isCompleted) {
-                                                        icon = <CheckCircle className="w-3 h-3 text-emerald-600" />;
-                                                        iconBg = 'bg-emerald-50 border-emerald-200';
-                                                        titleLabel = `Task Completed: ${act.title}`;
-                                                    } else if (isOverdue) {
-                                                        icon = <AlertCircle className="w-3 h-3 text-red-600" />;
-                                                        iconBg = 'bg-red-50 border-red-200';
-                                                        titleLabel = `Task Overdue: ${act.title}`;
-                                                    } else if (act.originalTaskId && act.isRecurring && isCreated) {
-                                                        icon = <Repeat className="w-3 h-3 text-blue-600" />;
-                                                        iconBg = 'bg-blue-50 border-blue-200';
-                                                        titleLabel = `Recurring Task Auto-generated: ${act.title}`;
-                                                    }
-
-                                                    return (
-                                                        <div key={`${item.type}-${act.id}-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
-                                                            <div className={`absolute left-[-2px] top-1 w-6 h-6 rounded-full border shadow-sm z-10 flex items-center justify-center ${iconBg}`}>
-                                                                {icon}
-                                                            </div>
-                                                            <div className="space-y-2 mb-4">
-                                                                <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all duration-300">
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <span className="font-bold text-slate-800 text-sm">{titleLabel}</span>
-                                                                        <div className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</div>
-                                                                    </div>
-                                                                    <p className="text-xs text-slate-700 leading-relaxed font-medium mb-3">{act.description || '--'}</p>
-                                                                    <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
-                                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${act.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>{act.status}</span>
-                                                                        {act.dueDate && (
-                                                                            <span className="text-[10px] text-slate-400 flex items-center gap-1 font-medium"><Clock className="w-3 h-3" /> Due {new Date(act.dueDate).toLocaleDateString()}</span>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                } else if (item.type === 'tag') {
-                                                    const tag = item.data as any;
-                                                    return (
-                                                        <div key={`tag-${idx}`} className="relative pl-12 pr-5 z-10 group/item">
-                                                            <div className="absolute left-[-2px] top-1 w-6 h-6 rounded-full bg-slate-50 border border-slate-200 shadow-sm z-10 flex items-center justify-center">
-                                                                <Tag className="w-3 h-3 text-slate-600" />
-                                                            </div>
-                                                            <div className="space-y-2 mb-4">
-                                                                <div className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <span className="text-sm font-bold text-slate-800">Tag added:</span>
-                                                                        <Badge className="bg-slate-100 text-slate-700 border border-slate-200">#{tag.tag?.name || 'General'}</Badge>
-                                                                    </div>
-                                                                    <span className="text-[10px] text-slate-400 ml-auto">{item.date.toLocaleString()}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            });
-                                        })()}
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    })()}
+                                </div>
+                            </div>
                         </div>
                     )}
-
+                    
                     {activeTab === 'tasks' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-200">
-                                <CardHeader className="flex flex-row items-center justify-between bg-slate-50/50 border-b border-slate-100">
-                                    <CardTitle className="text-sm font-black text-slate-800">Operational Tasks</CardTitle>
-                                    <Button size="sm" onClick={() => setShowTaskModal(true)} className="h-8 bg-slate-900 text-white font-bold text-[10px] px-4 rounded-lg">
-                                        <Plus className="w-3 h-3 mr-2" /> Program New Task
+                            <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
+                                <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
+                                    <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Execution Plan: Operational Tasks</CardTitle>
+                                    <Button size="sm" onClick={() => setShowTaskModal(true)} className="h-9 bg-slate-900 text-white font-bold text-xs px-4 rounded-xl">
+                                        <Plus className="w-4 h-4 mr-2" /> Program New Task
                                     </Button>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left">
                                             <thead>
-                                                <tr className="bg-slate-50 border-b border-slate-100">
-                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
-                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Task Details</th>
-                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type</th>
-                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Due/Reminder</th>
-                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Action</th>
+                                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                                    <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[60px]">Status</th>
+                                                    <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Task Details</th>
+                                                    <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Classification</th>
+                                                    <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Deadlines</th>
+                                                    <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {summary?.actions?.length === 0 ? (
-                                                    <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic text-xs">No tasks programmed for this contact.</td></tr>
+                                                    <tr><td colSpan={5} className="p-20 text-center text-slate-400 italic font-medium text-xs">No active tasks identified for this record.</td></tr>
                                                 ) : (
                                                     summary?.actions?.map((task) => (
                                                         <tr key={task.id} className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${new Date(task.dueDate!) < new Date() && task.status !== 'completed' ? 'bg-red-50/30' : ''}`}>
-                                                            <td className="p-4">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={task.status === 'completed'}
-                                                                    onChange={(e) => {
-                                                                        e.preventDefault();
-                                                                        const isCompleting = task.status !== 'completed';
-                                                                        const newStatus = isCompleting ? 'completed' : 'pending';
-
-                                                                        if (isCompleting) {
-                                                                            if (task.actionType === 'call' || task.actionType === 'follow_up_call') {
-                                                                                setShowPhoneCallModal(true);
-                                                                            } else if (task.actionType === 'email') {
-                                                                                setShowEmailModal(true);
-                                                                            } else if (task.actionType === 'appointment') {
-                                                                                setShowDiaryModal(true);
-                                                                            }
-                                                                        }
-
-                                                                        dispatch(updateAction({ id: task.id, updates: { status: newStatus } }));
-                                                                        setTimeout(() => dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id })), 500);
-                                                                    }}
-                                                                    className="h-5 w-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                                />
+                                                            <td className="p-5 align-middle">
+                                                                <div className="flex justify-center">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={task.status === 'completed'}
+                                                                        onChange={(e) => {
+                                                                            e.preventDefault();
+                                                                            const isCompleting = task.status !== 'completed';
+                                                                            const newStatus = isCompleting ? 'completed' : 'pending';
+                                                                            dispatch(updateAction({ id: task.id, updates: { status: newStatus } }));
+                                                                            setTimeout(() => dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id })), 500);
+                                                                        }}
+                                                                        className="h-5 w-5 rounded-lg border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                                                                    />
+                                                                </div>
                                                             </td>
-                                                            <td className="p-4">
-                                                                <div className="font-bold text-slate-800 text-xs">{task.title}</div>
-                                                                {task.description && <div className="text-[10px] text-slate-400 mt-0.5 line-clamp-1 italic">{task.description}</div>}
+                                                            <td className="p-5">
+                                                                <div className="font-bold text-slate-800 text-xs mb-0.5">{task.title}</div>
+                                                                {task.description && <div className="text-[10px] text-slate-500 line-clamp-1 italic font-medium">{task.description}</div>}
                                                             </td>
-                                                            <td className="p-4">
-                                                                <div className="flex flex-col gap-1">
-                                                                    <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[9px] w-fit font-black uppercase tracking-tight">
+                                                            <td className="p-5">
+                                                                <div className="flex flex-col gap-1.5">
+                                                                    <Badge className="bg-slate-800 text-white border-none text-[8px] w-fit font-black uppercase tracking-tight py-0.5 px-2">
                                                                         {task.actionType.replace('_', ' ')}
                                                                     </Badge>
-                                                                    {task.therapy && <span className="text-[9px] font-bold text-blue-500 italic">Re: {task.therapy}</span>}
+                                                                    {task.therapy && <span className="text-[9px] font-bold text-blue-500 uppercase tracking-tighter">Ref: {task.therapy}</span>}
                                                                 </div>
                                                             </td>
-                                                            <td className="p-4">
-                                                                <div className="flex flex-col gap-0.5">
-                                                                    <div className={`text-[10px] font-bold flex items-center gap-1.5 ${new Date(task.dueDate!) < new Date() && task.status !== 'completed' ? 'text-red-500' : 'text-slate-600'}`}>
-                                                                        <Clock className="w-3 h-3" /> {new Date(task.dueDate!).toLocaleDateString()}
+                                                            <td className="p-5">
+                                                                <div className="flex flex-col gap-1">
+                                                                    <div className={`text-[10px] font-black flex items-center gap-1.5 ${new Date(task.dueDate!) < new Date() && task.status !== 'completed' ? 'text-red-500' : 'text-slate-700'}`}>
+                                                                        <Clock className="w-3.5 h-3.5" /> Due {new Date(task.dueDate!).toLocaleDateString()}
                                                                     </div>
-                                                                    <div className="text-[9px] text-slate-400 font-medium">Reminder: {new Date(task.reminderDate!).toLocaleDateString()}</div>
+                                                                    {task.reminderDate && (
+                                                                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">Rem: {new Date(task.reminderDate).toLocaleDateString()}</div>
+                                                                    )}
                                                                 </div>
                                                             </td>
-                                                            <td className="p-4 text-right">
+                                                            <td className="p-5 text-right">
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-7 w-7 p-0 text-slate-300 hover:text-red-500"
+                                                                    className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                                                                     onClick={async () => {
-                                                                        if (window.confirm('Are you sure you want to delete this task?')) {
+                                                                        if (window.confirm('Delete this task?')) {
                                                                             await dispatch(deleteAction(task.id));
-                                                                            setTimeout(() => dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id })), 500);
+                                                                            dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
                                                                         }
                                                                     }}
                                                                 >
@@ -1393,35 +1385,39 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                             </Card>
                         </div>
                     )}
-
                     {activeTab === 'appointments' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-200">
-                                <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-                                    <CardTitle className="text-sm font-black text-slate-800">Appointment History</CardTitle>
+                            <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
+                                <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
+                                    <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Engagement Record: Appointments</CardTitle>
+                                    <Button size="sm" onClick={() => setShowBookingModal(true)} className="h-9 bg-slate-900 text-white font-bold text-xs px-4 rounded-xl">
+                                        <Plus className="w-4 h-4 mr-2" /> Book New
+                                    </Button>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left">
                                             <thead>
-                                                <tr className="bg-slate-50 border-b border-slate-100">
-                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date/Time</th>
-                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Service</th>
-                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clinic</th>
-                                                    <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                                    <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date & Time</th>
+                                                    <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Item</th>
+                                                    <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Clinic Location</th>
+                                                    <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {summary?.appointments?.length === 0 ? (
-                                                    <tr><td colSpan={4} className="p-12 text-center text-slate-400 italic text-xs">No appointments scheduled.</td></tr>
+                                                    <tr><td colSpan={4} className="p-20 text-center text-slate-400 italic font-medium text-xs">No appointment history found for this contact.</td></tr>
                                                 ) : (
                                                     summary?.appointments?.map((apt) => (
-                                                        <tr key={apt.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                                                            <td className="p-4 text-xs font-bold text-slate-700">{new Date(apt.startTime).toLocaleString()}</td>
-                                                            <td className="p-4 text-xs font-medium text-slate-600">{apt.serviceName}</td>
-                                                            <td className="p-4 text-xs font-medium text-slate-500">{apt.clinicName}</td>
-                                                            <td className="p-4">
-                                                                <Badge className={`${apt.status === 'completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'} text-[9px] font-black uppercase`}>{apt.status}</Badge>
+                                                        <tr key={apt.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group">
+                                                            <td className="p-5 text-xs font-bold text-slate-700">{new Date(apt.startTime).toLocaleString()}</td>
+                                                            <td className="p-5 text-xs font-bold text-slate-900">{apt.serviceName}</td>
+                                                            <td className="p-5 text-xs font-medium text-slate-500">{apt.clinicName}</td>
+                                                            <td className="p-5 text-right">
+                                                                <Badge className={`${apt.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'} text-[9px] font-black uppercase px-2.5 py-1 rounded-lg border shadow-sm`}>
+                                                                    {apt.status}
+                                                                </Badge>
                                                             </td>
                                                         </tr>
                                                     ))
@@ -1436,124 +1432,60 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
                     {activeTab === 'communications' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-200">
-                                <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-                                    <CardTitle className="text-sm font-black text-slate-800">Communication Logs</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    {summary?.communications?.length === 0 ? (
-                                        <div className="p-12 text-center text-slate-400 italic text-xs">No communication logged.</div>
-                                    ) : (
-                                        <div className="divide-y divide-slate-100">
-                                            {summary?.communications?.map((comm) => (
-                                                <div key={comm.id} className="p-5 hover:bg-slate-50/50 transition-all">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <div className="flex items-center gap-2">
-                                                            {comm.type === 'call' ? <PhoneCall className="w-3.5 h-3.5 text-blue-500" /> : <Mail className="w-3.5 h-3.5 text-indigo-500" />}
-                                                            <span className="text-xs font-black text-slate-800 uppercase tracking-tight">{comm.type} Logged</span>
-                                                        </div>
-                                                        <span className="text-[10px] font-bold text-slate-400">{new Date(comm.createdAt).toLocaleString()}</span>
-                                                    </div>
-                                                    <p className="text-xs text-slate-600 leading-relaxed font-medium bg-white/50 p-3 rounded-lg border border-slate-100 shadow-sm">{comm.notes}</p>
-                                                    {comm.metadata?.outcome && (
-                                                        <div className="mt-3">
-                                                            <Badge className="bg-slate-800 text-white text-[9px] font-bold uppercase">{comm.metadata.outcome}</Badge>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
-                    {activeTab === 'calls' && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-200">
-                                <CardHeader className="bg-slate-50/50 border-b border-slate-100 flex flex-row items-center justify-between">
-                                    <CardTitle className="text-sm font-black text-slate-800">Phone Call Logs</CardTitle>
-                                    <div className="flex items-center gap-2">
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                placeholder="Search calls..."
-                                                className="h-8 pl-8 pr-4 text-[10px] font-bold bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all w-48 shadow-sm"
-                                                id="call-search"
-                                                value={callSearchTerm}
-                                                onChange={(e) => setCallSearchTerm(e.target.value)}
-                                            />
-                                            <Activity className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                                        </div>
+                            <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
+                                <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
+                                    <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Unified Communication Logs</CardTitle>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" onClick={() => setShowPhoneCallModal(true)} className="h-8 text-[10px] font-bold border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg">
+                                            <PhoneCall className="w-3 h-3 mr-2" /> Log Call
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => setShowEmailModal(true)} className="h-8 text-[10px] font-bold border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg">
+                                            <Mail className="w-3 h-3 mr-2" /> Log Email
+                                        </Button>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-0">
-                                    {summary?.communications?.filter(c => c.type === 'call' && (c.notes?.toLowerCase().includes(callSearchTerm.toLowerCase()) || !callSearchTerm)).length === 0 ? (
-                                        <div className="p-12 text-center text-slate-400 italic text-xs">No phone calls found.</div>
+                                    {summary?.communications?.length === 0 ? (
+                                        <div className="p-20 text-center text-slate-400 italic font-medium text-xs">No communication history logged.</div>
                                     ) : (
-                                        <div className="divide-y divide-slate-100" id="calls-list">
-                                            {summary?.communications?.filter(c => c.type === 'call' && (c.notes?.toLowerCase().includes(callSearchTerm.toLowerCase()) || !callSearchTerm)).map((comm) => (
-                                                <div key={comm.id} className="p-5 hover:bg-slate-50/50 transition-all group/call">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50 shadow-sm">
-                                                                <PhoneCall className="w-4 h-4" />
+                                        <div className="divide-y divide-slate-100">
+                                            {summary?.communications?.map((comm) => (
+                                                <div key={comm.id} className="p-6 hover:bg-slate-50/50 transition-all group/comm">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm ${comm.type === 'call' ? 'bg-blue-50 border-blue-100 text-blue-500' : 'bg-indigo-50 border-indigo-100 text-indigo-500'}`}>
+                                                                {comm.type === 'call' ? <PhoneCall className="w-5 h-5" /> : <Mail className="w-5 h-5" />}
                                                             </div>
                                                             <div className="flex flex-col">
-                                                                <span className="text-xs font-black text-slate-800 uppercase tracking-tight">Outgoing Call</span>
+                                                                <span className="text-xs font-black text-slate-800 uppercase tracking-tight">{comm.type === 'call' ? 'Phone Outbound' : 'Email Outbound'}</span>
                                                                 <span className="text-[10px] font-bold text-slate-400">{new Date(comm.createdAt).toLocaleString()}</span>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            {comm.durationSeconds && (
-                                                                <Badge className="bg-slate-100 text-slate-500 text-[9px] font-bold border border-slate-200 px-2 h-6 flex items-center gap-1">
-                                                                    <Clock className="w-2.5 h-2.5" /> {Math.floor(comm.durationSeconds / 60)}m {comm.durationSeconds % 60}s
-                                                                </Badge>
+                                                        <div className="flex items-center gap-2 opacity-0 group-hover/comm:opacity-100 transition-opacity">
+                                                            {comm.type === 'call' && (
+                                                                <Button variant="ghost" size="sm" className="h-8 px-3 text-[10px] font-bold text-blue-600 hover:bg-blue-50" onClick={() => { setEditingCallId(comm.id); setPhoneCallNotes(comm.notes || ""); setShowPhoneCallModal(true); }}>
+                                                                    Edit
+                                                                </Button>
                                                             )}
-                                                            <div className="flex items-center gap-1 opacity-0 group-hover/call:opacity-100 transition-opacity">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-7 w-7 p-0 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg"
-                                                                    onClick={() => {
-                                                                        setEditingCallId(comm.id);
-                                                                        setPhoneCallNotes(comm.notes || "");
-                                                                        setShowPhoneCallModal(true);
-                                                                    }}
-                                                                >
-                                                                    <FileText className="w-3.5 h-3.5" />
-                                                                </Button>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-7 w-7 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-                                                                    onClick={async () => {
-                                                                        if (window.confirm("Delete this call log?")) {
-                                                                            await dispatch(deleteCommunication(comm.id)).unwrap();
-                                                                            dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                                </Button>
-                                                            </div>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                className="h-8 px-3 text-[10px] font-bold text-red-600 hover:bg-red-50"
+                                                                onClick={async () => {
+                                                                    if(confirm('Delete log?')) {
+                                                                        await dispatch(deleteCommunication(comm.id));
+                                                                        dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </Button>
                                                         </div>
                                                     </div>
-                                                    <div className="relative overflow-hidden">
-                                                        <p className="text-xs text-slate-600 leading-relaxed font-medium bg-white p-3 rounded-lg border border-slate-100 shadow-sm group-hover/call:border-blue-100 transition-colors">{comm.notes}</p>
-                                                    </div>
-                                                    {(comm.metadata?.outcome || (comm.metadata?.tags && comm.metadata?.tags.length > 0)) && (
-                                                        <div className="mt-4 flex flex-wrap gap-2">
-                                                            {comm.metadata.outcome && (
-                                                                <Badge className="bg-slate-800 text-white text-[9px] font-bold uppercase py-0.5 px-2.5 rounded shadow-sm border-none">
-                                                                    {comm.metadata.outcome.replace('_', ' ')}
-                                                                </Badge>
-                                                            )}
-                                                            {comm.metadata.tags && comm.metadata.tags.map((t: string) => (
-                                                                <span key={t} className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-lg border border-indigo-100 shadow-sm">
-                                                                    #{t}
-                                                                </span>
-                                                            ))}
+                                                    <p className="text-xs text-slate-600 leading-relaxed font-medium bg-slate-50/50 p-4 rounded-xl border border-slate-100/50">{comm.notes}</p>
+                                                    {comm.metadata?.outcome && (
+                                                        <div className="mt-4">
+                                                            <Badge className="bg-slate-800 text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-lg shadow-sm">{comm.metadata.outcome.replace('_', ' ')}</Badge>
                                                         </div>
                                                     )}
                                                 </div>

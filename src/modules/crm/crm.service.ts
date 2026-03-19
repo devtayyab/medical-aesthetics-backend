@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenEx
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In, DataSource, IsNull } from 'typeorm';
+import { validate as isUuid } from 'uuid';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { Lead } from './entities/lead.entity';
 import { CustomerRecord } from './entities/customer-record.entity';
@@ -727,6 +728,11 @@ export class CrmService implements OnModuleInit {
 
   // Customer Record Management
   async getCustomerRecord(customerId: string, salespersonId?: string): Promise<any> {
+    // 0. Validate UUID format to avoid DB crashes
+    if (!isUuid(customerId)) {
+      throw new NotFoundException('Invalid Customer or Lead ID format');
+    }
+
     // Check if user exists first
     const customer = await this.usersRepository.findOne({ where: { id: customerId } });
 
