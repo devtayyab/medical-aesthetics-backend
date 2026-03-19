@@ -13,14 +13,14 @@ import { AppDispatch, RootState } from '@/store';
 import {
     fetchClinicAppointments,
     updateAppointmentStatus,
-    createAppointment,
     completeAppointment,
     setSelectedClinic,
     setSelectedDate,
     setSelectedTimeSlot,
     addService,
-    clearBooking
+    clearBooking,
 } from '@/store/slices/bookingSlice';
+import { fetchAvailability } from '@/store/slices/clinicSlice';
 import { fetchLeads, createLead } from '@/store/slices/crmSlice';
 import { Button } from '@/components/atoms/Button/Button';
 import { crmAPI, clinicsAPI, bookingAPI } from '@/services/api';
@@ -39,11 +39,13 @@ export const SalesWeekCalendar: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     const { appointments } = useSelector((state: RootState) => state.booking);
+    const { availability } = useSelector((state: RootState) => state.clinic);
     const { user } = useSelector((state: RootState) => state.auth);
     const { leads } = useSelector((state: RootState) => state.crm);
 
     const [viewDate, setViewDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
+    const [selectedClinicId, setSelectedClinicId] = useState<string>('all');
 
     // Drawers state
     const [isAddWizardOpen, setIsAddWizardOpen] = useState(false);
@@ -80,23 +82,28 @@ export const SalesWeekCalendar: React.FC = () => {
                 const res = await crmAPI.getAccessibleClinics();
                 if (res.data) {
                     setAvailableClinics(res.data);
-                    if (res.data.length > 0) {
-                        setWizardClinic(res.data[0]);
-                        const srvRes = await clinicsAPI.getServices(res.data[0].id);
-                        setAvailableServices(srvRes.data);
+                    if (res.data.length > 0 && selectedClinicId === 'all') {
+                        // Keep 'all' for managers/admins, but maybe default to first clinic for others
                     }
                 }
             } catch (e) {
                 console.error("Failed loading clinic/services", e);
             }
-            if (user?.role === 'salesperson') {
-                dispatch(fetchClinicAppointments({ providerId: user.id }));
-            } else {
-                dispatch(fetchClinicAppointments({}));
-            }
         };
         init();
-    }, [dispatch, user]);
+    }, [user]);
+
+    useEffect(() => {
+        const filters: any = {};
+        if (user?.role === 'salesperson') {
+            filters.providerId = user.id;
+        }
+        if (selectedClinicId !== 'all') {
+            filters.clinicId = selectedClinicId;
+            dispatch(fetchAvailability(selectedClinicId));
+        }
+        dispatch(fetchClinicAppointments(filters));
+    }, [dispatch, user, selectedClinicId, viewDate]);
 
     useEffect(() => {
         if (searchQuery.length > 2) {
@@ -136,7 +143,7 @@ export const SalesWeekCalendar: React.FC = () => {
 
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
-    const handleOpenWizard = (initialDate?: Date, initialTimeStr?: string) => {
+    const handleOpenWizard = async (initialDate?: Date, initialTimeStr?: string) => {
         if (initialDate) setWizardDate(initialDate);
         if (initialTimeStr) setWizardTime(initialTimeStr);
         setWizardStep(1);
@@ -144,6 +151,29 @@ export const SalesWeekCalendar: React.FC = () => {
         setWizardServices([]);
         setIsWalkIn(false);
         setWalkInForm({ firstName: '', lastName: '', phone: '' });
+
+        // Default clinic to the selected one in the view if not 'all'
+        if (selectedClinicId !== 'all') {
+            const clinic = availableClinics.find(c => c.id === selectedClinicId);
+            if (clinic) {
+                setWizardClinic(clinic);
+                try {
+                    const srvRes = await clinicsAPI.getServices(clinic.id);
+                    setAvailableServices(srvRes.data);
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        } else if (availableClinics.length > 0) {
+            setWizardClinic(availableClinics[0]);
+            try {
+                const srvRes = await clinicsAPI.getServices(availableClinics[0].id);
+                setAvailableServices(srvRes.data);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
         setIsAddWizardOpen(true);
     };
 
@@ -255,6 +285,18 @@ export const SalesWeekCalendar: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <select
+                            value={selectedClinicId}
+                            onChange={(e) => setSelectedClinicId(e.target.value)}
+                            className="bg-gray-100 border border-gray-200 text-gray-900 rounded-lg px-4 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer appearance-none pr-8 min-w-[180px]"
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
+                        >
+                            <option value="all">🏥 All Clinics</option>
+                            {availableClinics.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+
                         <div className="flex gap-1 items-center bg-gray-100 p-1 rounded-lg">
                             <button onClick={() => setViewMode('day')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'day' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Day</button>
                             <button onClick={() => setViewMode('week')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'week' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Week</button>
@@ -299,13 +341,45 @@ export const SalesWeekCalendar: React.FC = () => {
                                     <span className={`text-base font-black ${isToday(day) ? 'text-indigo-700' : 'text-gray-900'}`}>{format(day, 'd')}</span>
                                 </div>
                                 <div className="relative h-[1536px]"> {/* 24 * 64px = 1536px */}
-                                    {hours.map(hour => (
-                                        <div
-                                            key={hour}
-                                            className="h-16 border-b border-gray-50/50 w-full hover:bg-gray-50/50 cursor-pointer"
-                                            onClick={() => handleOpenWizard(day, `${hour.toString().padStart(2, '0')}:00`)}
-                                        />
-                                    ))}
+                                    {hours.map(hour => {
+                                        const dayName = format(day, 'EEEE').toLowerCase();
+                                        const bh = availability?.businessHours?.[dayName];
+                                        let isClosed = false;
+                                        if (bh) {
+                                            const [openH] = bh.open.split(':').map(Number);
+                                            const [closeH] = bh.close.split(':').map(Number);
+                                            if (!bh.isOpen || hour < openH || hour >= closeH) {
+                                                isClosed = true;
+                                            }
+                                        }
+
+                                        // Check if this hour is blocked
+                                        const isBlocked = availability?.blockedSlots?.some(slot => {
+                                            const slotDate = new Date(slot.date);
+                                            if (!isSameDay(slotDate, day)) return false;
+                                            const [bH] = slot.startTime.split(':').map(Number);
+                                            return bH === hour;
+                                        });
+
+                                        return (
+                                            <div
+                                                key={hour}
+                                                className={`h-16 border-b border-gray-50/50 w-full hover:bg-gray-50/50 cursor-pointer relative ${isClosed ? 'bg-gray-100/50 pattern-diagonal-lines' : ''} ${isBlocked ? 'bg-orange-50/30' : ''}`}
+                                                onClick={() => handleOpenWizard(day, `${hour.toString().padStart(2, '0')}:00`)}
+                                            >
+                                                {isClosed && hour === 12 && (
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                        <span className="text-[10px] font-bold text-gray-400 rotate-[-15deg] uppercase tracking-widest">Closed</span>
+                                                    </div>
+                                                )}
+                                                {isBlocked && (
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                        <span className="text-[8px] font-bold text-orange-400/60 uppercase tracking-tighter">Blocked</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
 
                                     {appointments.filter(a => isSameDay(new Date(a.startTime), day)).map(apt => {
                                         const start = new Date(apt.startTime);
@@ -319,7 +393,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                             <div
                                                 key={apt.id}
                                                 onClick={(e) => { e.stopPropagation(); openAptDetails(apt); }}
-                                                className={`absolute left-1 right-1 rounded-md border p-2 shadow-sm cursor-pointer hover:shadow-md transition-all hover:scale-[1.01] ${style.color}`}
+                                                className={`absolute left-1 right-1 rounded-md border p-2 shadow-sm cursor-pointer hover:shadow-md transition-all hover:scale-[1.01] z-20 ${style.color}`}
                                                 style={{ top, height }}
                                             >
                                                 <div className="flex items-center gap-1.5 mb-1">

@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, BarChart2, Tag, Eye, Settings,
   Building2,
   Calendar, CalendarRange, FileText, BarChart, Shield, DollarSign,
-  ClipboardList, Repeat, UserCog, ListChecks,
+  ClipboardList, Repeat, UserCog, ListChecks, Clock,
   Phone, Search, LogOut, MessageSquare, Archive, Bell, Key
 } from "lucide-react";
 
@@ -41,11 +41,15 @@ const clinicLinks: SidebarItem[] = [
   { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "Account" },
 ];
 
-const doctorLinks: SidebarItem[] = [
+const secretariatLinks: SidebarItem[] = [
   { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
-  { path: "/clinic/diary", label: "My Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
-  { path: "/appointments", label: "Appointments", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
-  { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "Account" },
+  { path: "/clinic/diary", label: "Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
+  { path: "/clinic/appointments", label: "Appointments", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
+  { path: "/clinic/availability-settings", label: "Availability", icon: <Clock className="w-5 h-5" />, group: "Operations" },
+];
+
+const doctorLinks: SidebarItem[] = [
+  { path: "/clinic/diary", label: "My Appointments", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
 ];
 
 const crmLinks: SidebarItem[] = [
@@ -66,6 +70,7 @@ const crmLinks: SidebarItem[] = [
 
 const managerLinks: SidebarItem[] = [
   { path: "/admin/manager-dashboard", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, group: "Main" },
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
   { path: "/admin/clinics", label: "Clinics", icon: <Building2 className="w-5 h-5" />, group: "Main" },
   { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Main" },
 
@@ -108,6 +113,7 @@ const getAdminLinks = (role: string): SidebarItem[] => {
   // Fallback for regular `admin` 
   return [
     { path: "/admin/dashboard", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, group: "Main" },
+    { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
     { path: "/admin/clinics", label: "Clinics", icon: <Building2 className="w-5 h-5" />, group: "Main" },
     { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Main" },
     { path: "/admin/reviews", label: "Review Moderation", icon: <Eye className="w-5 h-5" />, group: "Approvals" },
@@ -143,10 +149,12 @@ export const Sidebar: React.FC = () => {
   const links =
     role === "client"
       ? clientLinks
-      : role === "clinic_owner" || role === "secretariat"
+      : role === "clinic_owner"
         ? clinicLinks
-        : role === "doctor"
-          ? doctorLinks
+        : role === "secretariat"
+          ? secretariatLinks
+          : role === "doctor"
+            ? doctorLinks
           : role === "admin"
             ? getAdminLinks(role)
             : role === "SUPER_ADMIN"
@@ -175,6 +183,7 @@ export const Sidebar: React.FC = () => {
       case 'clinic_owner': return '/clinic/dashboard';
       case 'salesperson': return '/crm';
       case 'client': return '/my-account';
+      case 'doctor': return '/clinic/diary';
       default: return '/';
     }
   };

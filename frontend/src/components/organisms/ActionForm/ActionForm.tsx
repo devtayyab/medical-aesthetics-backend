@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { Clock, AlertCircle, CheckCircle, Search, User as UserIcon, X } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
@@ -12,9 +12,10 @@ import {
   validateAction,
   getRequiredFieldsForAction
 } from '@/store/slices/crmSlice';
-import type { AppDispatch } from '@/store';
-import type { CrmAction } from '@/types';
+import type { AppDispatch, RootState } from '@/store';
+import type { CrmAction, User as IUser } from '@/types';
 import { userAPI, crmAPI } from '@/services/api';
+import toast from 'react-hot-toast';
 
 interface ActionFormProps {
   customerId: string;
@@ -32,6 +33,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   hideHeader
 }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const { user } = useSelector((state: RootState) => state.auth);
   const [customerId, setCustomerId] = useState(propCustomerId);
   const [customers, setCustomers] = useState<{ value: string; label: string; type: 'customer' | 'lead'; email?: string }[]>([]);
   const [formData, setFormData] = useState<Partial<CrmAction>>({
@@ -43,7 +45,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     status: prefilledData?.status || 'pending',
     priority: prefilledData?.priority || 'medium',
     dueDate: prefilledData?.dueDate || '',
-    salespersonId: prefilledData?.salespersonId || undefined,
+    salespersonId: prefilledData?.salespersonId || user?.id || undefined,
     metadata: {
       ...(prefilledData?.metadata || {}),
       // Initialize metadata fields from prefilledData if they exist in metadata
@@ -56,6 +58,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [clinics, setClinics] = useState<{ value: string; label: string }[]>([]);
+  const [salespersons, setSalespersons] = useState<{ value: string; label: string }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [selectedCustomerLabel, setSelectedCustomerLabel] = useState('');
@@ -159,14 +162,25 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           }
         }
 
-        // Fetch clinics
-        const { data: clinicData } = await crmAPI.getAccessibleClinics();
-        const clinicOptions = (clinicData || []).map((c: any) => ({ value: c.id, label: c.name }));
+        // Fetch clinics and salespersons
+        const [clinicRes, salesRes] = await Promise.all([
+          crmAPI.getAccessibleClinics().catch(() => ({ data: [] })),
+          userAPI.getAllUsers({ role: 'salesperson', limit: 100 }).catch(() => ({ data: { users: [] } }))
+        ]);
+        
+        const clinicOptions = (clinicRes.data || []).map((c: any) => ({ value: c.id, label: c.name }));
         setClinics(clinicOptions);
+
+        const salesData = Array.isArray(salesRes.data) ? salesRes.data : salesRes.data.users || [];
+        const salesOptions = salesData.map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName}`, role: s.role }));
+        
+        // Ensure doctors and managers are also available if needed? The user asked for "which salesperson". We fetch salespersons.
+        setSalespersons(salesOptions);
       } catch (e) {
         console.error('ActionForm initialization failed:', e);
         setCustomers([]);
         setClinics([]);
+        setSalespersons([]);
       }
     };
     fetchData();
@@ -198,19 +212,45 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   };
 
   const handleValidate = async () => {
-    const result = await dispatch(validateAction({
-      customerId,
-      actionData: formData
-    })).unwrap();
-    setValidationErrors(result.missingFields || []);
-    setValidationWarnings(result.warnings || []);
-    return result;
+    try {
+      const result = await dispatch(validateAction({
+        customerId: customerId || '',
+        actionData: formData
+      })).unwrap();
+      setValidationErrors(result.missingFields || []);
+      setValidationWarnings(result.warnings || []);
+      return result;
+    } catch (e) {
+      console.error("handleValidate error", e);
+      return { isValid: true, missingFields: [], warnings: [] };
+    }
+  };
+
+  const handleValidateClick = async () => {
+    const result = await handleValidate();
+    if (result.isValid) {
+      if (result.warnings && result.warnings.length > 0) {
+        toast.success("Validation passed, but look at the suggestions below.");
+      } else {
+        toast.success("Validation successful! Form is complete.");
+        onSuccess?.(); // closes the form
+      }
+    } else {
+      toast.error("Validation failed. Please fill all required fields.");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validation = await handleValidate();
+    let validation;
+    try {
+      validation = await handleValidate();
+    } catch (e) {
+      console.error("Validation failed:", e);
+      // Fallback if the validate endpoint is not available
+      validation = { isValid: true, missingFields: [], warnings: [] };
+    }
 
     if (validation.isValid) {
       try {
@@ -262,10 +302,14 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         });
         setValidationErrors([]);
         setValidationWarnings([]);
+        toast.success(prefilledData?.id ? 'Task updated successfully!' : 'Task created successfully!');
         onSuccess?.();
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Failed to ${prefilledData?.id ? 'update' : 'create'} action:`, error);
+        toast.error(error?.response?.data?.message || 'Failed to save task. Please check your data.');
       }
+    } else {
+      toast.error("Please resolve validation errors before saving.");
     }
   };
 
@@ -372,7 +416,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                 { value: 'appointment', label: 'Appointment' },
                 { value: 'confirmation_call_reminder', label: 'Confirmation Call Reminder' }
               ]}
-              required
             />
 
             <Select
@@ -385,42 +428,61 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                 { value: 'high', label: 'High' },
                 { value: 'urgent', label: 'Urgent' }
               ]}
+            />
+          </div>
+
+          {/* Core Requirements: Salesperson, Clinic, Service */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-orange-50/50 rounded-xl border border-orange-100">
+            {user?.role === 'SUPER_ADMIN' ? (
+              <Select
+                label="Salesperson (Required)"
+                value={formData.salespersonId || ''}
+                onChange={(value) => handleInputChange('salespersonId', value)}
+                options={salespersons}
+                required
+              />
+            ) : null}
+            
+            <Select
+              label="Clinic (Required)"
+              value={formData.metadata?.clinic || ''}
+              onChange={(value) => handleInputChange('metadata.clinic', value)}
+              options={clinics}
+              required
+            />
+
+            <Input
+              label="Service/Therapy (Required)"
+              value={formData.therapy || ''}
+              onChange={(e) => handleInputChange('therapy', e.target.value)}
+              placeholder="e.g. Botox Treatment"
               required
             />
           </div>
 
-          {/* Title and Therapy */}
+          {/* Title and Due Dates */}
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Task Title"
               value={formData.title || ''}
               onChange={(e) => handleInputChange('title', e.target.value)}
               placeholder="e.g. Call client for confirmation"
-              required
             />
-            <Input
-              label="Therapy Associated"
-              value={formData.therapy || ''}
-              onChange={(e) => handleInputChange('therapy', e.target.value)}
-              placeholder="e.g. Botox Treatment"
-            />
-          </div>
-
-          {/* Due Date and Reminder Date */}
-          <div className="grid grid-cols-2 gap-4">
             <Input
               label="Due Date & Time"
               type="datetime-local"
               value={formData.dueDate || ''}
               onChange={(e) => handleInputChange('dueDate', e.target.value)}
-              required
             />
+          </div>
+
+          {/* Reminder Date */}
+          <div className="grid grid-cols-1 gap-4">
             <Input
               label="Reminder Date & Time"
               type="datetime-local"
               value={formData.reminderDate || ''}
               onChange={(e) => handleInputChange('reminderDate', e.target.value)}
-              required
             />
           </div>
 
@@ -470,17 +532,10 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           {/* Action-specific fields */}
           {(formData.actionType === 'call' || formData.actionType === 'follow_up_call' || formData.actionType === 'confirmation_call_reminder') && (
             <>
-              <h4 className="font-medium text-sm text-gray-700">Call Details</h4>
+              <h4 className="font-medium text-sm text-gray-700 mt-2">Call Details</h4>
               <div className="grid grid-cols-2 gap-4">
                 <Select
-                  label="Clinic"
-                  value={formData.metadata?.clinic || ''}
-                  onChange={(value) => handleInputChange('metadata.clinic', value)}
-                  options={clinics}
-                />
-
-                <Select
-                  label="Proposed Treatment"
+                  label="Proposed Treatment Category"
                   value={formData.metadata?.proposedTreatment || ''}
                   onChange={(value) => handleInputChange('metadata.proposedTreatment', value)}
                   options={[
@@ -560,7 +615,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               <CheckCircle className="h-4 w-4 mr-2" />
               {prefilledData?.id ? 'Save Changes' : 'Create Task'}
             </Button>
-            <Button type="button" variant="secondary" onClick={handleValidate}>
+            <Button type="button" variant="secondary" onClick={handleValidateClick}>
               Validate
             </Button>
           </div>

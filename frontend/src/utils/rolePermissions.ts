@@ -96,6 +96,29 @@ export const canAccessClinicDashboard = (userRole: UserRole | string): boolean =
 export const getMenuItemsForRole = (userRole: UserRole | string) => {
   const menuItems = [];
 
+  // SPECIAL CASE: DOCTOR role - only appointments
+  if (userRole === UserRole.DOCTOR || userRole === 'doctor') {
+    return [
+      {
+        id: 'diary',
+        label: 'My Appointments',
+        path: '/clinic/diary',
+        icon: 'Calendar',
+      }
+    ];
+  }
+
+  // SPECIAL CASE: SECRETARIAT role - focused operations
+  if (userRole === UserRole.SECRETARIAT || userRole === 'secretariat') {
+    return [
+      { id: 'dashboard', label: 'Dashboard', path: '/clinic/dashboard', icon: 'LayoutDashboard' },
+      { id: 'appointments', label: 'Appointments', path: '/clinic/appointments', icon: 'Calendar' },
+      { id: 'availability', label: 'Availability Settings', path: '/clinic/availability-settings', icon: 'Clock' },
+      { id: 'messages', label: 'Messages', path: '/clinic/messages', icon: 'MessageSquare' },
+      { id: 'diary', label: 'Diary', path: '/clinic/diary', icon: 'BookOpen' },
+    ];
+  }
+
   // Dashboard - available to all clinic roles
   menuItems.push({
     id: 'dashboard',

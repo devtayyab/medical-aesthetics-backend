@@ -955,11 +955,18 @@ export class CrmService implements OnModuleInit {
   }
 
   async createCustomerRecord(customerId: string, salespersonId?: string): Promise<CustomerRecord> {
-    const record = this.customerRecordsRepository.create({
-      customerId,
-      assignedSalespersonId: salespersonId,
-    });
-    return this.customerRecordsRepository.save(record);
+    try {
+      const record = this.customerRecordsRepository.create({
+        customerId,
+        assignedSalespersonId: salespersonId,
+      });
+      return await this.customerRecordsRepository.save(record);
+    } catch (error) {
+      if (error.code === '23505') { // PostgreSQL unique_violation
+        return await this.customerRecordsRepository.findOne({ where: { customerId } });
+      }
+      throw error;
+    }
   }
 
   async createCustomer(data: any, salespersonId?: string): Promise<{ user: User; password: string }> {
@@ -1271,24 +1278,26 @@ export class CrmService implements OnModuleInit {
   }
 
   async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
-    // 1. Mandatory Reminder Logic
-    if (!data.reminderDate) {
-      throw new BadRequestException('Reminder date is required for all tasks.');
-    }
-
+    // 1. Reminder Logic (Optional)
     const now = new Date();
-    const reminderDate = new Date(data.reminderDate);
-    const oneYearFromNow = new Date();
-    oneYearFromNow.setFullYear(now.getFullYear() + 1);
+    if (data.reminderDate) {
+      const reminderDate = new Date(data.reminderDate);
+      const oneYearFromNow = new Date();
+      oneYearFromNow.setFullYear(now.getFullYear() + 1);
 
-    // Allow 5 minutes grace period for past dates
-    const gracePeriodMs = 5 * 60 * 1000;
-    if (reminderDate.getTime() < now.getTime() - gracePeriodMs) {
-      throw new BadRequestException('Reminder date cannot be in the past.');
+      // Allow 5 minutes grace period for past dates
+      const gracePeriodMs = 5 * 60 * 1000;
+      if (reminderDate.getTime() < now.getTime() - gracePeriodMs) {
+        throw new BadRequestException('Reminder date cannot be in the past.');
+      }
+
+      if (reminderDate > oneYearFromNow) {
+        throw new BadRequestException('Reminder date cannot be more than 1 year in the future.');
+      }
     }
 
-    if (reminderDate > oneYearFromNow) {
-      throw new BadRequestException('Reminder date cannot be more than 1 year in the future.');
+    if (!data.title) {
+      data.title = `Task: ${data.actionType || 'Action'} for ${data.therapy || 'Patient'}`;
     }
 
     if (!data.customerId && !data.relatedLeadId) {

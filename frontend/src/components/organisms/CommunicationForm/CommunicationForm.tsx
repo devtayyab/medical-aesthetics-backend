@@ -12,7 +12,7 @@ import {
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { CommunicationLog } from '@/types';
-import { crmAPI } from '@/services/api';
+import { crmAPI, userAPI } from '@/services/api';
 
 interface CommunicationFormProps {
   customerId: string;
@@ -24,17 +24,20 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
   onSuccess
 }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const { user } = useSelector((state: RootState) => state.auth);
   const { requiredFields, fieldValidation } = useSelector((state: RootState) => state.crm);
   const [formData, setFormData] = useState<Partial<CommunicationLog>>({
     customerId,
     type: 'call',
     direction: 'outgoing',
     status: 'completed',
-    metadata: {}
+    metadata: {},
+    salespersonId: (user as any)?.id || undefined
   });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [clinics, setClinics] = useState<{ value: string; label: string }[]>([]);
+  const [salespersons, setSalespersons] = useState<{ value: string; label: string }[]>([]);
 
   React.useEffect(() => {
     dispatch(getRequiredFieldsForCall());
@@ -45,12 +48,20 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
   React.useEffect(() => {
     (async () => {
       try {
-        const { data } = await crmAPI.getAccessibleClinics();
-        const options = (data || []).map((c: any) => ({ value: c.id, label: c.name }));
-        setClinics(options);
+        const [clinicRes, salesRes] = await Promise.all([
+          crmAPI.getAccessibleClinics().catch(() => ({ data: [] })),
+          userAPI.getAllUsers({ role: 'salesperson', limit: 100 }).catch(() => ({ data: { users: [] } }))
+        ]);
+
+        const clinicOptions = (clinicRes.data || []).map((c: any) => ({ value: c.id, label: c.name }));
+        setClinics(clinicOptions);
+
+        const salesData = Array.isArray(salesRes.data) ? salesRes.data : salesRes.data.users || [];
+        const salesOptions = salesData.map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName}` }));
+        setSalespersons(salesOptions);
       } catch (e) {
-        // fallback to empty list
         setClinics([]);
+        setSalespersons([]);
       }
     })();
   }, []);
@@ -118,7 +129,8 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
           type: 'call',
           direction: 'outgoing',
           status: 'completed',
-          metadata: {}
+          metadata: {},
+          salespersonId: (user as any)?.id || undefined
         });
         setValidationErrors([]);
         setValidationWarnings([]);
@@ -128,8 +140,6 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
       }
     }
   };
-
-
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -155,6 +165,19 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
             className="bg-white"
           />
 
+          {user?.role === 'SUPER_ADMIN' && (
+            <Select
+              label="Salesperson"
+              value={formData.salespersonId || ''}
+              onChange={(value) => handleInputChange('salespersonId', value || undefined)}
+              options={salespersons}
+              required
+              className="bg-white"
+            />
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
             label="Direction"
             value={formData.direction}
@@ -166,9 +189,7 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
             required
             className="bg-white"
           />
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
             label="Status"
             value={formData.status}
@@ -181,16 +202,15 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
             required
             className="bg-white"
           />
-
-          <Input
-            label="Subject"
-            value={formData.subject || ''}
-            onChange={(e) => handleInputChange('subject', e.target.value)}
-            placeholder="Brief description..."
-            className="bg-white"
-          />
         </div>
-      </div>
+
+        <Input
+          label="Subject"
+          value={formData.subject || ''}
+          onChange={(e) => handleInputChange('subject', e.target.value)}
+          placeholder="Brief description..."
+          className="bg-white"
+        />      </div>
 
       {/* Call Specifics */}
       {formData.type === 'call' && (

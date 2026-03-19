@@ -156,7 +156,9 @@ function AppContent() {
         navigate("/admin/dashboard", { replace: true });
       } else if (user?.role === "salesperson") {
         navigate("/crm", { replace: true });
-      } else if (["clinic_owner", "doctor", "secretariat"].includes(user?.role || "")) {
+      } else if (user?.role === "doctor") {
+        navigate("/clinic/diary", { replace: true });
+      } else if (["clinic_owner", "secretariat"].includes(user?.role || "")) {
         navigate("/clinic/dashboard", { replace: true });
       } else if (user?.role === "client") {
         navigate("/my-account", { replace: true });

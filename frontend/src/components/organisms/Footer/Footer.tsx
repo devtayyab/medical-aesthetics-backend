@@ -92,35 +92,27 @@ export const Footer: React.FC = () => {
               </ul>
             </div>
 
-            {/* Support */}
+            {/* Contact */}
             <div>
               <strong className="font-semibold text-[20px] text-[#CBFF38]">
-                Explore
+                Contact Us
               </strong>
               <ul className="mt-6 space-y-[10px]">
                 <li>
-                  <Link
-                    to="#"
+                  <a
+                    href="tel:6948880498"
                     className="text-white transition hover:text-[#CBFF38]"
                   >
-                    Blogs & Feeds
-                  </Link>
+                    📞 6948880498
+                  </a>
                 </li>
                 <li>
-                  <Link
-                    to="#"
+                  <a
+                    href="mailto:info@beautydoctors.gr"
                     className="text-white transition hover:text-[#CBFF38]"
                   >
-                    Privacy Police
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="#"
-                    className="text-white transition hover:text-[#CBFF38]"
-                  >
-                    Cookies
-                  </Link>
+                    ✉️ info@beautydoctors.gr
+                  </a>
                 </li>
               </ul>
             </div>

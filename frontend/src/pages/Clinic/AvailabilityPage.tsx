@@ -8,6 +8,7 @@ import {
   blockTimeSlot,
   unblockTimeSlot,
 } from "../../store/slices/clinicSlice";
+import { crmAPI } from "../../services/api";
 import { AvailabilitySettings, BusinessHours, BlockedSlot } from "../../types/clinic.types";
 import { Clock, Save, Calendar, Plus, Trash2 } from "lucide-react";
 
@@ -38,17 +39,41 @@ const AvailabilityPage: React.FC = () => {
   const [newBlockedDate, setNewBlockedDate] = useState("");
   const [newSlot, setNewSlot] = useState({ date: "", startTime: "09:00", endTime: "10:00" });
 
-  const [timezone, setTimezone] = useState("America/New_York");
+  const [timezone, setTimezone] = useState("Europe/Athens");
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    dispatch(fetchAvailability());
-    loadBlockedSlots();
-  }, [dispatch]);
+  const [availableClinics, setAvailableClinics] = useState<any[]>([]);
+  const [selectedClinicId, setSelectedClinicId] = useState<string>("");
 
-  const loadBlockedSlots = async () => {
+  useEffect(() => {
+    const loadClinics = async () => {
+      try {
+        const res = await crmAPI.getAccessibleClinics();
+        setAvailableClinics(res.data || []);
+        if (res.data?.length > 0) {
+          setSelectedClinicId(res.data[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to load clinics", err);
+      }
+    };
+    loadClinics();
+  }, []);
+
+  useEffect(() => {
+    if (selectedClinicId) {
+      dispatch(fetchAvailability(selectedClinicId));
+      loadBlockedSlots(selectedClinicId);
+    }
+  }, [selectedClinicId, dispatch]);
+
+  const loadBlockedSlots = async (clinicId?: string) => {
     try {
       const result = await dispatch(fetchBlockedSlots()).unwrap();
+      // NOTE: fetchBlockedSlots doesn't currently take clinicId in clinicSlice, 
+      // but the backend might filter it if we are authenticated or we should update it.
+      // For now, let's assume it returns what we have access to.
+      // Ideally blockTimeSlot and loadBlockedSlots should be per clinic.
       // Separate full day blocks vs partial
       // Assumption: Full day blocks start at 00:00 and end at 23:59 (or next day 00:00)
       const dates: { id: string; date: string }[] = [];
@@ -107,7 +132,7 @@ const AvailabilityPage: React.FC = () => {
       };
 
       await dispatch(
-        updateAvailability(payload as AvailabilitySettings)
+        updateAvailability({ ...payload, clinicId: selectedClinicId } as any)
       ).unwrap();
       alert("Availability settings saved successfully!");
     } catch (error) {
@@ -143,12 +168,13 @@ const AvailabilityPage: React.FC = () => {
 
       try {
         await dispatch(blockTimeSlot({
+          clinicId: selectedClinicId,
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           reason: 'Full Day Block'
-        })).unwrap();
+        } as any)).unwrap();
         setNewBlockedDate("");
-        loadBlockedSlots(); // Reload to get IDs
+        loadBlockedSlots(selectedClinicId); // Reload to get IDs
       } catch (err) {
         alert("Failed to block date");
       }
@@ -158,7 +184,7 @@ const AvailabilityPage: React.FC = () => {
   const removeBlockedDate = async (id: string) => {
     try {
       await dispatch(unblockTimeSlot(id)).unwrap();
-      loadBlockedSlots();
+      loadBlockedSlots(selectedClinicId);
     } catch (e) {
       alert("Failed to unblock date");
     }
@@ -171,12 +197,13 @@ const AvailabilityPage: React.FC = () => {
 
       try {
         await dispatch(blockTimeSlot({
+          clinicId: selectedClinicId,
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           reason: 'Partial Block'
-        })).unwrap();
+        } as any)).unwrap();
         setNewSlot({ ...newSlot, date: "" });
-        loadBlockedSlots();
+        loadBlockedSlots(selectedClinicId);
       } catch (err) {
         alert("Failed to block slot");
       }
@@ -186,7 +213,7 @@ const AvailabilityPage: React.FC = () => {
   const removeBlockedSlot = async (id: string) => {
     try {
       await dispatch(unblockTimeSlot(id)).unwrap();
-      loadBlockedSlots();
+      loadBlockedSlots(selectedClinicId);
     } catch (e) {
       alert("Failed to unblock slot");
     }
@@ -213,6 +240,20 @@ const AvailabilityPage: React.FC = () => {
           <p className="text-gray-600 mt-2">
             Manage your clinic's working hours and blocked dates
           </p>
+          {availableClinics.length > 1 && (
+            <div className="mt-4 flex items-center gap-3">
+              <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Select Clinic:</span>
+              <select
+                value={selectedClinicId}
+                onChange={(e) => setSelectedClinicId(e.target.value)}
+                className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm font-bold shadow-sm focus:ring-2 focus:ring-lime-300 outline-none min-w-[250px]"
+              >
+                {availableClinics.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <button
           onClick={handleSave}

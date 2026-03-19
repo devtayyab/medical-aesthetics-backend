@@ -33,7 +33,8 @@ import {
   updateLead,
   deleteLead,
   checkForDuplicates,
-  setLeadFilters
+  setLeadFilters,
+  fetchSalespersons
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
@@ -47,7 +48,7 @@ interface LeadsPageProps {
 export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreateForm = false, onFormShown }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { leads, leadFilters, duplicateCheck, isLoading } = useSelector((state: RootState) => state.crm);
+  const { leads, leadFilters, duplicateCheck, isLoading, salespersons } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,6 +83,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
   useEffect(() => {
     dispatch(fetchLeads(leadFilters));
+    dispatch(fetchSalespersons());
   }, [dispatch, leadFilters]);
 
   // Handlers
@@ -119,12 +121,14 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
     setShowModal(true);
   };
 
-  const handleBulkAction = async (action: string) => {
+  const handleBulkAction = async (action: string, value?: string) => {
     if (selectedLeads.length === 0) return;
     if (action === 'delete') {
       for (const leadId of selectedLeads) await dispatch(deleteLead(leadId));
     } else if (action === 'mark_contacted') {
       for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { status: 'contacted' } }));
+    } else if (action === 'assign' && value) {
+      for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { assignedSalesId: value } }));
     }
     setSelectedLeads([]);
   };
@@ -394,7 +398,18 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               <span className="text-xs font-bold text-gray-900">{selectedLeads.length} leads selected</span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            {user?.role !== 'salesperson' && (
+              <Select
+                placeholder="Assign to..."
+                options={(salespersons || []).map((sp:any) => ({
+                  value: sp.id,
+                  label: `${sp.firstName} ${sp.lastName}`
+                }))}
+                onChange={(val) => handleBulkAction('assign', val)}
+                className="w-40 text-xs h-8"
+              />
+            )}
             <Button variant="white" size="sm" onClick={() => handleBulkAction('mark_contacted')} className="h-8 text-[10px] hover:border-primary/30">
               Mark Contacted
             </Button>

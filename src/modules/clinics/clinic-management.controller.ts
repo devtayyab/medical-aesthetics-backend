@@ -181,7 +181,7 @@ export class ClinicManagementController {
 
   // Availability Management
   @Get('availability')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER, UserRole.DOCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER, UserRole.DOCTOR, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Get clinic availability' })
   @ApiResponse({ status: 200, description: 'Availability retrieved successfully' })
   async getAvailability(@Query() query: any, @Request() req) {
@@ -189,7 +189,7 @@ export class ClinicManagementController {
   }
 
   @Put('availability')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Update clinic availability settings' })
   @ApiResponse({ status: 200, description: 'Availability settings updated successfully' })
   async updateAvailability(
@@ -204,7 +204,7 @@ export class ClinicManagementController {
 
   // Block Time Slot (Doctor unavailable time)
   @Post('availability/block-time-slot')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Block a specific time slot (doctor unavailable)' })
   @ApiResponse({ status: 201, description: 'Time slot blocked successfully' })
   async blockTimeSlot(
@@ -228,7 +228,7 @@ export class ClinicManagementController {
   }
 
   @Delete('availability/block-time-slot/:id')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Unblock a time slot' })
   @ApiResponse({ status: 200, description: 'Time slot unblocked successfully' })
   async unblockTimeSlot(@Param('id') id: string, @Request() req) {
@@ -237,7 +237,7 @@ export class ClinicManagementController {
   }
 
   @Get('availability/blocked-slots')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Get blocked time slots' })
   @ApiResponse({ status: 200, description: 'Blocked time slots retrieved successfully' })
   async getBlockedTimeSlots(

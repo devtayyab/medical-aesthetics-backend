@@ -41,19 +41,22 @@ export class MandatoryFieldValidationService {
         missingFields.push('clinic');
       }
 
-      if (!data.proposedTreatment) {
-        missingFields.push('proposedTreatment');
-      }
-
-      if (!data.cost && data.cost !== 0) {
-        missingFields.push('cost');
-      }
-
       if (!data.callOutcome) {
         missingFields.push('callOutcome');
       }
 
+      // 'proposedTreatment' and 'cost' are now optional by default to allow easier logging
+      // unless we specifically want to enforce them in the future.
+
       // Warnings for incomplete data
+      if (!data.proposedTreatment) {
+        warnings.push('Proposed treatment not specify');
+      }
+
+      if (!data.cost && data.cost !== 0) {
+        warnings.push('Cost not recorded');
+      }
+
       if (!communicationData.durationSeconds) {
         warnings.push('Call duration not recorded');
       }
@@ -77,10 +80,18 @@ export class MandatoryFieldValidationService {
     const missingFields: string[] = [];
     const warnings: string[] = [];
 
-    // For phone call actions, ensure required fields are present
-    if (actionData.actionType === 'call' && actionData.status !== 'pending') {
-      // No longer strictly requiring these fields on the Action itself,
-      // as they are typically captured in the CommunicationLog instead.
+    // Core validation for all CRM actions (tasks)
+    if (!actionData.salespersonId) {
+      missingFields.push('salespersonId');
+    }
+
+    if (!actionData.therapy) {
+      missingFields.push('therapy');
+    }
+
+    const clinic = actionData.metadata?.clinic || (actionData as any).clinic;
+    if (!clinic) {
+      missingFields.push('clinic');
     }
 
     return {
@@ -187,32 +198,17 @@ export class MandatoryFieldValidationService {
     };
   }
 
-  getRequiredFieldsForAction(actionType: string): RequiredFields {
-    switch (actionType) {
-      case 'call':
-        return {
-          clinic: false,
-          proposedTreatment: false,
-          cost: false, // Optional for actions
-          callOutcome: false,
-          notes: false,
-        };
-      case 'follow_up':
-        return {
-          clinic: false,
-          proposedTreatment: false,
-          cost: false,
-          callOutcome: false,
-          notes: true,
-        };
-      default:
-        return {
-          clinic: false,
-          proposedTreatment: false,
-          cost: false,
-          callOutcome: false,
-          notes: false,
-        };
-    }
+  getRequiredFieldsForAction(actionType: string): any {
+    // Current user requirements: Salesperson, Clinic, and Service (Therapy) are always required for actions.
+    return {
+      salespersonId: true,
+      clinic: true,
+      therapy: true,
+      title: false,
+      dueDate: false,
+      reminderDate: false,
+      priority: false,
+      actionType: true,
+    };
   }
 }

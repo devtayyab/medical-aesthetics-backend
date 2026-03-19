@@ -34,7 +34,7 @@ import {
 } from "@/store/slices/crmSlice";
 import { AuthState } from "@/store/slices/authSlice";
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
-import { completeAppointment } from "@/store/slices/bookingSlice";
+import { updateAppointmentStatus } from "@/store/slices/bookingSlice";
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
 
@@ -498,33 +498,35 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
         }
     };
 
-    const handleCompleteAppointment = async (id: string, aptObj?: any) => {
-        if (!confirm('Mark this appointment as completed?')) return;
+    const handleUpdateAppointmentStatus = async (id: string, status: string, aptObj?: any) => {
+        if (!confirm(`Mark this appointment as ${status.toLowerCase()}?`)) return;
         try {
-            await dispatch(completeAppointment({ id })).unwrap();
+            await dispatch(updateAppointmentStatus({ id, status })).unwrap();
 
-            // Create a Confirmation Call Reminder for the next day as requested (Section 6.3/6.4)
-            const nextDay = new Date();
-            nextDay.setDate(nextDay.getDate() + 1);
+            // Create a Confirmation Call Reminder for the next day only if completed
+            if (status === 'COMPLETED' || status === 'completed') {
+                const nextDay = new Date();
+                nextDay.setDate(nextDay.getDate() + 1);
 
-            await dispatch(createAction({
-                title: `Confirmation Call for ${aptObj?.serviceName || 'Procedure'}`,
-                description: 'Follow up with the customer post-appointment.',
-                actionType: 'confirmation_call_reminder' as any,
-                priority: 'medium',
-                status: 'pending',
-                dueDate: nextDay.toISOString().split('T')[0],
-                reminderDate: nextDay.toISOString(),
-                customerId: customer.id,
-                salespersonId: user?.id || undefined,
-            })).unwrap();
+                await dispatch(createAction({
+                    title: `Confirmation Call for ${aptObj?.serviceName || 'Procedure'}`,
+                    description: 'Follow up with the customer post-appointment.',
+                    actionType: 'confirmation_call_reminder' as any,
+                    priority: 'medium',
+                    status: 'pending',
+                    dueDate: nextDay.toISOString().split('T')[0],
+                    reminderDate: nextDay.toISOString(),
+                    customerId: customer.id,
+                    salespersonId: user?.id || undefined,
+                })).unwrap();
+            }
 
             dispatch(fetchCustomerRecord({
                 customerId: customer.id,
                 salespersonId: user?.id
             }));
         } catch (error) {
-            console.error("Failed to complete appointment", error);
+            console.error("Failed to update appointment status", error);
             alert("Failed to update appointment status.");
         }
     };
@@ -1166,24 +1168,48 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                             </Badge>
                                                                             <span className="text-[10px] font-medium text-slate-400">{apt.clinicName || 'Clinic'}</span>
                                                                         </div>
-                                                                        {apt.status !== 'completed' && apt.status !== 'cancelled' && (
-                                                                            <div className="flex gap-2">
-                                                                                <Button
-                                                                                    size="sm"
-                                                                                    className="h-7 px-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded font-bold text-[10px] transition-all shadow-sm"
-                                                                                    onClick={() => setShowDiaryModal(true)}
-                                                                                >
-                                                                                    <Calendar className="w-3 h-3 mr-1.5" /> Edit
-                                                                                </Button>
-                                                                                <Button
-                                                                                    size="sm"
-                                                                                    className="h-7 px-3 bg-slate-800 hover:bg-emerald-600 text-white rounded font-bold text-[10px] transition-all shadow-sm"
-                                                                                    onClick={() => handleCompleteAppointment(apt.id, apt)}
-                                                                                >
-                                                                                    <Check className="w-3 h-3 mr-1.5" /> Complete
-                                                                                </Button>
-                                                                            </div>
-                                                                        )}
+                                                                        {apt.status?.toLowerCase() !== 'completed' && apt.status?.toLowerCase() !== 'cancelled' && apt.status?.toLowerCase() !== 'no_show' && (
+                                                                             <div className="flex flex-wrap gap-2">
+                                                                                 <Button
+                                                                                     size="sm"
+                                                                                     className="h-7 px-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded font-bold text-[10px] transition-all shadow-sm"
+                                                                                     onClick={() => setShowDiaryModal(true)}
+                                                                                 >
+                                                                                     <Calendar className="w-3 h-3 mr-1.5" /> Edit
+                                                                                 </Button>
+                                                                                 <Button
+                                                                                     size="sm"
+                                                                                     className="h-7 px-3 bg-slate-800 hover:bg-emerald-600 text-white rounded font-bold text-[10px] transition-all shadow-sm"
+                                                                                     onClick={() => handleUpdateAppointmentStatus(apt.id, 'COMPLETED', apt)}
+                                                                                 >
+                                                                                     <Check className="w-3 h-3 mr-1.5" /> Complete
+                                                                                 </Button>
+                                                                                 <Button
+                                                                                     size="sm"
+                                                                                     variant="outline"
+                                                                                     className="h-7 px-2 border-red-200 text-red-600 hover:bg-red-50 text-[10px] font-bold"
+                                                                                     onClick={() => handleUpdateAppointmentStatus(apt.id, 'NO_SHOW', apt)}
+                                                                                 >
+                                                                                     No Show
+                                                                                 </Button>
+                                                                                 <Button
+                                                                                     size="sm"
+                                                                                     variant="outline"
+                                                                                     className="h-7 px-2 border-amber-200 text-amber-600 hover:bg-amber-50 text-[10px] font-bold"
+                                                                                     onClick={() => handleUpdateAppointmentStatus(apt.id, 'PENDING_PAYMENT', apt)}
+                                                                                 >
+                                                                                     Pending Payment
+                                                                                 </Button>
+                                                                                 <Button
+                                                                                     size="sm"
+                                                                                     variant="ghost"
+                                                                                     className="h-7 px-2 text-slate-400 hover:text-red-500 hover:bg-slate-50 text-[10px] font-bold"
+                                                                                     onClick={() => handleUpdateAppointmentStatus(apt.id, 'CANCELLED', apt)}
+                                                                                 >
+                                                                                     Cancel
+                                                                                 </Button>
+                                                                             </div>
+                                                                         )}
                                                                     </div>
                                                                 </div>
                                                             </div>
