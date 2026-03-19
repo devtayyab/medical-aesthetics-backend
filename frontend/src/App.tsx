@@ -119,6 +119,13 @@ const AuthHeader: React.FC = () => (
     </div>
   </header>
 );
+const ClinicIndexRedirect: React.FC = () => {
+  const user = useSelector((state: RootState) => state.auth.user);
+  if (user?.role === "doctor" || user?.role === "secretariat") {
+    return <Navigate to="/clinic/appointments" replace />;
+  }
+  return <Navigate to="/clinic/dashboard" replace />;
+};
 
 function AppContent() {
   const location = useLocation();
@@ -156,9 +163,9 @@ function AppContent() {
         navigate("/admin/dashboard", { replace: true });
       } else if (user?.role === "salesperson") {
         navigate("/crm", { replace: true });
-      } else if (user?.role === "doctor") {
-        navigate("/clinic/diary", { replace: true });
-      } else if (["clinic_owner", "secretariat"].includes(user?.role || "")) {
+      } else if (user?.role === "doctor" || user?.role === "secretariat") {
+        navigate("/clinic/appointments", { replace: true });
+      } else if (user?.role === "clinic_owner") {
         navigate("/clinic/dashboard", { replace: true });
       } else if (user?.role === "client") {
         navigate("/my-account", { replace: true });
@@ -370,7 +377,7 @@ function AppContent() {
           >
             <Route
               index
-              element={<Navigate to="/clinic/dashboard" replace />}
+              element={<ClinicIndexRedirect />}
             />
             <Route path="dashboard" element={<ClinicDashboard />} />
             <Route path="profile" element={<ClinicProfile />} />

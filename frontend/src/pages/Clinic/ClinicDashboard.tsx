@@ -18,7 +18,6 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
-  XCircle,
   AlertCircle,
 } from "lucide-react";
 
@@ -34,7 +33,11 @@ const ClinicDashboard: React.FC = () => {
   useEffect(() => {
     // Check if user has access
     if (!user || !canAccessClinicDashboard(user.role)) {
-      navigate("/");
+      if (user?.role === 'doctor' || user?.role === 'secretariat') {
+        navigate("/clinic/appointments");
+      } else {
+        navigate("/");
+      }
       return;
     }
 

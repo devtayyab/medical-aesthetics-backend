@@ -85,8 +85,6 @@ export const canAccessClinicDashboard = (userRole: UserRole | string): boolean =
     UserRole.ADMIN,
     UserRole.SUPER_ADMIN,
     UserRole.CLINIC_OWNER,
-    UserRole.DOCTOR,
-    UserRole.SECRETARIAT,
     UserRole.SALESPERSON,
     UserRole.MANAGER,
   ].includes(userRole as UserRole);
@@ -100,9 +98,9 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
   if (userRole === UserRole.DOCTOR || userRole === 'doctor') {
     return [
       {
-        id: 'diary',
+        id: 'appointments',
         label: 'My Appointments',
-        path: '/clinic/diary',
+        path: '/clinic/appointments',
         icon: 'Calendar',
       }
     ];
@@ -111,7 +109,6 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
   // SPECIAL CASE: SECRETARIAT role - focused operations
   if (userRole === UserRole.SECRETARIAT || userRole === 'secretariat') {
     return [
-      { id: 'dashboard', label: 'Dashboard', path: '/clinic/dashboard', icon: 'LayoutDashboard' },
       { id: 'appointments', label: 'Appointments', path: '/clinic/appointments', icon: 'Calendar' },
       { id: 'availability', label: 'Availability Settings', path: '/clinic/availability-settings', icon: 'Clock' },
       { id: 'messages', label: 'Messages', path: '/clinic/messages', icon: 'MessageSquare' },
