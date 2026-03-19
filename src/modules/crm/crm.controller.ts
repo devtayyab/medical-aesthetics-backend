@@ -108,7 +108,7 @@ export class CrmController {
   logCommunication(@Body() communicationData: any, @Request() req) {
     return this.crmService.logCommunication({
       ...communicationData,
-      salespersonId: req.user.id,
+      salespersonId: communicationData.salespersonId || req.user.id,
     });
   }
 
@@ -296,6 +296,22 @@ export class CrmController {
   @ApiOperation({ summary: 'Get mandatory fields for specific action' })
   getRequiredFieldsForAction(@Param('type') type: string) {
     return this.crmService.getRequiredFieldsForAction(type);
+  }
+
+  @Post('validation/validate-communication')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Validate communication log fields' })
+  validateCommunication(@Body() data: { customerId: string; communicationData: Partial<CommunicationLog> }) {
+    return this.crmService.validateCommunicationFields(data.customerId, data.communicationData);
+  }
+
+  @Post('validation/validate-action')
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Validate action fields' })
+  validateAction(@Body() data: { customerId: string; actionData: Partial<CrmAction> }) {
+    return this.crmService.validateActionFields(data.customerId, data.actionData);
   }
 
   // Analytics

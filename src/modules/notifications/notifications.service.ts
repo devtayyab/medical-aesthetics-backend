@@ -1,4 +1,4 @@
-import { Injectable, forwardRef, Inject, OnModuleInit } from '@nestjs/common';
+import { Injectable, forwardRef, Inject, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Repository } from 'typeorm';
@@ -291,6 +291,14 @@ export class NotificationsService implements OnModuleInit {
   }
 
   async createTemplate(data: any) {
+    const existing = await this.templateRepository.findOne({
+      where: { trigger: data.trigger, type: data.type },
+    });
+    
+    if (existing) {
+      throw new BadRequestException(`A template for trigger '${data.trigger}' on channel '${data.type}' already exists. Please edit the existing one instead.`);
+    }
+
     const template = this.templateRepository.create(data);
     return this.templateRepository.save(template);
   }

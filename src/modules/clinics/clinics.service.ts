@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   CreateClinicProfileDto,
@@ -130,6 +130,7 @@ export class ClinicsService {
     }
 
     try {
+      const totalClinics = await clinicQb.getCount();
       const { entities: clinics, raw: rawResults } = await clinicQb
         .take(params.limit || 10)
         .skip(params.offset || 0)
@@ -165,8 +166,6 @@ export class ClinicsService {
           (clinic as any).minPrice = Math.min(...prices);
         }
       });
-
-      const totalClinics = await clinicQb.getCount();
 
       const [treatments, totalTreatments] = await treatmentQb
         .take(params.limit || 10)
@@ -305,7 +304,36 @@ export class ClinicsService {
       return this.findById(user.assignedClinicId);
     }
 
-    throw new NotFoundException('Clinic not found for this owner');
+    throw new NotFoundException('Clinic not found for this user');
+  }
+
+  async findAllByOwner(ownerId: string): Promise<Clinic[]> {
+    // 1. Get clinics directly owned
+    const ownedClinics = await this.clinicsRepository.find({
+      where: { ownerId, isActive: true }
+    });
+
+    // 2. Get clinics given agent access
+    const agentClinics = await this.agentAccessRepository.find({
+      where: { agentUserId: ownerId },
+      relations: ['clinic']
+    });
+
+    const all = [...ownedClinics];
+    agentClinics.forEach(ac => {
+      if (ac.clinic && !all.find(c => c.id === ac.clinic.id)) {
+        all.push(ac.clinic);
+      }
+    });
+
+    // 3. Check if user is staff for a clinic
+    const user = await this.usersRepository.findOne({ where: { id: ownerId } });
+    if (user && user.assignedClinicId && !all.find(c => c.id === user.assignedClinicId)) {
+      const staffClinic = await this.findById(user.assignedClinicId);
+      if (staffClinic) all.push(staffClinic);
+    }
+
+    return all;
   }
 
   async updateClinicProfile(
@@ -322,7 +350,12 @@ export class ClinicsService {
     ownerId: string,
     availabilitySettingsDto: AvailabilitySettingsDto,
   ): Promise<Clinic> {
-    const clinic = await this.findByOwnerId(ownerId);
+    let clinic;
+    if (availabilitySettingsDto.clinicId) {
+        clinic = await this.findById(availabilitySettingsDto.clinicId);
+    } else {
+        clinic = await this.findByOwnerId(ownerId);
+    }
 
     clinic.businessHours = availabilitySettingsDto.businessHours;
     clinic.timezone = availabilitySettingsDto.timezone;
@@ -525,8 +558,15 @@ export class ClinicsService {
   // Service/Treatment Management
   async getClinicServices(ownerId: string, role?: string, clinicId?: string): Promise<Service[]> {
     let clinic;
-    if (clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
-      clinic = await this.findById(clinicId);
+    if (clinicId) {
+      // Permission check: Admin/SuperAdmin/Manager can see any. Owner can only see if they own it.
+      if (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER) {
+        clinic = await this.findById(clinicId);
+      } else {
+        const owned = await this.findAllByOwner(ownerId);
+        clinic = owned.find(c => c.id === clinicId);
+        if (!clinic) throw new ForbiddenException('Access denied to this clinic');
+      }
     } else {
       clinic = await this.findByOwnerId(ownerId);
     }

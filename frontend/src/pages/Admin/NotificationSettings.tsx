@@ -16,6 +16,14 @@ export const NotificationSettings: React.FC = () => {
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newTemplate, setNewTemplate] = useState<Partial<NotificationTemplate>>({
+    trigger: 'APPOINTMENT_BOOKED',
+    type: 'email',
+    subject: '',
+    content: '',
+    isActive: true
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchTemplates = async () => {
@@ -51,6 +59,22 @@ export const NotificationSettings: React.FC = () => {
     }
   };
 
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsSaving(true);
+      await notificationsAPI.createTemplate(newTemplate);
+      toast.success("Template created successfully");
+      setIsCreating(false);
+      setNewTemplate({ trigger: 'APPOINTMENT_BOOKED', type: 'email', subject: '', content: '', isActive: true });
+      fetchTemplates();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to create template");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleReset = async () => {
     if (!window.confirm("Are you sure you want to reset templates to defaults? This will not delete your custom templates but will add missing defaults.")) return;
     try {
@@ -73,13 +97,22 @@ export const NotificationSettings: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Notification Settings</h1>
           <p className="text-gray-500 mt-1">Manage email and push notification templates and rules</p>
         </div>
-        <button
-          onClick={handleReset}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-        >
-          <RefreshCcw size={18} />
-          Reset Defaults
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-semibold"
+          >
+            <RefreshCcw size={18} />
+            Reset Defaults
+          </button>
+          <button
+            onClick={() => setIsCreating(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold shadow-sm"
+          >
+            <Plus size={18} />
+            Create Notification
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
@@ -236,6 +269,117 @@ export const NotificationSettings: React.FC = () => {
                 >
                   {isSaving ? <RefreshCcw className="animate-spin" size={20} /> : <Save size={20} />}
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isCreating && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Plus className="text-blue-500" size={24} />
+                Create New Notification Trigger
+              </h2>
+              <button 
+                onClick={() => {
+                  setIsCreating(false);
+                  setNewTemplate({ trigger: 'APPOINTMENT_BOOKED', type: 'email', subject: '', content: '', isActive: true });
+                }} 
+                className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleCreate} className="p-6 space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Trigger Event</label>
+                  <select
+                    value={newTemplate.trigger}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, trigger: e.target.value })}
+                    className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                    required
+                  >
+                    <option value="APPOINTMENT_BOOKED">Appointment Booked</option>
+                    <option value="APPOINTMENT_CONFIRMED">Appointment Confirmed</option>
+                    <option value="APPOINTMENT_RESCHEDULED">Appointment Rescheduled</option>
+                    <option value="APPOINTMENT_CANCELED">Appointment Canceled</option>
+                    <option value="APPOINTMENT_REMINDER">Appointment Reminder</option>
+                    <option value="POST_VISIT_THANK_YOU">Post Visit Thank You</option>
+                    <option value="TASK_REMINDER">Task Reminder</option>
+                    <option value="EXECUTION_NOTIFICATION">Execution Notification</option>
+                    <option value="WELCOME_CREDENTIALS">Welcome Credentials</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Channel (Type)</label>
+                  <select
+                    value={newTemplate.type}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, type: e.target.value as 'email' | 'push' })}
+                    className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                    required
+                  >
+                    <option value="email">Email</option>
+                    <option value="push">Push Notification</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  {newTemplate.type === 'email' ? 'Email Subject' : 'Push Title'}
+                </label>
+                <input
+                  type="text"
+                  value={newTemplate.subject}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, subject: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                  placeholder="Enter subject or title"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Content / Message</label>
+                <textarea
+                  value={newTemplate.content}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none min-h-[150px]"
+                  placeholder="Enter message content"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <input
+                  type="checkbox"
+                  id="newIsActive"
+                  checked={newTemplate.isActive}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, isActive: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <label htmlFor="newIsActive" className="text-sm font-bold text-gray-700">Enable notification immediately</label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsCreating(false)}
+                  className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-8 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-200 active:scale-95 disabled:opacity-50"
+                >
+                  {isSaving ? <RefreshCcw className="animate-spin" size={20} /> : <Plus size={20} />}
+                  Create
                 </button>
               </div>
             </form>

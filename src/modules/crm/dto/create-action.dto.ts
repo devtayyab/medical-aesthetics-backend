@@ -26,9 +26,10 @@ export class CreateActionDto {
   @IsString()
   therapy?: string;
 
-  @ApiProperty({ example: 'Follow up with client' })
+  @ApiProperty({ example: 'Follow up with client', required: false })
+  @IsOptional()
   @IsString()
-  title: string;
+  title?: string;
 
   @ApiProperty({ example: 'Call to confirm next session', required: false })
   @IsOptional()
@@ -51,10 +52,11 @@ export class CreateActionDto {
   @Type(() => Date)
   dueDate?: Date;
 
-  @ApiProperty({ example: '2025-10-29T09:00:00Z', required: true })
+  @ApiProperty({ example: '2025-10-29T09:00:00Z', required: false })
+  @IsOptional()
   @IsDate()
   @Type(() => Date)
-  reminderDate: Date;
+  reminderDate?: Date;
 
   @ApiProperty({ example: '2025-10-30T12:00:00Z', required: false })
   @IsOptional()

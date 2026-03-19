@@ -181,6 +181,11 @@ export class RecordPaymentDto {
 }
 
 export class AvailabilitySettingsDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  clinicId?: string;
+
   @ApiProperty()
   @IsObject()
   businessHours: {

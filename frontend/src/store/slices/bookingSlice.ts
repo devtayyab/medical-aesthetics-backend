@@ -252,6 +252,13 @@ const bookingSlice = createSlice({
         if (index !== -1) {
           state.appointments[index].status = 'completed';
         }
+    })
+      // Update appointment status
+      .addCase(updateAppointmentStatus.fulfilled, (state, action) => {
+        const index = state.appointments.findIndex(a => a.id === action.payload.id);
+        if (index !== -1) {
+          state.appointments[index].status = action.payload.status;
+        }
       });
   },
 });

@@ -291,21 +291,26 @@ export class AvailabilityService {
     userRole: string,
     query: any,
   ): Promise<any> {
-    // Get clinic based on user role
-    // SECRETARIAT and CLINIC_OWNER have same permissions
+    // Get clinic based on user role and query
     let clinic;
-    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      clinic = await this.clinicsService.findByOwnerId(userId);
-    } else if ((userRole === 'manager' || userRole === 'admin' || userRole === 'SUPER_ADMIN') && query?.clinicId) {
-      clinic = await this.clinicsService.findById(query.clinicId);
+    
+    if (query?.clinicId) {
+      // If clinicId is provided, verify accessibility
+      const accessibleClinics = await this.clinicsService.findAllByOwner(userId);
+      clinic = accessibleClinics.find(c => c.id === query.clinicId);
+      
+      // Permissive roles for viewing any clinic
+      if (!clinic && (userRole === 'admin' || userRole === 'SUPER_ADMIN' || userRole === 'salesperson' || userRole === 'manager')) {
+          clinic = await this.clinicsService.findById(query.clinicId);
+      }
     } else {
-      // For other roles, we need to find their clinic
-      // This is a simplified approach - in reality, you'd need to map users to clinics
-      throw new Error('Clinic availability lookup not implemented for this user role or missing clinicId');
+      // Default to the first accessible clinic
+      const accessibleClinics = await this.clinicsService.findAllByOwner(userId);
+      clinic = accessibleClinics.length > 0 ? accessibleClinics[0] : null;
     }
 
     if (!clinic) {
-      throw new Error('Clinic not found');
+      throw new NotFoundException('Clinic not found or access denied');
     }
 
     // Get blocked time slots
