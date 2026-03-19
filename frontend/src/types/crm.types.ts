@@ -15,17 +15,8 @@ export interface Lead {
   facebookLeadData?: any;
   status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  assignedSalespersonId?: string;
-  assignedSalesperson: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    role?: string;
-    email: string;
-    phone: string;
-    createdAt: string;
-    updatedAt: string;
-  };
+  assignedSalesId?: string;
+  assignedSales?: User;
   multiOwners?: User[];
   /** Write-only: pass an array of user IDs to sync the multiOwners relation */
   multiOwnerIds?: string[];
