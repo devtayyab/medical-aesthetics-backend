@@ -237,7 +237,9 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
             {/* Toolbar */}
             <div className="diary-toolbar">
                 <div className="toolbar-left">
-                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">Clinic Schedule</h1>
+                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+                        {user?.role === 'doctor' ? 'My Schedule' : 'Clinic Schedule'}
+                    </h1>
                     <div className="date-nav">
                         <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')} className="nav-btn">
                             <ChevronLeft className="w-5 h-5" />

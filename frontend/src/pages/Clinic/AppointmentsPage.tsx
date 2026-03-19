@@ -32,7 +32,9 @@ const AppointmentsPage: React.FC = () => {
     dispatch(fetchAppointments(undefined));
   }, [dispatch]);
 
+  const isDoctor = user?.role === 'doctor';
   const filteredAppointments = appointments.filter((apt) => {
+    const matchesProvider = !isDoctor || apt.providerId === user?.id;
     const matchesStatus = selectedStatus === 'all' || apt.status === selectedStatus;
     const matchesSearch =
       searchTerm === '' ||
@@ -41,7 +43,7 @@ const AppointmentsPage: React.FC = () => {
       (apt.serviceName || apt.service?.treatment?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDate = selectedDate === '' || apt.startTime.split('T')[0] === selectedDate;
 
-    return matchesStatus && matchesSearch && matchesDate;
+    return matchesProvider && matchesStatus && matchesSearch && matchesDate;
   });
 
   const handleConfirm = async (id: string) => {
@@ -82,8 +84,8 @@ const AppointmentsPage: React.FC = () => {
       {/* Header */}
       <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Appointments</h1>
-          <p className="text-gray-600 mt-2">Manage and track all clinic appointments</p>
+          <h1 className="text-3xl font-bold text-gray-900">{isDoctor ? 'My Appointments' : 'Appointments'}</h1>
+          <p className="text-gray-600 mt-2">{isDoctor ? 'Manage and track your appointments' : 'Manage and track all clinic appointments'}</p>
         </div>
         {activeClinicId && (
           <button
