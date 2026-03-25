@@ -324,6 +324,13 @@ export interface AvailabilitySettings {
   businessHours: BusinessHours;
   blockedDates?: string[];
   blockedSlots?: BlockedSlot[];
+  blockedTimeSlots?: Array<{
+    id: string;
+    providerId: string | null;
+    startTime: string;
+    endTime: string;
+    reason: string;
+  }>;
   timezone: string;
 }
 

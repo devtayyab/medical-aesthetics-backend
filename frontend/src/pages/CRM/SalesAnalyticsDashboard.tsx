@@ -357,7 +357,7 @@ export const SalesAnalyticsDashboard = () => {
                                 <CardContent className="p-6 h-72">
                                     {data.pipeline?.leadsByStatus?.length > 0 ? (
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={data.pipeline.leadsByStatus.map((v: any) => ({ ...v, count: Number(v.count) }))}>
+                                            <BarChart data={data.pipeline.leadsByStatus.map((v: any) => ({ ...v, count: Number(v.count || 0) }))}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
                                                 <XAxis dataKey="status" tick={{ fontSize: 9, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
                                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />
@@ -384,7 +384,7 @@ export const SalesAnalyticsDashboard = () => {
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
-                                                    data={data.pipeline.sourceBreakdown.map((v: any) => ({ ...v, count: Number(v.count) }))}
+                                                    data={data.pipeline.sourceBreakdown.map((v: any) => ({ ...v, count: Number(v.count || 0) }))}
                                                     cx="50%" cy="50%"
                                                     innerRadius={60}
                                                     outerRadius={90}
@@ -418,7 +418,7 @@ export const SalesAnalyticsDashboard = () => {
                                 <CardContent className="p-6 h-72">
                                     {data.clinicPerformance?.length > 0 ? (
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={data.clinicPerformance.map((v: any) => ({ ...v, revenue: Number(v.revenue) }))} layout="vertical">
+                                            <BarChart data={data.clinicPerformance.map((v: any) => ({ ...v, revenue: Number(v.revenue || 0) }))} layout="vertical">
                                                 <CartesianGrid strokeDasharray="3 3" horizontal={true} stroke="#f8fafc" />
                                                 <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                                                 <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fontWeight: 'bold' }} width={80} axisLine={false} tickLine={false} />
@@ -443,7 +443,7 @@ export const SalesAnalyticsDashboard = () => {
                                 <CardContent className="p-6 h-72">
                                     {data.performanceReport?.length > 0 ? (
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={data.performanceReport.map((v: any) => ({ ...v, totalRevenue: Number(v.totalRevenue) }))}>
+                                            <BarChart data={data.performanceReport.map((v: any) => ({ ...v, totalRevenue: Number(v.totalRevenue || 0) }))}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
                                                 <XAxis dataKey="salesPersonName" tick={{ fontSize: 9, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
                                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />

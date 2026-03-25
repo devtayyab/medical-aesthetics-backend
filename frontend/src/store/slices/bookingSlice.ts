@@ -236,7 +236,7 @@ const bookingSlice = createSlice({
       .addCase(cancelAppointment.fulfilled, (state, action) => {
         const index = state.appointments.findIndex(a => a.id === action.payload.id);
         if (index !== -1) {
-          state.appointments[index].status = 'cancelled';
+          state.appointments[index].status = 'CANCELLED';
         }
       })
       // Reschedule appointment
@@ -250,7 +250,7 @@ const bookingSlice = createSlice({
       .addCase(completeAppointment.fulfilled, (state, action) => {
         const index = state.appointments.findIndex(a => a.id === action.payload.id);
         if (index !== -1) {
-          state.appointments[index].status = 'completed';
+          state.appointments[index].status = 'COMPLETED';
         }
     })
       // Update appointment status

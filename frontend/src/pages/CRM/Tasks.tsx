@@ -10,6 +10,7 @@ import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 import type { RootState, AppDispatch } from '@/store';
 import {
   updateAction,
+  deleteAction,
   fetchActions,
   fetchTaskKpis,
   logCommunication,
@@ -21,8 +22,9 @@ import { Select } from '@/components/atoms/Select/Select';
 import {
   CheckCircle, Clock, AlertTriangle, Users, Repeat,
   PhoneCall, MoreHorizontal, User, Eye, Plus, Edit, X,
-  CornerUpRight, Calendar, Phone
+  CornerUpRight, Calendar, Phone, Trash2
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 // --- Dialer Component (Reused from OneCustomerDetail) ---
 const DialerModal = ({
@@ -170,7 +172,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterDateRange, setFilterDateRange] = useState<string>('all');
-  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>(user?.role === 'salesperson' ? user.id : 'all');
+  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>(user?.role === 'SUPER_ADMIN' ? 'all' : (user?.id || 'all'));
   const [selectedTask, setSelectedTask] = useState<CrmAction | null>(null);
   const [viewingTask, setViewingTask] = useState<CrmAction | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -282,6 +284,14 @@ export const Tasks: React.FC<TasksPageProps> = () => {
     }
 
     return true;
+  }).sort((a, b) => {
+    // Default Sorting Logic
+    // 1. Overdue first (oldest overdue)
+    // 2. Upcoming nearest first
+    // Simply sorting by dueDate ascending automatically handles this correctly!
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
   });
 
 
@@ -428,20 +438,22 @@ export const Tasks: React.FC<TasksPageProps> = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 flex-2 min-w-[65%] w-full">
-          <Select
-            placeholder="Select Salesperson"
-            options={[
-              { value: 'all', label: 'All Salespersons' },
-              ...(salespersons || []).map(sp => ({
-                value: sp.id,
-                label: `${sp.firstName} ${sp.lastName} (${sp.pendingTasksCount || 0} Pending)`
-              }))
-            ]}
-            value={selectedSalespersonId}
-            onChange={(val) => setSelectedSalespersonId(val)}
-            className="flex-1"
-          />
+        <div className={`grid grid-cols-1 md:grid-cols-${user?.role === 'SUPER_ADMIN' ? '4' : '3'} gap-2 flex-2 min-w-[65%] w-full`}>
+          {user?.role === 'SUPER_ADMIN' && (
+            <Select
+              placeholder="Select Salesperson"
+              options={[
+                { value: 'all', label: 'All Salespersons' },
+                ...(salespersons || []).map(sp => ({
+                  value: sp.id,
+                  label: `${sp.firstName} ${sp.lastName} (${sp.pendingTasksCount || 0} Pending)`
+                }))
+              ]}
+              value={selectedSalespersonId}
+              onChange={(val) => setSelectedSalespersonId(val)}
+              className="flex-1"
+            />
+          )}
           <Select
             options={[
               { value: 'all', label: 'All Statuses' },
@@ -461,7 +473,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
               { value: 'mobile_message', label: 'Mobile Message' },
               { value: 'follow_up_call', label: 'Follow up Call' },
               { value: 'email', label: 'Email' },
-              { value: 'appointment', label: 'Appointment' },
+              { value: 'appointment', label: 'Appointment (Calendar)' },
               { value: 'confirmation_call_reminder', label: 'Confirmation Call Reminder' }
             ]}
             value={filterType}
@@ -501,6 +513,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                     <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Type & Therapy</th>
                     <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Due/Reminder</th>
                     <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Priority</th>
+                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Owner</th>
                     <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Actions</th>
                   </tr>
                 </thead>
@@ -531,9 +544,9 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                       <td className="p-2.5">
                         {(task.customerId || task.relatedLeadId) ? (
                           <Link
-                            to={task.customerId ? `/crm/customers/${task.customerId}` : '#'}
+                            to={`/crm/customer/${task.customerId || task.relatedLeadId}`}
                             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-bold text-[10px] transition-all
-                              ${task.customerId ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-orange-50 text-orange-700'}`}
+                              ${task.customerId ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}
                           >
                             <Users className="h-2.5 w-2.5 opacity-60" />
                             {task.customer?.customer
@@ -578,6 +591,21 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                         >
                           {task.priority}
                         </span>
+                      </td>
+                      <td className="p-2.5">
+                        {(() => {
+                           const sp = salespersons?.find(s => s.id === task.salespersonId);
+                           return (
+                             <div className="flex items-center gap-1.5">
+                               <div className="w-5 h-5 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[9px] font-black text-slate-600 uppercase border border-slate-300">
+                                 {sp ? sp.firstName?.charAt(0) : <User className="w-3 h-3" />}
+                               </div>
+                               <span className="text-[10px] font-bold text-slate-700 whitespace-nowrap">
+                                 {sp ? `${sp.firstName} ${sp.lastName}` : 'Unknown'}
+                               </span>
+                             </div>
+                           );
+                        })()}
                       </td>
                       <td className="p-2.5">
                         <div className="flex gap-1 items-center justify-center">
@@ -647,6 +675,27 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                             }}
                           >
                             <CornerUpRight className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="white"
+                            className="h-8 w-8 p-0 bg-white border-slate-200 text-red-500 hover:text-red-700 hover:bg-red-50 hover:border-red-300 transition-all shadow-sm"
+                            title="Delete Task"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
+                                try {
+                                  await dispatch(deleteAction(task.id)).unwrap();
+                                  const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+                                  dispatch(fetchActions({ salespersonId: sid }));
+                                } catch (err) {
+                                  console.error("Failed to delete task:", err);
+                                  toast.error("Failed to delete task.");
+                                }
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>

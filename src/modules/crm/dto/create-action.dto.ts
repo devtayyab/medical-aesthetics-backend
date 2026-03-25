@@ -15,10 +15,10 @@ export class CreateActionDto {
 
   @ApiProperty({
     example: 'call',
-    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder', 'follow_up', 'phone_call'],
+    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder'],
   })
   @IsString()
-  @IsEnum(['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder', 'follow_up', 'phone_call'])
+  @IsEnum(['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder'])
   actionType: string;
 
   @ApiProperty({ example: 'Facial Therapy', required: false })
@@ -52,11 +52,10 @@ export class CreateActionDto {
   @Type(() => Date)
   dueDate?: Date;
 
-  @ApiProperty({ example: '2025-10-29T09:00:00Z', required: false })
-  @IsOptional()
+  @ApiProperty({ example: '2025-10-29T09:00:00Z', required: true })
   @IsDate()
   @Type(() => Date)
-  reminderDate?: Date;
+  reminderDate: Date;
 
   @ApiProperty({ example: '2025-10-30T12:00:00Z', required: false })
   @IsOptional()

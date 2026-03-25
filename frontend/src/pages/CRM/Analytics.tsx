@@ -13,12 +13,15 @@ import {
   Target,
   CheckCircle,
   Zap,
-  Lightbulb
+  Lightbulb,
+  AlertTriangle,
+  User
 } from "lucide-react";
 
 import {
   ResponsiveContainer,
   ComposedChart,
+  BarChart,
   Bar,
   Line,
   XAxis,
@@ -35,7 +38,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules
 import { Button } from "@/components/atoms/Button/Button";
 import { Select } from "@/components/atoms/Select/Select";
 import { Input } from "@/components/atoms/Input/Input";
-import { fetchSalespersonAnalytics, fetchCrmMetrics, fetchSalespersons } from "@/store/slices/crmSlice";
+import { fetchSalespersonAnalytics, fetchSalespersons } from "@/store/slices/crmSlice";
 import type { RootState, AppDispatch } from "@/store";
 
 // Utility for formatting percentage
@@ -47,7 +50,7 @@ interface AnalyticsProps {
 
 export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { analytics, isLoading, salespersons } = useSelector((state: RootState) => state.crm);
+  const { analytics, isLoading, salespersons, lastUpdated } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
   const [salespersonId, setSalespersonId] = useState<string>(initialSalespersonId || "all");
   const [dateRange, setDateRange] = useState({
@@ -128,15 +131,22 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
           <h1 className="text-xl font-bold text-gray-900 tracking-tight">CRM Analytics</h1>
           <p className="text-[10px] text-gray-400">Monitor performance metrics and activities.</p>
         </div>
-        <Button
-          onClick={handleRefresh}
-          disabled={isLoading}
-          variant="outline"
-          className="flex items-center gap-1.5 h-8 text-xs py-1"
-        >
-          <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
-          Sync
-        </Button>
+        <div className="flex items-center gap-3">
+          {lastUpdated && (
+            <span className="text-[9px] font-medium text-gray-400">
+              Last Synced: {new Date(lastUpdated).toLocaleTimeString()}
+            </span>
+          )}
+          <Button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            variant="outline"
+            className="flex items-center gap-1.5 h-8 text-xs py-1"
+          >
+            <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
+            Sync
+          </Button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -211,14 +221,56 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
         />
         <MetricCard
           title="Pacing vs Target"
-          value={analytics?.turnoverStats?.targetIsSet ? analytics?.turnoverStats?.pacingStatus : '—'}
+          value={analytics?.turnoverStats?.targetIsSet ? 
+            `${analytics?.turnoverStats?.pacingStatus} ${(analytics?.turnoverStats?.pacingDelta || 0) > 0 ? '+' : ''}${formatPercent(analytics?.turnoverStats?.pacingDelta)}` 
+            : '—'}
           icon={<Clock className="w-5 h-5 text-purple-600" />}
-          trend={analytics?.turnoverStats?.targetIsSet ? `Expected: ${formatPercent(analytics?.turnoverStats?.expectedProgress)}` : "No target set"}
+          trend={analytics?.turnoverStats?.targetIsSet ? `Expected progress by today: ${formatPercent(analytics?.turnoverStats?.expectedProgress)}` : "No target set"}
           color={
             analytics?.turnoverStats?.pacingStatus === 'Ahead' ? "bg-emerald-50 text-emerald-700" :
               analytics?.turnoverStats?.pacingStatus === 'Behind' ? "bg-red-50 text-red-700" :
                 "bg-blue-50 text-blue-700"
           }
+        />
+      </div>
+
+      {/* Appointments Funnel KPI Section */}
+      <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider mt-5">Appointments Funnel</h2>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-2">
+        <MetricCard
+          title="Appointments Booked"
+          value={analytics?.appointmentStats?.total || 0}
+          icon={<Calendar className="w-5 h-5 text-blue-600" />}
+          trend="Created in period"
+          color="bg-blue-50 text-blue-700"
+        />
+        <MetricCard
+          title="Appointments Done"
+          value={analytics?.appointmentStats?.completed || 0}
+          icon={<CheckCircle className="w-5 h-5 text-emerald-600" />}
+          trend="Completed appointments"
+          color="bg-emerald-50 text-emerald-700"
+        />
+        <MetricCard
+          title="Appts. Canceled"
+          value={analytics?.appointmentStats?.cancelled || 0}
+          icon={<AlertTriangle className="w-5 h-5 text-red-600" />}
+          trend="Canceled in period"
+          color="bg-red-50 text-red-700"
+        />
+        <MetricCard
+          title="No-shows"
+          value={analytics?.appointmentStats?.noShow || 0}
+          icon={<User className="w-5 h-5 text-orange-600" />}
+          trend="Missed appointments"
+          color="bg-orange-50 text-orange-700"
+        />
+        <MetricCard
+          title="Returned Appts"
+          value={analytics?.appointmentStats?.returned || 0}
+          icon={<RefreshCw className="w-5 h-5 text-indigo-600" />}
+          trend="Repeat clients"
+          color="bg-indigo-50 text-indigo-700"
         />
       </div>
 
@@ -273,81 +325,82 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
           <CardContent className="p-3">
             {salespersonId && analytics ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Appointments Performance */}
-                <div className="md:col-span-2 bg-slate-50 rounded-lg p-2 border border-slate-100 mb-1">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Appointments</p>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    <div className="bg-white px-1.5 py-1 rounded border border-slate-100 text-center">
-                      <p className="text-[8px] uppercase font-bold text-slate-400">Booked</p>
-                      <p className="text-sm font-black text-slate-800">{analytics.appointmentStats?.total || 0}</p>
-                    </div>
-                    <div className="bg-white px-1.5 py-1 rounded border border-slate-100 text-center">
-                      <p className="text-[8px] uppercase font-bold text-emerald-500">Done</p>
-                      <p className="text-sm font-black text-emerald-700">{analytics.appointmentStats?.completed || 0}</p>
-                    </div>
-                    <div className="bg-white px-1.5 py-1 rounded border border-slate-100 text-center">
-                      <p className="text-[8px] uppercase font-bold text-red-400">Can</p>
-                      <p className="text-sm font-black text-red-600">{analytics.appointmentStats?.cancelled || 0}</p>
-                    </div>
-                    <div className="bg-white px-1.5 py-1 rounded border border-slate-100 text-center">
-                      <p className="text-[8px] uppercase font-bold text-orange-400">N-S</p>
-                      <p className="text-sm font-black text-orange-600">{analytics.appointmentStats?.noShow || 0}</p>
-                    </div>
-                    <div className="bg-white px-1.5 py-1 rounded border border-slate-100 text-center">
-                      <p className="text-[8px] uppercase font-bold text-blue-500">Ret</p>
-                      <p className="text-sm font-black text-blue-700">{analytics.appointmentStats?.returned || 0}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Turnover Chart Panel */}
+                {/* Turnover Chart Panel OR Leaderboard */}
                 <div className="md:col-span-2 mt-1 space-y-2">
-                  <h3 className="font-bold text-gray-500 text-[9px] uppercase tracking-wider">Turnover Trend</h3>
+                  <h3 className="font-bold text-gray-500 text-[9px] uppercase tracking-wider">
+                    {salespersonId === 'all' ? 'Agent Turnover Leaderboard' : 'Turnover Trend'}
+                  </h3>
                   <div className="h-48 w-full bg-white border border-gray-100 rounded-lg p-2 shadow-sm overflow-hidden" style={{ minWidth: 0 }}>
-                    {turnoverChartData.length > 0 ? (
-                      <ResponsiveContainer width="99%" height="100%" debounce={50}>
-                        <ComposedChart data={turnoverChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                          <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} dy={5} />
-                          <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
-                          <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
-                          <Tooltip
-                            contentStyle={{ borderRadius: '6px', border: 'none', boxShadow: '0 2px 4px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
-                            formatter={(value: number) => [`€${value.toLocaleString()}`, undefined]}
-                          />
-                          <Bar yAxisId="left" dataKey="amount" name="Daily" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={30} />
-                          <Line yAxisId="right" type="monotone" dataKey="cumulative" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} />
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">No data</div>
+                    
+                    {/* View for Individual Salesperson */}
+                    {salespersonId !== 'all' && (
+                      turnoverChartData.length > 0 ? (
+                        <ResponsiveContainer width="99%" height="100%" debounce={50}>
+                          <ComposedChart data={turnoverChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                            <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} dy={5} />
+                            <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
+                            <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: '6px', border: 'none', boxShadow: '0 2px 4px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
+                              formatter={(value: number) => [`€${value.toLocaleString()}`, undefined]}
+                            />
+                            <Bar yAxisId="left" dataKey="amount" name="Daily Revenue" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={30} />
+                            <Line yAxisId="right" type="monotone" dataKey="cumulative" name="Cumulative MTD" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">No turnover data</div>
+                      )
                     )}
+
+                    {/* View for ALL Salespeople (Leaderboard) */}
+                    {salespersonId === 'all' && (
+                      (analytics?.agentLeaderboard?.length || 0) > 0 ? (
+                        <ResponsiveContainer width="99%" height="100%" debounce={50}>
+                          <BarChart data={analytics?.agentLeaderboard} margin={{ top: 5, right: 5, left: -20, bottom: 0 }} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" horizontal={true} stroke="#F3F4F6" />
+                            <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
+                            <YAxis dataKey="agent" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#374151', fontWeight: 'bold' }} width={80} />
+                            <Tooltip
+                              cursor={{ fill: '#f8fafc' }}
+                              contentStyle={{ borderRadius: '6px', border: 'none', boxShadow: '0 2px 4px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
+                              formatter={(value: number) => [`€${value.toLocaleString()}`, 'Total Generated']}
+                            />
+                            <Bar dataKey="amount" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={25} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">No leaderbord data</div>
+                      )
+                    )}
+
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   <StatRow
                     label="Assigned"
-                    value={analytics.leadsAssigned || 0}
+                    value={analytics?.leadsAssigned || 0}
                     icon={<Users className="w-3 h-3 text-gray-400" />}
                   />
                   <StatRow
                     label="Contacted"
-                    value={analytics.leadsContacted || 0}
+                    value={analytics?.leadsContacted || 0}
                     icon={<Users className="w-3 h-3 text-gray-400" />}
                   />
                   <div className="pt-2 border-t border-gray-100">
                     <p className="text-[9px] font-bold text-gray-400 uppercase">Conversion Efficiency</p>
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-xl font-black text-gray-900">
-                        {formatPercent(analytics.salespersonConversionRate)}
+                        {formatPercent(analytics?.salespersonConversionRate)}
                       </span>
                     </div>
                     {/* Progress Bar */}
                     <div className="w-full bg-gray-100 h-1 rounded-full mt-1.5 overflow-hidden">
                       <div
                         className="bg-blue-600 h-1 rounded-full transition-all duration-1000 ease-out"
-                        style={{ width: `${(analytics.salespersonConversionRate || 0) * 100}%` }}
+                        style={{ width: `${(analytics?.salespersonConversionRate || 0) * 100}%` }}
                       />
                     </div>
                   </div>
@@ -547,22 +600,22 @@ const QuickInsights = ({ analytics }: { analytics: any }) => {
   const turnover = analytics.turnoverStats || {};
 
   // 1. No-show Insight
-  const noShowRate = (stats.noShow || 0) / (stats.total || 1);
-  if (noShowRate > 0.1) {
+  const noShowRate = ((stats.noShow || 0) / (stats.total || 1)) * 100;
+  if (noShowRate > 10) {
     insights.push({
       type: 'warning',
-      text: `No-show rate: ${(noShowRate * 100).toFixed(0)}%. Add reminders.`,
-      icon: <Clock className="w-4 h-4" />
+      text: `No-show rate is ${noShowRate.toFixed(1)}%. Add confirmation call reminders 24h before.`,
+      icon: <Clock className="w-4 h-4 text-orange-600" />
     });
   }
 
   // 2. Conversion Insight
-  const conversionRate = (stats.completed || 0) / (stats.total || 1);
-  if (conversionRate < 0.7 && stats.total > 5) {
+  const conversionRate = ((stats.completed || 0) / (stats.total || 1)) * 100;
+  if (conversionRate < 70 && stats.total > 0) {
     insights.push({
       type: 'info',
-      text: `Conversion: ${(conversionRate * 100).toFixed(0)}%. Review reasons.`,
-      icon: <Activity className="w-4 h-4" />
+      text: `Booked to done conversion is ${conversionRate.toFixed(1)}%. Review cancellation reasons.`,
+      icon: <Activity className="w-4 h-4 text-blue-600" />
     });
   }
 
@@ -571,16 +624,16 @@ const QuickInsights = ({ analytics }: { analytics: any }) => {
     const isBehind = turnover.pacingStatus === 'Behind';
     insights.push({
       type: isBehind ? 'warning' : 'success',
-      text: `${isBehind ? 'Behind' : 'On Track'}: ${(turnover.progress * 100).toFixed(0)}% of goal reached.`,
-      icon: isBehind ? <Zap className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />
+      text: `You're at ${(turnover.progress * 100).toFixed(1)}% of target; expected by today is ${(turnover.expectedProgress * 100).toFixed(1)}%.`,
+      icon: isBehind ? <Zap className="w-4 h-4 text-red-600" /> : <CheckCircle className="w-4 h-4 text-emerald-600" />
     });
   }
 
   if (insights.length === 0) {
     insights.push({
       type: 'success',
-      text: "Metrics optimal. Keep up the consistency!",
-      icon: <Lightbulb className="w-4 h-4" />
+      text: "Portfolio performing optimally with high attendance and conversion.",
+      icon: <Lightbulb className="w-4 h-4 text-emerald-600" />
     });
   }
 

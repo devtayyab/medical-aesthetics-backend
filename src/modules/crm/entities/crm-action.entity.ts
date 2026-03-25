@@ -35,7 +35,7 @@ export class CrmAction {
   // Action type
   @Column({
     type: 'enum',
-    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder', 'follow_up', 'phone_call'],
+    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder'],
   })
   actionType: string;
 
@@ -70,7 +70,7 @@ export class CrmAction {
   @Column({ type: 'timestamptz', nullable: true })
   dueDate?: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamptz', nullable: false })
   reminderDate: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
@@ -100,7 +100,7 @@ export class CrmAction {
   @Column({ type: 'uuid', nullable: true })
   relatedLeadId?: string;
 
-  @ManyToOne(() => Lead, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Lead, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'relatedLeadId' })
   relatedLead: Lead;
 

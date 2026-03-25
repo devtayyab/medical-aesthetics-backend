@@ -1,22 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Search,
   Filter,
   Plus,
-  CheckCircle,
   Phone,
   Mail,
-  Edit,
-  Trash2,
   Users,
   X,
-  Eye,
-  User,
-  Globe,
-  Tag,
-  MessageSquare,
   ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
@@ -67,10 +59,13 @@ export const Customers: React.FC = () => {
   const [formData, setFormData] = useState(initialFormState);
 
   useEffect(() => {
-    // For Customers page, we might want to default-filter by converted status
-    // but the user's checklist didn't specify, so we'll just use general filters
-    dispatch(fetchLeads(leadFilters));
+    // Default to 'converted' for Customers page
+    dispatch(setLeadFilters({ ...leadFilters, status: 'converted' }));
     dispatch(fetchSalespersons());
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchLeads(leadFilters));
   }, [dispatch, leadFilters]);
 
   // Handlers
@@ -79,8 +74,22 @@ export const Customers: React.FC = () => {
   };
 
   const handleSearch = () => {
-    dispatch(setLeadFilters({ ...leadFilters, search: searchTerm }));
+    dispatch(setLeadFilters({
+      ...leadFilters,
+      search: searchTerm,
+      page: 1
+    }));
   };
+
+  // Real-time search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm !== leadFilters.search) {
+        handleSearch();
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleCreateCustomer = async () => {
     if (!formData.firstName || !formData.lastName || !formData.email) return;
@@ -129,12 +138,12 @@ export const Customers: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-           <Button variant="ghost" onClick={() => setSelectedCustomer(null)} className="flex items-center gap-2 font-bold text-slate-600">
-              <ArrowRight className="w-4 h-4 rotate-180" /> Back to Customers
-           </Button>
-           <div className="flex items-center gap-2">
-              <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 font-bold px-3 py-1">Active Customer</Badge>
-           </div>
+          <Button variant="ghost" onClick={() => setSelectedCustomer(null)} className="flex items-center gap-2 font-bold text-slate-600">
+            <ArrowRight className="w-4 h-4 rotate-180" /> Back to Customers
+          </Button>
+          <div className="flex items-center gap-2">
+            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 font-bold px-3 py-1">Active Customer</Badge>
+          </div>
         </div>
         <OneCustomerDetail SelectedCustomer={selectedCustomer} />
       </div>
@@ -148,20 +157,32 @@ export const Customers: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
             Customer Database
-            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+            <Badge className="bg-[#CBFF38]/20 text-[#212121] border-[#CBFF38]/30 px-2 py-0.5 rounded-lg text-[10px] font-bold">
               {leads.filter(l => l.status === 'converted').length} Converted
             </Badge>
           </h1>
           <p className="text-gray-500 text-xs font-medium">Manage your active clients and their interactions</p>
         </div>
+
+        <div className="flex flex-1 max-w-md mx-4 relative">
+          <Input
+            placeholder="Search by Name, Email or Phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            className="h-10 pl-10 bg-white border-gray-200 shadow-sm focus:ring-[#b3d81b] rounded-xl w-full"
+          />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        </div>
+
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             onClick={() => setShowFilters(!showFilters)}
-            className={`h-9 text-[10px] font-bold border-gray-200 hover:bg-gray-50 transition-all ${showFilters ? 'bg-slate-900 text-white hover:bg-slate-800 border-slate-900' : 'bg-white text-gray-600'}`}
+            className={`h-10 text-[11px] font-bold border-gray-200 hover:bg-gray-50 transition-all ${showFilters ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-gray-600'}`}
           >
             <Filter className={`w-3.5 h-3.5 mr-1.5 ${showFilters ? 'text-white' : 'text-gray-400'}`} />
-            {showFilters ? 'Hide Filters' : 'Advanced Filters'}
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
             {Object.keys(leadFilters).filter(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search').length > 0 && (
               <span className="ml-1.5 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-[9px] min-w-[18px]">
                 {Object.keys(leadFilters).filter(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search').length}
@@ -180,23 +201,26 @@ export const Customers: React.FC = () => {
           {Object.entries(leadFilters).map(([key, value]) => {
             if (!value || key === 'search') return null;
             let label = key;
-            let displayValue = value as string;
-
             if (key === 'status') label = 'Status';
             if (key === 'source') label = 'Source';
             if (key === 'metaFormName') label = 'Form';
-            if (key === 'submissionDateFrom') label = 'From';
-            if (key === 'submissionDateTo') label = 'To';
+            if (key === 'submissionDateFrom') label = 'Created From';
+            if (key === 'submissionDateTo') label = 'Created To';
+            if (key === 'lastContactedFrom') label = 'Last Contact From';
+            if (key === 'lastContactedTo') label = 'Last Contact To';
+            const displayValue = Array.isArray(value) 
+              ? value.filter(Boolean).join(', ').toUpperCase() 
+              : String(value || '').toUpperCase();
 
             return (
-              <Badge 
-                key={key} 
-                variant="secondary" 
+              <Badge
+                key={key}
+                variant="secondary"
                 className="pl-2 pr-1 py-1 h-7 flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-100 font-medium text-[10px] rounded-lg"
               >
                 <span className="opacity-60">{label}:</span> {displayValue}
-                <button 
-                  onClick={() => handleFilterChange(key, '')} 
+                <button
+                  onClick={() => handleFilterChange(key, '')}
                   className="ml-1 hover:bg-blue-100 rounded-full p-0.5 transition-colors"
                 >
                   <X className="w-3 h-3" />
@@ -204,9 +228,9 @@ export const Customers: React.FC = () => {
               </Badge>
             )
           })}
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => {
               dispatch(setLeadFilters({}));
               setSearchTerm('');
@@ -232,7 +256,9 @@ export const Customers: React.FC = () => {
                     { value: '', label: 'All Statuses' },
                     { value: 'new', label: 'New' },
                     { value: 'contacted', label: 'Contacted' },
+                    { value: 'qualified', label: 'Qualified' },
                     { value: 'converted', label: 'Converted' },
+                    { value: 'lost', label: 'Lost' },
                   ]}
                   className="h-9 text-xs border-gray-200"
                 />
@@ -241,7 +267,7 @@ export const Customers: React.FC = () => {
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
                 <Select
-                  value={leadFilters.formNames?.[0] || ''}
+                  value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
                   onChange={(val) => handleFilterChange('formNames', val ? [val] : [])}
                   placeholder="Select form..."
                   options={[
@@ -253,32 +279,95 @@ export const Customers: React.FC = () => {
               </div>
 
               <div className="md:col-span-1 space-y-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Created Date Range</label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="date"
-                    value={leadFilters.submissionDateFrom || ''}
-                    onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
-                    className="h-9 text-[10px] px-2 flex-1"
-                  />
-                  <span className="text-gray-300">-</span>
-                  <Input
-                    type="date"
-                    value={leadFilters.submissionDateTo || ''}
-                    onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
-                    className="h-9 text-[10px] px-2 flex-1"
-                  />
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={leadFilters.submissionDateFrom || ''}
+                      onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                    <span className="text-gray-300">-</span>
+                    <Input
+                      type="date"
+                      value={leadFilters.submissionDateTo || ''}
+                      onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {[
+                      { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+                      { label: 'Yesterday', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
+                      { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                      { label: 'Last 30 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                    ].map(preset => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          const { from, to } = preset.getValue();
+                          handleFilterChange('submissionDateFrom', from);
+                          handleFilterChange('submissionDateTo', to);
+                        }}
+                        className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="md:col-span-1 space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
+                <div className="flex flex-col gap-2">
+                   <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={leadFilters.lastContactedFrom || ''}
+                      onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                    <span className="text-gray-300">-</span>
+                    <Input
+                      type="date"
+                      value={leadFilters.lastContactedTo || ''}
+                      onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {[
+                      { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+                      { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                    ].map(preset => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          const { from, to } = preset.getValue();
+                          handleFilterChange('lastContactedFrom', from);
+                          handleFilterChange('lastContactedTo', to);
+                        }}
+                        className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
-               <button
-                  onClick={() => dispatch(setLeadFilters({}))}
-                  className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  Clear All Filters
-                </button>
+              <button
+                onClick={() => dispatch(setLeadFilters({}))}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Clear All Filters
+              </button>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 text-[10px] font-bold">
                   Close
@@ -292,22 +381,7 @@ export const Customers: React.FC = () => {
         </Card>
       )}
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Input
-            placeholder="Search by Name, Email or Phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            className="h-10 pl-10 bg-white border-gray-200 shadow-sm focus:ring-blue-500 rounded-xl"
-          />
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        </div>
-        <Button onClick={handleSearch} className="h-10 px-6 bg-[#b3d81b] hover:bg-[#a1c218] text-white shadow-sm border-none rounded-xl font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]">
-          Find
-        </Button>
-      </div>
-
+      {/* Bulk Actions Bar */}
       {/* Table Section */}
       <Card className="border-none shadow-md overflow-hidden bg-white rounded-2xl">
         <CardContent className="p-0">
@@ -379,17 +453,17 @@ export const Customers: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell className="py-2 px-3">
-                        <Badge className={`bg-emerald-50 text-emerald-700 border-emerald-100 border px-2 py-0.5 rounded-full capitalize font-bold text-[9px]`}>
-                          {lead.status}
-                        </Badge>
+                      <Badge className={`bg-emerald-50 text-emerald-700 border-emerald-100 border px-2 py-0.5 rounded-full capitalize font-bold text-[9px]`}>
+                        {lead.status}
+                      </Badge>
                     </TableCell>
                     <TableCell className="py-2 px-3 text-gray-400 text-[10px] font-semibold">
                       {formatDate(lead.createdAt)}
                     </TableCell>
                     <TableCell className="py-1 px-3 text-right">
-                       <Button variant="ghost" size="sm" onClick={() => setSelectedCustomer(lead)} className="h-8 px-3 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
-                          View Details <ArrowRight className="w-3 h-3 ml-1" />
-                       </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedCustomer(lead)} className="h-8 px-3 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
+                        View Details <ArrowRight className="w-3 h-3 ml-1" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -425,26 +499,26 @@ export const Customers: React.FC = () => {
 
       {/* Create Modal */}
       {showCreateForm && (
-         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in">
-            <Card className="w-full max-w-xl shadow-2xl border-0 overflow-hidden rounded-2xl">
-              <div className="px-8 py-6 border-b border-gray-100 bg-white flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">Add New Record</h2>
-                <button onClick={() => setShowCreateForm(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <Card className="w-full max-w-xl shadow-2xl border-0 overflow-hidden rounded-2xl">
+            <div className="px-8 py-6 border-b border-gray-100 bg-white flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Add New Record</h2>
+              <button onClick={() => setShowCreateForm(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-8 space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="First Name" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required />
+                <Input label="Last Name" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required />
               </div>
-              <div className="p-8 space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <Input label="First Name" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required />
-                  <Input label="Last Name" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required />
-                </div>
-                <Input label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
-                <Input label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-              </div>
-              <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleCreateCustomer}>Save Customer</Button>
-              </div>
-            </Card>
-          </div>
+              <Input label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
+              <Input label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+            </div>
+            <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleCreateCustomer}>Save Customer</Button>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   );

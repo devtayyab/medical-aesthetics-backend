@@ -127,6 +127,22 @@ export class BookingsController {
     );
   }
 
+  @Patch('appointments/:id/update')
+  @ApiOperation({ summary: 'Update appointment details (provider, time, notes)' })
+  async updateAppointment(
+    @Param('id') id: string,
+    @Body() body: { startTime?: string; endTime?: string; providerId?: string; notes?: string },
+    @Request() req,
+  ) {
+    const updateData: any = {};
+    if (body.startTime) updateData.startTime = new Date(body.startTime);
+    if (body.endTime) updateData.endTime = new Date(body.endTime);
+    if (body.providerId !== undefined) updateData.providerId = body.providerId;
+    if (body.notes !== undefined) updateData.notes = body.notes;
+    await this.bookingsService['appointmentsRepository'].update(id, updateData);
+    return this.bookingsService.findById(id);
+  }
+
   @Patch('appointments/:id/cancel')
   @ApiOperation({ summary: 'Cancel appointment' })
   async cancel(@Param('id') id: string, @Request() req) {
@@ -136,6 +152,12 @@ export class BookingsController {
       throw new BadRequestException('Cannot cancel within 24 hours of appointment');
     }
     return this.bookingsService.updateStatus(id, AppointmentStatus.CANCELLED, undefined, req.user?.id);
+  }
+
+  @Patch('appointments/:id/delete')
+  @ApiOperation({ summary: 'Soft-delete appointment (status=DELETED, revenue voided)' })
+  softDelete(@Param('id') id: string, @Request() req) {
+    return this.bookingsService.softDeleteAppointment(id, req.user.id, req.user.role);
   }
 
   @Patch('appointments/:id/complete')
@@ -159,5 +181,18 @@ export class BookingsController {
   @ApiOperation({ summary: 'Get user appointments' })
   getUserAppointments(@Request() req) {
     return this.bookingsService.findUserAppointments(req.user.id, req.user.role);
+  }
+  
+  @Post('blocked-slots')
+  @ApiOperation({ summary: 'Block a time slot' })
+  createBlockedSlot(@Body() body: any, @Request() req) {
+    return this.availabilityService.blockTimeSlot(
+      body.clinicId,
+      body.providerId || null,
+      new Date(body.startTime),
+      new Date(body.endTime),
+      body.reason || 'Blocked',
+      req.user.id
+    );
   }
 }

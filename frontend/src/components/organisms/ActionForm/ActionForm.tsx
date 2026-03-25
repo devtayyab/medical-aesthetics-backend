@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Clock, AlertCircle, CheckCircle, Search, User as UserIcon, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Clock, AlertCircle, CheckCircle, Search, User as UserIcon, X, Calendar } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Select } from '@/components/atoms/Select/Select';
@@ -13,7 +14,7 @@ import {
   getRequiredFieldsForAction
 } from '@/store/slices/crmSlice';
 import type { AppDispatch, RootState } from '@/store';
-import type { CrmAction, User as IUser } from '@/types';
+import type { CrmAction } from '@/types';
 import { userAPI, crmAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -33,11 +34,13 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   hideHeader
 }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
   const [customerId, setCustomerId] = useState(propCustomerId);
   const [customers, setCustomers] = useState<{ value: string; label: string; type: 'customer' | 'lead'; email?: string }[]>([]);
   const [formData, setFormData] = useState<Partial<CrmAction>>({
     customerId: propCustomerId,
+    salespersonId: prefilledData?.salespersonId || user?.id || '',
     relatedLeadId: prefilledData?.relatedLeadId,
     actionType: prefilledData?.actionType || 'call',
     title: prefilledData?.title || '',
@@ -45,7 +48,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     status: prefilledData?.status || 'pending',
     priority: prefilledData?.priority || 'medium',
     dueDate: prefilledData?.dueDate || '',
-    salespersonId: prefilledData?.salespersonId || user?.id || undefined,
     metadata: {
       ...(prefilledData?.metadata || {}),
       // Initialize metadata fields from prefilledData if they exist in metadata
@@ -243,6 +245,31 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Core Principle: Tasks are mandatory reminder-based
+    // 1. No task is valid without a reminder.
+    if (!formData.reminderDate) {
+      toast.error("Task validation failed: Reminder Date & Time is mandatory.");
+      return;
+    }
+
+    // 2. No reminder can be set more than 1 year from task creation date.
+    const reminderDateObj = new Date(formData.reminderDate);
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() + 1);
+
+    if (reminderDateObj > maxDate) {
+      toast.error("Task validation failed: Reminder cannot be set more than 1 year in the future.");
+      return;
+    }
+
+    // 3. Reminder date cannot be before current time (for better immediate feedback)
+    const now = new Date();
+    // Allow 1 minute grace for frontend
+    if (reminderDateObj < new Date(now.getTime() - 60000)) {
+      toast.error("Task validation failed: Reminder cannot be set in the past.");
+      return;
+    }
+
     let validation;
     try {
       validation = await handleValidate();
@@ -353,7 +380,13 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               {!propCustomerId && searchTerm && (
                 <button
                   type="button"
-                  onClick={() => { setSearchTerm(''); setShowResults(false); }}
+                  onClick={() => {
+                    setSearchTerm('');
+                    setShowResults(false);
+                    setCustomerId('');
+                    setFormData(prev => ({ ...prev, customerId: undefined, relatedLeadId: undefined }));
+                    setSelectedCustomerLabel('');
+                  }}
                   className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full"
                 >
                   <X className="w-3 h-3 text-slate-400" />
@@ -405,15 +438,16 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           {/* Action Type and Priority */}
           <div className="grid grid-cols-2 gap-4">
             <Select
-              label="Task Type"
+              label="Task Type (Required)"
               value={formData.actionType}
               onChange={(value) => handleInputChange('actionType', value)}
+              required
               options={[
                 { value: 'call', label: 'Call' },
                 { value: 'mobile_message', label: 'Mobile Message (SMS/Viber/WhatsApp)' },
                 { value: 'follow_up_call', label: 'Follow up Call' },
                 { value: 'email', label: 'Email' },
-                { value: 'appointment', label: 'Appointment' },
+                { value: 'appointment', label: 'Appointment (Calendar Link)' },
                 { value: 'confirmation_call_reminder', label: 'Confirmation Call Reminder' }
               ]}
             />
@@ -432,16 +466,23 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           </div>
 
           {/* Core Requirements: Salesperson, Clinic, Service */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-orange-50/50 rounded-xl border border-orange-100">
-            {user?.role === 'SUPER_ADMIN' ? (
+          <div className="grid grid-cols-2 gap-4">
+            {(user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager' || user?.role === 'clinic_owner') ? (
               <Select
                 label="Salesperson (Required)"
-                value={formData.salespersonId || ''}
+                value={formData.salespersonId || user?.id || ''}
                 onChange={(value) => handleInputChange('salespersonId', value)}
                 options={salespersons}
                 required
               />
-            ) : null}
+            ) : (
+                <div className="flex flex-col">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">Owner</label>
+                  <div className="h-10 px-4 bg-slate-100 border border-slate-200 rounded-xl flex items-center text-sm font-bold text-slate-600">
+                    {user?.firstName} {user?.lastName} (Self)
+                  </div>
+                </div>
+            )}
             
             <Select
               label="Clinic (Required)"
@@ -463,26 +504,30 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           {/* Title and Due Dates */}
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Task Title"
+              label="Task Title (Required)"
               value={formData.title || ''}
               onChange={(e) => handleInputChange('title', e.target.value)}
               placeholder="e.g. Call client for confirmation"
+              required
             />
             <Input
-              label="Due Date & Time"
+              label="Due Date & Time (Required)"
               type="datetime-local"
               value={formData.dueDate || ''}
               onChange={(e) => handleInputChange('dueDate', e.target.value)}
+              required
             />
           </div>
 
           {/* Reminder Date */}
           <div className="grid grid-cols-1 gap-4">
             <Input
-              label="Reminder Date & Time"
+              label="Reminder Date & Time (Mandatory)"
               type="datetime-local"
               value={formData.reminderDate || ''}
               onChange={(e) => handleInputChange('reminderDate', e.target.value)}
+              required
+              max={new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 16)}
             />
           </div>
 
@@ -529,7 +574,74 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             rows={3}
           />
 
-          {/* Action-specific fields */}
+          {/* Email Specific: Body Content */}
+          {formData.actionType === 'email' && (
+            <div className="mb-4 animate-in slide-in-from-top-2">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">Email Body Content (Copied from platform)</label>
+              <Textarea
+                value={formData.metadata?.emailBody || ''}
+                onChange={(e) => handleInputChange('metadata.emailBody', e.target.value)}
+                placeholder="Paste the email content here for logging..."
+                rows={6}
+                className="bg-indigo-50/30 border-indigo-100"
+              />
+            </div>
+          )}
+
+          {/* Platform selection for Mobile Message */}
+          {formData.actionType === 'mobile_message' && (
+            <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 animate-in slide-in-from-top-2">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3 block">Service Platforms (Select at least one)</label>
+              <div className="flex flex-wrap gap-6">
+                {['SMS', 'Viber', 'WhatsApp'].map((platform) => (
+                  <label key={platform} className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.metadata?.platforms?.includes(platform.toLowerCase())}
+                        onChange={(e) => {
+                          const currentPlatforms = formData.metadata?.platforms || [];
+                          const platLower = platform.toLowerCase();
+                          const newPlatforms = e.target.checked
+                            ? [...currentPlatforms, platLower]
+                            : currentPlatforms.filter((p: string) => p !== platLower);
+                          handleInputChange('metadata.platforms', newPlatforms);
+                        }}
+                        className="peer h-5 w-5 appearance-none rounded-md border-2 border-slate-300 checked:border-blue-600 checked:bg-blue-600 transition-all cursor-pointer"
+                      />
+                      <CheckCircle className="absolute h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
+                    </div>
+                    <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{platform}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Appointment/Calendar Redirect Notice */}
+          {formData.actionType === 'appointment' && (
+            <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 animate-in zoom-in-95 fill-mode-both mb-4">
+              <div className="flex items-start gap-4">
+                <div className="p-2 bg-white rounded-lg shadow-sm">
+                  <Calendar className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-black text-emerald-800 uppercase tracking-tight">Booking Coordination</h4>
+                  <p className="text-xs text-emerald-600 mt-1 font-medium leading-relaxed">
+                    This task is for your own record. To secure an actual slot on the main calendar, please use the <strong>Calendar Module</strong>.
+                  </p>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="xs" 
+                    className="mt-3 bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    Go to Calendar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
           {(formData.actionType === 'call' || formData.actionType === 'follow_up_call' || formData.actionType === 'confirmation_call_reminder') && (
             <>
               <h4 className="font-medium text-sm text-gray-700 mt-2">Call Details</h4>
@@ -611,7 +723,24 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                 Cancel
               </Button>
             )}
-            <Button type="submit" variant="primary" className="flex-1">
+            {formData.actionType === 'appointment' && (
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-[1.5] bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 font-black flex items-center justify-center gap-2"
+                onClick={() => navigate('/crm/calendar')}
+              >
+                <Calendar className="h-4 w-4" />
+                Open Sales Plan
+              </Button>
+            )}
+            <Button 
+              type="submit" 
+              variant="primary" 
+              className="flex-1"
+              disabled={!formData.reminderDate || !formData.title || !formData.actionType || !formData.dueDate || !formData.therapy || (!formData.customerId && !formData.relatedLeadId && !customerId && !propCustomerId)}
+              title={!formData.reminderDate ? "Reminder Date & Time is mandatory" : "Please fill all required fields"}
+            >
               <CheckCircle className="h-4 w-4 mr-2" />
               {prefilledData?.id ? 'Save Changes' : 'Create Task'}
             </Button>

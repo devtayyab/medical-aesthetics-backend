@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
     Clock, Tag, Mail, Phone, Calendar,
-    ArrowRight, User, Users, Plus,
+    ArrowRight, User, Users, Plus, CreditCard,
     AlertCircle, FileText, Check, X,
     MoreHorizontal, Trash2, PhoneCall,
-    Activity, CheckCircle, Repeat
+    Activity, CheckCircle, Repeat, RefreshCw, Bell,
+    ClipboardCheck, ShieldCheck, MessageSquare, MessageCircle
 } from "lucide-react";
 import { Button } from "@/components/atoms/Button/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
@@ -24,6 +25,7 @@ import {
     logCommunication,
     updateLead,
     addCustomerTag,
+    removeCustomerTag,
     deleteLead,
     updateAction,
     deleteAction,
@@ -34,7 +36,7 @@ import {
 } from "@/store/slices/crmSlice";
 import { AuthState } from "@/store/slices/authSlice";
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
-import { updateAppointmentStatus } from "@/store/slices/bookingSlice";
+import { updateAppointmentStatus, completeAppointment } from "@/store/slices/bookingSlice";
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
 
@@ -193,9 +195,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const { user } = useSelector((state: RootState) => state.auth as AuthState);
 
     // Dynamic derivation of the customer object
-    // If we have SelectedCustomer (from props), use it.
-    // Otherwise, try to get the basic info from customerRecord.record.customer
+    // Priority: Prop > Nested User in Record > The Record itself
     const customer = SelectedCustomer || (customerRecord?.record?.customer as any) || (customerRecord?.record as any);
+    
+    // The ID to use for CRM updates (Must be the Lead/User ID, not the Record ID)
+    const effectiveId = SelectedCustomer?.id || customerRecord?.record?.customerId || (customerRecord?.record?.customer as any)?.id || customerId;
+    
+    // Status can be in Lead record, or on the Customer profile if synced
+    const displayStatus = customer?.status || (customerRecord as any)?.record?.status || 'new';
     
     // State for Workflow
     const [workflowStep, setWorkflowStep] = useState<1 | 2 | 3 | 4>(1);
@@ -227,6 +234,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showTagModal, setShowTagModal] = useState(false);
     const [quickTagInput, setQuickTagInput] = useState("");
+    const [pendingTaskId, setPendingTaskId] = useState<string | undefined>(undefined);
 
     // --- New Action Modals ---
     const [showPhoneCallModal, setShowPhoneCallModal] = useState(false);
@@ -239,15 +247,47 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const [showDiaryModal, setShowDiaryModal] = useState(false);
     const [editingCallId, setEditingCallId] = useState<string | null>(null);
 
-    // New CRM Properties State
+    const [isPaymentPrompt, setIsPaymentPrompt] = useState(false);
+    const [paymentAmt, setPaymentAmt] = useState("");
+    const [paymentMethod, setPaymentMethod] = useState("cash");
+    const [pendingAptId, setPendingAptId] = useState<string | null>(null);
+    const [pendingAptObj, setPendingAptObj] = useState<any>(null);
+
     const [isEditingClinics, setIsEditingClinics] = useState(false);
     const [isEditingOwners, setIsEditingOwners] = useState(false);
+    const [isEditingCore, setIsEditingCore] = useState(false);
+    const [editedProperties, setEditedProperties] = useState<any>({});
     const [callSearchTerm, setCallSearchTerm] = useState('');
+    const [timelineFilter, setTimelineFilter] = useState('all');
 
-    const { salespersons } = crmState;
-    const { clinics } = useSelector((state: RootState) => state.clinics);
+    const { salespersons, clinics } = crmState;
 
     const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager';
+
+    useEffect(() => {
+        if (customer) {
+            setEditedProperties({
+                firstName: customer.firstName,
+                lastName: customer.lastName,
+                email: customer.email,
+                phone: customer.phone,
+                lastMetaFormName: (customer as any).lastMetaFormName,
+                facebookAdName: (customer as any).facebookAdName,
+                lastMetaFormSubmittedAt: (customer as any).lastMetaFormSubmittedAt,
+                estimatedValue: customer.estimatedValue
+            });
+        }
+    }, [customer]);
+
+    const handleSaveCoreProperties = async () => {
+        try {
+            await dispatch(updateLead({ id: effectiveId, updates: editedProperties })).unwrap();
+            dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
+            setIsEditingCore(false);
+        } catch (e) {
+            alert("Failed to update properties");
+        }
+    };
 
     useEffect(() => {
         const idToFetch = SelectedCustomer?.id || customerId;
@@ -331,6 +371,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     direction: 'outgoing',
                     metadata: { clickOnly: true }
                 })).unwrap();
+
+                // Rule: Update Last Contacted At
+                await dispatch(updateLead({ 
+                    id: customer.id, 
+                    updates: { lastContactedAt: new Date().toISOString() } 
+                })).unwrap();
             }
             setPhoneCallNotes("");
             setEditingCallId(null);
@@ -353,6 +399,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 notes: `[Sent: ${new Date(emailDate).toLocaleString()}]\n\n${emailNotes}`,
                 direction: 'outgoing'
             })).unwrap();
+
+            // Rule: Update Last Contacted At
+            await dispatch(updateLead({ 
+                id: customer.id, 
+                updates: { lastContactedAt: new Date().toISOString() } 
+            })).unwrap();
+
             setEmailNotes("");
             setShowEmailModal(false);
             dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
@@ -506,6 +559,15 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 }
             })).unwrap();
 
+            // Rule: Update Last Contacted At (Internal Rule: call, email, viber, notes as contact attempts)
+            const isContactAttempt = interactionType === 'call' || interactionType === 'email' || finalNotes.toLowerCase().includes('viber') || finalNotes.toLowerCase().includes('whatsapp');
+            if (isContactAttempt) {
+                await dispatch(updateLead({ 
+                    id: customer.id, 
+                    updates: { lastContactedAt: new Date().toISOString() } 
+                })).unwrap();
+            }
+
             if (currentAutoTask) {
                 await dispatch(createAction({
                     customerId: customer.id,
@@ -538,35 +600,68 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     };
 
     const handleUpdateAppointmentStatus = async (id: string, status: string, aptObj?: any) => {
+        if (status === 'COMPLETED' || status === 'completed') {
+            setPendingAptId(id);
+            setPendingAptObj(aptObj);
+            setIsPaymentPrompt(true);
+            return;
+        }
+
         if (!confirm(`Mark this appointment as ${status.toLowerCase()}?`)) return;
         try {
             await dispatch(updateAppointmentStatus({ id, status })).unwrap();
-
-            // Create a Confirmation Call Reminder for the next day only if completed
-            if (status === 'COMPLETED' || status === 'completed') {
-                const nextDay = new Date();
-                nextDay.setDate(nextDay.getDate() + 1);
-
-                await dispatch(createAction({
-                    title: `Confirmation Call for ${aptObj?.serviceName || 'Procedure'}`,
-                    description: 'Follow up with the customer post-appointment.',
-                    actionType: 'confirmation_call_reminder' as any,
-                    priority: 'medium',
-                    status: 'pending',
-                    dueDate: nextDay.toISOString().split('T')[0],
-                    reminderDate: nextDay.toISOString(),
-                    customerId: customer.id,
-                    salespersonId: user?.id || undefined,
-                })).unwrap();
-            }
-
-            dispatch(fetchCustomerRecord({
-                customerId: customer.id,
-                salespersonId: user?.id
-            }));
+            dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
         } catch (error) {
             console.error("Failed to update appointment status", error);
             alert("Failed to update appointment status.");
+        }
+    };
+
+    const handleCompletePayment = async () => {
+        if (!pendingAptId) return;
+        try {
+            const paymentData = {
+                amount: parseFloat(paymentAmt) || 0,
+                paymentMethod: paymentMethod,
+            };
+
+            const completionReport = {
+                patientCame: true,
+                servicePerformed: true,
+                notes: `Completed from CRM Detail view. Amount: ${paymentAmt} via ${paymentMethod}`
+            };
+
+            await dispatch(completeAppointment({ 
+                id: pendingAptId, 
+                completionData: { ...paymentData, completionReport } 
+            })).unwrap();
+
+            // Create follow-up task
+            const nextDay = new Date();
+            nextDay.setDate(nextDay.getDate() + 1);
+
+            await dispatch(createAction({
+                title: `Post-Treatment Follow-up: ${pendingAptObj?.serviceName || 'Procedure'}`,
+                description: 'Check in with customer after procedure.',
+                actionType: 'confirmation_call_reminder' as any,
+                priority: 'medium',
+                status: 'pending',
+                dueDate: nextDay.toISOString().split('T')[0],
+                reminderDate: nextDay.toISOString(),
+                customerId: customer.id,
+                salespersonId: user?.id || undefined,
+            })).unwrap();
+
+            setIsPaymentPrompt(false);
+            setPaymentAmt("");
+            setPendingAptId(null);
+            setPendingAptObj(null);
+            dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
+            
+            alert("Appointment completed and payment recorded.");
+        } catch (error) {
+            console.error("Completion failed", error);
+            alert("Finalization failed. Ensure amount is valid.");
         }
     };
 
@@ -784,7 +879,6 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                         onChange={(val) => setAutoTask(prev => ({ ...prev!, type: val }))}
                                                         options={[
                                                             { value: 'call', label: 'Call' },
-                                                            { value: 'meeting', label: 'Meeting' },
                                                             { value: 'email', label: 'Email' }
                                                         ]}
                                                         className="h-10 bg-white border-slate-200 rounded-lg font-bold px-3 text-xs shadow-sm"
@@ -871,55 +965,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 </div>
             </div>
 
-            {/* 2. Quick Action Toolbar */}
-            <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm sticky top-0 z-30 animate-in slide-in-from-top-5 duration-1000">
-                <div className="flex items-center gap-2">
-                    <Button 
-                        onClick={() => handleStartInteraction('call')} 
-                        className="h-11 px-5 bg-[#b3d81b] hover:bg-[#a1c218] text-white border-none rounded-xl font-bold text-sm shadow-md transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2"
-                    >
-                        <PhoneCall className="w-4 h-4" /> Log Call
-                    </Button>
-                    <Button 
-                        onClick={() => setShowEmailModal(true)} 
-                        variant="outline" 
-                        className="h-11 px-5 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all"
-                    >
-                        <Mail className="w-4 h-4 mr-2 text-slate-400" /> Email
-                    </Button>
-                    <Button 
-                        onClick={() => setShowTaskModal(true)} 
-                        variant="outline" 
-                        className="h-11 px-5 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all"
-                    >
-                        <Clock className="w-4 h-4 mr-2 text-slate-400" /> Follow Up
-                    </Button>
-                    <Button 
-                        onClick={() => setShowDiaryModal(true)} 
-                        variant="outline" 
-                        className="h-11 px-5 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all"
-                    >
-                        <Calendar className="w-4 h-4 mr-2 text-slate-400" /> Scheduling
-                    </Button>
-                </div>
-
-                <div className="hidden lg:flex items-center gap-5 px-6 border-l border-slate-100 h-10">
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none">Last Form</span>
-                        <span className="text-[11px] font-bold text-slate-800 mt-1">{(customer as any).lastMetaFormName || 'None'}</span>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-none">Status</span>
-                        <div className="flex items-center gap-1.5 mt-1">
-                            <div className={`w-1.5 h-1.5 rounded-full ${isConverted ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-                            <span className="text-[11px] font-bold text-slate-800 uppercase tracking-tighter">{customer.status}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             {/* 3. Main Navigation Tabs */}
-            <div className="flex items-center gap-1 border-b border-slate-200">
+            <div className="flex items-center gap-1 border-b border-slate-200 bg-white sticky top-[137px] z-30">
                 {[
                     { id: 'overview', label: 'Overview', icon: Activity },
                     { id: 'appointments', label: 'Appointments', icon: Calendar },
@@ -929,10 +977,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-8 py-4 text-xs font-black uppercase tracking-widest transition-all relative
+                        className={`flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-widest transition-all relative
                             ${activeTab === tab.id ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                     >
-                        <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-blue-500' : 'text-slate-300'}`} />
+                        <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-blue-500' : 'text-slate-300'}`} />
                         {tab.label}
                         {activeTab === tab.id && (
                             <div className="absolute bottom-[-1px] left-0 right-0 h-1 bg-blue-600 rounded-t-full shadow-[0_-2px_10px_rgba(37,99,235,0.4)]" />
@@ -940,95 +988,346 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     </button>
                 ))}
             </div>
+            {/* 4. KPI Performance Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-2">
+                {[
+                    { label: 'Total Appointments', value: summary?.summary?.totalAppointments || 0, icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50' },
+                    { label: 'Completed', value: summary?.summary?.completedAppointments || 0, icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                    { label: 'Lifetime Value', value: `€${summary?.summary?.lifetimeValue?.toFixed(2) || '0.00'}`, icon: ShieldCheck, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+                    { label: 'Repeat Visits', value: summary?.summary?.repeatCount || 0, icon: Repeat, color: 'text-amber-500', bg: 'bg-amber-50' }
+                ].map((kpi, idx) => (
+                    <Card key={idx} className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200 group hover:shadow-md transition-all">
+                        <CardContent className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center ${kpi.color}`}>
+                                    <kpi.icon className="w-5 h-5" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{kpi.label}</span>
+                                    <span className="text-sm font-black text-slate-900 mt-0.5">{kpi.value}</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            {/* 2. Quick Action Toolbar (The "Big 5" Sales Interactions) */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm animate-in slide-in-from-top-5">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+                    <Button 
+                        onClick={() => setShowPhoneCallModal(true)} 
+                        className="h-16 flex flex-col items-center justify-center gap-1.5 bg-white hover:bg-emerald-50 border-slate-200 hover:border-emerald-200 text-slate-700 transition-all rounded-2xl shadow-sm group"
+                    >
+                        <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                            <PhoneCall className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-tighter">Add Call Notes</span>
+                    </Button>
+
+                    <Button 
+                        onClick={() => window.open(`https://wa.me/${customer.phone?.replace(/[^0-9]/g, '')}`, '_blank')}
+                        className="h-16 flex flex-col items-center justify-center gap-1.5 bg-white hover:bg-emerald-50 border-slate-200 hover:border-emerald-200 text-slate-700 transition-all rounded-2xl shadow-sm group"
+                    >
+                        <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                            <MessageSquare className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-tighter">WhatsApp</span>
+                    </Button>
+
+                    <Button 
+                        onClick={() => setShowEmailModal(true)} 
+                        className="h-16 flex flex-col items-center justify-center gap-1.5 bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-200 text-slate-700 transition-all rounded-2xl shadow-sm group"
+                    >
+                        <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                            <Mail className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-tighter">Log Email Sent</span>
+                    </Button>
+
+                    <Button 
+                        onClick={() => setShowTaskModal(true)} 
+                        className="h-16 flex flex-col items-center justify-center gap-1.5 bg-white hover:bg-amber-50 border-slate-200 hover:border-amber-200 text-slate-700 transition-all rounded-2xl shadow-sm group"
+                    >
+                        <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
+                            <Clock className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-tighter">Follow up</span>
+                    </Button>
+
+                    <Button 
+                        onClick={() => setShowBookingModal(true)} 
+                        className="h-16 flex flex-col items-center justify-center gap-1.5 bg-white hover:bg-indigo-50 border-slate-200 hover:border-indigo-200 text-slate-700 transition-all rounded-2xl shadow-sm group"
+                    >
+                        <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
+                            <Calendar className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-tighter">Book Appoint.</span>
+                    </Button>
+                </div>
+            </div>
+
             {/* 4. Main Two-Column Content Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
                 {/* ---------- LEFT COLUMN: CRM PROPERTIES (4 COLS) ---------- */}
                 <div className="lg:col-span-4 space-y-6">
-                    {/* A. Core Info Card */}
-                    <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
-                        <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
-                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Contact Details</CardTitle>
-                            <User className="w-4 h-4 text-slate-300" />
-                        </CardHeader>
-                        <CardContent className="p-6 space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">First Name</label>
-                                    <div className="text-sm font-bold text-slate-800">{customer.firstName}</div>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">Last Name</label>
-                                    <div className="text-sm font-bold text-slate-800">{customer.lastName || '--'}</div>
-                                </div>
-                            </div>
-                            <div className="space-y-4 pt-4 border-t border-slate-50">
-                                <div className="flex items-center justify-between group">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500"><Mail className="w-4 h-4" /></div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Email</span>
-                                            <span className="text-xs font-bold text-slate-700">{customer.email}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between group">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500"><Phone className="w-4 h-4" /></div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Phone</span>
-                                            <span className="text-xs font-bold text-slate-700">{customer.phone || '--'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* B. Metadata & Origin Card */}
-                    <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
-                        <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6">
-                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Origin & Tracking</CardTitle>
+                    {/* D. Clinique Status Card (Critical Requirement) */}
+                    <Card className="border-none shadow-sm bg-[#fafcfe] rounded-2xl overflow-hidden border-2 border-[#b3d81b]/20">
+                        <CardHeader className="bg-[#b3d81b]/10 border-b border-[#b3d81b]/20 py-4 px-6 flex flex-row items-center justify-between">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-[#7a9412]">Ιατρείο – Clinique</CardTitle>
+                            <Activity className="w-4 h-4 text-[#b3d81b]" />
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             <div className="space-y-4">
-                                <div className="flex flex-col py-3 px-4 bg-slate-50 rounded-xl border border-slate-100 group hover:border-blue-200 transition-all">
-                                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1.5 flex items-center gap-1.5">
-                                        <Activity className="w-3 h-3" /> Acquisition Source
-                                    </span>
-                                    <span className="text-xs font-bold text-slate-800 capitalize">{customer.source?.replace('_', ' ') || 'Direct / Unknown'}</span>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Clinic Statuses</label>
+                                    <Button variant="ghost" size="sm" onClick={() => setIsEditingClinics(!isEditingClinics)} className="h-6 px-2 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
+                                        {isEditingClinics ? 'Finish' : 'Manage Clinics'}
+                                    </Button>
                                 </div>
-                                <div className="flex flex-col py-3 px-4 bg-slate-50 rounded-xl border border-slate-100 group hover:border-blue-200 transition-all">
-                                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1.5 flex items-center gap-1.5">
-                                        <FileText className="w-3 h-3" /> Last Meta Form
-                                    </span>
-                                    <span className="text-xs font-bold text-slate-800">{(customer as any).lastMetaFormName || 'N/A'}</span>
-                                    { (customer as any).lastMetaFormSubmittedAt && (
-                                        <span className="text-[10px] text-slate-400 font-medium mt-1">Submitted: {new Date((customer as any).lastMetaFormSubmittedAt).toLocaleDateString()}</span>
+
+                                <div className="grid grid-cols-1 gap-3">
+                                    {(customer as any).clinicStatuses?.map((aff: any) => (
+                                        <div key={aff.id} className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 group hover:border-blue-200 transition-all">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-[#b3d81b] animate-pulse" />
+                                                    <span className="text-xs font-black text-slate-800">{aff.clinic?.name || 'Unknown Clinic'}</span>
+                                                </div>
+                                                {isEditingClinics && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="h-6 w-6 p-0 text-slate-300 hover:text-red-500"
+                                                        onClick={async () => {
+                                                            const currentAffs = (customer as any).clinicStatuses || [];
+                                                            const updatedAffs = currentAffs.filter((a: any) => a.clinicId !== aff.clinicId).map((a:any) => ({ clinicId: a.clinicId, status: a.status }));
+                                                            await dispatch(updateLead({ id: effectiveId, updates: { clinicAffiliations: updatedAffs } as any })).unwrap();
+                                                            dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
+                                                        }}
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-50">
+                                                <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Clinic Status</span>
+                                                <Select 
+                                                    value={aff.status}
+                                                    onChange={async (val) => {
+                                                        const currentAffs = (customer as any).clinicStatuses || [];
+                                                        const updatedAffs = currentAffs.map((a: any) => 
+                                                            a.clinicId === aff.clinicId ? { clinicId: a.clinicId, status: val } : { clinicId: a.clinicId, status: a.status }
+                                                        );
+                                                        await dispatch(updateLead({ id: effectiveId, updates: { clinicAffiliations: updatedAffs } as any })).unwrap();
+                                                        dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
+                                                    }}
+                                                    options={[
+                                                        { value: 'new', label: 'Lead' },
+                                                        { value: 'contacted', label: 'Contacted' },
+                                                        { value: 'interested', label: 'Interested' },
+                                                        { value: 'converted', label: 'Client / Converted' },
+                                                        { value: 'lost', label: 'Lost' },
+                                                    ]}
+                                                    className="h-8 text-[11px] border-slate-200 font-bold bg-white"
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                    
+                                    {(!(customer as any).clinicStatuses || (customer as any).clinicStatuses.length === 0) && (
+                                        <div className="py-4 px-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">No Active Clinique Linked</p>
+                                        </div>
+                                    )}
+
+                                    {isEditingClinics && (
+                                         <div className="pt-2">
+                                            <Select 
+                                                placeholder="Link new clinic..."
+                                                onChange={async (val) => {
+                                                    const currentAffs = (customer as any).clinicStatuses || [];
+                                                    const updatedAffs = [...currentAffs.map((a:any) => ({ clinicId: a.clinicId, status: a.status })), { clinicId: val, status: 'new' }];
+                                                    await dispatch(updateLead({ id: effectiveId, updates: { clinicAffiliations: updatedAffs } as any })).unwrap();
+                                                    dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
+                                                }}
+                                                options={(clinics || []).filter((c:any) => !(customer as any).clinicStatuses?.some((a:any) => a.clinicId === c.id)).map((c:any) => ({ value: c.id, label: c.name }))}
+                                                className="h-10 text-xs border-slate-200 font-black uppercase tracking-tighter"
+                                            />
+                                         </div>
                                     )}
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* C. Assignments Card (Multi-select) */}
+                    {/* A. Core Info Card (Includes Lifecycle Status) */}
                     <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
                         <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
-                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Ownership & Clinics</CardTitle>
-                            <Tag className="w-4 h-4 text-slate-300" />
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Sales Record</CardTitle>
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => isEditingCore ? handleSaveCoreProperties() : setIsEditingCore(true)}
+                                className="h-7 px-2 text-[10px] font-bold text-blue-600 hover:bg-blue-50"
+                            >
+                                {isEditingCore ? 'Save' : 'Edit'}
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6">
+                            {/* Sales Status */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Lead Status</label>
+                                <Select 
+                                    value={displayStatus}
+                                    onChange={async (val) => {
+                                        await dispatch(updateLead({ id: effectiveId, updates: { status: val as Lead['status'] } })).unwrap();
+                                        dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
+                                    }}
+                                    options={[
+                                        { value: 'new', label: 'New Lead' },
+                                        { value: 'contacted', label: 'Contacted' },
+                                        { value: 'qualified', label: 'Qualified' },
+                                        { value: 'converted', label: 'Converted' },
+                                        { value: 'lost', label: 'Lost' },
+                                    ]}
+                                    className="h-10 text-xs font-bold border-slate-100 bg-slate-50/50 rounded-xl"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 pt-2">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">First Name</label>
+                                    {isEditingCore ? (
+                                        <Input 
+                                            value={editedProperties.firstName} 
+                                            onChange={(e) => setEditedProperties({ ...editedProperties, firstName: e.target.value })}
+                                            className="h-8 text-xs font-bold bg-slate-50"
+                                        />
+                                    ) : (
+                                        <div className="text-sm font-bold text-slate-800">{customer.firstName}</div>
+                                    )}
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Last Name</label>
+                                    {isEditingCore ? (
+                                        <Input 
+                                            value={editedProperties.lastName} 
+                                            onChange={(e) => setEditedProperties({ ...editedProperties, lastName: e.target.value })}
+                                            className="h-8 text-xs font-bold bg-slate-50"
+                                        />
+                                    ) : (
+                                        <div className="text-sm font-bold text-slate-800">{customer.lastName || '--'}</div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-4 pt-4 border-t border-slate-50">
+                                <div className="flex flex-col gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Email Address</label>
+                                        {isEditingCore ? (
+                                            <Input 
+                                                value={editedProperties.email} 
+                                                onChange={(e) => setEditedProperties({ ...editedProperties, email: e.target.value })}
+                                                className="h-8 text-xs font-bold bg-slate-50"
+                                            />
+                                        ) : (
+                                            <div className="text-xs font-bold text-slate-700">{customer.email}</div>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Phone Number</label>
+                                        {isEditingCore ? (
+                                            <Input 
+                                                value={editedProperties.phone} 
+                                                onChange={(e) => setEditedProperties({ ...editedProperties, phone: e.target.value })}
+                                                className="h-8 text-xs font-bold bg-slate-50"
+                                            />
+                                        ) : (
+                                            <div className="text-xs font-bold text-slate-700">{customer.phone || '--'}</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* B. Commercial & Tracking */}
+                    <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
+                        <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Commercial Intel</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6">
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><Clock className="w-3 h-3" /> Est. Value</label>
+                                {isEditingCore ? (
+                                    <Input 
+                                        type="number"
+                                        value={editedProperties.estimatedValue || 0}
+                                        onChange={(e) => setEditedProperties({ ...editedProperties, estimatedValue: parseFloat(e.target.value) })}
+                                        className="h-8 text-xs font-bold mt-1"
+                                    />
+                                ) : (
+                                    <div className="text-sm font-black text-slate-900 line-clamp-1">€{customer.estimatedValue || '0.00'}</div>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col py-3 px-4 bg-slate-50 rounded-xl border border-slate-100 group transition-all">
+                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1.5 flex items-center gap-1.5">
+                                    <FileText className="w-3 h-3" /> Meta Form Source
+                                </span>
+                                {isEditingCore ? (
+                                    <div className="space-y-2">
+                                        <Input 
+                                            placeholder="Form Name" 
+                                            value={editedProperties.lastMetaFormName || ""} 
+                                            onChange={(e) => setEditedProperties({ ...editedProperties, lastMetaFormName: e.target.value })}
+                                            className="h-8 text-xs font-bold"
+                                        />
+                                        <Input 
+                                            placeholder="Facebook Ad Name" 
+                                            value={editedProperties.facebookAdName || ""} 
+                                            onChange={(e) => setEditedProperties({ ...editedProperties, facebookAdName: e.target.value })}
+                                            className="h-8 text-xs font-bold"
+                                        />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <span className="text-xs font-black text-blue-600">{(customer as any).lastMetaFormName || 'No Meta Data Detected'}</span>
+                                        { (customer as any).facebookAdName && (
+                                            <span className="text-[10px] text-slate-500 font-bold mt-1">Ad: {(customer as any).facebookAdName}</span>
+                                        )}
+                                        { (customer as any).lastMetaFormSubmittedAt && (
+                                            <span className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-tighter">Submitted: {new Date((customer as any).lastMetaFormSubmittedAt).toLocaleString()}</span>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+
+                    {/* C. Contact owner Card */}
+                    <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
+                        <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Contact owner</CardTitle>
+                            <Users className="w-4 h-4 text-slate-300" />
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             {/* Owners Section */}
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Assigned Owners</label>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Contact owner</label>
                                     <Button variant="ghost" size="sm" onClick={() => setIsEditingOwners(!isEditingOwners)} className="h-6 px-2 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
                                         {isEditingOwners ? 'Done' : 'Edit'}
                                     </Button>
                                 </div>
                                 {isEditingOwners ? (
                                     <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100 max-h-40 overflow-y-auto">
-                                        {salespersons?.map(sp => (
+                                        {salespersons?.filter(sp => sp.role === 'salesperson' || sp.role === 'manager').map(sp => (
                                             <label key={sp.id} className="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded transition-colors">
                                                 <input 
                                                     type="checkbox" 
@@ -1040,10 +1339,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                             : currentIds.filter((id: string) => id !== sp.id);
                                                         
                                                         await dispatch(updateLead({ 
-                                                            id: customer.id, 
+                                                            id: effectiveId, 
                                                             updates: { multiOwnerIds: newIds } as any 
                                                         })).unwrap();
-                                                        dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                                        dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
                                                     }}
                                                     className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                                                 />
@@ -1059,81 +1358,25 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                             </Badge>
                                         ))}
                                         {(!(customer as any).multiOwners || (customer as any).multiOwners.length === 0) && (
-                                            <div className="text-[10px] text-slate-400 italic font-medium py-2 px-3 bg-slate-50 rounded-lg border border-dashed border-slate-200 w-full text-center">No owners assigned</div>
+                                            <div className="text-[10px] text-slate-400 italic font-medium py-2 px-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 w-full text-center">No contact owners assigned</div>
                                         )}
                                     </div>
                                 )}
                             </div>
+                        </CardContent>
+                    </Card>
 
-                            {/* Clinics Section */}
-                            <div className="space-y-3 pt-6 border-t border-slate-50">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Linked Clinics</label>
-                                    <Button variant="ghost" size="sm" onClick={() => setIsEditingClinics(!isEditingClinics)} className="h-6 px-2 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
-                                        {isEditingClinics ? 'Done' : 'Edit'}
-                                    </Button>
-                                </div>
-                                <div className="grid grid-cols-1 gap-2">
-                                    {(customer as any).clinicStatuses?.map((aff: any) => (
-                                        <div key={aff.id} className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100 group hover:border-blue-100 transition-all">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                                <span className="text-xs font-bold text-slate-700">{aff.clinic?.name || 'Unknown Clinic'}</span>
-                                            </div>
-                                            {isEditingClinics ? (
-                                                <Select 
-                                                    value={aff.status}
-                                                    onChange={async (val) => {
-                                                        const currentAffs = (customer as any).clinicStatuses || [];
-                                                        const updatedAffs = currentAffs.map((a: any) => 
-                                                            a.clinicId === aff.clinicId ? { clinicId: a.clinicId, status: val } : { clinicId: a.clinicId, status: a.status }
-                                                        );
-                                                        
-                                                        await dispatch(updateLead({ 
-                                                            id: customer.id, 
-                                                            updates: { clinicAffiliations: updatedAffs } as any 
-                                                        })).unwrap();
-                                                        dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
-                                                    }}
-                                                    options={[
-                                                        { value: 'new', label: 'New' },
-                                                        { value: 'contacted', label: 'Contacted' },
-                                                        { value: 'qualified', label: 'Qualified' },
-                                                        { value: 'converted', label: 'Converted' },
-                                                        { value: 'lost', label: 'Lost' },
-                                                    ]}
-                                                    className="h-7 text-[8px] border-slate-200"
-                                                />
-                                            ) : (
-                                                <Badge className="bg-white border-slate-200 text-slate-600 text-[9px] font-black px-2 py-0.5 rounded-lg shadow-sm">
-                                                    {aff.status.replace('_', ' ')}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    ))}
-                                    {(!(customer as any).clinicStatuses || (customer as any).clinicStatuses.length === 0) && (
-                                        <div className="text-[10px] text-slate-400 italic font-medium py-2 px-3 bg-slate-50 rounded-lg border border-dashed border-slate-200 w-full text-center">No clinic affiliations</div>
-                                    )}
-                                    {isEditingClinics && (
-                                         <div className="pt-2">
-                                            <Select 
-                                                placeholder="Link new clinic..."
-                                                onChange={async (val) => {
-                                                    const currentAffs = (customer as any).clinicStatuses || [];
-                                                    const updatedAffs = [...currentAffs.map((a:any) => ({ clinicId: a.clinicId, status: a.status })), { clinicId: val, status: 'new' }];
-                                                    
-                                                    await dispatch(updateLead({ 
-                                                        id: customer.id, 
-                                                        updates: { clinicAffiliations: updatedAffs } as any 
-                                                    })).unwrap();
-                                                    dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
-                                                }}
-                                                options={(clinics || []).filter((c:any) => !(customer as any).clinicStatuses?.some((a:any) => a.clinicId === c.id)).map((c:any) => ({ value: c.id, label: c.name }))}
-                                                className="h-9 text-xs border-slate-200 font-bold"
-                                            />
-                                         </div>
-                                    )}
-                                </div>
+                    {/* E. Internal Notes Card */}
+                    <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
+                        <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">Record Perspective / Notes</CardTitle>
+                            <AlertCircle className="w-3.5 h-3.5 text-slate-300" />
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100/50">
+                                <p className="text-[11px] text-slate-600 font-medium leading-relaxed italic">
+                                    {customer.notes || "No high-level persistent notes identified for this contact."}
+                                </p>
                             </div>
                         </CardContent>
                     </Card>
@@ -1150,150 +1393,253 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                             </div>
 
                             {/* II. Unified Activity Timeline (Vertical Thread) */}
-                            <div className="relative pl-8 pr-2 py-4">
-                                {/* Vertical Line Track */}
-                                <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-slate-100 rounded-full" />
-                                
-                                <div className="space-y-8">
-                                    {(() => {
-                                        const actionEvents = (summary?.actions || []).flatMap(a => {
-                                            const events = [];
-                                            events.push({ type: 'action_created', date: new Date(a.createdAt), data: a });
-                                            if (a.status === 'completed' && a.completedAt) {
-                                                events.push({ type: 'action_completed', date: new Date(a.completedAt), data: a });
-                                            }
-                                            if (a.status !== 'completed' && a.dueDate && new Date(a.dueDate) < new Date()) {
-                                                events.push({ type: 'action_overdue', date: new Date(a.dueDate), data: a });
-                                            }
-                                            return events;
-                                        });
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-6">
+                                    <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">Activity Feed</h3>
+                                    <div className="flex gap-1">
+                                        {['all', 'actions', 'comms', 'forms', 'appointments'].map(f => (
+                                            <Button 
+                                                key={f} 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={() => setTimelineFilter(f)}
+                                                className={`h-7 px-2.5 text-[9px] font-black uppercase rounded-lg tracking-tighter
+                                                    ${timelineFilter === f ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                                            >
+                                                {f}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
 
-                                        const timelineItems = [
-                                            ...(summary?.communications?.map(c => ({ type: 'communication', date: new Date(c.createdAt), data: c })) || []),
-                                            ...(summary?.appointments?.map(a => ({ type: 'appointment', date: new Date(a.startTime), data: a })) || []),
-                                            ...actionEvents,
-                                            // Form Submissions
-                                            ...((customer as any).lastMetaFormName ? [{
-                                                type: 'form',
-                                                date: new Date((customer as any).lastMetaFormSubmittedAt || customer.createdAt),
-                                                data: { formName: (customer as any).lastMetaFormName }
-                                            }] : [])
-                                        ].sort((a, b) => b.date.getTime() - a.date.getTime());
+                                <div className="relative pl-8 pr-2 py-4">
+                                    {/* Vertical Line Track */}
+                                    <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-slate-100 rounded-full" />
+                                    
+                                    <div className="space-y-8">
+                                        {(() => {
+                                            const actionEvents = (summary?.actions || []).flatMap(a => {
+                                                const events = [];
+                                                events.push({ 
+                                                    type: a.originalTaskId ? 'action_autogenerated' : 'action_created', 
+                                                    date: new Date(a.createdAt), 
+                                                    data: a 
+                                                });
+                                                if (a.status === 'completed' && a.completedAt) {
+                                                    events.push({ type: 'action_completed', date: new Date(a.completedAt), data: a });
+                                                }
+                                                if (a.status !== 'completed' && a.dueDate && new Date(a.dueDate) < new Date()) {
+                                                    events.push({ type: 'action_overdue', date: new Date(a.dueDate), data: a });
+                                                }
+                                                return events;
+                                            });
 
-                                        if (timelineItems.length === 0) {
-                                            return (
-                                                <div className="text-center py-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                                                    <Activity className="w-8 h-8 text-slate-200 mx-auto mb-3" />
-                                                    <p className="text-xs font-bold text-slate-400">No activity thread found for this contact.</p>
-                                                </div>
-                                            );
-                                        }
+                                            const timelineItems = [
+                                                ...(summary?.communications?.map(c => ({ type: 'communication', date: new Date(c.createdAt), data: c })) || []),
+                                                ...(summary?.appointments?.map(a => ({ type: 'appointment', date: new Date(a.startTime), data: a })) || []),
+                                                ...actionEvents,
+                                                // Form Submissions
+                                                ...((customer as any).lastMetaFormName ? [{
+                                                    type: 'form',
+                                                    date: new Date((customer as any).lastMetaFormSubmittedAt || customer.createdAt),
+                                                    data: { 
+                                                        formName: (customer as any).lastMetaFormName,
+                                                        adName: (customer as any).facebookAdName
+                                                    }
+                                                }] : [])
+                                            ]
+                                            .filter(item => {
+                                                if (timelineFilter === 'all') return true;
+                                                if (timelineFilter === 'actions') return item.type.startsWith('action');
+                                                if (timelineFilter === 'comms') return item.type === 'communication';
+                                                if (timelineFilter === 'forms') return item.type === 'form';
+                                                if (timelineFilter === 'appointments') return item.type === 'appointment';
+                                                return true;
+                                            })
+                                            .sort((a, b) => b.date.getTime() - a.date.getTime());
 
-                                        return timelineItems.map((item: any, idx) => {
-                                            let icon = <Activity className="w-3.5 h-3.5" />;
-                                            let iconBg = 'bg-slate-100 text-slate-500';
-                                            let title = 'Activity Event';
-                                            let content = '';
-                                            let meta = '';
-
-                                            if (item.type === 'communication') {
-                                                const c = item.data as CommunicationLog;
-                                                const isCall = c.type === 'call';
-                                                icon = isCall ? <PhoneCall className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />;
-                                                iconBg = isCall ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20';
-                                                title = isCall ? 'Logged Phone Call' : 'Outgoing Email Message';
-                                                content = c.notes;
-                                                meta = c.metadata?.outcome ? `Outcome: ${c.metadata.outcome.replace('_', ' ')}` : '';
-                                            } else if (item.type === 'appointment') {
-                                                const a = item.data as any;
-                                                icon = <Calendar className="w-3.5 h-3.5" />;
-                                                iconBg = 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20';
-                                                title = `Meeting / Procedure Scheduled`;
-                                                content = a.serviceName || 'Consultation';
-                                                meta = `Clinic: ${a.clinicName || 'N/A'} • Status: ${a.status}`;
-                                            } else if (item.type === 'form') {
-                                                icon = <FileText className="w-3.5 h-3.5" />;
-                                                iconBg = 'bg-amber-500 text-white shadow-lg shadow-amber-500/20';
-                                                title = 'Meta Lead Form Submitted';
-                                                content = `Interaction via form: ${item.data.formName}`;
-                                            } else if (item.type.startsWith('action_')) {
-                                                const act = item.data as CrmAction;
-                                                const isCompleted = item.type === 'action_completed';
-                                                icon = isCompleted ? <CheckCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />;
-                                                iconBg = isCompleted ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-800 text-white';
-                                                title = isCompleted ? `Task Completed: ${act.title}` : `New Task Assigned: ${act.title}`;
-                                                content = act.description || '';
-                                            }
-
-                                            return (
-                                                <div key={`${item.type}-${idx}`} className="relative group">
-                                                    {/* Node */}
-                                                    <div className={`absolute left-[-25px] top-1 w-4.5 h-4.5 rounded-full border-4 border-white flex items-center justify-center z-10 transition-transform group-hover:scale-110 ${iconBg} w-[18px] h-[18px]`}>
-                                                        <div className="scale-75">{icon}</div>
+                                            if (timelineItems.length === 0) {
+                                                return (
+                                                    <div className="text-center py-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                                                        <Activity className="w-8 h-8 text-slate-200 mx-auto mb-3" />
+                                                        <p className="text-xs font-bold text-slate-400">No activity thread found for this contact.</p>
                                                     </div>
+                                                );
+                                            }
+
+                                            return timelineItems.map((item: any, idx) => {
+                                                let icon = <Activity className="w-3.5 h-3.5" />;
+                                                let iconBg = 'bg-slate-100 text-slate-500';
+                                                let title = 'Activity Event';
+                                                let content = '';
+                                                let meta = '';
+
+                                                if (item.type === 'communication') {
+                                                    const c = item.data as CommunicationLog;
+                                                    const isCall = c.type === 'call';
+                                                    const isViber = (c.type as string) === 'viber' || c.notes?.toLowerCase().includes('viber');
+                                                    const isWhatsApp = (c.type as string) === 'whatsapp' || c.notes?.toLowerCase().includes('whatsapp');
                                                     
-                                                    {/* Card Content (Glassmorphic) */}
-                                                    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow group-hover:border-slate-200">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[10px] font-black uppercase text-slate-800 tracking-tight">{title}</span>
-                                                            </div>
-                                                            <span className="text-[9px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+                                                    if (isCall) {
+                                                        icon = <PhoneCall className="w-3.5 h-3.5" />;
+                                                        iconBg = 'bg-blue-500 text-white shadow-lg shadow-blue-500/20';
+                                                        title = 'Logged Phone Call';
+                                                    } else if (isViber) {
+                                                        icon = <MessageCircle className="w-3.5 h-3.5" />;
+                                                        iconBg = 'bg-purple-500 text-white shadow-lg shadow-purple-500/20';
+                                                        title = 'Viber Message Logged';
+                                                    } else if (isWhatsApp) {
+                                                        icon = <MessageSquare className="w-3.5 h-3.5" />;
+                                                        iconBg = 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20';
+                                                        title = 'WhatsApp Interaction';
+                                                    } else {
+                                                        icon = <Mail className="w-3.5 h-3.5" />;
+                                                        iconBg = 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20';
+                                                        title = 'Outgoing Email/Note';
+                                                    }
+
+                                                    content = c.notes;
+                                                    const actorName = c.salesperson ? `${c.salesperson.firstName} ${c.salesperson.lastName}` : (c as any).userName || 'Sales Rep';
+                                                    meta = `By: ${actorName} • ${c.metadata?.outcome ? `Outcome: ${c.metadata.outcome.replace('_', ' ')}` : 'Logged'}`;
+                                                } else if (item.type === 'appointment') {
+                                                    const a = item.data as any;
+                                                    icon = <Calendar className="w-3.5 h-3.5" />;
+                                                    iconBg = 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20';
+                                                    title = `Appointment: ${a.status?.toUpperCase()}`;
+                                                    content = `${a.serviceName || 'Treatment'} at ${a.clinicName || 'Clinic'}`;
+                                                    meta = `Scheduled: ${new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                                                } else if (item.type === 'form') {
+                                                    icon = <FileText className="w-3.5 h-3.5" />;
+                                                    iconBg = 'bg-amber-500 text-white shadow-lg shadow-amber-500/20';
+                                                    title = 'Meta Lead Form Inbound';
+                                                    // Try to reconstruct some fields from customer meta if available
+                                                    const metaData = customer.metaData || {};
+                                                    const questions = Object.entries(metaData)
+                                                        .filter(([k]) => k !== 'ad_name' && k !== 'form_name')
+                                                        .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+                                                        .join(' | ');
+                                                    
+                                                    content = `Form: ${item.data.formName}${questions ? ` • ${questions}` : ''}`;
+                                                    meta = (customer as any).lastMetaFormName ? `Ad: ${(customer as any).lastMetaFormName}` : 'Inbound Source';
+                                                } else if (item.type.startsWith('action_')) {
+                                                    const act = item.data as CrmAction;
+                                                    const isCompleted = item.type === 'action_completed';
+                                                    icon = isCompleted ? <CheckCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />;
+                                                    iconBg = isCompleted ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-800 text-white';
+                                                    
+                                                    if (act.actionType === 'confirmation_call_reminder') {
+                                                        title = `Appointment Confirmation Reminder`;
+                                                        icon = <Phone className="w-3.5 h-3.5" />;
+                                                        iconBg = 'bg-indigo-100 text-indigo-600';
+                                                    } else if (item.type === 'action_autogenerated') {
+                                                        title = `Recurring Task Injected`;
+                                                        icon = <RefreshCw className="w-3.5 h-3.5" />;
+                                                        iconBg = 'bg-blue-100 text-blue-600';
+                                                    } else if (item.type === 'action_overdue') {
+                                                        title = `Task Overdue Warning`;
+                                                        iconBg = 'bg-red-500 text-white shadow-lg shadow-red-500/20';
+                                                    } else {
+                                                        title = isCompleted ? `Task Completed` : `New Task Created`;
+                                                    }
+
+                                                    content = act.title;
+                                                    meta = `Assignee: ${(act as any).assigneeName || 'Self'} • Due: ${act.dueDate ? new Date(act.dueDate).toLocaleString() : 'N/A'}`;
+                                                    
+                                                    if (act.relatedAppointmentId) {
+                                                        meta += ` • Linked to Appt #${act.relatedAppointmentId.slice(0, 8)}`;
+                                                    }
+                                                }
+
+                                                return (
+                                                    <div key={`${item.type}-${idx}`} className="relative group">
+                                                        {/* Node */}
+                                                        <div className={`absolute left-[-25px] top-1 w-4.5 h-4.5 rounded-full border-4 border-white flex items-center justify-center z-10 transition-transform group-hover:scale-110 ${iconBg} w-[18px] h-[18px]`}>
+                                                            <div className="scale-75">{icon}</div>
                                                         </div>
-                                                        <p className="text-xs text-slate-600 leading-relaxed font-medium mb-2">{content}</p>
-                                                        {meta && (
-                                                            <div className="flex flex-wrap gap-2 pt-2 mt-2 border-t border-slate-50">
-                                                                <Badge className="bg-slate-50 text-slate-400 border border-slate-100 text-[8px] px-1.5 font-bold uppercase">{meta}</Badge>
-                                                                {item.data.metadata?.tags?.map((t: string) => (
-                                                                    <Badge key={t} className="bg-blue-50/50 text-blue-500 text-[8px] font-bold rounded">#{t}</Badge>
-                                                                ))}
-                                                            </div>
-                                                        )}
                                                         
-                                                        {item.type === 'appointment' && item.data.status?.toLowerCase() !== 'completed' && (
-                                                            <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-slate-50">
-                                                                <Button 
-                                                                    size="sm" 
-                                                                    onClick={() => handleUpdateAppointmentStatus(item.data.id, 'COMPLETED', item.data)}
-                                                                    className="h-7 text-[9px] font-black uppercase bg-emerald-500 hover:bg-emerald-600 text-white border-none rounded-lg px-3"
-                                                                >
-                                                                    Complete
-                                                                </Button>
-                                                                <Button 
-                                                                    size="sm" 
-                                                                    variant="outline"
-                                                                    onClick={() => handleUpdateAppointmentStatus(item.data.id, 'NO_SHOW', item.data)}
-                                                                    className="h-7 text-[9px] font-black uppercase border-amber-200 text-amber-600 hover:bg-amber-50 rounded-lg px-3"
-                                                                >
-                                                                    No Show
-                                                                </Button>
-                                                                <Button 
-                                                                    size="sm" 
-                                                                    variant="outline"
-                                                                    onClick={() => handleUpdateAppointmentStatus(item.data.id, 'CANCELLED', item.data)}
-                                                                    className="h-7 text-[9px] font-black uppercase border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-3"
-                                                                >
-                                                                    Cancel
-                                                                </Button>
-                                                                <Button 
-                                                                    variant="outline" 
-                                                                    size="sm" 
-                                                                    onClick={() => setShowDiaryModal(true)}
-                                                                    className="h-7 text-[9px] font-black uppercase border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg px-3"
-                                                                >
-                                                                    Edit
-                                                                </Button>
+                                                        {/* Card Content (Glassmorphic) */}
+                                                        <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow group-hover:border-slate-200">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[10px] font-black uppercase text-slate-800 tracking-tight">{title}</span>
+                                                                </div>
+                                                                <span className="text-[9px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
                                                             </div>
-                                                        )}
+                                                            <p className="text-xs text-slate-600 leading-relaxed font-medium mb-2">{content}</p>
+                                                            {meta && (
+                                                                <div className="flex flex-wrap gap-2 pt-2 mt-2 border-t border-slate-50">
+                                                                    <Badge className="bg-slate-50 text-slate-400 border border-slate-100 text-[8px] px-1.5 font-bold uppercase">{meta}</Badge>
+                                                                    {item.data.metadata?.tags?.map((t: string) => (
+                                                                        <Badge key={t} className="bg-blue-50/50 text-blue-500 text-[8px] font-bold rounded">#{t}</Badge>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {item.type === 'appointment' && (
+                                                                <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-slate-50">
+                                                                    {item.data.status?.toUpperCase() === 'COMPLETED' ? (
+                                                                        <Button 
+                                                                            size="sm" 
+                                                                            variant="outline"
+                                                                            onClick={() => {
+                                                                                setPendingAptId(item.data.id);
+                                                                                setPendingAptObj(item.data);
+                                                                                setPaymentAmt(item.data.amountPaid?.toString() || '');
+                                                                                setPaymentMethod(item.data.paymentMethod || 'cash');
+                                                                                setIsPaymentPrompt(true);
+                                                                            }}
+                                                                            className="h-7 text-[9px] font-black uppercase border-emerald-200 text-emerald-600 hover:bg-emerald-50 rounded-lg px-3"
+                                                                        >
+                                                                            Update Record
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Button 
+                                                                                size="sm" 
+                                                                                onClick={() => handleUpdateAppointmentStatus(item.data.id, 'COMPLETED', item.data)}
+                                                                                className="h-7 text-[9px] font-black uppercase bg-emerald-500 hover:bg-emerald-600 text-white border-none rounded-lg px-3"
+                                                                            >
+                                                                                Complete
+                                                                            </Button>
+                                                                            <Button 
+                                                                                size="sm" 
+                                                                                variant="outline"
+                                                                                onClick={() => handleUpdateAppointmentStatus(item.data.id, 'NO_SHOW', item.data)}
+                                                                                className="h-7 text-[9px] font-black uppercase border-amber-200 text-amber-600 hover:bg-amber-50 rounded-lg px-3"
+                                                                            >
+                                                                                No Show
+                                                                            </Button>
+                                                                            <Button 
+                                                                                size="sm" 
+                                                                                variant="outline"
+                                                                                onClick={() => handleUpdateAppointmentStatus(item.data.id, 'CANCELLED', item.data)}
+                                                                                className="h-7 text-[9px] font-black uppercase border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-3"
+                                                                            >
+                                                                                Cancel
+                                                                            </Button>
+                                                                        </>
+                                                                    )}
+                                                                    <Button 
+                                                                        variant="outline" 
+                                                                        size="sm" 
+                                                                        onClick={() => setShowDiaryModal(true)}
+                                                                        className="h-7 text-[9px] font-black uppercase border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg px-3"
+                                                                    >
+                                                                        Edit
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })
-                                    })()}
+                                                );
+                                            });
+                                        })()}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     )}
+
                     
                     {activeTab === 'tasks' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -1327,12 +1673,34 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                     <input
                                                                         type="checkbox"
                                                                         checked={task.status === 'completed'}
-                                                                        onChange={(e) => {
+                                                                        onChange={async (e) => {
                                                                             e.preventDefault();
                                                                             const isCompleting = task.status !== 'completed';
+                                                                            
+                                                                            if (isCompleting && (task.actionType === 'call' || task.actionType === 'follow_up_call' || task.actionType === 'confirmation_call_reminder' || task.actionType === 'mobile_message')) {
+                                                                                setInteractionType('call');
+                                                                                setWorkflowStep(2);
+                                                                                setShowDialer(true);
+                                                                                (window as any)._pendingTaskIdToComplete = task.id;
+                                                                                return;
+                                                                            }
+
+                                                                            if (isCompleting && task.actionType === 'email') {
+                                                                                setShowEmailModal(true);
+                                                                                setInteractionType('email');
+                                                                                (window as any)._pendingTaskIdToComplete = task.id;
+                                                                                return;
+                                                                            }
+
+                                                                            if (isCompleting && task.actionType === 'appointment') {
+                                                                                setPendingTaskId(task.id);
+                                                                                setShowBookingModal(true);
+                                                                                return;
+                                                                            }
+
                                                                             const newStatus = isCompleting ? 'completed' : 'pending';
-                                                                            dispatch(updateAction({ id: task.id, updates: { status: newStatus } }));
-                                                                            setTimeout(() => dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id })), 500);
+                                                                            await dispatch(updateAction({ id: task.id, updates: { status: newStatus } })).unwrap();
+                                                                            dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
                                                                         }}
                                                                         className="h-5 w-5 rounded-lg border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
                                                                     />
@@ -1353,10 +1721,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                             <td className="p-5">
                                                                 <div className="flex flex-col gap-1">
                                                                     <div className={`text-[10px] font-black flex items-center gap-1.5 ${new Date(task.dueDate!) < new Date() && task.status !== 'completed' ? 'text-red-500' : 'text-slate-700'}`}>
-                                                                        <Clock className="w-3.5 h-3.5" /> Due {new Date(task.dueDate!).toLocaleDateString()}
+                                                                        <Clock className="w-3.5 h-3.5" /> Due {new Date(task.dueDate!).toLocaleDateString()} {new Date(task.dueDate!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                                     </div>
                                                                     {task.reminderDate && (
-                                                                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">Rem: {new Date(task.reminderDate).toLocaleDateString()}</div>
+                                                                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tight flex items-center gap-1">
+                                                                            <Bell className="w-2.5 h-2.5" /> Rem: {new Date(task.reminderDate).toLocaleDateString()} {new Date(task.reminderDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                        </div>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -1368,7 +1738,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                     onClick={async () => {
                                                                         if (window.confirm('Delete this task?')) {
                                                                             await dispatch(deleteAction(task.id));
-                                                                            dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+                                                                            dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
                                                                         }
                                                                     }}
                                                                 >
@@ -1415,7 +1785,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                             <td className="p-5 text-xs font-bold text-slate-900">{apt.serviceName}</td>
                                                             <td className="p-5 text-xs font-medium text-slate-500">{apt.clinicName}</td>
                                                             <td className="p-5 text-right">
-                                                                <Badge className={`${apt.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'} text-[9px] font-black uppercase px-2.5 py-1 rounded-lg border shadow-sm`}>
+                                                                <Badge className={`${apt.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'} text-[9px] font-black uppercase px-2.5 py-1 rounded-lg border shadow-sm`}>
                                                                     {apt.status}
                                                                 </Badge>
                                                             </td>
@@ -1496,6 +1866,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                             </Card>
                         </div>
                     )}
+
                 </div>
             </div >
 
@@ -1526,6 +1897,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     customerName={`${customer.firstName} ${customer.lastName}`}
                     customerEmail={customer.email}
                     customerPhone={customer.phone}
+                    bookedBy={`${user?.firstName} ${user?.lastName}`}
                     onClose={() => setShowBookingModal(false)}
                     onSuccess={async () => {
                         if (!isConverted) {
@@ -1656,6 +2028,99 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 </div>
             )}
 
+            {/* Payment Prompt Modal */}
+            {isPaymentPrompt && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col">
+                        <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-800 tracking-tight">Finalize Transaction</h3>
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mt-1">Operational Checkout</p>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => setIsPaymentPrompt(false)} className="h-10 w-10 p-0 rounded-2xl bg-white hover:bg-slate-100 shadow-sm">
+                                <X className="w-5 h-5 text-slate-400" />
+                            </Button>
+                        </div>
+                        
+                        <div className="p-8 space-y-6">
+                            <div className="space-y-4">
+                                <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100/50 space-y-2">
+                                    <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                        <span>Treatment</span>
+                                        <span className="text-blue-600">Verified</span>
+                                    </div>
+                                    <div className="text-sm font-black text-slate-900 uppercase tracking-tight truncate">
+                                        {pendingAptObj?.serviceName || 'Standard Procedure'}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] px-1">Amount Captured (€)</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">€</div>
+                                        <Input
+                                            type="number"
+                                            placeholder="0.00"
+                                            value={paymentAmt}
+                                            onChange={(e) => setPaymentAmt(e.target.value)}
+                                            className="h-14 pl-10 text-lg font-black bg-slate-50 border-slate-200 rounded-2xl focus:bg-white transition-all shadow-inner"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] px-1">Payment Channel</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {['cash', 'card'].map(method => (
+                                            <button
+                                                key={method}
+                                                onClick={() => setPaymentMethod(method)}
+                                                className={`h-14 flex items-center justify-center gap-3 rounded-2xl border-2 transition-all font-black uppercase text-[10px] tracking-widest
+                                                    ${paymentMethod === method ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-lg shadow-blue-500/10' : 'border-slate-100 bg-slate-50 text-slate-400 hover:bg-white hover:border-slate-200'}`}
+                                            >
+                                                {method === 'card' ? <CreditCard className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                                                {method}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-8 bg-slate-50/50 border-t border-slate-50">
+                            <Button
+                                onClick={handleCompletePayment}
+                                className="w-full h-14 bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3"
+                            >
+                                <CheckCircle className="w-5 h-5" />
+                                Release Checkout & Close
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <CRMBookingModal
+                isOpen={showBookingModal}
+                customerId={customer.id}
+                customerName={`${customer.firstName} ${customer.lastName}`}
+                customerEmail={customer.email}
+                customerPhone={customer.phone}
+                taskId={pendingTaskId}
+                onTaskComplete={async (tid) => {
+                    await dispatch(updateAction({ id: tid, updates: { status: 'completed' } })).unwrap();
+                    dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
+                    setPendingTaskId(undefined);
+                }}
+                onClose={() => {
+                    setShowBookingModal(false);
+                    setPendingTaskId(undefined);
+                }}
+                onSuccess={() => {
+                    dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
+                }}
+            />
+
             <DialerModal
                 isOpen={showDialer}
                 onClose={() => setShowDialer(false)}
@@ -1663,133 +2128,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 phoneNumber={customer.phone || 'No Number'}
                 onCallEnded={handleCallEnded}
             />
-            {/* Edit Multi-Owners Modal */}
-            {isEditingOwners && (
-                <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <Card className="w-full max-w-md bg-white rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
-                        <CardHeader className="border-b border-slate-100 pb-4">
-                            <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                <Users className="w-5 h-5 text-blue-600" /> Manage Owners
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-6 space-y-4">
-                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                                {salespersons?.map((sp: any) => {
-                                    const isSelected = (customer as any).multiOwners?.some((o: any) => o.id === sp.id);
-                                    return (
-                                        <div key={sp.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                                                    {sp.firstName[0]}{sp.lastName[0]}
-                                                </div>
-                                                <span className="text-sm font-bold text-slate-700">{sp.firstName} {sp.lastName}</span>
-                                            </div>
-                                            <Button
-                                                variant={isSelected ? "outline" : "primary"}
-                                                size="sm"
-                                                className={`h-8 px-4 rounded-lg text-[10px] font-bold ${isSelected ? 'border-red-200 text-red-600 hover:bg-red-50' : 'bg-blue-600 text-white'}`}
-                                                onClick={async () => {
-                                                    const currentOwnerIds = (customer as any).multiOwners?.map((o: any) => o.id) || [];
-                                                    const newOwnerIds = isSelected
-                                                        ? currentOwnerIds.filter((id: string) => id !== sp.id)
-                                                        : [...currentOwnerIds, sp.id];
 
-                                                    try {
-                                                        await dispatch(updateLead({ id: customer.id, updates: { multiOwnerIds: newOwnerIds } })).unwrap();
-                                                        dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
-                                                    } catch (e) { alert("Failed to update owners"); }
-                                                }}
-                                            >
-                                                {isSelected ? 'Remove' : 'Assign'}
-                                            </Button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <Button className="w-full bg-slate-900 text-white rounded-xl h-12 font-bold mt-4" onClick={() => setIsEditingOwners(false)}>Done</Button>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
-
-            {/* Edit Clinic Affiliations Modal */}
-            {isEditingClinics && (
-                <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <Card className="w-full max-w-xl bg-white rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
-                        <CardHeader className="border-b border-slate-100 pb-4">
-                            <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                <Activity className="w-5 h-5 text-emerald-600" /> Clinic Affiliations & Statuses
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-6 space-y-6">
-                            <div className="grid grid-cols-1 gap-4 max-h-[500px] overflow-y-auto pr-2">
-                                {clinics?.map((clinic: any) => {
-                                    const affiliation = (customer as any).clinicStatuses?.find((cs: any) => cs.clinicId === clinic.id);
-                                    const isAffiliated = !!affiliation;
-
-                                    return (
-                                        <div key={clinic.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-bold text-slate-800">{clinic.name}</span>
-                                                <Button
-                                                    variant={isAffiliated ? "outline" : "primary"}
-                                                    size="sm"
-                                                    className={`h-7 px-3 rounded-lg text-[9px] font-bold ${isAffiliated ? 'text-red-600 border-red-200' : 'bg-emerald-600 text-white'}`}
-                                                    onClick={async () => {
-                                                        const currentAffiliations = (customer as any).clinicStatuses?.map((cs: any) => ({
-                                                            clinicId: cs.clinicId,
-                                                            status: cs.status
-                                                        })) || [];
-
-                                                        let newAffiliations;
-                                                        if (isAffiliated) {
-                                                            newAffiliations = currentAffiliations.filter((a: any) => a.clinicId !== clinic.id);
-                                                        } else {
-                                                            newAffiliations = [...currentAffiliations, { clinicId: clinic.id, status: 'new' }];
-                                                        }
-
-                                                        try {
-                                                            await dispatch(updateLead({ id: customer.id, updates: { clinicAffiliations: newAffiliations } })).unwrap();
-                                                            dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
-                                                        } catch (e) { alert("Failed to update clinics"); }
-                                                    }}
-                                                >
-                                                    {isAffiliated ? 'Remove' : 'Add Clinic'}
-                                                </Button>
-                                            </div>
-
-                                            {isAffiliated && (
-                                                <div className="flex items-center gap-2 pt-2 border-t border-slate-200/50">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Status:</span>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {['new', 'contacted', 'qualified', 'lost', 'converted'].map(s => (
-                                                            <button
-                                                                key={s}
-                                                                onClick={async () => {
-                                                                    const currentAffs = (customer as any).clinicStatuses?.map((cs: any) => ({
-                                                                        clinicId: cs.clinicId,
-                                                                        status: cs.clinicId === clinic.id ? s : cs.status
-                                                                    })) || [];
-                                                                    await dispatch(updateLead({ id: customer.id, updates: { clinicAffiliations: currentAffs } })).unwrap();
-                                                                    dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
-                                                                }}
-                                                                className={`px-2 py-1 rounded text-[9px] font-bold border transition-all ${affiliation.status === s ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300'}`}
-                                                            >
-                                                                {s}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <Button className="w-full bg-slate-900 text-white rounded-xl h-12 font-bold mt-4" onClick={() => setIsEditingClinics(false)}>Close</Button>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
         </div >
     );
 };
