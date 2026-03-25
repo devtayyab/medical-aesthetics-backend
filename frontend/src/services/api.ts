@@ -250,6 +250,8 @@ export const bookingAPI = {
     paymentMethod?: string;
     advancePaymentAmount?: number;
     holdId?: string;
+    status?: string;
+    bookedById?: string;
     clientDetails?: {
       fullName: string;
       email: string;
@@ -266,6 +268,16 @@ export const bookingAPI = {
   complete: (id: string, data?: any) => api.patch(`/appointments/${id}/complete`, data),
   updateStatus: (id: string, status: string) =>
     api.patch(`/appointments/${id}/status`, { status }),
+  createBlockedSlot: (data: {
+    clinicId: string;
+    providerId?: string | null;
+    startTime: string;
+    endTime: string;
+    reason?: string;
+  }) => api.post("/blocked-slots", data),
+  updateAppointment: (id: string, data: { startTime?: string; endTime?: string; providerId?: string; notes?: string }) =>
+    api.patch(`/appointments/${id}/update`, data),
+  deleteAppointment: (id: string) => api.patch(`/appointments/${id}/delete`),
 };
 
 export const userAPI = {

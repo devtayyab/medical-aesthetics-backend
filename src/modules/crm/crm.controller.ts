@@ -596,6 +596,16 @@ export class CrmController {
     return this.crmService.getAccessMatrix();
   }
 
+  @Post('tasks/inject-confirmations')
+  injectConfirmations() {
+    return this.crmService.scheduledInjectConfirmationTask();
+  }
+
+  @Post('tasks/inject-followups')
+  injectFollowups() {
+    return this.crmService.scheduledInjectNextDayFollowUp();
+  }
+
   @Get('client-benefits')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
   @UseGuards(RolesGuard)

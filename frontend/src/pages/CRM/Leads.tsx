@@ -82,8 +82,13 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   }, [forceShowCreateForm, onFormShown]);
 
   useEffect(() => {
-    dispatch(fetchLeads(leadFilters));
+    // Reset status filter for Leads page (exclude lost)
+    dispatch(setLeadFilters({ ...leadFilters, status: undefined }));
     dispatch(fetchSalespersons());
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchLeads(leadFilters));
   }, [dispatch, leadFilters]);
 
   // Handlers
@@ -92,8 +97,22 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   };
 
   const handleSearch = () => {
-    dispatch(setLeadFilters({ ...leadFilters, search: searchTerm }));
+    dispatch(setLeadFilters({
+      ...leadFilters,
+      search: searchTerm,
+      page: 1
+    }));
   };
+
+  // Real-time search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm !== leadFilters.search) {
+        handleSearch();
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleCreateLead = async () => {
     if (!formData.firstName || !formData.lastName || !formData.email) return;
@@ -196,32 +215,38 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
   return (
     <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-      {/* Search Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-            Lead Management
-            <Badge className="bg-blue-50 text-blue-600 border-blue-100 px-2 py-0.5 rounded-lg text-[10px] font-bold">
-              {leads.length} Active
+            Customer Database
+            <Badge className="bg-[#CBFF38]/20 text-[#212121] border-[#CBFF38]/30 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+              {leads.filter(l => l.status === 'converted').length} Converted
             </Badge>
           </h1>
-          <p className="text-gray-500 text-xs font-medium">Manage and convert your Meta form submissions</p>
+          <p className="text-gray-500 text-xs font-medium">Manage your active clients and their interactions</p>
         </div>
+
+        <div className="flex flex-1 max-w-md mx-4 relative">
+          <Input
+            placeholder="Search by Name, Email or Phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            className="h-10 pl-10 bg-white border-gray-200 shadow-sm focus:ring-[#b3d81b] rounded-xl w-full"
+          />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        </div>
+
         <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className={`h-9 text-[10px] font-bold border-gray-200 hover:bg-gray-50 transition-all ${showFilters ? 'bg-slate-900 text-white hover:bg-slate-800 border-slate-900' : 'bg-white text-gray-600'}`}
-            >
-              <Filter className={`w-3.5 h-3.5 mr-1.5 ${showFilters ? 'text-white' : 'text-gray-400'}`} />
-              {showFilters ? 'Hide Filters' : 'Advanced Filters'}
-              {Object.keys(leadFilters).filter(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search').length > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-[9px] min-w-[18px]">
-                  {Object.keys(leadFilters).filter(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search').length}
-                </span>
-              )}
-            </Button>
-          <Button onClick={() => setShowCreateForm(true)} className="h-9 px-4 bg-slate-900 text-white hover:bg-slate-800 shadow-sm border-none rounded-xl font-bold text-[10px] transition-all hover:scale-[1.02] active:scale-[0.98]">
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className={`h-10 text-[11px] font-bold border-gray-200 hover:bg-gray-50 transition-all ${showFilters ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-gray-600'}`}
+          >
+            <Filter className={`w-3.5 h-3.5 mr-1.5 ${showFilters ? 'text-white' : 'text-gray-400'}`} />
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </Button>
+          <Button onClick={() => setShowCreateForm(true)} className="h-10 px-4 bg-[#CBFF38] text-gray-900 hover:bg-[#b3d81b] shadow-sm border-none rounded-xl font-bold text-[11px] transition-all hover:scale-[1.02] active:scale-[0.98]">
             <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Lead
           </Button>
         </div>
@@ -233,23 +258,22 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
           {Object.entries(leadFilters).map(([key, value]) => {
             if (!value || key === 'search') return null;
             let label = key;
-            let displayValue = value as string;
-
             if (key === 'status') label = 'Status';
-            if (key === 'source') {
-              label = 'Source';
-              displayValue = displayValue.replace('_', ' ');
-            }
+            if (key === 'source') label = 'Source';
             if (key === 'metaFormName') label = 'Form';
             if (key === 'submissionDateFrom') label = 'From';
             if (key === 'submissionDateTo') label = 'To';
             if (key === 'lastContactedFrom') label = 'Contact From';
             if (key === 'lastContactedTo') label = 'Contact To';
 
+            const displayValue = Array.isArray(value)
+              ? value.filter(Boolean).map(v => String(v).replace('_', ' ')).join(', ').toUpperCase()
+              : String(value || '').replace('_', ' ').toUpperCase();
+
             return (
-              <Badge 
-                key={key} 
-                variant="secondary" 
+              <Badge
+                key={key}
+                variant="secondary"
                 className="pl-2 pr-1 py-1 h-7 flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-100 font-medium text-[10px] rounded-lg"
               >
                 <span className="opacity-60">{label}:</span> {displayValue}
@@ -282,7 +306,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
           title="Total Leads"
           value={leads.length}
           icon={Users}
-          color="bg-blue-50 text-blue-600"
+          color="bg-[#CBFF38]/20 text-gray-900"
           trend="+12%"
         />
         <StatCard
@@ -301,7 +325,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
           title="Converted"
           value={leads.filter(l => l.status === 'converted').length}
           icon={CheckCircle}
-          color="bg-emerald-50 text-emerald-600"
+          color="bg-[#b3d81b] text-white"
           trend="4.5%"
         />
       </div>
@@ -330,52 +354,96 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
                 <Select
-                  value={leadFilters.formNames?.[0] || ''}
+                  value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
                   onChange={(val) => handleFilterChange('formNames', val ? [val] : [])}
                   placeholder="Select form..."
                   options={[
                     { value: '', label: 'All Forms' },
-                    ...Array.from(new Set(leads.map(l => l.lastMetaFormName).filter(Boolean))).map(f => ({ value: f!, label: f! }))
+                    ...Array.from(new Set(leads.map(l => (l as any).lastMetaFormName).filter(Boolean))).map(f => ({ value: f as string, label: f as string }))
                   ]}
                   className="h-9 text-xs border-gray-200"
                 />
               </div>
 
               <div className="md:col-span-1 space-y-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date Range</label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="date"
-                    value={leadFilters.submissionDateFrom || ''}
-                    onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
-                    className="h-9 text-[10px] px-2 flex-1"
-                  />
-                  <span className="text-gray-300">-</span>
-                  <Input
-                    type="date"
-                    value={leadFilters.submissionDateTo || ''}
-                    onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
-                    className="h-9 text-[10px] px-2 flex-1"
-                  />
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={leadFilters.submissionDateFrom || ''}
+                      onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                    <span className="text-gray-300">-</span>
+                    <Input
+                      type="date"
+                      value={leadFilters.submissionDateTo || ''}
+                      onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {[
+                      { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+                      { label: 'Yesterday', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
+                      { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                      { label: 'Last 30 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                    ].map(preset => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          const { from, to } = preset.getValue();
+                          handleFilterChange('submissionDateFrom', from);
+                          handleFilterChange('submissionDateTo', to);
+                        }}
+                        className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               <div className="md:col-span-1 space-y-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Range</label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="date"
-                    value={leadFilters.lastContactedFrom || ''}
-                    onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
-                    className="h-9 text-[10px] px-2 flex-1"
-                  />
-                  <span className="text-gray-300">-</span>
-                  <Input
-                    type="date"
-                    value={leadFilters.lastContactedTo || ''}
-                    onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
-                    className="h-9 text-[10px] px-2 flex-1"
-                  />
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={leadFilters.lastContactedFrom || ''}
+                      onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                    <span className="text-gray-300">-</span>
+                    <Input
+                      type="date"
+                      value={leadFilters.lastContactedTo || ''}
+                      onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {[
+                      { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+                      { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                    ].map(preset => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          const { from, to } = preset.getValue();
+                          handleFilterChange('lastContactedFrom', from);
+                          handleFilterChange('lastContactedTo', to);
+                        }}
+                        className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -401,22 +469,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
           </CardContent>
         </Card>
       )}
-
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Input
-            placeholder="Search by Name, Email or Phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            className="h-10 pl-10 bg-white border-gray-200 shadow-sm focus:ring-blue-500 rounded-xl"
-          />
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        </div>
-        <Button onClick={handleSearch} className="h-10 px-6 bg-[#b3d81b] hover:bg-[#a1c218] text-white shadow-sm border-none rounded-xl font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]">
-          Find
-        </Button>
-      </div>
 
       {/* Bulk Actions Bar */}
       {selectedLeads.length > 0 && (

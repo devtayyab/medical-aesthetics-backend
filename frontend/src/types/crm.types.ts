@@ -374,4 +374,8 @@ export interface CrmAnalytics {
     date: string;
     amount: number;
   }[];
+  agentLeaderboard?: {
+    agent: string;
+    amount: number;
+  }[];
 }

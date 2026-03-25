@@ -378,6 +378,38 @@ export class BookingsService {
     }
 
 
+    // --- AUTOMATION: Create Confirmation Call Reminder Task ---
+    try {
+      // Find the salesperson related to this lead/customer or the creator
+      const salespersonId = (appointmentWithRelations as any).salespersonId || createAppointmentDto.bookedById;
+
+      if (salespersonId && appointmentWithRelations.clientId) {
+        const dueDate = new Date(appointmentWithRelations.startTime);
+        dueDate.setDate(dueDate.getDate() - 1); // 1 day before
+        // Ensure reminder is not in the past
+        if (dueDate < new Date()) {
+          dueDate.setTime(new Date().getTime() + 1000 * 60 * 60); // 1 hour from now
+        }
+
+        const therapyName = appointmentWithRelations.service?.treatment?.name || 'Treatment';
+
+        await this.crmService.createAction({
+          customerId: (appointmentWithRelations as any).customerRecordId || appointmentWithRelations.clientId,
+          salespersonId,
+          actionType: 'confirmation_call_reminder',
+          title: `Confirmation Call: ${appointmentWithRelations.client?.firstName || 'Client'} - ${therapyName}`,
+          description: `Confirm attendance for appointment at ${appointmentWithRelations.startTime.toLocaleString()}`,
+          status: 'pending',
+          priority: 'high',
+          dueDate: dueDate,
+          reminderDate: dueDate,
+          relatedAppointmentId: savedAppointment.id,
+        } as any);
+      }
+    } catch (err) {
+      console.error('Task automation failed during appointment creation', err);
+    }
+
     // Emit event for notifications with full relations
     this.eventEmitter.emit('appointment.created', appointmentWithRelations);
 
@@ -435,15 +467,34 @@ export class BookingsService {
       if (data?.treatmentDetails) {
         updateData.treatmentDetails = data.treatmentDetails;
       }
-      if (data?.totalAmount) {
+      if (data?.totalAmount !== undefined) {
         updateData.totalAmount = data.totalAmount;
       } else if (!appointment.totalAmount && appointment.service?.price) {
         updateData.totalAmount = appointment.service.price;
       }
+
+      if (data?.amountPaid !== undefined) {
+        updateData.amountPaid = data.amountPaid;
+      } else if (updateData.totalAmount) {
+        // Fallback to assume full amount was paid if amountPaid not explicitly provided but completion is triggered
+        updateData.amountPaid = updateData.totalAmount;
+      }
+
+      if (data?.paymentMethod) {
+        updateData.paymentMethod = data.paymentMethod;
+      }
     } else if (status === AppointmentStatus.CANCELLED) {
       updateData.cancelledAt = new Date();
+      updateData.cancelledById = userId;
+      // Financial impact: Revenue becomes 0 for canceled appointments
+      updateData.amountPaid = 0;
+      updateData.totalAmount = 0;
     } else if (status === AppointmentStatus.NO_SHOW) {
       updateData.noShowMarkedAt = new Date();
+      updateData.noShowMarkedById = userId;
+      // Financial impact: Revenue becomes 0 for no-shows (unless we implement no-show fee later)
+      updateData.amountPaid = 0;
+      updateData.totalAmount = 0;
     }
 
     await this.appointmentsRepository.update(id, updateData);
@@ -548,128 +599,99 @@ export class BookingsService {
     userId: string,
     userRole: string,
     query: { status?: string; date?: string; providerId?: string; appointmentSource?: 'clinic_own' | 'platform_broker'; clinicId?: string },
-  ): Promise<Appointment[]> {
-    const queryBuilder = this.appointmentsRepository.createQueryBuilder('appointment')
-      .leftJoinAndSelect('appointment.clinic', 'clinic')
-      .leftJoinAndSelect('appointment.service', 'service')
-      .leftJoinAndSelect('service.treatment', 'treatment')
-      .leftJoinAndSelect('appointment.provider', 'provider')
-      .leftJoinAndSelect('appointment.client', 'client')
-      .leftJoinAndSelect('appointment.bookedBy', 'bookedBy');
-
-    // Filter based on user role and permissions
-    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
-      // Admins and SUPER_ADMINs see all appointments. No restrictions.
-      queryBuilder.where('1=1');
-    } else if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      // For clinical owners/secretariat, we want to show all appointments for their clinic
-      const user = await this.usersRepository.findOne({
-        where: { id: userId },
-        relations: ['ownedClinics'],
-      });
-
-      if (!user) throw new NotFoundException('User not found');
-
-      const clinicIds = (user.ownedClinics || []).map(c => c.id);
-      if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
-
-      if (clinicIds.length > 0) {
-        queryBuilder.where('appointment.clinicId IN (:...clinicIds)', { clinicIds });
-      } else {
-        queryBuilder.where('appointment.providerId = :userId', { userId });
-      }
-    } else if (userRole === 'doctor') {
-      // Doctors ONLY see their own appointments
-      queryBuilder.where('appointment.providerId = :userId', { userId });
-    } else if (userRole === 'salesperson') {
-      // Salespeople see appointments:
-      // 1. They booked themselves
-      // 2. For clients assigned to them in CRM (CustomerRecord or Lead)
-      // 3. For any client whose mobile matches a lead assigned to them
-
-      // We'll broaden the selection and handle the "Blocked Time" logic in the mapping phase
-      // to ensure they see slots in clinics they might have access to, or just their own.
-      // Based on specific requirement: "If it is a Beauty Doctors Client should appear also in... salesperson who is owner"
-
-      if (query.clinicId || query.providerId) {
-        // Broaden selection for mapping later (masking results they don't own)
-        queryBuilder.leftJoin(Lead, 'lead', 'lead.phone = client.phone OR (client.email IS NOT NULL AND lead.email = client.email)')
-          .leftJoin(CustomerRecord, 'record', 'record.customerId = client.id');
-
-        if (query.clinicId) {
-          queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
-        }
-      } else {
-        // Restrictive selection when no scope provided
-        queryBuilder.leftJoin(Lead, 'lead', 'lead.phone = client.phone OR (client.email IS NOT NULL AND lead.email = client.email)')
-          .leftJoin(CustomerRecord, 'record', 'record.customerId = client.id')
-          .where('(appointment.bookedById = :userId OR record.assignedSalespersonId = :userId OR lead.assignedSalesId = :userId)', { userId });
-      }
-      // Select customerRecords to check ownership in mapping
-      queryBuilder.leftJoinAndSelect('client.customerRecords', 'customerRecords');
-
-    } else {
-      // For other roles (e.g. client), return appointments where user is involved
-      queryBuilder.where(
-        '(appointment.providerId = :userId OR appointment.clientId = :userId OR appointment.bookedById = :userId)',
-        { userId }
-      );
-    }
-
-    if (query.status) {
-      const normalizedStatus = typeof query.status === 'string' ? query.status.toUpperCase() : query.status;
-      queryBuilder.andWhere('appointment.status = :status', { status: normalizedStatus });
-    }
-
-    if (query.date) {
-      const date = new Date(query.date);
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-      
-      queryBuilder.andWhere('appointment.startTime BETWEEN :startOfDay AND :endOfDay', {
-        startOfDay,
-        endOfDay,
-      });
-    }
-
-    if (query.providerId) {
-      queryBuilder.andWhere('appointment.providerId = :providerId', { providerId: query.providerId });
-    }
-
+  ): Promise<any[]> {
     try {
+      console.log(`[BookingsService] findClinicAppointments called by user: ${userId}, role: ${userRole}`);
+      const queryBuilder = this.appointmentsRepository.createQueryBuilder('appointment')
+        .leftJoinAndSelect('appointment.clinic', 'clinic')
+        .leftJoinAndSelect('appointment.service', 'service')
+        .leftJoinAndSelect('service.treatment', 'treatment')
+        .leftJoinAndSelect('appointment.provider', 'provider')
+        .leftJoinAndSelect('appointment.client', 'client')
+        .leftJoinAndSelect('appointment.bookedBy', 'bookedBy');
+
+      // 1. Role-based visibility
+      if (userRole === 'admin' || userRole === 'SUPER_ADMIN' || userRole === 'manager') {
+        queryBuilder.where('1=1');
+      } else if (userRole === 'clinic_owner' || userRole === 'secretariat') {
+        const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+        if (!user) throw new NotFoundException('User not found');
+        const clinicIds = (user.ownedClinics || []).map(c => c.id);
+        if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
+        if (clinicIds.length > 0) {
+          queryBuilder.where('appointment.clinicId IN (:...clinicIds)', { clinicIds });
+        } else {
+          queryBuilder.where('appointment.providerId = :userId', { userId });
+        }
+      } else if (userRole === 'doctor') {
+        queryBuilder.where('appointment.providerId = :userId', { userId });
+      } else if (userRole === 'salesperson') {
+        // Sales team view (Team visibility, but masked if not owner)
+        if (query.clinicId || query.providerId) {
+          // Join leads/records to determine ownership in the mapping phase
+          queryBuilder.leftJoin('leads', 'l', 'l.phone = client.phone OR (client.email IS NOT NULL AND l.email = client.email)')
+            .leftJoin('customer_records', 'cr', 'cr.customerId = client.id');
+        } else {
+          // Default: strictly owned
+          queryBuilder.leftJoin('leads', 'l', 'l.phone = client.phone OR (client.email IS NOT NULL AND l.email = client.email)')
+            .leftJoin('customer_records', 'cr', 'cr.customerId = client.id')
+            .where('(appointment.bookedById = :userId OR appointment.providerId = :userId OR l.assignedSalesId = :userId OR cr.assignedSalespersonId = :userId)', { userId });
+        }
+        queryBuilder.leftJoinAndSelect('client.customerRecords', 'clientCustomerRecords');
+      } else {
+        queryBuilder.where('(appointment.providerId = :userId OR appointment.clientId = :userId OR appointment.bookedById = :userId)', { userId });
+      }
+
+      // 2. Filters
+      queryBuilder.andWhere('appointment.status != :deleted', { deleted: AppointmentStatus.DELETED });
+      
+      if (query.status) {
+        queryBuilder.andWhere('appointment.status = :status', { status: query.status.toUpperCase() });
+      }
+      if (query.date) {
+        const date = new Date(query.date);
+        const start = new Date(date).setHours(0, 0, 0, 0);
+        const end = new Date(date).setHours(23, 59, 59, 999);
+        queryBuilder.andWhere('appointment.startTime BETWEEN :start AND :end', { start: new Date(start), end: new Date(end) });
+      }
+      if (query.clinicId) queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
+      if (query.providerId) queryBuilder.andWhere('appointment.providerId = :providerId', { providerId: query.providerId });
+      if (query.appointmentSource) queryBuilder.andWhere('appointment.appointmentSource = :source', { source: query.appointmentSource });
+
       const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
 
-      // Masking logic: If salesperson doesn't own the client, hide details
+      // 3. Repeat Customer Logic
+      const clientIds = [...new Set(appointments.map(a => a.clientId).filter(Boolean))];
+      let repeatClients = new Set<string>();
+      if (clientIds.length > 0) {
+        try {
+          const previous = await this.appointmentsRepository.createQueryBuilder('apt')
+            .select('apt.clientId', 'clientId')
+            .where('apt.clientId IN (:...clientIds)', { clientIds })
+            .andWhere('apt.status = :status', { status: 'COMPLETED' })
+            .groupBy('apt.clientId')
+            .getRawMany();
+          repeatClients = new Set(previous.map(p => p.clientId));
+        } catch (repeatErr) {
+          console.error('[BookingsService] Repeat client check failed:', repeatErr.message);
+        }
+      }
+
+      // 4. Transform & Mask
       return appointments.map(apt => {
         let isMasked = false;
         if (userRole === 'salesperson') {
-          const isBookedByMe = apt.bookedById === userId;
-          const isProvidedByMe = apt.providerId === userId;
-          const assignedRecord = (apt.client as any)?.customerRecords?.find((r: any) => r.assignedSalespersonId === userId);
-          const isOwnedByMe = !!assignedRecord;
-
-          // Re-check based on requirement: "If it is a Beauty Doctors Client... should appear also in... salesperson who is owner"
-          // If NOT booked by me AND NOT owned by me AND NOT provided by me, mask it.
-          if (!isBookedByMe && !isOwnedByMe && !isProvidedByMe) {
-            isMasked = true;
-          }
-
+          const isBooked = apt.bookedById === userId;
+          const isProvided = apt.providerId === userId;
+          const isOwned = (apt.client as any)?.customerRecords?.some((r: any) => r.assignedSalespersonId === userId);
+          if (!isBooked && !isProvided && !isOwned) isMasked = true;
         }
 
         if (isMasked) {
           return {
-            id: apt.id,
-            startTime: apt.startTime,
-            endTime: apt.endTime,
-            status: apt.status,
-            clinicId: apt.clinicId,
-            isBlocked: true,
-            displayName: 'Blocked Time',
-            serviceName: 'Blocked',
+            id: apt.id, startTime: apt.startTime, endTime: apt.endTime, status: apt.status, clinicId: apt.clinicId,
+            isBlocked: true, displayName: 'Blocked Time', serviceName: 'Blocked',
             providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
-            bookedByInfo: null,
           };
         }
 
@@ -678,16 +700,14 @@ export class BookingsService {
           displayName: this.formatAppointmentDisplayName(apt),
           serviceName: apt.service?.treatment?.name,
           providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
-          bookedByInfo: apt.bookedBy ? {
-            id: apt.bookedBy.id,
-            name: `${apt.bookedBy.firstName} ${apt.bookedBy.lastName}`,
-            role: apt.bookedBy.role
-          } : null,
+          bookedByInfo: apt.bookedBy ? { id: apt.bookedBy.id, name: `${apt.bookedBy.firstName} ${apt.bookedBy.lastName}`, role: apt.bookedBy.role } : null,
+          isReturned: repeatClients.has(apt.clientId),
         };
-      }) as any[];
-    } catch (error) {
-      console.error('Error in findClinicAppointments:', error);
-      throw error;
+      });
+    } catch (err) {
+      console.error('[BookingsService] findClinicAppointments 500:', err);
+      this.logDebug('findClinicAppointments 500 ERROR', { message: err.message, stack: err.stack });
+      throw err;
     }
   }
 
@@ -752,15 +772,101 @@ export class BookingsService {
 
     if (status === AppointmentStatus.COMPLETED) {
       appointment.completedAt = new Date();
+      // RULE 8: Persistence of isReturned flag
+      if (!appointment.isReturned) {
+        try {
+          const previousDone = await this.appointmentsRepository.findOne({
+            where: { clientId: appointment.clientId, status: AppointmentStatus.COMPLETED },
+            order: { completedAt: 'DESC' },
+          });
+          appointment.isReturned = !!previousDone && new Date(previousDone.completedAt) < new Date(appointment.startTime);
+        } catch (rErr) {
+          console.error('[BookingsService] Ret check failed:', rErr.message);
+        }
+      }
     } else if (status === AppointmentStatus.CANCELLED) {
       appointment.cancelledAt = new Date();
+      appointment.cancelledById = userId;
     } else if (status === AppointmentStatus.NO_SHOW) {
       appointment.noShowMarkedAt = new Date();
+      appointment.noShowMarkedById = userId;
+      // Rule 1: No revenue for NO-SHOW
+      appointment.amountPaid = 0;
+      appointment.totalAmount = 0;
+      // Void revenue if it exists
+      try {
+        await this.financialService['paymentRecordsRepository'].update(
+          { appointmentId: appointment.id },
+          { notes: `Voided: appointment marked as NO-SHOW at ${new Date().toISOString()}` }
+        );
+      } catch (voidErr) {
+        console.error('[BookingsService] No-show void failed:', voidErr.message);
+      }
     }
 
     const oldStatus = appointment.status;
     const saved = await this.appointmentsRepository.save(appointment);
     const updated = await this.findById(saved.id);
+
+    // --- RULE 9: Task Interaction — auto-complete / cancel / follow-up linked tasks ---
+    try {
+      const linkedTasks = await this.crmService['crmActionsRepository']?.find?.({
+        where: { relatedAppointmentId: appointmentId },
+      });
+      if (linkedTasks?.length) {
+        for (const task of linkedTasks) {
+          if (status === AppointmentStatus.COMPLETED && task.status === 'pending') {
+            await this.crmService['crmActionsRepository'].update(task.id, { status: 'completed', completedAt: new Date() });
+          } else if (status === AppointmentStatus.CANCELLED && task.status === 'pending') {
+            await this.crmService['crmActionsRepository'].update(task.id, { status: 'cancelled' });
+          }
+        }
+      }
+    } catch (taskLinkErr) {
+      this.logDebug('Task link update failed', taskLinkErr);
+    }
+
+    // --- AUTOMATION: Create follow-up task for outcome statuses ---
+    try {
+      const outcomeStatuses = [AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW];
+      if (outcomeStatuses.includes(status as any)) {
+        const salespersonId = (appointment as any).salespersonId || updated.bookedById;
+        const clientId = updated.clientId;
+        if (salespersonId && clientId) {
+          const nextDay = new Date();
+          nextDay.setDate(nextDay.getDate() + 1);
+          nextDay.setHours(9, 0, 0, 0);
+          const customerName = updated.client ? `${updated.client.firstName} ${updated.client.lastName}` : 'Client';
+          const therapy = updated.service?.treatment?.name || 'Treatment';
+          let taskTitle: string;
+          let taskDesc: string;
+          if (status === AppointmentStatus.COMPLETED) {
+            taskTitle = `Verify Result: ${customerName} (${therapy})`;
+            taskDesc = `Appointment completed. Call to verify satisfaction and confirm successful procedure.`;
+          } else if (status === AppointmentStatus.NO_SHOW) {
+            taskTitle = `⚠️ NO-SHOW Follow-up: ${customerName}`;
+            taskDesc = `Client did not show up for ${therapy}. Contact immediately to reschedule and understand reason.`;
+          } else {
+            taskTitle = `Re-schedule: ${customerName} (Cancelled)`;
+            taskDesc = `Appointment was cancelled. Contact to understand reason and reschedule if appropriate.`;
+          }
+          await this.crmService.createAction({
+            customerId: (updated as any).customerRecordId || clientId,
+            salespersonId,
+            actionType: 'call',
+            title: taskTitle,
+            description: taskDesc,
+            status: 'pending',
+            priority: 'urgent',
+            dueDate: nextDay.toISOString(),
+            reminderDate: nextDay.toISOString(),
+            relatedAppointmentId: appointmentId,
+          } as any);
+        }
+      }
+    } catch (err) {
+      this.logDebug('Task automation failed during status update', err);
+    }
 
     // Audit log for status changes (Done/Canceled/No-show)
     if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(status as any)) {
@@ -833,18 +939,42 @@ export class BookingsService {
       }
       appointment.notes = paymentData.notes || appointment.notes;
 
-      // Record in PaymentRecord
-      await this.financialService.recordPayment({
-        appointmentId: appointment.id,
-        clinicId: appointment.clinicId,
-        clientId: appointment.clientId,
-        providerId: appointment.providerId,
-        amount: paymentData.amount,
-        method: paymentData.paymentMethod as any, // assuming compatible
-        type: paymentData.isAdvancePayment ? PaymentType.DEPOSIT : PaymentType.PAYMENT,
-        notes: paymentData.notes,
-        recordedById: userId,
-      });
+      // RULE 3: Update existing revenue record if it exists to avoid double-counting
+      try {
+        const type = paymentData.isAdvancePayment ? PaymentType.DEPOSIT : PaymentType.PAYMENT;
+        const existing = await this.financialService['paymentRecordsRepository'].findOne({
+          where: { appointmentId: appointment.id, type },
+        });
+
+        if (existing) {
+          await this.financialService['paymentRecordsRepository'].update(existing.id, {
+            amount: paymentData.amount,
+            method: paymentData.paymentMethod as any,
+            notes: (paymentData.notes || '') + ' (Recalculated)',
+            recordedById: userId,
+          });
+          
+          // Manually recalculate amountPaid on appointment via logic similar to recordPayment
+          const records = await this.financialService['paymentRecordsRepository'].find({ where: { appointmentId: appointment.id } });
+          const totalPaid = records.reduce((acc, r) => acc + (r.type === PaymentType.REFUND || r.type === PaymentType.VOID ? -Number(r.amount) : Number(r.amount)), 0);
+          appointment.amountPaid = totalPaid;
+        } else {
+          // Record new PaymentRecord
+          await this.financialService.recordPayment({
+            appointmentId: appointment.id,
+            clinicId: appointment.clinicId,
+            clientId: appointment.clientId,
+            providerId: appointment.providerId,
+            amount: paymentData.amount,
+            method: paymentData.paymentMethod as any,
+            type,
+            notes: paymentData.notes,
+            recordedById: userId,
+          });
+        }
+      } catch (fErr) {
+        console.error('[BookingsService] Revenue update failed:', fErr.message);
+      }
     }
 
     // Handle completion report
@@ -870,7 +1000,36 @@ export class BookingsService {
       }
     }
 
+    // RULE 8: Compute & persist isReturned at completion time (strict definition)
+    try {
+      const previousDone = await this.appointmentsRepository.findOne({
+        where: {
+          clientId: appointment.clientId,
+          status: AppointmentStatus.COMPLETED,
+        },
+        order: { completedAt: 'DESC' },
+      });
+      // isReturned = true if there is ANY prior completed appointment for this client
+      // (we check completedAt to ensure it's strictly before this appointment's scheduledTime)
+      appointment.isReturned = !!previousDone && new Date(previousDone.completedAt) < new Date(appointment.startTime);
+    } catch (returnedErr) {
+      console.error('[BookingsService] isReturned check failed:', returnedErr.message);
+      appointment.isReturned = false;
+    }
+
     const savedAppointment = await this.appointmentsRepository.save(appointment);
+
+    // RULE 9: Auto-complete related CRM task that triggered this appointment
+    try {
+      const relatedTasks = await this.crmService['crmActionsRepository']?.find?.({ where: { relatedAppointmentId: appointmentId, status: 'pending' } });
+      if (relatedTasks?.length) {
+        for (const task of relatedTasks) {
+          await this.crmService['crmActionsRepository'].update(task.id, { status: 'completed', completedAt: new Date() });
+        }
+      }
+    } catch (taskErr) {
+      console.error('[BookingsService] Task auto-complete failed:', taskErr.message);
+    }
 
     const newTotal = Number(savedAppointment.totalAmount ?? 0);
     const newAdvance = Number(savedAppointment.advancePaymentAmount ?? 0);
@@ -896,6 +1055,43 @@ export class BookingsService {
     });
 
     return savedAppointment;
+  }
+
+  // RULE 7: Soft-delete an appointment (sets status = DELETED, voids revenue)
+  async softDeleteAppointment(appointmentId: string, userId: string, userRole: string): Promise<Appointment> {
+    const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
+
+    if (appointment.status === AppointmentStatus.DELETED) {
+      throw new BadRequestException('Appointment is already deleted');
+    }
+
+    // Void revenue if payment was recorded
+    try {
+      await this.financialService['paymentRecordRepository']?.update?.(
+        { appointmentId },
+        { notes: `VOIDED: Appointment soft-deleted by userId=${userId} at ${new Date().toISOString()}` }
+      );
+    } catch (voidErr) {
+      console.error('[BookingsService] Payment void failed during soft-delete:', voidErr.message);
+    }
+
+    await this.appointmentsRepository.update(appointmentId, {
+      status: AppointmentStatus.DELETED,
+      cancelledAt: new Date(),
+      cancelledById: userId,
+      amountPaid: 0,
+      totalAmount: 0,
+    });
+
+    this.eventEmitter.emit('audit.log', {
+      userId,
+      action: 'APPOINTMENT_SOFT_DELETE',
+      resource: 'appointments',
+      resourceId: appointmentId,
+      data: { appointmentId, previousStatus: appointment.status, clinicId: appointment.clinicId },
+    });
+
+    return this.findById(appointmentId);
   }
 
   async recordPayment(

@@ -52,6 +52,30 @@ export class CrmScheduler {
     }
   }
 
+  // Every day at 04:00 AM
+  @Cron('0 4 * * *')
+  async injectAppointmentConfirmations() {
+    try {
+      this.logger.log('Injecting upcoming appointment confirmation tasks...');
+      const result = await this.crmService.scheduledInjectConfirmationTask();
+      this.logger.log(`Confirmation tasks injected: ${result.injected}`);
+    } catch (err) {
+      this.logger.error('Failed to inject confirmation tasks', err as any);
+    }
+  }
+
+  // Every day at 05:00 AM
+  @Cron('0 5 * * *')
+  async injectNextDayFollowUps() {
+    try {
+      this.logger.log('Injecting post-treatment follow-up tasks...');
+      const result = await this.crmService.scheduledInjectNextDayFollowUp();
+      this.logger.log(`Follow-up tasks injected: ${result.injected}`);
+    } catch (err) {
+      this.logger.error('Failed to inject follow-up tasks', err as any);
+    }
+  }
+
   // Every 15 minutes
   @Cron('*/15 * * * *')
   async runTaskReminders() {

@@ -76,8 +76,14 @@ export class Appointment {
   @Column({ type: 'timestamptz', nullable: true })
   cancelledAt: Date;
 
+  @Column({ type: 'uuid', nullable: true })
+  cancelledById: string;
+
   @Column({ type: 'timestamptz', nullable: true })
   noShowMarkedAt: Date;
+
+  @Column({ type: 'uuid', nullable: true })
+  noShowMarkedById: string;
 
   @Column({
     type: 'varchar',
@@ -107,14 +113,17 @@ export class Appointment {
 
   @Column('json', { nullable: true })
   appointmentCompletionReport?: {
-    patientCame: boolean; // Showed up / no-show
-    servicePerformed: string; // What service was performed
-    amountPaid: number; // What they paid
-    renewalDate?: Date; // When they renewed (follow-up or next service)
-    notes?: string; // Additional notes
-    recordedAt: Date; // When this report was recorded
-    recordedById: string; // Who recorded this
+    patientCame: boolean;
+    servicePerformed: string;
+    amountPaid: number;
+    renewalDate?: Date;
+    notes?: string;
+    recordedAt: Date;
+    recordedById: string;
   };
+
+  @Column({ type: 'boolean', default: false })
+  isReturned: boolean; // True if client had a previous COMPLETED appointment before this one
 
   @CreateDateColumn()
   createdAt: Date;
@@ -141,4 +150,12 @@ export class Appointment {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'bookedById' })
   bookedBy: User;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'cancelledById' })
+  cancelledBy: User;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'noShowMarkedById' })
+  noShowMarkedBy: User;
 }

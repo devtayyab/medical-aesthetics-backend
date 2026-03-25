@@ -89,6 +89,22 @@ export class MandatoryFieldValidationService {
       missingFields.push('therapy');
     }
 
+    if (!actionData.title) {
+        missingFields.push('title');
+    }
+
+    if (!actionData.actionType) {
+        missingFields.push('actionType');
+    }
+
+    if (!actionData.dueDate) {
+        missingFields.push('dueDate');
+    }
+
+    if (!actionData.reminderDate) {
+        missingFields.push('reminderDate');
+    }
+
     const clinic = actionData.metadata?.clinic || (actionData as any).clinic;
     if (!clinic) {
       missingFields.push('clinic');

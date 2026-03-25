@@ -93,7 +93,7 @@ export interface Appointment {
   clientId: string;
   startTime: string;
   endTime: string;
-  status: 'pending' | 'confirmed' | 'arrived' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+  status: 'PENDING' | 'CONFIRMED' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
   notes?: string;
   paymentMethod?: string;
   advancePaymentAmount?: number;

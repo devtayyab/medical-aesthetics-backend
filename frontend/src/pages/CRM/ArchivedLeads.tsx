@@ -1,198 +1,406 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchLeads } from "@/store/slices/crmSlice";
+import { fetchLeads, setLeadFilters } from "@/store/slices/crmSlice";
 import type { RootState, AppDispatch } from "@/store";
-import type { Lead } from "@/types";
-import { Search, Filter, X, ArrowRight, ArrowLeft, User, Tag, MessageSquare, Mail, Phone, Archive } from "lucide-react";
+import { Search, Filter, X, ChevronDown } from "lucide-react";
 import { DataTable } from "@/components/ui/DataTable";
 import { OneCustomerDetail } from "@/pages/CRM/OneCustomerDetail";
 import { Button } from "@/components/atoms/Button/Button";
-import { Card } from "@/components/molecules/Card/Card";
+import { Card, CardContent } from "@/components/molecules/Card/Card";
+import { Input } from "@/components/atoms/Input/Input";
+import { Badge } from "@/components/atoms/Badge/Badge";
+import { Select } from "@/components/atoms/Select/Select";
 
 export const ArchivedLeads: React.FC = () => {
-    const dispatch = useDispatch<AppDispatch>();
-    const { leads, isLoading, error } = useSelector(
-        (state: RootState) => state.crm
-    );
+  const dispatch = useDispatch<AppDispatch>();
+  const { leads, isLoading, leadFilters } = useSelector(
+    (state: RootState) => state.crm
+  );
 
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedCustomer, setSelectedCustomer] = useState<Lead | null>(null);
+  const [searchTerm, setSearchTerm] = useState(leadFilters.search || "");
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
 
-    // Fetch archived leads on mount
-    useEffect(() => {
-        const appliedFilters: any = {
-            status: ['lost'] // Archive = Lost in our flow
-        };
-        if (searchTerm.trim()) appliedFilters.search = searchTerm.trim();
+  // Enforce 'lost' status on mount and whenever filters change
+  useEffect(() => {
+    // We force status to 'lost' here to override any accidental global filters
+    const archiveFilters = { ...leadFilters, status: 'lost' };
+    dispatch(fetchLeads(archiveFilters));
+  }, [dispatch, leadFilters.search, leadFilters.formNames, leadFilters.submissionDateFrom, leadFilters.submissionDateTo, leadFilters.lastContactedFrom, leadFilters.lastContactedTo]);
 
-        dispatch(fetchLeads(appliedFilters));
-    }, [dispatch, searchTerm]);
+  const handleSearch = () => {
+    dispatch(setLeadFilters({
+      ...leadFilters,
+      search: searchTerm,
+      status: 'lost',
+      page: 1
+    }));
+  };
 
-    if (selectedCustomer) {
-        return (
-            <div className="p-6 h-full flex flex-col relative space-y-6">
-                <Card className="border-none shadow-sm pb-6">
-                    <div className="px-8 pt-6 border-b pb-4 mb-4">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold text-gray-800">
-                                Archived Lead Details
-                            </h2>
-                            <Button variant="outline" onClick={() => setSelectedCustomer(null)} className="flex items-center gap-2">
-                                <ArrowLeft className="w-4 h-4" /> Back to Archive
-                            </Button>
-                        </div>
-                    </div>
-                    <OneCustomerDetail
-                        SelectedCustomer={selectedCustomer as any}
-                        isLoading={isLoading}
-                        error={error}
-                    />
-                </Card>
-            </div>
-        );
-    }
+  // Real-time search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm !== leadFilters.search) {
+        handleSearch();
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
+  const handleFilterChange = (key: string, value: any) => {
+    dispatch(setLeadFilters({
+      ...leadFilters,
+      [key]: value,
+      status: 'lost', // Ensure it stays lost
+      page: 1
+    }));
+  };
+
+  if (selectedCustomer) {
     return (
-        <div className="p-6 h-full flex flex-col relative animate-in fade-in duration-500">
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-red-50 rounded-xl">
-                        <Archive className="w-6 h-6 text-red-600" />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Archived & Lost Leads</h2>
-                        <p className="text-sm text-gray-500 font-medium">View and manage contacts marked as lost or inactive</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Search Bar */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <div className="relative flex-1">
-                    <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search archived leads..."
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all shadow-sm"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                {searchTerm && (
-                    <button
-                        onClick={() => setSearchTerm("")}
-                        className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition"
-                    >
-                        Clear Search
-                    </button>
-                )}
-            </div>
-
-            {isLoading && (
-                <div className="flex-1 flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
-                    <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4" />
-                    <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Loading Archive...</p>
-                </div>
-            )}
-
-            {!isLoading && !error && leads.length === 0 && (
-                <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200 shadow-sm flex-1 flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
-                        <Archive className="w-8 h-8 text-gray-300" />
-                    </div>
-                    <p className="text-gray-500 text-lg font-bold">The archive is empty.</p>
-                    <p className="text-gray-400 text-sm mt-1 max-w-xs mx-auto font-medium">Leads that are marked as 'Not Interested' or manually lost will appear here.</p>
-                </div>
-            )}
-
-            {error && (
-                <div className="bg-red-50 text-red-600 p-6 rounded-2xl mb-6 border border-red-100 flex items-center gap-3">
-                    <X className="w-6 h-6" />
-                    <div>
-                        <p className="font-bold">Error loading archive</p>
-                        <p className="text-sm opacity-80">{error}</p>
-                    </div>
-                </div>
-            )}
-
-            {/* List View with DataTable */}
-            {!isLoading && leads.length > 0 && (
-                <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden animate-in slide-in-from-bottom-4 duration-700">
-                    <DataTable
-                        columns={[
-                            {
-                                accessorKey: "name",
-                                header: "Customer Name",
-                                cell: ({ row }: any) => (
-                                    <div className="flex items-center gap-3 py-1">
-                                        <div className="w-9 h-9 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold text-sm border border-red-100">
-                                            {row.original.firstName[0]}{row.original.lastName[0]}
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-gray-900 leading-none mb-1">
-                                                {row.original.firstName} {row.original.lastName}
-                                            </div>
-                                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{row.original.source || 'Manual Entry'}</div>
-                                        </div>
-                                    </div>
-                                ),
-                            },
-                            {
-                                accessorKey: "email",
-                                header: "Contact Details",
-                                cell: ({ row }: any) => (
-                                    <div className="space-y-1">
-                                        <div className="text-sm text-gray-600 font-medium flex items-center gap-2">
-                                            <Mail className="w-3 h-3 text-gray-400" /> {row.original.email}
-                                        </div>
-                                        <div className="text-xs text-gray-400 flex items-center gap-2">
-                                            <Phone className="w-3 h-3" /> {row.original.phone || "No phone recorded"}
-                                        </div>
-                                    </div>
-                                ),
-                            },
-                            {
-                                accessorKey: "lastContactedAt",
-                                header: "Last Activity",
-                                cell: ({ row }: any) => (
-                                    <div className="text-sm text-gray-600 flex items-center gap-2 font-medium">
-                                        <MessageSquare className="w-4 h-4 text-emerald-500" />
-                                        {row.original.lastContactedAt ? new Date(row.original.lastContactedAt).toLocaleDateString() : "Never contacted"}
-                                    </div>
-                                ),
-                            },
-                            {
-                                accessorKey: "status",
-                                header: "Status",
-                                cell: ({ row }: any) => (
-                                    <div className="flex items-center gap-2">
-                                        <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-100 text-red-700 border border-red-200 shadow-sm`}>
-                                            {row.original.status}
-                                        </span>
-                                    </div>
-                                ),
-                            },
-                            {
-                                id: "actions",
-                                header: "",
-                                cell: ({ row }: any) => (
-                                    <div className="flex justify-end pr-6">
-                                        <Button
-                                            onClick={() => setSelectedCustomer(row.original)}
-                                            variant="ghost"
-                                            className="h-10 px-4 bg-gray-50 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-100 rounded-xl font-bold text-xs transition-all flex items-center gap-2"
-                                        >
-                                            View Profile <ArrowRight className="w-4 h-4" />
-                                        </Button>
-                                    </div>
-                                ),
-                            },
-                        ]}
-                        data={leads}
-                        searchKey="email"
-                    />
-                </div>
-            )}
+      <div className="p-6 h-full flex flex-col relative space-y-6">
+        <div className="flex justify-between items-center px-4">
+          <Button variant="ghost" onClick={() => setSelectedCustomer(null)} className="font-bold text-xs flex items-center gap-2">
+            <X className="w-4 h-4" /> Back to Archive
+          </Button>
         </div>
+        <OneCustomerDetail
+          SelectedCustomer={selectedCustomer}
+          isLoading={isLoading}
+          error={null}
+        />
+      </div>
     );
+  }
+
+  return (
+    <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+            Archive Database
+            <Badge className="bg-red-50 text-red-600 border-red-100 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+              LOST LEADS
+            </Badge>
+          </h1>
+          <p className="text-gray-500 text-xs font-medium">Manage and review your inactive or lost contacts</p>
+        </div>
+
+        <div className="flex flex-1 max-w-md mx-4 relative">
+          <Input
+            placeholder="Search archive by Name, Email or Phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            className="h-10 pl-10 bg-white border-gray-200 shadow-sm focus:ring-[#b3d81b] rounded-xl w-full"
+          />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className={`h-10 text-[11px] font-bold border-gray-200 hover:bg-gray-50 transition-all ${showFilters ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-gray-600'}`}
+          >
+            <Filter className={`w-3.5 h-3.5 mr-1.5 ${showFilters ? 'text-white' : 'text-gray-400'}`} />
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Filter Chips */}
+      {Object.keys(leadFilters).some(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search' && k !== 'status') && (
+        <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+          {Object.entries(leadFilters).map(([key, value]) => {
+            if (!value || key === 'search' || key === 'status') return null;
+            let label = key;
+            if (key === 'metaFormName') label = 'Form';
+            if (key === 'submissionDateFrom') label = 'From';
+            if (key === 'submissionDateTo') label = 'To';
+            if (key === 'lastContactedFrom') label = 'Contact From';
+            if (key === 'lastContactedTo') label = 'Contact To';
+
+            const displayValue = Array.isArray(value)
+              ? value.filter(Boolean).map(v => String(v).replace('_', ' ')).join(', ').toUpperCase()
+              : String(value || '').replace('_', ' ').toUpperCase();
+
+            return (
+              <Badge
+                key={key}
+                variant="secondary"
+                className="pl-2 pr-1 py-1 h-7 flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-100 font-medium text-[10px] rounded-lg"
+              >
+                <span className="opacity-60">{label}:</span> {displayValue}
+                <button
+                  onClick={() => handleFilterChange(key, '')}
+                  className="ml-1 hover:bg-blue-100 rounded-full p-0.5 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            );
+          })}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-[10px] text-gray-400 hover:text-red-500 font-bold"
+            onClick={() => {
+              dispatch(setLeadFilters({ status: 'lost' }));
+              setSearchTerm('');
+            }}
+          >
+            Clear All
+          </Button>
+        </div>
+      )}
+
+      {/* Advanced Filters Drawer */}
+      {showFilters && (
+        <Card className="border-none shadow-md bg-white animate-in slide-in-from-top-2 duration-300">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
+                <Select
+                  value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
+                  onChange={(val) => handleFilterChange('formNames', val ? [val] : [])}
+                  placeholder="Select form..."
+                  options={[
+                    { value: '', label: 'All Forms' },
+                    ...Array.from(new Set(leads.map(l => (l as any).lastMetaFormName).filter(Boolean))).map(f => ({ value: f as string, label: f as string }))
+                  ]}
+                  className="h-9 text-xs border-gray-200"
+                />
+              </div>
+
+              <div className="md:col-span-1 space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={leadFilters.submissionDateFrom || ''}
+                      onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                    <span className="text-gray-300">-</span>
+                    <Input
+                      type="date"
+                      value={leadFilters.submissionDateTo || ''}
+                      onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {[
+                      { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+                      { label: 'Yesterday', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
+                      { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                      { label: 'Last 30 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                    ].map(preset => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          const { from, to } = preset.getValue();
+                          handleFilterChange('submissionDateFrom', from);
+                          handleFilterChange('submissionDateTo', to);
+                        }}
+                        className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="md:col-span-1 space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={leadFilters.lastContactedFrom || ''}
+                      onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                    <span className="text-gray-300">-</span>
+                    <Input
+                      type="date"
+                      value={leadFilters.lastContactedTo || ''}
+                      onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
+                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {[
+                      { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+                      { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                    ].map(preset => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          const { from, to } = preset.getValue();
+                          handleFilterChange('lastContactedFrom', from);
+                          handleFilterChange('lastContactedTo', to);
+                        }}
+                        className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50 text-[10px]">
+              <button
+                onClick={() => {
+                  dispatch(setLeadFilters({ status: 'lost' }));
+                  setSearchTerm('');
+                }}
+                className="font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Clear All Filters
+              </button>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" onClick={() => setShowFilters(false)} className="h-8 px-4 text-[10px] font-bold text-gray-400">
+                  Close Filters
+                </Button>
+                <Button onClick={handleSearch} size="sm" className="h-8 px-6 bg-slate-900 text-white rounded-lg font-bold">
+                  Apply Filters
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Table Section */}
+      <Card className="border-none shadow-md overflow-hidden bg-white rounded-2xl">
+        <CardContent className="p-0">
+          <DataTable
+            columns={[
+              {
+                id: "select",
+                header: ({ table }: any) => (
+                  <div className="pl-4">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-[#b3d81b] focus:ring-[#b3d81b]"
+                      checked={table.getIsAllPageRowsSelected()}
+                      onChange={(e) => table.toggleAllPageRowsSelected(!!e.target.checked)}
+                    />
+                  </div>
+                ),
+                cell: ({ row }: any) => (
+                  <div className="pl-4">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-[#b3d81b] focus:ring-[#b3d81b]"
+                      checked={row.getIsSelected()}
+                      onChange={(e) => {
+                        row.toggleSelected(!!e.target.checked);
+                      }}
+                    />
+                  </div>
+                ),
+              },
+              {
+                accessorKey: "name",
+                header: "Customer Name",
+                cell: ({ row }: any) => (
+                  <div className="flex items-center gap-3 py-1 cursor-pointer group" onClick={() => setSelectedCustomer(row.original)}>
+                    <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center font-bold text-[#212121] border border-gray-100 group-hover:bg-[#b3d81b]/10 group-hover:border-[#b3d81b]/20 transition-colors">
+                      {row.original.firstName?.[0]}{row.original.lastName?.[0]}
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-900 leading-none mb-1 group-hover:text-[#b3d81b] transition-colors">
+                        {row.original.firstName} {row.original.lastName}
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{row.original.source || 'Manual Entry'}</div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                accessorKey: "metaFormName",
+                header: "Meta Form Name",
+                cell: ({ row }: any) => (
+                  <div className="text-xs font-medium text-gray-500 italic max-w-[150px] truncate">
+                    {row.original.lastMetaFormName || "--"}
+                  </div>
+                ),
+              },
+              {
+                accessorKey: "email",
+                header: "Email",
+                cell: ({ row }: any) => (
+                  <div className="text-xs text-gray-500 font-medium">{row.original.email}</div>
+                ),
+              },
+              {
+                accessorKey: "phone",
+                header: "Phone",
+                cell: ({ row }: any) => (
+                  <div className="text-xs text-gray-500 font-medium">{row.original.phone || "--"}</div>
+                ),
+              },
+              {
+                accessorKey: "lastMetaFormSubmittedAt",
+                header: "Submission Date",
+                cell: ({ row }: any) => (
+                  <div className="text-xs text-gray-500 font-medium italic">
+                    {row.original.lastMetaFormSubmittedAt ? new Date(row.original.lastMetaFormSubmittedAt).toLocaleDateString() : "--"}
+                  </div>
+                ),
+              },
+              {
+                accessorKey: "status",
+                header: "Current Status",
+                cell: ({ row }: any) => (
+                  <Badge className="bg-red-50 text-red-600 border-red-100 text-[9px] font-black uppercase tracking-widest px-2 py-0.5">
+                    {row.original.status}
+                  </Badge>
+                ),
+              },
+              {
+                accessorKey: "lastContactedAt",
+                header: "Date Archived (Last Contacted)",
+                cell: ({ row }: any) => (
+                  <div className="text-xs text-gray-500 font-medium italic">
+                    {row.original.lastContactedAt ? new Date(row.original.lastContactedAt).toLocaleDateString() : "--"}
+                  </div>
+                ),
+              },
+              {
+                id: "actions",
+                header: "",
+                cell: ({ row }: any) => (
+                  <div className="flex justify-end pr-4">
+                    <Button
+                      onClick={() => setSelectedCustomer(row.original)}
+                      variant="ghost"
+                      className="h-8 w-8 p-0 hover:bg-gray-50 rounded-lg transition-colors group"
+                    >
+                      <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-900" />
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+            data={leads}
+            searchKey="email"
+          />
+          {isLoading && (
+            <div className="p-8 text-center text-xs text-gray-500 italic">Cleaning the archive...</div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 };

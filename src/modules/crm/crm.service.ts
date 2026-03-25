@@ -749,7 +749,12 @@ export class CrmService implements OnModuleInit {
 
       const linkedCustomerId = (lead.metadata as any)?.convertedToCustomerId;
       const idMatchList = [lead.id];
-      if (linkedCustomerId) idMatchList.push(linkedCustomerId);
+      if (linkedCustomerId) {
+        idMatchList.push(linkedCustomerId);
+        // Also add the CustomerRecord ID if it exists to catch post-conversion actions
+        const record = await this.customerRecordsRepository.findOne({ where: { customerId: linkedCustomerId } });
+        if (record) idMatchList.push(record.id);
+      }
 
       const leadAppointments = await this.appointmentsRepository.createQueryBuilder('apt')
         .leftJoinAndSelect('apt.service', 'service')
@@ -869,7 +874,7 @@ export class CrmService implements OnModuleInit {
       .where("lead.metadata->>'convertedToCustomerId' = :customerId", { customerId })
       .getOne();
 
-    const idMatchList = [customerId];
+    const idMatchList = [customerId, record.id];
     if (originalLead) idMatchList.push(originalLead.id);
 
     const appointments = await this.appointmentsRepository.createQueryBuilder('apt')
@@ -1183,7 +1188,10 @@ export class CrmService implements OnModuleInit {
 
       // Get communication history - merge database logs and legacy metadata logs
       const dbLogs = await this.communicationLogsRepository.find({
-        where: { customerId: In(idMatchList) },
+        where: [
+          { customerId: In(idMatchList) },
+          { relatedLeadId: In(idMatchList) },
+        ],
         relations: ['salesperson'],
         order: { createdAt: 'DESC' },
         take: 50,
@@ -1284,22 +1292,24 @@ export class CrmService implements OnModuleInit {
   }
 
   async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
-    // 1. Reminder Logic (Optional)
+    // 1. Mandatory Reminder Logic
+    if (!data.reminderDate) {
+      throw new BadRequestException('Reminder date is mandatory for all tasks.');
+    }
+
     const now = new Date();
-    if (data.reminderDate) {
-      const reminderDate = new Date(data.reminderDate);
-      const oneYearFromNow = new Date();
-      oneYearFromNow.setFullYear(now.getFullYear() + 1);
+    const reminderDate = new Date(data.reminderDate);
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setFullYear(now.getFullYear() + 1);
 
-      // Allow 5 minutes grace period for past dates
-      const gracePeriodMs = 5 * 60 * 1000;
-      if (reminderDate.getTime() < now.getTime() - gracePeriodMs) {
-        throw new BadRequestException('Reminder date cannot be in the past.');
-      }
+    // Allow 5 minutes grace period for past dates
+    const gracePeriodMs = 5 * 60 * 1000;
+    if (reminderDate.getTime() < now.getTime() - gracePeriodMs) {
+      throw new BadRequestException('Reminder date cannot be in the past.');
+    }
 
-      if (reminderDate > oneYearFromNow) {
-        throw new BadRequestException('Reminder date cannot be more than 1 year in the future.');
-      }
+    if (reminderDate > oneYearFromNow) {
+      throw new BadRequestException('Reminder date cannot be more than 1 year in the future.');
     }
 
     if (!data.title) {
@@ -1387,6 +1397,22 @@ export class CrmService implements OnModuleInit {
 
       if (reminderDate > oneYearFromNow) {
         throw new BadRequestException('Reminder date cannot exceed 1 year from task creation.');
+      }
+    }
+
+    // Constraint: No Task Without Reminder & Max 1-Year Rule
+    if (!action.reminderDate && !updateData.reminderDate && updateData.status !== 'completed' && updateData.status !== 'cancelled') {
+      throw new BadRequestException('Reminder date is mandatory for all active tasks.');
+    }
+
+    if (updateData.reminderDate || action.reminderDate) {
+      const now = new Date();
+      const reminderDate = new Date(updateData.reminderDate || action.reminderDate);
+      const oneYearFromNow = new Date();
+      oneYearFromNow.setFullYear(now.getFullYear() + 1);
+
+      if (reminderDate > oneYearFromNow) {
+        throw new BadRequestException('Reminder date cannot be more than 1 year in the future.');
       }
     }
 
@@ -1499,7 +1525,18 @@ export class CrmService implements OnModuleInit {
       }
 
       if (filters?.customerId) {
-        qb.andWhere('action.customerId = :customerId', { customerId: filters.customerId });
+        // Find record ID to match both possible storage locations
+        const record = await this.customerRecordsRepository.findOne({ where: { customerId: filters.customerId } });
+        const recordId = record?.id;
+        
+        if (recordId) {
+          qb.andWhere('(action.customerId = :recordId OR action.customerId = :custId OR action.relatedLeadId = :custId)', { 
+            recordId: recordId,
+            custId: filters.customerId 
+          });
+        } else {
+          qb.andWhere('(action.customerId = :customerId OR action.relatedLeadId = :customerId)', { customerId: filters.customerId });
+        }
       }
 
       if (filters?.salespersonId) {
@@ -1849,7 +1886,8 @@ export class CrmService implements OnModuleInit {
       .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId');
 
     if (!isAll) {
-      aptBaseQ.where('rec.assignedSalespersonId = :salespersonId', { salespersonId });
+      // ATTRIBUTION RULE: Use the provider assigned (Professional)
+      aptBaseQ.where('apt.providerId = :salespersonId', { salespersonId });
     } else {
       aptBaseQ.where('1=1');
     }
@@ -1862,21 +1900,21 @@ export class CrmService implements OnModuleInit {
     const bookedApts = await bookedQ.getCount();
 
     // Canceled 
-    let cancelledQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'cancelled' });
+    let cancelledQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'CANCELLED' });
     if (dateRange) {
       cancelledQ = cancelledQ.andWhere('apt.updatedAt >= :startDate AND apt.updatedAt <= :endDate', dateRange);
     }
     const cancelledApts = await cancelledQ.getCount();
 
     // No-shows 
-    let noShowQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'no_show' });
+    let noShowQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'NO_SHOW' });
     if (dateRange) {
       noShowQ = noShowQ.andWhere('apt.startTime >= :startDate AND apt.startTime <= :endDate', dateRange);
     }
     const noShowApts = await noShowQ.getCount();
 
     // Done / Completed 
-    let completedQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'completed' });
+    let completedQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'COMPLETED' });
     if (dateRange) {
       completedQ = completedQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startDate AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endDate', dateRange);
     }
@@ -1900,7 +1938,7 @@ export class CrmService implements OnModuleInit {
       EXISTS (
         SELECT 1 FROM appointments prev
         WHERE prev."clientId" = apt."clientId"
-        AND prev.status = 'completed'
+        AND prev.status = 'COMPLETED'
         AND COALESCE(prev."completedAt", prev."updatedAt", prev."startTime") < apt."startTime"
       )
     `);
@@ -1933,14 +1971,13 @@ export class CrmService implements OnModuleInit {
     }
 
     const now = new Date();
-    const startOfPeriod = dateRange ? dateRange.startDate : new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfPeriod = dateRange ? dateRange.endDate : now;
+    // 6a. Dates for MTD Turnover logic MUST ignore custom dateRange filter
+    const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const mtdEnd = now;
 
-    // Provide a default target if none is set to show something in the dashboard
-    if (!targetIsSet) {
-      targetIsSet = true;
-      monthlyTarget = isAll ? 50000 : 10000;
-    }
+    // 6b. Keep the period dates for other charts (e.g. TimeSeries below)
+    const startOfPeriod = dateRange ? dateRange.startDate : mtdStart;
+    const endOfPeriod = dateRange ? dateRange.endDate : mtdEnd;
 
     let mtdAptQ = this.appointmentsRepository
       .createQueryBuilder('apt')
@@ -1949,38 +1986,37 @@ export class CrmService implements OnModuleInit {
       .select([
         'COALESCE(SUM(COALESCE(apt.amountPaid, apt.totalAmount, svc.price, 0)), 0) as "totalRevenue"'
       ])
-      .where('apt.status = :status', { status: 'completed' });
+      .where('apt.status = :status', { status: 'COMPLETED' });
 
     if (!isAll) {
-      mtdAptQ = mtdAptQ.andWhere('rec.assignedSalespersonId = :salespersonId', { salespersonId });
+      // ATTRIBUTION RULE: Use the provider assigned (Professional)
+      mtdAptQ = mtdAptQ.andWhere('apt.providerId = :salespersonId', { salespersonId });
     }
 
-    mtdAptQ = mtdAptQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) BETWEEN :startOfPeriod AND :endOfPeriod', { startOfPeriod, endOfPeriod });
+    // STRICTLY use MTD boundaries here
+    mtdAptQ = mtdAptQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) BETWEEN :mtdStart AND :mtdEnd', { mtdStart, mtdEnd });
 
     const mtdStats = await mtdAptQ.getRawOne();
 
     const achievedMtd = parseFloat(mtdStats?.totalRevenue || 0);
 
-    // Scale monthly target based on period length (in case of custom date ranges)
-    let periodDays = Math.max(1, (endOfPeriod.getTime() - startOfPeriod.getTime()) / (1000 * 3600 * 24));
-    let scaledTarget = (monthlyTarget / 30) * periodDays;
+    // No scaling for Target. Target is full month.
+    const progress = targetIsSet && monthlyTarget > 0 ? (achievedMtd / monthlyTarget) : 0;
 
-    const progress = targetIsSet && scaledTarget > 0 ? (achievedMtd / scaledTarget) : 0;
-
-    // Pacing calculation based on elapsed time vs total time in month (or period)
-    const elapsedDays = Math.max(1, (now.getTime() - startOfPeriod.getTime()) / (1000 * 3600 * 24));
-    const totalDaysInPeriod = periodDays;
-    const expectedProgress = Math.min(1, Math.max(0, elapsedDays / totalDaysInPeriod));
+    // Pacing calculation based on elapsed time vs total days in current month
+    const totalDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const elapsedDays = now.getDate();
+    const expectedProgress = Math.min(1, Math.max(0, elapsedDays / totalDaysInMonth));
 
     let pacingDelta = 0;
     let pacingStatus = 'On Track';
-    if (targetIsSet && scaledTarget > 0) {
+    if (targetIsSet && monthlyTarget > 0) {
       pacingDelta = progress - expectedProgress;
       if (pacingDelta > 0.05) pacingStatus = 'Ahead';
       else if (pacingDelta < -0.05) pacingStatus = 'Behind';
     }
 
-    // 7. Turnover Time Series Data for Chart
+    // 7. Turnover Time Series Data for Chart (This CAN use the custom date range to show historical charts)
     const timeSeriesQ = this.appointmentsRepository
       .createQueryBuilder('apt')
       .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId')
@@ -1989,10 +2025,11 @@ export class CrmService implements OnModuleInit {
         "CAST(COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) AS DATE) as date",
         "SUM(COALESCE(apt.amountPaid, apt.totalAmount, svc.price, 0)) as amount",
       ])
-      .where('apt.status = :status', { status: 'completed' });
+      .where('apt.status = :status', { status: 'COMPLETED' });
 
     if (!isAll) {
-      timeSeriesQ.andWhere('rec.assignedSalespersonId = :salespersonId', { salespersonId });
+      // ATTRIBUTION RULE: Use the provider assigned (Professional)
+      timeSeriesQ.andWhere('apt.providerId = :salespersonId', { salespersonId });
     }
 
     timeSeriesQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startOfPeriod AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endOfPeriod', { startOfPeriod, endOfPeriod });
@@ -2006,6 +2043,28 @@ export class CrmService implements OnModuleInit {
       date: t.date?.toISOString ? t.date.toISOString().split('T')[0] : t.date,
       amount: parseFloat(t.amount || 0)
     }));
+    let agentLeaderboard = [];
+    if (isAll) {
+      const leaderboardQ = this.appointmentsRepository
+        .createQueryBuilder('apt')
+        .innerJoin('customer_records', 'rec', 'rec.customerId = apt.clientId')
+        .leftJoin('services', 'svc', 'svc.id = apt.serviceId')
+        .leftJoin('users', 'u', 'u.id = apt.bookedById')
+        .select([
+          "COALESCE(u.firstName || ' ' || u.lastName, 'Unknown Agent') as agent",
+          "SUM(COALESCE(apt.amountPaid, apt.totalAmount, svc.price, 0)) as amount",
+        ])
+        .where('apt.status = :status', { status: 'completed' })
+        .andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startOfPeriod AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endOfPeriod', { startOfPeriod, endOfPeriod })
+        .groupBy("u.firstName, u.lastName")
+        .orderBy("amount", "DESC");
+
+      const lbStats = await leaderboardQ.getRawMany();
+      agentLeaderboard = lbStats.map(lb => ({
+        agent: lb.agent,
+        amount: parseFloat(lb.amount || 0)
+      })).filter(lb => lb.amount > 0);
+    }
 
     return {
       // Flattened metrics for Dashboard
@@ -2024,7 +2083,7 @@ export class CrmService implements OnModuleInit {
 
       // Turnover Performance
       turnoverStats: {
-        monthlyTarget: Math.round(scaledTarget),
+        monthlyTarget: Math.round(monthlyTarget),
         targetIsSet,
         achieved: achievedMtd,
         progress: targetIsSet ? parseFloat(progress.toFixed(4)) : null,
@@ -2041,6 +2100,7 @@ export class CrmService implements OnModuleInit {
         returned: returnedApts
       },
       turnoverTimeSeries,
+      agentLeaderboard,
 
       // Detailed objects (legacy support)
       communicationStats: {
@@ -3496,6 +3556,111 @@ export class CrmService implements OnModuleInit {
         durationSec: log.durationSeconds || 0
       };
     });
+  }
+
+  /**
+   * CRON: Inject "Confirmation Call Reminder" for upcoming appointments
+   * Runs daily at midnight. Finds appointments happening in 24-48 hours.
+   */
+  async scheduledInjectConfirmationTask(): Promise<{ injected: number }> {
+    const tomorrowStart = new Date();
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    tomorrowStart.setHours(0, 0, 0, 0);
+
+    const dayAfterTomorrowEnd = new Date();
+    dayAfterTomorrowEnd.setDate(dayAfterTomorrowEnd.getDate() + 2);
+    dayAfterTomorrowEnd.setHours(23, 59, 59, 999);
+
+    const upcomingAppointments = await this.appointmentsRepository.find({
+      where: {
+        startTime: Between(tomorrowStart, dayAfterTomorrowEnd),
+        status: In([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED])
+      },
+      relations: ['service', 'service.treatment']
+    });
+
+    let injected = 0;
+    for (const apt of upcomingAppointments) {
+      // Check if task already exists
+      const existing = await this.crmActionsRepository.findOne({
+        where: {
+          relatedAppointmentId: apt.id,
+          actionType: 'confirmation_call_reminder'
+        }
+      });
+
+      if (!existing) {
+        const record = await this.customerRecordsRepository.findOne({ where: { customerId: apt.clientId } });
+        
+        await this.crmActionsRepository.save({
+          title: `Confirm Appointment: ${apt.service?.treatment?.name || 'Treatment'}`,
+          actionType: 'confirmation_call_reminder',
+          status: 'pending',
+          priority: 'high',
+          dueDate: new Date(apt.startTime.getTime() - 24 * 60 * 60 * 1000), // 24h before
+          reminderDate: new Date(apt.startTime.getTime() - 24 * 60 * 60 * 1000 - 30 * 60 * 1000), // 30m before due
+          customerId: record?.id,
+          relatedLeadId: (apt.clientId && !record) ? apt.clientId : null,
+          salespersonId: apt.bookedById || (record?.assignedSalespersonId) || (await this.usersRepository.findOne({ where: { role: UserRole.SUPER_ADMIN } })).id,
+          relatedAppointmentId: apt.id,
+          description: `Call client to confirm appointment at ${apt.startTime.toLocaleString()}`
+        });
+        injected++;
+      }
+    }
+    return { injected };
+  }
+
+  /**
+   * CRON: Inject "Next Day Follow-up" for completed appointments
+   * Runs daily. Finds appointments completed yesterday.
+   */
+  async scheduledInjectNextDayFollowUp(): Promise<{ injected: number }> {
+    const yesterdayStart = new Date();
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    yesterdayStart.setHours(0, 0, 0, 0);
+
+    const yesterdayEnd = new Date();
+    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+    yesterdayEnd.setHours(23, 59, 59, 999);
+
+    const finishedAppointments = await this.appointmentsRepository.find({
+      where: {
+        startTime: Between(yesterdayStart, yesterdayEnd),
+        status: AppointmentStatus.COMPLETED
+      },
+      relations: ['service', 'service.treatment']
+    });
+
+    let injected = 0;
+    for (const apt of finishedAppointments) {
+      const existing = await this.crmActionsRepository.findOne({
+        where: {
+          relatedAppointmentId: apt.id,
+          actionType: 'follow_up_call'
+        }
+      });
+
+      if (!existing) {
+        const record = await this.customerRecordsRepository.findOne({ where: { customerId: apt.clientId } });
+        
+        await this.crmActionsRepository.save({
+          title: `Post-Treatment Follow-up: ${apt.service?.treatment?.name || 'Treatment'}`,
+          actionType: 'follow_up_call',
+          status: 'pending',
+          priority: 'medium',
+          dueDate: new Date(), // Due today
+          reminderDate: new Date(),
+          customerId: record?.id,
+          relatedLeadId: (apt.clientId && !record) ? apt.clientId : null,
+          salespersonId: apt.bookedById || (record?.assignedSalespersonId) || (await this.usersRepository.findOne({ where: { role: UserRole.SUPER_ADMIN } })).id,
+          relatedAppointmentId: apt.id,
+          description: `Follow up after ${apt.service?.treatment?.name} appointment on ${apt.startTime.toDateString()}`
+        });
+        injected++;
+      }
+    }
+    return { injected };
   }
 
   async seedMockCrmData(): Promise<any> {
