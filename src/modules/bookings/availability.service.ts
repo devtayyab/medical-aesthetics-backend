@@ -28,7 +28,7 @@ export class AvailabilityService {
 
   async getAvailableSlots(
     clinicId: string,
-    serviceId: string,
+    serviceId: string | string[],
     providerId?: string | null,
     date?: string,
   ): Promise<{ slots: any[]; count: number; reason?: string; debug?: any }> {
@@ -43,12 +43,13 @@ export class AvailabilityService {
       console.log(msg, data);
     };
 
-    log('🔵 Availability Request:', { clinicId, serviceId, providerId, date });
+    const serviceIds = Array.isArray(serviceId) ? serviceId : [serviceId];
+    log('🔵 Availability Request:', { clinicId, serviceIds, providerId, date });
 
     try {
       // Validate required parameters
-      if (!clinicId || !serviceId) {
-        throw new BadRequestException('Clinic ID and Service ID are required');
+      if (!clinicId || serviceIds.length === 0) {
+        throw new BadRequestException('Clinic ID and at least one Service ID are required');
       }
 
       // Default to today if no date provided
@@ -62,15 +63,18 @@ export class AvailabilityService {
 
       log('🔵 Clinic:', clinic.name);
 
-      const services = await this.clinicsService.findServices(clinicId);
-      if (!services || services.length === 0) {
+      const allServices = await this.clinicsService.findServices(clinicId);
+      if (!allServices || allServices.length === 0) {
         throw new NotFoundException('No services found for this clinic');
       }
 
-      const service = services.find(s => s.id === serviceId);
-      if (!service) {
-        throw new NotFoundException(`Service not found for clinic ${clinicId}`);
+      const services = allServices.filter(s => serviceIds.includes(s.id));
+      if (services.length === 0) {
+        throw new NotFoundException(`No matching services found for clinic ${clinicId}`);
       }
+
+      const totalDurationMinutes = services.reduce((sum, s) => sum + s.durationMinutes, 0);
+      log('🔵 Total duration:', totalDurationMinutes);
 
       const timezone = clinic.timezone || 'UTC';
       log('🔵 Using timezone:', timezone);
@@ -194,10 +198,10 @@ export class AvailabilityService {
       const blocksByProvider = groupById(blockedSlots);
 
       // Generate slots in 30-minute intervals
-      while (currentSlot.getTime() + (service.durationMinutes * 60000) <= closeTime.getTime()) {
+      while (currentSlot.getTime() + (totalDurationMinutes * 60000) <= closeTime.getTime()) {
         slotCount++;
         const slotStart = new Date(currentSlot);
-        const slotEnd = new Date(currentSlot.getTime() + (service.durationMinutes * 60000));
+        const slotEnd = new Date(currentSlot.getTime() + (totalDurationMinutes * 60000));
 
         if (slotStart >= now) {
           // Find WHICH providers are free for this specific slot
@@ -249,7 +253,7 @@ export class AvailabilityService {
         const allPast = slotCount > 0 && firstSlotTime < now && closeTime < now;
 
         if (slotCount === 0) {
-          reason = `Service duration (${service.durationMinutes} min) is too long for the available time window (${businessHours.open} - ${businessHours.close})`;
+          reason = `Service duration (${totalDurationMinutes} min) is too long for the available time window (${businessHours.open} - ${businessHours.close})`;
         } else if (allPast) {
           reason = 'All available slots are in the past. Please select a future date.';
         } else {
@@ -272,7 +276,7 @@ export class AvailabilityService {
             close: businessHours.close,
             isOpen: businessHours.isOpen,
           },
-          serviceDuration: service.durationMinutes,
+          serviceDuration: totalDurationMinutes,
           date: targetDate,
           dayOfWeek,
           openTime: openTime.toISOString(),

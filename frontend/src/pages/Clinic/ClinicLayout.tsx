@@ -69,111 +69,118 @@ const ClinicLayout: React.FC = () => {
   const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans">
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-20 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-20 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            className="p-2 text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all"
           >
-            {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <h1 className="text-lg font-bold text-lime-600 truncate max-w-[200px]">
-            {profile?.name || 'Clinic Portal'}
-          </h1>
+          <div className="flex items-center gap-2">
+            <div className="size-2 rounded-full bg-[#CBFF38] animate-pulse" />
+            <h1 className="text-sm font-black uppercase tracking-tighter text-gray-900 truncate max-w-[150px] italic">
+              {profile?.name || 'Clinic Portal'}
+            </h1>
+          </div>
         </div>
-        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold text-sm">
+        <div className="size-9 bg-black text-[#CBFF38] rounded-full flex items-center justify-center font-black text-xs italic shadow-lg shadow-lime-500/10">
           {user?.firstName?.[0]}{user?.lastName?.[0]}
         </div>
       </div>
-
+ 
       {/* Overlay for mobile */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden transition-opacity duration-300"
           onClick={closeSidebar}
         />
       )}
-
+ 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white shadow-lg flex flex-col transition-transform duration-300 transform 
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-72 bg-white flex flex-col transition-all duration-500 ease-in-out border-r border-gray-100
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-        {/* Logo/Brand (Desktop) */}
-        <div className="hidden lg:block p-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-lime-500">
-            {profile?.name || 'Clinic Portal'}
-          </h1>
-          <p className="text-sm text-gray-600 mt-1 capitalize">{user?.role?.replace('_', ' ')}</p>
-        </div>
-
-        {/* Mobile Sidebar Header */}
-        <div className="lg:hidden p-4 border-b border-gray-200 flex items-center justify-between bg-lime-50">
-          <div>
-            <h2 className="font-bold text-gray-900">Menu</h2>
-            <p className="text-xs text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</p>
+        {/* Branding */}
+        <div className="p-8 pb-6">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="size-8 bg-black rounded-lg flex items-center justify-center text-[#CBFF38]">
+              <LayoutDashboard size={18} />
+            </div>
+            <h1 className="text-xl font-black uppercase italic tracking-tighter text-gray-900">
+              {profile?.name || 'Clinic Portal'}
+            </h1>
           </div>
-          <button onClick={closeSidebar} className="p-1 rounded-md hover:bg-lime-100">
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
+          <div className="flex items-center gap-2 mt-4 px-1">
+             <div className="size-1.5 rounded-full bg-green-500" />
+             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">System Online</span>
+          </div>
         </div>
-
+ 
         {/* Navigation */}
-        <nav className="flex-1 p-4 overflow-y-auto">
-          <ul className="space-y-2">
+        <nav className="flex-1 px-4 py-4 overflow-y-auto no-scrollbar">
+          <div className="space-y-1">
             {menuItems.map((item) => (
-              <li key={item.id}>
-                <NavLink
-                  to={item.path}
-                  onClick={closeSidebar}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                      ? 'bg-[#CBFF38] text-[#33373F] font-medium'
-                      : 'text-gray-700 hover:bg-lime-50'
-                    }`
-                  }
-                >
-                  {iconMap[item.icon]}
-                  <span>{item.label}</span>
-                </NavLink>
-              </li>
+              <NavLink
+                key={item.id}
+                to={item.path}
+                onClick={closeSidebar}
+                className={({ isActive }) =>
+                  `group flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 ${isActive
+                    ? 'bg-black text-[#CBFF38] shadow-xl shadow-lime-500/10'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                  }`
+                }
+              >
+                <div className="transition-transform duration-300 group-hover:scale-110">
+                   {iconMap[item.icon]}
+                </div>
+                <span className="text-xs font-black uppercase tracking-widest">{item.label}</span>
+                {item.id === 'appointments' && (
+                   <div className="ml-auto size-5 rounded-full bg-[#CBFF38] text-black text-[10px] font-black flex items-center justify-center animate-bounce shadow-sm">
+                      !
+                   </div>
+                )}
+              </NavLink>
             ))}
-          </ul>
+          </div>
         </nav>
-
+ 
         {/* User Profile & Logout */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
-              <span className="text-blue-600 font-semibold">
-                {user?.firstName?.[0]}
-                {user?.lastName?.[0]}
+        <div className="p-6 m-4 bg-gray-50 rounded-[32px] border border-gray-100">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="size-10 bg-white shadow-sm rounded-2xl flex items-center justify-center shrink-0">
+              <span className="text-black font-black text-sm italic">
+                {user?.firstName?.[0]}{user?.lastName?.[0]}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900 truncate">
+              <p className="font-black text-[10px] uppercase tracking-tighter text-gray-900 truncate italic">
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-sm text-gray-600 truncate">{user?.email}</p>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight truncate leading-none mt-1">{user?.role?.replace('_', ' ')}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-2xl border border-gray-100 transition-all font-black uppercase text-[10px] tracking-widest shadow-sm"
           >
             <LogOut className="w-4 h-4" />
-            <span className="font-medium">Logout</span>
+            <span>Sign Out</span>
           </button>
         </div>
       </aside>
-
+ 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-50">
-        <div className="flex-1 overflow-y-auto pt-[60px] lg:pt-0">
-          <Outlet />
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        <div className="flex-1 overflow-y-auto no-scrollbar pt-[60px] lg:pt-0">
+           <div className="max-w-[1600px] mx-auto min-h-full">
+             <Outlet />
+           </div>
         </div>
       </main>
     </div>

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { completeAppointment } from '../../store/slices/clinicSlice';
-import { PaymentMethod, Appointment, Service } from '../../types/clinic.types';
-import { X, DollarSign, CreditCard, Banknote, Building2, Gift, RefreshCw } from 'lucide-react';
+import { updateAppointmentStatus } from '../../store/slices/clinicSlice';
+import { PaymentMethod, Appointment, Service, AppointmentStatus } from '../../types/clinic.types';
+import { X, DollarSign, CreditCard, Banknote, Building2, Gift, RefreshCw, AlertTriangle } from 'lucide-react';
 import { clinicsAPI, loyaltyAPI } from '@/services/api';
 
 interface AppointmentExecutionModalProps {
@@ -71,49 +71,48 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
     return Math.max(0, baseAmount - pointsReduction);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, status: AppointmentStatus = AppointmentStatus.EXECUTED) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      const updateData: any = {
+        notes: treatmentNotes,
+        treatmentDetails: {
+          originalServiceId: appointment.serviceId,
+          actualServiceId: selectedServiceId,
+          pointsRedeemed: pointsToRedeem,
+          notes: treatmentNotes,
+          executedAt: new Date().toISOString(),
+        },
+        serviceId: selectedServiceId,
+        totalAmount: calculateTotal(),
+        rewardPointsRedeemed: pointsToRedeem,
+      };
+
       // 1. Redeem points if any
       if (pointsToRedeem > 0) {
         await loyaltyAPI.redeemPoints({
           clientId: appointment.clientId,
           clinicId: appointment.clinicId,
           points: pointsToRedeem,
-          description: `Redeemed points for appointment #${appointment.id.slice(0, 8)}`
+          description: `Loyalty Redemption for apt #${appointment.id.slice(0, 8)}`
         });
       }
 
-      // 2. Complete appointment
+      // 2. Perform status update (Execution)
       await dispatch(
-        completeAppointment({
+        updateAppointmentStatus({
           id: appointment.id,
-          data: {
-            paymentData: {
-              paymentMethod,
-              amount: calculateTotal(),
-              notes: treatmentNotes,
-              isAdvancePayment: false,
-            },
-            treatmentDetails: {
-              originalServiceId: appointment.serviceId,
-              actualServiceId: selectedServiceId,
-              pointsRedeemed: pointsToRedeem,
-              notes: treatmentNotes,
-              completedAt: new Date().toISOString(),
-            },
-            // Also pass the new serviceId if changed
-            serviceId: selectedServiceId,
-          },
+          status: status,
+          updateData
         })
       ).unwrap();
 
       onComplete();
     } catch (error) {
-      console.error('Failed to complete appointment:', error);
-      alert('Failed to complete appointment. Please try again.');
+      console.error('Clinical action failed:', error);
+      alert('Failed to process clinical action. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -157,12 +156,12 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium"
                 >
                   {services.map(s => (
-                    <option key={s.id} value={s.id}>{s.treatment?.name || 'Unknown Service'} - ${s.price}</option>
+                    <option key={s.id} value={s.id}>{s.treatment?.name || 'Unknown Service'} - €{s.price}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500">BASE PRICE ($)</label>
+                <label className="text-xs font-bold text-gray-500">BASE PRICE (€)</label>
                 <div className="relative">
                   <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
@@ -190,7 +189,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
 
             <div className="flex items-center gap-4">
               <div className="flex-1">
-                <p className="text-xs text-amber-700 mb-2">Redeem points for a discount ($1 = 1pt)</p>
+                <p className="text-xs text-amber-700 mb-2">Redeem points for a discount (€1 = 1pt)</p>
                 <input
                   type="range"
                   min="0"
@@ -202,7 +201,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               </div>
               <div className="w-24 text-center bg-white border border-amber-200 rounded-lg p-2">
                 <p className="text-[10px] font-bold text-amber-600 uppercase">Discount</p>
-                <p className="text-lg font-bold text-amber-900">-${pointsToRedeem}</p>
+                <p className="text-lg font-bold text-amber-900">-€{pointsToRedeem}</p>
               </div>
             </div>
           </div>
@@ -243,7 +242,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               </div>
               <div className="text-3xl font-bold flex items-center justify-between">
                 <span>Total Due:</span>
-                <span className="text-green-400">${calculateTotal().toFixed(2)}</span>
+                <span className="text-green-400">€{calculateTotal().toFixed(2)}</span>
               </div>
               <div className="mt-2 text-[10px] text-gray-500 uppercase font-bold tracking-widest text-right">
                 (inc. all taxes & discounts)
@@ -276,13 +275,21 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               Back
             </button>
             <button
+              type="button"
+              onClick={(e) => handleSubmit(e, AppointmentStatus.NO_SHOW)}
+              className="px-6 py-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold flex items-center gap-2"
+              disabled={isSubmitting}
+            >
+              <AlertTriangle size={16} /> No Show
+            </button>
+            <button
               type="submit"
-              className="flex-[2] px-6 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold shadow-lg shadow-green-200 flex items-center justify-center gap-2 group"
+              className="flex-1 px-6 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold shadow-lg shadow-green-200 flex items-center justify-center gap-2 group"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Finalizing...' : (
                 <>
-                  Complete Execution
+                  Executed
                   <RefreshCw className={`w-5 h-5 ${isSubmitting ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
                 </>
               )}

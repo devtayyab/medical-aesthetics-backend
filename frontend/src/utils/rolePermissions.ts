@@ -18,7 +18,7 @@ export const permissions = {
   canViewServices: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER],
 
   // Appointments
-  canConfirmAppointments: [UserRole.ADMIN, UserRole.SALESPERSON],
+  canConfirmAppointments: [UserRole.ADMIN, UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT],
   canMarkNoShow: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.ADMIN, UserRole.SALESPERSON],
   canRescheduleAppointments: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.ADMIN, UserRole.SALESPERSON],
   canCompleteAppointments: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.ADMIN, UserRole.SALESPERSON],

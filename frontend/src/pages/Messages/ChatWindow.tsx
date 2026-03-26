@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Send, Phone, Video, MoreVertical, Paperclip, Smile } from 'lucide-react';
+import { Send, Phone, Video, MoreVertical, Paperclip, Smile, ShieldCheck, Clock } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../store';
 import { sendMessage, fetchMessages } from '../../store/slices/messagesSlice';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ChatWindowProps {
     conversationId: string;
@@ -43,88 +44,122 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId }) => {
     if (!conversation) return null;
 
     return (
-        <div className="flex flex-col h-full bg-slate-50/20">
+        <div className="flex flex-col h-full bg-white relative">
             {/* Chat Header */}
-            <div className="p-4 bg-white border-b border-slate-100 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 font-bold border border-slate-200">
-                        {otherUser?.firstName?.[0]}{otherUser?.lastName?.[0]}
+            <header className="p-6 md:p-8 bg-black text-white flex items-center justify-between border-b border-white/5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-full bg-[#CBFF38]/5 blur-3xl rounded-full translate-x-1/2" />
+                
+                <div className="flex items-center gap-6 relative z-10">
+                    <div className="relative group">
+                       <div className="size-14 rounded-2xl bg-[#CBFF38] flex items-center justify-center text-black font-black italic text-xl shadow-lg group-hover:rotate-6 transition-transform">
+                          {otherUser?.firstName?.[0]}{otherUser?.lastName?.[0]}
+                       </div>
+                       <div className="absolute -bottom-1 -right-1 size-4 bg-lime-500 rounded-full border-4 border-black animate-pulse" />
                     </div>
+                    
                     <div>
-                        <h3 className="font-bold text-slate-900 leading-none text-sm">
-                            {conversation.title || `${otherUser?.firstName} ${otherUser?.lastName}`}
-                        </h3>
-                        <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1 mt-1 uppercase tracking-tight">
-                            <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
-                            Online
-                        </span>
+                        <div className="flex items-center gap-3">
+                           <h3 className="font-black text-white uppercase italic tracking-tighter leading-none text-xl">
+                              {conversation.title || `${otherUser?.firstName} ${otherUser?.lastName}`}
+                           </h3>
+                           <div className="px-2 py-0.5 bg-white/5 backdrop-blur-md rounded-md border border-white/10">
+                              <span className="text-[8px] font-black uppercase tracking-widest text-[#CBFF38] italic">Encrypted</span>
+                           </div>
+                        </div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 mt-2 italic flex items-center gap-2">
+                           <ShieldCheck size={10} className="text-[#CBFF38]" />
+                           Secure Session Active
+                        </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-1">
-                    <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"><Phone className="w-4 h-4" /></button>
-                    <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"><Video className="w-4 h-4" /></button>
-                    <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"><MoreVertical className="w-4 h-4" /></button>
+
+                <div className="flex items-center gap-4 relative z-10">
+                    <button className="size-12 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all border border-white/5">
+                       <Phone size={18} />
+                    </button>
+                    <button className="size-12 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all border border-white/5">
+                       <Video size={18} />
+                    </button>
                 </div>
-            </div>
+            </header>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                {isMessagesLoading ? (
-                    <div className="flex justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    </div>
-                ) : (
-                    activeConversationMessages.map((msg, idx) => {
-                        const isMe = msg.senderId === user?.id;
-                        return (
-                            <div
-                                key={msg.id || idx}
-                                className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
-                            >
-                                <div
-                                    className={`max-w-[75%] p-3 rounded-lg shadow-sm ${isMe
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-white text-slate-800 border border-slate-200'
-                                        }`}
+            <div className="flex-1 overflow-y-auto p-8 space-y-10 no-scrollbar bg-gray-50/20">
+                <AnimatePresence mode="popLayout">
+                    {isMessagesLoading && activeConversationMessages.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-4">
+                            <div className="size-10 border-4 border-black border-t-transparent rounded-full animate-spin shadow-xl" />
+                            <p className="text-[11px] font-black uppercase tracking-widest text-gray-300 italic">Decrypting incoming packets...</p>
+                        </div>
+                    ) : (
+                        activeConversationMessages.map((msg, idx) => {
+                            const isMe = msg.senderId === user?.id;
+                            return (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    key={msg.id || idx}
+                                    className={`flex ${isMe ? 'justify-end' : 'justify-start shadow-xl shadow-gray-100/5'}`}
                                 >
-                                    <p className="text-sm leading-relaxed font-medium">{msg.content}</p>
-                                    <div className={`text-[9px] mt-1 font-bold ${isMe ? 'text-blue-100 text-right' : 'text-slate-400'}`}>
-                                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    <div className="flex flex-col space-y-2 max-w-[80%]">
+                                        <div
+                                            className={`p-5 px-6 rounded-[32px] relative overflow-hidden transition-all ${isMe
+                                                ? 'bg-black text-white rounded-tr-none shadow-2xl'
+                                                : 'bg-white text-gray-900 border border-gray-100 rounded-tl-none shadow-xl'
+                                                }`}
+                                        >
+                                            {isMe && (
+                                              <div className="absolute top-0 right-0 p-4 opacity-5">
+                                                 <Send size={40} className="text-[#CBFF38]" />
+                                              </div>
+                                            )}
+                                            <p className="text-[13px] leading-relaxed font-bold italic z-10 relative">{msg.content}</p>
+                                        </div>
+                                        <div className={`flex items-center gap-2 px-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                            <Clock size={10} className="text-gray-300" />
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 italic">
+                                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
+                                </motion.div>
+                            );
+                        })
+                    )}
+                </AnimatePresence>
                 <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-white border-t border-slate-100">
-                <form onSubmit={handleSend} className="flex items-center gap-2">
-                    <button type="button" className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-lg transition-all">
-                        <Smile className="w-5 h-5" />
-                    </button>
-                    <button type="button" className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-lg transition-all">
-                        <Paperclip className="w-5 h-5" />
-                    </button>
-                    <div className="flex-1 relative">
+            <div className="p-8 bg-white border-t border-gray-50 relative z-30">
+                <form onSubmit={handleSend} className="flex items-center gap-6 max-w-5xl mx-auto">
+                    <div className="flex gap-2">
+                        <button type="button" className="size-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 hover:bg-black hover:text-[#CBFF38] transition-all">
+                            <Smile size={20} />
+                        </button>
+                        <button type="button" className="size-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 hover:bg-black hover:text-[#CBFF38] transition-all">
+                            <Paperclip size={20} />
+                        </button>
+                    </div>
+                    
+                    <div className="flex-1 relative group">
                         <input
                             type="text"
-                            placeholder="Type your message..."
-                            className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-transparent focus:border-blue-400 rounded-lg text-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/5"
+                            placeholder="Type transmission content..."
+                            className="w-full h-16 pl-8 pr-20 bg-gray-100/50 border-none rounded-3xl text-sm font-bold text-gray-900 focus:ring-2 focus:ring-black transition-all shadow-inner placeholder:italic placeholder:font-black placeholder:uppercase placeholder:text-gray-300 placeholder:tracking-widest"
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                         />
                         <button
                             type="submit"
                             disabled={!content.trim()}
-                            className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-2 rounded-md transition-all ${content.trim()
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'bg-slate-100 text-slate-300'
+                            className={`absolute right-3 top-1/2 -translate-y-1/2 h-10 px-6 rounded-2xl transition-all flex items-center gap-2 font-black uppercase text-[10px] tracking-widest italic  ${content.trim()
+                                ? 'bg-black text-[#CBFF38] shadow-xl shadow-lime-500/10'
+                                : 'bg-gray-200 text-gray-400 opacity-50'
                                 }`}
                         >
-                            <Send className="w-4 h-4" />
+                            Execute <Send size={14} className={content.trim() ? 'animate-pulse' : ''} />
                         </button>
                     </div>
                 </form>

@@ -9,7 +9,7 @@ import {
   unblockTimeSlot,
 } from "../../store/slices/clinicSlice";
 import { crmAPI } from "../../services/api";
-import { AvailabilitySettings, BusinessHours, BlockedSlot } from "../../types/clinic.types";
+import { BusinessHours, BlockedSlot } from "../../types/clinic.types";
 import { Clock, Save, Calendar, Plus, Trash2 } from "lucide-react";
 
 const AvailabilityPage: React.FC = () => {
@@ -28,20 +28,12 @@ const AvailabilityPage: React.FC = () => {
     sunday: { open: "10:00", close: "15:00", isOpen: false },
   });
 
-
-  // We'll store the full entity or a mapped version that includes ID for deletion
   const [blockedDates, setBlockedDates] = useState<{ id: string; date: string }[]>([]);
   const [blockedSlots, setBlockedSlots] = useState<{ id: string; result: BlockedSlot }[]>([]);
-
-  // Form states
-
-  // Form states
   const [newBlockedDate, setNewBlockedDate] = useState("");
   const [newSlot, setNewSlot] = useState({ date: "", startTime: "09:00", endTime: "10:00" });
-
   const [timezone, setTimezone] = useState("Europe/Athens");
   const [isSaving, setIsSaving] = useState(false);
-
   const [availableClinics, setAvailableClinics] = useState<any[]>([]);
   const [selectedClinicId, setSelectedClinicId] = useState<string>("");
 
@@ -70,12 +62,6 @@ const AvailabilityPage: React.FC = () => {
   const loadBlockedSlots = async (clinicId?: string) => {
     try {
       const result = await dispatch(fetchBlockedSlots()).unwrap();
-      // NOTE: fetchBlockedSlots doesn't currently take clinicId in clinicSlice, 
-      // but the backend might filter it if we are authenticated or we should update it.
-      // For now, let's assume it returns what we have access to.
-      // Ideally blockTimeSlot and loadBlockedSlots should be per clinic.
-      // Separate full day blocks vs partial
-      // Assumption: Full day blocks start at 00:00 and end at 23:59 (or next day 00:00)
       const dates: { id: string; date: string }[] = [];
       const slots: { id: string; result: BlockedSlot }[] = [];
 
@@ -123,31 +109,30 @@ const AvailabilityPage: React.FC = () => {
   }, [availability]);
 
   const handleSave = async () => {
+    if (!selectedClinicId) {
+      alert("Please select a clinic first.");
+      return;
+    }
+
     setIsSaving(true);
     try {
-      // Only update business hours and timezone here
-      const payload: Partial<AvailabilitySettings> = {
+      const payload: any = {
         businessHours,
         timezone,
+        clinicId: selectedClinicId,
       };
 
-      await dispatch(
-        updateAvailability({ ...payload, clinicId: selectedClinicId } as any)
-      ).unwrap();
+      await dispatch(updateAvailability(payload)).unwrap();
       alert("Availability settings saved successfully!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save availability:", error);
-      alert("Failed to save settings. Please try again.");
+      alert("Failed to save settings");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const updateDayHours = (
-    day: string,
-    field: "open" | "close" | "isOpen",
-    value: any
-  ) => {
+  const updateDayHours = (day: string, field: "open" | "close" | "isOpen", value: any) => {
     setBusinessHours({
       ...businessHours,
       [day]: {
@@ -159,8 +144,6 @@ const AvailabilityPage: React.FC = () => {
 
   const addBlockedDate = async () => {
     if (newBlockedDate) {
-      // Check for dups? For now let's just add.
-      // Full day block: 00:00 to 23:59:59
       const start = new Date(newBlockedDate);
       start.setHours(0, 0, 0, 0);
       const end = new Date(newBlockedDate);
@@ -174,7 +157,7 @@ const AvailabilityPage: React.FC = () => {
           reason: 'Full Day Block'
         } as any)).unwrap();
         setNewBlockedDate("");
-        loadBlockedSlots(selectedClinicId); // Reload to get IDs
+        loadBlockedSlots(selectedClinicId);
       } catch (err) {
         alert("Failed to block date");
       }
@@ -229,249 +212,270 @@ const AvailabilityPage: React.FC = () => {
     "sunday",
   ];
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Availability Settings
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Manage your clinic's working hours and blocked dates
-          </p>
-          {availableClinics.length > 1 && (
-            <div className="mt-4 flex items-center gap-3">
-              <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Select Clinic:</span>
-              <select
-                value={selectedClinicId}
-                onChange={(e) => setSelectedClinicId(e.target.value)}
-                className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm font-bold shadow-sm focus:ring-2 focus:ring-lime-300 outline-none min-w-[250px]"
-              >
-                {availableClinics.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-3 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors disabled:opacity-50"
-        >
-          <Save className="w-5 h-5" />
-          {isSaving ? "Saving..." : "Save Changes"}
-        </button>
+  if (isLoading && !availability) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-4">
+        <div className="size-10 border-4 border-[#CBFF38] border-t-transparent rounded-full animate-spin" />
+        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 italic">Syncing clinical configuration...</p>
       </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Business Hours */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            Business Hours
-          </h2>
+  return (
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Premium Header */}
+      <div className="bg-black text-white pt-16 pb-24 px-6 md:px-10 rounded-b-[48px] shadow-2xl relative overflow-hidden">
+        <div className="absolute top-[-20%] right-[-10%] size-[500px] bg-[#CBFF38]/10 blur-[120px] rounded-full" />
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8 relative z-10">
           <div className="space-y-4">
-            {days.map((day) => (
-              <div key={day} className="flex items-center gap-4">
-                {/* Day Name */}
-                <div className="w-32">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={businessHours[day]?.isOpen || false}
-                      onChange={(e) =>
-                        updateDayHours(day, "isOpen", e.target.checked)
-                      }
-                      className="w-4 h-4 text-[#CBFF38] rounded focus:ring-lime-300"
-                    />
-                    <span className="font-medium text-gray-900 capitalize">
-                      {day}
-                    </span>
-                  </label>
-                </div>
-
-                {/* Time Inputs */}
-                {businessHours[day]?.isOpen ? (
-                  <>
-                    <input
-                      type="time"
-                      value={businessHours[day]?.open || "09:00"}
-                      onChange={(e) =>
-                        updateDayHours(day, "open", e.target.value)
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className="text-gray-500">to</span>
-                    <input
-                      type="time"
-                      value={businessHours[day]?.close || "17:00"}
-                      onChange={(e) =>
-                        updateDayHours(day, "close", e.target.value)
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </>
-                ) : (
-                  <span className="text-gray-400 italic">Closed</span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Timezone */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Timezone
-            </label>
-            <select
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="America/New_York">Eastern Time (ET)</option>
-              <option value="America/Chicago">Central Time (CT)</option>
-              <option value="America/Denver">Mountain Time (MT)</option>
-              <option value="America/Los_Angeles">Pacific Time (PT)</option>
-              <option value="Europe/London">London (GMT)</option>
-              <option value="Europe/Paris">Paris (CET)</option>
-              <option value="Asia/Dubai">Dubai (GST)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Blocked Dates */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Blocked Dates
-          </h2>
-
-          {/* Add Blocked Date */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Add Blocked Date
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={newBlockedDate}
-                onChange={(e) => setNewBlockedDate(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-300 outline-none"
-              />
-              <button
-                type="button"
-                onClick={addBlockedDate}
-                className="px-4 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors"
-              >
-                Add
-              </button>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
+              <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] italic">Operational Status: Online</span>
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">Availability</h1>
+              <p className="text-gray-400 font-medium max-w-md">Manage your clinic's working hours and blocked dates for seamless scheduling.</p>
             </div>
           </div>
-
-          {/* Blocked Dates List */}
-          <div className="space-y-2">
-            {blockedDates.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No blocked dates
-              </p>
-            ) : (
-              blockedDates.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {availableClinics.length > 1 && (
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-2 pl-4 flex items-center gap-3">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 italic">Select Clinic</span>
+                <select
+                  value={selectedClinicId}
+                  onChange={(e) => setSelectedClinicId(e.target.value)}
+                  className="bg-transparent border-none text-white font-black uppercase text-[10px] tracking-widest outline-none cursor-pointer"
                 >
-                  <span className="text-sm font-medium text-gray-900">
-                    {new Date(item.date).toLocaleDateString("en-US", {
-                      weekday: "short",
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })} (Full Day)
-                  </span>
-                  <button
-                    onClick={() => removeBlockedDate(item.id)}
-                    className="text-red-500 hover:text-red-700 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))
+                  {availableClinics.map(c => (
+                    <option key={c.id} value={c.id} className="bg-black">{c.name}</option>
+                  ))}
+                </select>
+              </div>
             )}
-          </div>
-        </div>
-
-        {/* Blocked Hours (Partial Day) */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-amber-500" />
-            Blocked Hours
-          </h2>
-          <p className="text-sm text-gray-500 mb-4">Block specific time ranges for a doctor.</p>
-
-          <div className="space-y-3 mb-6">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
-              <input
-                type="date"
-                value={newSlot.date}
-                onChange={(e) => setNewSlot({ ...newSlot, date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-lime-300 outline-none"
-              />
-            </div>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
-                <input
-                  type="time"
-                  value={newSlot.startTime}
-                  onChange={(e) => setNewSlot({ ...newSlot, startTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-lime-300 outline-none"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
-                <input
-                  type="time"
-                  value={newSlot.endTime}
-                  onChange={(e) => setNewSlot({ ...newSlot, endTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-lime-300 outline-none"
-                />
-              </div>
-            </div>
             <button
-              type="button"
-              onClick={addBlockedSlot}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors font-medium text-sm"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="group h-14 px-8 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white transition-all shadow-xl shadow-lime-500/10 flex items-center gap-3"
             >
-              <Plus className="w-4 h-4" /> Add Blocked Time
+              <Save className="group-hover:scale-110 transition-transform" size={18} />
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
           </div>
+        </div>
+      </div>
 
-          <div className="space-y-2 max-h-[300px] overflow-y-auto">
-            {blockedSlots.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4 italic">No blocked hours.</p>
-            ) : (
-              blockedSlots.map((slot) => (
-                <div key={slot.id} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-100">
-                  <div>
-                    <div className="text-sm font-bold text-gray-800">
-                      {new Date(slot.result.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+      <div className="max-w-7xl mx-auto px-6 md:px-10 -mt-10 relative z-20 pb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Business Hours Section */}
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white rounded-[40px] p-8 md:p-10 shadow-xl border border-gray-100 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center gap-4">
+                  <div className="size-12 bg-black rounded-2xl flex items-center justify-center text-[#CBFF38]">
+                    <Clock size={22} />
+                  </div>
+                  <h2 className="text-xl font-black uppercase italic tracking-tighter text-gray-900">Working Hours</h2>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {days.map((day) => (
+                  <div key={day} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-gray-50/50 rounded-3xl border border-gray-50 hover:border-black transition-all group">
+                    <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={businessHours[day]?.isOpen || false}
+                          onChange={(e) => updateDayHours(day, "isOpen", e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#CBFF38]" />
+                      </label>
+                      <span className="text-xs font-black uppercase tracking-widest text-gray-900 group-hover:italic transition-all capitalize">{day}</span>
                     </div>
-                    <div className="text-xs text-gray-600">
-                      {slot.result.startTime} - {slot.result.endTime}
+
+                    {businessHours[day]?.isOpen ? (
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="time"
+                          value={businessHours[day]?.open || "09:00"}
+                          onChange={(e) => updateDayHours(day, "open", e.target.value)}
+                          className="h-10 px-4 bg-white border border-gray-100 rounded-xl font-black text-xs text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                        />
+                        <span className="text-[10px] font-black text-gray-300 uppercase italic">To</span>
+                        <input
+                          type="time"
+                          value={businessHours[day]?.close || "17:00"}
+                          onChange={(e) => updateDayHours(day, "close", e.target.value)}
+                          className="h-10 px-4 bg-white border border-gray-100 rounded-xl font-black text-xs text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-300 italic">Clinic Closed</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-10 pt-8 border-t border-gray-100">
+                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 px-1 italic">Timeline Configuration</p>
+                <div className="relative">
+                  <select
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    className="w-full h-14 pl-6 pr-10 bg-gray-50 border-none rounded-2xl font-black uppercase text-[10px] tracking-widest appearance-none focus:ring-2 focus:ring-black cursor-pointer"
+                  >
+                    <option value="Europe/London">London (GMT)</option>
+                    <option value="Europe/Paris">Paris (CET)</option>
+                    <option value="America/New_York">Eastern Time (ET)</option>
+                    <option value="Asia/Dubai">Dubai (GST)</option>
+                  </select>
+                  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                    <Clock size={14} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            {/* Blocked Dates */}
+            <section className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-sm relative overflow-hidden">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
+                  <Calendar size={18} />
+                </div>
+                <h2 className="text-[15px] font-black uppercase italic tracking-tighter text-gray-900">Blackout Dates</h2>
+              </div>
+
+              <div className="space-y-6">
+                <div className="relative">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-2 mb-2 italic">Add New Block</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={newBlockedDate}
+                      onChange={(e) => setNewBlockedDate(e.target.value)}
+                      className="flex-1 h-12 px-4 bg-gray-50 border-none rounded-2xl font-black uppercase text-[10px] tracking-widest focus:ring-2 focus:ring-black outline-none"
+                    />
+                    <button
+                      onClick={addBlockedDate}
+                      className="size-12 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all shadow-lg"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {blockedDates.length === 0 ? (
+                    <div className="py-10 text-center border-2 border-dashed border-gray-50 rounded-3xl">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-300 italic">No Blocks</p>
+                    </div>
+                  ) : (
+                    blockedDates.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl group hover:bg-black transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="size-8 rounded-lg bg-white flex items-center justify-center text-black font-black text-[10px] shadow-sm italic">
+                            {new Date(item.date).getDate()}
+                          </div>
+                          <div>
+                            <span className="block text-[10px] font-black uppercase tracking-widest text-gray-900 group-hover:text-white">
+                              {new Date(item.date).toLocaleDateString([], { month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeBlockedDate(item.id)}
+                          className="size-8 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Temporary Blocks */}
+            <section className="bg-[#0D0D0D] rounded-[40px] p-8 border border-white/5 shadow-2xl relative overflow-hidden">
+              <div className="relative z-10">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="size-10 bg-[#CBFF38] rounded-xl flex items-center justify-center text-black">
+                    <Clock size={18} />
+                  </div>
+                  <h2 className="text-[15px] font-black uppercase italic tracking-tighter text-white">Temporary Blocks</h2>
+                </div>
+
+                <div className="space-y-4 mb-8">
+                  <div className="space-y-2">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 italic">Date</p>
+                    <input
+                      type="date"
+                      value={newSlot.date}
+                      onChange={(e) => setNewSlot({ ...newSlot, date: e.target.value })}
+                      className="w-full h-12 px-5 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none"
+                    />
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1 space-y-2">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 italic">Entry</p>
+                      <input
+                        type="time"
+                        value={newSlot.startTime}
+                        onChange={(e) => setNewSlot({ ...newSlot, startTime: e.target.value })}
+                        className="w-full h-12 px-5 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 italic">Exit</p>
+                      <input
+                        type="time"
+                        value={newSlot.endTime}
+                        onChange={(e) => setNewSlot({ ...newSlot, endTime: e.target.value })}
+                        className="w-full h-12 px-5 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none"
+                      />
                     </div>
                   </div>
                   <button
-                    onClick={() => removeBlockedSlot(slot.id)}
-                    className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
+                    onClick={addBlockedSlot}
+                    className="w-full h-12 bg-white text-black hover:bg-[#CBFF38] rounded-2xl flex items-center justify-center gap-3 transition-all font-black uppercase text-[10px] tracking-widest italic"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Plus size={14} /> Add Block
                   </button>
                 </div>
-              ))
-            )}
+
+                <div className="space-y-3 max-h-[300px] overflow-y-auto no-scrollbar">
+                  {blockedSlots.length === 0 ? (
+                    <div className="py-8 text-center border border-white/10 rounded-3xl">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-600 italic">No Active Blocks</p>
+                    </div>
+                  ) : (
+                    blockedSlots.map((slot) => (
+                      <div key={slot.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl group hover:border-[#CBFF38] transition-all">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <div className="text-[10px] font-black text-white italic">
+                              {new Date(slot.result.date).toLocaleDateString([], { day: 'numeric', month: 'short' })}
+                            </div>
+                            <div className="text-[10px] font-black text-[#CBFF38] italic">
+                              {slot.result.startTime} - {slot.result.endTime}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeBlockedSlot(slot.id)}
+                          className="size-8 text-gray-400 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>

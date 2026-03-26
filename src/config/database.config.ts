@@ -11,7 +11,8 @@ import { TreatmentCategory } from '../modules/clinics/entities/treatment-categor
 import { Review } from '../modules/clinics/entities/review.entity';
 import { GiftCard } from '../modules/clinics/entities/gift-card.entity';
 import { BlogPost, BlogCategory } from '../modules/clinics/entities/blog.entity';
-import { Lead, CrmAction, CustomerRecord } from '../modules/crm/entities';
+import { Lead, CrmAction, CustomerRecord, ClinicOwnership } from '../modules/crm/entities';
+import { AdSpendLog } from '../modules/crm/entities/ad-spend-log.entity';
 import { Tag } from '../modules/admin/entities/tag.entity';
 import { Offer } from '../modules/admin/entities/offer.entity';
 import { Reward } from '../modules/admin/entities/reward.entity';
@@ -84,6 +85,8 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         BlogCategory,
         PaymentRecord,
         NotificationTemplate,
+        ClinicOwnership,
+        AdSpendLog,
       ],
       // Since we are running in Docker on the same network, we don't need SSL
       // If using a managed database like AWS RDS in the future, we might need to enable this again

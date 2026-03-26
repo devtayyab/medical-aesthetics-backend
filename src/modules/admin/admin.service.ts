@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, DeepPartial } from 'typeorm';
 import { Tag } from './entities/tag.entity';
@@ -278,6 +280,14 @@ export class AdminService {
       finalData.fullDescription = description;
     }
     const treatment = this.treatmentsRepository.create(finalData as DeepPartial<Treatment>);
+    
+    if (treatment.status === 'approved') {
+       if (!treatment.categoryId && !treatment.category) throw new BadRequestException('Category is required for approved therapies');
+       if (!treatment.shortDescription) throw new BadRequestException('Short description is required for approved therapies');
+       if (!treatment.fullDescription) throw new BadRequestException('Full description is required for approved therapies');
+       if (!treatment.imageUrl) throw new BadRequestException('Photo is required for approved therapies');
+    }
+
     return this.treatmentsRepository.save(treatment);
   }
 
@@ -300,6 +310,16 @@ export class AdminService {
     }
 
     if (Object.keys(filteredData).length > 0) {
+      if (filteredData.status === 'approved' || (filteredData.status === undefined && (await this.treatmentsRepository.findOne({where: {id}}))?.status === 'approved')) {
+         const t = filteredData;
+         // Check if existing record also lacks these
+         const existing = await this.treatmentsRepository.findOne({where: {id}});
+         const check = { ...existing, ...t };
+         if (!check.categoryId && !check.category) throw new BadRequestException('Category is required for approved therapies');
+         if (!check.shortDescription) throw new BadRequestException('Short description is required for approved therapies');
+         if (!check.fullDescription) throw new BadRequestException('Full description is required for approved therapies');
+         if (!check.imageUrl) throw new BadRequestException('Photo is required for approved therapies');
+      }
       await this.treatmentsRepository.update(id, filteredData);
     }
     

@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 interface AuditLog {
   id: string;
   userId: string;
+  user?: { id: string; firstName: string; lastName: string };
   action: string;
   resource: string;
   resourceId: string;
@@ -229,8 +230,8 @@ export const AuditLogs: React.FC = () => {
                         <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                           <User size={14} />
                         </div>
-                        <div className="text-sm text-gray-700 font-mono">
-                          {log.userId ? log.userId.substring(0, 8) + '...' : 'System'}
+                        <div className="text-sm text-gray-700 font-bold">
+                          {log.user ? `${log.user.firstName} ${log.user.lastName}` : (log.userId ? log.userId.substring(0, 8) + '...' : 'System')}
                         </div>
                       </div>
                     </td>

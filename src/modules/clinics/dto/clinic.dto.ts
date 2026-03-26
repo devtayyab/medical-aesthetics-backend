@@ -158,6 +158,26 @@ export class UpdateAppointmentStatusDto {
   @IsOptional()
   @IsObject()
   treatmentDetails?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  serviceId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  totalAmount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  amountPaid?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  rewardPointsRedeemed?: number;
 }
 
 export class RecordPaymentDto {

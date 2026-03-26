@@ -228,20 +228,27 @@ export const clinicsAPI = {
 export const bookingAPI = {
   getAvailability: (params: {
     clinicId: string;
-    serviceId: string;
+    serviceId: string | string[];
     providerId?: string;
     date: string;
-  }) => api.get("/availability", { params }),
+  }) => api.get("/availability", { 
+    params,
+    paramsSerializer: {
+      indexes: null // Allows passing arrays as ?serviceId=id1&serviceId=id2
+    }
+  }),
   holdSlot: (data: {
     clinicId: string;
     serviceId: string;
     providerId?: string;
     startTime: string;
     endTime: string;
+    additionalServiceIds?: string[];
   }) => api.post("/appointments/hold", data),
   createAppointment: (data: {
     clinicId: string;
     serviceId: string;
+    additionalServiceIds?: string[];
     providerId?: string;
     clientId: string;
     startTime: string;

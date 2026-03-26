@@ -1,8 +1,8 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction, Reducer } from '@reduxjs/toolkit';
 import { bookingAPI, api } from '@/services/api';
 import type { BookingFlow, Service, TimeSlot, Appointment, Clinic } from '@/types';
 
-interface BookingState extends BookingFlow {
+export interface BookingState extends BookingFlow {
   availableSlots: TimeSlot[];
   appointments: Appointment[];
   isLoading: boolean;
@@ -25,7 +25,7 @@ export const fetchAvailability = createAsyncThunk(
   'booking/fetchAvailability',
   async (params: {
     clinicId: string;
-    serviceId: string;
+    serviceId: string | string[];
     providerId?: string;
     date: string;
   }) => {
@@ -42,6 +42,7 @@ export const holdTimeSlot = createAsyncThunk(
     providerId?: string;
     startTime: string;
     endTime: string;
+    additionalServiceIds?: string[];
   }) => {
     const response = await bookingAPI.holdSlot(data);
     return response.data;
@@ -53,6 +54,7 @@ export const createAppointment = createAsyncThunk(
   async (data: {
     clinicId: string;
     serviceId: string;
+    additionalServiceIds?: string[];
     providerId?: string;
     clientId: string;
     startTime: string;
@@ -274,4 +276,5 @@ export const {
   clearError,
 } = bookingSlice.actions;
 
-export default bookingSlice.reducer;
+const reducer: Reducer<BookingState> = bookingSlice.reducer;
+export default reducer;

@@ -10,6 +10,11 @@ export class HoldSlotDto {
   @IsUUID()
   serviceId: string;
 
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsUUID('4', { each: true })
+  additionalServiceIds?: string[];
+
   @ApiProperty()
   @IsOptional()
   @IsUUID()

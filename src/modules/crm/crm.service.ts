@@ -1422,6 +1422,23 @@ export class CrmService implements OnModuleInit {
     if (isNowCompleted && !wasCompleted) {
       updateData.completedAt = new Date();
 
+      // AUTO-CONFIRMATION FLOW: If this task was for an appointment confirmation, confirm the appointment
+      if (action.metadata?.appointmentId && action.metadata?.workflow === 'call_center_confirmation') {
+        try {
+          const appointmentId = action.metadata.appointmentId;
+          await this.appointmentsRepository.update(appointmentId, {
+            status: AppointmentStatus.CONFIRMED,
+            updatedAt: new Date()
+          });
+          this.logger.log(`[Flow] Appointment ${appointmentId} auto-confirmed via CRM task completion.`);
+          
+          // Trigger Notification for Confirmation
+          this.eventEmitter.emit('appointment.confirmed', { id: appointmentId });
+        } catch (confirmErr) {
+          this.logger.error(`Failed to auto-confirm appointment upon task completion: ${confirmErr.message}`);
+        }
+      }
+
       // Handle Recurrence Logic
       if (action.isRecurring || updateData.isRecurring) {
         await this.handleTaskRecurrence(action, updateData);
@@ -3255,40 +3272,51 @@ export class CrmService implements OnModuleInit {
   }
 
   async getAccessibleClinicsForUser(userId: string): Promise<Clinic[]> {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    try {
+      this.logger.debug(`[CrmService] Fetching accessible clinics for user: ${userId}`);
+      const user = await this.usersRepository.findOne({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
 
-    // Role-based access
-    if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.SALESPERSON].includes(user.role as UserRole)) {
-      // Admins see all active clinics
-      return this.clinicsRepository.find({
-        where: { isActive: true },
-        select: ['id', 'name', 'address', 'phone', 'email']
+      // Role-based access
+      if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.SALESPERSON].includes(user.role as UserRole)) {
+        // Admins see all active clinics
+        return this.clinicsRepository.find({
+          where: { isActive: true },
+          select: ['id', 'name', 'address', 'phone', 'email']
+        });
+      }
+
+      if (user.role === UserRole.CLINIC_OWNER) {
+        this.logger.debug(`[CrmService] User is clinic_owner. Checking clinic_ownership table...`);
+        const ownerships = await this.clinicOwnershipRepository.find({
+          where: { ownerUserId: userId }
+        });
+
+        const clinicIds = ownerships.map(o => o.clinicId);
+        if (clinicIds.length === 0) {
+          this.logger.debug(`[CrmService] No clinic ownerships found for user.`);
+          return [];
+        }
+
+        return this.clinicsRepository.find({
+          where: { id: In(clinicIds), isActive: true }
+        });
+      }
+
+      // For other roles (Salesperson, etc.), check explicit access grants
+      this.logger.debug(`[CrmService] Falling back to agentClinicAccess check.`);
+      const accesses = await this.agentClinicAccessRepository.find({
+        where: { agentUserId: userId },
+        relations: ['clinic']
       });
+
+      return accesses.map(a => a.clinic).filter(c => c && c.isActive);
+    } catch (err) {
+      this.logger.error(`[CrmService] Error in getAccessibleClinicsForUser: ${err.message}`, err.stack);
+      throw err;
     }
-
-    if (user.role === UserRole.CLINIC_OWNER) {
-      const ownerships = await this.clinicOwnershipRepository.find({
-        where: { ownerUserId: userId }
-      });
-
-      const clinicIds = ownerships.map(o => o.clinicId);
-      if (clinicIds.length === 0) return [];
-
-      return this.clinicsRepository.find({
-        where: { id: In(clinicIds), isActive: true }
-      });
-    }
-
-    // For other roles (Salesperson, etc.), check explicit access grants
-    const accesses = await this.agentClinicAccessRepository.find({
-      where: { agentUserId: userId },
-      relations: ['clinic']
-    });
-
-    return accesses.map(a => a.clinic).filter(c => c && c.isActive);
   }
 
   async getSalespersons(): Promise<any[]> {

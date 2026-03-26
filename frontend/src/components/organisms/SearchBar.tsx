@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/atoms/Button/Button";
-import { Search, MapPin, Calendar as CalendarIcon, Clock, ChevronDown, Check } from "lucide-react";
+import { Search, MapPin, Calendar as CalendarIcon, Clock, ChevronDown } from "lucide-react";
 
 export interface SearchBarProps {
   onSearch: (filters: {
@@ -80,15 +80,6 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch({
-      query,
-      location,
-      search_date: searchDate,
-      search_time_window: searchTimeWindow
-    });
-  };
 
   const setPresetDate = (days: number) => {
     setDateMode('preset');
@@ -116,16 +107,26 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     return `${dateStr}, ${timeStr}`;
   };
 
+  const handleSearchClick = () => {
+    onSearch({
+      query,
+      location,
+      search_date: searchDate,
+      search_time_window: searchTimeWindow
+    });
+  };
+
   return (
-    <div className={`bg-white rounded-[24px] p-6 shadow-2xl w-full max-w-[480px] z-20 ${className || ""}`}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <div className={`bg-white rounded-[24px] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.1)] w-full max-w-[520px] z-20 border border-gray-100 ${className || ""}`}>
+      <div className="flex flex-col gap-6">
 
         {/* S1: Treatment / Service */}
         <div className="relative" ref={searchRef}>
-          <div className="border border-gray-200 focus-within:border-[#CBFF38] focus-within:ring-2 focus-within:ring-[#CBFF38]/20 rounded-xl p-3 flex items-center transition-all bg-gray-50/50">
-            <Search className="text-gray-400 w-5 h-5 mr-3 shrink-0" />
+          <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1.5 block px-1">What</label>
+          <div className="border-2 border-gray-100 focus-within:border-black rounded-2xl p-4 flex items-center transition-all bg-gray-50 group hover:bg-white hover:border-gray-200">
+            <Search className="text-gray-400 w-5 h-5 mr-4 shrink-0 group-focus-within:text-black transition-colors" />
             <input
-              className="w-full outline-none font-bold text-gray-800 bg-transparent placeholder:text-gray-400 placeholder:font-semibold"
+              className="w-full outline-none font-black text-lg text-gray-900 bg-transparent placeholder:text-gray-300 placeholder:italic"
               placeholder="Search treatments / clinics"
               value={query}
               onChange={(e) => {
@@ -201,29 +202,50 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         </div>
 
         {/* S2: Location */}
-        <div className="relative border border-gray-200 focus-within:border-[#CBFF38] focus-within:ring-2 focus-within:ring-[#CBFF38]/20 rounded-xl p-3 flex items-center transition-all bg-gray-50/50">
-          <MapPin className="text-gray-400 w-5 h-5 mr-3 shrink-0" />
-          <input
-            className="w-full outline-none font-bold text-gray-800 bg-transparent placeholder:text-gray-400 placeholder:font-semibold"
-            placeholder="Area or Postcode"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
+        <div className="relative">
+          <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1.5 block px-1">Where</label>
+          <div className="border-2 border-gray-100 focus-within:border-black rounded-2xl p-4 flex items-center transition-all bg-gray-50 group hover:bg-white hover:border-gray-200">
+            <MapPin className="text-gray-400 w-5 h-5 mr-4 shrink-0 group-focus-within:text-black transition-colors" />
+            <input
+              className="w-full outline-none font-black text-lg text-gray-900 bg-transparent placeholder:text-gray-300 placeholder:italic"
+              placeholder="Area or Postcode"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+            {/* Use My Location Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if ("geolocation" in navigator) {
+                  navigator.geolocation.getCurrentPosition((pos) => {
+                    // Coordinates would be passed to parent search
+                    console.log("Locating...", pos.coords);
+                    setLocation("Current Location");
+                  });
+                }
+              }}
+              className="ml-2 p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-black transition-all"
+              title="Use my current location"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.31-7.31l-1.41 1.41M6.1 17.9l-1.41 1.41m12.62 0l1.41 1.41M6.1 6.1L4.69 7.51"/></svg>
+            </button>
+          </div>
         </div>
 
         {/* S3: Date & Time */}
         <div className="relative" ref={dateRef}>
+          <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1.5 block px-1">When</label>
           <div
-            className="border border-gray-200 hover:border-[#CBFF38] rounded-xl p-3 flex items-center justify-between transition-all bg-gray-50/50 cursor-pointer"
+            className="border-2 border-gray-100 hover:border-black rounded-2xl p-4 flex items-center justify-between transition-all bg-gray-50 hover:bg-white cursor-pointer group"
             onClick={() => setShowDatePicker(!showDatePicker)}
           >
             <div className="flex items-center">
-              <CalendarIcon className="text-gray-400 w-5 h-5 mr-3 shrink-0" />
-              <div className={`font-bold ${searchDate || searchTimeWindow ? 'text-gray-800' : 'text-gray-400'} truncate`}>
+              <CalendarIcon className="text-gray-400 w-5 h-5 mr-4 shrink-0 group-hover:text-black transition-colors" />
+              <div className={`font-black text-lg ${searchDate || searchTimeWindow ? 'text-gray-900' : 'text-gray-300 italic'} truncate`}>
                 {getDisplayDateTime()}
               </div>
             </div>
-            <ChevronDown className="text-gray-400 w-5 h-5 shrink-0" />
+            <ChevronDown className="text-gray-400 w-5 h-5 shrink-0 group-hover:text-black transition-colors" />
           </div>
 
           {/* Date Picker Popover */}
@@ -316,10 +338,17 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 </div>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-gray-100">
+              <div className="pt-6 mt-6 border-t border-gray-100 flex items-center justify-between gap-4">
+                <button
+                  type="button"
+                  className="text-xs font-black uppercase tracking-widest text-gray-400 hover:text-black"
+                  onClick={() => { setTempDate(null); setTempTime(null); setSearchDate(null); setSearchTimeWindow(null); setShowDatePicker(false); }}
+                >
+                  Reset
+                </button>
                 <Button
                   type="button"
-                  className="w-full bg-black text-white hover:bg-gray-800 py-4 rounded-xl font-bold transition-all shadow-md active:scale-95"
+                  className="flex-1 bg-black text-white hover:bg-gray-800 py-4 rounded-xl font-bold transition-all shadow-md active:scale-95"
                   onClick={applyDateTime}
                 >
                   Apply Selection
@@ -332,12 +361,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
         {/* Action Button */}
         <Button
-          type="submit"
-          className="w-full bg-[#CBFF38] text-black hover:bg-[#bceb33] py-4 rounded-xl flex items-center justify-center font-black uppercase tracking-widest text-sm transition-all duration-300 shadow-xl shadow-[#CBFF38]/20 mt-2"
+          type="button"
+          onClick={handleSearchClick}
+          className="w-full bg-[#CBFF38] text-black hover:bg-black hover:text-white py-5 rounded-2xl flex items-center justify-center font-black uppercase tracking-widest text-base transition-all duration-300 shadow-xl shadow-[#CBFF38]/20 mt-4 active:scale-95"
         >
           Search Availability
         </Button>
-      </form>
+      </div>
     </div>
   );
 };

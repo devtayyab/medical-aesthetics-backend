@@ -13,6 +13,7 @@ import {
   Clock,
   Settings,
   X,
+  Activity,
 } from "lucide-react";
 
 const ServicesPage: React.FC = () => {
@@ -41,147 +42,77 @@ const ServicesPage: React.FC = () => {
   const canManage = hasPermission(user?.role, "canManageServices");
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Services & Pricing
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Manage your clinic's treatment menu and pricing
-          </p>
-        </div>
-        {canManage && (
-          <button
-            onClick={() => {
-              setEditingService(null);
-              setShowModal(true);
-            }}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors w-full md:w-auto"
-          >
-            <Plus className="w-5 h-5" />
-            Add Service
-          </button>
-        )}
-      </div>
-
-      {/* Services Grid */}
-      {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      ) : services.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          {/* <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" /> */}
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            No services yet
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Start by adding your first service or treatment
-          </p>
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Premium Header */}
+      <div className="bg-black text-white pt-16 pb-24 px-6 md:px-10 rounded-b-[48px] shadow-2xl relative overflow-hidden">
+        <div className="absolute top-[-20%] right-[-10%] size-[500px] bg-[#CBFF38]/10 blur-[120px] rounded-full" />
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8 relative z-10">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
+              <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] italic">Catalog Management</span>
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">Treatments & Pricing</h1>
+              <p className="text-gray-400 font-medium max-w-md">Orchestrate your clinical offerings with precision. Adjust pricing models and availability in real-time.</p>
+            </div>
+          </div>
           {canManage && (
             <button
-              onClick={() => setShowModal(true)}
-              className="px-4 py-2 bg-[#CBFF38] text-[#33373F] hover:bg-lime-300 rounded-lg transition-colors"
+              onClick={() => {
+                setEditingService(null);
+                setShowModal(true);
+              }}
+              className="group h-14 px-8 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white transition-all shadow-xl shadow-lime-500/10 flex items-center gap-3"
             >
-              Add Service
+              <Plus className="group-hover:rotate-90 transition-transform duration-500" size={18} />
+              Provision New Therapy
             </button>
           )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service) => (
-            <div
-              key={service.id}
-              className={`bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 ${!service.isActive ? "opacity-60" : ""
-                }`}
-            >
-              {/* Service Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex gap-3">
-                    {service.treatment?.imageUrl && (
-                      <img
-                        src={service.treatment.imageUrl}
-                        alt={service.treatment?.name}
-                        className="size-12 rounded-lg object-cover border border-gray-100 shadow-sm"
-                      />
-                    )}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        {service.treatment?.name}
-                      </h3>
-                      {service.treatment?.category && (
-                        <span className="inline-block px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                          {service.treatment.category}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {canManage && (
-                  <button
-                    onClick={() => handleToggleStatus(service.id)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    {service.isActive ? (
-                      <ToggleRight className="w-6 h-6 text-green-600" />
-                    ) : (
-                      <ToggleLeft className="w-6 h-6" />
-                    )}
-                  </button>
-                )}
-              </div>
-
-              {/* Descriptions */}
-              <div className="space-y-2 mb-4">
-                {service.treatment?.shortDescription && (
-                  <p className="text-sm font-medium text-gray-800 line-clamp-1 italic">
-                    {service.treatment.shortDescription}
-                  </p>
-                )}
-                {service.treatment?.fullDescription && (
-                  <p className="text-xs text-gray-600 line-clamp-2">
-                    {service.treatment.fullDescription}
-                  </p>
-                )}
-              </div>
-
-              {/* Price & Duration */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  {/* <DollarSign className="w-4 h-4 text-gray-400" /> */}
-                  <span className="text-xl font-bold text-gray-900">
-                    ${service.price}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-sm">{service.durationMinutes} min</span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              {canManage && (
-                <div className="flex gap-2 pt-4 border-t border-gray-200">
-                  <button
-                    onClick={() => {
-                      setEditingService(service);
-                      setShowModal(true);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    Edit
-                  </button>
-                </div>
-              )}
+      </div>
+ 
+      {/* Main Grid */}
+      <div className="max-w-7xl mx-auto px-6 md:px-10 -mt-12 relative z-20 pb-20">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-40 gap-4 bg-white rounded-[48px] shadow-sm border border-gray-100">
+            <div className="size-10 border-4 border-[#CBFF38] border-t-transparent rounded-full animate-spin" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 italic">Syncing treatment registry...</p>
+          </div>
+        ) : services.length === 0 ? (
+          <div className="bg-white rounded-[40px] p-20 text-center border border-gray-100 shadow-sm">
+            <div className="size-20 bg-gray-50 rounded-[32px] flex items-center justify-center mx-auto mb-6 text-gray-200">
+               <Settings size={32} />
             </div>
-          ))}
-        </div>
-      )}
-
+            <h3 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 mb-2">Registry is Empty</h3>
+            <p className="text-gray-400 font-medium mb-8">Start your clinical journey by adding your first treatment offering.</p>
+            {canManage && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="h-14 px-8 bg-black text-[#CBFF38] rounded-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition-all"
+              >
+                Provision First Therapy
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {services.map((service) => (
+              <ServiceCard 
+                 key={service.id} 
+                 service={service} 
+                 canManage={canManage}
+                 onToggle={() => handleToggleStatus(service.id)}
+                 onEdit={() => {
+                   setEditingService(service);
+                   setShowModal(true);
+                 }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+ 
       {/* Service Modal */}
       {showModal && (
         <ServiceModal
@@ -197,6 +128,86 @@ const ServicesPage: React.FC = () => {
           }}
         />
       )}
+    </div>
+  );
+};
+ 
+/* --- Helper Components --- */
+ 
+const ServiceCard = ({ service, canManage, onToggle, onEdit }: any) => {
+  const isActive = service.isActive;
+  
+  return (
+    <div className={`bg-white rounded-[40px] border transition-all duration-500 overflow-hidden group flex flex-col ${
+      isActive ? 'border-gray-100 shadow-sm hover:border-black hover:shadow-xl' : 'border-gray-100 grayscale opacity-60'
+    }`}>
+       {/* Visual Layer */}
+       <div className="h-48 relative overflow-hidden bg-gray-100 italic">
+          {service.treatment?.imageUrl ? (
+             <img 
+               src={service.treatment.imageUrl} 
+               alt={service.treatment?.name}
+               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+             />
+          ) : (
+             <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-200">
+                <Settings size={64} />
+             </div>
+          )}
+          <div className="absolute top-4 left-4">
+             <span className="px-3 py-1.5 bg-black/80 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-full border border-white/10">
+                {service.treatment?.category || 'Clinical'}
+             </span>
+          </div>
+          {canManage && (
+             <button 
+               onClick={(e) => { e.stopPropagation(); onToggle(); }}
+               className="absolute top-4 right-4 size-10 bg-white/90 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-lg hover:bg-[#CBFF38] transition-all"
+             >
+                {isActive ? <ToggleRight className="text-black" /> : <ToggleLeft className="text-gray-400" />}
+             </button>
+          )}
+       </div>
+ 
+       {/* Content Layer */}
+       <div className="p-8 flex-1 flex flex-col">
+          <div className="flex-1 space-y-4">
+             <div>
+                <h3 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 mb-1 group-hover:translate-x-1 transition-transform">{service.treatment?.name}</h3>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] bg-black inline-block px-2 py-0.5 rounded italic">Protocol 4.0</p>
+             </div>
+             
+             <p className="text-gray-500 text-sm font-medium line-clamp-2 leading-relaxed italic">
+                {service.treatment?.shortDescription || "Premium medical aesthetic procedure following high clinical standards."}
+             </p>
+ 
+             <div className="flex items-center gap-6 py-4 border-y border-gray-50">
+                <div className="space-y-1">
+                   <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Duration</p>
+                   <div className="flex items-center gap-2 text-gray-900">
+                      <Clock size={14} className="text-[#CBFF38]" />
+                      <span className="text-sm font-black italic">{service.durationMinutes} MIN</span>
+                   </div>
+                </div>
+                <div className="space-y-1">
+                   <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Valuation</p>
+                   <div className="text-xl font-black tracking-tighter text-gray-900 italic">
+                      £{service.price}
+                   </div>
+                </div>
+             </div>
+          </div>
+ 
+          {canManage && (
+             <button 
+               onClick={onEdit}
+               className="mt-6 w-full h-12 bg-gray-50 hover:bg-black hover:text-[#CBFF38] rounded-2xl flex items-center justify-center gap-2 transition-all font-black uppercase text-[10px] tracking-widest italic border border-gray-100 shadow-sm"
+             >
+                <Edit2 size={14} />
+                Modify Parameters
+             </button>
+          )}
+       </div>
     </div>
   );
 };

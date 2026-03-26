@@ -1,3 +1,13 @@
+export enum AppointmentStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  ARRIVED = 'ARRIVED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+  NO_SHOW = 'NO_SHOW',
+}
+
 export interface User {
   id: string;
   email: string;
@@ -51,6 +61,7 @@ export interface Clinic {
   distance?: number;
   minPrice?: number;
   services: Service[];
+  providers?: User[];
 }
 
 export interface Treatment {
