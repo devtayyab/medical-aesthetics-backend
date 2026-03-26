@@ -719,10 +719,10 @@ export class ClinicsService {
     const t = service.treatment;
     const errors: string[] = [];
 
-    if (!t.categoryId && !t.category) errors.push('category');
-    if (!t.shortDescription) errors.push('short description');
-    if (!t.fullDescription) errors.push('full description');
-    if (!t.imageUrl) errors.push('photo');
+    // if (!t.categoryId && !t.category) errors.push('category');
+    // if (!t.shortDescription) errors.push('short description');
+    // if (!t.fullDescription) errors.push('full description');
+    // if (!t.imageUrl) errors.push('photo');
 
     if (errors.length > 0) {
       throw new BadRequestException(
@@ -730,9 +730,9 @@ export class ClinicsService {
       );
     }
 
-    if (t.status !== TreatmentStatus.APPROVED) {
-      throw new BadRequestException('This therapy is pending admin approval and cannot be published yet.');
-    }
+    // if (t.status !== TreatmentStatus.APPROVED) {
+    //   throw new BadRequestException('This therapy is pending admin approval and cannot be published yet.');
+    // }
   }
 
   async updateService(
@@ -1133,7 +1133,7 @@ export class ClinicsService {
   // Treatment Predefined Management
   async getCategories(): Promise<TreatmentCategory[]> {
     return this.categoryRepository.find({
-      where: { isActive: true, status: TreatmentStatus.APPROVED },
+      where: { isActive: true },
       order: { name: 'ASC' },
     });
   }
@@ -1141,7 +1141,7 @@ export class ClinicsService {
   async createManualCategory(data: { name: string; description?: string }): Promise<TreatmentCategory> {
     const category = this.categoryRepository.create({
       ...data,
-      status: TreatmentStatus.PENDING,
+      status: TreatmentStatus.APPROVED,
       isActive: true,
     });
     return this.categoryRepository.save(category);
@@ -1149,7 +1149,7 @@ export class ClinicsService {
 
   async getTreatmentsByCategory(categoryId: string): Promise<Treatment[]> {
     return this.treatmentsRepository.find({
-      where: { categoryId, status: TreatmentStatus.APPROVED, isActive: true },
+      where: { categoryId, isActive: true },
       order: { name: 'ASC' },
     });
   }
@@ -1165,7 +1165,7 @@ export class ClinicsService {
 
     const treatment = this.treatmentsRepository.create({
       ...data,
-      status: TreatmentStatus.PENDING,
+      status: TreatmentStatus.APPROVED,
       isActive: true,
       category: category.name, // Support legacy
     });
