@@ -2,16 +2,13 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { publicBlogsAPI } from "@/services/api";
 import { css } from "@emotion/css";
-import LayeredBG from "@/assets/LayeredBg.svg";
-import { FaChevronRight } from "react-icons/fa6";
-import { FaSearch } from "react-icons/fa";
-import { Card } from "@/components/atoms/Card/Card";
+import { FaChevronRight, FaMagnifyingGlass, FaArrowRight } from "react-icons/fa6";
+import { motion } from "framer-motion";
 
-const containerStyle = css`
-  width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 16px;
+const sectionStyles = css`
+  min-height: 100vh;
+  background: #FDFDFD;
+  padding-bottom: 80px;
 `;
 
 export const Blog: React.FC = () => {
@@ -45,114 +42,173 @@ export const Blog: React.FC = () => {
             (post.content && post.content.toLowerCase().includes(searchQuery.toLowerCase())))
     );
 
+    const featuredPost = filteredPosts[0];
+    const restPosts = filteredPosts.slice(1);
+
     return (
-        <section
-            className="relative bg-cover bg-center flex items-center justify-center px-4 py-[60px]"
-            style={{
-                backgroundImage: `url(${LayeredBG})`,
-                backgroundPosition: "center",
-                backgroundSize: "cover",
-                backgroundRepeat: "no-repeat",
-            }}
-        >
-            <div className={containerStyle}>
-                {/* Breadcrumb */}
-                <div className="flex items-center text-[#33373F] text-[15px] font-medium mb-1">
-                    <Link to="/" className="hover:text-[#405C0B] transition-colors">Home</Link>
-                    <span className="px-3">
-                        <FaChevronRight size={11} className="pt-[1px] text-[#767676]" />
-                    </span>
-                    Blog
-                </div>
-
-                {/* Header Section */}
-                <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
-                    <div className="flex-1">
-                        <h2 className="text-[#33373F] text-[35px] font-black italic uppercase leading-tight mb-2">Our <span className="text-lime-700">Medical Blog</span></h2>
-                        <p className="text-gray-500 max-w-md">Expert advice, the latest treatments, and beauty tips from leading aesthetics professionals.</p>
+        <div className={sectionStyles}>
+            {/* Dark Hero Header */}
+            <div className="bg-[#1A1A1A] text-white pt-16 pb-28 px-6 relative overflow-hidden">
+                <div className="max-w-6xl mx-auto relative z-10">
+                    <div className="flex items-center gap-4 mb-4 text-[#CBFF38] text-[10px] font-black uppercase tracking-[0.2em] italic">
+                        <Link to="/" className="hover:opacity-80 transition-opacity">Home</Link>
+                        <FaChevronRight size={10} />
+                        <span>Journal</span>
                     </div>
-
-                    <div className="size-full md:w-1/3 relative group">
-                        <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-lime-600 transition-colors" />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search articles..."
-                            className="w-full bg-white border border-gray-200 rounded-full pl-12 pr-6 py-3.5 shadow-sm outline-none focus:border-lime-500 transition-all font-medium text-gray-800"
-                        />
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                        <div>
+                            <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-tight">
+                                Aesthetics<br/>
+                                <span className="text-[#CBFF38]">Journal</span>
+                            </h1>
+                            <p className="text-gray-400 mt-3 font-medium max-w-lg">
+                                Expert insights, treatment guides, and beauty science from leading aesthetic professionals.
+                            </p>
+                        </div>
+                        {/* Search */}
+                        <div className="relative w-full md:w-80 group">
+                            <FaMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#CBFF38] transition-colors" size={14} />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search articles..."
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-5 py-3.5 outline-none focus:border-[#CBFF38]/50 transition-all font-bold text-white placeholder-gray-500 text-sm"
+                            />
+                        </div>
                     </div>
                 </div>
+                <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#CBFF38]/10 to-transparent pointer-events-none" />
+            </div>
 
-                <div className="flex flex-col lg:flex-row gap-10">
+            <div className="max-w-6xl mx-auto px-6 -mt-10 relative z-20">
+                <div className="flex flex-col lg:flex-row gap-8">
+
                     {/* Categories Sidebar */}
-                    <aside className="lg:w-[250px] shrink-0">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Categories</h3>
-                        <ul className="space-y-2 font-medium">
-                            <li
-                                className={`cursor-pointer px-4 py-2.5 rounded-xl transition-all ${selectedCategoryId === "All" ? 'bg-lime-100 text-lime-900 font-bold border-l-4 border-lime-700' : 'text-gray-500 hover:bg-gray-50'}`}
-                                onClick={() => setSelectedCategoryId("All")}
-                            >
-                                All Articles
-                            </li>
-                            {categories.map(cat => (
+                    <aside className="lg:w-60 shrink-0">
+                        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm sticky top-6">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-5 italic">Filter by Topic</h3>
+                            <ul className="space-y-1">
                                 <li
-                                    key={cat.id}
-                                    className={`cursor-pointer px-4 py-2.5 rounded-xl transition-all ${selectedCategoryId === cat.id ? 'bg-lime-100 text-lime-900 font-bold border-l-4 border-lime-700' : 'text-gray-500 hover:bg-gray-50'}`}
-                                    onClick={() => setSelectedCategoryId(cat.id)}
+                                    onClick={() => setSelectedCategoryId("All")}
+                                    className={`cursor-pointer px-4 py-3 rounded-xl transition-all text-sm font-black uppercase tracking-tight ${
+                                        selectedCategoryId === "All"
+                                            ? 'bg-black text-[#CBFF38]'
+                                            : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
                                 >
-                                    {cat.name}
+                                    All Articles
                                 </li>
-                            ))}
-                        </ul>
+                                {categories.map(cat => (
+                                    <li
+                                        key={cat.id}
+                                        onClick={() => setSelectedCategoryId(cat.id)}
+                                        className={`cursor-pointer px-4 py-3 rounded-xl transition-all text-sm font-black uppercase tracking-tight ${
+                                            selectedCategoryId === cat.id
+                                                ? 'bg-black text-[#CBFF38]'
+                                                : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {cat.name}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     </aside>
 
                     {/* Main Content */}
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="flex-1 min-w-0">
                         {isLoading ? (
-                            <div className="col-span-2 text-center py-[100px]">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lime-600 mx-auto"></div>
+                            <div className="flex flex-col items-center py-24 gap-4">
+                                <div className="size-10 border-4 border-black border-t-transparent rounded-full animate-spin" />
+                                <p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest italic">Loading articles...</p>
                             </div>
-                        ) : filteredPosts.length > 0 ? (
-                            filteredPosts.map((post) => (
-                                <Card key={post.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 flex flex-col group">
-                                    <div className="h-52 bg-gray-200 relative overflow-hidden">
-                                        <img
-                                            src={post.imageUrl || `https://placehold.co/600x400?text=${post.title.replace(/\s/g, '+')}`}
-                                            alt={post.title}
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                                        />
-                                        {post.category && (
-                                            <div className="absolute top-4 left-4">
-                                                <span className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-black text-lime-900 shadow-sm border border-gray-100 uppercase tracking-wider">
-                                                    {post.category.name}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="p-6 flex flex-col flex-1">
-                                        <p className="text-[10px] uppercase font-black tracking-widest text-[#717171] mb-2">
-                                            {new Date(post.publishedAt || post.createdAt).toLocaleDateString()}
-                                            {post.author ? ` • ${post.author.firstName} ${post.author.lastName}` : ''}
-                                        </p>
-                                        <h4 className="text-xl font-black text-gray-900 group-hover:text-lime-700 transition-colors mb-4 line-clamp-2">{post.title}</h4>
-                                        <p className="text-sm text-gray-500 line-clamp-3 mb-6 flex-1 italic leading-relaxed">
-                                            {post.content.replace(/<[^>]*>?/gm, '').substring(0, 150)}...
-                                        </p>
-                                        <Link to={`/blog/${post.slug}`} className="text-lime-700 font-black text-sm group-hover:translate-x-2 transition-transform inline-flex items-center gap-2 w-fit">
-                                            READ MORE <span>→</span>
-                                        </Link>
-                                    </div>
-                                </Card>
-                            ))
+                        ) : filteredPosts.length === 0 ? (
+                            <div className="text-center py-24 bg-white border border-gray-100 rounded-3xl">
+                                <p className="text-gray-400 font-bold uppercase italic tracking-widest">No articles found.</p>
+                            </div>
                         ) : (
-                            <div className="col-span-2 text-center py-[100px] border-2 border-dashed border-gray-200 rounded-3xl">
-                                <p className="text-gray-500 font-medium italic">No articles found matching your criteria.</p>
-                            </div>
+                            <>
+                                {/* Featured Post */}
+                                {featuredPost && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="mb-8 group"
+                                    >
+                                        <Link to={`/blog/${featuredPost.slug}`} className="block bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all">
+                                            <div className="md:flex">
+                                                <div className="md:w-1/2 h-64 md:h-auto relative overflow-hidden">
+                                                    <img
+                                                        src={featuredPost.imageUrl || `https://placehold.co/800x500/1A1A1A/CBFF38?text=Featured`}
+                                                        alt={featuredPost.title}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                                    />
+                                                    {featuredPost.category && (
+                                                        <span className="absolute top-4 left-4 bg-[#CBFF38] text-black px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
+                                                            {featuredPost.category.name}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3 italic">Featured Article</span>
+                                                    <h2 className="text-2xl font-black uppercase italic text-gray-900 leading-tight mb-4 group-hover:text-black">
+                                                        {featuredPost.title}
+                                                    </h2>
+                                                    <p className="text-sm text-gray-500 leading-relaxed mb-6 line-clamp-3">
+                                                        {featuredPost.content?.replace(/<[^>]*>?/gm, '').substring(0, 180)}...
+                                                    </p>
+                                                    <span className="flex items-center gap-2 text-black font-black text-[11px] uppercase tracking-widest">
+                                                        Read Article <FaArrowRight size={10} />
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    </motion.div>
+                                )}
+
+                                {/* Grid of remaining posts */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {restPosts.map((post, i) => (
+                                        <motion.div
+                                            key={post.id}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.06 }}
+                                            className="group"
+                                        >
+                                            <Link to={`/blog/${post.slug}`} className="block bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all h-full flex flex-col">
+                                                <div className="h-48 relative overflow-hidden">
+                                                    <img
+                                                        src={post.imageUrl || `https://placehold.co/600x400/1A1A1A/CBFF38?text=${encodeURIComponent(post.title.charAt(0))}`}
+                                                        alt={post.title}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                                    />
+                                                    {post.category && (
+                                                        <span className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest text-gray-900 border border-gray-100">
+                                                            {post.category.name}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="p-6 flex flex-col flex-1">
+                                                    <p className="text-[9px] uppercase font-black tracking-widest text-gray-400 mb-2 italic">
+                                                        {new Date(post.publishedAt || post.createdAt).toLocaleDateString()}
+                                                        {post.author ? ` · ${post.author.firstName} ${post.author.lastName}` : ''}
+                                                    </p>
+                                                    <h4 className="text-lg font-black uppercase italic text-gray-900 group-hover:text-black transition-colors mb-3 line-clamp-2 flex-1">{post.title}</h4>
+                                                    <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors mt-auto">
+                                                        Read Article <FaArrowRight size={8} />
+                                                    </span>
+                                                </div>
+                                            </Link>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
     );
 };

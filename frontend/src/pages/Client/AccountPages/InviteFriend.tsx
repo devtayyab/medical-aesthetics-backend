@@ -2,16 +2,27 @@ import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { css } from "@emotion/css";
-import LayeredBG from "@/assets/LayeredBg.svg";
-import HeroImage from "@/assets/ReferralHeaderImg.jpg";
-import { FaChevronRight, FaChevronDown, FaChevronUp } from "react-icons/fa6";
+import { FaChevronRight, FaChevronDown, FaChevronUp, FaCopy, FaShareNodes, FaGift, FaUsers, FaArrowRight } from "react-icons/fa6";
 import type { RootState } from "@/store";
+import { motion, AnimatePresence } from "framer-motion";
 
-const containerStyle = css`
-  width: 100%;
-  max-width: 940px;
-  margin: 0 auto;
-  padding: 0 16px;
+const sectionStyles = css`
+  min-height: 100vh;
+  background: #FDFDFD;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(203, 255, 56, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(203, 255, 56, 0.05) 0px, transparent 50%);
+  padding-bottom: 80px;
+`;
+
+const premiumCard = css`
+  background: white;
+  border: 1px solid rgba(241, 245, 249, 1);
+  border-radius: 32px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.02);
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
 `;
 
 export const InviteFriend: React.FC = () => {
@@ -34,172 +45,165 @@ export const InviteFriend: React.FC = () => {
 
   const faqs = [
     {
-      q: "How do I earn the $5 bonus?",
-      a: "Just share your unique referral link with your friends. When they register using your link and complete their first booking, both of you will receive $5 worth of loyalty points in your accounts.",
+      q: "How do I earn the £5 bonus?",
+      a: "Just share your unique referral link. When they register and complete their first booking, both of you receive £5 in loyalty points.",
     },
     {
-      q: "Is there a limit to how many friends I can invite?",
-      a: "No! There is no limit. You can invite as many friends as you want and keep earning rewards for each one who books a treatment.",
+      q: "Is there a limit to invitations?",
+      a: "No limit! Invite as many friends as you want and keep earning rewards for each successful booking.",
     },
     {
-      q: "When will I see the bonus in my account?",
-      a: "The bonus points are automatically credited to your account as soon as your friend's first appointment is marked as completed by the clinic.",
-    },
-    {
-      q: "Can I use the $5 for any treatment?",
-      a: "Yes, you can use your loyalty points to get discounts on any treatment available on our platform.",
+      q: "When will I see the bonus?",
+      a: "Points are credited as soon as your friend's first appointment is marked as completed.",
     },
   ];
 
   return (
-    <section
-      className="relative bg-cover bg-center flex items-center justify-center px-4 py-[60px]"
-      style={{
-        backgroundImage: `url(${LayeredBG})`,
-        backgroundPosition: "center",
-        backgroundSize: "cover",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
-      <div className={containerStyle}>
-        {/* Breadcrumb */}
-        <div className="flex items-center text-[#33373F] text-[15px] font-medium mb-1">
-          <Link
-            to="/my-account"
-            className="hover:text-[#405C0B] transition-colors"
+    <div className={sectionStyles}>
+      {/* Visual Header */}
+      <div className="bg-[#1A1A1A] text-white pt-16 pb-24 px-6 relative overflow-hidden">
+        <div className="max-w-5xl mx-auto relative z-10 text-center md:text-left">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div className="max-w-2xl">
+              <div className="flex items-center justify-center md:justify-start gap-4 mb-4 text-[#CBFF38] text-[10px] font-black uppercase tracking-[0.2em] italic">
+                <Link to="/my-account" className="hover:opacity-80 transition-opacity">Account</Link>
+                <FaChevronRight size={10} />
+                <span>Referral Program</span>
+              </div>
+              <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-[0.9] mb-4">
+                Invite Friends <br className="hidden md:block" /> <span className="text-[#CBFF38]">Earn £5</span>
+              </h1>
+              <p className="text-gray-400 font-medium text-lg max-w-lg mx-auto md:mx-0">
+                Share the beauty with your inner circle. Both of you get £5 when they book their first treatment.
+              </p>
+            </div>
+            
+            <div className="hidden lg:block relative">
+               <div className="size-48 rounded-[40px] bg-[#CBFF38] flex items-center justify-center rotate-12 shadow-[0_0_50px_rgba(203,255,56,0.2)]">
+                  <FaGift size={64} className="text-black" />
+               </div>
+               <div className="absolute -top-4 -right-4 size-20 rounded-2xl bg-white flex items-center justify-center rotate-[-12deg] shadow-xl">
+                  <FaUsers size={24} className="text-black" />
+               </div>
+            </div>
+          </div>
+        </div>
+        <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#CBFF38]/10 to-transparent pointer-events-none" />
+      </div>
+
+      <div className="max-w-5xl mx-auto px-6 -mt-10 relative z-20">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          
+          {/* Main Action Card */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`${premiumCard} lg:col-span-3 !p-10`}
           >
-            Account
-          </Link>
-          <span className="px-3">
-            <FaChevronRight size={11} className="pt-[1px] text-[#767676]" />
-          </span>
-          Referral Program
-        </div>
-
-        {/* Title */}
-        <h2 className="text-[#33373F] text-[30px] font-semibold mb-8">
-          Referral Program
-        </h2>
-
-        {/* Hero Section */}
-        <div className="relative rounded-[24px] overflow-hidden mb-10 shadow-2xl">
-          <img
-            src={HeroImage}
-            alt="Invite a friend"
-            className="w-full h-[420px] object-cover filter brightness-75"
-          />
-          <div className="absolute top-0 left-0 p-8 text-white max-w-[600px]">
-            <h3 className="text-[54px] leading-[60px] font-bold mb-4 drop-shadow-lg">
-              Invite a friend <br /> and earn $5!
-            </h3>
-            <p className="text-xl text-gray-100 drop-shadow-md">Share the love for aesthetics and get rewarded for every friend you bring.</p>
-          </div>
-
-          {/* Referral Link Card */}
-          <div className="md:min-w-[500px] absolute bottom-6 left-6 bg-white/95 backdrop-blur shadow-xl rounded-[20px] px-6 py-8">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="size-12 flex items-center justify-center bg-[#CBFF38]/20 rounded-xl">
-                <span className="text-2xl">🎁</span>
-              </div>
-              <div>
-                <p className="font-bold text-[#33373F] text-lg">
-                  Your Referral Link
-                </p>
-                <p className="text-sm text-[#586271]">
-                  Copy and share this link to start earning
-                </p>
-              </div>
+            <div className="mb-10">
+               <h3 className="text-2xl font-black uppercase italic text-gray-900 mb-2">Your Personal Link</h3>
+               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest italic">Share this link to start earning credits</p>
             </div>
 
-            <div className="flex gap-2">
-              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center overflow-hidden">
-                <code className="text-sm text-[#357A7B] font-mono truncate">{inviteLink}</code>
-              </div>
-              <button
-                onClick={copyToClipboard}
-                className={`px-6 py-3 rounded-xl font-bold transition-all ${copied
-                  ? "bg-green-500 text-white"
-                  : "bg-[#CBFF38] text-[#203400] hover:bg-[#A7E52F]"
-                  }`}
-              >
-                {copied ? "Copied!" : "Copy"}
-              </button>
-            </div>
-
-            <div className="mt-6 pt-6 border-t border-gray-100 flex justify-between items-center text-sm">
-              <div className="text-gray-500">
-                Code: <span className="font-bold text-black font-mono">{referralCode}</span>
-              </div>
-              <Link to="/search" className="text-[#357A7B] font-bold hover:underline">
-                Find treatments to share →
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* How it works */}
-        <div className="mb-10">
-          <h3 className="text-[22px] font-semibold mb-6 text-[#33373F]">
-            How it works
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white shadow rounded-[12px] p-6 text-center">
-            <div>
-              <div className="text-[32px] mb-2">👥</div>
-              <p className="font-semibold">Invite your friends</p>
-              <p className="text-sm text-[#586271]">
-                By sharing your referral link
-              </p>
-            </div>
-            <div>
-              <div className="text-[32px] mb-2">🎁</div>
-              <p className="font-semibold">You get $5</p>
-              <p className="text-sm text-[#586271]">
-                For every friend who registers and makes a purchase
-              </p>
-            </div>
-            <div>
-              <div className="text-[32px] mb-2">💵</div>
-              <p className="font-semibold">They get $5</p>
-              <p className="text-sm text-[#586271]">
-                To be used on their first online booking
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* FAQs */}
-        <div>
-          <h3 className="text-[22px] font-semibold mb-6 text-[#33373F]">
-            FAQs
-          </h3>
-          <div className="bg-white rounded-[12px] shadow divide-y divide-[#E5E7EB]">
-            {faqs.map((faq, index) => (
-              <div key={index}>
-                <button
-                  onClick={() => toggleFAQ(index)}
-                  className="w-full flex justify-between items-center px-6 py-4 text-left"
+            <div className="flex flex-col gap-4">
+              <div className="h-16 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl px-6 flex items-center justify-between group hover:border-[#CBFF38] transition-colors">
+                <code className="text-sm font-black text-gray-600 truncate">{inviteLink}</code>
+                <button 
+                  onClick={copyToClipboard}
+                  className="text-gray-400 hover:text-black transition-colors"
                 >
-                  <span className="font-medium text-[#33373F]">{faq.q}</span>
-                  {faqOpen === index ? (
-                    <FaChevronUp className="text-[#405C0B]" />
-                  ) : (
-                    <FaChevronDown className="text-[#586271]" />
-                  )}
+                  <FaCopy size={18} />
                 </button>
-                {faqOpen === index && (
-                  <div className="px-6 pb-4 text-[#586271] text-sm">
-                    {faq.a}
-                  </div>
-                )}
               </div>
-            ))}
-          </div>
 
-          <button className="mt-4 text-sm font-medium text-[#405C0B] hover:underline">
-            View All →
-          </button>
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={copyToClipboard}
+                  className={`h-14 rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-xs tracking-widest transition-all ${copied ? 'bg-black text-[#CBFF38]' : 'bg-[#CBFF38] text-black hover:bg-lime-400'}`}
+                >
+                  <FaCopy /> {copied ? 'Copied' : 'Copy Link'}
+                </button>
+                <button 
+                  className="h-14 rounded-2xl bg-white border-2 border-gray-200 text-gray-900 hover:border-black flex items-center justify-center gap-3 font-black uppercase text-xs tracking-widest transition-all"
+                >
+                  <FaShareNodes /> Share
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-12 pt-10 border-t border-gray-100 grid grid-cols-3 gap-8">
+               <div className="text-center">
+                  <div className="text-2xl font-black text-gray-900 leading-none mb-1">0</div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Invited</p>
+               </div>
+               <div className="text-center">
+                  <div className="text-2xl font-black text-gray-900 leading-none mb-1">0</div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pending</p>
+               </div>
+               <div className="text-center">
+                  <div className="text-2xl font-black text-lime-600 leading-none mb-1">£0</div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Earned</p>
+               </div>
+            </div>
+          </motion.div>
+
+          {/* How it Works / FAQ */}
+          <div className="lg:col-span-2 space-y-6">
+             <div className={`${premiumCard} !p-8 bg-gray-50 border-gray-100`}>
+                <h4 className="text-lg font-black uppercase italic text-gray-900 mb-6 flex items-center gap-3">
+                   <FaUsers className="text-[#CBFF38]" /> How it Works
+                </h4>
+                <div className="space-y-6">
+                   {[
+                     { step: "01", text: "Invite a friend using your unique link." },
+                     { step: "02", text: "They book and complete their first visit." },
+                     { step: "03", text: "You both get £5 added to your reward balance." }
+                   ].map((s, i) => (
+                     <div key={i} className="flex gap-4">
+                        <span className="text-[10px] font-black text-[#CBFF38] italic shrink-0 mt-1">{s.step}</span>
+                        <p className="text-xs font-bold text-gray-600 leading-relaxed uppercase tracking-tight italic">{s.text}</p>
+                     </div>
+                   ))}
+                </div>
+             </div>
+
+             <div className="space-y-3">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 px-2 italic">Common Questions</h4>
+                <div className="bg-white rounded-[24px] border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+                  {faqs.map((faq, idx) => (
+                    <div key={idx} className="group">
+                      <button 
+                        onClick={() => toggleFAQ(idx)}
+                        className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50/50 transition-colors"
+                      >
+                        <span className="text-[11px] font-black uppercase italic text-gray-900">{faq.q}</span>
+                        {faqOpen === idx ? <FaChevronUp size={10} /> : <FaChevronDown size={10} />}
+                      </button>
+                      <AnimatePresence>
+                        {faqOpen === idx && (
+                          <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="px-6 pb-4 overflow-hidden"
+                          >
+                             <p className="text-xs font-bold text-gray-400 leading-relaxed uppercase tracking-tighter italic">{faq.a}</p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
+                </div>
+             </div>
+          </div>
+        </div>
+
+        <div className="mt-12 text-center">
+            <Link to="/rewards" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-colors">
+               View Reward Balances <FaArrowRight />
+            </Link>
         </div>
       </div>
-    </section>
+    </div>
   );
 };

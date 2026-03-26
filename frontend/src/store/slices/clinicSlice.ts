@@ -110,16 +110,15 @@ export const fetchAppointmentById = createAsyncThunk(
 export const updateAppointmentStatus = createAsyncThunk(
   'clinic/updateAppointmentStatus',
   async (
-    { id, status, notes, treatmentDetails }: {
+    { id, status, updateData }: {
       id: string;
       status: AppointmentStatus;
-      notes?: string;
-      treatmentDetails?: any;
+      updateData?: any;
     },
     { rejectWithValue }
   ) => {
     try {
-      return await clinicApi.appointments.updateStatus(id, status, notes, treatmentDetails);
+      return await clinicApi.appointments.updateStatus(id, status, updateData);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update status');
     }

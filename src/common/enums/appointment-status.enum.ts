@@ -8,4 +8,5 @@ export enum AppointmentStatus {
   ARRIVED = 'ARRIVED',
   NO_SHOW = 'NO_SHOW',
   DELETED = 'DELETED',
+  EXECUTED = 'EXECUTED',
 }

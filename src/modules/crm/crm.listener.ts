@@ -64,4 +64,33 @@ export class CrmListener {
             }
         }
     }
+
+    @OnEvent('appointment.executed')
+    async handleAppointmentExecuted(appointment: any) {
+        this.logger.log(`Appointment ${appointment.id} executed in clinic. Generating follow-up...`);
+
+        try {
+            // 1. Find assigned salesperson (representative) or fallback to owner of lead
+            const representativeId = appointment.representativeId || appointment.bookedById;
+            
+            if (representativeId) {
+                // 2. Create a "Satisfaction Check" follow-up task as per workflow
+                const therapyName = appointment.service?.treatment?.name || 'Treatment';
+                
+                await this.crmService.createAction({
+                  customerId: appointment.clientId,
+                  salespersonId: representativeId,
+                  actionType: 'satisfaction_check',
+                  title: `Satisfaction Check: ${therapyName}`,
+                  description: `Post-Treatment Follow-up: ${therapyName} executed on ${appointment.executedAt || new Date().toISOString()}. Check patient results and upsell potential.`,
+                  priority: 'medium',
+                  dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3) // 3 days after execution
+                });
+
+                this.logger.log(`Follow-up task created for salesperson ${representativeId}`);
+            }
+        } catch (error) {
+            this.logger.error(`Failed to handle appointment execution follow-up for ${appointment.id}`, error.stack);
+        }
+    }
 }

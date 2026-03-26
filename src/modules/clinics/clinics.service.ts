@@ -13,6 +13,7 @@ import { Service } from './entities/service.entity';
 import { Treatment } from './entities/treatment.entity';
 import { TreatmentCategory } from './entities/treatment-category.entity';
 import { Review } from './entities/review.entity';
+import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { TreatmentStatus } from './enums/treatment-status.enum';
 import { Repository, DeepPartial } from 'typeorm';
 import { User } from '../users/entities/user.entity';
@@ -28,6 +29,8 @@ export class ClinicsService {
   constructor(
     @InjectRepository(Clinic)
     private clinicsRepository: Repository<Clinic>,
+    @InjectRepository(ClinicOwnership)
+    private readonly clinicOwnershipRepository: Repository<ClinicOwnership>,
     @InjectRepository(Service)
     private servicesRepository: Repository<Service>,
     @InjectRepository(Treatment)
@@ -53,6 +56,8 @@ export class ClinicsService {
     lng?: number;
     limit?: number;
     offset?: number;
+    search_date?: string;
+    search_time_window?: string;
   }): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; offset: number }> {
     // 1. Search for Clinics
     const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
@@ -78,6 +83,35 @@ export class ClinicsService {
       clinicQb.andWhere('treatment.category = :category', { category: params.category });
     }
 
+    // --- Availability Filtering (Rule 2) ---
+    if (params.search_date) {
+      const searchDate = new Date(params.search_date);
+      const dayName = searchDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      
+      // SQL to check if clinic is open on that day (JSON businessHours)
+      clinicQb.andWhere(
+        `CAST(clinic.businessHours->:dayName->>'isOpen' AS BOOLEAN) = true`,
+        { dayName }
+      );
+
+      if (params.search_time_window) {
+        // Simple logic: If they search morning/afternoon, we can optionally prioritize or strictly filter
+        // For now, let's just ensure they are open during that window's likely hours
+        let startLimit = '00:00';
+        let endLimit = '23:59';
+        
+        if (params.search_time_window === 'morning') { startLimit = '08:00'; endLimit = '12:00'; }
+        else if (params.search_time_window === 'afternoon') { startLimit = '12:00'; endLimit = '17:00'; }
+        else if (params.search_time_window === 'evening') { startLimit = '17:00'; endLimit = '22:00'; }
+
+        // Ensure clinic hours overlap with the requested window
+        clinicQb.andWhere(
+          `clinic.businessHours->:dayName->>'open' <= :endLimit AND clinic.businessHours->:dayName->>'close' >= :startLimit`,
+          { dayName, startLimit, endLimit }
+        );
+      }
+    }
+
     const lat = params.lat ? parseFloat(params.lat as any) : null;
     const lng = params.lng ? parseFloat(params.lng as any) : null;
 
@@ -100,6 +134,15 @@ export class ClinicsService {
         isActive: true,
         status: TreatmentStatus.APPROVED
       });
+
+    if (params.search_date) {
+      const searchDate = new Date(params.search_date);
+      const dayName = searchDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      treatmentQb.andWhere(
+        `CAST(clinic.businessHours->:dayName->>'isOpen' AS BOOLEAN) = true`,
+        { dayName }
+      );
+    }
 
     if (params.search) {
       treatmentQb.andWhere(
@@ -201,6 +244,12 @@ export class ClinicsService {
   }
 
   async getTreatmentDetails(id: string): Promise<any> {
+    // Basic UUID format check to avoid 500 errors from DB
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      throw new BadRequestException('Invalid treatment ID format');
+    }
+
     const treatment = await this.treatmentsRepository.findOne({
       where: { id },
       relations: ['offerings', 'offerings.clinic'],
@@ -304,6 +353,15 @@ export class ClinicsService {
       return this.findById(user.assignedClinicId);
     }
 
+    // 4. Check mapping table
+    const ownership = await this.clinicOwnershipRepository.findOne({
+      where: { ownerUserId: ownerId },
+    });
+
+    if (ownership) {
+      return this.findById(ownership.clinicId);
+    }
+
     throw new NotFoundException('Clinic not found for this user');
   }
 
@@ -331,6 +389,18 @@ export class ClinicsService {
     if (user && user.assignedClinicId && !all.find(c => c.id === user.assignedClinicId)) {
       const staffClinic = await this.findById(user.assignedClinicId);
       if (staffClinic) all.push(staffClinic);
+    }
+
+    // 4. Mapping table
+    const ownerships = await this.clinicOwnershipRepository.find({
+      where: { ownerUserId: ownerId },
+    });
+
+    for (const o of ownerships) {
+      if (!all.find(c => c.id === o.clinicId)) {
+        const c = await this.findById(o.clinicId);
+        if (c) all.push(c);
+      }
     }
 
     return all;
@@ -650,7 +720,8 @@ export class ClinicsService {
     const errors: string[] = [];
 
     if (!t.categoryId && !t.category) errors.push('category');
-    if (!t.shortDescription && !t.fullDescription) errors.push('description');
+    if (!t.shortDescription) errors.push('short description');
+    if (!t.fullDescription) errors.push('full description');
     if (!t.imageUrl) errors.push('photo');
 
     if (errors.length > 0) {

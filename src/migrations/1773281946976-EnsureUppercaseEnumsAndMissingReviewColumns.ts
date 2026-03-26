@@ -7,11 +7,13 @@ export class EnsureUppercaseEnumsAndMissingReviewColumns1773281946976 implements
 
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        // 1. Ensure action_status_enum includes 'overdue'
+        // 1. Ensure action_status_enum includes 'overdue' if it exists
         await queryRunner.query(`
             DO $$ BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'action_status_enum' AND e.enumlabel = 'overdue') THEN
-                    ALTER TYPE "action_status_enum" ADD VALUE 'overdue';
+                IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'action_status_enum') THEN
+                    IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'action_status_enum' AND e.enumlabel = 'overdue') THEN
+                        EXECUTE 'ALTER TYPE "action_status_enum" ADD VALUE ''overdue''';
+                    END IF;
                 END IF;
             END $$;
         `);
@@ -32,7 +34,7 @@ export class EnsureUppercaseEnumsAndMissingReviewColumns1773281946976 implements
             await queryRunner.query(`
                 DO $$ BEGIN
                     IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'treatment_status_enum' AND e.enumlabel = '${val}') THEN
-                        ALTER TYPE "treatment_status_enum" ADD VALUE '${val}';
+                        EXECUTE 'ALTER TYPE "treatment_status_enum" ADD VALUE ''${val}''';
                     END IF;
                 END $$;
             `);
@@ -52,7 +54,7 @@ export class EnsureUppercaseEnumsAndMissingReviewColumns1773281946976 implements
             await queryRunner.query(`
                 DO $$ BEGIN
                     IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'review_status_enum' AND e.enumlabel = '${val}') THEN
-                        ALTER TYPE "review_status_enum" ADD VALUE '${val}';
+                        EXECUTE 'ALTER TYPE "review_status_enum" ADD VALUE ''${val}''';
                     END IF;
                 END $$;
             `);

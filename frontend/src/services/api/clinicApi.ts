@@ -115,13 +115,11 @@ export const appointmentsApi = {
   updateStatus: async (
     id: string,
     status: AppointmentStatus,
-    notes?: string,
-    treatmentDetails?: any
+    updateData?: any
   ): Promise<Appointment> => {
     const response = await apiClient.patch(`/clinic/appointments/${id}/status`, {
       status,
-      notes,
-      treatmentDetails,
+      ...updateData,
     });
     return response.data;
   },

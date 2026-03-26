@@ -2,7 +2,12 @@ import { RecordPaymentDto } from '../clinics/dto/clinic.dto';
 import { ConflictException, Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Appointment } from '../bookings/entities/appointment.entity';
-import { Between, Repository, MoreThan } from 'typeorm';
+import {
+  Repository,
+  Between,
+  MoreThan,
+  In,
+} from 'typeorm';
 import { AppointmentHold } from './entities/appointment-hold.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { HoldSlotDto } from './dto/hold-slot.dto';
@@ -46,6 +51,8 @@ export class BookingsService {
     private usersRepository: Repository<User>,
     @InjectRepository(Service)
     private servicesRepository: Repository<Service>,
+    @InjectRepository(CustomerRecord)
+    private customerRecordsRepository: Repository<CustomerRecord>,
     @Inject(forwardRef(() => CrmService))
     private crmService: CrmService,
     private eventEmitter: EventEmitter2,
@@ -55,7 +62,7 @@ export class BookingsService {
   ) { }
 
   async holdSlot(holdSlotDto: HoldSlotDto): Promise<AppointmentHold> {
-    const { clinicId, serviceId, providerId, startTime, endTime } = holdSlotDto;
+    const { clinicId, serviceId, additionalServiceIds, providerId, startTime, endTime } = holdSlotDto;
 
     // Check for conflicts
     const conflictingAppointment = await this.appointmentsRepository.findOne({
@@ -87,6 +94,7 @@ export class BookingsService {
     const hold = this.holdsRepository.create({
       clinicId,
       serviceId,
+      additionalServiceIds,
       providerId,
       startTime: new Date(startTime),
       endTime: new Date(endTime),
@@ -249,23 +257,47 @@ export class BookingsService {
       }
     }
 
+    // --- ENHANCED: Beauty Doctors Client Identification ---
+    let isBeautyDoctorsClient = false;
+    let representativeId = null;
+
+    if (userExists) {
+      // 1. Check if user is assigned to a salesperson
+      const customerRecord = await this.customerRecordsRepository.findOne({ where: { customerId: userExists.id } });
+      if (customerRecord?.assignedSalespersonId) {
+        isBeautyDoctorsClient = true;
+        representativeId = customerRecord.assignedSalespersonId;
+      }
+    } else {
+      // Or if they were from a source that implies central ownership
+      if (createAppointmentDto.appointmentSource === 'platform_broker') {
+         isBeautyDoctorsClient = true;
+      }
+    }
+
     const appointmentData: Partial<Appointment> = {
       ...createAppointmentDto,
-      clientId, // Use potentially updated clientId
+      clientId,
       providerId: providerId ?? null,
       startTime: new Date(createAppointmentDto.startTime),
       endTime: new Date(createAppointmentDto.endTime),
       appointmentSource: createAppointmentDto.appointmentSource || 'platform_broker',
       clientDetails: createAppointmentDto.clientDetails,
       bookedById: createAppointmentDto.bookedById,
+      isBeautyDoctorsClient,
+      representativeId,
     };
 
-    // Auto-set totalAmount based on service price if not already provided
+    // Auto-set totalAmount based on all selected services if not already provided
     if (!appointmentData.totalAmount) {
-      const service = await this.servicesRepository.findOne({ where: { id: createAppointmentDto.serviceId } });
-      if (service) {
-        appointmentData.totalAmount = service.price;
-      }
+      const allIds = [createAppointmentDto.serviceId, ...(createAppointmentDto.additionalServiceIds || [])];
+      const services = await this.servicesRepository.find({ where: { id: In(allIds) } });
+      const totalPrice = services.reduce((sum, s) => sum + Number(s.price), 0);
+      appointmentData.totalAmount = totalPrice;
+    }
+
+    if (createAppointmentDto.additionalServiceIds) {
+      appointmentData.additionalServiceIds = createAppointmentDto.additionalServiceIds;
     }
 
     // Check for conflicts with existing appointments
@@ -301,7 +333,36 @@ export class BookingsService {
     }
 
     const appointment: Appointment = this.appointmentsRepository.create(appointmentData);
+    
+    // Set status to PENDING for consumer bookings to require staff confirmation
+    if (!createAppointmentDto.bookedById && createAppointmentDto.paymentMethod !== 'card') {
+      appointment.status = AppointmentStatus.PENDING;
+    }
+
     const savedAppointment: Appointment = await this.appointmentsRepository.save(appointment);
+
+    // Create a CRM Task for Salesperson to confirm the appointment (Call Center Workflow)
+    if (savedAppointment.status === AppointmentStatus.PENDING) {
+      try {
+        await this.crmService.createAction({
+          customerId: clientId,
+          actionType: 'call',
+          title: 'Confirmation Call Reminder',
+          description: `New consumer booking #${savedAppointment.id.slice(-6).toUpperCase()}. Please call to confirm details and finalize.`,
+          status: 'pending',
+          priority: 'high',
+          dueDate: new Date(Date.now() + 30 * 60 * 1000), // 30 mins from now
+          metadata: {
+            appointmentId: savedAppointment.id,
+            autoGenerated: true,
+            workflow: 'call_center_confirmation'
+          }
+        });
+        console.log(`[CRM] Auto-task created for appointment confirmation: ${savedAppointment.id}`);
+      } catch (crmErr) {
+        console.error('Failed to create internal CRM task for booking confirmation:', crmErr);
+      }
+    }
 
     // Load full relations before emitting event for notifications
     const appointmentWithRelations = await this.findById(savedAppointment.id);
@@ -486,6 +547,26 @@ export class BookingsService {
     } else if (status === AppointmentStatus.CANCELLED) {
       updateData.cancelledAt = new Date();
       updateData.cancelledById = userId;
+
+      // Ensure ledger is updated with refund for cancellation
+      if (Number(appointment?.amountPaid || 0) > 0) {
+        try {
+          await this.financialService.recordPayment({
+            appointmentId: appointment.id,
+            clinicId: appointment.clinicId,
+            clientId: appointment.clientId,
+            providerId: appointment.providerId,
+            amount: Number(appointment.amountPaid),
+            method: (appointment.paymentMethod as any) || RecordPaymentMethod.VIVA_WALLET,
+            type: PaymentType.REFUND,
+            notes: `Auto-refund record: Cancelled`,
+            recordedById: userId,
+          });
+        } catch (e) {
+          console.error('[Financial] Refund logging failed', e.message);
+        }
+      }
+
       // Financial impact: Revenue becomes 0 for canceled appointments
       updateData.amountPaid = 0;
       updateData.totalAmount = 0;
@@ -680,17 +761,29 @@ export class BookingsService {
       // 4. Transform & Mask
       return appointments.map(apt => {
         let isMasked = false;
+        
+        // PRIVACY RULE: Salespeople only see details of Beauty Doctors clients OR appointments they booked
         if (userRole === 'salesperson') {
-          const isBooked = apt.bookedById === userId;
-          const isProvided = apt.providerId === userId;
-          const isOwned = (apt.client as any)?.customerRecords?.some((r: any) => r.assignedSalespersonId === userId);
-          if (!isBooked && !isProvided && !isOwned) isMasked = true;
+          const isBookedByMe = apt.bookedById === userId;
+          const isManagedByMe = apt.representativeId === userId;
+          const isOwnedByMe = (apt.client as any)?.customerRecords?.some((r: any) => r.assignedSalespersonId === userId);
+          
+          if (!isBookedByMe && !isManagedByMe && !isOwnedByMe) {
+            isMasked = true;
+          }
         }
 
         if (isMasked) {
           return {
-            id: apt.id, startTime: apt.startTime, endTime: apt.endTime, status: apt.status, clinicId: apt.clinicId,
-            isBlocked: true, displayName: 'Blocked Time', serviceName: 'Blocked',
+            id: apt.id, 
+            startTime: apt.startTime, 
+            endTime: apt.endTime, 
+            status: apt.status, 
+            clinicId: apt.clinicId,
+            isBlocked: true, 
+            displayName: 'Blocked Time', 
+            serviceName: 'Blocked',
+            isBeautyDoctorsClient: false,
             providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
           };
         }
@@ -702,6 +795,7 @@ export class BookingsService {
           providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
           bookedByInfo: apt.bookedBy ? { id: apt.bookedBy.id, name: `${apt.bookedBy.firstName} ${apt.bookedBy.lastName}`, role: apt.bookedBy.role } : null,
           isReturned: repeatClients.has(apt.clientId),
+          isBeautyDoctorsClient: apt.isBeautyDoctorsClient || false, // Return flag for color-coding
         };
       });
     } catch (err) {
@@ -749,142 +843,128 @@ export class BookingsService {
     updateData?: any,
   ): Promise<Appointment> {
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
+    const oldStatus = appointment.status;
 
-    // Only Admin / Super Admin / Salesperson can CONFIRM appointments
-    if (
-      status === AppointmentStatus.CONFIRMED &&
-      userRole !== UserRole.ADMIN &&
-      userRole !== UserRole.SUPER_ADMIN &&
-      userRole !== UserRole.SALESPERSON
-    ) {
-      throw new ForbiddenException('Only Admin or Sales can confirm appointments');
+    // 1. CONFIRMATION RESTRICTION: Clinique can confirm, sales and admin
+    if (status === AppointmentStatus.CONFIRMED) {
+      const allowedRoles = [
+        UserRole.ADMIN,
+        UserRole.SUPER_ADMIN,
+        UserRole.SALESPERSON,
+        UserRole.MANAGER,
+        UserRole.CLINIC_OWNER,
+        UserRole.SECRETARIAT,
+        UserRole.DOCTOR,
+      ];
+      if (!allowedRoles.includes(userRole as UserRole)) {
+        throw new ForbiddenException('You are not allowed to confirm appointments. Please contact your Beauty Doctors representative.');
+      }
     }
 
-    appointment.status = status;
-
-    if (updateData?.notes) {
-      appointment.notes = updateData.notes;
-    }
-
-    if (updateData?.treatmentDetails) {
-      appointment.treatmentDetails = updateData.treatmentDetails;
-    }
-
-    if (status === AppointmentStatus.COMPLETED) {
-      appointment.completedAt = new Date();
-      // RULE 8: Persistence of isReturned flag
+    // 2. EXECUTION & RECALCULATION LOGIC
+    if (status === AppointmentStatus.EXECUTED || status === AppointmentStatus.COMPLETED) {
+      appointment.serviceExecuted = true;
+      appointment.executedAt = new Date();
+      appointment.executedById = userId;
+      appointment.completedAt = new Date(); 
+      
+      // Update details shared during the execution phase
+      if (updateData?.serviceId) appointment.serviceId = updateData.serviceId;
+      if (updateData?.totalAmount !== undefined) appointment.totalAmount = Number(updateData.totalAmount);
+      if (updateData?.amountPaid !== undefined) appointment.amountPaid = Number(updateData.amountPaid);
+      if (updateData?.rewardPointsRedeemed) appointment.rewardPointsRedeemed = Number(updateData.rewardPointsRedeemed);
+      
+      // RULE: Persistence of isReturned flag
       if (!appointment.isReturned) {
         try {
           const previousDone = await this.appointmentsRepository.findOne({
-            where: { clientId: appointment.clientId, status: AppointmentStatus.COMPLETED },
+            where: { clientId: appointment.clientId, status: In([AppointmentStatus.COMPLETED, AppointmentStatus.EXECUTED]) },
             order: { completedAt: 'DESC' },
           });
-          appointment.isReturned = !!previousDone && new Date(previousDone.completedAt) < new Date(appointment.startTime);
+          appointment.isReturned = !!previousDone;
         } catch (rErr) {
           console.error('[BookingsService] Ret check failed:', rErr.message);
         }
       }
-    } else if (status === AppointmentStatus.CANCELLED) {
+
+      // TRIGGER NOTIFICATION: Every execution must notify sales and admin
+      this.eventEmitter.emit('appointment.executed', { 
+        appointment,
+        performedBy: userId 
+      });
+    }
+
+    if (status === AppointmentStatus.CANCELLED) {
       appointment.cancelledAt = new Date();
       appointment.cancelledById = userId;
     } else if (status === AppointmentStatus.NO_SHOW) {
       appointment.noShowMarkedAt = new Date();
       appointment.noShowMarkedById = userId;
-      // Rule 1: No revenue for NO-SHOW
       appointment.amountPaid = 0;
       appointment.totalAmount = 0;
-      // Void revenue if it exists
-      try {
-        await this.financialService['paymentRecordsRepository'].update(
-          { appointmentId: appointment.id },
-          { notes: `Voided: appointment marked as NO-SHOW at ${new Date().toISOString()}` }
-        );
-      } catch (voidErr) {
-        console.error('[BookingsService] No-show void failed:', voidErr.message);
-      }
     }
 
-    const oldStatus = appointment.status;
+    if (updateData?.notes) appointment.notes = updateData.notes;
+    if (updateData?.treatmentDetails) appointment.treatmentDetails = updateData.treatmentDetails;
+
+    appointment.status = status;
     const saved = await this.appointmentsRepository.save(appointment);
     const updated = await this.findById(saved.id);
 
-    // --- RULE 9: Task Interaction — auto-complete / cancel / follow-up linked tasks ---
+    // 3. TASK INTERACTION: Auto-complete / Cancel / Follow-up linked tasks
     try {
       const linkedTasks = await this.crmService['crmActionsRepository']?.find?.({
         where: { relatedAppointmentId: appointmentId },
       });
       if (linkedTasks?.length) {
         for (const task of linkedTasks) {
-          if (status === AppointmentStatus.COMPLETED && task.status === 'pending') {
+          if ((status === AppointmentStatus.COMPLETED || status === AppointmentStatus.EXECUTED) && task.status === 'pending') {
             await this.crmService['crmActionsRepository'].update(task.id, { status: 'completed', completedAt: new Date() });
           } else if (status === AppointmentStatus.CANCELLED && task.status === 'pending') {
             await this.crmService['crmActionsRepository'].update(task.id, { status: 'cancelled' });
           }
         }
       }
-    } catch (taskLinkErr) {
-      this.logDebug('Task link update failed', taskLinkErr);
-    }
 
-    // --- AUTOMATION: Create follow-up task for outcome statuses ---
-    try {
-      const outcomeStatuses = [AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW];
-      if (outcomeStatuses.includes(status as any)) {
-        const salespersonId = (appointment as any).salespersonId || updated.bookedById;
-        const clientId = updated.clientId;
-        if (salespersonId && clientId) {
+      // Create Follow-up Satisfaction Call
+      const outcomeStatuses = [AppointmentStatus.COMPLETED, AppointmentStatus.EXECUTED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW];
+      if (outcomeStatuses.includes(status)) {
+        const salespersonId = updated.representativeId || (updated as any).salespersonId || updated.bookedById;
+        if (salespersonId && updated.clientId) {
           const nextDay = new Date();
           nextDay.setDate(nextDay.getDate() + 1);
           nextDay.setHours(9, 0, 0, 0);
-          const customerName = updated.client ? `${updated.client.firstName} ${updated.client.lastName}` : 'Client';
-          const therapy = updated.service?.treatment?.name || 'Treatment';
-          let taskTitle: string;
-          let taskDesc: string;
-          if (status === AppointmentStatus.COMPLETED) {
-            taskTitle = `Verify Result: ${customerName} (${therapy})`;
-            taskDesc = `Appointment completed. Call to verify satisfaction and confirm successful procedure.`;
-          } else if (status === AppointmentStatus.NO_SHOW) {
-            taskTitle = `⚠️ NO-SHOW Follow-up: ${customerName}`;
-            taskDesc = `Client did not show up for ${therapy}. Contact immediately to reschedule and understand reason.`;
-          } else {
-            taskTitle = `Re-schedule: ${customerName} (Cancelled)`;
-            taskDesc = `Appointment was cancelled. Contact to understand reason and reschedule if appropriate.`;
+          
+          let taskTitle = `Outcome Follow-up: ${updated.client?.firstName || 'Client'}`;
+          let taskDesc = `Follow up on appointment outcome: ${status}`;
+          
+          if (status === AppointmentStatus.EXECUTED || status === AppointmentStatus.COMPLETED) {
+            taskTitle = `Satisfaction Check: ${updated.client?.firstName || 'Client'}`;
+            taskDesc = `Treatment performed at ${updated.clinic?.name}. Verify satisfaction and confirm successful execution.`;
           }
+
           await this.crmService.createAction({
-            customerId: (updated as any).customerRecordId || clientId,
+            customerId: updated.clientId,
             salespersonId,
             actionType: 'call',
             title: taskTitle,
             description: taskDesc,
             status: 'pending',
-            priority: 'urgent',
-            dueDate: nextDay.toISOString(),
-            reminderDate: nextDay.toISOString(),
-            relatedAppointmentId: appointmentId,
+            priority: 'medium',
+            dueDate: nextDay,
+            relatedAppointmentId: updated.id,
           } as any);
         }
       }
-    } catch (err) {
-      this.logDebug('Task automation failed during status update', err);
+    } catch (taskErr) {
+      console.error('[BookingsService] Task automation update failed:', taskErr.message);
     }
 
-    // Audit log for status changes (Done/Canceled/No-show)
-    if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(status as any)) {
-      this.eventEmitter.emit('audit.log', {
-        userId,
-        action: 'APPOINTMENT_STATUS_CHANGE',
-        resource: 'appointments',
-        resourceId: appointmentId,
-        changes: { before: { status: oldStatus }, after: { status } },
-        data: { appointmentId, clientId: appointment.clientId, clinicId: appointment.clinicId },
-      });
-    }
-
-    // Trigger Notification
+    // 4. NOTIFICATION TRIGGERS
     let trigger: NotificationTrigger;
     if (status === AppointmentStatus.CONFIRMED) trigger = NotificationTrigger.APPOINTMENT_CONFIRMED;
     else if (status === AppointmentStatus.CANCELLED) trigger = NotificationTrigger.APPOINTMENT_CANCELED;
-    else if (status === AppointmentStatus.COMPLETED) trigger = NotificationTrigger.EXECUTION_NOTIFICATION;
+    else if (status === AppointmentStatus.EXECUTED || status === AppointmentStatus.COMPLETED) trigger = NotificationTrigger.EXECUTION_NOTIFICATION;
 
     if (trigger && updated.clientId) {
       await this.notificationsService.sendTriggeredNotification(trigger, updated.clientId, {

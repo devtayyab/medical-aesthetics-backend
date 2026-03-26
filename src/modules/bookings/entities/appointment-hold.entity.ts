@@ -16,6 +16,9 @@ export class AppointmentHold {
   @Column()
   serviceId: string;
 
+  @Column('json', { nullable: true })
+  additionalServiceIds: string[];
+
   @Column({ nullable: true })
   providerId?: string;
 

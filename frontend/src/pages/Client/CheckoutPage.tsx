@@ -2,11 +2,9 @@ import React, { useState, useEffect } from "react";
 import { css } from "@emotion/css";
 import VISA from "@/assets/Visa.png";
 import AMEX from "@/assets/Amex.png";
-import Mastercard from "@/assets/paypal.png";
-import Paypal from "@/assets/container.png";
 import { Button } from "@/components/atoms/Button/Button";
-import { FaClock, FaCheckCircle, FaShieldAlt, FaChevronLeft, FaInfoCircle, FaLock } from "react-icons/fa";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { FaCheckCircle, FaShieldAlt, FaChevronLeft, FaInfoCircle, FaLock } from "react-icons/fa";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { createAppointment, clearBooking } from "@/store/slices/bookingSlice";
 import type { RootState, AppDispatch } from "@/store";
@@ -44,7 +42,7 @@ export const CheckoutPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const crmState = (location.state || {}) as any;
-    const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, isLoading, holdId } = useSelector((state: RootState) => state.booking);
+    const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, holdId } = useSelector((state: RootState) => state.booking);
     const { user } = useSelector((state: RootState) => state.auth);
 
     const [paymentMethod, setPaymentMethod] = useState<'card' | 'venue' | 'paypal'>('card');
@@ -95,6 +93,7 @@ export const CheckoutPage: React.FC = () => {
             const appointmentData = {
                 clinicId: selectedClinic.id,
                 serviceId: selectedServices[0].id,
+                additionalServiceIds: selectedServices.slice(1).map(s => s.id),
                 clientId: crmState?.customerId || user?.id || '00000000-0000-0000-0000-000000000000',
                 providerId: selectedTimeSlot?.providerId || undefined,
                 startTime: selectedTimeSlot.startTime,

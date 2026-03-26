@@ -93,14 +93,18 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
               <div
                 key={idx}
                 onClick={(e) => { e.stopPropagation(); window.location.href = `/appointment/booking?clinicId=${clinic.id}&serviceIds=${service.id}`; }}
-                className="flex items-center justify-between gap-4 group/service hover:bg-gray-50 -mx-3 px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                className="flex items-center justify-between gap-4 group/service hover:bg-lime-50 -mx-3 px-3 py-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-lime-100"
               >
                 <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-bold text-gray-800 truncate group-hover/service:text-black hover:underline">{service.treatment?.name}</h4>
-                  <p className="text-[12px] text-gray-500 mt-0.5">{service.durationMinutes} mins</p>
+                  <h4 className="text-sm font-black text-gray-800 truncate group-hover/service:text-lime-700">{service.treatment?.name}</h4>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Clock size={10} className="text-gray-400" />
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tighter">{service.durationMinutes} mins</p>
+                  </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[15px] font-black text-lime-700">£{service.price}</p>
+                  <p className="text-[10px] font-black text-gray-300 uppercase leading-none mb-0.5">starting from</p>
+                  <p className="text-[14px] font-black text-lime-700">£{service.price}</p>
                 </div>
               </div>
             ))
@@ -112,47 +116,34 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
         </div>
 
         {/* Availability Snippet & CTA Buttons */}
-        <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-lime-50/50 p-3 rounded-xl border border-lime-100">
+        <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-lime-50/50 p-3 rounded-2xl border border-lime-100/50">
           <div className="flex flex-col">
             <div className="flex items-center gap-2 text-sm">
-              <Clock size={16} className="text-lime-600" />
-              <span className="font-bold text-gray-900">
-                Next available: <span className="text-lime-700">
-                  {(() => {
-                    if (!searchDate) return "Today";
-                    const d = new Date(searchDate);
-                    const today = new Date();
-                    const tomorrow = new Date();
-                    tomorrow.setDate(today.getDate() + 1);
-
-                    const isToday = d.toDateString() === today.toDateString();
-                    const isTomorrow = d.toDateString() === tomorrow.toDateString();
-
-                    if (isToday) return "Today";
-                    if (isTomorrow) return "Tomorrow";
-                    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-                  })()}, 11:00 AM
-                </span>
-              </span>
+              <div className="size-2 bg-lime-500 rounded-full animate-pulse"></div>
+              <div className="font-black text-[11px] uppercase tracking-widest text-[#1a202c]">
+                {searchDate ? (
+                  <>Next Available: <span className="text-lime-700">Today 11:30</span></>
+                ) : (
+                  <span className="text-lime-700">Next available: Today 14:00</span>
+                )}
+              </div>
             </div>
-            {clinic.minPrice && (
-              <p className="text-sm font-bold text-lime-800 mt-1">
-                from €{clinic.minPrice}
-              </p>
-            )}
+            <p className="text-[10px] font-bold text-gray-400 mt-1 pl-4 italic">
+              Booking highly recommended
+            </p>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <button
-              className="flex-1 sm:flex-none border border-black text-black hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-bold transition-all"
+              className="flex-1 sm:flex-none border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
               onClick={(e) => { e.stopPropagation(); handleClick(); }}
             >
-              View Clinic
+              Details
             </button>
             <button
-              className="flex-1 sm:flex-none bg-black text-white hover:bg-gray-800 px-6 py-2 rounded-xl text-sm font-bold transition-transform active:scale-95 shadow-md"
+              className="flex-1 sm:flex-none bg-gray-900 text-white hover:bg-lime-500 hover:border-lime-500 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
               onClick={(e) => { e.stopPropagation(); handleClick(); }}
             >
-              Book
+              Book Now
             </button>
           </div>
         </div>

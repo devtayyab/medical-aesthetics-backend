@@ -1,13 +1,17 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class PatchMissingColumnsAndEnums1773281008483 implements MigrationInterface {
+    transaction = false;
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         // 1. Fix action_status_enum to include 'overdue'
+        // 1. Fix action_status_enum to include 'overdue' if it exists
         await queryRunner.query(`
             DO $$ BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'action_status_enum' AND e.enumlabel = 'overdue') THEN
-                    ALTER TYPE "action_status_enum" ADD VALUE 'overdue';
+                IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'action_status_enum') THEN
+                    IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'action_status_enum' AND e.enumlabel = 'overdue') THEN
+                        EXECUTE 'ALTER TYPE "action_status_enum" ADD VALUE ''overdue''';
+                    END IF;
                 END IF;
             END $$;
         `);

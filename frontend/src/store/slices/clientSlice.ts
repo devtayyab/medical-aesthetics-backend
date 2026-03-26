@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction, Reducer } from "@reduxjs/toolkit";
 import { clinicsAPI, bookingAPI, loyaltyAPI } from "@/services/api";
 import type { RootState } from "@/store";
 import type {
@@ -11,7 +11,7 @@ import type {
   Treatment,
 } from "@/types";
 
-interface ClientState {
+export interface ClientState {
   clinics: Clinic[];
   featuredClinics: Clinic[];
   selectedClinic: Clinic | null;
@@ -351,6 +351,10 @@ const clientSlice = createSlice({
       .addCase(fetchClinicById.fulfilled, (state, action) => {
         state.selectedClinic = action.payload;
       })
+      .addCase(fetchClinicServices.pending, (state) => {
+        state.services = [];
+        state.availableSlots = [];
+      })
       .addCase(fetchClinicServices.fulfilled, (state, action) => {
         state.services = action.payload || [];
       })
@@ -373,7 +377,7 @@ const clientSlice = createSlice({
       .addCase(cancel.fulfilled, (state, action) => {
         state.appointments = state.appointments.map((appointment) =>
           appointment.id === action.payload.id
-            ? { ...appointment, status: "cancelled" }
+            ? { ...appointment, status: "CANCELLED" }
             : appointment
         );
       })
@@ -399,4 +403,6 @@ const clientSlice = createSlice({
 
 export const { clearError, setSearchFilters, clearSelectedClinic } =
   clientSlice.actions;
-export default clientSlice.reducer;
+
+const reducer: Reducer<ClientState> = clientSlice.reducer;
+export default reducer;

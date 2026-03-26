@@ -39,7 +39,13 @@ interface Appointment {
   startTime: string;
   endTime: string;
   status: string;
-  notes?: string;
+  serviceName?: string;
+  clinic?: {
+    name: string;
+  };
+  service?: {
+    name: string;
+  };
   clientDetails?: {
     fullName: string;
     email: string;
@@ -97,8 +103,11 @@ const BookingConfirmation: React.FC = () => {
           </div>
 
           <h1 className="text-4xl font-black uppercase italic tracking-tighter text-gray-900 mb-4 px-4">
-            Booking Confirmed!
+            {appointment.status === 'PENDING' ? 'Request Received!' : 'Booking Confirmed!'}
           </h1>
+          <p className="text-gray-500 font-bold uppercase text-[10px] tracking-[0.2em] mb-12">
+            Status: {appointment.status === 'PENDING' ? 'Pending Staff Confirmation' : 'Confirmed'}
+          </p>
           <p className="text-gray-500 font-bold uppercase text-[10px] tracking-[0.2em] mb-12">
             Reference: #{appointment.id.slice(-8).toUpperCase()}
           </p>
@@ -132,9 +141,10 @@ const BookingConfirmation: React.FC = () => {
               <div className="size-12 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0">
                 <FaMapMarkerAlt className="text-gray-400" />
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Clinic Location</p>
-                <p className="font-black text-black uppercase italic">Clinic ID: {appointment.clinicId}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Appointment Details</p>
+                <p className="font-black text-black uppercase italic truncate">{appointment.service?.name || appointment.serviceName || 'Treatment'}</p>
+                <p className="text-xs font-bold text-gray-500">{appointment.clinic?.name || 'Clinic'}</p>
               </div>
             </div>
           </div>

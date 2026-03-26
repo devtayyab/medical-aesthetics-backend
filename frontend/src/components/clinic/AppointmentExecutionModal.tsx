@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { completeAppointment } from '../../store/slices/clinicSlice';
-import { PaymentMethod, Appointment, Service } from '../../types/clinic.types';
-import { X, DollarSign, CreditCard, Banknote, Building2, Gift, RefreshCw } from 'lucide-react';
+import { updateAppointmentStatus } from '../../store/slices/clinicSlice';
+import { PaymentMethod, Appointment, Service, AppointmentStatus } from '../../types/clinic.types';
+import { X, DollarSign, CreditCard, Banknote, Building2, Gift, RefreshCw, AlertTriangle } from 'lucide-react';
 import { clinicsAPI, loyaltyAPI } from '@/services/api';
 
 interface AppointmentExecutionModalProps {
@@ -71,49 +71,48 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
     return Math.max(0, baseAmount - pointsReduction);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, status: AppointmentStatus = AppointmentStatus.EXECUTED) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      const updateData: any = {
+        notes: treatmentNotes,
+        treatmentDetails: {
+          originalServiceId: appointment.serviceId,
+          actualServiceId: selectedServiceId,
+          pointsRedeemed: pointsToRedeem,
+          notes: treatmentNotes,
+          executedAt: new Date().toISOString(),
+        },
+        serviceId: selectedServiceId,
+        totalAmount: calculateTotal(),
+        rewardPointsRedeemed: pointsToRedeem,
+      };
+
       // 1. Redeem points if any
       if (pointsToRedeem > 0) {
         await loyaltyAPI.redeemPoints({
           clientId: appointment.clientId,
           clinicId: appointment.clinicId,
           points: pointsToRedeem,
-          description: `Redeemed points for appointment #${appointment.id.slice(0, 8)}`
+          description: `Loyalty Redemption for apt #${appointment.id.slice(0, 8)}`
         });
       }
 
-      // 2. Complete appointment
+      // 2. Perform status update (Execution)
       await dispatch(
-        completeAppointment({
+        updateAppointmentStatus({
           id: appointment.id,
-          data: {
-            paymentData: {
-              paymentMethod,
-              amount: calculateTotal(),
-              notes: treatmentNotes,
-              isAdvancePayment: false,
-            },
-            treatmentDetails: {
-              originalServiceId: appointment.serviceId,
-              actualServiceId: selectedServiceId,
-              pointsRedeemed: pointsToRedeem,
-              notes: treatmentNotes,
-              completedAt: new Date().toISOString(),
-            },
-            // Also pass the new serviceId if changed
-            serviceId: selectedServiceId,
-          },
+          status: status,
+          updateData
         })
       ).unwrap();
 
       onComplete();
     } catch (error) {
-      console.error('Failed to complete appointment:', error);
-      alert('Failed to complete appointment. Please try again.');
+      console.error('Clinical action failed:', error);
+      alert('Failed to process clinical action. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -276,13 +275,21 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               Back
             </button>
             <button
+              type="button"
+              onClick={(e) => handleSubmit(e, AppointmentStatus.NO_SHOW)}
+              className="px-6 py-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold flex items-center gap-2"
+              disabled={isSubmitting}
+            >
+              <AlertTriangle size={16} /> No Show
+            </button>
+            <button
               type="submit"
-              className="flex-[2] px-6 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold shadow-lg shadow-green-200 flex items-center justify-center gap-2 group"
+              className="flex-1 px-6 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold shadow-lg shadow-green-200 flex items-center justify-center gap-2 group"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Finalizing...' : (
                 <>
-                  Complete Execution
+                  Executed
                   <RefreshCw className={`w-5 h-5 ${isSubmitting ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
                 </>
               )}

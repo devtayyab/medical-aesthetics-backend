@@ -2,138 +2,103 @@ import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { css } from "@emotion/css";
-import { FaCalendarAlt, FaClock, FaClinicMedical, FaTimes, FaEdit, FaRegCommentDots, FaStar, FaCreditCard } from "react-icons/fa";
-import { MdNotes } from "react-icons/md";
+import { 
+  FaCalendarAlt, 
+  FaClock, 
+  FaClinicMedical, 
+  FaTimes, 
+  FaEdit, 
+  FaRegCommentDots, 
+  FaStar, 
+  FaCreditCard,
+  FaChevronLeft
+} from "react-icons/fa";
 import { fetchUserAppointments, cancelAppointment } from "@/store/slices/bookingSlice";
 import { bookingAPI } from "@/services/api";
 
 import { RootState, AppDispatch } from "@/store";
-import type { Appointment } from "@/types";
-import { Card } from "@/components/atoms/Card/Card";
+import { Appointment, AppointmentStatus } from "@/types";
 import { RescheduleModal } from "@/components/organisms/RescheduleModal";
-import LayeredBG from "@/assets/LayeredBg.svg";
 
-const container = css`
+const sectionStyles = css`
   min-height: 100vh;
-  background: #f9fafb;
-  background-image: url(${LayeredBG});
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center top;
+  background: #F8F9FA;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(203, 255, 56, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(0, 0, 0, 0.02) 0px, transparent 50%);
+  padding-bottom: 80px;
 `;
 
-const heading = css`
-  font-size: 28px;
-  font-weight: 700;
-  color: #222;
-  // text-align: center;
-  margin-bottom: 40px;
-`;
-
-const cardGrid = css`
-  display: grid;
-  gap: 20px;
-  margin: 0 auto;
-  grid-template-columns: 1fr;
-  @media (min-width: 640px) {
-    grid-template-columns: repeat(2, 1fr);
+const appointmentCard = css`
+  background: white;
+  border: 1px solid #F1F5F9;
+  border-radius: 24px;
+  padding: 24px;
+  @media (min-width: 768px) {
+    border-radius: 28px;
+    padding: 32px;
   }
-  @media (min-width: 1024px) {
-    grid-template-columns: repeat(3, 1fr);
-  }
-`;
-
-const cardStyle = css`
-  border-radius: 16px;
-  padding: 20px 24px;
-  background: #ffffffcc;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease;
-  cursor: default;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 
   &:hover {
+    border-color: #CBFF38;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
     transform: translateY(-4px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   }
 `;
 
-const topSection = css`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-`;
+const statusBadge = (status: string) => {
+  let bg = "#F1F5F9";
+  let color = "#64748B";
+  let border = "#E2E8F0";
 
-const clinicName = css`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #222;
-`;
-
-const serviceName = css`
-  font-size: 16px;
-  color: #555;
-  margin-bottom: 8px;
-`;
-
-const details = css`
-  display: grid;
-  gap: 8px;
-  color: #444;
-  font-size: 15px;
-`;
-
-const statusBadge = css`
-  padding: 6px 14px;
-  border-radius: 30px;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: capitalize;
-  background-color: #eef2ff;
-  color: #405c0b;
-  border: 1px solid #5f8b00;
-`;
-
-const pendingPaymentBadge = css`
-  padding: 6px 14px;
-  border-radius: 30px;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: capitalize;
-  background-color: #fef3c7;
-  color: #92400e;
-  border: 1px solid #f59e0b;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-  &:hover {
-    background-color: #fde68a;
-    transform: scale(1.03);
+  switch (status.toLowerCase()) {
+    case 'confirmed':
+      bg = "#ECFDF5";
+      color = "#059669";
+      border = "#D1FAE5";
+      break;
+    case 'pending':
+    case 'pending_payment':
+      bg = "#FFFBEB";
+      color = "#D97706";
+      border = "#FEF3C7";
+      break;
+    case 'completed':
+      bg = "#F0F9FF";
+      color = "#0284C7";
+      border = "#E0F2FE";
+      break;
+    case 'cancelled':
+      bg = "#FEF2F2";
+      color = "#DC2626";
+      border = "#FEE2E2";
+      break;
   }
-`;
 
-const emptyState = css`
-  text-align: center;
-  color: #717171;
-  font-size: 18px;
-  margin-top: 40px;
-`;
+  return css`
+    padding: 6px 14px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: ${bg};
+    color: ${color};
+    border: 1px solid ${border};
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  `;
+};
 
 export const Appointments: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const {
-    appointments: bookingAppointments,
-  } = useSelector((state: RootState) => state.booking);
-  const { appointments: clientAppointments } = useSelector(
-    (state: RootState) => state.client
-  );
+  const { appointments: bookingAppointments } = useSelector((state: RootState) => state.booking);
+  const { appointments: clientAppointments } = useSelector((state: RootState) => state.client);
 
   const [reschedulingAppointment, setReschedulingAppointment] = React.useState<Appointment | null>(null);
 
@@ -150,169 +115,148 @@ export const Appointments: React.FC = () => {
 
   const handleCancelClick = async (apt: Appointment) => {
     if (isPastCutoff(apt.startTime)) {
-      window.alert("Cancellations are not allowed within 24 hours of the appointment. Please contact the clinic directly to discuss late cancellation fees.");
+      window.alert("Cancellations are not allowed within 24 hours of the appointment. Please contact the clinic directly.");
       return;
     }
-    if (window.confirm("Are you sure you want to cancel this appointment?")) {
+    if (window.confirm("Are you sure you want to cancel this reservation?")) {
       await dispatch(cancelAppointment(apt.id));
-
-      // Refund flow simulation
       if (apt.paymentMethod === 'card' || (apt.advancePaymentAmount && apt.advancePaymentAmount > 0)) {
-        window.alert("Your appointment has been CANCELED. Since you prepaid, our automated refund flow has been initiated. You will receive a credit back to your original payment method in 3-5 business days.");
-      } else {
-        window.alert("Your appointment has been correctly CANCELED.");
+        window.alert("Your reservation has been CANCELED. Automated refund flow initiated (3-5 business days).");
       }
-
       dispatch(fetchUserAppointments());
     }
   };
 
   const handleRescheduleClick = (apt: Appointment) => {
     if (isPastCutoff(apt.startTime)) {
-      window.alert("Rescheduling is not allowed within 24 hours of the appointment. Please contact the clinic directly.");
+      window.alert("Rescheduling is not allowed within 24 hours of the appointment.");
       return;
     }
     setReschedulingAppointment(apt);
   };
 
-  const handleAddNote = (id: string, currentNote?: string) => {
-    const note = window.prompt("Add a note for the clinic:", currentNote || "");
-    if (note !== null && note !== currentNote) {
-      console.log(`Updating note for ${id}: ${note}`);
-    }
-  };
-
   const handleRetryPayment = async (apt: Appointment) => {
-    // Re-fetch the appointment to get a fresh redirectUrl from Viva Wallet
     try {
-      window.alert('Redirecting you to the payment page...');
       const res = await bookingAPI.getAppointment(apt.id);
       const redirectUrl = (res.data as any)?.redirectUrl;
-      if (redirectUrl) {
-        window.location.href = redirectUrl;
-      } else {
-        window.alert('Could not retrieve payment link. Please contact support or try again later.');
-      }
+      if (redirectUrl) window.location.href = redirectUrl;
     } catch (err) {
-      window.alert('Failed to retrieve payment link. Please contact support.');
+      window.alert('Failed to retrieve payment link.');
     }
   };
 
-  // Combine: prefer freshly fetched user appointments
-  const appointments =
-    bookingAppointments.length > 0 ? bookingAppointments : clientAppointments;
-
-
+  const appointments = bookingAppointments.length > 0 ? bookingAppointments : clientAppointments;
 
   return (
-    <section className={container}>
-      <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8">
-        <h2 className={heading}>My Appointments</h2>
-
-        {appointments.length === 0 ? (
-          <p className={emptyState}>
-            You currently have no appointments booked.
+    <section className={sectionStyles}>
+      {/* Visual Header */}
+      <div className="bg-[#1A1A1A] text-white pt-16 pb-24 md:pt-24 md:pb-48 px-6">
+        <div className="max-w-6xl mx-auto">
+          <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 hover:text-[#CBFF38] transition-all mb-6 md:mb-8">
+            <FaChevronLeft size={10} /> Back
+          </button>
+          <h1 className="text-3xl md:text-6xl font-black uppercase italic tracking-tighter leading-none mb-3 md:mb-4">
+            My Reservations
+          </h1>
+          <p className="text-gray-400 font-medium tracking-wide border-l-2 border-[#CBFF38] pl-4 uppercase text-[9px] md:text-xs">
+            Manage your aesthetic journey and upcoming clinic visits.
           </p>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 -mt-8 md:-mt-32">
+        {appointments.length === 0 ? (
+          <div className="bg-white rounded-[32px] p-16 text-center shadow-sm border border-gray-100">
+             <div className="size-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FaCalendarAlt className="text-gray-300" size={32} />
+             </div>
+             <h3 className="text-xl font-black uppercase italic text-gray-900 mb-2">No bookings yet</h3>
+             <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-8">Ready for your transformation?</p>
+             <button onClick={() => navigate('/search')} className="px-8 py-4 bg-[#CBFF38] text-black text-xs font-black uppercase tracking-widest rounded-2xl hover:shadow-lg transition-all">
+                Book Treatment
+             </button>
+          </div>
         ) : (
-          <div className={cardGrid}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {appointments.map((apt: Appointment) => (
-              <Card key={apt.id} className={cardStyle}>
-                <div className={topSection}>
-                  <div className={clinicName}>
-                    <FaClinicMedical className="text-[#5F8B00]" size={20} />
-                    {apt.clinic?.name || "Unnamed Clinic"}
-                  </div>
-                  {(apt.status as string) === 'pending_payment' ? (
-                    <button
-                      className={pendingPaymentBadge}
-                      onClick={() => handleRetryPayment(apt)}
-                      title="Click to complete your payment"
-                    >
-                      <FaCreditCard size={12} />
-                      Pay Now
-                    </button>
-                  ) : (
-                    <span className={statusBadge}>{apt.status}</span>
-                  )}
+              <div key={apt.id} className={appointmentCard}>
+                {/* Header: Clinic & Status */}
+                <div className="flex justify-between items-start mb-8">
+                   <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-xl bg-gray-50 flex items-center justify-center text-[#1A1A1A]">
+                        <FaClinicMedical size={18} />
+                      </div>
+                      <h3 className="text-sm font-black uppercase tracking-tight text-gray-900 leading-none">
+                        {apt.clinic?.name || "B&D Clinic"}
+                      </h3>
+                   </div>
+                   {apt.status === 'pending_payment' as any ? (
+                      <button 
+                        onClick={() => handleRetryPayment(apt)}
+                        className={`${statusBadge('pending_payment')} cursor-pointer hover:scale-105 transition-transform`}
+                      >
+                        <FaCreditCard size={10} /> Pay Now
+                      </button>
+                   ) : (
+                      <span className={statusBadge(apt.status)}>{apt.status}</span>
+                   )}
                 </div>
 
-                <div className="flex gap-2 justify-end mb-4 border-b border-gray-100 pb-3">
-                  {apt.status !== 'cancelled' && apt.status !== 'completed' && (
-                    <>
-                      <button
-                        onClick={() => handleAddNote(apt.id, apt.notes)}
-                        className="text-gray-500 hover:text-blue-600 p-2 rounded-full hover:bg-blue-50 transition-colors"
-                        title="Add Note"
-                      >
-                        <FaRegCommentDots />
-                      </button>
-                      <button
-                        onClick={() => handleRescheduleClick(apt)}
-                        className="text-gray-500 hover:text-amber-600 p-2 rounded-full hover:bg-amber-50 transition-colors"
-                        title="Reschedule"
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        onClick={() => handleCancelClick(apt)}
-                        className="text-gray-500 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors"
-                        title="Cancel Appointment"
-                      >
-                        <FaTimes />
-                      </button>
-                    </>
-                  )}
-                  {apt.status === 'completed' && (
-                    <button
-                      onClick={() => navigate('/reviews')}
-                      className="text-gray-500 hover:text-yellow-500 p-2 rounded-full hover:bg-yellow-50 transition-colors"
-                      title="Leave Review"
-                    >
-                      <FaStar />
-                    </button>
-                  )}
+                {/* Service Detail */}
+                <div className="mb-8">
+                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Selected Treatment</p>
+                   <p className="text-lg md:text-xl font-black uppercase italic text-gray-900 tracking-tighter leading-tight">
+                     {(apt as any).serviceName || apt.service?.treatment?.name || "Aesthetic Service"}
+                   </p>
                 </div>
 
-                <p className={serviceName}>
-                  <strong>Service:</strong> {(apt as any).serviceName || apt.service?.treatment?.name || apt.service?.name || "N/A"}
-                </p>
-
-                <div className={details}>
-                  <p className="flex items-center gap-2">
-                    <FaCalendarAlt className="text-[#405C0B]" size={16} />{" "}
-                    <span>
-                      {new Date(apt.startTime).toLocaleDateString(undefined, {
-                        weekday: "short",
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </p>
-
-                  <p className="flex items-center gap-2">
-                    <FaClock className="text-[#405C0B]" size={16} />{" "}
-                    <span>
-                      {new Date(apt.startTime).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}{" "}
-                      -{" "}
-                      {new Date(apt.endTime).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </p>
-
-                  {apt.notes && (
-                    <p className="flex items-center gap-2">
-                      <MdNotes className="text-[#405C0B]" size={16} />{" "}
-                      <span>{apt.notes}</span>
-                    </p>
-                  )}
+                {/* Date & Time */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-2xl mb-8">
+                   <div className="flex flex-col gap-1">
+                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Date</span>
+                      <div className="flex items-center gap-2 text-gray-900 font-bold text-[10px] md:text-xs uppercase italic whitespace-nowrap">
+                         <FaCalendarAlt size={10} className="text-[#CBFF38]" />
+                         {new Date(apt.startTime).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}
+                      </div>
+                   </div>
+                   <div className="flex flex-col gap-1">
+                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Time</span>
+                      <div className="flex items-center gap-2 text-gray-900 font-bold text-[10px] md:text-xs uppercase italic">
+                         <FaClock size={10} className="text-[#CBFF38]" />
+                         {new Date(apt.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                   </div>
                 </div>
-              </Card>
+
+                {/* Actions */}
+                <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+                    <div className="flex gap-2">
+                      {(apt.status as any) === AppointmentStatus.COMPLETED && (
+                        <button onClick={() => navigate('/reviews')} className="size-9 rounded-xl bg-yellow-50 text-yellow-600 flex items-center justify-center hover:bg-yellow-100 transition-colors" title="Leave Review">
+                          <FaStar size={14} />
+                        </button>
+                      )}
+                      {(apt.status as any) !== AppointmentStatus.CANCELLED && (apt.status as any) !== AppointmentStatus.COMPLETED && (
+                        <>
+                          <button onClick={() => handleRescheduleClick(apt)} className="size-9 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all" title="Reschedule">
+                            <FaEdit size={14} />
+                          </button>
+                          <button onClick={() => handleCancelClick(apt)} className="size-9 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-all" title="Cancel Reservation">
+                            <FaTimes size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {apt.notes && (
+                      <div className="group relative">
+                        <FaRegCommentDots className="text-gray-300 hover:text-[#CBFF38] transition-colors cursor-help" />
+                        <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-gray-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                           {apt.notes}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              </div>
             ))}
           </div>
         )}

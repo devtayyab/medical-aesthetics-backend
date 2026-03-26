@@ -20,8 +20,11 @@ export class Appointment {
   @Column()
   clinicId: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   serviceId: string;
+
+  @Column('json', { nullable: true })
+  additionalServiceIds: string[];
 
   @Column({ type: 'uuid', nullable: true })
   providerId?: string | null; // Doctor/Practitioner
@@ -102,6 +105,21 @@ export class Appointment {
   @Column({ default: false })
   serviceExecuted: boolean; // Whether the service was actually performed
 
+  @Column({ type: 'timestamptz', nullable: true })
+  executedAt: Date;
+
+  @Column({ type: 'uuid', nullable: true })
+  executedById: string;
+
+  @Column({ default: false })
+  isBeautyDoctorsClient: boolean; // True if identified as a central Beauty Doctors client
+
+  @Column({ type: 'uuid', nullable: true })
+  representativeId: string; // The salesperson/admin representative owning this contact
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  rewardPointsRedeemed: number;
+
   @Column({ nullable: true })
   followUpServiceId?: string; // Next service appointment (renewal)
 
@@ -158,4 +176,12 @@ export class Appointment {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'noShowMarkedById' })
   noShowMarkedBy: User;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'executedById' })
+  executedBy: User;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'representativeId' })
+  representative: User;
 }

@@ -124,12 +124,14 @@ export const AppointmentBooking: React.FC = () => {
 
       dispatch(fetchAvailability({
         clinicId,
-        serviceId: serviceIds[0],
+        serviceId: serviceIds,
         date: format(selectedDateState, "yyyy-MM-dd"),
       }));
       hasProcessedServices.current = true;
     }
   }, [dispatch, services, serviceIds, clinicId, selectedDateState]);
+
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
 
   const handleDateClick = (day: Date) => {
     if (isBefore(day, startOfToday())) return;
@@ -139,8 +141,22 @@ export const AppointmentBooking: React.FC = () => {
     if (clinicId && serviceIds.length > 0) {
       dispatch(fetchAvailability({
         clinicId,
-        serviceId: serviceIds[0],
+        serviceId: serviceIds,
         date: format(day, "yyyy-MM-dd"),
+        providerId: selectedProviderId || undefined,
+      }));
+    }
+  };
+
+  const handleProviderSelect = (providerId: string | null) => {
+    setSelectedProviderId(providerId);
+    setSelectedSlot(null);
+    if (clinicId && serviceIds.length > 0) {
+      dispatch(fetchAvailability({
+        clinicId,
+        serviceId: serviceIds,
+        date: format(selectedDateState, "yyyy-MM-dd"),
+        providerId: providerId || undefined,
       }));
     }
   };
@@ -153,6 +169,7 @@ export const AppointmentBooking: React.FC = () => {
         await dispatch(holdTimeSlot({
           clinicId,
           serviceId: serviceIds[0],
+          additionalServiceIds: serviceIds.slice(1),
           providerId: slot.providerId || undefined,
           startTime: slot.startTime,
           endTime: slot.endTime,
@@ -251,6 +268,33 @@ export const AppointmentBooking: React.FC = () => {
                 <FaClock className="text-lime-500" />
                 <h3 className="text-xl font-black uppercase italic text-gray-900">Available Times</h3>
               </div>
+              
+              {/* Provider Selection (Step B2) */}
+              {clinic?.providers && clinic.providers.length > 0 && (
+                <div className="mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Choose Professional (Optional)</h4>
+                  <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+                    <button 
+                      className={`shrink-0 flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${!selectedProviderId ? 'border-lime-500 bg-white shadow-sm' : 'border-transparent'}`}
+                      onClick={() => handleProviderSelect(null)}
+                    >
+                      <div className="size-12 rounded-full bg-gray-200 flex items-center justify-center font-black text-xs text-gray-500 italic">Any</div>
+                      <span className="text-[10px] font-black uppercase tracking-tight">Any Professional</span>
+                    </button>
+                    {clinic.providers.map((p: any) => (
+                      <button 
+                        key={p.id}
+                        className={`shrink-0 flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${selectedProviderId === p.id ? 'border-lime-500 bg-white shadow-sm' : 'border-transparent'}`}
+                        onClick={() => handleProviderSelect(p.id)}
+                      >
+                        <img src={p.photoUrl || `https://ui-avatars.com/api/?name=${p.firstName}+${p.lastName}&background=random`} className="size-12 rounded-full object-cover" alt={p.firstName} />
+                        <span className="text-[10px] font-black uppercase tracking-tight">{p.firstName}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {availableSlots.length > 0 ? (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
                   {availableSlots.map((slot) => (

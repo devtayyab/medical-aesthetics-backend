@@ -113,6 +113,7 @@ export enum AppointmentStatus {
   CANCELLED = 'CANCELLED',
   ARRIVED = 'ARRIVED',
   NO_SHOW = 'NO_SHOW',
+  EXECUTED = 'EXECUTED',
 }
 
 export interface Appointment {
@@ -155,7 +156,11 @@ export interface Appointment {
     role: string;
   };
   isBlocked?: boolean;
+  isBeautyDoctorsClient?: boolean;
   serviceName?: string;
+  rewardPointsRedeemed?: number;
+  executedAt?: string;
+  executedById?: string;
 }
 
 export interface AppointmentFilters {

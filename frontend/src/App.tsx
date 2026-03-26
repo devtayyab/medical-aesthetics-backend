@@ -119,6 +119,19 @@ const AuthHeader: React.FC = () => (
     </div>
   </header>
 );
+
+/** Returns the correct home path for a given role */
+function getRoleHomePath(role?: string): string {
+  if (!role) return "/";
+  if (role === "SUPER_ADMIN" || role === "manager") return "/admin/manager-dashboard";
+  if (role === "admin") return "/admin/dashboard";
+  if (role === "salesperson") return "/crm";
+  if (role === "doctor" || role === "secretariat") return "/clinic/appointments";
+  if (role === "clinic_owner") return "/clinic/dashboard";
+  if (role === "client") return "/my-account";
+  return "/";
+}
+
 const ClinicIndexRedirect: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
   if (user?.role === "doctor" || user?.role === "secretariat") {
@@ -200,7 +213,7 @@ function AppContent() {
               !isAuthenticated ? (
                 <Login />
               ) : (
-                <Navigate to="/my-account" replace />
+                <Navigate to={getRoleHomePath(user?.role)} replace />
               )
             }
           />
@@ -210,7 +223,7 @@ function AppContent() {
               !isAuthenticated ? (
                 <Register />
               ) : (
-                <Navigate to="/my-account" replace />
+                <Navigate to={getRoleHomePath(user?.role)} replace />
               )
             }
           />
