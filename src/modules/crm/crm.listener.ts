@@ -84,10 +84,18 @@ export class CrmListener {
                   title: `Satisfaction Check: ${therapyName}`,
                   description: `Post-Treatment Follow-up: ${therapyName} executed on ${appointment.executedAt || new Date().toISOString()}. Check patient results and upsell potential.`,
                   priority: 'medium',
-                  dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3) // 3 days after execution
+                  dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3), // 3 days after execution
+                  reminderDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2) // 2 days after execution
                 });
 
-                this.logger.log(`Follow-up task created for salesperson ${representativeId}`);
+                // Rule: Notify Admin and Sales owners of execution
+                await this.notificationsService.notifyPlatformStaff(
+                    'Appointment Executed',
+                    `${appointment.client?.firstName || 'Client'} has completed their ${therapyName} at ${appointment.clinic?.name}.`,
+                    { appointmentId: appointment.id, type: 'execution' }
+                );
+
+                this.logger.log(`Follow-up task created and platform staff notified for salesperson ${representativeId}`);
             }
         } catch (error) {
             this.logger.error(`Failed to handle appointment execution follow-up for ${appointment.id}`, error.stack);

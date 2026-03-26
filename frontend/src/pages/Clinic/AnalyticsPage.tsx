@@ -103,8 +103,8 @@ const AnalyticsPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
            <PremiumStatCard title="Throughput" value={appointmentAnalytics?.totalAppointments || 0} subValue="Total Appts" icon={<Calendar size={20} />} highlight />
            <PremiumStatCard title="Conversion" value={appointmentAnalytics?.completedAppointments || 0} subValue="Completed" icon={<BarChart3 size={20} />} />
-           <PremiumStatCard title="Yield" value={`£${(revenueAnalytics?.totalRevenue || 0).toLocaleString()}`} subValue="Gross Revenue" icon={<DollarSign size={20} />} />
-           <PremiumStatCard title="Efficiency" value={`£${(revenueAnalytics?.averageAppointmentValue || 0).toFixed(0)}`} subValue="Avg Ticket" icon={<TrendingUp size={20} />} />
+           <PremiumStatCard title="Yield" value={`${(revenueAnalytics?.totalRevenue || 0).toLocaleString()}`} subValue="Gross Revenue" icon={<DollarSign size={20} />} />
+           <PremiumStatCard title="Efficiency" value={`${(revenueAnalytics?.averageAppointmentValue || 0).toFixed(0)}`} subValue="Avg Ticket" icon={<TrendingUp size={20} />} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -126,7 +126,7 @@ const AnalyticsPage: React.FC = () => {
                              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">{item.count} Processed Events</p>
                           </div>
                           <div className="text-right">
-                             <p className="text-lg font-black italic tracking-tighter text-black leading-none mb-1">£{item.revenue.toLocaleString()}</p>
+                             <p className="text-lg font-black italic tracking-tighter text-black leading-none mb-1">{item.revenue.toLocaleString()}</p>
                              <p className="text-[8px] font-black uppercase text-[#CBFF38] bg-black px-1.5 py-0.5 rounded italic inline-block">Top Performer</p>
                           </div>
                        </div>
@@ -201,7 +201,7 @@ const AnalyticsPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
                    <ForecastStat label="Predicted Traffic" value={repeatForecast?.customersExpectedNextMonth || 0} unit="Patients" />
-                   <ForecastStat label="Revenue Projection" value={`£${(repeatForecast?.estimatedRevenue || 0).toLocaleString()}`} unit="Projected" />
+                   <ForecastStat label="Revenue Projection" value={`${(repeatForecast?.estimatedRevenue || 0).toLocaleString()}`} unit="Projected" />
                    <ForecastStat label="Retention Rate" value={`${(repeatForecast?.repeatRate || 0).toFixed(1)}%`} unit="System Static" />
                 </div>
 

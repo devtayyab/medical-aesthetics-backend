@@ -186,7 +186,7 @@ export class RecordPaymentDto {
   paymentMethod: string; // 'cash', 'pos', 'card', 'bank_transfer'
 
   @ApiProperty()
-  @IsString()
+  @IsNumber()
   amount: number;
 
   @ApiPropertyOptional()

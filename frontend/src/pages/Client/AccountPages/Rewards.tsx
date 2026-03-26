@@ -34,7 +34,7 @@ export const Rewards: React.FC = () => {
 
   const rewards = [
     { id: "1", name: "10% Discount", desc: "Valid on any injectable treatment", points: 100, icon: <FaGift />, color: "bg-blue-50 text-blue-600" },
-    { id: "2", name: "Free Consultation", desc: "Expert skin analysis worth £50", points: 250, icon: <FaStar />, color: "bg-amber-50 text-amber-600" },
+    { id: "2", name: "Free Consultation", desc: "Expert skin analysis worth 50", points: 250, icon: <FaStar />, color: "bg-amber-50 text-amber-600" },
     { id: "3", name: "Dermal Filler Upgrade", desc: "Next tier product for same price", points: 500, icon: <FaTrophy />, color: "bg-purple-50 text-purple-600" },
     { id: "4", name: "VIP Priority Access", desc: "First to book new treatments", points: 1000, icon: <FaLock />, color: "bg-rose-50 text-rose-600" },
   ];

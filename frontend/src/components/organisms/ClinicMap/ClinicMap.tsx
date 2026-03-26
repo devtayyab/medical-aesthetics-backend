@@ -70,7 +70,7 @@ export const ClinicMap: React.FC<ClinicMapProps> = ({
                         html: `
               <div class="flex flex-col items-center group cursor-pointer transform -translate-x-1/2 -translate-y-[calc(100%-10px)]">
                 <div class="bg-black text-white px-3 py-1.5 rounded-lg shadow-xl font-black text-sm whitespace-nowrap group-hover:scale-110 transition-transform">
-                  £${clinic.minPrice || 49}+
+                  ${clinic.minPrice || 49}+
                 </div>
                 <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-black"></div>
               </div>

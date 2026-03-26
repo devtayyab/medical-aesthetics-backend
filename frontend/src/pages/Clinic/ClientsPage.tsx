@@ -77,9 +77,9 @@ const ClientsPage: React.FC = () => {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           <StatCard title="Active Patients" value={clients.length.toString()} icon={<Users size={20} />} trend="+12%" highlight />
-          <StatCard title="Total Revenue" value={`£${totalRevenue.toLocaleString()}`} icon={<DollarSign size={20} />} trend="+5.4%" />
+          <StatCard title="Total Revenue" value={`${totalRevenue.toLocaleString()}`} icon={<DollarSign size={20} />} trend="+5.4%" />
           <StatCard title="Clinical Visits" value={totalAppointments.toString()} icon={<Calendar size={20} />} trend="+18%" />
-          <StatCard title="Avg Patient LTV" value={`£${avgLTV.toFixed(0)}`} icon={<TrendingUp size={20} />} trend="+2.1%" />
+          <StatCard title="Avg Patient LTV" value={`${avgLTV.toFixed(0)}`} icon={<TrendingUp size={20} />} trend="+2.1%" />
         </div>
 
         {/* Clients Table/Grid */}
@@ -148,7 +148,7 @@ const ClientsPage: React.FC = () => {
                       </td>
                       <td className="px-8 py-6">
                         <div className="inline-flex items-center gap-1 px-3 py-1 bg-[#CBFF38] text-black rounded-lg">
-                           <span className="text-xs font-black italic">£{(Number(client.lifetimeValue) || 0).toLocaleString()}</span>
+                           <span className="text-xs font-black italic">{(Number(client.lifetimeValue) || 0).toLocaleString()}</span>
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right">
@@ -265,7 +265,7 @@ const ClientDetailsModal = ({ client, onClose }: any) => {
                              </div>
                           </div>
                           <div className="text-right">
-                             <div className="text-lg font-black text-gray-900 italic leading-none mb-1">£{Number(apt.totalAmount).toLocaleString()}</div>
+                             <div className="text-lg font-black text-gray-900 italic leading-none mb-1">{Number(apt.totalAmount).toLocaleString()}</div>
                              <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${
                                apt.status === 'completed' ? 'bg-lime-100 text-lime-700 border-lime-200' : 'bg-gray-200 text-gray-500 border-gray-300'
                              }`}>
@@ -289,7 +289,7 @@ const ClientDetailsModal = ({ client, onClose }: any) => {
                  <div className="space-y-6">
                     <div>
                        <p className="text-3xl font-black italic tracking-tighter text-gray-900 leading-none mb-2">
-                          £{(Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0).toLocaleString()}
+                          {(Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0).toLocaleString()}
                        </p>
                        <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Lifetime Investment</p>
                     </div>
@@ -300,7 +300,7 @@ const ClientDetailsModal = ({ client, onClose }: any) => {
                        </div>
                        <div className="p-4 bg-white rounded-2xl shadow-sm">
                           <p className="text-xl font-black italic text-[#CBFF38] bg-black inline-block px-1 rounded leading-none mb-1">
-                             {appointments.length > 0 ? `£${((Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0) / appointments.length).toFixed(0)}` : "£0"}
+                             {appointments.length > 0 ? `${((Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0) / appointments.length).toFixed(0)}` : "0"}
                           </p>
                           <p className="text-[8px] font-black uppercase text-gray-400">Average Unit</p>
                        </div>

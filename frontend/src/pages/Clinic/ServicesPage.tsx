@@ -192,7 +192,7 @@ const ServiceCard = ({ service, canManage, onToggle, onEdit }: any) => {
                 <div className="space-y-1">
                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Valuation</p>
                    <div className="text-xl font-black tracking-tighter text-gray-900 italic">
-                      £{service.price}
+                      {service.price}
                    </div>
                 </div>
              </div>

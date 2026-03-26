@@ -546,7 +546,7 @@ export class CrmController {
 
   @Get('accessible-clinics')
   @ApiOperation({ summary: 'Get accessible clinics for current user' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT)
   @UseGuards(RolesGuard)
   getAccessibleClinics(@Request() req) {
     return this.crmService.getAccessibleClinicsForUser(req.user.id);

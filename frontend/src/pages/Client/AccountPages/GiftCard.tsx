@@ -121,9 +121,9 @@ export const GiftCard: React.FC = () => {
                               
                               <div className="space-y-6">
                                 <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-3 italic">Voucher Amount (£)</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-3 italic">Voucher Amount ()</label>
                                     <div className="relative">
-                                      <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black">£</span>
+                                      <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black"></span>
                                       <input
                                           type="number"
                                           value={amount}
@@ -140,7 +140,7 @@ export const GiftCard: React.FC = () => {
                                       onClick={() => setAmount(val)}
                                       className={`h-12 rounded-xl border-2 font-black uppercase text-[10px] tracking-widest transition-all ${amount === val ? 'bg-black text-[#CBFF38] border-black' : 'border-gray-100 text-gray-400 hover:border-black hover:text-black'}`}
                                      >
-                                       £{val}
+                                       {val}
                                      </button>
                                    ))}
                                 </div>
@@ -160,7 +160,7 @@ export const GiftCard: React.FC = () => {
                                     className="w-full mt-4 bg-black text-[#CBFF38] hover:bg-gray-900 h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
                                     disabled={amount <= 0 || isPaying}
                                   >
-                                    {isPaying ? "Processing..." : `Checkout £${amount}`}
+                                    {isPaying ? "Processing..." : `Checkout ${amount}`}
                                   </Button>
                               </div>
                            </div>
@@ -178,7 +178,7 @@ export const GiftCard: React.FC = () => {
                           <div className="flex justify-between items-start mb-12">
                              <div>
                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#CBFF38] italic">Aesthetics Voucher</h3>
-                                <h4 className="text-4xl font-black uppercase italic mt-2 tracking-tighter">Value £{amount}</h4>
+                                <h4 className="text-4xl font-black uppercase italic mt-2 tracking-tighter">Value {amount}</h4>
                              </div>
                              <FaCircleCheck className="text-[#CBFF38]" size={32} />
                           </div>
