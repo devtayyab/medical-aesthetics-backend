@@ -719,7 +719,7 @@ export class ClinicsService {
     const t = service.treatment;
     const errors: string[] = [];
 
-    if (!t.categoryId && !t.category) errors.push('category');
+    // if (!t.categoryId && !t.category) errors.push('category');
     // if (!t.shortDescription) errors.push('short description');
     // if (!t.fullDescription) errors.push('full description');
     // if (!t.imageUrl) errors.push('photo');
@@ -730,9 +730,9 @@ export class ClinicsService {
       );
     }
 
-    if (t.status !== TreatmentStatus.APPROVED) {
-      throw new BadRequestException('This therapy is pending admin approval and cannot be published yet.');
-    }
+    // if (t.status !== TreatmentStatus.APPROVED) {
+    //   throw new BadRequestException('This therapy is pending admin approval and cannot be published yet.');
+    // }
   }
 
   async updateService(
