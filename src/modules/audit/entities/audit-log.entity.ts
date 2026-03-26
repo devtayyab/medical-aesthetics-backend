@@ -3,8 +3,11 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
   Index,
 } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('audit_logs')
 @Index(['userId', 'createdAt'])
@@ -15,6 +18,10 @@ export class AuditLog {
 
   @Column({ nullable: true })
   userId: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
   @Column()
   action: string; // 'CREATE', 'UPDATE', 'DELETE', etc.

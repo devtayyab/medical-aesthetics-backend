@@ -32,7 +32,8 @@ export class AuditService {
     filters: { resource?: string; action?: string; userId?: string; resourceId?: string; dateFrom?: string; dateTo?: string; limit?: number } = {},
     limit: number = 200,
   ): Promise<AuditLog[]> {
-    const queryBuilder = this.auditRepository.createQueryBuilder('audit');
+    const queryBuilder = this.auditRepository.createQueryBuilder('audit')
+      .leftJoinAndSelect('audit.user', 'user');
 
     if (filters.userId) {
       queryBuilder.andWhere('audit.userId = :userId', { userId: filters.userId });

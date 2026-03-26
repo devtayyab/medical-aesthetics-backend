@@ -156,12 +156,12 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium"
                 >
                   {services.map(s => (
-                    <option key={s.id} value={s.id}>{s.treatment?.name || 'Unknown Service'} - ${s.price}</option>
+                    <option key={s.id} value={s.id}>{s.treatment?.name || 'Unknown Service'} - €{s.price}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500">BASE PRICE ($)</label>
+                <label className="text-xs font-bold text-gray-500">BASE PRICE (€)</label>
                 <div className="relative">
                   <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
@@ -189,7 +189,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
 
             <div className="flex items-center gap-4">
               <div className="flex-1">
-                <p className="text-xs text-amber-700 mb-2">Redeem points for a discount ($1 = 1pt)</p>
+                <p className="text-xs text-amber-700 mb-2">Redeem points for a discount (€1 = 1pt)</p>
                 <input
                   type="range"
                   min="0"
@@ -201,7 +201,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               </div>
               <div className="w-24 text-center bg-white border border-amber-200 rounded-lg p-2">
                 <p className="text-[10px] font-bold text-amber-600 uppercase">Discount</p>
-                <p className="text-lg font-bold text-amber-900">-${pointsToRedeem}</p>
+                <p className="text-lg font-bold text-amber-900">-€{pointsToRedeem}</p>
               </div>
             </div>
           </div>
@@ -242,7 +242,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               </div>
               <div className="text-3xl font-bold flex items-center justify-between">
                 <span>Total Due:</span>
-                <span className="text-green-400">${calculateTotal().toFixed(2)}</span>
+                <span className="text-green-400">€{calculateTotal().toFixed(2)}</span>
               </div>
               <div className="mt-2 text-[10px] text-gray-500 uppercase font-bold tracking-widest text-right">
                 (inc. all taxes & discounts)

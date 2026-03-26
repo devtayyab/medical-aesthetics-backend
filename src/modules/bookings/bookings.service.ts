@@ -271,7 +271,7 @@ export class BookingsService {
     } else {
       // Or if they were from a source that implies central ownership
       if (createAppointmentDto.appointmentSource === 'platform_broker') {
-         isBeautyDoctorsClient = true;
+        isBeautyDoctorsClient = true;
       }
     }
 
@@ -333,7 +333,7 @@ export class BookingsService {
     }
 
     const appointment: Appointment = this.appointmentsRepository.create(appointmentData);
-    
+
     // Set status to PENDING for consumer bookings to require staff confirmation
     if (!createAppointmentDto.bookedById && createAppointmentDto.paymentMethod !== 'card') {
       appointment.status = AppointmentStatus.PENDING;
@@ -582,39 +582,47 @@ export class BookingsService {
 
     const updatedAppointment = await this.findById(id);
 
-    // Trigger Notification
-    let trigger: NotificationTrigger;
-    if (status === AppointmentStatus.CONFIRMED) trigger = NotificationTrigger.APPOINTMENT_CONFIRMED;
-    else if (status === AppointmentStatus.CANCELLED) trigger = NotificationTrigger.APPOINTMENT_CANCELED;
-    else if (status === AppointmentStatus.COMPLETED) trigger = NotificationTrigger.EXECUTION_NOTIFICATION;
+    // Trigger Notification if status actually changed
+    if (status !== oldStatus) {
+      let trigger: NotificationTrigger;
+      if (status === AppointmentStatus.CONFIRMED) trigger = NotificationTrigger.APPOINTMENT_CONFIRMED;
+      else if (status === AppointmentStatus.CANCELLED) trigger = NotificationTrigger.APPOINTMENT_CANCELED;
+      else if (status === AppointmentStatus.COMPLETED) trigger = NotificationTrigger.EXECUTION_NOTIFICATION;
 
-    if (trigger && updatedAppointment.clientId) {
-      await this.notificationsService.sendTriggeredNotification(trigger, updatedAppointment.clientId, {
-        customerName: `${updatedAppointment.client?.firstName || 'Customer'}`,
-        serviceName: updatedAppointment.service?.treatment?.name || 'Treatment',
-        appointmentDate: updatedAppointment.startTime.toLocaleDateString(),
-        appointmentTime: updatedAppointment.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        clinicName: updatedAppointment.clinic?.name,
+      if (trigger && updatedAppointment.clientId) {
+        await this.notificationsService.sendTriggeredNotification(trigger, updatedAppointment.clientId, {
+          customerName: `${updatedAppointment.client?.firstName || 'Customer'}`,
+          serviceName: updatedAppointment.service?.treatment?.name || 'Treatment',
+          appointmentDate: updatedAppointment.startTime.toLocaleDateString(),
+          appointmentTime: updatedAppointment.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          clinicName: updatedAppointment.clinic?.name,
+        });
+      }
+
+      // Emit events for status changes
+      this.eventEmitter.emit('appointment.status.changed', {
+        appointment: updatedAppointment,
+        oldStatus: oldStatus,
+        newStatus: status,
       });
-    }
 
-    // Emit events for different status changes
-    this.eventEmitter.emit('appointment.status.changed', {
-      appointment: updatedAppointment,
-      oldStatus: oldStatus,
-      newStatus: status,
-    });
-
-    // Audit log for status changes (Done/Canceled/No-show)
-    if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(status as any)) {
-      this.eventEmitter.emit('audit.log', {
-        userId,
-        action: 'APPOINTMENT_STATUS_CHANGE',
-        resource: 'appointments',
-        resourceId: id,
-        changes: { before: { status: oldStatus }, after: { status } },
-        data: { appointmentId: id, clientId: appointment.clientId, clinicId: appointment.clinicId },
-      });
+      // Audit log for status changes (Done/Canceled/No-show)
+      if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(status as any)) {
+        this.eventEmitter.emit('audit.log', {
+          userId,
+          action: 'APPOINTMENT_STATUS_CHANGE',
+          resource: 'appointments',
+          resourceId: id,
+          changes: { before: { status: oldStatus }, after: { status } },
+          data: { 
+            appointmentId: id, 
+            clientId: appointment.clientId, 
+            clinicId: appointment.clinicId,
+            clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Guest',
+            therapyName: appointment.service?.treatment?.name || 'Treatment'
+          },
+        });
+      }
     }
 
     return updatedAppointment;
@@ -725,7 +733,7 @@ export class BookingsService {
 
       // 2. Filters
       queryBuilder.andWhere('appointment.status != :deleted', { deleted: AppointmentStatus.DELETED });
-      
+
       if (query.status) {
         queryBuilder.andWhere('appointment.status = :status', { status: query.status.toUpperCase() });
       }
@@ -761,13 +769,13 @@ export class BookingsService {
       // 4. Transform & Mask
       return appointments.map(apt => {
         let isMasked = false;
-        
+
         // PRIVACY RULE: Salespeople only see details of Beauty Doctors clients OR appointments they booked
         if (userRole === 'salesperson') {
           const isBookedByMe = apt.bookedById === userId;
           const isManagedByMe = apt.representativeId === userId;
           const isOwnedByMe = (apt.client as any)?.customerRecords?.some((r: any) => r.assignedSalespersonId === userId);
-          
+
           if (!isBookedByMe && !isManagedByMe && !isOwnedByMe) {
             isMasked = true;
           }
@@ -775,13 +783,13 @@ export class BookingsService {
 
         if (isMasked) {
           return {
-            id: apt.id, 
-            startTime: apt.startTime, 
-            endTime: apt.endTime, 
-            status: apt.status, 
+            id: apt.id,
+            startTime: apt.startTime,
+            endTime: apt.endTime,
+            status: apt.status,
             clinicId: apt.clinicId,
-            isBlocked: true, 
-            displayName: 'Blocked Time', 
+            isBlocked: true,
+            displayName: 'Blocked Time',
             serviceName: 'Blocked',
             isBeautyDoctorsClient: false,
             providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
@@ -866,14 +874,14 @@ export class BookingsService {
       appointment.serviceExecuted = true;
       appointment.executedAt = new Date();
       appointment.executedById = userId;
-      appointment.completedAt = new Date(); 
-      
+      appointment.completedAt = new Date();
+
       // Update details shared during the execution phase
       if (updateData?.serviceId) appointment.serviceId = updateData.serviceId;
       if (updateData?.totalAmount !== undefined) appointment.totalAmount = Number(updateData.totalAmount);
       if (updateData?.amountPaid !== undefined) appointment.amountPaid = Number(updateData.amountPaid);
       if (updateData?.rewardPointsRedeemed) appointment.rewardPointsRedeemed = Number(updateData.rewardPointsRedeemed);
-      
+
       // RULE: Persistence of isReturned flag
       if (!appointment.isReturned) {
         try {
@@ -888,9 +896,9 @@ export class BookingsService {
       }
 
       // TRIGGER NOTIFICATION: Every execution must notify sales and admin
-      this.eventEmitter.emit('appointment.executed', { 
+      this.eventEmitter.emit('appointment.executed', {
         appointment,
-        performedBy: userId 
+        performedBy: userId
       });
     }
 
@@ -934,10 +942,10 @@ export class BookingsService {
           const nextDay = new Date();
           nextDay.setDate(nextDay.getDate() + 1);
           nextDay.setHours(9, 0, 0, 0);
-          
+
           let taskTitle = `Outcome Follow-up: ${updated.client?.firstName || 'Client'}`;
           let taskDesc = `Follow up on appointment outcome: ${status}`;
-          
+
           if (status === AppointmentStatus.EXECUTED || status === AppointmentStatus.COMPLETED) {
             taskTitle = `Satisfaction Check: ${updated.client?.firstName || 'Client'}`;
             taskDesc = `Treatment performed at ${updated.clinic?.name}. Verify satisfaction and confirm successful execution.`;
@@ -1033,7 +1041,7 @@ export class BookingsService {
             notes: (paymentData.notes || '') + ' (Recalculated)',
             recordedById: userId,
           });
-          
+
           // Manually recalculate amountPaid on appointment via logic similar to recordPayment
           const records = await this.financialService['paymentRecordsRepository'].find({ where: { appointmentId: appointment.id } });
           const totalPaid = records.reduce((acc, r) => acc + (r.type === PaymentType.REFUND || r.type === PaymentType.VOID ? -Number(r.amount) : Number(r.amount)), 0);
@@ -1124,7 +1132,14 @@ export class BookingsService {
         before: { status: oldStatus, totalAmount: oldTotal, advancePaymentAmount: oldAdvance },
         after: { status: AppointmentStatus.COMPLETED, totalAmount: newTotal, advancePaymentAmount: newAdvance },
       },
-      data: { appointmentId, clientId: appointment.clientId, clinicId: appointment.clinicId, paymentMethod: savedAppointment.paymentMethod },
+      data: { 
+        appointmentId, 
+        clientId: appointment.clientId, 
+        clinicId: appointment.clinicId, 
+        paymentMethod: savedAppointment.paymentMethod,
+        clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Guest',
+        therapyName: appointment.service?.treatment?.name || 'Treatment'
+      },
     });
 
     // Emit event for notifications and loyalty
@@ -1168,7 +1183,13 @@ export class BookingsService {
       action: 'APPOINTMENT_SOFT_DELETE',
       resource: 'appointments',
       resourceId: appointmentId,
-      data: { appointmentId, previousStatus: appointment.status, clinicId: appointment.clinicId },
+      data: { 
+        appointmentId, 
+        previousStatus: appointment.status, 
+        clinicId: appointment.clinicId,
+        clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Guest',
+        therapyName: appointment.service?.treatment?.name || 'Treatment'
+      },
     });
 
     return this.findById(appointmentId);
@@ -1206,7 +1227,14 @@ export class BookingsService {
           totalAmount: Number(savedAppointment.totalAmount ?? 0),
         },
       },
-      data: { appointmentId, amount: paymentData.amount, method: paymentData.paymentMethod, isAdvance: paymentData.isAdvancePayment },
+      data: { 
+        appointmentId, 
+        amount: paymentData.amount, 
+        method: paymentData.paymentMethod, 
+        isAdvance: paymentData.isAdvancePayment,
+        clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Guest',
+        therapyName: appointment.service?.treatment?.name || 'Treatment'
+      },
     });
 
     // Record in PaymentRecord
