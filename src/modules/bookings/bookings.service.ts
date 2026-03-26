@@ -31,6 +31,8 @@ import { VivaWalletService } from '../payments/viva-wallet.service';
 import { FinancialService } from '../payments/financial.service';
 import { PaymentMethod as RecordPaymentMethod, PaymentType } from '../payments/entities/payment-record.entity';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class BookingsService {
   private readonly logPath = path.join(process.cwd(), 'logs', 'appointment-debug.log');
