@@ -104,13 +104,13 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[10px] font-black text-gray-300 uppercase leading-none mb-0.5">starting from</p>
-                  <p className="text-[14px] font-black text-lime-700">£{service.price}</p>
+                  <p className="text-[14px] font-black text-lime-700">{service.price}</p>
                 </div>
               </div>
             ))
           ) : (
             <div className="text-sm text-gray-500 italic py-2">
-              Treatments starting from £49. View clinic to see all services.
+              Treatments starting from 49. View clinic to see all services.
             </div>
           )}
         </div>

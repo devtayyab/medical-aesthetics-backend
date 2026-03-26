@@ -184,8 +184,8 @@ const ClinicDashboard: React.FC = () => {
           />
           <StatCard 
              title="Entity Valuation" 
-             value={`£${stats.totalRevenue.toLocaleString()}`} 
-             percentage="+£4.2k"
+             value={`${stats.totalRevenue.toLocaleString()}`} 
+             percentage="+4.2k"
              trend="up"
              icon={<TrendingUp size={24} />}
              delay={0.3}
@@ -461,7 +461,7 @@ const AppointmentPremiumRow = React.forwardRef(({ appointment, index, onClick }:
              <div className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isPending ? 'text-orange-500' : 'text-gray-400'}`}>
                 {appointment.status}
              </div>
-             <div className="text-sm font-black text-gray-900">£{appointment.totalAmount || "0"}</div>
+             <div className="text-sm font-black text-gray-900">{appointment.totalAmount || "0"}</div>
           </div>
           <div className="size-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-[#CBFF38] group-hover:text-black transition-all group-hover:rotate-12">
              <ChevronRight size={18} />

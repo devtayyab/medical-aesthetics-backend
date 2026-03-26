@@ -1292,9 +1292,13 @@ export class CrmService implements OnModuleInit {
   }
 
   async createAction(data: Partial<CrmAction>): Promise<CrmAction> {
-    // 1. Mandatory Reminder Logic
+    // 1. Mandatory Reminder Logic - Fallback to dueDate or now if missing
     if (!data.reminderDate) {
-      throw new BadRequestException('Reminder date is mandatory for all tasks.');
+      data.reminderDate = data.dueDate || new Date();
+    }
+
+    if (!data.dueDate) {
+      data.dueDate = data.reminderDate;
     }
 
     const now = new Date();
@@ -1302,10 +1306,11 @@ export class CrmService implements OnModuleInit {
     const oneYearFromNow = new Date();
     oneYearFromNow.setFullYear(now.getFullYear() + 1);
 
-    // Allow 5 minutes grace period for past dates
-    const gracePeriodMs = 5 * 60 * 1000;
+    // Allow 15 minutes grace period for past dates (increased from 5 for better reliability)
+    const gracePeriodMs = 15 * 60 * 1000;
     if (reminderDate.getTime() < now.getTime() - gracePeriodMs) {
-      throw new BadRequestException('Reminder date cannot be in the past.');
+      // Instead of failing, just set it to now if it's too far in the past
+      data.reminderDate = new Date();
     }
 
     if (reminderDate > oneYearFromNow) {
@@ -3280,7 +3285,7 @@ export class CrmService implements OnModuleInit {
       }
 
       // Role-based access
-      if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.SALESPERSON].includes(user.role as UserRole)) {
+      if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER].includes(user.role as UserRole)) {
         // Admins see all active clinics
         return this.clinicsRepository.find({
           where: { isActive: true },
@@ -3288,31 +3293,41 @@ export class CrmService implements OnModuleInit {
         });
       }
 
-      if (user.role === UserRole.CLINIC_OWNER) {
-        this.logger.debug(`[CrmService] User is clinic_owner. Checking clinic_ownership table...`);
-        const ownerships = await this.clinicOwnershipRepository.find({
-          where: { ownerUserId: userId }
-        });
+      const accessibleClinicIds = new Set<string>();
 
-        const clinicIds = ownerships.map(o => o.clinicId);
-        if (clinicIds.length === 0) {
-          this.logger.debug(`[CrmService] No clinic ownerships found for user.`);
-          return [];
-        }
+      // 1. Direct ownership (via clinics table ownerId)
+      const ownedDirectly = await this.clinicsRepository.find({
+        where: { ownerId: userId, isActive: true },
+        select: ['id']
+      });
+      ownedDirectly.forEach(c => accessibleClinicIds.add(c.id));
 
-        return this.clinicsRepository.find({
-          where: { id: In(clinicIds), isActive: true }
-        });
+      // 2. Ownership via clinic_ownership table
+      const ownershipTable = await this.clinicOwnershipRepository.find({
+        where: { ownerUserId: userId }
+      });
+      ownershipTable.forEach(o => accessibleClinicIds.add(o.clinicId));
+
+      // 3. Staff assignment (assignedClinicId in users table)
+      if (user.assignedClinicId) {
+        accessibleClinicIds.add(user.assignedClinicId);
       }
 
-      // For other roles (Salesperson, etc.), check explicit access grants
-      this.logger.debug(`[CrmService] Falling back to agentClinicAccess check.`);
-      const accesses = await this.agentClinicAccessRepository.find({
-        where: { agentUserId: userId },
-        relations: ['clinic']
+      // 4. Agent/Salesperson access grants
+      const agentAccesses = await this.agentClinicAccessRepository.find({
+        where: { agentUserId: userId }
       });
+      agentAccesses.forEach(a => accessibleClinicIds.add(a.clinicId));
 
-      return accesses.map(a => a.clinic).filter(c => c && c.isActive);
+      if (accessibleClinicIds.size === 0) {
+        this.logger.debug(`[CrmService] No accessible clinics found for user: ${userId}`);
+        return [];
+      }
+
+      return this.clinicsRepository.find({
+        where: { id: In(Array.from(accessibleClinicIds)), isActive: true },
+        select: ['id', 'name', 'address', 'phone', 'email']
+      });
     } catch (err) {
       this.logger.error(`[CrmService] Error in getAccessibleClinicsForUser: ${err.message}`, err.stack);
       throw err;

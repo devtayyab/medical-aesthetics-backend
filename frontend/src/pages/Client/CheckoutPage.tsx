@@ -283,7 +283,7 @@ export const CheckoutPage: React.FC = () => {
                                         {selectedServices.map(s => (
                                             <div key={s.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
                                                 <span className="text-xs font-black uppercase italic">{s.treatment?.name || s.name || 'Treatment'}</span>
-                                                <span className="text-sm font-black text-gray-900">£{Number(s.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                <span className="text-sm font-black text-gray-900">{Number(s.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -293,7 +293,7 @@ export const CheckoutPage: React.FC = () => {
                             <div className="border-t border-gray-100 pt-6 mb-8">
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm font-black uppercase text-gray-400 tracking-widest">Grand Total</span>
-                                    <span className="text-3xl font-black text-gray-900">£{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span className="text-3xl font-black text-gray-900">{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             </div>
 

@@ -69,8 +69,8 @@ export const Payments: React.FC = () => {
                     {/* Summary Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-10">
                         {[
-                            { label: "Total Spent", value: `£${totalSpend.toFixed(2)}`, color: "text-[#CBFF38]" },
-                            { label: "Total Refunded", value: `£${totalRefunded.toFixed(2)}`, color: "text-orange-400" },
+                            { label: "Total Spent", value: `${totalSpend.toFixed(2)}`, color: "text-[#CBFF38]" },
+                            { label: "Total Refunded", value: `${totalRefunded.toFixed(2)}`, color: "text-orange-400" },
                             { label: "Transactions", value: payments.length, color: "text-white" },
                         ].map((stat, i) => (
                             <div key={i} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5">
@@ -129,7 +129,7 @@ export const Payments: React.FC = () => {
                                     </div>
                                     <div className="text-right flex-shrink-0 ml-4">
                                         <p className={`font-black text-xl tabular-nums ${payment.type === 'refund' ? 'text-orange-500' : 'text-gray-900'}`}>
-                                            {payment.type === 'refund' ? '-' : ''}£{Number(payment.amount).toFixed(2)}
+                                            {payment.type === 'refund' ? '-' : ''}{Number(payment.amount).toFixed(2)}
                                         </p>
                                         <span className={`text-[9px] px-2.5 py-1 rounded-full uppercase font-black tracking-widest border mt-1 inline-block ${
                                             payment.status === 'completed'
