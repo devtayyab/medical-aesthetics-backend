@@ -3284,9 +3284,9 @@ export class CrmService implements OnModuleInit {
         throw new NotFoundException('User not found');
       }
 
-      // Role-based access
-      if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER].includes(user.role as UserRole)) {
-        // Admins see all active clinics
+      // Role-based access: Management roles see all active clinics
+      if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.SALESPERSON].includes(user.role as UserRole)) {
+        // Admins and Global Sales see all active clinics
         return this.clinicsRepository.find({
           where: { isActive: true },
           select: ['id', 'name', 'address', 'phone', 'email']
@@ -3295,7 +3295,13 @@ export class CrmService implements OnModuleInit {
 
       const accessibleClinicIds = new Set<string>();
 
+      // For CLINIC_OWNER, DOCTOR, SECRETARIAT, they see:
       // 1. Direct ownership (via clinics table ownerId)
+      // 2. Ownership via clinic_ownership table
+      // 3. Staff assignment (assignedClinicId in users table)
+      // 4. Agent access grants
+
+      // 1. Direct ownership
       const ownedDirectly = await this.clinicsRepository.find({
         where: { ownerId: userId, isActive: true },
         select: ['id']
