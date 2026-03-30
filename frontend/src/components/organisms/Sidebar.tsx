@@ -149,13 +149,9 @@ export const Sidebar: React.FC = () => {
   const links =
     role === "client"
       ? clientLinks
-      : role === "clinic_owner"
+      : role === "clinic_owner" || role === "secretariat" || role === "doctor"
         ? clinicLinks
-        : role === "secretariat"
-          ? secretariatLinks
-          : role === "doctor"
-            ? doctorLinks
-          : role === "admin"
+      : role === "admin"
             ? getAdminLinks(role)
             : role === "SUPER_ADMIN"
               ? getAdminLinks(role)
@@ -180,10 +176,11 @@ export const Sidebar: React.FC = () => {
     switch (userRole) {
       case 'SUPER_ADMIN': return '/admin/manager-dashboard';
       case 'admin': return '/admin/dashboard';
-      case 'clinic_owner': return '/clinic/dashboard';
+      case 'clinic_owner':
+      case 'doctor':
+      case 'secretariat': return '/clinic/dashboard';
       case 'salesperson': return '/crm';
       case 'client': return '/my-account';
-      case 'doctor': return '/clinic/diary';
       default: return '/';
     }
   };
