@@ -368,19 +368,20 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               <div className="md:col-span-1 space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
                 <div className="flex flex-col gap-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-end gap-2">
                     <Input
+                      label="From"
                       type="date"
                       value={leadFilters.submissionDateFrom || ''}
                       onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
-                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
                     />
-                    <span className="text-gray-300">-</span>
                     <Input
+                      label="To"
                       type="date"
                       value={leadFilters.submissionDateTo || ''}
                       onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
-                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
                     />
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1.5">
@@ -410,19 +411,20 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               <div className="md:col-span-1 space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
                 <div className="flex flex-col gap-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-end gap-2">
                     <Input
+                      label="From"
                       type="date"
                       value={leadFilters.lastContactedFrom || ''}
                       onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
-                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
                     />
-                    <span className="text-gray-300">-</span>
                     <Input
+                      label="To"
                       type="date"
                       value={leadFilters.lastContactedTo || ''}
                       onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
-                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
                     />
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1.5">
