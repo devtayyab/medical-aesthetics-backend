@@ -2,7 +2,7 @@ import { UserRole } from '../types/clinic.types';
 
 export const permissions = {
   // Profile Management
-  canEditProfile: [UserRole.CLINIC_OWNER],
+  canEditProfile: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT],
   canViewProfile: [
     UserRole.ADMIN,
     UserRole.SUPER_ADMIN,
@@ -14,8 +14,8 @@ export const permissions = {
   ],
 
   // Services/Treatments
-  canManageServices: [UserRole.CLINIC_OWNER],
-  canViewServices: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER],
+  canManageServices: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT],
+  canViewServices: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.MANAGER],
 
   // Appointments
   canConfirmAppointments: [UserRole.ADMIN, UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT],
@@ -37,15 +37,15 @@ export const permissions = {
   canViewPayments: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER],
 
   // Analytics
-  canViewAnalytics: [UserRole.CLINIC_OWNER, UserRole.SALESPERSON, UserRole.MANAGER],
+  canViewAnalytics: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.MANAGER],
 
   // Notifications
-  canSendNotifications: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT],
-  canSendBulkNotifications: [UserRole.CLINIC_OWNER],
+  canSendNotifications: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT],
+  canSendBulkNotifications: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT],
 
   // Reviews
-  canManageReviews: [UserRole.CLINIC_OWNER],
-  canViewReviews: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT],
+  canManageReviews: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT],
+  canViewReviews: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT],
 
   // Clients
   canViewClients: [
@@ -60,7 +60,7 @@ export const permissions = {
   canManageAvailability: [UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.MANAGER],
 
   // Staff Management
-  canManageStaff: [UserRole.CLINIC_OWNER, UserRole.ADMIN],
+  canManageStaff: [UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.ADMIN],
 
   // Messages
   canViewMessages: [
@@ -94,27 +94,9 @@ export const canAccessClinicDashboard = (userRole: UserRole | string): boolean =
 export const getMenuItemsForRole = (userRole: UserRole | string) => {
   const menuItems = [];
 
-  // SPECIAL CASE: DOCTOR role - only appointments
-  if (userRole === UserRole.DOCTOR || userRole === 'doctor') {
-    return [
-      {
-        id: 'appointments',
-        label: 'My Appointments',
-        path: '/clinic/appointments',
-        icon: 'Calendar',
-      }
-    ];
-  }
+  // Unified menu items based on permissions
+  // (Removed previous special cases for DOCTOR/SECRETARIAT to allow full access as requested)
 
-  // SPECIAL CASE: SECRETARIAT role - focused operations
-  if (userRole === UserRole.SECRETARIAT || userRole === 'secretariat') {
-    return [
-      { id: 'appointments', label: 'Appointments', path: '/clinic/appointments', icon: 'Calendar' },
-      { id: 'availability', label: 'Availability Settings', path: '/clinic/availability-settings', icon: 'Clock' },
-      { id: 'messages', label: 'Messages', path: '/clinic/messages', icon: 'MessageSquare' },
-      { id: 'diary', label: 'Diary', path: '/clinic/diary', icon: 'BookOpen' },
-    ];
-  }
 
   // Dashboard - available to all clinic roles
   menuItems.push({
@@ -234,8 +216,8 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     });
   }
 
-  // Final fallback for clinic_owner to ensure nothing is missed
-  if (userRole === UserRole.CLINIC_OWNER || userRole === 'clinic_owner') {
+  // Final fallback for clinic-wide roles to ensure nothing is missed
+  if (userRole === UserRole.CLINIC_OWNER || userRole === UserRole.DOCTOR || userRole === UserRole.SECRETARIAT || userRole === 'clinic_owner' || userRole === 'doctor' || userRole === 'secretariat') {
     if (!menuItems.find(m => m.id === 'messages')) {
       menuItems.push({ id: 'messages', label: 'Messages', path: '/clinic/messages', icon: 'MessageSquare' });
     }
@@ -244,6 +226,9 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     }
     if (!menuItems.find(m => m.id === 'diary')) {
       menuItems.push({ id: 'diary', label: 'Diary', path: '/clinic/diary', icon: 'BookOpen' });
+    }
+    if (!menuItems.find(m => m.id === 'services')) {
+      menuItems.push({ id: 'services', label: 'Services & Pricing', path: '/clinic/services', icon: 'Package' });
     }
   }
 
