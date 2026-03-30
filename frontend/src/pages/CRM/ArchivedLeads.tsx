@@ -159,7 +159,7 @@ export const ArchivedLeads: React.FC = () => {
       {showFilters && (
         <Card className="border-none shadow-md bg-white animate-in slide-in-from-top-2 duration-300">
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
                 <Select
@@ -177,7 +177,7 @@ export const ArchivedLeads: React.FC = () => {
               <div className="md:col-span-1 space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <Input
                       type="date"
                       value={leadFilters.submissionDateFrom || ''}
@@ -219,7 +219,7 @@ export const ArchivedLeads: React.FC = () => {
               <div className="md:col-span-1 space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <Input
                       type="date"
                       value={leadFilters.lastContactedFrom || ''}
