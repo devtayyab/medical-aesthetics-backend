@@ -208,8 +208,8 @@ export const Customers: React.FC = () => {
             if (key === 'submissionDateTo') label = 'Created To';
             if (key === 'lastContactedFrom') label = 'Last Contact From';
             if (key === 'lastContactedTo') label = 'Last Contact To';
-            const displayValue = Array.isArray(value) 
-              ? value.filter(Boolean).join(', ').toUpperCase() 
+            const displayValue = Array.isArray(value)
+              ? value.filter(Boolean).join(', ').toUpperCase()
               : String(value || '').toUpperCase();
 
             return (
@@ -246,7 +246,7 @@ export const Customers: React.FC = () => {
       {showFilters && (
         <Card className="border-none shadow-md bg-white animate-in slide-in-from-top-2 duration-300">
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Customer Status</label>
                 <Select
@@ -281,19 +281,20 @@ export const Customers: React.FC = () => {
               <div className="md:col-span-1 space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-end gap-2">
                     <Input
+                      label="From"
                       type="date"
                       value={leadFilters.submissionDateFrom || ''}
                       onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
-                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
                     />
-                    <span className="text-gray-300">-</span>
                     <Input
+                      label="To"
                       type="date"
                       value={leadFilters.submissionDateTo || ''}
                       onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
-                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
                     />
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1.5">
@@ -323,19 +324,20 @@ export const Customers: React.FC = () => {
               <div className="md:col-span-1 space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
                 <div className="flex flex-col gap-2">
-                   <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-end gap-2">
                     <Input
+                      label="From"
                       type="date"
                       value={leadFilters.lastContactedFrom || ''}
                       onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
-                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
                     />
-                    <span className="text-gray-300">-</span>
                     <Input
+                      label="To"
                       type="date"
                       value={leadFilters.lastContactedTo || ''}
                       onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
-                      className="h-9 text-[10px] px-2 flex-1 border-gray-100"
+                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
                     />
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1.5">

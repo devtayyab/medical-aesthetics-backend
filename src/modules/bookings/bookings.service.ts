@@ -721,7 +721,7 @@ export class BookingsService {
       // 1. Role-based visibility
       if (userRole === 'admin' || userRole === 'SUPER_ADMIN' || userRole === 'manager') {
         queryBuilder.where('1=1');
-      } else if (userRole === 'clinic_owner' || userRole === 'secretariat') {
+      } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
         const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
         if (!user) throw new NotFoundException('User not found');
         const clinicIds = (user.ownedClinics || []).map(c => c.id);
@@ -729,10 +729,8 @@ export class BookingsService {
         if (clinicIds.length > 0) {
           queryBuilder.where('appointment.clinicId IN (:...clinicIds)', { clinicIds });
         } else {
-          queryBuilder.where('appointment.providerId = :userId', { userId });
+          queryBuilder.where('(appointment.providerId = :userId OR appointment.bookedById = :userId)', { userId });
         }
-      } else if (userRole === 'doctor') {
-        queryBuilder.where('appointment.providerId = :userId', { userId });
       } else if (userRole === 'salesperson') {
         // Sales team view (Team visibility, but masked if not owner)
         if (query.clinicId || query.providerId) {
@@ -846,9 +844,18 @@ export class BookingsService {
       .where('appointment.id = :appointmentId', { appointmentId });
 
     // Add role-based filtering
-    // SECRETARIAT and CLINIC_OWNER have same permissions - can see all clinic appointments
-    if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      queryBuilder.andWhere('clinic.ownerId = :userId', { userId });
+    if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
+      const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+      const availableClinicIds = [
+        ...(user?.ownedClinics || []).map(c => c.id),
+        user?.assignedClinicId
+      ].filter(Boolean);
+
+      if (availableClinicIds.length > 0) {
+        queryBuilder.andWhere('appointment.clinicId IN (:...availableClinicIds)', { availableClinicIds });
+      } else {
+        queryBuilder.andWhere('appointment.providerId = :userId', { userId });
+      }
     }
     // Managers can access appointments if they know the ID (and potentially we should check clinic association)
     // For now, we allow access by ID for managers.

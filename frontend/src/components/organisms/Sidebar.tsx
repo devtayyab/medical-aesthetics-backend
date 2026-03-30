@@ -149,13 +149,9 @@ export const Sidebar: React.FC = () => {
   const links =
     role === "client"
       ? clientLinks
-      : role === "clinic_owner"
+      : role === "clinic_owner" || role === "secretariat" || role === "doctor"
         ? clinicLinks
-        : role === "secretariat"
-          ? secretariatLinks
-          : role === "doctor"
-            ? doctorLinks
-          : role === "admin"
+      : role === "admin"
             ? getAdminLinks(role)
             : role === "SUPER_ADMIN"
               ? getAdminLinks(role)
@@ -181,9 +177,10 @@ export const Sidebar: React.FC = () => {
       case 'SUPER_ADMIN': return '/admin/manager-dashboard';
       case 'admin': return '/admin/dashboard';
       case 'clinic_owner': return '/clinic/dashboard';
+      case 'doctor':
+      case 'secretariat': return '/clinic/appointments';
       case 'salesperson': return '/crm';
       case 'client': return '/my-account';
-      case 'doctor': return '/clinic/diary';
       default: return '/';
     }
   };
@@ -218,6 +215,14 @@ export const Sidebar: React.FC = () => {
                   <li key={link.path}>
                     <Link
                       to={link.path}
+                      onClick={(e) => {
+                         const restrictedPaths = ['/clinic/dashboard', '/clinic/analytics', '/clinic/staff', '/clinic/settings'];
+                         const isRestrictedRole = role === 'doctor' || role === 'secretariat';
+                         if (isRestrictedRole && restrictedPaths.includes(link.path)) {
+                           e.preventDefault();
+                           return;
+                         }
+                      }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group relative overflow-hidden ${isActive
                         ? 'text-[#0B1120] bg-[#CBFF38] shadow-lg shadow-[#CBFF38]/10'
                         : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
@@ -269,6 +274,8 @@ export const Sidebar: React.FC = () => {
                   navigate('/clinic/settings');
                 } else if (role === 'client') {
                   navigate('/settings');
+                } else if (role === 'doctor' || role === 'secretariat') {
+                   // Clicking settings does nothing for them as requested
                 }
               }}
               className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"

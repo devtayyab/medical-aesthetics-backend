@@ -4,10 +4,11 @@ import { AppDispatch, RootState } from '../../store';
 import { fetchAppointments, updateAppointmentStatus } from '../../store/slices/clinicSlice';
 import { AppointmentStatus } from '../../types/clinic.types';
 import { hasPermission } from '../../utils/rolePermissions';
-import { Calendar, Clock, User, DollarSign, Search, X } from 'lucide-react';
+import { Calendar, Clock, User, Search, X } from 'lucide-react';
 import AppointmentExecutionModal from '../../components/clinic/AppointmentExecutionModal';
 import ClinicBookingModal from '../../components/clinic/ClinicBookingModal';
 import RescheduleModal from '../../components/clinic/RescheduleModal';
+import AppointmentDetailModal from '../../components/clinic/AppointmentDetailModal';
 import { AuthState } from '../../store/slices/authSlice';
 import { rescheduleAppointment } from '../../store/slices/clinicSlice';
 
@@ -23,6 +24,7 @@ const AppointmentsPage: React.FC = () => {
   const [showExecutionModal, setShowExecutionModal] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Get clinicId from first appointment or user context
   const clinicId = user?.role === 'clinic_owner' ? (user as any).ownedClinics?.[0]?.id : (user as any).associatedClinicId;
@@ -71,14 +73,8 @@ const AppointmentsPage: React.FC = () => {
     setShowExecutionModal(true);
   };
 
-  const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    confirmed: 'bg-blue-100 text-blue-800 border-blue-200',
-    completed: 'bg-green-100 text-green-800 border-green-200',
-    executed: 'bg-lime-100 text-lime-800 border-lime-200',
-    cancelled: 'bg-red-100 text-red-800 border-red-200',
-    no_show: 'bg-orange-100 text-orange-800 border-orange-200',
-  };
+  // (Removed unused statusColors)
+
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -182,6 +178,10 @@ const AppointmentsPage: React.FC = () => {
                   setSelectedAppointment(appointment);
                   setShowRescheduleModal(true);
                 }}
+                onOverview={() => {
+                   setSelectedAppointment(appointment);
+                   setShowDetailModal(true);
+                }}
                 onNoShow={async () => {
                   if (window.confirm('Mark this client as No Show?')) {
                     await dispatch(updateAppointmentStatus({ id: appointment.id, status: AppointmentStatus.NO_SHOW }));
@@ -202,6 +202,13 @@ const AppointmentsPage: React.FC = () => {
             setShowExecutionModal(false);
             dispatch(fetchAppointments(undefined));
           }}
+        />
+      )}
+
+      {showDetailModal && selectedAppointment && (
+        <AppointmentDetailModal
+          appointment={selectedAppointment}
+          onClose={() => setShowDetailModal(false)}
         />
       )}
 
@@ -239,7 +246,7 @@ const AppointmentsPage: React.FC = () => {
 
 /* --- Sub-Components --- */
 
-const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, onReschedule, onNoShow }: any) => {
+const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, onReschedule, onNoShow, onOverview }: any) => {
   const isPlatform = appointment.appointmentSource === 'platform_broker';
   const status = appointment.status.toLowerCase();
 
@@ -339,7 +346,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
             )}
           </>
         )}
-        <button className="h-10 px-6 bg-gray-50 text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all border border-gray-100 hover:border-black italic">
+        <button onClick={onOverview} className="h-10 px-6 bg-gray-50 text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all border border-gray-100 hover:border-black italic">
           Overview
         </button>
       </div>
