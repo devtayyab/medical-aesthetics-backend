@@ -4,7 +4,7 @@ import { AppDispatch, RootState } from '../../store';
 import { fetchAppointments, updateAppointmentStatus } from '../../store/slices/clinicSlice';
 import { AppointmentStatus } from '../../types/clinic.types';
 import { hasPermission } from '../../utils/rolePermissions';
-import { Calendar, Clock, User, DollarSign, Search, X } from 'lucide-react';
+import { Calendar, Clock, User, Search, X } from 'lucide-react';
 import AppointmentExecutionModal from '../../components/clinic/AppointmentExecutionModal';
 import ClinicBookingModal from '../../components/clinic/ClinicBookingModal';
 import RescheduleModal from '../../components/clinic/RescheduleModal';
@@ -73,14 +73,8 @@ const AppointmentsPage: React.FC = () => {
     setShowExecutionModal(true);
   };
 
-  const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    confirmed: 'bg-blue-100 text-blue-800 border-blue-200',
-    completed: 'bg-green-100 text-green-800 border-green-200',
-    executed: 'bg-lime-100 text-lime-800 border-lime-200',
-    cancelled: 'bg-red-100 text-red-800 border-red-200',
-    no_show: 'bg-orange-100 text-orange-800 border-orange-200',
-  };
+  // (Removed unused statusColors)
+
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
