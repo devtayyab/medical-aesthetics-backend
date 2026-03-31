@@ -86,6 +86,7 @@ import { CheckoutPage } from "./pages/Client/CheckoutPage";
 import BookingConfirmation from "./pages/Client/BookingConfirmation";
 import { PaymentResultPage } from "./pages/Client/PaymentResultPage";
 import AdminLayout from "@/components/layouts/AdminLayout";
+import ClientLayout from "@/components/layouts/ClientLayout";
 import { Calls as ManagerCrmCalls } from "@/pages/Admin/ManagerCRM/Calls";
 import { Reports as ManagerCrmReports } from "@/pages/Admin/ManagerCRM/Reports";
 import { Advertising as ManagerCrmAdvertising } from "@/pages/Admin/ManagerCRM/Advertising";
@@ -128,7 +129,7 @@ function getRoleHomePath(role?: string): string {
   if (role === "salesperson") return "/crm";
   if (role === "doctor" || role === "secretariat") return "/clinic/appointments";
   if (role === "clinic_owner") return "/clinic/dashboard";
-  if (role === "client") return "/my-account";
+  if (role === "client") return "/";
   return "/";
 }
 
@@ -181,7 +182,7 @@ function AppContent() {
       } else if (user?.role === "clinic_owner") {
         navigate("/clinic/dashboard", { replace: true });
       } else if (user?.role === "client") {
-        navigate("/my-account", { replace: true });
+        navigate("/", { replace: true });
       }
     }
   }, [isAuthenticated, isLoading, location.pathname, navigate, hasRestoredSession, user?.role]);
@@ -204,9 +205,9 @@ function AppContent() {
       )}
       <main>
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/booking" element={<Booking />} />
-          <Route path="/clinicpage" element={<Clinic />} />
+          <Route path="/" element={<ClientLayout><HomePage /></ClientLayout>} />
+          <Route path="/booking" element={<ClientLayout><Booking /></ClientLayout>} />
+          <Route path="/clinicpage" element={<ClientLayout><Clinic /></ClientLayout>} />
           <Route
             path="/login"
             element={
@@ -230,18 +231,20 @@ function AppContent() {
 
 
           {/* Client Routes - Public clinic browsing */}
-          <Route path="/search" element={<Search />} />
-          <Route path="/clinic/:id" element={<ClinicDetails />} />
-          <Route path="/treatment/:id" element={<TreatmentDetails />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/search" element={<ClientLayout><Search /></ClientLayout>} />
+          <Route path="/clinic/:id" element={<ClientLayout><ClinicDetails /></ClientLayout>} />
+          <Route path="/treatment/:id" element={<ClientLayout><TreatmentDetails /></ClientLayout>} />
+          <Route path="/blog" element={<ClientLayout><Blog /></ClientLayout>} />
+          <Route path="/blog/:slug" element={<ClientLayout><BlogPost /></ClientLayout>} />
 
           {/* Protected booking route - requires login */}
           <Route
             path="/appointment/booking"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <AppointmentBooking />
+                <ClientLayout>
+                  <AppointmentBooking />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -249,7 +252,9 @@ function AppContent() {
             path="/appointments"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <Appointments />
+                <ClientLayout>
+                  <Appointments />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -258,7 +263,9 @@ function AppContent() {
             path="/history"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <History />
+                <ClientLayout>
+                  <History />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -266,7 +273,9 @@ function AppContent() {
             path="/reviews"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <Reviews />
+                <ClientLayout>
+                  <Reviews />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -274,7 +283,9 @@ function AppContent() {
             path="/loyalty"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <Loyalty />
+                <ClientLayout>
+                  <Loyalty />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -282,7 +293,9 @@ function AppContent() {
             path="/my-account"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <MyAccount />
+                <ClientLayout>
+                  <MyAccount />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -290,7 +303,9 @@ function AppContent() {
             path="/notifications"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <NotificationsCrm />
+                <ClientLayout>
+                  <NotificationsCrm />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -298,7 +313,9 @@ function AppContent() {
             path="/personal-details"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <PersonalDetails />
+                <ClientLayout>
+                  <PersonalDetails />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -306,7 +323,9 @@ function AppContent() {
             path="/rewards"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <Rewards />
+                <ClientLayout>
+                  <Rewards />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -314,7 +333,9 @@ function AppContent() {
             path="/payments"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <Payments />
+                <ClientLayout>
+                  <Payments />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -322,21 +343,23 @@ function AppContent() {
             path="/gift-card"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <GiftCard />
+                <ClientLayout>
+                  <GiftCard />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
           <Route
             path="/legal"
-            element={<Legal />}
+            element={<ClientLayout><Legal /></ClientLayout>}
           />
           <Route
             path="/support"
-            element={<SupportCenter />}
+            element={<ClientLayout><SupportCenter /></ClientLayout>}
           />
           <Route
             path="/chat"
-            element={<ChatSupport />}
+            element={<ClientLayout><ChatSupport /></ClientLayout>}
           />
           <Route
             path="/checkout"
@@ -361,7 +384,9 @@ function AppContent() {
             path="/invite-friend"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <InviteFriend />
+                <ClientLayout>
+                  <InviteFriend />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -369,7 +394,9 @@ function AppContent() {
             path="/settings"
             element={
               <ProtectedLayout allowedRoles={["client"]}>
-                <Settings />
+                <ClientLayout>
+                  <Settings />
+                </ClientLayout>
               </ProtectedLayout>
             }
           />
@@ -920,7 +947,9 @@ function AppContent() {
             element={
               <ProtectedLayout allowedRoles={["client", "salesperson", "manager", "admin", "clinic_owner", "doctor", "secretariat", "SUPER_ADMIN"]}>
                 {user?.role === "client" ? (
-                  <MessagesPage />
+                  <ClientLayout>
+                    <MessagesPage />
+                  </ClientLayout>
                 ) : (
                   <AdminLayout>
                     <MessagesPage />
@@ -934,7 +963,9 @@ function AppContent() {
             element={
               <ProtectedLayout allowedRoles={["client", "salesperson", "manager", "admin", "clinic_owner", "doctor", "secretariat", "SUPER_ADMIN"]}>
                 {user?.role === "client" ? (
-                  <ChangePassword />
+                  <ClientLayout>
+                    <ChangePassword />
+                  </ClientLayout>
                 ) : (
                   <AdminLayout>
                     <ChangePassword />

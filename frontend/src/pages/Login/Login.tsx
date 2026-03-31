@@ -117,7 +117,7 @@ export const Login: React.FC = () => {
       } else if (result.user.role === "SUPER_ADMIN") {
         navigate("/admin/manager-dashboard", { replace: true });
       } else if (result.user.role === "client") {
-        navigate("/my-account", { replace: true });
+        navigate("/", { replace: true });
       } else if (result.user.role === "salesperson") {
         navigate("/crm", { replace: true });
       } else if (result.user.role === "manager") {

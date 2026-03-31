@@ -129,8 +129,8 @@ export const Register: React.FC = () => {
 
       const result = await dispatch(register(userData)).unwrap();
 
-      // For public signup, we always redirect to my-account as they are clients
-      navigate("/my-account", { replace: true });
+      // For public signup, we always redirect to home as they are clients
+      navigate("/", { replace: true });
     } catch (err) {
       // Error handled in Redux
     }

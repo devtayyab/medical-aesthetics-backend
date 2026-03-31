@@ -199,8 +199,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const customer = SelectedCustomer || (customerRecord?.record?.customer as any) || (customerRecord?.record as any);
     
     // The ID to use for CRM updates (Must be the Lead/User ID, not the Record ID)
-    const effectiveId = SelectedCustomer?.id || customerRecord?.record?.customerId || (customerRecord?.record?.customer as any)?.id || customerId;
+    const effectiveId = SelectedCustomer?.id || (customerRecord?.record?.customerId) || (customerRecord?.record?.id) || customerId;
     
+    const firstName = customer?.firstName || (customerRecord?.record?.customer as any)?.firstName || (customerRecord?.record as any)?.firstName || "";
+    const lastName = customer?.lastName || (customerRecord?.record?.customer as any)?.lastName || (customerRecord?.record as any)?.lastName || "";
+    const fullName = `${firstName} ${lastName}`.trim();
+    const email = customer?.email || (customerRecord?.record?.customer as any)?.email || (customerRecord?.record as any)?.email || "";
+    const phone = customer?.phone || (customerRecord?.record?.customer as any)?.phone || (customerRecord?.record as any)?.phone || "";
+
     // Status can be in Lead record, or on the Customer profile if synced
     const displayStatus = customer?.status || (customerRecord as any)?.record?.status || 'new';
     
@@ -1893,10 +1899,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
             {/* Modals */}
             {showBookingModal && (
                 <CRMBookingModal
-                    customerId={customer.id}
-                    customerName={`${customer.firstName} ${customer.lastName}`}
-                    customerEmail={customer.email}
-                    customerPhone={customer.phone}
+                    customerId={effectiveId}
+                    customerName={fullName}
+                    customerEmail={email}
+                    customerPhone={phone}
                     bookedBy={`${user?.firstName} ${user?.lastName}`}
                     onClose={() => setShowBookingModal(false)}
                     onSuccess={async () => {
@@ -2102,10 +2108,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
             <CRMBookingModal
                 isOpen={showBookingModal}
-                customerId={customer.id}
-                customerName={`${customer.firstName} ${customer.lastName}`}
-                customerEmail={customer.email}
-                customerPhone={customer.phone}
+                customerId={effectiveId}
+                customerName={fullName}
+                customerEmail={email}
+                customerPhone={phone}
                 taskId={pendingTaskId}
                 onTaskComplete={async (tid) => {
                     await dispatch(updateAction({ id: tid, updates: { status: 'completed' } })).unwrap();

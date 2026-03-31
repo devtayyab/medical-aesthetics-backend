@@ -114,6 +114,7 @@ export class BookingsService {
       clinicId: createAppointmentDto.clinicId,
       clientId,
       paymentMethod: createAppointmentDto.paymentMethod,
+      keys: Object.keys(createAppointmentDto)
     });
 
     // Check if client exists as User
@@ -238,7 +239,14 @@ export class BookingsService {
               }
             }
           } else {
-            throw new NotFoundException(`Client not found as User or Lead: ${clientId}`);
+            console.error('❌ [BookingsService] Client identification failed. Details:', {
+              clientId,
+              receivedDto: {
+                ...createAppointmentDto,
+                // Mask sensitive info if needed, but here we need to see what's actually there
+              }
+            });
+            throw new NotFoundException(`Client not found as User or Lead: ${clientId}. Please ensure client details are provided for guest bookings.`);
           }
         }
       } catch (e) {
