@@ -1897,22 +1897,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
             )}
 
             {/* Modals */}
-            {showBookingModal && (
-                <CRMBookingModal
-                    customerId={effectiveId}
-                    customerName={fullName}
-                    customerEmail={email}
-                    customerPhone={phone}
-                    bookedBy={`${user?.firstName} ${user?.lastName}`}
-                    onClose={() => setShowBookingModal(false)}
-                    onSuccess={async () => {
-                        if (!isConverted) {
-                            await dispatch(updateLead({ id: customer.id, updates: { status: 'converted' } }));
-                        }
-                        dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
-                    }}
-                />
-            )}
+
 
             {/* Phone Call Notes Modal */}
             {showPhoneCallModal && (
@@ -2112,6 +2097,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 customerName={fullName}
                 customerEmail={email}
                 customerPhone={phone}
+                bookedBy={`${user?.firstName} ${user?.lastName}`}
                 taskId={pendingTaskId}
                 onTaskComplete={async (tid) => {
                     await dispatch(updateAction({ id: tid, updates: { status: 'completed' } })).unwrap();
@@ -2122,7 +2108,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     setShowBookingModal(false);
                     setPendingTaskId(undefined);
                 }}
-                onSuccess={() => {
+                onSuccess={async () => {
+                    if (!isConverted) {
+                        try {
+                            await dispatch(updateLead({ id: customer.id, updates: { status: 'converted' as any } })).unwrap();
+                        } catch (e) {
+                            console.error("Lead conversion failed on success", e);
+                        }
+                    }
                     dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
                 }}
             />
