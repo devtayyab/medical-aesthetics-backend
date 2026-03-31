@@ -697,7 +697,7 @@ export class CrmService implements OnModuleInit {
   async findById(id: string): Promise<Lead> {
     const lead = await this.leadsRepository.findOne({
       where: { id },
-      relations: ['assignedSales', 'tags', 'tasks'],
+      relations: ['assignedSales', 'tags', 'tasks', 'multiOwners', 'clinics', 'clinicStatuses', 'clinicStatuses.clinic'],
     });
 
     if (!lead) {
