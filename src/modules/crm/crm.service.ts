@@ -219,48 +219,53 @@ export class CrmService implements OnModuleInit {
     leadId: string,
     data: { multiOwnerIds?: string[]; clinicAffiliations?: Array<{ clinicId: string; status: LeadStatus }> }
   ) {
-    const lead = await this.leadsRepository.findOne({
-      where: { id: leadId },
-      relations: ['multiOwners', 'clinics', 'clinicStatuses']
-    });
+    try {
+      const lead = await this.leadsRepository.findOne({
+        where: { id: leadId },
+        relations: ['multiOwners', 'clinics', 'clinicStatuses']
+      });
 
-    if (!lead) return;
+      if (!lead) return;
 
-    // Handle Owners
-    if (data.multiOwnerIds !== undefined) {
-      if (data.multiOwnerIds.length > 0) {
-        lead.multiOwners = await this.usersRepository.find({ where: { id: In(data.multiOwnerIds) } });
-      } else {
-        lead.multiOwners = [];
+      // Handle Owners
+      if (data.multiOwnerIds !== undefined) {
+        if (data.multiOwnerIds.length > 0) {
+          lead.multiOwners = await this.usersRepository.find({ where: { id: In(data.multiOwnerIds) } });
+        } else {
+          lead.multiOwners = [];
+        }
       }
-    }
 
-    // Handle Clinics and Statuses
-    if (data.clinicAffiliations !== undefined) {
-      const clinicIds = data.clinicAffiliations.map(a => a.clinicId);
-      if (clinicIds.length > 0) {
-        lead.clinics = await this.clinicsRepository.find({ where: { id: In(clinicIds) } });
+      // Handle Clinics and Statuses
+      if (data.clinicAffiliations !== undefined) {
+        const clinicIds = data.clinicAffiliations.map(a => a.clinicId);
+        if (clinicIds.length > 0) {
+          lead.clinics = await this.clinicsRepository.find({ where: { id: In(clinicIds) } });
 
-        // Update clinic-specific statuses
-        // Clear old ones
-        await this.leadClinicStatusesRepository.delete({ leadId });
+          // Update clinic-specific statuses
+          // Clear old ones
+          await this.leadClinicStatusesRepository.delete({ leadId });
 
-        // Create new ones
-        const statuses = data.clinicAffiliations.map(aff => {
-          return this.leadClinicStatusesRepository.create({
-            leadId,
-            clinicId: aff.clinicId,
-            status: aff.status || lead.status
+          // Create new ones
+          const statuses = data.clinicAffiliations.map(aff => {
+            return this.leadClinicStatusesRepository.create({
+              leadId,
+              clinicId: aff.clinicId,
+              status: aff.status || lead.status
+            });
           });
-        });
-        await this.leadClinicStatusesRepository.save(statuses);
-      } else {
-        lead.clinics = [];
-        await this.leadClinicStatusesRepository.delete({ leadId });
+          await this.leadClinicStatusesRepository.save(statuses);
+        } else {
+          lead.clinics = [];
+          await this.leadClinicStatusesRepository.delete({ leadId });
+        }
       }
-    }
 
-    await this.leadsRepository.save(lead);
+      await this.leadsRepository.save(lead);
+    } catch (err) {
+      // Gracefully skip if optional relation tables (lead_owners, lead_clinic_statuses, lead_clinics) do not exist yet in DB
+      this.logger.warn(`[syncLeadRelations] Skipped relation sync for lead ${leadId} due to missing tables or error: ${err?.message}`);
+    }
   }
 
   async scheduleRecurringAppointment(data: any): Promise<any> {
@@ -692,7 +697,7 @@ export class CrmService implements OnModuleInit {
   async findById(id: string): Promise<Lead> {
     const lead = await this.leadsRepository.findOne({
       where: { id },
-      relations: ['assignedSales', 'tags', 'tasks', 'multiOwners', 'clinics', 'clinicStatuses', 'clinicStatuses.clinic'],
+      relations: ['assignedSales', 'tags', 'tasks'],
     });
 
     if (!lead) {
