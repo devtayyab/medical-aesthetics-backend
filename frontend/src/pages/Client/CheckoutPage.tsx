@@ -116,7 +116,10 @@ export const CheckoutPage: React.FC = () => {
                 dispatch(clearBooking());
                 navigate('/booking-confirmation', { state: { appointment: payload } });
             } else {
-                const errorMsg = (result.payload as any) || 'Failed to create appointment. Please try again.';
+                let errorMsg = (result.payload as any) || 'Failed to create appointment. Please try again.';
+                if (typeof errorMsg === 'string' && errorMsg.includes('Client not found')) {
+                    errorMsg = "Your session expired or your account was not found. Please log out and back in to refresh your session.";
+                }
                 alert(errorMsg);
             }
         } catch (error: any) {
