@@ -143,35 +143,29 @@ export class BookingsService {
     if (!userExists && UUID_REGEX.test(clientId) && clientId !== WALK_IN_DUMMY_ID) {
       this.logDebug('🔍 [BookingsService] Robust fallback search for clientId:', { clientId });
       
-      // 1. Check as Lead directly (Primary Key)
-      const directLead = await this.leadsRepository.findOne({ where: { id: clientId } });
-      if (directLead) {
-        this.logDebug('✅ [BookingsService] Found as Lead via Primary Key');
-        userExists = directLead as any;
+      // 1. Check as CustomerRecord ID first (Often used in CRM deep links)
+      const record = await this.customerRecordsRepository.findOne({ where: { id: clientId }, relations: ['customer'] });
+      if (record && record.customer) {
+        this.logDebug('✅ [BookingsService] Found as CustomerRecord, using linked User');
+        userExists = record.customer;
+        clientId = userExists.id;
       }
 
-      // 2. Check as CustomerRecord ID
+      // 2. Check as Lead Clinic Status ID
       if (!userExists) {
-        const record = await this.customerRecordsRepository.findOne({ where: { id: clientId }, relations: ['customer'] });
-        if (record && record.customer) {
-          this.logDebug('✅ [BookingsService] Found as CustomerRecord, using linked User');
-          userExists = record.customer;
-          clientId = userExists.id;
-        }
+          const lStatus = await this.leadsRepository.manager.getRepository('LeadClinicStatus').findOne({ 
+            where: { id: clientId }, 
+            relations: ['lead'] 
+          });
+          if (lStatus && (lStatus as any).lead) {
+              this.logDebug('✅ [BookingsService] Found as LeadClinicStatus, letting Lead logic handle conversion');
+              clientId = (lStatus as any).lead.id;
+              // Don't set userExists yet, let the lead conversion logic below run
+          }
       }
-
-      // 3. Check as LeadClinicStatus ID (Sometimes passed from specific CRM views)
-      if (!userExists) {
-        const lStatus = await this.leadsRepository.manager.getRepository('LeadClinicStatus').findOne({ 
-          where: { id: clientId }, 
-          relations: ['lead'] 
-        });
-        if (lStatus && (lStatus as any).lead) {
-            this.logDebug('✅ [BookingsService] Found as LeadClinicStatus, using linked Lead');
-            userExists = (lStatus as any).lead;
-            clientId = userExists.id;
-        }
-      }
+      
+      // 3. If still no USER, we might have a LEAD ID. 
+      // If we found nothing yet, but clientId exists, the (!userExists) block below will check if it's a Lead.
     }
 
     if (!userExists) {
