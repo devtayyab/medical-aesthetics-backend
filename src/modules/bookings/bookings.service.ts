@@ -55,6 +55,8 @@ export class BookingsService {
     private servicesRepository: Repository<Service>,
     @InjectRepository(CustomerRecord)
     private customerRecordsRepository: Repository<CustomerRecord>,
+    @InjectRepository(Lead)
+    private leadsRepository: Repository<Lead>,
     @Inject(forwardRef(() => CrmService))
     private crmService: CrmService,
     private eventEmitter: EventEmitter2,
@@ -135,6 +137,41 @@ export class BookingsService {
         ]
       });
       if (userExists) clientId = userExists.id;
+    }
+
+    // ROBUST FALLBACK: "God Search" for the ID in all relevant CRM tables
+    if (!userExists && UUID_REGEX.test(clientId) && clientId !== WALK_IN_DUMMY_ID) {
+      this.logDebug('🔍 [BookingsService] Robust fallback search for clientId:', { clientId });
+      
+      // 1. Check as Lead directly (Primary Key)
+      const directLead = await this.leadsRepository.findOne({ where: { id: clientId } });
+      if (directLead) {
+        this.logDebug('✅ [BookingsService] Found as Lead via Primary Key');
+        userExists = directLead as any;
+      }
+
+      // 2. Check as CustomerRecord ID
+      if (!userExists) {
+        const record = await this.customerRecordsRepository.findOne({ where: { id: clientId }, relations: ['customer'] });
+        if (record && record.customer) {
+          this.logDebug('✅ [BookingsService] Found as CustomerRecord, using linked User');
+          userExists = record.customer;
+          clientId = userExists.id;
+        }
+      }
+
+      // 3. Check as LeadClinicStatus ID (Sometimes passed from specific CRM views)
+      if (!userExists) {
+        const lStatus = await this.leadsRepository.manager.getRepository('LeadClinicStatus').findOne({ 
+          where: { id: clientId }, 
+          relations: ['lead'] 
+        });
+        if (lStatus && (lStatus as any).lead) {
+            this.logDebug('✅ [BookingsService] Found as LeadClinicStatus, using linked Lead');
+            userExists = (lStatus as any).lead;
+            clientId = userExists.id;
+        }
+      }
     }
 
     if (!userExists) {
