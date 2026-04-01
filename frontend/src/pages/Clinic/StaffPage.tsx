@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { RootState, AppDispatch } from "@/store";
 import {
     Users,
@@ -30,6 +31,7 @@ interface StaffMember {
 
 const StaffPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
+    const navigate = useNavigate();
     const { profile } = useSelector((state: RootState) => state.clinic);
     const [staff, setStaff] = useState<StaffMember[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -166,6 +168,7 @@ const StaffPage: React.FC = () => {
                                 key={member.id} 
                                 member={member} 
                                 onRemove={() => handleRemoveStaff(member.id)} 
+                                onViewSchedule={() => navigate('/clinic/appointments')}
                             />
                         ))}
                         
@@ -292,7 +295,7 @@ const StaffPage: React.FC = () => {
 
 /* --- Sub-Components --- */
 
-const StaffCard = ({ member, onRemove }: any) => {
+const StaffCard = ({ member, onRemove, onViewSchedule }: any) => {
     return (
         <div className="bg-white rounded-[40px] border border-gray-100 p-8 shadow-sm hover:border-black hover:shadow-2xl transition-all duration-500 group relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -342,7 +345,10 @@ const StaffCard = ({ member, onRemove }: any) => {
                         <Shield size={14} className="text-gray-400" />
                         <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Security Clearance Level 4</span>
                     </div>
-                    <button className="text-[10px] font-black uppercase tracking-widest text-black hover:text-[#CBFF38] transition-colors italic decoration-[#CBFF38] underline underline-offset-4">
+                    <button 
+                        onClick={onViewSchedule}
+                        className="text-[10px] font-black uppercase tracking-widest text-black hover:text-[#CBFF38] transition-colors italic decoration-[#CBFF38] underline underline-offset-4"
+                    >
                         View Schedule
                     </button>
                 </div>

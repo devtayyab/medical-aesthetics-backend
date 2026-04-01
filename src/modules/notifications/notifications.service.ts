@@ -103,6 +103,13 @@ export class NotificationsService implements OnModuleInit {
     });
   }
 
+  async findAllGlobal(limit: number = 50): Promise<Notification[]> {
+    return this.notificationsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+  }
+
   async markAsRead(id: string): Promise<void> {
     await this.notificationsRepository.update(id, {
       isRead: true,
@@ -222,11 +229,11 @@ export class NotificationsService implements OnModuleInit {
     message: string,
     data?: any,
   ): Promise<{ sentTo: number }> {
-    // Find all admin and salesperson users
+    // Find all admin users only (NOT all salespersons anymore)
     const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true });
-    const salespersons = await this.usersService.findAll({ role: UserRole.SALESPERSON, isActive: true });
+    const superAdmins = await this.usersService.findAll({ role: UserRole.SUPER_ADMIN, isActive: true });
 
-    const recipientIds = [...admins, ...salespersons].map(u => u.id);
+    const recipientIds = [...admins, ...superAdmins].map(u => u.id);
 
     if (recipientIds.length === 0) return { sentTo: 0 };
 

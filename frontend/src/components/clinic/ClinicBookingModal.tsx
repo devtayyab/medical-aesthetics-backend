@@ -10,9 +10,14 @@ interface ClinicBookingModalProps {
     onClose: () => void;
     onSuccess: () => void;
     clinicId: string;
+    prefillClient?: {
+        fullName: string;
+        phone: string;
+        email?: string;
+    };
 }
 
-const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose, onSuccess, clinicId }) => {
+const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose, onSuccess, clinicId, prefillClient }) => {
     const { user } = useSelector((state: RootState) => state.auth);
 
     const [step, setStep] = useState(1);
@@ -37,8 +42,20 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
     useEffect(() => {
         if (isOpen && clinicId) {
             fetchClinicData();
+            if (prefillClient) {
+                setClientData({
+                    fullName: prefillClient.fullName || '',
+                    phone: prefillClient.phone || '',
+                    email: prefillClient.email || '',
+                });
+                // If we have prefill, we can skip step 1
+                setStep(2);
+            } else {
+                setStep(1);
+                setClientData({ fullName: '', phone: '', email: '' });
+            }
         }
-    }, [isOpen, clinicId]);
+    }, [isOpen, clinicId, prefillClient]);
 
     const fetchClinicData = async () => {
         setIsLoading(true);

@@ -80,16 +80,19 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     }, []);
 
     useEffect(() => {
-        const targetClinicId = clinicId || profile?.id;
+        const targetClinicId = clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.ownedClinics?.[0]?.id;
 
         if (targetClinicId) {
             dispatch(fetchClinicProviders(targetClinicId));
         }
 
-        // Pass clinicId in filters if provided, otherwise fetch for user's associated clinic (default behavior)
-        const filters = clinicId ? { clinicId } : undefined;
+        // Pass clinicId and selectedDate in filters
+        const filters: any = {};
+        if (targetClinicId) filters.clinicId = targetClinicId;
+        if (selectedDate) filters.date = format(selectedDate, 'yyyy-MM-dd');
+        
         dispatch(fetchAppointments(filters));
-    }, [dispatch, profile?.id, clinicId]);
+    }, [dispatch, profile?.id, clinicId, selectedDate, user]);
 
     const navigateDate = (direction: 'prev' | 'next') => {
         if (viewMode === 'day') {
@@ -148,7 +151,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                         <div
                                             key={apt.id}
                                             className={`appointment-block compact status-${apt.status}`}
-                                            style={{ top: `${top + 60}px`, height: `${height - 2}px` }}
+                                            style={{ top: `${top}px`, height: `${height - 2}px` }}
                                         >
                                             <div className="text-[9px] font-black leading-tight text-gray-900 truncate">{apt.serviceName || (apt.service as any)?.treatment?.name || (apt.service as any)?.name}</div>
                                             <div className="text-[8px] font-bold text-gray-500 truncate">{apt.clientDetails?.fullName || 'Client'}</div>
@@ -209,7 +212,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                         <div
                                             key={apt.id}
                                             className={`appointment-block status-${apt.status}`}
-                                            style={{ top: `${top + 60}px`, height: `${height - 4}px` }}
+                                            style={{ top: `${top}px`, height: `${height - 4}px` }}
                                         >
                                             <div className="flex justify-between items-start">
                                                 <div className="apt-info">

@@ -217,9 +217,12 @@ export class ClinicManagementController {
       const clinic = await this.clinicsService.findByOwnerId(req.user.id);
       clinicId = clinic.id;
     }
+
+    const effectiveProviderId = body.providerId || (req.user.role === UserRole.DOCTOR ? req.user.id : null);
+
     return this.availabilityService.blockTimeSlot(
       clinicId,
-      body.providerId || null,
+      effectiveProviderId,
       new Date(body.startTime),
       new Date(body.endTime),
       body.reason || 'Doctor unavailable',
@@ -250,9 +253,12 @@ export class ClinicManagementController {
     } else {
       clinic = await this.clinicsService.findByOwnerId(req.user.id);
     }
+    
+    const effectiveProviderId = query.providerId || (req.user.role === UserRole.DOCTOR ? req.user.id : null);
+
     return this.availabilityService.getBlockedTimeSlots(
       clinic.id,
-      query.providerId || null,
+      effectiveProviderId,
       query.startDate ? new Date(query.startDate) : undefined,
       query.endDate ? new Date(query.endDate) : undefined,
     );

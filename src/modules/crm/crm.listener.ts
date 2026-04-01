@@ -4,6 +4,7 @@ import { CrmService } from './crm.service';
 import { Lead } from './entities/lead.entity';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../../common/enums/notification-type.enum';
 
 @Injectable()
 export class CrmListener {
@@ -88,7 +89,16 @@ export class CrmListener {
                   reminderDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2) // 2 days after execution
                 });
 
-                // Rule: Notify Admin and Sales owners of execution
+                // Notify the specific salesperson
+                await this.notificationsService.create(
+                    representativeId,
+                    NotificationType.PUSH,
+                    'Appointment Executed',
+                    `${appointment.client?.firstName || 'Client'} has completed their ${therapyName} at ${appointment.clinic?.name}.`,
+                    { appointmentId: appointment.id, type: 'execution' }
+                );
+
+                // Notify Platform Admins (Logic in service now restricts to Admins only)
                 await this.notificationsService.notifyPlatformStaff(
                     'Appointment Executed',
                     `${appointment.client?.firstName || 'Client'} has completed their ${therapyName} at ${appointment.clinic?.name}.`,

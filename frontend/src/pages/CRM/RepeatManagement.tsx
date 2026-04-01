@@ -67,7 +67,7 @@ export const RepeatManagement: React.FC = () => {
       const serviceList = Array.isArray(response.data) ? response.data : [];
       setServices(serviceList.map((service: any) => ({
         value: service.id,
-        label: `${service.name} ($${service.price})`
+        label: `${service.name || service.treatment?.name || 'Service'} ($${service.price})`
       })));
     } catch (err) {
       console.error("Failed to fetch services:", err);

@@ -42,6 +42,9 @@ export class NotificationsController {
   @Get()
   @ApiOperation({ summary: 'Get notifications for logged-in user' })
   getUserNotifications(@Request() req, @Query('limit') limit?: number) {
+    if (req.user.role === UserRole.SUPER_ADMIN || req.user.role === UserRole.ADMIN) {
+      return this.notificationsService.findAllGlobal(limit);
+    }
     return this.notificationsService.findByRecipient(req.user.id, limit);
   }
 

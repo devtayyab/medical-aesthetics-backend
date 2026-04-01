@@ -692,7 +692,7 @@ function AppContent() {
           <Route
             path="/crm/facebook-integration"
             element={
-              <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
+              <ProtectedLayout allowedRoles={["manager", "SUPER_ADMIN"]}>
                 <AdminLayout>
                   <FacebookIntegration />
                 </AdminLayout>
