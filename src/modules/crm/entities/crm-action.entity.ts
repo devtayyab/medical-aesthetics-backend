@@ -35,7 +35,7 @@ export class CrmAction {
   // Action type
   @Column({
     type: 'enum',
-    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder'],
+    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder', 'satisfaction_check', 'complaint'],
   })
   actionType: string;
 
