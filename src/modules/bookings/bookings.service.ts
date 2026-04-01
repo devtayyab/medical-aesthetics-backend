@@ -111,13 +111,15 @@ export class BookingsService {
   async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker', bookedById?: string }): Promise<any> {
     let clientId = createAppointmentDto.clientId;
 
-    this.logDebug('--- BOOKING PROCESS STARTED ---', { clientId, hasDetails: !!createAppointmentDto.clientDetails });
-    console.log('🚀 [BookingsService] createAppointment started', {
-      clinicId: createAppointmentDto.clinicId,
+    console.log('🚀 [BookingsService] createAppointment process started', {
       clientId,
-      paymentMethod: createAppointmentDto.paymentMethod,
-      keys: Object.keys(createAppointmentDto)
+      clinicId: createAppointmentDto.clinicId,
+      startTime: createAppointmentDto.startTime,
+      hasClientDetails: !!createAppointmentDto.clientDetails,
+      phoneInDetails: createAppointmentDto.clientDetails?.phone
     });
+    
+    this.logDebug('--- BOOKING PROCESS STARTED ---', { clientId, hasDetails: !!createAppointmentDto.clientDetails });
 
     // Check if client exists as User
     let userExists = null;
