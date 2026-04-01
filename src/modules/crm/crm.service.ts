@@ -1388,12 +1388,12 @@ export class CrmService implements OnModuleInit {
 
     // Final Validation: Ensure any referenced IDs actually exist to prevent 500 DB crashes
     if (data.customerId) {
-      const dbRecord = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
+      const dbRecord = await this.customerRecordsRepository.findOne({ where: { id: data.customerId }, withDeleted: true });
       if (!dbRecord) {
         this.logger.warn(`[createAction] Resolved customerId ${data.customerId} does not exist in DB.`);
         // If we have a valid relatedLeadId, we can safely drop the invalid customerId instead of failing
         if (data.relatedLeadId) {
-          const leadExists = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId } });
+          const leadExists = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId }, withDeleted: true });
           if (leadExists) {
             this.logger.warn(`[createAction] Nullifying invalid customerId because valid relatedLeadId exists.`);
             data.customerId = null;
@@ -1407,7 +1407,7 @@ export class CrmService implements OnModuleInit {
     }
 
     if (data.relatedLeadId) {
-      const leadExists = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId } });
+      const leadExists = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId }, withDeleted: true });
       if (!leadExists) {
         if (data.customerId) {
           this.logger.warn(`[createAction] Nullifying invalid relatedLeadId because valid customerId exists.`);
