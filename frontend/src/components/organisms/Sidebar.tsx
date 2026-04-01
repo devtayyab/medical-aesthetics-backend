@@ -64,7 +64,6 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/sales-analytics", label: "Sales Dashboard", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
   { path: "/crm/calendar", label: "Sales Week Calendar", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/tag", label: "Tags", icon: <Tag className="w-5 h-5" />, group: "CRM" },
-  { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
   { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "Account" },
 ];
 
@@ -86,6 +85,7 @@ const managerLinks: SidebarItem[] = [
    { path: "/admin/manager-crm/reports", label: "Reports", icon: <FileText className="w-5 h-5" />, group: "Analytics" },
    { path: "/admin/manager-crm/advertising", label: "Advertising", icon: <BarChart className="w-5 h-5" />, group: "Analytics" },
    { path: "/admin/broadcast", label: "Broadcast", icon: <Bell className="w-5 h-5" />, group: "Marketing" },
+   { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
    { path: "/admin/manager-crm/access", label: "Access Control", icon: <Shield className="w-5 h-5" />, group: "CRM Management" },
    { path: "/admin/manager-crm/benefits", label: "Client Benefits", icon: <Tag className="w-5 h-5" />, group: "CRM Management" },
    { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <Eye className="w-5 h-5" />, group: "CRM Management" },
