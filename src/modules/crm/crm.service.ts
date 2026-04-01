@@ -1332,6 +1332,9 @@ export class CrmService implements OnModuleInit {
 
     this.logger.log(`[createAction] Data: ${JSON.stringify({ customerId: data.customerId, relatedLeadId: data.relatedLeadId, title: data.title })}`);
 
+    // 0. Store original ID to check if resolution failed
+    const originalCustomerId = data.customerId;
+
     // Resolve customerRecord if customerId (User ID) is provided
     if (data.customerId) {
       // 1. Check if it's already a CustomerRecord ID
@@ -1339,22 +1342,29 @@ export class CrmService implements OnModuleInit {
       if (recordById) {
         this.logger.log(`[createAction] customerId ${data.customerId} is already a CustomerRecord ID`);
       } else {
-        // 2. Check if it's a User ID (Client)
-        const user = await this.usersRepository.findOne({ where: { id: data.customerId } });
-        if (user) {
-          let record = await this.customerRecordsRepository.findOne({ where: { customerId: user.id } });
-          if (!record) {
-            record = await this.createCustomerRecord(user.id);
-          }
-          data.customerId = record.id;
-          this.logger.log(`[createAction] Resolved User ID ${user.id} to CustomerRecord ID ${record.id}`);
+        // 1.5. Check if it's a User ID mapping to an existing CustomerRecord (handles inconsistent users/soft-deleted users)
+        const recordByCustomerId = await this.customerRecordsRepository.findOne({ where: { customerId: data.customerId } });
+        if (recordByCustomerId) {
+          data.customerId = recordByCustomerId.id;
+          this.logger.log(`[createAction] Resolved User ID ${originalCustomerId} to existing CustomerRecord ID ${recordByCustomerId.id}`);
         } else {
-          // 3. Check if it's a Lead ID
-          const lead = await this.leadsRepository.findOne({ where: { id: data.customerId } });
-          if (lead) {
-            data.relatedLeadId = lead.id;
-            data.customerId = null;
-            this.logger.log(`[createAction] customerId ${lead.id} is a Lead ID, moved to relatedLeadId`);
+          // 2. Check if it's a User ID (Client) including soft-deleted ones
+          const user = await this.usersRepository.findOne({ where: { id: data.customerId }, withDeleted: true });
+          if (user) {
+            let record = await this.customerRecordsRepository.findOne({ where: { customerId: user.id } });
+            if (!record) {
+              record = await this.createCustomerRecord(user.id);
+            }
+            data.customerId = record.id;
+            this.logger.log(`[createAction] Resolved User ID ${user.id} to CustomerRecord ID ${record.id}`);
+          } else {
+            // 3. Check if it's a Lead ID including soft-deleted ones
+            const lead = await this.leadsRepository.findOne({ where: { id: data.customerId }, withDeleted: true });
+            if (lead) {
+              data.relatedLeadId = lead.id;
+              data.customerId = null;
+              this.logger.log(`[createAction] customerId ${lead.id} is a Lead ID, moved to relatedLeadId`);
+            }
           }
         }
       }
@@ -1362,7 +1372,7 @@ export class CrmService implements OnModuleInit {
 
     // 4. Ensure relatedLeadId is handled if customerId is still null
     if (!data.customerId && data.relatedLeadId) {
-      const lead = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId } });
+      const lead = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId }, withDeleted: true });
       if (lead) {
         // Check both metadata and direct column if it exists
         const convertedId = (lead.metadata as any)?.convertedToCustomerId || (lead as any).customerId;
@@ -1373,6 +1383,16 @@ export class CrmService implements OnModuleInit {
             this.logger.log(`[createAction] Linked Lead ${lead.id} to CustomerRecord ${record.id} via conversion`);
           }
         }
+      }
+    }
+
+    // Final Validation: If customerId was provided but could not be resolved to any record/lead, throw 400
+    if (originalCustomerId && data.customerId === originalCustomerId && !data.relatedLeadId) {
+      // Check one last time if it's actually somehow a valid record to avoid race conditions
+      const stillExists = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
+      if (!stillExists) {
+        this.logger.error(`[createAction] Failed to resolve provided customerId: ${originalCustomerId}`);
+        throw new BadRequestException('Invalid customer or lead ID provided. Could not find corresponding records.');
       }
     }
 
