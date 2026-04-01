@@ -70,7 +70,17 @@ export class BookingsController {
       };
       return await this.bookingsService.createAppointment(payload);
     } catch (error) {
-      console.error('Create Appointment Error:', error);
+      console.error('❌ [BookingsController] Create Appointment Error:', {
+        message: error.message,
+        response: error.response,
+        payload: {
+          ...createAppointmentDto,
+          // Mask sensitive details but show ID presence
+          clientId: !!createAppointmentDto.clientId,
+          clinicId: !!createAppointmentDto.clinicId,
+          serviceId: !!createAppointmentDto.serviceId,
+        }
+      });
       throw error;
     }
   }

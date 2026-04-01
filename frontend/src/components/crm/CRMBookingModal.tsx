@@ -123,6 +123,12 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 
     const handleConfirmBooking = async () => {
         if (!selectedClinic || !selectedService || !selectedSlot) return;
+        console.log("🚀 [CRMBookingModal] Initiating booking...", {
+            clientId: finalCustomerId,
+            clinicId: selectedClinic,
+            serviceId: selectedService,
+            startTime: selectedSlot.startTime
+        });
         setIsLoading(true);
         try {
             await bookingAPI.createAppointment({
