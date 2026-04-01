@@ -283,9 +283,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       try {
         // Prepare payload according to backend entity structure
         const payload: Partial<CrmAction> = {
-          customerId: customerId || propCustomerId || undefined,
+          customerId: customerId || propCustomerId || prefilledData?.customerId || undefined,
           relatedLeadId: formData.relatedLeadId || prefilledData?.relatedLeadId || undefined,
-          salespersonId: formData.salespersonId || prefilledData?.salespersonId || undefined,
+          salespersonId: formData.salespersonId || prefilledData?.salespersonId || user?.id || undefined,
           actionType: formData.actionType,
           therapy: formData.therapy,
           title: formData.title,
