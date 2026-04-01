@@ -226,9 +226,9 @@ export const updateAvailability = createAsyncThunk(
 
 export const fetchBlockedSlots = createAsyncThunk(
   'clinic/fetchBlockedSlots',
-  async (_, { rejectWithValue }) => {
+  async (params: { providerId?: string; clinicId?: string } | undefined = undefined, { rejectWithValue }) => {
     try {
-      return await clinicApi.availability.getBlockedSlots();
+      return await clinicApi.availability.getBlockedSlots(params);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch blocked slots');
     }

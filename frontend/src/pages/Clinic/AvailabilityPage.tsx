@@ -17,6 +17,7 @@ const AvailabilityPage: React.FC = () => {
   const { availability, isLoading } = useSelector(
     (state: RootState) => state.clinic
   );
+  const user = useSelector((state: RootState) => state.auth.user);
 
   const [businessHours, setBusinessHours] = useState<BusinessHours>({
     monday: { open: "09:00", close: "17:00", isOpen: true },
@@ -57,11 +58,12 @@ const AvailabilityPage: React.FC = () => {
       dispatch(fetchAvailability(selectedClinicId));
       loadBlockedSlots(selectedClinicId);
     }
-  }, [selectedClinicId, dispatch]);
+  }, [selectedClinicId, user?.id, dispatch]);
 
   const loadBlockedSlots = async (clinicId?: string) => {
     try {
-      const result = await dispatch(fetchBlockedSlots()).unwrap();
+      const providerId = user?.role === 'doctor' ? user.id : undefined;
+      const result = await dispatch(fetchBlockedSlots({ providerId, clinicId }) as any).unwrap();
       const dates: { id: string; date: string }[] = [];
       const slots: { id: string; result: BlockedSlot }[] = [];
 
@@ -152,6 +154,7 @@ const AvailabilityPage: React.FC = () => {
       try {
         await dispatch(blockTimeSlot({
           clinicId: selectedClinicId,
+          providerId: user?.role === 'doctor' ? user.id : undefined,
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           reason: 'Full Day Block'
@@ -181,6 +184,7 @@ const AvailabilityPage: React.FC = () => {
       try {
         await dispatch(blockTimeSlot({
           clinicId: selectedClinicId,
+          providerId: user?.role === 'doctor' ? user.id : undefined,
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           reason: 'Partial Block'

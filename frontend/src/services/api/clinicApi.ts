@@ -262,8 +262,8 @@ export const availabilityApi = {
     return response.data;
   },
 
-  getBlockedSlots: async (): Promise<any[]> => {
-    const response = await apiClient.get('/clinic/availability/blocked-slots');
+  getBlockedSlots: async (params?: { providerId?: string; clinicId?: string }): Promise<any[]> => {
+    const response = await apiClient.get('/clinic/availability/blocked-slots', { params });
     return response.data;
   },
 
