@@ -15,10 +15,10 @@ export class CreateActionDto {
 
   @ApiProperty({
     example: 'call',
-    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder'],
+    enum: ['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder', 'satisfaction_check', 'complaint'],
   })
   @IsString()
-  @IsEnum(['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder'])
+  @IsEnum(['call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder', 'satisfaction_check', 'complaint'])
   actionType: string;
 
   @ApiProperty({ example: 'Facial Therapy', required: false })

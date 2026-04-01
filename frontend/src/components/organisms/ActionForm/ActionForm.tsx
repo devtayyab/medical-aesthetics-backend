@@ -292,8 +292,8 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           description: formData.description,
           status: formData.status || 'pending',
           priority: formData.priority || 'medium',
-          dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
-          reminderDate: formData.reminderDate ? new Date(formData.reminderDate).toISOString() : undefined,
+          dueDate: formData.dueDate && !isNaN(new Date(formData.dueDate).getTime()) ? new Date(formData.dueDate).toISOString() : undefined,
+          reminderDate: formData.reminderDate && !isNaN(new Date(formData.reminderDate).getTime()) ? new Date(formData.reminderDate).toISOString() : undefined,
           isRecurring: formData.isRecurring || false,
           recurrenceType: formData.recurrenceType,
           recurrenceInterval: formData.recurrenceInterval,
@@ -448,7 +448,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                 { value: 'follow_up_call', label: 'Follow up Call' },
                 { value: 'email', label: 'Email' },
                 { value: 'appointment', label: 'Appointment (Calendar Link)' },
-                { value: 'confirmation_call_reminder', label: 'Confirmation Call Reminder' }
+                { value: 'confirmation_call_reminder', label: 'Confirmation Call Reminder' },
+                { value: 'satisfaction_check', label: 'Satisfaction Check' },
+                { value: 'complaint', label: 'Complaint Handling' }
               ]}
             />
 
