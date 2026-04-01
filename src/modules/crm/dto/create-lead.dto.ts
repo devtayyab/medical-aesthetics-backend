@@ -6,6 +6,7 @@ import {
   IsPhoneNumber,
   IsNumber,
   IsObject,
+  IsDateString,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { LeadStatus } from '../../../common/enums/lead-status.enum';
@@ -64,7 +65,18 @@ export class CreateLeadDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  lastMetaFormSubmittedAt?: Date;
+  @IsDateString()
+  lastMetaFormSubmittedAt?: Date | string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  lastContactedAt?: Date | string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  convertedAt?: Date | string;
 
   @ApiProperty({ required: false })
   @IsOptional()

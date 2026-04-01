@@ -1330,42 +1330,77 @@ export class CrmService implements OnModuleInit {
       throw new BadRequestException('Task must be associated with either a customer or a lead.');
     }
 
+    this.logger.log(`[createAction] Data: ${JSON.stringify({ customerId: data.customerId, relatedLeadId: data.relatedLeadId, title: data.title })}`);
+
     // Resolve customerRecord if customerId (User ID) is provided
     if (data.customerId) {
-      // 1. Check if it's a CustomerRecord ID (unlikely from frontend, but possible)
+      // 1. Check if it's already a CustomerRecord ID
       const recordById = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
       if (recordById) {
-        // It is a valid CustomerRecord ID, proceed.
+        this.logger.log(`[createAction] customerId ${data.customerId} is already a CustomerRecord ID`);
       } else {
         // 2. Check if it's a User ID (Client)
         const user = await this.usersRepository.findOne({ where: { id: data.customerId } });
         if (user) {
-          // It's a User, ensure they have a CustomerRecord
           let record = await this.customerRecordsRepository.findOne({ where: { customerId: user.id } });
           if (!record) {
             record = await this.createCustomerRecord(user.id);
           }
           data.customerId = record.id;
+          this.logger.log(`[createAction] Resolved User ID ${user.id} to CustomerRecord ID ${record.id}`);
         } else {
-          // 3. User not found. Check if it's a Lead ID
+          // 3. Check if it's a Lead ID
           const lead = await this.leadsRepository.findOne({ where: { id: data.customerId } });
           if (lead) {
-            // It's a Lead! use relatedLeadId instead of customerId
             data.relatedLeadId = lead.id;
-            data.customerId = null; // Important: set to null so we don't violate FK
-          } else {
-            // Invalid ID passed
-            console.warn(`Invalid customerId passed to createAction: ${data.customerId}`);
+            data.customerId = null;
+            this.logger.log(`[createAction] customerId ${lead.id} is a Lead ID, moved to relatedLeadId`);
           }
         }
       }
     }
 
+    // 4. Ensure relatedLeadId is handled if customerId is still null
+    if (!data.customerId && data.relatedLeadId) {
+      const lead = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId } });
+      if (lead) {
+        // Check both metadata and direct column if it exists
+        const convertedId = (lead.metadata as any)?.convertedToCustomerId || (lead as any).customerId;
+        if (convertedId) {
+          const record = await this.customerRecordsRepository.findOne({ where: { customerId: convertedId } });
+          if (record) {
+            data.customerId = record.id;
+            this.logger.log(`[createAction] Linked Lead ${lead.id} to CustomerRecord ${record.id} via conversion`);
+          }
+        }
+      }
+    }
+
+    // 5. Assign salesperson if missing (use lead/customer assigned salesperson)
+    if (!data.salespersonId) {
+      if (data.customerId) {
+        const record = await this.customerRecordsRepository.findOne({ 
+          where: { id: data.customerId },
+          relations: ['assignedSalesperson']
+        });
+        if (record?.assignedSalespersonId) {
+          data.salespersonId = record.assignedSalespersonId;
+        }
+      } else if (data.relatedLeadId) {
+        const lead = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId } });
+        if (lead?.assignedSalesId) {
+          data.salespersonId = lead.assignedSalesId;
+        }
+      }
+    }
+
+    this.logger.log(`[createAction] Final Payload: ${JSON.stringify({ customerId: data.customerId, relatedLeadId: data.relatedLeadId, salespersonId: data.salespersonId })}`);
+
     const action = this.crmActionsRepository.create(data);
     const savedAction = await this.crmActionsRepository.save(action);
 
     // Send notification if it's a pending task
-    if (data.status === 'pending' && data.dueDate) {
+    if (data.status === 'pending' && data.dueDate && data.salespersonId) {
       await this.notificationsService.create(
         data.salespersonId,
         NotificationType.PUSH,
