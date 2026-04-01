@@ -350,14 +350,24 @@ export class BookingsService {
 
     // Check for conflicts with existing appointments
     console.log('🔍 [BookingsService] Checking for conflicting appointments...');
-    const conflictingAppointment = await this.appointmentsRepository.findOne({
-      where: {
-        clinicId: createAppointmentDto.clinicId,
-        providerId: createAppointmentDto.providerId || undefined,
-        startTime: Between(new Date(createAppointmentDto.startTime), new Date(createAppointmentDto.endTime)),
-        status: AppointmentStatus.CONFIRMED,
-      },
-    });
+    // Check for overlapping appointments using more robust logic
+    console.log('🔍 [BookingsService] Checking for conflicting appointments (Overlap Logic)...');
+    const newStart = new Date(createAppointmentDto.startTime);
+    const newEnd = new Date(createAppointmentDto.endTime);
+
+    const conflictingAppointment = await this.appointmentsRepository.createQueryBuilder('apt')
+      .where('apt.clinicId = :clinicId', { clinicId: createAppointmentDto.clinicId })
+      .andWhere('apt.status = :status', { status: AppointmentStatus.CONFIRMED })
+      .andWhere(qb => {
+        // Only check provider if specific provider was selected/assigned
+        if (providerId) {
+          qb.andWhere('apt.providerId = :providerId', { providerId });
+        }
+        return qb;
+      })
+      .andWhere('apt.startTime < :newEnd', { newEnd })
+      .andWhere('apt.endTime > :newStart', { newStart })
+      .getOne();
 
     if (conflictingAppointment) {
       console.log('❌ [BookingsService] Conflict detected: Time slot already booked.');
