@@ -184,17 +184,75 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
             </div>
           </div>
 
-          {/* Additional Info / Notes */}
-          {(appointment.notes || appointment.treatmentDetails?.notes) && (
+          {/* Payment & Settlement Info */}
+          {(appointment.paymentMethod || appointment.amountPaid !== undefined) && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <DollarSign size={14} className="text-[#CBFF38]" />
+                <h3 className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Payment & Settlement</h3>
+              </div>
+              <div className="p-6 bg-white border border-gray-100 rounded-[32px] shadow-sm">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Payment Method</p>
+                    <p className="font-black text-gray-900 uppercase italic">
+                      {appointment.paymentMethod ? appointment.paymentMethod.replace('_', ' ') : 'Not Specified'}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Amount Paid</p>
+                    <p className="font-black text-gray-900 italic">
+                      €{appointment.amountPaid !== undefined ? appointment.amountPaid : '0.00'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Additional Info / Comments */}
+          {(appointment.notes || appointment.clinicNotes || appointment.appointmentCompletionReport?.notes || appointment.treatmentDetails?.notes) && (
             <div className="space-y-4">
                <div className="flex items-center gap-2">
                 <FileText size={14} className="text-[#CBFF38]" />
-                <h3 className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Notes & Special Instructions</h3>
+                <h3 className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Comments & Notes</h3>
               </div>
-              <div className="p-6 bg-amber-50 border border-amber-100 rounded-[32px]">
-                <p className="text-sm font-bold text-amber-900 leading-relaxed italic">
-                  "{appointment.notes || appointment.treatmentDetails?.notes}"
-                </p>
+              <div className="space-y-3">
+                {appointment.notes && (
+                  <div className="p-5 bg-amber-50 border border-amber-100 rounded-[24px]">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">Booking Note</p>
+                    <p className="text-sm font-bold text-amber-900 leading-relaxed italic">
+                      "{appointment.notes}"
+                    </p>
+                  </div>
+                )}
+                
+                {appointment.clinicNotes && (
+                  <div className="p-5 bg-blue-50 border border-blue-100 rounded-[24px]">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">Clinic Comment</p>
+                    <p className="text-sm font-bold text-blue-900 leading-relaxed italic">
+                      "{appointment.clinicNotes}"
+                    </p>
+                  </div>
+                )}
+
+                {appointment.appointmentCompletionReport?.notes && (
+                  <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-[24px]">
+                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">Completion Report</p>
+                     <p className="text-sm font-bold text-emerald-900 leading-relaxed italic">
+                       "{appointment.appointmentCompletionReport.notes}"
+                     </p>
+                  </div>
+                )}
+
+                {appointment.treatmentDetails?.notes && !appointment.notes?.includes(appointment.treatmentDetails.notes) && (
+                  <div className="p-5 bg-gray-50 border border-gray-100 rounded-[24px]">
+                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Treatment Details</p>
+                     <p className="text-sm font-bold text-gray-600 leading-relaxed italic">
+                       "{appointment.treatmentDetails.notes}"
+                     </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -161,6 +161,18 @@ export interface Appointment {
   rewardPointsRedeemed?: number;
   executedAt?: string;
   executedById?: string;
+  paymentMethod?: string;
+  amountPaid?: number;
+  clinicNotes?: string;
+  appointmentCompletionReport?: {
+    patientCame: boolean;
+    servicePerformed: string;
+    amountPaid: number;
+    renewalDate?: string;
+    notes?: string;
+    recordedAt?: string;
+    recordedById?: string;
+  };
 }
 
 export interface AppointmentFilters {
