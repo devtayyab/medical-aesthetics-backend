@@ -229,18 +229,27 @@ export class AvailabilityService {
             return true;
           });
 
-          if (availableProviders.length > 0) {
-            // Pick a provider (could be random or load-balanced, for now pick first)
-            const chosenProvider = availableProviders[0];
+            if (availableProviders.length > 0) {
+              // Pick a provider (could be random or load-balanced, for now pick first)
+              const chosenProvider = availableProviders[0];
 
-            slots.push({
-              startTime: slotStart.toISOString(),
-              endTime: slotEnd.toISOString(),
-              available: true,
-              providerId: chosenProvider.id,
-              providerName: `${chosenProvider.firstName} ${chosenProvider.lastName}`,
-            });
-          }
+              // Format display time according to clinic timezone
+              const startTimeDisplay = slotStart.toLocaleTimeString('en-GB', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false,
+                timeZone: timezone 
+              });
+
+              slots.push({
+                startTime: slotStart.toISOString(),
+                startTimeDisplay,
+                endTime: slotEnd.toISOString(),
+                available: true,
+                providerId: chosenProvider.id,
+                providerName: `${chosenProvider.firstName} ${chosenProvider.lastName}`,
+              });
+            }
         }
 
         // Move to next 30-minute slot

@@ -125,15 +125,12 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
         if (!selectedClinic || !selectedService || !selectedSlot) return;
         setIsLoading(true);
         try {
-            const startDateTime = new Date(`${selectedDate}T${selectedSlot.startTime}`);
-            const endDateTime = new Date(`${selectedDate}T${selectedSlot.endTime}`);
-
             await bookingAPI.createAppointment({
                 clientId: finalCustomerId,
                 clinicId: selectedClinic,
                 serviceId: selectedService,
-                startTime: startDateTime.toISOString(),
-                endTime: endDateTime.toISOString(),
+                startTime: selectedSlot.startTime,
+                endTime: selectedSlot.endTime,
                 notes,
                 bookedById: bookedBy || user?.id,
                 status: 'CONFIRMED',
@@ -241,7 +238,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                                                 onClick={() => setSelectedSlot(slot)}
                                                 className={`p-2.5 text-center text-[11px] font-black border rounded-lg transition-all ${selectedSlot === slot ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white text-slate-700 border-slate-100 hover:border-slate-300'}`}
                                             >
-                                                {slot.startTime}
+                                                {slot.startTimeDisplay || slot.startTime.split('T')[1].substring(0, 5)}
                                             </button>
                                         ))
                                     )}
