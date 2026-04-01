@@ -123,29 +123,38 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 
     const handleConfirmBooking = async () => {
         if (!selectedClinic || !selectedService || !selectedSlot) return;
+        // bookedById MUST be a UUID — use user.id, not bookedBy (which can be a name string)
+        const bookedByIdUUID = user?.id;
         console.log("🚀 [CRMBookingModal] Initiating booking...", {
             clientId: finalCustomerId,
             clinicId: selectedClinic,
             serviceId: selectedService,
-            startTime: selectedSlot.startTime
+            startTime: selectedSlot.startTime,
+            endTime: selectedSlot.endTime,
+            bookedById: bookedByIdUUID,
+            phone: finalCustomerPhone
         });
         setIsLoading(true);
         try {
-            await bookingAPI.createAppointment({
+            const bookingPayload: any = {
                 clientId: finalCustomerId,
                 clinicId: selectedClinic,
                 serviceId: selectedService,
                 startTime: selectedSlot.startTime,
                 endTime: selectedSlot.endTime,
                 notes,
-                bookedById: bookedBy || user?.id,
                 status: 'CONFIRMED',
                 clientDetails: {
-                    fullName: finalCustomerName,
-                    email: finalCustomerEmail,
-                    phone: finalCustomerPhone
+                    fullName: finalCustomerName || 'Unknown',
+                    email: finalCustomerEmail || `noemail@placeholder.com`,
+                    phone: finalCustomerPhone || '0000000000'
                 }
-            });
+            };
+            // Only add bookedById if we have a valid UUID
+            if (bookedByIdUUID) {
+                bookingPayload.bookedById = bookedByIdUUID;
+            }
+            await bookingAPI.createAppointment(bookingPayload);
 
             if (taskId && onTaskComplete) {
                 await onTaskComplete(taskId);
