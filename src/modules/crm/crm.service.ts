@@ -1443,31 +1443,44 @@ export class CrmService implements OnModuleInit {
       const action = this.crmActionsRepository.create(data);
       savedAction = await this.crmActionsRepository.save(action);
     } catch (error) {
-      // HANDLE AWS SCHEMA FALLBACK: error 23503 is Foreign Key Violation
-      // Some server schemas use an auto-generated constraint name (e.g. FK_0d50d9c8f5727b366a284104b71) 
-      // instead of 'FK_crm_actions_customer' and they map crm_actions.customerId directly to User ID.
-      if (error.code === '23503' && (error.constraint === 'FK_crm_actions_customer' || (error.detail && error.detail.includes('customer_records')))) {
-        this.logger.warn(`[createAction] Database schema mismatch detected. Retrying with User ID instead of CustomerRecord ID.`);
+      if (error.code === '23503') {
+        this.logger.warn(`[createAction] Database schema/FK mismatch detected for customerId: ${data.customerId}`);
+        let fallbackSucceeded = false;
         
-        // 1. Resolve back to User ID (client id) - we must fetch it because data.customerId might be altered
-        const searchId = originalCustomerId || data.customerId;
-        let record = await this.customerRecordsRepository.findOne({ where: { id: searchId } });
-        
-        if (!record && originalCustomerId !== data.customerId) {
-           record = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
-        }
+        // 1. AWS Schema Fallback: Try User ID instead of CustomerRecord ID
+        try {
+          const searchId = originalCustomerId || data.customerId;
+          let record = await this.customerRecordsRepository.findOne({ where: { id: searchId } });
+          
+          if (!record && originalCustomerId !== data.customerId) {
+             record = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
+          }
 
-        if (record && record.customerId) {
-          data.customerId = record.customerId; // Switch back to raw User UUID
-          const actionFallback = this.crmActionsRepository.create(data);
-          try {
+          if (record && record.customerId) {
+            const fallbackData = { ...data, customerId: record.customerId };
+            const actionFallback = this.crmActionsRepository.create(fallbackData);
             savedAction = await this.crmActionsRepository.save(actionFallback);
             this.logger.log(`[createAction] Successfully saved task using User ID fallback.`);
-          } catch (fallbackError) {
-             throw fallbackError;
+            fallbackSucceeded = true;
           }
-        } else {
-          throw error; // If not even a record exists, throw original error
+        } catch (fallbackError) {
+           this.logger.warn(`[createAction] AWS Schema fallback also failed with FK violation.`);
+        }
+
+        // 2. Ultimate Safe Fallback: Nullify customerId and persist data to avoid 500 crashes + data loss
+        if (!fallbackSucceeded) {
+           this.logger.warn(`[createAction] Proceeding with ULTIMATE safe fallback. Nullifying customerId and saving to metadata to bypass corrupt Postgres DB state.`);
+           const safeData = {
+               ...data,
+               customerId: null,
+               metadata: {
+                   ...(data.metadata || {}),
+                   orphanedReferenceId: data.customerId || originalCustomerId,
+                   fallbackReason: 'Database FK 23503 constraint violation'
+               }
+           };
+           const safeAction = this.crmActionsRepository.create(safeData);
+           savedAction = await this.crmActionsRepository.save(safeAction);
         }
       } else {
         throw error;
