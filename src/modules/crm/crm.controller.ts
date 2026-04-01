@@ -646,5 +646,12 @@ export class CrmController {
     return this.crmService.getAgentEmails();
   }
 
+  @Post('recurring-appointments')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Schedule recurring appointments for a client' })
+  scheduleRecurringAppointments(@Body() body: any) {
+    return this.crmService.scheduleRecurringAppointment(body);
+  }
 
 }
