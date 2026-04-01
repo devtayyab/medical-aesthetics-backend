@@ -283,9 +283,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       try {
         // Prepare payload according to backend entity structure
         const payload: Partial<CrmAction> = {
-          customerId: customerId || propCustomerId || prefilledData?.customerId || undefined,
-          relatedLeadId: formData.relatedLeadId || prefilledData?.relatedLeadId || undefined,
-          salespersonId: formData.salespersonId || prefilledData?.salespersonId || user?.id || undefined,
+          customerId: (customerId || propCustomerId || (prefilledData as any)?.customerId) || undefined,
+          relatedLeadId: (formData.relatedLeadId || (prefilledData as any)?.relatedLeadId) || undefined,
+          salespersonId: (formData.salespersonId || prefilledData?.salespersonId || user?.id) || undefined,
           actionType: formData.actionType,
           therapy: formData.therapy,
           title: formData.title,
@@ -300,9 +300,10 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           metadata: formData.metadata || {}
         };
 
-        // Remove undefined values to prevent SQL errors
+        // Remove undefined, null or empty string values to prevent SQL/Validation errors
         Object.keys(payload).forEach(key => {
-          if (payload[key as keyof CrmAction] === undefined) {
+          const val = payload[key as keyof CrmAction];
+          if (val === undefined || val === null || val === '') {
             delete payload[key as keyof CrmAction];
           }
         });

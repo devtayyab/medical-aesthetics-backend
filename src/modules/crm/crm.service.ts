@@ -1525,7 +1525,9 @@ export class CrmService implements OnModuleInit {
       const newReminderMin = Math.floor(reminderDate.getTime() / 60000);
 
       if (isPast && newReminderMin !== currentReminderMin) {
-        throw new BadRequestException('Reminder date cannot be in the past.');
+        // Log it but auto-fix instead of failing for better UX
+        this.logger.warn(`[updateAction] Reminder date in the past for action ${id}. Auto-fixing to current time.`);
+        updateData.reminderDate = new Date();
       }
 
       if (reminderDate > oneYearFromNow) {
@@ -3814,7 +3816,7 @@ export class CrmService implements OnModuleInit {
       const existing = await this.crmActionsRepository.findOne({
         where: {
           relatedAppointmentId: apt.id,
-          actionType: 'follow_up_call'
+          actionType: 'follow_up_call' as 'call' | 'mobile_message' | 'follow_up_call' | 'email' | 'appointment' | 'confirmation_call_reminder' | 'satisfaction_check' | 'complaint'
         }
       });
 
