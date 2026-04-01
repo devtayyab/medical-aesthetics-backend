@@ -1151,6 +1151,18 @@ export class BookingsService {
       } catch (fErr) {
         console.error('[BookingsService] Revenue update failed:', fErr.message);
       }
+
+      // RULE: Always re-sync the in-memory appointment.amountPaid AFTER recording a payment 
+      // to ensure the final .save() doesn't overwrite the DB with stale zero data.
+      try {
+        const records = await this.financialService['paymentRecordsRepository'].find({ where: { appointmentId: appointment.id } });
+        appointment.amountPaid = records.reduce((acc, r) => {
+          const sign = (r.type === PaymentType.REFUND || r.type === PaymentType.VOID) ? -1 : 1;
+          return acc + (Number(r.amount || 0) * sign);
+        }, 0);
+      } catch (sumErr) {
+        console.error('[BookingsService] Final amountPaid sync failed:', sumErr.message);
+      }
     }
 
     // Handle completion report
