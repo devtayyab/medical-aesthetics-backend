@@ -80,7 +80,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     }, []);
 
     useEffect(() => {
-        const targetClinicId = clinicId || profile?.id;
+        const targetClinicId = clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.ownedClinics?.[0]?.id;
 
         if (targetClinicId) {
             dispatch(fetchClinicProviders(targetClinicId));
@@ -92,7 +92,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         if (selectedDate) filters.date = format(selectedDate, 'yyyy-MM-dd');
         
         dispatch(fetchAppointments(filters));
-    }, [dispatch, profile?.id, clinicId, selectedDate]);
+    }, [dispatch, profile?.id, clinicId, selectedDate, user]);
 
     const navigateDate = (direction: 'prev' | 'next') => {
         if (viewMode === 'day') {

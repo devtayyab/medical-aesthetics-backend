@@ -3,13 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../store";
 import { fetchClients } from "../../store/slices/clinicSlice";
 import clinicApi from "../../services/api/clinicApi";
-import { Users, Search, Calendar, DollarSign, TrendingUp, X, Mail, Phone, ArrowUpRight, MoreVertical } from "lucide-react";
+import { Users, Search, Calendar, DollarSign, TrendingUp, X, Mail, Phone, ArrowUpRight, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ClinicBookingModal from "../../components/clinic/ClinicBookingModal";
 
 const ClientsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { clients, isLoading, error } = useSelector(
+  const { clients, isLoading } = useSelector(
     (state: RootState) => state.clinic
   );
 
@@ -267,9 +267,9 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
                   <h2 className="text-3xl font-black uppercase italic tracking-tighter leading-none mb-1">{clientName}</h2>
                   <div className="flex items-center gap-4 text-gray-400">
                      <div className="flex items-center gap-2">
-                        <Mail size={12} className="text-[#CBFF38]" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{innerClient.email}</span>
-                     </div>
+                      <Mail size={12} className="text-[#CBFF38]" />
+                      <a href={`mailto:${innerClient.email}`} className="text-[10px] font-black uppercase tracking-widest hover:text-[#CBFF38] transition-colors">{innerClient.email}</a>
+                   </div>
                      {innerClient.phone && (
                         <div className="flex items-center gap-2">
                            <Phone size={12} className="text-[#CBFF38]" />
