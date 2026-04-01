@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AppointmentExecutionModal from "../../components/clinic/AppointmentExecutionModal";
+import ClinicBookingModal from "../../components/clinic/ClinicBookingModal";
+
 
 
 const ClinicDashboard: React.FC = () => {
@@ -39,6 +41,11 @@ const ClinicDashboard: React.FC = () => {
   );
   const user = useSelector((state: RootState) => state.auth.user);
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+
+  // Get clinicId from profile or user context
+  const clinicId = user?.role === 'clinic_owner' ? (user as any).ownedClinics?.[0]?.id : (user as any).associatedClinicId;
+  const activeClinicId = profile?.id || clinicId || appointments[0]?.clinicId;
 
   useEffect(() => {
     if (!user || !canAccessClinicDashboard(user.role)) {
@@ -142,6 +149,7 @@ const ClinicDashboard: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
               </button>
               <button 
+                onClick={() => setShowBookingModal(true)}
                 className="group px-8 h-14 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-lime-500/20 flex items-center gap-3"
               >
                 <Plus size={18} className="group-hover:rotate-90 transition-transform duration-500" /> 
@@ -378,6 +386,19 @@ const ClinicDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* New Booking Modal */}
+      {showBookingModal && activeClinicId && (
+        <ClinicBookingModal
+          isOpen={showBookingModal}
+          clinicId={activeClinicId}
+          onClose={() => setShowBookingModal(false)}
+          onSuccess={() => {
+            setShowBookingModal(false);
+            dispatch(fetchAppointments(undefined));
+          }}
+        />
+      )}
     </div>
   );
 };
