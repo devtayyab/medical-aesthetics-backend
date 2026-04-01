@@ -1386,13 +1386,35 @@ export class CrmService implements OnModuleInit {
       }
     }
 
-    // Final Validation: If customerId was provided but could not be resolved to any record/lead, throw 400
-    if (originalCustomerId && data.customerId === originalCustomerId && !data.relatedLeadId) {
-      // Check one last time if it's actually somehow a valid record to avoid race conditions
-      const stillExists = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
-      if (!stillExists) {
-        this.logger.error(`[createAction] Failed to resolve provided customerId: ${originalCustomerId}`);
-        throw new BadRequestException('Invalid customer or lead ID provided. Could not find corresponding records.');
+    // Final Validation: Ensure any referenced IDs actually exist to prevent 500 DB crashes
+    if (data.customerId) {
+      const dbRecord = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
+      if (!dbRecord) {
+        this.logger.warn(`[createAction] Resolved customerId ${data.customerId} does not exist in DB.`);
+        // If we have a valid relatedLeadId, we can safely drop the invalid customerId instead of failing
+        if (data.relatedLeadId) {
+          const leadExists = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId } });
+          if (leadExists) {
+            this.logger.warn(`[createAction] Nullifying invalid customerId because valid relatedLeadId exists.`);
+            data.customerId = null;
+          } else {
+            throw new BadRequestException('Both provided Customer ID and Lead ID are invalid or deleted.');
+          }
+        } else {
+          throw new BadRequestException('Invalid customer ID provided. The record may have been completely deleted.');
+        }
+      }
+    }
+
+    if (data.relatedLeadId) {
+      const leadExists = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId } });
+      if (!leadExists) {
+        if (data.customerId) {
+          this.logger.warn(`[createAction] Nullifying invalid relatedLeadId because valid customerId exists.`);
+          data.relatedLeadId = null;
+        } else {
+          throw new BadRequestException('Invalid lead ID provided.');
+        }
       }
     }
 
