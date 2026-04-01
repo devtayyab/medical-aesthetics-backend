@@ -5,6 +5,7 @@ import { fetchClients } from "../../store/slices/clinicSlice";
 import clinicApi from "../../services/api/clinicApi";
 import { Users, Search, Calendar, DollarSign, TrendingUp, X, Mail, Phone, ArrowUpRight, MoreVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ClinicBookingModal from "../../components/clinic/ClinicBookingModal";
 
 const ClientsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -15,6 +16,13 @@ const ClientsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [prefillForBooking, setPrefillForBooking] = useState<any>(null);
+
+  const { profile } = useSelector((state: RootState) => state.clinic);
+  const user = useSelector((state: RootState) => state.auth.user);
+  
+  const activeClinicId = profile?.id || (user as any)?.associatedClinicId || (user as any)?.ownedClinics?.[0]?.id;
 
   useEffect(() => {
     dispatch(fetchClients({}));
@@ -173,9 +181,30 @@ const ClientsPage: React.FC = () => {
               setShowDetailsModal(false);
               setSelectedClient(null);
             }}
+            onBookAppointment={(clientData: any) => {
+              setPrefillForBooking(clientData);
+              setShowBookingModal(true);
+            }}
           />
         )}
       </AnimatePresence>
+
+      {showBookingModal && activeClinicId && (
+        <ClinicBookingModal
+          isOpen={showBookingModal}
+          clinicId={activeClinicId}
+          onClose={() => {
+            setShowBookingModal(false);
+            setPrefillForBooking(null);
+          }}
+          prefillClient={prefillForBooking}
+          onSuccess={() => {
+            setShowBookingModal(false);
+            setPrefillForBooking(null);
+            dispatch(fetchClients({}));
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -197,7 +226,7 @@ const StatCard = ({ title, value, icon, trend, highlight }: any) => (
   </div>
 );
 
-const ClientDetailsModal = ({ client, onClose }: any) => {
+const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
   const innerClient = client.client || client;
   const firstName = innerClient.firstName || "";
   const lastName = innerClient.lastName || "";
@@ -205,6 +234,14 @@ const ClientDetailsModal = ({ client, onClose }: any) => {
     ? `${firstName} ${lastName}`.trim() 
     : (innerClient.email || "Patient Registry Detail");
   const appointments = client.appointments || [];
+
+  const handleBook = () => {
+    onBookAppointment({
+      fullName: `${firstName} ${lastName}`.trim() || innerClient.email,
+      phone: innerClient.phone || "",
+      email: innerClient.email || ""
+    });
+  };
 
   return (
     <motion.div 
@@ -221,29 +258,39 @@ const ClientDetailsModal = ({ client, onClose }: any) => {
       >
         <div className="bg-black text-white p-10 flex items-center justify-between relative overflow-hidden shrink-0">
           <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#CBFF38]/20 to-transparent" />
-          <div className="relative z-10 flex items-center gap-6">
-             <div className="size-20 rounded-[32px] bg-[#CBFF38] text-black flex items-center justify-center font-black text-3xl italic shadow-lg">
-                {innerClient.firstName?.[0] || "?"}
-             </div>
-             <div>
-                <h2 className="text-3xl font-black uppercase italic tracking-tighter leading-none mb-1">{clientName}</h2>
-                <div className="flex items-center gap-4 text-gray-400">
-                   <div className="flex items-center gap-2">
-                      <Mail size={12} className="text-[#CBFF38]" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">{innerClient.email}</span>
-                   </div>
-                   {innerClient.phone && (
-                      <div className="flex items-center gap-2">
-                         <Phone size={12} className="text-[#CBFF38]" />
-                         <span className="text-[10px] font-black uppercase tracking-widest">{innerClient.phone}</span>
-                      </div>
-                   )}
-                </div>
-             </div>
+          <div className="relative z-10 flex items-center justify-between w-full">
+            <div className="flex items-center gap-6">
+               <div className="size-20 rounded-[32px] bg-[#CBFF38] text-black flex items-center justify-center font-black text-3xl italic shadow-lg">
+                  {innerClient.firstName?.[0] || "?"}
+               </div>
+               <div>
+                  <h2 className="text-3xl font-black uppercase italic tracking-tighter leading-none mb-1">{clientName}</h2>
+                  <div className="flex items-center gap-4 text-gray-400">
+                     <div className="flex items-center gap-2">
+                        <Mail size={12} className="text-[#CBFF38]" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">{innerClient.email}</span>
+                     </div>
+                     {innerClient.phone && (
+                        <div className="flex items-center gap-2">
+                           <Phone size={12} className="text-[#CBFF38]" />
+                           <span className="text-[10px] font-black uppercase tracking-widest">{innerClient.phone}</span>
+                        </div>
+                     )}
+                  </div>
+               </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={handleBook}
+                className="px-6 py-3 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all flex items-center gap-2"
+              >
+                <Plus size={14} /> New Appointment
+              </button>
+              <button onClick={onClose} className="size-14 bg-white/10 hover:bg-[#CBFF38] text-white hover:text-black rounded-2xl flex items-center justify-center transition-all relative z-10">
+                <X size={24} />
+              </button>
+            </div>
           </div>
-          <button onClick={onClose} className="size-14 bg-white/10 hover:bg-[#CBFF38] text-white hover:text-black rounded-2xl flex items-center justify-center transition-all relative z-10">
-            <X size={24} />
-          </button>
         </div>
 
         <div className="p-10 flex-1 overflow-y-auto no-scrollbar grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -268,13 +315,22 @@ const ClientDetailsModal = ({ client, onClose }: any) => {
                                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Practitioner: System Agent</p>
                              </div>
                           </div>
-                          <div className="text-right">
-                             <div className="text-lg font-black text-gray-900 italic leading-none mb-1">{Number(apt.totalAmount).toLocaleString()}</div>
-                             <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${
-                               apt.status === 'completed' ? 'bg-lime-100 text-lime-700 border-lime-200' : 'bg-gray-200 text-gray-500 border-gray-300'
-                             }`}>
-                               {apt.status}
-                             </span>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                               <div className="text-lg font-black text-gray-900 italic leading-none mb-1">€{Number(apt.totalAmount).toLocaleString()}</div>
+                               <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${
+                                 apt.status === 'completed' ? 'bg-lime-100 text-lime-700 border-lime-200' : 'bg-gray-200 text-gray-500 border-gray-300'
+                               }`}>
+                                 {apt.status}
+                               </span>
+                            </div>
+                            <button 
+                              onClick={handleBook}
+                              className="size-10 rounded-xl bg-black text-[#CBFF38] flex items-center justify-center hover:scale-110 transition-transform"
+                              title="Rebook / Follow-up"
+                            >
+                              <Plus size={18} />
+                            </button>
                           </div>
                         </div>
                       </div>
