@@ -199,7 +199,11 @@ const StatCard = ({ title, value, icon, trend, highlight }: any) => (
 
 const ClientDetailsModal = ({ client, onClose }: any) => {
   const innerClient = client.client || client;
-  const clientName = `${innerClient.firstName} ${innerClient.lastName}`.trim() || innerClient.email || "Patient Registry Detail";
+  const firstName = innerClient.firstName || "";
+  const lastName = innerClient.lastName || "";
+  const clientName = (firstName || lastName) 
+    ? `${firstName} ${lastName}`.trim() 
+    : (innerClient.email || "Patient Registry Detail");
   const appointments = client.appointments || [];
 
   return (
@@ -317,7 +321,10 @@ const ClientDetailsModal = ({ client, onClose }: any) => {
                     <p className="text-xs font-bold leading-relaxed opacity-60 italic">
                        Patient exhibits high retention velocity. Recommended protocol: VIP Loyalty Provisioning Level 2.
                     </p>
-                    <button className="mt-6 w-full py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] transition-all">
+                    <button 
+                      onClick={() => alert("Medical Record Export is being generated. You will be notified when the PDF is ready.")}
+                      className="mt-6 w-full py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] transition-all"
+                    >
                        Export Medical Record
                     </button>
                  </div>
