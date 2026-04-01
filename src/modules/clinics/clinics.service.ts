@@ -296,17 +296,18 @@ export class ClinicsService {
     return clinic;
   }
 
-  async findServices(clinicId: string): Promise<Service[]> {
+  async findServices(clinicId: string): Promise<any[]> {
     const services = await this.servicesRepository.find({
       where: { clinicId, isActive: true, treatment: { isActive: true } },
       relations: ['treatment'],
     });
     console.log(`[ClinicsService] Found ${services.length} active services for clinicId: ${clinicId}`);
-    if (services.length === 0) {
-      const totalServices = await this.servicesRepository.count({ where: { clinicId } });
-      console.log(`[ClinicsService] DEBUG: Total services for this clinic (including inactive): ${totalServices}`);
-    }
-    return services;
+    
+    // Explicitly map name from treatment to service for UI consistency
+    return services.map(s => ({
+      ...s,
+      name: s.treatment?.name || 'Unnamed Service'
+    }));
   }
 
   // New clinic management methods

@@ -109,7 +109,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                     serviceId: selectedService,
                     date: selectedDate
                 });
-                setSlots(res.data.timeSlots || []);
+                // Fix: Backend returns 'slots', not 'timeSlots'
+                setSlots(res.data.slots || []);
             } catch (err) {
                 console.error("Failed to fetch slots", err);
             } finally {
@@ -273,7 +274,9 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Treatment</span>
-                                    <span className="text-[11px] font-black text-slate-800">{services.find(s => s.id === selectedService)?.name}</span>
+                                    <span className="text-[11px] font-black text-slate-800">
+                                        {services.find(s => s.id === selectedService)?.name || services.find(s => s.id === selectedService)?.treatment?.name || 'Treatment'}
+                                    </span>
                                 </div>
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Location</span>
