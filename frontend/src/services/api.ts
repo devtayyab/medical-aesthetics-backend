@@ -94,10 +94,11 @@ api.interceptors.response.use(
             if (refreshError) {
               reject(refreshError);
             } else if (token) {
-              originalRequest.headers = {
-                ...originalRequest.headers,
-                Authorization: `Bearer ${token}`,
-              };
+              if (originalRequest.headers) {
+                delete originalRequest.headers.authorization;
+                delete originalRequest.headers.Authorization;
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
               resolve(api(originalRequest));
             }
           });
@@ -130,11 +131,12 @@ api.interceptors.response.use(
           isRefreshing = false;
           onRefreshed(accessToken);
 
-          // Standard way to update headers for retry
-          originalRequest.headers = {
-            ...originalRequest.headers,
-            Authorization: `Bearer ${accessToken}`,
-          };
+          // Standard way to update headers for retry safely
+          if (originalRequest.headers) {
+            delete originalRequest.headers.authorization;
+            delete originalRequest.headers.Authorization;
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          }
           
           return api(originalRequest);
         } catch (refreshError: any) {
