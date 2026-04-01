@@ -83,11 +83,11 @@ export interface CrmAction {
   id: string;
   customerId: string;
   salespersonId: string;
-  actionType: 'call' | 'mobile_message' | 'follow_up_call' | 'email' | 'appointment' | 'confirmation_call_reminder';
+  actionType: 'call' | 'mobile_message' | 'follow_up_call' | 'email' | 'appointment' | 'confirmation_call_reminder' | 'satisfaction_check' | 'complaint';
   therapy?: string;
   title: string;
   description?: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'overdue' | 'cancelled';
+  status: 'pending' | 'in_progress' | 'completed' | 'overdue' | 'cancelled' | 'missed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   dueDate?: string;
   reminderDate: string;
