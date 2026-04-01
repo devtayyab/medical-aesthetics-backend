@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules
 import { Link } from 'react-router-dom';
 import { Textarea } from '@/components/atoms/Textarea';
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
+import { bookingAPI } from '@/services/api';
 
 import type { RootState, AppDispatch } from '@/store';
 import {
@@ -183,6 +184,8 @@ export const Tasks: React.FC<TasksPageProps> = () => {
   const [interactionNotes, setInteractionNotes] = useState("");
   const [showDialer, setShowDialer] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [appointmentDetail, setAppointmentDetail] = useState<any>(null);
+  const [isFetchingApt, setIsFetchingApt] = useState(false);
 
 
   const [taskFormData, setTaskFormData] = useState<any>({
@@ -208,6 +211,25 @@ export const Tasks: React.FC<TasksPageProps> = () => {
     dispatch(fetchActions({ salespersonId: sid }));
     dispatch(fetchTaskKpis(sid));
   }, [dispatch, selectedSalespersonId]);
+
+  useEffect(() => {
+    if (showInteractionModal && interactionTask?.metadata?.appointmentId) {
+      const fetchAptDetail = async () => {
+        setIsFetchingApt(true);
+        try {
+          const res = await bookingAPI.getAppointment(interactionTask.metadata.appointmentId);
+          setAppointmentDetail(res.data);
+        } catch (err) {
+          console.error("Failed to fetch appointment detail for task:", err);
+        } finally {
+          setIsFetchingApt(false);
+        }
+      };
+      fetchAptDetail();
+    } else {
+      setAppointmentDetail(null);
+    }
+  }, [showInteractionModal, interactionTask]);
 
   const resetForm = () => {
     setShowCreateForm(false);
@@ -936,9 +958,90 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                   placeholder="Summarize the patient's response and next steps..."
                   value={interactionNotes}
                   onChange={(e) => setInteractionNotes(e.target.value)}
-                  className="min-h-[150px] rounded-xl border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all resize-none text-sm p-4"
+                  className="min-h-[120px] rounded-xl border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all resize-none text-sm p-4"
                 />
               </div>
+
+              {/* Specialized Confirmation Outcome Buttons */}
+              {interactionTask?.title === 'Confirmation Call Reminder' && appointmentDetail && (
+                <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+                   <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 space-y-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-4 h-4 text-blue-600" />
+                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Appointment to Confirm</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                        <div className="flex flex-col">
+                           <span className="text-[9px] font-bold text-slate-400 uppercase">Clinic</span>
+                           <span className="text-xs font-black text-slate-700">{appointmentDetail.clinic?.name || 'Clinic'}</span>
+                        </div>
+                        <div className="flex flex-col">
+                           <span className="text-[9px] font-bold text-slate-400 uppercase">Treatment</span>
+                           <span className="text-xs font-black text-slate-700">{appointmentDetail.service?.treatment?.name || 'Treatment'}</span>
+                        </div>
+                        <div className="flex flex-col">
+                           <span className="text-[9px] font-bold text-slate-400 uppercase">Amount</span>
+                           <span className="text-xs font-black text-blue-700">€{appointmentDetail.totalAmount || 0}</span>
+                        </div>
+                        <div className="flex flex-col">
+                           <span className="text-[9px] font-bold text-slate-400 uppercase">Scheduled Time</span>
+                           <span className="text-xs font-black text-slate-700">
+                             {formatDate(appointmentDetail.startTime)}
+                           </span>
+                        </div>
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-3">
+                      <Button 
+                        onClick={async () => {
+                          setInteractionNotes(prev => `CONFIRMED: ${prev}`);
+                          // Update appointment to confirmed
+                          try {
+                            await bookingAPI.updateStatus(appointmentDetail.id, 'CONFIRMED');
+                            toast.success("Appointment Confirmed!");
+                          } catch (e) {
+                            console.error("Failed to confirm appointment", e);
+                          }
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase h-11 rounded-xl shadow-lg shadow-emerald-100"
+                      >
+                        Yes, Confirmed
+                      </Button>
+                      <Button 
+                        onClick={async () => {
+                          setInteractionNotes(prev => `CANCELLED: ${prev}`);
+                          try {
+                            await bookingAPI.updateStatus(appointmentDetail.id, 'CANCELLED');
+                            toast.error("Appointment Cancelled.");
+                          } catch (e) {
+                            console.error("Failed to cancel appointment", e);
+                          }
+                        }}
+                        className="bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase h-11 rounded-xl shadow-lg shadow-red-100"
+                      >
+                        No, Cancelled
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          setInteractionNotes(prev => `DID NOT ANSWER: ${prev}`);
+                        }}
+                        className="bg-slate-700 hover:bg-slate-800 text-white font-black text-[10px] uppercase h-11 rounded-xl"
+                      >
+                        Did not Answer
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          setShowBookingModal(true);
+                          setInteractionNotes(prev => `RESCHEDULING: ${prev}`);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase h-11 rounded-xl"
+                      >
+                        Reschedule / Transfer
+                      </Button>
+                   </div>
+                </div>
+              )}
             </div>
 
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
