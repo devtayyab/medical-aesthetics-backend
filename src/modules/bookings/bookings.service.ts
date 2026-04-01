@@ -350,26 +350,23 @@ export class BookingsService {
       appointmentData.additionalServiceIds = createAppointmentDto.additionalServiceIds;
     }
 
-    // Check for conflicts with existing appointments
-    console.log('🔍 [BookingsService] Checking for conflicting appointments...');
     // Check for overlapping appointments using more robust logic
     console.log('🔍 [BookingsService] Checking for conflicting appointments (Overlap Logic)...');
     const newStart = new Date(createAppointmentDto.startTime);
     const newEnd = new Date(createAppointmentDto.endTime);
 
-    const conflictingAppointment = await this.appointmentsRepository.createQueryBuilder('apt')
+    let conflictQuery = this.appointmentsRepository.createQueryBuilder('apt')
       .where('apt.clinicId = :clinicId', { clinicId: createAppointmentDto.clinicId })
       .andWhere('apt.status = :status', { status: AppointmentStatus.CONFIRMED })
-      .andWhere(qb => {
-        // Only check provider if specific provider was selected/assigned
-        if (providerId) {
-          qb.andWhere('apt.providerId = :providerId', { providerId });
-        }
-        return qb;
-      })
       .andWhere('apt.startTime < :newEnd', { newEnd })
-      .andWhere('apt.endTime > :newStart', { newStart })
-      .getOne();
+      .andWhere('apt.endTime > :newStart', { newStart });
+
+    // Only restrict to specific provider if one is assigned
+    if (providerId) {
+      conflictQuery = conflictQuery.andWhere('apt.providerId = :providerId', { providerId });
+    }
+
+    const conflictingAppointment = await conflictQuery.getOne();
 
     if (conflictingAppointment) {
       console.log('❌ [BookingsService] Conflict detected: Time slot already booked.');
