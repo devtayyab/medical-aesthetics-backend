@@ -1396,8 +1396,29 @@ export class CrmService implements OnModuleInit {
 
     this.logger.log(`[createAction] Final Payload: ${JSON.stringify({ customerId: data.customerId, relatedLeadId: data.relatedLeadId, salespersonId: data.salespersonId })}`);
 
-    const action = this.crmActionsRepository.create(data);
-    const savedAction = await this.crmActionsRepository.save(action);
+    let savedAction;
+    try {
+      const action = this.crmActionsRepository.create(data);
+      savedAction = await this.crmActionsRepository.save(action);
+    } catch (error) {
+      // HANDLE AWS SCHEMA FALLBACK: error 23503 is Foreign Key Violation
+      if (error.code === '23503' && error.constraint === 'FK_crm_actions_customer') {
+        this.logger.warn(`[createAction] Database schema mismatch detected. Retrying with User ID instead of CustomerRecord ID.`);
+        
+        // 1. Resolve back to User ID (client id)
+        const record = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
+        if (record) {
+          data.customerId = record.customerId; // Switch back to raw User UUID
+          const actionFallback = this.crmActionsRepository.create(data);
+          savedAction = await this.crmActionsRepository.save(actionFallback);
+          this.logger.log(`[createAction] Successfully saved task using User ID fallback.`);
+        } else {
+          throw error; // If not even a record exists, throw original error
+        }
+      } else {
+        throw error;
+      }
+    }
 
     // Send notification if it's a pending task
     if (data.status === 'pending' && data.dueDate && data.salespersonId) {
