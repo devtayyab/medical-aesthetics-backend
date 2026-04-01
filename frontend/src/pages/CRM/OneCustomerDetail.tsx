@@ -191,12 +191,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 }) => {
     const dispatch = useDispatch<AppDispatch>();
     const crmState = useSelector((state: RootState) => state.crm);
-    const { customerRecord } = crmState;
+    const { customerRecord, leads } = crmState;
     const { user } = useSelector((state: RootState) => state.auth as AuthState);
 
     // Dynamic derivation of the customer object
-    // Priority: Prop > Nested User in Record > The Record itself
-    const customer = SelectedCustomer || (customerRecord?.record?.customer as any) || (customerRecord?.record as any);
+    // Priority: Updated Prop from Redux > Prop > Nested User in Record > The Record itself
+    const updatedSelectedCustomer = SelectedCustomer ? leads.find(l => l.id === SelectedCustomer.id) || SelectedCustomer : null;
+    const customer = updatedSelectedCustomer || (customerRecord?.record?.customer as any) || (customerRecord?.record as any);
     
     // The ID to use for CRM updates (Must be the Lead/User ID, not the Record ID)
     const effectiveId = SelectedCustomer?.id || (customerRecord?.record?.customerId) || (customerRecord?.record?.id) || customerId;
