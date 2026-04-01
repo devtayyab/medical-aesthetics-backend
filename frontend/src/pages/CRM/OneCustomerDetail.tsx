@@ -576,6 +576,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
             }
 
             if (currentAutoTask) {
+                const taskDate = currentAutoTask.date ? new Date(currentAutoTask.date) : new Date();
+                const safeDate = !isNaN(taskDate.getTime()) ? taskDate.toISOString() : new Date().toISOString();
+                
                 await dispatch(createAction({
                     customerId: customer.id,
                     salespersonId: user?.id || undefined,
@@ -583,7 +586,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     title: currentAutoTask.title,
                     description: `Generated from interaction outcome: ${interactionOutcome}${selectedTags.length ? ` (Tags: ${selectedTags.join(', ')})` : ''}`,
                     status: 'pending',
-                    dueDate: new Date(currentAutoTask.date).toISOString(),
+                    dueDate: safeDate,
+                    reminderDate: safeDate,
                     priority: 'high'
                 })).unwrap();
             }
@@ -600,9 +604,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 salespersonId: user?.id
             }));
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Workflow failed", error);
-            alert("Failed to save workflow.");
+            if (error.response?.data) {
+                console.error("Workflow error details:", error.response.data);
+            }
+            alert(`Failed: ${error.message || "Unknown error"}`);
         }
     };
 
