@@ -74,6 +74,8 @@ import { Payments } from "@/pages/Client/AccountPages/Payments";
 import { GiftCard } from "@/pages/Client/AccountPages/GiftCard";
 import { Blog } from "@/pages/Client/Blog";
 import { BlogPost } from "@/pages/Client/BlogPost";
+import { Treatments } from "@/pages/Client/Treatments";
+import { Services } from "@/pages/Client/Services";
 import { Legal, SupportCenter, ChatSupport } from "@/pages/Client/InfoPages/InfoPages";
 import { InviteFriend } from "@/pages/Client/AccountPages/InviteFriend";
 import { Settings } from "@/pages/Client/AccountPages/Settings";
@@ -235,7 +237,10 @@ function AppContent() {
           <Route path="/clinic/:id" element={<ClientLayout><ClinicDetails /></ClientLayout>} />
           <Route path="/treatment/:id" element={<ClientLayout><TreatmentDetails /></ClientLayout>} />
           <Route path="/blog" element={<ClientLayout><Blog /></ClientLayout>} />
+          <Route path="/articles" element={<ClientLayout><Blog /></ClientLayout>} />
           <Route path="/blog/:slug" element={<ClientLayout><BlogPost /></ClientLayout>} />
+          <Route path="/treatments" element={<ClientLayout><Treatments /></ClientLayout>} />
+          <Route path="/services" element={<ClientLayout><Services /></ClientLayout>} />
 
           {/* Protected booking route - requires login */}
           <Route

@@ -356,8 +356,8 @@ export const Header: React.FC = () => {
                   <ul className="flex justify-center items-center gap-10 text-white whitespace-nowrap">
                     <li className="cursor-pointer">
                       <Link
-                        to="/search"
-                        className={`text-[11px] font-black uppercase tracking-[0.15em] italic transition-all ${location.pathname.startsWith("/search")
+                        to="/treatments"
+                        className={`text-[11px] font-black uppercase tracking-[0.15em] italic transition-all ${location.pathname.startsWith("/treatments")
                           ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
                           : "text-gray-400 hover:text-white"
                           }`}
@@ -367,10 +367,24 @@ export const Header: React.FC = () => {
                     </li>
                     <li className="cursor-pointer">
                       <Link
-                        to="/search?category=hair"
-                        className="text-[11px] font-black uppercase tracking-[0.15em] italic text-gray-400 hover:text-white transition-all"
+                        to="/blog"
+                        className={`text-[11px] font-black uppercase tracking-[0.15em] italic transition-all ${location.pathname.startsWith("/blog") || location.pathname.startsWith("/articles")
+                          ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
+                          : "text-gray-400 hover:text-white"
+                          }`}
                       >
-                        Specialty
+                        Articles
+                      </Link>
+                    </li>
+                    <li className="cursor-pointer">
+                      <Link
+                        to="/services"
+                        className={`text-[11px] font-black uppercase tracking-[0.15em] italic transition-all ${location.pathname.startsWith("/services")
+                          ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
+                          : "text-gray-400 hover:text-white"
+                          }`}
+                      >
+                        Services
                       </Link>
                     </li>
                   </ul>
@@ -700,10 +714,17 @@ export const Header: React.FC = () => {
 
               <Link
                 to="/"
-                className="text-black"
+                className="text-black font-bold text-sm uppercase"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Home
+              </Link>
+              <Link
+                to="/blog"
+                className="text-black font-bold text-sm uppercase"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Articles
               </Link>
 
               <div className="flex flex-col gap-3 pl-4 border-l-2 border-gray-100">
