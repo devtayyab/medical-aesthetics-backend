@@ -1,7 +1,15 @@
 node_modules
 .env
+.env.production
 /dist
 /frontend/node_modules
 /frontend/dist
 /frontend/.env
-.env.production
+
+# Temporary files and scripts
+/tmp/
+*.js
+*.tsbuildinfo
+tmp_check.ts
+test-db.ts
+src/check_metadata.ts
