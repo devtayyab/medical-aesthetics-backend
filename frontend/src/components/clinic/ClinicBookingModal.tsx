@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, Mail, Calendar, Clock, ChevronRight, CheckCircle } from 'lucide-react';
+import { X, User, Phone, Mail, ChevronRight, CheckCircle } from 'lucide-react';
 import { clinicsAPI, bookingAPI } from '@/services/api';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
@@ -18,7 +18,7 @@ interface ClinicBookingModalProps {
 }
 
 const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose, onSuccess, clinicId, prefillClient }) => {
-    const { user } = useSelector((state: RootState) => state.auth);
+    // Removed unused user selector
 
     const [step, setStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);

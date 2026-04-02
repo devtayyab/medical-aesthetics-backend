@@ -6,6 +6,7 @@ import { ConsentRecord } from './entities/consent-record.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UserRole } from '../../common/enums/user-role.enum';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -26,9 +27,13 @@ export class UsersService {
       throw new ConflictException('User with this email already exists');
     }
 
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(createUserDto.password, salt);
+
     const user = this.usersRepository.create({
       ...createUserDto,
-      passwordHash: createUserDto.password,
+      passwordHash,
+      role: createUserDto.role || UserRole.CLIENT,
     });
 
     return this.usersRepository.save(user);

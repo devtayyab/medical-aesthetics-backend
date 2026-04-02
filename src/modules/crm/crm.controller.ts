@@ -595,6 +595,17 @@ export class CrmController {
   getAccessMatrix() {
     return this.crmService.getAccessMatrix();
   }
+  
+  @Put('access-matrix/:agentId')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Update agent clinic access permissions' })
+  updateAgentAccess(
+    @Param('agentId') agentId: string,
+    @Body('clinicAccess') clinicAccess: { clinicId: string; hasAccess: boolean }[]
+  ) {
+    return this.crmService.updateAgentAccess(agentId, clinicAccess);
+  }
 
   @Post('tasks/inject-confirmations')
   injectConfirmations() {
@@ -654,4 +665,11 @@ export class CrmController {
     return this.crmService.scheduleRecurringAppointment(body);
   }
 
+  @Get('facebook/test')
+  @ApiOperation({ summary: 'Test Facebook API connection' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  testFacebookConnection() {
+    return this.crmService.testFacebookConnection();
+  }
 }

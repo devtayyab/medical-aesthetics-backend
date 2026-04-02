@@ -9,7 +9,8 @@ import {
   Mail,
   Users,
   X,
-  ArrowRight
+  ArrowRight,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
@@ -124,6 +125,29 @@ export const Customers: React.FC = () => {
       dispatch(fetchLeads(leadFilters));
     } catch (error) {
       console.error("Update failed:", error);
+    }
+  };
+
+  const handleDeleteCustomer = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
+    try {
+      await dispatch(deleteLead(id)).unwrap();
+      dispatch(fetchLeads(leadFilters));
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert("Failed to delete customer.");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedLeads.length} selected records?`)) return;
+    try {
+      await Promise.all(selectedLeads.map(id => dispatch(deleteLead(id)).unwrap()));
+      setSelectedLeads([]);
+      dispatch(fetchLeads(leadFilters));
+    } catch (error) {
+      console.error("Bulk delete failed:", error);
+      alert("Failed to delete some records.");
     }
   };
 
@@ -384,6 +408,30 @@ export const Customers: React.FC = () => {
       )}
 
       {/* Bulk Actions Bar */}
+      {selectedLeads.length > 0 && isAdmin && (
+        <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl flex items-center justify-between shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center gap-4">
+            <Badge className="bg-blue-500 text-white border-none px-2 py-1 font-bold">{selectedLeads.length} Selected</Badge>
+            <span className="text-xs font-medium text-slate-300">Records ready for batch processing</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              onClick={() => setSelectedLeads([])} 
+              className="text-white hover:bg-white/10 h-9 font-bold text-[10px]"
+            >
+              Deselect All
+            </Button>
+            <Button 
+              onClick={handleBulkDelete}
+              className="bg-red-500 hover:bg-red-600 text-white h-9 px-6 rounded-xl font-bold text-[10px] flex items-center gap-2 shadow-lg shadow-red-500/20"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table Section */}
       <Card className="border-none shadow-md overflow-hidden bg-white rounded-2xl">
         <CardContent className="p-0">
@@ -463,9 +511,20 @@ export const Customers: React.FC = () => {
                       {formatDate(lead.createdAt)}
                     </TableCell>
                     <TableCell className="py-1 px-3 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedCustomer(lead)} className="h-8 px-3 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
-                        View Details <ArrowRight className="w-3 h-3 ml-1" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedCustomer(lead)} className="h-8 px-3 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
+                          View Details <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                        {isAdmin && (
+                          <button 
+                            onClick={() => handleDeleteCustomer(lead.id, `${lead.firstName} ${lead.lastName}`)}
+                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            title="Delete Customer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

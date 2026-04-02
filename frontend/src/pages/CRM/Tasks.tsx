@@ -23,7 +23,7 @@ import { Select } from '@/components/atoms/Select/Select';
 import {
   CheckCircle, Clock, AlertTriangle, Users, Repeat,
   PhoneCall, MoreHorizontal, User, Eye, Plus, Edit, X,
-  CornerUpRight, Calendar, Phone, Trash2
+  CornerUpRight, Calendar, Phone, Trash2, UserPlus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -186,6 +186,9 @@ export const Tasks: React.FC<TasksPageProps> = () => {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [appointmentDetail, setAppointmentDetail] = useState<any>(null);
   const [isFetchingApt, setIsFetchingApt] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningTask, setAssigningTask] = useState<CrmAction | null>(null);
+  const [newOwnerId, setNewOwnerId] = useState("");
 
 
   const [taskFormData, setTaskFormData] = useState<any>({
@@ -391,6 +394,26 @@ export const Tasks: React.FC<TasksPageProps> = () => {
     setShowInteractionModal(false);
     setInteractionTask(null);
     setInteractionNotes("");
+  };
+
+  const handleAssignTask = async () => {
+    if (!assigningTask || !newOwnerId) return;
+    try {
+      await dispatch(updateAction({
+        id: assigningTask.id,
+        updates: { salespersonId: newOwnerId }
+      })).unwrap();
+      toast.success("Task reassigned successfully!");
+      setShowAssignModal(false);
+      setAssigningTask(null);
+      setNewOwnerId("");
+      const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+      dispatch(fetchActions({ salespersonId: sid }));
+      dispatch(fetchTaskKpis(sid));
+    } catch (err) {
+      console.error("Failed to reassign task:", err);
+      toast.error("Failed to reassign task.");
+    }
   };
 
   return (
@@ -719,6 +742,22 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
+                          {user?.role === 'SUPER_ADMIN' && (
+                            <Button
+                              size="xs"
+                              variant="white"
+                              className="h-8 w-8 p-0 bg-white border-slate-200 text-amber-500 hover:text-amber-700 hover:bg-amber-50 hover:border-amber-300 transition-all shadow-sm"
+                              title="Quick Assign"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAssigningTask(task);
+                                setNewOwnerId(task.salespersonId || "");
+                                setShowAssignModal(true);
+                              }}
+                            >
+                              <UserPlus className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -798,11 +837,11 @@ export const Tasks: React.FC<TasksPageProps> = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</span>
-                  <span className="font-bold text-slate-700 capitalize">{viewingTask.status.replace(/_/g, ' ')}</span>
+                  <span className="font-bold text-slate-800 uppercase text-[10px] tracking-tight">{viewingTask.status}</span>
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Priority</span>
-                  <span className="font-bold text-slate-700 capitalize">{viewingTask.priority}</span>
+                  <span className="font-bold text-slate-800 uppercase text-[10px] tracking-tight">{viewingTask.priority}</span>
                 </div>
               </div>
 
@@ -1104,6 +1143,50 @@ export const Tasks: React.FC<TasksPageProps> = () => {
           onClose={() => setShowBookingModal(false)}
           onSuccess={handleBookingSuccess}
         />
+      )}
+      {/* Quick Assign Modal */}
+      {showAssignModal && assigningTask && (
+        <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-md font-black text-slate-800">Quick Assign</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reassign Task Owner</p>
+              </div>
+              <Button variant="ghost" onClick={() => setShowAssignModal(false)} className="h-8 w-8 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                <X className="h-5 h-5" />
+              </Button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
+                <div className="text-[10px] font-bold text-blue-400 uppercase mb-1">Active Task</div>
+                <div className="text-xs font-black text-blue-900 truncate">{assigningTask.title}</div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select New Owner</label>
+                <Select
+                  placeholder="Choose Salesperson..."
+                  options={(salespersons || []).map(sp => ({
+                    value: sp.id,
+                    label: `${sp.firstName} ${sp.lastName} (${sp.pendingTasksCount || 0} Pending)`
+                  }))}
+                  value={newOwnerId}
+                  onChange={(val) => setNewOwnerId(val)}
+                  className="w-full"
+                />
+              </div>
+              
+              <Button 
+                onClick={handleAssignTask}
+                disabled={!newOwnerId || newOwnerId === assigningTask.salespersonId}
+                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg active:scale-95"
+              >
+                Confirm Assignment
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

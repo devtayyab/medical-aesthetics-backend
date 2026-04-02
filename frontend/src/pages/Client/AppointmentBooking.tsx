@@ -94,6 +94,7 @@ export const AppointmentBooking: React.FC = () => {
 
   const services = useSelector((state: RootState) => state.client.services);
   const clinics = useSelector((state: RootState) => state.client.clinics);
+  const selectedClinicFromClient = useSelector((state: RootState) => state.client.selectedClinic);
   const clientLoading = useSelector((state: RootState) => state.client.isLoading);
 
   const clinicId = searchParams.get("clinicId");
@@ -106,7 +107,7 @@ export const AppointmentBooking: React.FC = () => {
 
   const hasProcessedServices = useRef(false);
 
-  const clinic = selectedClinic || clinics.find((c) => c.id === clinicId);
+  const clinic = selectedClinic || selectedClinicFromClient || clinics.find((c) => c.id === clinicId);
   const isLoading = bookingLoading || clientLoading || !clinicId;
 
   useEffect(() => {
@@ -359,7 +360,7 @@ export const AppointmentBooking: React.FC = () => {
 
               <Button
                 fullWidth
-                disabled={!selectedSlot || bookingLoading}
+                disabled={!selectedSlot || !clinic || bookingLoading}
                 onClick={handleProceed}
                 className="bg-[#CBFF38] text-black hover:bg-lime-400 h-16 rounded-2xl font-black uppercase tracking-widest text-base shadow-lg shadow-lime-200"
               >

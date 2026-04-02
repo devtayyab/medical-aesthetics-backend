@@ -199,8 +199,25 @@ export const ManagerDashboard = () => {
   };
 
   const handleCreateAgent = async () => {
+    // Basic validation
+    if (!newAgentData.email || !newAgentData.password || !newAgentData.firstName || !newAgentData.lastName) {
+      alert('Please fill all required fields (Name, Email, Password)');
+      return;
+    }
+    
+    if (newAgentData.password.length < 8) {
+      alert('Password must be at least 8 characters long');
+      return;
+    }
+
     try {
-      await userAPI.createUser(newAgentData);
+      // Clean up data: remove empty phone or other optional fields to avoid validation errors
+      const dataToSubmit = { ...newAgentData };
+      if (!dataToSubmit.phone || dataToSubmit.phone.trim() === '') {
+        delete (dataToSubmit as any).phone;
+      }
+      
+      await userAPI.createUser(dataToSubmit);
       setShowAddAgentModal(false);
       setNewAgentData({
         firstName: '',
@@ -214,9 +231,11 @@ export const ManagerDashboard = () => {
       const agents = await fetchAgentKpis();
       setAgentKpis(agents);
       alert('Agent created successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create agent:', error);
-      alert('Failed to create agent. Check console for details.');
+      const errorMsg = error.response?.data?.message;
+      const finalMsg = Array.isArray(errorMsg) ? errorMsg.join(', ') : (errorMsg || 'Failed to create agent');
+      alert(`Error: ${finalMsg}`);
     }
   };
 
@@ -346,7 +365,12 @@ export const ManagerDashboard = () => {
           </TabsList>
 
           <TabsContent value="calendar" className="h-[calc(100vh-200px)]">
-            <StaffDiary clinicId={selectedClinic.clinicId} />
+            <StaffDiary 
+              clinicId={selectedClinic.clinicId} 
+              onNewAppointment={() => {
+                alert('To create a new appointment, please select a customer from the CRM/Customers page first.');
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="services">

@@ -239,6 +239,28 @@ export class ClinicManagementController {
     return { message: 'Time slot unblocked successfully' };
   }
 
+  @Put('availability/block-time-slot/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR)
+  @ApiOperation({ summary: 'Update a blocked time slot' })
+  @ApiResponse({ status: 200, description: 'Time slot updated successfully' })
+  async updateBlockedTimeSlot(
+    @Param('id') id: string,
+    @Body() body: { startTime?: string; endTime?: string; reason?: string; providerId?: string | null },
+    @Request() req
+  ) {
+    return this.availabilityService.updateBlockedTimeSlot(
+      id,
+      {
+        startTime: body.startTime ? new Date(body.startTime) : undefined,
+        endTime: body.endTime ? new Date(body.endTime) : undefined,
+        reason: body.reason,
+        providerId: body.providerId
+      },
+      req.user.id,
+      req.user.role
+    );
+  }
+
   @Get('availability/blocked-slots')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON)
   @ApiOperation({ summary: 'Get blocked time slots' })
@@ -415,6 +437,18 @@ export class ClinicManagementController {
     @Request() req,
   ) {
     return this.clinicsService.toggleServiceStatus(req.user.id, req.user.role, id, clinicId);
+  }
+
+  @Delete('services/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR)
+  @ApiOperation({ summary: 'Delete service/treatment' })
+  @ApiResponse({ status: 204, description: 'Service deleted successfully' })
+  async deleteService(
+    @Param('id') id: string,
+    @Query('clinicId') clinicId: string,
+    @Request() req,
+  ) {
+    return this.clinicsService.deleteService(req.user.id, req.user.role, id, clinicId);
   }
 
   // Appointment Reschedule

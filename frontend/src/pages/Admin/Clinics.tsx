@@ -30,6 +30,7 @@ export const Clinics: React.FC = () => {
         imageUrl: ""
     });
     const [isBlocking, setIsBlocking] = useState(false);
+    const [editingBlockedSlot, setEditingBlockedSlot] = useState<any | null>(null);
     const [blockForm, setBlockForm] = useState({
         startTime: "",
         endTime: "",
@@ -127,26 +128,47 @@ export const Clinics: React.FC = () => {
     };
 
     const handleUnblockSlot = async (slotId: string) => {
+        if (!window.confirm("Are you sure you want to remove this block?")) return;
         try {
             await adminAPI.unblockSlot(slotId);
             if (editingClinic) fetchClinicBlockedSlots(editingClinic.id);
-        } catch (err) {
+        } catch (err: any) {
+            alert(err.response?.data?.message || "Failed to unblock slot");
             console.error("Failed to unblock slot", err);
         }
+    };
+
+    const handleEditBlockedSlot = (slot: any) => {
+        setEditingBlockedSlot(slot);
+        setBlockForm({
+            startTime: new Date(slot.startTime).toISOString().slice(0, 16),
+            endTime: new Date(slot.endTime).toISOString().slice(0, 16),
+            reason: slot.reason || ""
+        });
+        setIsBlocking(true);
     };
 
     const handleBlockSlot = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingClinic) return;
         try {
-            await (adminAPI as any).blockSlot({
-                ...blockForm,
-                clinicId: editingClinic.id
-            });
+            if (editingBlockedSlot) {
+                await (adminAPI as any).updateBlockedSlot(editingBlockedSlot.id, {
+                    ...blockForm,
+                    clinicId: editingClinic.id
+                });
+            } else {
+                await (adminAPI as any).blockSlot({
+                    ...blockForm,
+                    clinicId: editingClinic.id
+                });
+            }
             setIsBlocking(false);
+            setEditingBlockedSlot(null);
             setBlockForm({ startTime: "", endTime: "", reason: "" });
             fetchClinicBlockedSlots(editingClinic.id);
-        } catch (err) {
+        } catch (err: any) {
+            alert(err.response?.data?.message || "Failed to process block request");
             console.error("Failed to block slot", err);
         }
     };
@@ -157,6 +179,15 @@ export const Clinics: React.FC = () => {
             setActiveTab("profile");
             setFormData({
                 ...clinic,
+                businessHours: clinic.businessHours || {
+                    monday: { open: "09:00", close: "18:00", isOpen: true },
+                    tuesday: { open: "09:00", close: "18:00", isOpen: true },
+                    wednesday: { open: "09:00", close: "18:00", isOpen: true },
+                    thursday: { open: "09:00", close: "18:00", isOpen: true },
+                    friday: { open: "09:00", close: "18:00", isOpen: true },
+                    saturday: { open: "09:00", close: "18:00", isOpen: false },
+                    sunday: { open: "09:00", close: "18:00", isOpen: false },
+                }
             });
         } else {
             setEditingClinic(null);
@@ -461,6 +492,64 @@ export const Clinics: React.FC = () => {
                                 </>
                             )}
 
+                            {activeTab === 'hours' && (
+                                <div className="space-y-6">
+                                    <h4 className="font-bold text-gray-900 border-l-4 border-[#CBFF38] pl-3">Business Hours</h4>
+                                    <div className="grid gap-4">
+                                        {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(day => (
+                                            <div key={day} className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                                <div className="w-28 capitalize font-bold text-gray-700">{day}</div>
+                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="sr-only peer"
+                                                        checked={formData.businessHours?.[day]?.isOpen || false}
+                                                        onChange={e => setFormData({
+                                                            ...formData,
+                                                            businessHours: {
+                                                                ...formData.businessHours,
+                                                                [day]: { ...formData.businessHours?.[day], isOpen: e.target.checked }
+                                                            }
+                                                        })}
+                                                    />
+                                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#CBFF38]"></div>
+                                                    <span className="ml-3 text-sm font-medium text-gray-600">{formData.businessHours?.[day]?.isOpen ? 'Open' : 'Closed'}</span>
+                                                </label>
+                                                {formData.businessHours?.[day]?.isOpen && (
+                                                    <div className="flex items-center gap-2 ml-auto">
+                                                        <input 
+                                                            type="time" 
+                                                            className="p-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#CBFF38]"
+                                                            value={formData.businessHours?.[day]?.open || "09:00"}
+                                                            onChange={e => setFormData({
+                                                                ...formData,
+                                                                businessHours: {
+                                                                    ...formData.businessHours,
+                                                                    [day]: { ...formData.businessHours?.[day], open: e.target.value }
+                                                                }
+                                                            })}
+                                                        />
+                                                        <span className="text-gray-400">-</span>
+                                                        <input 
+                                                            type="time" 
+                                                            className="p-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#CBFF38]"
+                                                            value={formData.businessHours?.[day]?.close || "18:00"}
+                                                            onChange={e => setFormData({
+                                                                ...formData,
+                                                                businessHours: {
+                                                                    ...formData.businessHours,
+                                                                    [day]: { ...formData.businessHours?.[day], close: e.target.value }
+                                                                }
+                                                            })}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {activeTab === 'services' && (
                                 <div className="space-y-6">
                                     <div className="flex justify-between items-center">
@@ -625,6 +714,25 @@ export const Clinics: React.FC = () => {
                                                         >
                                                             <Eye className="w-4 h-4" />
                                                         </button>
+                                                        <button
+                                                            type="button"
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                            title="Delete Service"
+                                                            onClick={async () => {
+                                                                if (window.confirm("Are you sure you want to delete this service? This action cannot be undone unless the service has appointment history (in which case it will be blocked).")) {
+                                                                    try {
+                                                                        await adminAPI.deleteClinicService(service.id, editingClinic!.id);
+                                                                        fetchClinicServices(editingClinic!.id);
+                                                                    } catch (err: any) {
+                                                                        const errMsg = err.response?.data?.message || "Failed to delete service";
+                                                                        alert(errMsg);
+                                                                        console.error("Delete failed", err);
+                                                                    }
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -645,13 +753,80 @@ export const Clinics: React.FC = () => {
                             )}
 
                             {activeTab === 'staff' && (
-                                <div className="space-y-4">
-                                    <h4 className="font-bold text-gray-900">Assigned Staff</h4>
-                                    <div className="grid gap-2">
-                                        {users.filter(u => u.assignedClinics?.some(c => c.id === editingClinic?.id) || u.id === editingClinic?.ownerId).map(u => (
-                                            <div key={u.id} className="p-3 bg-gray-50 rounded-xl flex justify-between items-center">
-                                                <span>{u.firstName} {u.lastName} ({u.role})</span>
-                                                {u.id === editingClinic?.ownerId && <span className="text-xs bg-amber-100 text-amber-700 px-2 rounded">Owner</span>}
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="font-bold text-gray-900 border-l-4 border-[#CBFF38] pl-3">Assigned Staff</h4>
+                                        <div className="relative">
+                                            <select 
+                                                className="p-2 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#CBFF38] bg-white transition-all shadow-sm"
+                                                onChange={async (e) => {
+                                                    const userId = e.target.value;
+                                                    if (!userId || !editingClinic) return;
+                                                    try {
+                                                        const user = users.find(u => u.id === userId);
+                                                        const currentIds = user?.assignedClinics?.map((c: any) => c.id) || [];
+                                                        await adminAPI.updateUser(userId, { assignedClinicIds: [...currentIds, editingClinic.id] });
+                                                        dispatch(fetchUsers());
+                                                    } catch (err) {
+                                                        console.error("Failed to assign staff", err);
+                                                        alert("Failed to assign staff member");
+                                                    }
+                                                    e.target.value = "";
+                                                }}
+                                            >
+                                                <option value="">-- Add Staff Member --</option>
+                                                {users
+                                                    .filter(u => 
+                                                        (u.role === 'doctor' || u.role === 'secretariat' || u.role === 'salesperson') && 
+                                                        !(u.assignedClinics?.some((c: any) => c.id === editingClinic?.id))
+                                                    )
+                                                    .map(u => (
+                                                        <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role})</option>
+                                                    ))
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-3">
+                                        {users.filter(u => u.assignedClinics?.some((c: any) => c.id === editingClinic?.id) || u.id === editingClinic?.ownerId).map(u => (
+                                            <div key={u.id} className="p-4 bg-gray-50 rounded-2xl flex justify-between items-center border border-gray-100 hover:border-[#CBFF38]/30 transition-all shadow-sm">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-gray-400 font-bold border border-gray-200 shadow-inner">
+                                                        {u.firstName?.[0] || "?"}{u.lastName?.[0] || ""}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-bold text-gray-900">{u.firstName} {u.lastName}</div>
+                                                        <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{u.role}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {u.id === editingClinic?.ownerId && (
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-[9px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold uppercase border border-amber-200">Owner</span>
+                                                        </div>
+                                                    )}
+                                                    {u.id !== editingClinic?.ownerId && (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={async () => {
+                                                                if (!window.confirm(`Remove ${u.firstName} from ${editingClinic?.name}?`)) return;
+                                                                try {
+                                                                    const currentIds = u.assignedClinics?.map((c: any) => c.id) || [];
+                                                                    const newIds = currentIds.filter((id: string) => id !== editingClinic?.id);
+                                                                    await adminAPI.updateUser(u.id, { assignedClinicIds: newIds });
+                                                                    dispatch(fetchUsers());
+                                                                } catch (err) {
+                                                                    console.error("Failed to remove staff", err);
+                                                                    alert("Failed to remove staff member");
+                                                                }
+                                                            }}
+                                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                            title="Unassign from Clinic"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -664,10 +839,14 @@ export const Clinics: React.FC = () => {
                                         <h4 className="font-bold text-gray-900">Blocked Slots</h4>
                                         <button
                                             type="button"
-                                            onClick={() => setIsBlocking(!isBlocking)}
+                                            onClick={() => {
+                                                if (isBlocking) setEditingBlockedSlot(null);
+                                                setIsBlocking(!isBlocking);
+                                            }}
                                             className="text-sm bg-gray-900 text-white px-3 py-1.5 rounded-lg flex items-center gap-2"
                                         >
-                                            <Plus className="w-4 h-4" /> {isBlocking ? "Cancel" : "Block New Slot"}
+                                            {isBlocking ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                            {isBlocking ? "Cancel" : "Block New Slot"}
                                         </button>
                                     </div>
 
@@ -709,7 +888,7 @@ export const Clinics: React.FC = () => {
                                                     onClick={handleBlockSlot}
                                                     className="bg-[#CBFF38] text-[#0B1120] font-bold px-4 py-2 rounded-lg text-sm shadow-sm"
                                                 >
-                                                    Confirm Block
+                                                    {editingBlockedSlot ? "Update Block" : "Confirm Block"}
                                                 </button>
                                             </div>
                                         </div>
@@ -724,13 +903,24 @@ export const Clinics: React.FC = () => {
                                                         {new Date(s.startTime).toLocaleString()} - {new Date(s.endTime).toLocaleString()}
                                                     </div>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUnblockSlot(s.id)}
-                                                    className="p-1.5 hover:bg-red-100 rounded-lg text-red-500 transition-colors"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleEditBlockedSlot(s)}
+                                                        className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-500 transition-colors"
+                                                        title="Edit Block"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleUnblockSlot(s.id)}
+                                                        className="p-1.5 hover:bg-red-100 rounded-lg text-red-500 transition-colors"
+                                                        title="Remove Block"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                         {blockedSlots.length === 0 && !isBlocking && (

@@ -327,13 +327,17 @@ export const RepeatManagement: React.FC = () => {
           ]}
           required
         />
-        <Input
-          name="startDate"
-          type="date"
-          value={form.startDate}
-          onChange={handleChange}
-          fullWidth
-        />
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Sequence Start Date & Time</label>
+          <Input
+            name="startDate"
+            type="datetime-local"
+            value={form.startDate}
+            onChange={handleChange}
+            fullWidth
+            required
+          />
+        </div>
         <Button type="submit">Schedule</Button>
       </form>
     </>

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { X, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
+import { X, MapPin, ChevronRight, ChevronLeft, Search, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { RootState } from '@/store';
 import { format } from 'date-fns';
 
-import { clinicsAPI, bookingAPI } from '@/services/api';
+import { clinicsAPI, bookingAPI, crmAPI } from '@/services/api';
 
 interface CRMBookingModalProps {
     customerId?: string;
@@ -22,6 +22,7 @@ interface CRMBookingModalProps {
     onTaskComplete?: (taskId: string) => void;
     isOpen?: boolean;
     bookedBy?: string;
+    clinicId?: string;
     onClose: () => void;
     onSuccess?: () => void;
 }
@@ -36,19 +37,26 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     onTaskComplete,
     isOpen,
     bookedBy,
+    clinicId,
     onClose,
     onSuccess
 }) => {
-    const finalCustomerId = customer?.id || customerId || '';
-    const finalCustomerName = customer?.name || customerName || '';
-    const finalCustomerEmail = customer?.email || customerEmail || '';
-    const finalCustomerPhone = customer?.phone || customerPhone || '';
+    // Determine initial client state
+    const propCustomerId = customer?.id || customerId || '';
+    const propCustomerName = customer?.name || customerName || '';
+    const propCustomerEmail = customer?.email || customerEmail || '';
+    const propCustomerPhone = customer?.phone || customerPhone || '';
 
     if (isOpen === false) return null;
     const { user } = useSelector((state: RootState) => state.auth);
 
-    // Steps: 1=Clinic, 2=Service, 3=Date/Time, 4=Confirm
-    const [step, setStep] = useState(1);
+    // Internal state for selected client (if selection happens in Step 0)
+    const [selectedClient, setSelectedClient] = useState<any>(null);
+    const [clientSearch, setClientSearch] = useState('');
+    const [clientResults, setClientResults] = useState<any[]>([]);
+
+    // Steps: 0=Select Client, 1=Clinic, 2=Service, 3=Date/Time, 4=Confirm
+    const [step, setStep] = useState(propCustomerId ? 1 : 0);
     const [isLoading, setIsLoading] = useState(false);
 
     // Data
@@ -57,11 +65,39 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     const [slots, setSlots] = useState<any[]>([]);
 
     // Selection
-    const [selectedClinic, setSelectedClinic] = useState<string>('');
+    const [selectedClinic, setSelectedClinic] = useState<string>(clinicId || '');
     const [selectedService, setSelectedService] = useState<string>('');
     const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [selectedSlot, setSelectedSlot] = useState<any>(null);
     const [notes, setNotes] = useState('');
+
+    // Derived client data
+    const finalCustomerId = selectedClient?.id || propCustomerId;
+    const finalCustomerName = selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : propCustomerName;
+    const finalCustomerEmail = selectedClient?.email || propCustomerEmail;
+    const finalCustomerPhone = selectedClient?.phone || propCustomerPhone;
+
+    // Search Clients logic
+    useEffect(() => {
+        if (step !== 0 || !clientSearch || clientSearch.length < 2) {
+            setClientResults([]);
+            return;
+        }
+        
+        const searchTimer = setTimeout(async () => {
+            setIsLoading(true);
+            try {
+                const res = await crmAPI.getLeads({ search: clientSearch, status: 'converted' });
+                setClientResults(res.data.leads || []);
+            } catch (err) {
+                console.error("Search failed", err);
+            } finally {
+                setIsLoading(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(searchTimer);
+    }, [clientSearch, step]);
 
     // Fetch Clinics on mount
     useEffect(() => {
@@ -109,7 +145,6 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                     serviceId: selectedService,
                     date: selectedDate
                 });
-                // Fix: Backend returns 'slots', not 'timeSlots'
                 setSlots(res.data.slots || []);
             } catch (err) {
                 console.error("Failed to fetch slots", err);
@@ -122,18 +157,9 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     }, [selectedClinic, selectedService, selectedDate]);
 
     const handleConfirmBooking = async () => {
-        if (!selectedClinic || !selectedService || !selectedSlot) return;
-        // bookedById MUST be a UUID — use user.id, not bookedBy (which can be a name string)
+        if (!selectedClinic || !selectedService || !selectedSlot || !finalCustomerId) return;
+        
         const bookedByIdUUID = user?.id;
-        console.log("🚀 [CRMBookingModal] Initiating booking...", {
-            clientId: finalCustomerId,
-            clinicId: selectedClinic,
-            serviceId: selectedService,
-            startTime: selectedSlot.startTime,
-            endTime: selectedSlot.endTime,
-            bookedById: bookedByIdUUID,
-            phone: finalCustomerPhone
-        });
         setIsLoading(true);
         try {
             const bookingPayload: any = {
@@ -150,7 +176,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                     phone: finalCustomerPhone || '0000000000'
                 }
             };
-            // Only add bookedById if we have a valid UUID
+            
             if (bookedByIdUUID) {
                 bookingPayload.bookedById = bookedByIdUUID;
             }
@@ -172,10 +198,57 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 
     const renderStepContent = () => {
         switch (step) {
+            case 0:
+                return (
+                    <div className="space-y-4">
+                        <div className="text-sm font-bold text-slate-500 mb-2">Search & Select a Client</div>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input 
+                                type="text"
+                                value={clientSearch}
+                                onChange={(e) => setClientSearch(e.target.value)}
+                                placeholder="Search by name, email or phone..."
+                                className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
+                            />
+                        </div>
+                        <div className="space-y-2 mt-4 max-h-[300px] overflow-y-auto">
+                            {clientResults.map(client => (
+                                <button
+                                    key={client.id}
+                                    onClick={() => {
+                                        setSelectedClient(client);
+                                        setStep(1);
+                                    }}
+                                    className="w-full p-4 flex items-center gap-4 text-left border border-slate-100 rounded-2xl hover:border-blue-300 hover:bg-blue-50/30 transition-all"
+                                >
+                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                                        <UserIcon className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-sm font-black text-slate-800">{client.firstName} {client.lastName}</div>
+                                        <div className="text-[10px] text-slate-500 font-medium">{client.email} | {client.phone || 'No phone'}</div>
+                                    </div>
+                                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                                </button>
+                            ))}
+                            {clientSearch.length >= 2 && clientResults.length === 0 && !isLoading && (
+                                <div className="text-center py-6 text-slate-400 text-xs font-bold">No clients found matching "{clientSearch}"</div>
+                            )}
+                        </div>
+                    </div>
+                );
             case 1:
                 return (
                     <div className="space-y-4">
-                        <div className="text-sm font-bold text-slate-500 mb-2">Select a Clinic Location</div>
+                        <div className="flex items-center gap-2 mb-4">
+                            {!propCustomerId && (
+                                <Button variant="ghost" size="sm" onClick={() => setStep(0)} className="h-8 w-8 p-0 rounded-full">
+                                    <ChevronLeft className="w-4 h-4" />
+                                </Button>
+                            )}
+                            <div className="text-sm font-bold text-slate-500">Select a Clinic Location</div>
+                        </div>
                         <div className="grid grid-cols-1 gap-2">
                             {clinics.map(c => (
                                 <button
@@ -210,7 +283,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                                     className={`p-4 text-left border rounded-xl transition-all ${selectedService === s.id ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-100 hover:border-slate-300'}`}
                                 >
                                     <div className="flex items-center justify-between">
-                                        <div className="font-black text-slate-800 text-sm uppercase tracking-tight">{s.name}</div>
+                                        <div className="font-black text-slate-800 text-sm uppercase tracking-tight">{s.name?.trim() || (s.treatment?.name)}</div>
                                         <div className="text-blue-600 font-black text-xs">€{s.price}</div>
                                     </div>
                                     <div className="text-[10px] text-slate-500 mt-1 font-medium">{s.durationMinutes} minutes duration</div>
@@ -330,7 +403,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                         <h2 className="text-xl font-black text-slate-800 tracking-tight">Clinical Scheduler</h2>
                         <div className="flex items-center gap-2 mt-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Booking Interface v2.4</p>
+                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Booking Interface v2.5</p>
                         </div>
                     </div>
                     <Button variant="ghost" size="sm" onClick={onClose} className="h-10 w-10 p-0 rounded-2xl bg-slate-50 hover:bg-slate-100">
@@ -341,14 +414,18 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                 <div className="flex-1 overflow-y-auto p-8 pt-4">
                     {/* Stepper Wizard */}
                     <div className="flex items-center justify-between mb-8 px-2">
-                        {[1, 2, 3, 4].map(s => (
-                            <div key={s} className="flex items-center gap-2">
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${step >= s ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-100 text-slate-400'}`}>
-                                    {s}
+                        {[0, 1, 2, 3, 4].map(s => {
+                            // Only show step 0 if we started from 0
+                            if (s === 0 && propCustomerId) return null;
+                            return (
+                                <div key={s} className="flex items-center gap-2">
+                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${step >= s ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-100 text-slate-400'}`}>
+                                        {s}
+                                    </div>
+                                    {s < 4 && <div className={`w-8 h-0.5 rounded-full ${step > s ? 'bg-blue-200' : 'bg-slate-100'}`} />}
                                 </div>
-                                {s < 4 && <div className={`w-8 h-0.5 rounded-full ${step > s ? 'bg-blue-200' : 'bg-slate-100'}`} />}
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <div className="min-h-[300px]">
@@ -361,31 +438,42 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Security Protocol</span>
                         <span className="text-[10px] font-black text-emerald-500">Encrypted Transmission</span>
                     </div>
-                    {step < 4 ? (
-                        <Button 
-                            disabled={step === 1 && !selectedClinic || step === 2 && !selectedService || step === 3 && !selectedSlot}
-                            onClick={() => setStep(step + 1)} 
-                            className="h-12 px-8 bg-slate-900 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl hover:bg-slate-800 transition-all active:scale-95"
-                        >
-                            Next Step <ChevronRight className="w-4 h-4 ml-2" />
-                        </Button>
-                    ) : (
-                        <Button 
-                            onClick={handleConfirmBooking} 
-                            disabled={isLoading}
-                            className="h-12 px-10 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-500/20 transition-all active:scale-95"
-                        >
-                            {isLoading ? 'Processing...' : 'Complete Booking'}
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {(step > 0 && !(step === 1 && propCustomerId)) && (
+                            <Button 
+                                variant="ghost"
+                                onClick={() => setStep(step - 1)} 
+                                className="h-12 px-6 text-slate-400 hover:text-slate-800 font-black text-xs uppercase tracking-widest rounded-2xl transition-all active:scale-95"
+                            >
+                                <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+                            </Button>
+                        )}
+                        {step < 4 ? (
+                            <Button 
+                                disabled={
+                                    step === 0 && !selectedClient ||
+                                    step === 1 && !selectedClinic || 
+                                    step === 2 && !selectedService || 
+                                    step === 3 && !selectedSlot ||
+                                    isLoading
+                                }
+                                onClick={() => setStep(step + 1)} 
+                                className="h-12 px-8 bg-slate-900 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl hover:bg-slate-800 transition-all active:scale-95"
+                            >
+                                {isLoading ? 'Searching...' : 'Next Step'} <ChevronRight className="w-4 h-4 ml-2" />
+                            </Button>
+                        ) : (
+                            <Button 
+                                onClick={handleConfirmBooking} 
+                                disabled={isLoading}
+                                className="h-12 px-10 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-500/20 transition-all active:scale-95"
+                            >
+                                {isLoading ? 'Processing...' : 'Complete Booking'}
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
-
-const UserIcon = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-);

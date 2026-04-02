@@ -1509,45 +1509,37 @@ export class CrmService implements OnModuleInit {
       throw new NotFoundException('Action not found');
     }
 
-    // Reminder validation if being updated
+    // Reminder validation and auto-fix
+    const now = new Date();
+    
+    // Ensure we have a reminderDate if it's missing from DB and not provided in update
+    // (Happens with legacy tasks or tasks created before the strict rule)
+    if (!action.reminderDate && !updateData.reminderDate && 
+        action.status !== 'completed' && action.status !== 'cancelled' &&
+        updateData.status !== 'completed' && updateData.status !== 'cancelled') {
+      this.logger.log(`[updateAction] Action ${id} missing reminderDate. Auto-assigning current time.`);
+      updateData.reminderDate = now;
+    }
+
     if (updateData.reminderDate) {
-      const now = new Date();
       const reminderDate = new Date(updateData.reminderDate);
       const oneYearFromNow = new Date(action.createdAt || now);
       oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
-      // Allow 5 minutes grace period for past dates (consistent with createAction)
-      // Also compare at minute level to handle precision loss during frontend transport (ISO slice)
-      const gracePeriodMs = 5 * 60 * 1000;
+      // Allow 15 minutes grace period (consistent with createAction)
+      const gracePeriodMs = 15 * 60 * 1000;
       const isPast = reminderDate.getTime() < now.getTime() - gracePeriodMs;
 
-      const currentReminderMin = action.reminderDate ? Math.floor(new Date(action.reminderDate).getTime() / 60000) : null;
-      const newReminderMin = Math.floor(reminderDate.getTime() / 60000);
-
-      if (isPast && newReminderMin !== currentReminderMin) {
-        // Log it but auto-fix instead of failing for better UX
+      if (isPast) {
+        // Auto-fix past dates instead of failing for better UX
         this.logger.warn(`[updateAction] Reminder date in the past for action ${id}. Auto-fixing to current time.`);
-        updateData.reminderDate = new Date();
+        updateData.reminderDate = now;
       }
 
       if (reminderDate > oneYearFromNow) {
-        throw new BadRequestException('Reminder date cannot exceed 1 year from task creation.');
-      }
-    }
-
-    // Constraint: No Task Without Reminder & Max 1-Year Rule
-    if (!action.reminderDate && !updateData.reminderDate && updateData.status !== 'completed' && updateData.status !== 'cancelled') {
-      throw new BadRequestException('Reminder date is mandatory for all active tasks.');
-    }
-
-    if (updateData.reminderDate || action.reminderDate) {
-      const now = new Date();
-      const reminderDate = new Date(updateData.reminderDate || action.reminderDate);
-      const oneYearFromNow = new Date();
-      oneYearFromNow.setFullYear(now.getFullYear() + 1);
-
-      if (reminderDate > oneYearFromNow) {
-        throw new BadRequestException('Reminder date cannot be more than 1 year in the future.');
+        // If it's too far in the future, cap it at 1 year rather than failing
+        this.logger.warn(`[updateAction] Reminder date too far in future for action ${id}. Capping at 1 year.`);
+        updateData.reminderDate = oneYearFromNow;
       }
     }
 
@@ -2288,8 +2280,35 @@ export class CrmService implements OnModuleInit {
     return this.facebookService.getForms();
   }
 
-  // Manager analytics: aggregate KPIs across agents
   async getManagerAgentKpis(dateRange?: { startDate: Date; endDate: Date }): Promise<any> {
+    // 0. Fetch all salespersons to ensure we include those with 0 activity
+    const salespersons = await this.usersRepository.find({
+      where: { role: UserRole.SALESPERSON },
+      select: ['id', 'firstName', 'lastName']
+    });
+
+    const agentMap = new Map<string, any>();
+    for (const s of salespersons) {
+      agentMap.set(s.id, {
+        agentId: s.id,
+        agentName: `${s.firstName || ''} ${s.lastName || ''}`.trim() || 'Unnamed Agent',
+        totalCommunications: 0,
+        totalCalls: 0,
+        answeredCalls: 0,
+        missedCalls: 0,
+        totalDuration: 0,
+        totalAppointments: 0,
+        completedAppointments: 0,
+        noShows: 0,
+        cancellations: 0,
+        totalRevenue: 0,
+        totalLeads: 0,
+        convertedLeads: 0,
+        avgAppointmentValue: 0,
+        conversionRate: 0,
+      });
+    }
+
     // 1. Get communication statistics per agent
     let commQ = this.communicationLogsRepository
       .createQueryBuilder('log')
@@ -2307,6 +2326,32 @@ export class CrmService implements OnModuleInit {
     }
 
     const commStats = await commQ.getRawMany();
+
+    // Update with communication stats
+    for (const comm of commStats) {
+      const existing = agentMap.get(comm.agentId) || {
+        agentId: comm.agentId,
+        agentName: 'Unknown Agent',
+        totalAppointments: 0,
+        completedAppointments: 0,
+        noShows: 0,
+        cancellations: 0,
+        totalRevenue: 0,
+        totalLeads: 0,
+        convertedLeads: 0,
+        avgAppointmentValue: 0,
+        conversionRate: 0,
+      };
+      
+      agentMap.set(comm.agentId, {
+        ...existing,
+        totalCommunications: parseInt(comm.totalCommunications, 10) || 0,
+        totalCalls: parseInt(comm.totalCalls, 10) || 0,
+        answeredCalls: parseInt(comm.answeredCalls, 10) || 0,
+        missedCalls: parseInt(comm.missedCalls, 10) || 0,
+        totalDuration: parseInt(comm.totalDuration, 10) || 0,
+      });
+    }
 
     // 2. Get appointment statistics per agent (via CustomerRecord)
     let aptQ = this.appointmentsRepository
@@ -2330,47 +2375,11 @@ export class CrmService implements OnModuleInit {
 
     const aptStats = await aptQ.getRawMany();
 
-    // 3. Get lead statistics per agent
-    let leadQ = this.leadsRepository
-      .createQueryBuilder('lead')
-      .select('lead.assignedSalesId', 'agentId')
-      .addSelect('COUNT(lead.id)', 'totalLeads')
-      .addSelect("COUNT(CASE WHEN lead.status = 'converted' THEN 1 END)", 'convertedLeads')
-      .where('lead.assignedSalesId IS NOT NULL')
-      .groupBy('lead.assignedSalesId');
-
-    if (dateRange) {
-      leadQ = leadQ.andWhere('lead.createdAt BETWEEN :startDate AND :endDate', dateRange);
-    }
-
-    const leadStats = await leadQ.getRawMany();
-
-    // 4. Merge all stats
-    const agentMap = new Map<string, any>();
-
-    // Initialize with communication stats
-    for (const comm of commStats) {
-      agentMap.set(comm.agentId, {
-        agentId: comm.agentId,
-        totalCommunications: parseInt(comm.totalCommunications, 10) || 0,
-        totalCalls: parseInt(comm.totalCalls, 10) || 0,
-        answeredCalls: parseInt(comm.answeredCalls, 10) || 0,
-        missedCalls: parseInt(comm.missedCalls, 10) || 0,
-        totalDuration: parseInt(comm.totalDuration, 10) || 0,
-        totalAppointments: 0,
-        completedAppointments: 0,
-        noShows: 0,
-        cancellations: 0,
-        totalRevenue: 0,
-        totalLeads: 0,
-        convertedLeads: 0,
-      });
-    }
-
     // Merge with appointment stats
     for (const apt of aptStats) {
       const existing = agentMap.get(apt.agentId) || {
         agentId: apt.agentId,
+        agentName: apt.agentName,
         totalCommunications: 0,
         totalCalls: 0,
         answeredCalls: 0,
@@ -2397,6 +2406,21 @@ export class CrmService implements OnModuleInit {
       });
     }
 
+    // 3. Get lead statistics per agent
+    let leadQ = this.leadsRepository
+      .createQueryBuilder('lead')
+      .select('lead.assignedSalesId', 'agentId')
+      .addSelect('COUNT(lead.id)', 'totalLeads')
+      .addSelect("COUNT(CASE WHEN lead.status = 'converted' THEN 1 END)", 'convertedLeads')
+      .where('lead.assignedSalesId IS NOT NULL')
+      .groupBy('lead.assignedSalesId');
+
+    if (dateRange) {
+      leadQ = leadQ.andWhere('lead.createdAt BETWEEN :startDate AND :endDate', dateRange);
+    }
+
+    const leadStats = await leadQ.getRawMany();
+
     // Merge with lead stats
     for (const lead of leadStats) {
       if (!lead.agentId) continue;
@@ -2414,8 +2438,6 @@ export class CrmService implements OnModuleInit {
         noShows: 0,
         cancellations: 0,
         totalRevenue: 0,
-        conversionRate: 0,
-        avgAppointmentValue: 0
       };
 
       agentMap.set(lead.agentId, {
@@ -2425,23 +2447,7 @@ export class CrmService implements OnModuleInit {
       });
     }
 
-    // For agents who have no name (only comm stats), try to fetch their names
-    const finalResult = await Promise.all(
-      Array.from(agentMap.values())
-        .filter(agent => agent.agentId) // Ensure agentId exists
-        .map(async (agent) => {
-          if (!agent.agentName) {
-            const user = await this.usersRepository.findOne({
-              where: { id: agent.agentId },
-              select: ['firstName', 'lastName']
-            });
-            agent.agentName = user ? `${user.firstName} ${user.lastName}` : 'Unknown Agent';
-          }
-          return agent;
-        })
-    );
-
-    return finalResult;
+    return Array.from(agentMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
   }
 
   async getServiceStats(dateRange?: { startDate: Date; endDate: Date }): Promise<any[]> {
@@ -3106,20 +3112,20 @@ export class CrmService implements OnModuleInit {
   }
 
   async updateAgentAccess(agentId: string, clinicAccess: { clinicId: string; hasAccess: boolean }[]) {
-    // Delete existing access records for this agent
-    await this.usersRepository.query(
-      `DELETE FROM agent_clinic_access WHERE agentUserId = $1`,
-      [agentId]
-    );
+    // 1. Delete existing access records for this agent using repository to honor column mapping
+    await this.agentClinicAccessRepository.delete({ agentUserId: agentId });
 
-    // Create new access records for clinics that should have access
-    for (const access of clinicAccess) {
-      if (access.hasAccess) {
-        await this.usersRepository.query(
-          `INSERT INTO agent_clinic_access (agentUserId, clinicId) VALUES ($1, $2)`,
-          [agentId, access.clinicId]
-        );
-      }
+    // 2. Map and create new access entities for clinics that should have access
+    const entitiesToCreate = clinicAccess
+      .filter(access => access.hasAccess)
+      .map(access => this.agentClinicAccessRepository.create({
+        agentUserId: agentId,
+        clinicId: access.clinicId
+      }));
+
+    // 3. Save all new access records in bulk
+    if (entitiesToCreate.length > 0) {
+      await this.agentClinicAccessRepository.save(entitiesToCreate);
     }
 
     return { success: true };

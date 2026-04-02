@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+// Riverside: missing ForbiddenException import.
 import * as fs from 'fs';
 import * as path from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -396,15 +397,52 @@ export class AvailabilityService {
     });
 
     if (!blockedSlot) {
-      throw new Error('Blocked time slot not found');
+      throw new NotFoundException('Blocked time slot not found');
     }
 
-    // Verify user has permission (clinic owner or admin)
-    if (userRole !== 'admin' && blockedSlot.clinic.ownerId !== userId) {
-      throw new Error('Unauthorized to unblock this time slot');
+    // Verify user has permission (clinic staff, owner, or admin)
+    const upperRole = userRole.toUpperCase();
+    const isAdmin = upperRole === 'ADMIN' || upperRole === 'SUPER_ADMIN' || upperRole === 'MANAGER';
+    
+    if (!isAdmin && blockedSlot.clinic.ownerId !== userId) {
+      // Check if user is staff of this clinic (optional but safer)
+      // For now, let's at least fix the basic role check
+      if (upperRole !== 'SECRETARIAT' && upperRole !== 'DOCTOR' && upperRole !== 'SALESPERSON') {
+        throw new ForbiddenException('Unauthorized to unblock this time slot');
+      }
     }
 
     await this.blockedTimeSlotsRepository.remove(blockedSlot);
+  }
+
+  async updateBlockedTimeSlot(
+    blockedSlotId: string,
+    updates: { startTime?: Date; endTime?: Date; reason?: string; providerId?: string | null },
+    userId: string,
+    userRole: string
+  ): Promise<BlockedTimeSlot> {
+    const blockedSlot = await this.blockedTimeSlotsRepository.findOne({
+      where: { id: blockedSlotId },
+      relations: ['clinic'],
+    });
+
+    if (!blockedSlot) {
+      throw new NotFoundException('Blocked time slot not found');
+    }
+
+    // Reuse permission logic
+    const upperRole = userRole.toUpperCase();
+    const isAdmin = upperRole === 'ADMIN' || upperRole === 'SUPER_ADMIN' || upperRole === 'MANAGER';
+    if (!isAdmin && blockedSlot.clinic.ownerId !== userId && upperRole !== 'SECRETARIAT' && upperRole !== 'DOCTOR') {
+      throw new ForbiddenException('Unauthorized to update this time slot');
+    }
+
+    if (updates.startTime) blockedSlot.startTime = updates.startTime;
+    if (updates.endTime) blockedSlot.endTime = updates.endTime;
+    if (updates.reason) blockedSlot.reason = updates.reason;
+    if (updates.providerId !== undefined) blockedSlot.providerId = updates.providerId;
+
+    return this.blockedTimeSlotsRepository.save(blockedSlot);
   }
 
   async getBlockedTimeSlots(

@@ -712,6 +712,42 @@ export class ClinicsService {
     return this.servicesRepository.save(service);
   }
 
+  async deleteService(ownerId: string, role: string, serviceId: string, clinicId?: string): Promise<void> {
+    let clinic;
+    if (clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
+      clinic = await this.findById(clinicId);
+    } else {
+      clinic = await this.findByOwnerId(ownerId);
+    }
+
+    const service = await this.servicesRepository.findOne({
+      where: { id: serviceId, clinicId: clinic.id },
+    });
+
+    if (!service) {
+      throw new NotFoundException('Service not found for this clinic');
+    }
+
+    // Check if there are ANY appointments for this service
+    const appointmentCount = await this.appointmentsRepository.count({
+      where: { serviceId },
+    });
+
+    if (appointmentCount > 0) {
+      throw new BadRequestException('Cannot delete a service that has existing appointments. Please deactivate it (Hide) instead to maintain booking history.');
+    }
+
+    await this.servicesRepository.remove(service);
+
+    this.eventEmitter.emit('audit.log', {
+      userId: ownerId,
+      action: 'SERVICE_DELETE',
+      resource: 'services',
+      resourceId: serviceId,
+      data: { clinicId: clinic.id, serviceId },
+    });
+  }
+
   private validateServiceForPublishing(service: Service) {
     if (!service.treatment) {
       throw new BadRequestException('Service must be linked to a treatment master record to be active');

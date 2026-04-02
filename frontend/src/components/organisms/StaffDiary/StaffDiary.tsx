@@ -25,6 +25,7 @@ import { RootState, AppDispatch } from '@/store';
 import { fetchAppointments, fetchClinicProviders } from '@/store/slices/clinicSlice';
 import { Button } from '@/components/atoms/Button/Button';
 import { Card, CardContent } from '@/components/molecules/Card/Card';
+import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 import './StaffDiary.css';
 
 interface StaffDiaryProps {
@@ -66,6 +67,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
     const [searchQuery, setSearchQuery] = useState('');
+    const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
     const timeSlots = useMemo(() => {
         const slots = [];
@@ -280,7 +282,13 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                     </div>
                     {user?.role !== 'doctor' && (
                         <Button
-                            onClick={onNewAppointment}
+                            onClick={() => {
+                                if (onNewAppointment) {
+                                    onNewAppointment();
+                                } else {
+                                    setIsBookingModalOpen(true);
+                                }
+                            }}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20"
                         >
                             <Plus className="w-4 h-4 mr-2" /> New Appointment
@@ -330,6 +338,21 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                     <div className="w-3 h-3 rounded-full bg-gray-300" /> Cancelled
                 </div>
             </div>
+
+            {/* Booking Modal */}
+            <CRMBookingModal 
+              isOpen={isBookingModalOpen} 
+              onClose={() => setIsBookingModalOpen(false)}
+              clinicId={clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.ownedClinics?.[0]?.id}
+              onSuccess={() => {
+                // Refresh appointments
+                const targetClinicId = clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.ownedClinics?.[0]?.id;
+                const filters: any = {};
+                if (targetClinicId) filters.clinicId = targetClinicId;
+                if (selectedDate) filters.date = format(selectedDate, 'yyyy-MM-dd');
+                dispatch(fetchAppointments(filters));
+              }}
+            />
         </div>
     );
 };
