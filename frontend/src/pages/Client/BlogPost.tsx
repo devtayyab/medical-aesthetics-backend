@@ -123,7 +123,7 @@ export const BlogPost: React.FC = () => {
                     onClick={() => navigate('/blog')}
                     className="flex items-center gap-2 bg-[#CBFF38] text-black px-8 h-12 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-lime-400 transition-all"
                 >
-                    <FaArrowLeft /> Back to Journal
+                    <FaArrowLeft /> Back to Articles
                 </button>
             </div>
         );
@@ -160,7 +160,7 @@ export const BlogPost: React.FC = () => {
                     <div className="flex items-center gap-3 mb-8 text-[#CBFF38] text-[10px] font-black uppercase tracking-[0.2em] italic">
                         <Link to="/" className="hover:opacity-70 transition-opacity">Home</Link>
                         <FaChevronRight size={9} />
-                        <Link to="/blog" className="hover:opacity-70 transition-opacity">Journal</Link>
+                        <Link to="/blog" className="hover:opacity-70 transition-opacity">Articles</Link>
                         <FaChevronRight size={9} />
                         <span className="text-gray-400 truncate max-w-[200px]">{post.title}</span>
                     </div>
@@ -238,7 +238,7 @@ export const BlogPost: React.FC = () => {
                         to="/blog"
                         className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-colors"
                     >
-                        <FaArrowLeft /> Back to Journal
+                        <FaArrowLeft /> Back to Articles
                     </Link>
                     <div className="size-10 rounded-2xl bg-black flex items-center justify-center cursor-pointer hover:bg-gray-900 transition-all" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">

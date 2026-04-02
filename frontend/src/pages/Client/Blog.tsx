@@ -53,13 +53,13 @@ export const Blog: React.FC = () => {
                     <div className="flex items-center gap-4 mb-4 text-[#CBFF38] text-[10px] font-black uppercase tracking-[0.2em] italic">
                         <Link to="/" className="hover:opacity-80 transition-opacity">Home</Link>
                         <FaChevronRight size={10} />
-                        <span>Journal</span>
+                        <span>Articles</span>
                     </div>
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                         <div>
                             <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-tight">
                                 Aesthetics<br/>
-                                <span className="text-[#CBFF38]">Journal</span>
+                                <span className="text-[#CBFF38]">Articles</span>
                             </h1>
                             <p className="text-gray-400 mt-3 font-medium max-w-lg">
                                 Expert insights, treatment guides, and beauty science from leading aesthetic professionals.

@@ -102,14 +102,14 @@ const mainCategories = [
     name: "Treatments",
     description: "Browse treatments by category",
     icon: <FaStethoscope className="text-3xl" />,
-    link: "/search"
+    link: "/treatments"
   },
   {
     id: "articles",
     name: "Articles",
     description: "Read about latest trends",
     icon: <FaBook className="text-3xl" />,
-    link: "/articles" // Placeholder or search redirect
+    link: "/blog" // Placeholder or search redirect
   },
   {
     id: "other",
