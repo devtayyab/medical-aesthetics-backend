@@ -48,7 +48,7 @@ export class Appointment {
   @Column({
     type: 'varchar',
     length: 50,
-    default: AppointmentStatus.PENDING,
+    default: AppointmentStatus.CONFIRMED,
   })
   status: AppointmentStatus;
 

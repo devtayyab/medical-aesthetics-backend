@@ -397,10 +397,7 @@ export class BookingsService {
 
     const appointment: Appointment = this.appointmentsRepository.create(appointmentData);
 
-    // Set status to PENDING for consumer bookings to require staff confirmation
-    if (!createAppointmentDto.bookedById && createAppointmentDto.paymentMethod !== 'card') {
-      appointment.status = AppointmentStatus.PENDING;
-    }
+    // Default status in entity is CONFIRMED, no need to manually set to PENDING
 
     console.log('📝 [BookingsService] Saving appointment to database...');
     const savedAppointment: Appointment = await this.appointmentsRepository.save(appointment);

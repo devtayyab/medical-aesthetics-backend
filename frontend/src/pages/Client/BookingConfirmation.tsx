@@ -103,10 +103,10 @@ const BookingConfirmation: React.FC = () => {
           </div>
 
           <h1 className="text-4xl font-black uppercase italic tracking-tighter text-gray-900 mb-4 px-4">
-            {appointment.status === 'PENDING' ? 'Request Received!' : 'Booking Confirmed!'}
+            Booking Confirmed!
           </h1>
           <p className="text-gray-500 font-bold uppercase text-[10px] tracking-[0.2em] mb-12">
-            Status: {appointment.status === 'PENDING' ? 'Pending Staff Confirmation' : 'Confirmed'}
+            Status: Confirmed
           </p>
           <p className="text-gray-500 font-bold uppercase text-[10px] tracking-[0.2em] mb-12">
             Reference: #{appointment.id.slice(-8).toUpperCase()}
