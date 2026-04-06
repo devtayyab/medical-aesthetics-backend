@@ -400,12 +400,8 @@ export const Search: React.FC = () => {
                           key={t.id} 
                           treatment={t} 
                           onSelect={() => {
-                            if (t.offerings?.length === 1) {
-                              const offering = t.offerings[0];
-                              navigate(`/appointment/booking?clinicId=${offering.clinic.id}&serviceIds=${offering.offeringId}`);
-                            } else {
-                              navigate(`/treatment/${t.id}`);
-                            }
+                            // Always navigate to the details page first to show the explanation window/info
+                            navigate(`/treatment/${t.id}`);
                           }} 
                         />
                       ))}
