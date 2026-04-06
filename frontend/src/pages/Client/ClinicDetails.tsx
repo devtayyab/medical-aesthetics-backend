@@ -379,7 +379,7 @@ export const ClinicDetails: React.FC = () => {
                    <div>
                       <p className="text-[9px] font-black uppercase tracking-widest text-[#CBFF38] italic mb-1">Total Payload</p>
                       <p className="text-3xl font-black italic tracking-tighter">
-                         {selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                         <span className="font-sans">€</span>{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                    </div>
                 </div>

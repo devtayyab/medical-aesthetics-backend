@@ -122,7 +122,7 @@ export const TreatmentDetails: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-lg font-black text-lime-700">{offering.price}</p>
+                                                <p className="text-lg font-black text-lime-700"><span className="font-sans">€</span>{offering.price}</p>
                                                 <p className="text-[10px] text-gray-400 font-bold uppercase">{offering.durationMinutes}m</p>
                                             </div>
                                         </div>

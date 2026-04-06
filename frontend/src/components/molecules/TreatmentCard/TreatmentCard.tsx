@@ -48,7 +48,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                     </div>
                     <div className="text-right shrink-0">
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-tighter">Starting from</p>
-                        <p className="text-2xl font-black text-lime-700">{treatment.fromPrice || '?'}</p>
+                        <p className="text-2xl font-black text-lime-700"><span className="font-sans">€</span>{treatment.fromPrice || '?'}</p>
                     </div>
                 </div>
 
