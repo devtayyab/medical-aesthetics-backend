@@ -83,6 +83,8 @@ export const SalesWeekCalendar: React.FC = () => {
     const [wizardTime, setWizardTime] = useState(format(new Date(), 'HH:mm'));
     const [wizardProviderId, setWizardProviderId] = useState<string | null>(null);
     const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+    const [clinicSearchQuery, setClinicSearchQuery] = useState('');
+    const [isClinicDropdownOpen, setIsClinicDropdownOpen] = useState(false);
 
     // Walk-in state
     const [isWalkIn, setIsWalkIn] = useState(false);
@@ -654,22 +656,67 @@ export const SalesWeekCalendar: React.FC = () => {
 
                                 {/* Right Panel: Service */}
                                 <div className="flex-1 p-6 space-y-4">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <label className="text-xs font-black uppercase text-gray-400 tracking-wider">Select Service</label>
-                                        <select
-                                            className="text-[10px] font-black border-none bg-gray-100 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500"
-                                            value={wizardClinic?.id || ''}
-                                            onChange={async (e) => {
-                                                const clinic = availableClinics.find(c => c.id === e.target.value);
-                                                setWizardClinic(clinic);
-                                                if (clinic) {
-                                                    const srvRes = await clinicsAPI.getServices(clinic.id);
-                                                    setAvailableServices(srvRes.data);
-                                                }
-                                            }}
-                                        >
-                                            {availableClinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                        </select>
+                                    <div className="relative group">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-black uppercase text-gray-400 tracking-wider">Select Clinic</label>
+                                            <span className="text-[9px] font-black text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">Location</span>
+                                        </div>
+                                        
+                                        <div className="relative">
+                                            <div 
+                                                className="w-full pl-3 pr-10 py-2 border border-gray-200 rounded-xl text-sm bg-gray-100 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100 transition-all font-black cursor-pointer flex items-center justify-between"
+                                                onClick={() => setIsClinicDropdownOpen(!isClinicDropdownOpen)}
+                                            >
+                                                <span className="truncate">{wizardClinic?.name || 'Select Clinic...'}</span>
+                                                <MapPin size={14} className="text-gray-400" />
+                                            </div>
+
+                                            {isClinicDropdownOpen && (
+                                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl z-[150] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                    <div className="p-2 border-b border-gray-50 bg-gray-50/50">
+                                                        <div className="relative">
+                                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Search clinic..."
+                                                                className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-100"
+                                                                value={clinicSearchQuery}
+                                                                onChange={(e) => setClinicSearchQuery(e.target.value)}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                autoFocus
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                                                        {availableClinics
+                                                            .filter(c => c.name.toLowerCase().includes(clinicSearchQuery.toLowerCase()))
+                                                            .map(c => (
+                                                                <div
+                                                                    key={c.id}
+                                                                    className={`px-4 py-2.5 text-xs font-bold cursor-pointer transition-colors flex items-center justify-between hover:bg-indigo-50 hover:text-indigo-700 ${wizardClinic?.id === c.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600'}`}
+                                                                    onClick={async () => {
+                                                                        setWizardClinic(c);
+                                                                        setIsClinicDropdownOpen(false);
+                                                                        setClinicSearchQuery('');
+                                                                        try {
+                                                                            const srvRes = await clinicsAPI.getServices(c.id);
+                                                                            setAvailableServices(srvRes.data);
+                                                                        } catch (err) {
+                                                                            console.error(err);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <span>{c.name}</span>
+                                                                    {wizardClinic?.id === c.id && <CheckCircle2 size={12} />}
+                                                                </div>
+                                                            ))}
+                                                        {availableClinics.filter(c => c.name.toLowerCase().includes(clinicSearchQuery.toLowerCase())).length === 0 && (
+                                                            <div className="p-4 text-center text-[10px] font-bold text-gray-400 italic">No clinics found</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="relative group">
