@@ -23,7 +23,7 @@ export const Search: React.FC = () => {
   const [showMobileMap, setShowMobileMap] = useState<boolean>(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('clinics');
+  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('treatments');
 
   // Search states
   const [query, setQuery] = useState(searchParams.get("query") || "");
