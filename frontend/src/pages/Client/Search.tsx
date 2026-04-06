@@ -165,11 +165,13 @@ export const Search: React.FC = () => {
   }, [clinics, sortBy, ratingFilter]);
 
   const mapCenter = useMemo(() => {
-    if (selectedClinicForMap) return [selectedClinicForMap.latitude, selectedClinicForMap.longitude] as [number, number];
+    if (selectedClinicForMap && selectedClinicForMap.latitude && selectedClinicForMap.longitude) {
+      return [Number(selectedClinicForMap.latitude), Number(selectedClinicForMap.longitude)] as [number, number];
+    }
     if (userCoords) return [userCoords.lat, userCoords.lng] as [number, number];
     const clinicWithCoords = clinics.find(c => c.latitude && c.longitude);
     if (clinicWithCoords) {
-      return [clinicWithCoords.latitude!, clinicWithCoords.longitude!] as [number, number];
+      return [Number(clinicWithCoords.latitude), Number(clinicWithCoords.longitude)] as [number, number];
     }
     return [51.505, -0.09] as [number, number];
   }, [userCoords, clinics, selectedClinicForMap]);
@@ -268,7 +270,12 @@ export const Search: React.FC = () => {
                     <Button
                       variant="outline"
                       className="font-bold flex items-center gap-2 rounded-xl text-gray-700 hover:text-black border-gray-200"
-                      onClick={() => setShowDesktopMap(!showDesktopMap)}
+                      onClick={() => {
+                        setShowDesktopMap(!showDesktopMap);
+                        if (showDesktopMap) {
+                           setSelectedClinicForMap(null);
+                        }
+                      }}
                     >
                       {showDesktopMap ? <><FaList /> Hide map</> : <><FaMapMarkedAlt /> Show map</>}
                     </Button>
@@ -425,12 +432,19 @@ export const Search: React.FC = () => {
           <aside className="hidden lg:block lg:w-[45%] xl:w-[40%] bg-gray-100 h-[calc(100vh-112px)] sticky top-[112px] border-l border-gray-200 animate-in slide-in-from-right duration-300">
             <div className="relative h-full">
               <button 
-                onClick={() => setShowDesktopMap(false)}
+                onClick={() => {
+                   setShowDesktopMap(false);
+                   setSelectedClinicForMap(null);
+                }}
                 className="absolute top-4 left-4 z-[1000] bg-white size-10 rounded-full shadow-xl flex items-center justify-center text-gray-400 hover:text-black hover:scale-110 transition-all border border-gray-100"
               >
                 <X size={20} />
               </button>
-              <ClinicMap clinics={clinics} center={mapCenter} zoom={13} />
+              <ClinicMap 
+                clinics={selectedClinicForMap ? [selectedClinicForMap] : clinics} 
+                center={mapCenter} 
+                zoom={selectedClinicForMap ? 15 : 13} 
+              />
             </div>
           </aside>
         )}

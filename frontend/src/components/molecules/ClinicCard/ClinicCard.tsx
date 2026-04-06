@@ -1,13 +1,13 @@
 import React from "react";
-import { Star, MapPin, Clock, X } from "lucide-react";
+import { Star, MapPin, Clock } from "lucide-react";
 import type { Clinic } from "@/types";
 import BotoxImg from "@/assets/Botox.jpg";
-import { ClinicMap } from "@/components/organisms/ClinicMap/ClinicMap";
 
 export interface ClinicCardProps {
   clinic: Clinic;
   index?: number;
   onSelect?: (clinic: Clinic) => void;
+  onShowMap?: (clinic: Clinic) => void;
   searchQuery?: string;
   searchDate?: string;
 }
@@ -16,11 +16,10 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
   clinic,
   index = 0,
   onSelect,
+  onShowMap,
   searchQuery,
   searchDate,
 }) => {
-  const [showMapModal, setShowMapModal] = React.useState(false);
-
   const handleClick = () => {
     onSelect?.(clinic);
   };
@@ -90,7 +89,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
                 )}
             </div>
             <button 
-                onClick={(e) => { e.stopPropagation(); setShowMapModal(true); }}
+                onClick={(e) => { e.stopPropagation(); onShowMap?.(clinic); }}
                 className="flex items-center gap-1 text-[10px] font-black uppercase text-indigo-600 hover:text-indigo-800 transition-colors bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100"
             >
                 <MapPin size={10} /> Show Map
@@ -160,49 +159,6 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
         </div>
 
       </div>
-
-      {/* Map Modal */}
-      {showMapModal && (
-          <div 
-            className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
-            onClick={(e) => { e.stopPropagation(); setShowMapModal(false); }}
-          >
-              <div 
-                className="bg-white w-full max-w-3xl h-[500px] rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col"
-                onClick={(e) => e.stopPropagation()}
-              >
-                  <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                      <div>
-                          <h3 className="text-xl font-black text-gray-900 uppercase italic tracking-tighter">{clinic.name}</h3>
-                          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest flex items-center gap-1 mt-1">
-                              <MapPin size={10} className="text-lime-600" /> {clinic.address.street}, {clinic.address.city}
-                          </p>
-                      </div>
-                      <button 
-                        onClick={() => setShowMapModal(false)}
-                        className="size-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-black hover:border-black transition-all shadow-sm"
-                      >
-                          <X size={20} />
-                      </button>
-                  </div>
-                  <div className="flex-1 relative">
-                      <ClinicMap 
-                        clinics={[clinic]} 
-                        center={[clinic.latitude || 51.505, clinic.longitude || -0.09]} 
-                        zoom={15} 
-                      />
-                  </div>
-                  <div className="p-6 bg-gray-50/80 border-t border-gray-100 flex justify-end">
-                      <button 
-                        onClick={() => { setShowMapModal(false); handleClick(); }}
-                        className="h-12 px-8 bg-black text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-lime-500 transition-colors shadow-lg"
-                      >
-                          View Full Details
-                      </button>
-                  </div>
-              </div>
-          </div>
-      )}
     </div>
   );
 };
