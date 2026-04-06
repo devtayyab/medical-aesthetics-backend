@@ -19,7 +19,7 @@ export const Search: React.FC = () => {
     (state: RootState) => state.client
   );
 
-  const [showDesktopMap, setShowDesktopMap] = useState<boolean>(true);
+  const [showDesktopMap, setShowDesktopMap] = useState<boolean>(false);
   const [showMobileMap, setShowMobileMap] = useState<boolean>(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
