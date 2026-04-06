@@ -58,7 +58,7 @@ export const ClinicDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { selectedClinic, services, isLoading, error, clinics } = useSelector(
+  const { selectedClinic, services, isLoading, clinics } = useSelector(
     (state: RootState) => state.client
   );
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
