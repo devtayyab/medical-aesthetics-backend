@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Link } from "react-router-dom";
 import { FaFacebookF, FaLinkedinIn } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
@@ -103,7 +103,7 @@ export const Footer: React.FC = () => {
                     href="tel:6948880498"
                     className="text-white transition hover:text-[#CBFF38]"
                   >
-                    📞 6948880498
+                    ðŸ“ž 6948880498
                   </a>
                 </li>
                 <li>
@@ -111,7 +111,7 @@ export const Footer: React.FC = () => {
                     href="mailto:info@beautydoctors.gr"
                     className="text-white transition hover:text-[#CBFF38]"
                   >
-                    ✉️ info@beautydoctors.gr
+                    âœ‰ï¸ info@beautydoctors.gr
                   </a>
                 </li>
               </ul>

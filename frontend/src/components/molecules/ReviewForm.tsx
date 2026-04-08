@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Input } from "@/components/atoms/Input/Input";
 import { Button } from "@/components/atoms/Button/Button";
 
@@ -33,7 +33,7 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({ onSubmit }) => {
               onClick={() => setRating(star)}
               className={`text-2xl ${star <= rating ? "text-yellow-400" : "text-gray-300"}`}
             >
-              ★
+              â˜…
             </button>
           ))}
         </div>

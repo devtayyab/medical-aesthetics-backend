@@ -214,7 +214,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
         />
         <MetricCard
           title="Target Progress"
-          value={analytics?.turnoverStats?.targetIsSet ? formatPercent(analytics?.turnoverStats?.progress) : '—'}
+          value={analytics?.turnoverStats?.targetIsSet ? formatPercent(analytics?.turnoverStats?.progress) : '€–'}
           icon={<CheckCircle className="w-5 h-5 text-blue-600" />}
           trend={analytics?.turnoverStats?.targetIsSet ? "Progress towards goal" : "No target set"}
           color="bg-blue-50 text-blue-700"
@@ -223,7 +223,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
           title="Pacing vs Target"
           value={analytics?.turnoverStats?.targetIsSet ? 
             `${analytics?.turnoverStats?.pacingStatus} ${(analytics?.turnoverStats?.pacingDelta || 0) > 0 ? '+' : ''}${formatPercent(analytics?.turnoverStats?.pacingDelta)}` 
-            : '—'}
+            : '€–'}
           icon={<Clock className="w-5 h-5 text-purple-600" />}
           trend={analytics?.turnoverStats?.targetIsSet ? `Expected progress by today: ${formatPercent(analytics?.turnoverStats?.expectedProgress)}` : "No target set"}
           color={

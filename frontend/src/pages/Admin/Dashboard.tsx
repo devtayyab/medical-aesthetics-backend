@@ -5,7 +5,7 @@ import type { RootState, AppDispatch } from "@/store";
 import {
   Users,
   CalendarCheck,
-  DollarSign,
+  Euro,
   XCircle,
   AlertTriangle,
   Clock,
@@ -17,7 +17,7 @@ import {
 
 export const Dashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { metrics, isLoading, error } = useSelector(
+  const { metrics: _metrics, isLoading, error } = useSelector(
     (state: RootState) => state.admin
   );
 
@@ -88,7 +88,7 @@ export const Dashboard: React.FC = () => {
             <p className="text-xs text-gray-400 mt-1">Target: €{expandedMetrics.turnoverTarget.toLocaleString()}</p>
           </div>
           <div className="p-3 bg-green-50 text-green-600 rounded-lg">
-            <DollarSign className="w-6 h-6" />
+            <Euro className="w-6 h-6" />
           </div>
         </div>
 

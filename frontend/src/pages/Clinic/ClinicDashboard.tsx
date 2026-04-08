@@ -14,7 +14,7 @@ import { UserRole, AppointmentStatus, Appointment } from "../../types/clinic.typ
 import {
   Calendar,
   Users,
-  DollarSign,
+  Euro,
   TrendingUp,
   Clock,
   CheckCircle,
@@ -192,10 +192,19 @@ const ClinicDashboard: React.FC = () => {
           />
           <StatCard 
              title="Entity Valuation" 
-             value={`${stats.totalRevenue.toLocaleString()}`} 
-             percentage="+4.2k"
+             value={(
+               <span className="flex items-center">
+                 <span className="font-sans mr-1">€</span>
+                 {stats.totalRevenue.toLocaleString()}
+               </span>
+             )} 
+             percentage={(
+               <span className="flex items-center">
+                 +<span className="font-sans mr-0.5">€</span>4.2k
+               </span>
+             )}
              trend="up"
-             icon={<TrendingUp size={24} />}
+             icon={<Euro size={24} />}
              delay={0.3}
           />
         </div>
@@ -418,9 +427,9 @@ const StatCard = React.forwardRef(({ title, value, percentage, trend, icon, dela
     <div className="relative z-10 flex flex-col justify-between h-full min-h-[140px]">
        <div className="flex items-start justify-between">
           <div className={`size-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
-            highlight ? 'bg-black text-[#CBFF38]' : 'bg-gray-50 text-black group-hover:bg-black group-hover:text-[#CBFF38]'
+            highlight ? 'bg-black text-[#CBFF38]' : 'bg-gray-50 text-black group-hover:bg-black group-hover:text-white'
           }`}>
-             {icon}
+             {React.cloneElement(icon, { className: highlight ? 'text-[#CBFF38]' : 'text-black group-hover:text-white' })}
           </div>
           <div className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
              trend === 'up' ? 'text-green-500 bg-green-50' : trend === 'neutral' ? 'text-orange-500 bg-orange-50' : 'text-gray-400 bg-gray-50'
@@ -482,7 +491,9 @@ const AppointmentPremiumRow = React.forwardRef(({ appointment, index, onClick }:
              <div className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isPending ? 'text-orange-500' : 'text-gray-400'}`}>
                 {appointment.status}
              </div>
-             <div className="text-sm font-black text-gray-900">{appointment.totalAmount || "0"}</div>
+             <div className="text-sm font-black text-gray-900">
+               <span className="font-sans mr-1">€</span>{appointment.totalAmount || "0"}
+             </div>
           </div>
           <div className="size-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-[#CBFF38] group-hover:text-black transition-all group-hover:rotate-12">
              <ChevronRight size={18} />

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { css } from '@emotion/css';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {

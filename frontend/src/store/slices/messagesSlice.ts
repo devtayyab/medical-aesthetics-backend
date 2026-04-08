@@ -87,8 +87,8 @@ export const sendMessage = createAsyncThunk(
 
 export const createConversation = createAsyncThunk(
     'messages/createConversation',
-    async (participantIds: string[]) => {
-        const response = await api.post('/messages/conversations', { participantIds });
+    async (payload: { participantIds: string[]; title?: string; isGroup?: boolean }) => {
+        const response = await api.post('/messages/conversations', payload);
         return response.data;
     }
 );

@@ -50,7 +50,7 @@ export class CrmController {
   @ApiQuery({ name: 'assignedSalesId', required: false })
   @ApiQuery({ name: 'source', required: false })
   @ApiQuery({ name: 'search', required: false })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.SECRETARIAT)
   @UseGuards(RolesGuard)
   findAll(@Query() filters: any, @Request() req) {
     return this.crmService.findAll({ ...filters, _requesterId: req.user.id });
@@ -58,7 +58,7 @@ export class CrmController {
 
   @Get('leads/:id')
   @ApiOperation({ summary: 'Get lead details' })
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.SECRETARIAT)
   @UseGuards(RolesGuard)
   findOne(@Param('id') id: string) {
     return this.crmService.findById(id);
@@ -82,7 +82,7 @@ export class CrmController {
 
   // Customer Record Management
   @Get('customers/:id/record')
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.SECRETARIAT)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get complete customer record with full history' })
   getCustomerRecord(@Param('id') customerId: string, @Request() req) {
@@ -121,7 +121,7 @@ export class CrmController {
   }
 
   @Get('customers')
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.SECRETARIAT)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get all customers' })
   getCustomers(@Query() filters: any, @Request() req) {
@@ -141,7 +141,7 @@ export class CrmController {
   }
 
   @Patch('communications/:id')
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.SECRETARIAT)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Update communication log' })
   updateCommunication(@Param('id') id: string, @Body() updateData: any) {
@@ -220,7 +220,7 @@ export class CrmController {
 
   // Tag Management
   @Post('customers/:id/tags')
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.SECRETARIAT)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Add tag to customer' })
   addCustomerTag(

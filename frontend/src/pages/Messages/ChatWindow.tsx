@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Send, Phone, Video, MoreVertical, Paperclip, Smile, ShieldCheck, Clock } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../store';

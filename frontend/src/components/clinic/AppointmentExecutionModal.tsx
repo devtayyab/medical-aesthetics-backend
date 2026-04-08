@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { updateAppointmentStatus } from '../../store/slices/clinicSlice';
 import { PaymentMethod, Appointment, Service, AppointmentStatus } from '../../types/clinic.types';
-import { X, DollarSign, CreditCard, Banknote, Building2, Gift, RefreshCw, AlertTriangle } from 'lucide-react';
+import { X, Euro, CreditCard, Banknote, Building2, Gift, RefreshCw, AlertTriangle } from 'lucide-react';
 import { clinicsAPI, loyaltyAPI } from '@/services/api';
 
 interface AppointmentExecutionModalProps {
@@ -156,14 +156,14 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium"
                 >
                   {services.map(s => (
-                    <option key={s.id} value={s.id}>{s.treatment?.name || 'Unknown Service'} - €{s.price}</option>
+                    <option key={s.id} value={s.id}>{s.treatment?.name || 'Unknown Service'} - {'€'}{s.price}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-500">BASE PRICE (€)</label>
                 <div className="relative">
-                  <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Euro className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="number"
                     value={finalAmount}

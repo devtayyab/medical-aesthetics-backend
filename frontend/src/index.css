@@ -107,3 +107,18 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Custom class for white date/time picker icons on dark backgrounds */
+.white-indicator {
+  color-scheme: dark;
+}
+
+.white-indicator::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(100) !important;
+  cursor: pointer;
+  opacity: 0; /* Hide native icon to use our custom Lucide icon instead */
+  position: absolute;
+  right: 0;
+  width: 100%; /* Keep it clickable across the input */
+  height: 100%;
+}

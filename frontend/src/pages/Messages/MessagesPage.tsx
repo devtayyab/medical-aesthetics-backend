@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { MessageSquare, Plus, Search, Info, Send, User } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../store';

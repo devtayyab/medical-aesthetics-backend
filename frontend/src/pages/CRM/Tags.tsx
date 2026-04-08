@@ -1,4 +1,4 @@
-import {
+﻿import {
   Trash2,
   Plus,
   Hash,
@@ -10,7 +10,9 @@ import {
   Layers,
   ArrowRight,
   ExternalLink,
-  Search
+  Search,
+  Mail,
+  Phone
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
@@ -19,11 +21,13 @@ import { Select } from "@/components/atoms/Select/Select";
 import { addCustomerTag, removeCustomerTag, fetchCustomersByTag } from "@/store/slices/crmSlice";
 import { adminAPI, userAPI } from "@/services/api";
 import type { RootState, AppDispatch } from "@/store";
+import { useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 export const Tags: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const { isLoading } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
 
@@ -111,6 +115,12 @@ export const Tags: React.FC = () => {
       })).unwrap();
       setTagData({ customerId: "", tagId: "", notes: "" });
       setCustomerSearch("");
+      
+      // Auto-refresh the list if a tag is selected
+      if (selectedTagHeader) {
+        handleFetchCustomersByTag(selectedTagHeader);
+      }
+      
       alert("Tag assigned successfully!");
     } catch (error) {
       alert("Failed to assign tag");
@@ -481,8 +491,11 @@ export const Tags: React.FC = () => {
                     <h3 className="font-bold text-slate-900 text-lg tracking-tight">
                       {customer.customer?.firstName} {customer.customer?.lastName}
                     </h3>
-                    <div className="text-xs text-slate-500 font-medium">
-                      {customer.customer?.email}
+                    <div className="text-xs text-slate-500 font-medium flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5"><Mail className="w-3 h-3 pt-0.5" /> {customer.customer?.email}</div>
+                      {customer.customer?.phone && (
+                        <div className="flex items-center gap-1.5"><Phone className="w-3 h-3 pt-0.5" /> {customer.customer?.phone}</div>
+                      )}
                     </div>
                   </div>
 
@@ -500,7 +513,7 @@ export const Tags: React.FC = () => {
                       variant="outline"
                       size="sm"
                       className="flex-1 h-10 rounded-lg border-slate-200 hover:bg-slate-50 text-slate-600 font-bold transition-all text-xs"
-                      onClick={() => window.location.href = `/crm/customers/${customer.customer?.id}`}
+                      onClick={() => navigate(`/crm/customer/${customer.customer?.id}`)}
                     >
                       <ExternalLink className="w-3.5 h-3.5 mr-2" />
                       View Profile

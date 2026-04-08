@@ -9,7 +9,7 @@ import {
   BarChart3,
   BookOpen,
   Calendar,
-  DollarSign,
+  Euro,
   Loader2,
   TrendingUp,
   Users,
@@ -83,9 +83,9 @@ export interface AdvertisementStat {
 
 // Format currency utility function
 const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-GB', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'EUR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
@@ -397,7 +397,7 @@ export const ManagerDashboard = () => {
                             <td className="p-4 align-middle font-medium">{(service.name?.trim() || service.treatment?.name || 'Unnamed Service')}</td>
                             <td className="p-4 align-middle text-muted-foreground">{service.treatment?.category || service.category || 'General'}</td>
                             <td className="p-4 align-middle">{service.durationMinutes || 0} min</td>
-                            <td className="p-4 align-middle text-right">{service.price !== undefined && service.price !== null ? formatCurrency(Number(service.price)) : '$0'}</td>
+                            <td className="p-4 align-middle text-right">{service.price !== undefined && service.price !== null ? formatCurrency(Number(service.price)) : '€0'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -583,7 +583,7 @@ export const ManagerDashboard = () => {
           title="Total Revenue"
           value={formatCurrency(totalRevenue)}
           change={revenueChange}
-          icon={<DollarSign className="h-4 w-4" />}
+          icon={<Euro className="h-4 w-4" />}
           iconBg="bg-green-100 text-green-600"
         />
         <StatCard
@@ -666,7 +666,7 @@ export const ManagerDashboard = () => {
                         const date = new Date(value);
                         return `${date.getMonth() + 1}/${date.getDate()}`;
                       }} />
-                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `€${value}`} />
                       <Tooltip
                         cursor={{ fill: 'transparent' }}
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { NotificationCard } from "@/components/molecules/NotificationCard";
 import type { Notification } from "@/types";
 

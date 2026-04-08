@@ -409,7 +409,7 @@ export const HomePage: React.FC = () => {
               Own a medical <br /> <span className="text-[#CBFF38]">aesthetics clinic?</span>
             </h2>
             <p className="text-gray-300 text-lg leading-relaxed max-w-lg mx-auto lg:mx-0">
-              We’ll help you grow your practice and attract more patients with
+              We'll help you grow your practice and attract more patients with
               our easy-to-use booking platform.
             </p>
             <button className="inline-block bg-[#CBFF38] text-[#1A202C] px-8 py-4 rounded-xl font-bold hover:bg-white transition-colors transform hover:-translate-y-1">

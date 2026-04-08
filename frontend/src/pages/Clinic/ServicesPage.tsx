@@ -13,7 +13,6 @@ import {
   Clock,
   Settings,
   X,
-  Activity,
 } from "lucide-react";
 
 const ServicesPage: React.FC = () => {
@@ -192,7 +191,7 @@ const ServiceCard = ({ service, canManage, onToggle, onEdit }: any) => {
                 <div className="space-y-1">
                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Valuation</p>
                    <div className="text-xl font-black tracking-tighter text-gray-900 italic">
-                      {service.price}
+                      €{service.price}
                    </div>
                 </div>
              </div>
@@ -494,9 +493,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           {/* Price & Duration */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pricing ($)</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pricing (€)</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">€</span>
                 <input
                   type="number"
                   step="0.01"

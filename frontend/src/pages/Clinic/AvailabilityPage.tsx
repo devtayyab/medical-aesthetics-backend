@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../store";
 import {
@@ -300,19 +300,25 @@ const AvailabilityPage: React.FC = () => {
 
                     {businessHours[day]?.isOpen ? (
                       <div className="flex items-center gap-3">
-                        <input
-                          type="time"
-                          value={businessHours[day]?.open || "09:00"}
-                          onChange={(e) => updateDayHours(day, "open", e.target.value)}
-                          className="h-10 px-4 bg-white border border-gray-100 rounded-xl font-black text-xs text-gray-900 focus:ring-2 focus:ring-black outline-none"
-                        />
+                        <div className="relative">
+                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                          <input
+                            type="time"
+                            value={businessHours[day]?.open || "09:00"}
+                            onChange={(e) => updateDayHours(day, "open", e.target.value)}
+                            className="h-10 pl-10 pr-4 bg-white border border-gray-100 rounded-xl font-black text-xs text-gray-900 focus:ring-2 focus:ring-black outline-none white-indicator"
+                          />
+                        </div>
                         <span className="text-[10px] font-black text-gray-300 uppercase italic">To</span>
-                        <input
-                          type="time"
-                          value={businessHours[day]?.close || "17:00"}
-                          onChange={(e) => updateDayHours(day, "close", e.target.value)}
-                          className="h-10 px-4 bg-white border border-gray-100 rounded-xl font-black text-xs text-gray-900 focus:ring-2 focus:ring-black outline-none"
-                        />
+                        <div className="relative">
+                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                          <input
+                            type="time"
+                            value={businessHours[day]?.close || "17:00"}
+                            onChange={(e) => updateDayHours(day, "close", e.target.value)}
+                            className="h-10 pl-10 pr-4 bg-white border border-gray-100 rounded-xl font-black text-xs text-gray-900 focus:ring-2 focus:ring-black outline-none white-indicator"
+                          />
+                        </div>
                       </div>
                     ) : (
                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-300 italic">Clinic Closed</span>
@@ -356,12 +362,15 @@ const AvailabilityPage: React.FC = () => {
                 <div className="relative">
                   <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-2 mb-2 italic">Add New Block</p>
                   <div className="flex gap-2">
-                    <input
-                      type="date"
-                      value={newBlockedDate}
-                      onChange={(e) => setNewBlockedDate(e.target.value)}
-                      className="flex-1 h-12 px-4 bg-gray-50 border-none rounded-2xl font-black uppercase text-[10px] tracking-widest focus:ring-2 focus:ring-black outline-none"
-                    />
+                    <div className="relative flex-1">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                      <input
+                        type="date"
+                        value={newBlockedDate}
+                        onChange={(e) => setNewBlockedDate(e.target.value)}
+                        className="w-full h-12 pl-10 pr-4 bg-gray-50 border-none rounded-2xl font-black uppercase text-[10px] tracking-widest focus:ring-2 focus:ring-black outline-none white-indicator"
+                      />
+                    </div>
                     <button
                       onClick={addBlockedDate}
                       className="size-12 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all shadow-lg"
@@ -406,7 +415,7 @@ const AvailabilityPage: React.FC = () => {
             <section className="bg-[#0D0D0D] rounded-[40px] p-8 border border-white/5 shadow-2xl relative overflow-hidden">
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-8">
-                  <div className="size-10 bg-[#CBFF38] rounded-xl flex items-center justify-center text-black">
+                  <div className="size-10 bg-[#CBFF38] rounded-xl flex items-center justify-center text-white">
                     <Clock size={18} />
                   </div>
                   <h2 className="text-[15px] font-black uppercase italic tracking-tighter text-white">Temporary Blocks</h2>
@@ -415,31 +424,40 @@ const AvailabilityPage: React.FC = () => {
                 <div className="space-y-4 mb-8">
                   <div className="space-y-2">
                     <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 italic">Date</p>
-                    <input
-                      type="date"
-                      value={newSlot.date}
-                      onChange={(e) => setNewSlot({ ...newSlot, date: e.target.value })}
-                      className="w-full h-12 px-5 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none"
-                    />
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+                      <input
+                        type="date"
+                        value={newSlot.date}
+                        onChange={(e) => setNewSlot({ ...newSlot, date: e.target.value })}
+                        className="w-full h-12 pl-10 pr-12 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none white-indicator appearance-none"
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-4">
                     <div className="flex-1 space-y-2">
                       <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 italic">Entry</p>
-                      <input
-                        type="time"
-                        value={newSlot.startTime}
-                        onChange={(e) => setNewSlot({ ...newSlot, startTime: e.target.value })}
-                        className="w-full h-12 px-5 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none"
-                      />
+                      <div className="relative">
+                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+                        <input
+                          type="time"
+                          value={newSlot.startTime}
+                          onChange={(e) => setNewSlot({ ...newSlot, startTime: e.target.value })}
+                          className="w-full h-12 pl-10 pr-12 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none white-indicator appearance-none"
+                        />
+                      </div>
                     </div>
                     <div className="flex-1 space-y-2">
                       <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 italic">Exit</p>
-                      <input
-                        type="time"
-                        value={newSlot.endTime}
-                        onChange={(e) => setNewSlot({ ...newSlot, endTime: e.target.value })}
-                        className="w-full h-12 px-5 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none"
-                      />
+                      <div className="relative">
+                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+                        <input
+                          type="time"
+                          value={newSlot.endTime}
+                          onChange={(e) => setNewSlot({ ...newSlot, endTime: e.target.value })}
+                          className="w-full h-12 pl-10 pr-12 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none white-indicator appearance-none"
+                        />
+                      </div>
                     </div>
                   </div>
                   <button

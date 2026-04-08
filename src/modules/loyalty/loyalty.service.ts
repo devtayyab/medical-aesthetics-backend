@@ -163,48 +163,56 @@ export class LoyaltyService {
   async getClinicLoyaltyAnalytics(
     userId: string,
     userRole: string,
-    query: { startDate?: string; endDate?: string },
+    query: { startDate?: string; endDate?: string; clinicId?: string },
   ): Promise<any> {
-    // Get clinic based on user role
-    let clinic;
-    if (userRole === 'clinic_owner') {
-      clinic = await this.clinicsService.findByOwnerId(userId);
+    const qb = this.ledgerRepository.createQueryBuilder('ledger');
+
+    // 1. Determine Scope
+    if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
+       if (query.clinicId) qb.where('ledger.clinicId = :clinicId', { clinicId: query.clinicId });
+    } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
+      const user = await this.ledgerRepository.manager.getRepository('User').findOne({ 
+        where: { id: userId }, 
+        relations: ['ownedClinics'] 
+      });
+      const clinicIds = ((user as any)?.ownedClinics || []).map(c => c.id);
+      if ((user as any)?.assignedClinicId) clinicIds.push((user as any).assignedClinicId);
+      
+      if (clinicIds.length > 0) {
+        qb.where('ledger.clinicId IN (:...clinicIds)', { clinicIds });
+      } else {
+        // Fallback to empty if no associated clinic
+        qb.where('1=0');
+      }
+    } else if (userRole === 'manager' && query.clinicId) {
+      qb.where('ledger.clinicId = :clinicId', { clinicId: query.clinicId });
     } else {
-      throw new Error('Loyalty analytics not available for this user role');
+      qb.where('1=0');
     }
-
-    if (!clinic) {
-      throw new Error('Clinic not found');
-    }
-
-    // Get loyalty statistics for the clinic
-    const loyaltyStats = await this.ledgerRepository
-      .createQueryBuilder('ledger')
-      .select([
-        'SUM(ledger.points) as totalPoints',
-        'COUNT(DISTINCT ledger.clientId) as uniqueClients',
-        'AVG(ledger.points) as avgPointsPerTransaction',
-      ])
-      .where('ledger.clinicId = :clinicId', { clinicId: clinic.id });
 
     if (query.startDate && query.endDate) {
-      loyaltyStats.andWhere('ledger.createdAt BETWEEN :startDate AND :endDate', {
+      qb.andWhere('ledger.createdAt BETWEEN :startDate AND :endDate', {
         startDate: new Date(query.startDate),
         endDate: new Date(query.endDate),
       });
     }
 
-    const stats = await loyaltyStats.getRawOne();
+    // 2. Aggregate Stats
+    const statsQuery = qb.clone().select([
+      'SUM(ledger.points) as totalPoints',
+      'COUNT(DISTINCT ledger.clientId) as uniqueClients',
+      'AVG(ledger.points) as avgPointsPerTransaction',
+    ]);
+    
+    const stats = await statsQuery.getRawOne();
 
-    // Get top clients by points
-    const topClients = await this.ledgerRepository
-      .createQueryBuilder('ledger')
+    // 3. Top Clients
+    const topClients = await qb.clone()
       .select([
         'ledger.clientId',
         'SUM(ledger.points) as totalPoints',
         'COUNT(ledger.id) as transactions',
       ])
-      .where('ledger.clinicId = :clinicId', { clinicId: clinic.id })
       .andWhere('(ledger.expiresAt IS NULL OR ledger.expiresAt > NOW())')
       .groupBy('ledger.clientId')
       .orderBy('totalPoints', 'DESC')
@@ -212,15 +220,11 @@ export class LoyaltyService {
       .getRawMany();
 
     return {
-      clinicId: clinic.id,
-      clinicName: clinic.name,
-      period: { startDate: query.startDate, endDate: query.endDate },
-      stats: {
-        totalPoints: parseInt(stats.totalPoints) || 0,
-        uniqueClients: parseInt(stats.uniqueClients) || 0,
-        avgPointsPerTransaction: parseFloat(stats.avgPointsPerTransaction) || 0,
-      },
+      totalPoints: parseInt(stats.totalPoints) || 0,
+      uniqueClients: parseInt(stats.uniqueClients) || 0,
+      avgPointsPerTransaction: parseFloat(stats.avgPointsPerTransaction) || 0,
       topClients,
+      period: { startDate: query.startDate, endDate: query.endDate }
     };
   }
   async handleReferral(newClientId: string, referralCode: string): Promise<void> {

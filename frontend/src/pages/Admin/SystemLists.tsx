@@ -183,7 +183,7 @@ export const SystemLists: React.FC = () => {
                     {activeTab === 'treatments' && (
                       <td className="px-8 py-5">
                         <span className="px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-extrabold rounded-lg border border-blue-100">
-                          {item.categoryRef?.name || 'Uncategorized'}
+                          {((item as Treatment).categoryRef?.name) || 'Uncategorized'}
                         </span>
                       </td>
                     )}

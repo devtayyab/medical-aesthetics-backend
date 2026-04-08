@@ -10,13 +10,11 @@ import {
     Phone,
     Shield,
     Search,
-    MoreVertical,
     X,
     CheckCircle2,
     AlertCircle
 } from "lucide-react";
-import { Button } from "@/components/atoms/Button/Button";
-import { Card, CardContent } from "@/components/molecules/Card/Card";
+
 import clinicApi from "@/services/api/clinicApi";
 
 interface StaffMember {
@@ -30,7 +28,6 @@ interface StaffMember {
 }
 
 const StaffPage: React.FC = () => {
-    const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     const { profile } = useSelector((state: RootState) => state.clinic);
     const [staff, setStaff] = useState<StaffMember[]>([]);

@@ -56,11 +56,12 @@ export interface CustomerRecord {
 
 export interface CommunicationLog {
   id: string;
-  customerId: string;
-  salespersonId?: string;
-  type: 'call' | 'email' | 'sms' | 'form_submission' | 'meeting' | 'note';
-  direction: 'incoming' | 'outgoing';
-  status: 'completed' | 'missed' | 'pending';
+  customerId?: string | null;
+  relatedLeadId?: string | null;
+  salespersonId?: string | null;
+  type: 'call' | 'email' | 'sms' | 'form_submission' | 'meeting' | 'note' | 'whatsapp';
+  direction: 'incoming' | 'outgoing' | 'missed';
+  status: 'completed' | 'missed' | 'pending' | 'no_answer' | 'voicemail' | 'scheduled' | 'cancelled';
   subject?: string;
   notes?: string;
   durationSeconds?: number;
@@ -81,7 +82,7 @@ export interface CommunicationLog {
 
 export interface CrmAction {
   id: string;
-  customerId: string;
+  customerId?: string | null;
   salespersonId: string;
   actionType: 'call' | 'mobile_message' | 'follow_up_call' | 'email' | 'appointment' | 'confirmation_call_reminder' | 'satisfaction_check' | 'complaint';
   therapy?: string;
@@ -98,6 +99,7 @@ export interface CrmAction {
   originalTaskId?: string;
   relatedAppointmentId?: string;
   relatedLeadId?: string;
+  clinic?: string;
   metadata?: {
     clinic?: string;
     proposedTreatment?: string;

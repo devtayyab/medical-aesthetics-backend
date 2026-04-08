@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { notificationsAPI } from "@/services/api";
 import { Bell, Mail, Smartphone, Edit2, RefreshCcw, Save, X, Plus, Info } from "lucide-react";
 import { toast } from "react-hot-toast";

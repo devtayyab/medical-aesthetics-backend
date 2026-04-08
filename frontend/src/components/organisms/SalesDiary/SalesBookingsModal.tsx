@@ -134,8 +134,8 @@ export const SalesBookingsModal: React.FC<SalesBookingsModalProps> = ({ isOpen, 
                                             </div>
                                         </div>
                                         <div className="text-right flex flex-col items-end">
-                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${apt.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                                apt.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${apt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                                                apt.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
                                                     'bg-amber-100 text-amber-700'
                                                 }`}>
                                                 {apt.status}

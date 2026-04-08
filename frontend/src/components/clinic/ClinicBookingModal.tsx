@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, Mail, ChevronRight, CheckCircle } from 'lucide-react';
+import { X, User, Phone, Mail, ChevronRight, CheckCircle, Calendar, Clock } from 'lucide-react';
 import { clinicsAPI, bookingAPI } from '@/services/api';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
@@ -86,7 +86,8 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
                 clinicId,
                 serviceId: selectedService,
                 providerId: selectedProvider || undefined,
-                date: selectedDate
+                date: selectedDate,
+                allowPast: true
             });
             setAvailableSlots(res.data.slots || res.data || []);
         } catch (err) {
@@ -221,7 +222,7 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
                                         <option value="">Choose a treatment...</option>
                                         {services.map(s => (
                                             <option key={s.id} value={s.id}>
-                                                {s.treatment?.name || s.name || 'Unnamed Service'} - ${s.price}
+                                                {s.treatment?.name || s.name || 'Unnamed Service'} - €{s.price}
                                             </option>
                                         ))}
                                     </select>
@@ -250,13 +251,15 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-gray-500 uppercase">Select Date</label>
-                                    <input
-                                        type="date"
-                                        min={format(new Date(), 'yyyy-MM-dd')}
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={selectedDate}
-                                        onChange={(e) => setSelectedDate(e.target.value)}
-                                    />
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600 pointer-events-none" />
+                                        <input
+                                            type="date"
+                                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white white-indicator"
+                                            value={selectedDate}
+                                            onChange={(e) => setSelectedDate(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-gray-500 uppercase">Select Slot *</label>

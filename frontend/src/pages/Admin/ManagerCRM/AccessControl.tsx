@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+﻿import React, { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/atoms/Button/Button";
@@ -77,7 +77,7 @@ export const AccessControl: React.FC = () => {
 
       await updateAgentAccess(agentId, clinicAccessPayload);
       toast.success("Permissions updated successfully", {
-        icon: '🛡️',
+        icon: 'ðŸ›¡ï¸',
         style: {
           borderRadius: '1.25rem',
           background: '#F0FDF4',

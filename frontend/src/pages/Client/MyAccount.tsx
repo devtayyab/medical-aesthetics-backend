@@ -137,7 +137,7 @@ export const MyAccount: React.FC = () => {
     },
     {
       title: "Invite a Friend",
-      desc: "Share the love and earn $5 rewards",
+      desc: "Share the love and earn €5 rewards",
       icon: <IoPersonAddOutline size={24} />,
       link: "/invite-friend",
       bg: "#FEF2F2"

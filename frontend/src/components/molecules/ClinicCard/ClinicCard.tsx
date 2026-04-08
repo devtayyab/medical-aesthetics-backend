@@ -7,6 +7,7 @@ export interface ClinicCardProps {
   clinic: Clinic;
   index?: number;
   onSelect?: (clinic: Clinic) => void;
+  onShowMap?: (clinic: Clinic) => void;
   searchQuery?: string;
   searchDate?: string;
 }
@@ -15,6 +16,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
   clinic,
   index = 0,
   onSelect,
+  onShowMap,
   searchQuery,
   searchDate,
 }) => {
@@ -75,15 +77,23 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
         </div>
 
         {/* Location Row */}
-        <div className="flex items-center gap-1.5 text-sm text-gray-500 font-medium mb-5 truncate">
-          <MapPin size={14} className="shrink-0" />
-          <span className="truncate">{clinic.address?.city}</span>
-          {clinic.distance !== undefined && (
-            <>
-              <span className="mx-1">•</span>
-              <span className="shrink-0 text-lime-600">{Number(clinic.distance).toFixed(1)}km away</span>
-            </>
-          )}
+        <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-1.5 text-sm text-gray-500 font-medium truncate">
+                <MapPin size={14} className="shrink-0" />
+                <span className="truncate">{clinic.address?.city}</span>
+                {clinic.distance !== undefined && (
+                    <>
+                    <span className="mx-1">•</span>
+                    <span className="shrink-0 text-lime-600">{Number(clinic.distance).toFixed(1)}km away</span>
+                    </>
+                )}
+            </div>
+            <button 
+                onClick={(e) => { e.stopPropagation(); onShowMap?.(clinic); }}
+                className="flex items-center gap-1 text-[10px] font-black uppercase text-indigo-600 hover:text-indigo-800 transition-colors bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100"
+            >
+                <MapPin size={10} /> Show Map
+            </button>
         </div>
 
         {/* Services List (Treatwell style) */}
@@ -104,13 +114,13 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[10px] font-black text-gray-300 uppercase leading-none mb-0.5">starting from</p>
-                  <p className="text-[14px] font-black text-lime-700">{service.price}</p>
+                  <p className="text-[14px] font-black text-lime-700"><span className="font-sans">€</span>{service.price}</p>
                 </div>
               </div>
             ))
           ) : (
             <div className="text-sm text-gray-500 italic py-2">
-              Treatments starting from 49. View clinic to see all services.
+              Treatments starting from <span className="font-sans">€</span>49. View clinic to see all services.
             </div>
           )}
         </div>

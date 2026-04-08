@@ -111,11 +111,7 @@ export class CrmAction {
   @Column({ nullable: true })
   proposedTreatment?: string;
 
-  @Column({
-    type: 'enum',
-    enum: ['successful', 'failed', 'pending'],
-    nullable: true,
-  })
+  @Column({ type: 'text', nullable: true })
   callOutcome?: string;
 
   // Optional cost

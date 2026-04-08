@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+﻿import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { searchClinics } from "@/store/slices/clientSlice";
@@ -8,7 +8,7 @@ import { ClinicCard } from "@/components/molecules/ClinicCard/ClinicCard";
 import { TreatmentCard } from "@/components/molecules/TreatmentCard/TreatmentCard";
 import { Button } from "@/components/atoms/Button/Button";
 import { FaHospital, FaMap, FaList, FaStar, FaChevronDown, FaMapMarkedAlt } from "react-icons/fa";
-import { MapPin } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import { ClinicMap } from "@/components/organisms/ClinicMap/ClinicMap";
 
 export const Search: React.FC = () => {
@@ -19,11 +19,12 @@ export const Search: React.FC = () => {
     (state: RootState) => state.client
   );
 
-  const [showDesktopMap, setShowDesktopMap] = useState<boolean>(true);
+  const [showDesktopMap, setShowDesktopMap] = useState<boolean>(false);
   const [showMobileMap, setShowMobileMap] = useState<boolean>(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedClinicForMap, setSelectedClinicForMap] = useState<any | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('clinics');
+  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('treatments');
 
   // Search states
   const [query, setQuery] = useState(searchParams.get("query") || "");
@@ -61,14 +62,13 @@ export const Search: React.FC = () => {
 
   // Computed lists: Flatten treatments to show individual services (Clinic - Treatment - Price)
   const filteredTreatments = useMemo(() => {
-    // 1. Get services from the master treatments array
     const masterServices = treatments.flatMap((t: any) => {
       const offerings = t.offerings || [];
       return offerings
         .filter((o: any) => o.isActive && o.clinic?.isActive)
         .map((o: any) => ({
           ...t,
-          id: `${t.id}|${o.id}`, // Use pipe as it doesn't appear in UUIDs
+          id: `${t.id}|${o.id}`,
           treatmentId: t.id,
           offeringId: o.id,
           clinic: o.clinic,
@@ -79,7 +79,6 @@ export const Search: React.FC = () => {
         }));
     });
 
-    // 2. CRITICAL: Also get ALL services from the clinics found in the search
     const venueServices = clinics.flatMap((c: any) => {
       const servicesFromVenue = c.services || c.offerings || [];
       return servicesFromVenue
@@ -99,10 +98,9 @@ export const Search: React.FC = () => {
         }));
     });
 
-    // 3. Group by TREATMENT ID to satisfy the "One Card per Therapy" rule
     const groupedByTreatment = new Map();
     [...masterServices, ...venueServices].forEach(item => {
-      const tid = item.treatmentId; // Use the preserved treatment ID
+      const tid = item.treatmentId;
       if (!groupedByTreatment.has(tid)) {
         groupedByTreatment.set(tid, {
           ...item,
@@ -125,7 +123,6 @@ export const Search: React.FC = () => {
 
     let result = Array.from(groupedByTreatment.values());
 
-    // Fallback: If no bookable services, show master treatments as info
     if (result.length === 0) {
       result = treatments.map(t => ({
         ...t,
@@ -137,7 +134,6 @@ export const Search: React.FC = () => {
       }));
     }
 
-    // 4. Filter by price if needed
     if (priceFilter !== 'any') {
       result = result.filter(s => {
         const price = s.fromPrice || 0;
@@ -148,7 +144,6 @@ export const Search: React.FC = () => {
       });
     }
 
-    // 5. Sort
     if (sortBy === 'price-asc') result.sort((a, b) => (a.fromPrice || 0) - (b.fromPrice || 0));
     if (sortBy === 'price-desc') result.sort((a, b) => (b.fromPrice || 0) - (a.fromPrice || 0));
     
@@ -170,18 +165,21 @@ export const Search: React.FC = () => {
   }, [clinics, sortBy, ratingFilter]);
 
   const mapCenter = useMemo(() => {
+    if (selectedClinicForMap && selectedClinicForMap.latitude && selectedClinicForMap.longitude) {
+      return [Number(selectedClinicForMap.latitude), Number(selectedClinicForMap.longitude)] as [number, number];
+    }
     if (userCoords) return [userCoords.lat, userCoords.lng] as [number, number];
     const clinicWithCoords = clinics.find(c => c.latitude && c.longitude);
     if (clinicWithCoords) {
-      return [clinicWithCoords.latitude!, clinicWithCoords.longitude!] as [number, number];
+      return [Number(clinicWithCoords.latitude), Number(clinicWithCoords.longitude)] as [number, number];
     }
-    return [51.505, -0.09] as [number, number]; // London
-  }, [userCoords, clinics]);
+    return [51.505, -0.09] as [number, number];
+  }, [userCoords, clinics, selectedClinicForMap]);
 
   useEffect(() => {
     dispatch(
       searchClinics({
-        search: query, // Map frontend 'query' to backend 'search'
+        search: query,
         location: location || undefined,
         category,
         search_date: searchDate,
@@ -219,7 +217,6 @@ export const Search: React.FC = () => {
     <div className="min-h-screen bg-white">
       <div className="flex flex-col lg:flex-row w-full min-h-screen relative">
         <div className={`flex flex-col min-w-0 transition-all duration-300 ${showDesktopMap ? 'lg:w-[55%] xl:w-[60%]' : 'w-full'}`}>
-          {/* Sticky Header */}
           <div className="bg-white border-b border-gray-200 sticky top-[64px] z-40 shadow-sm w-full transition-all duration-300">
             <div className="px-4 py-2.5 flex items-center justify-between gap-4">
               <div
@@ -273,7 +270,12 @@ export const Search: React.FC = () => {
                     <Button
                       variant="outline"
                       className="font-bold flex items-center gap-2 rounded-xl text-gray-700 hover:text-black border-gray-200"
-                      onClick={() => setShowDesktopMap(!showDesktopMap)}
+                      onClick={() => {
+                        setShowDesktopMap(!showDesktopMap);
+                        if (showDesktopMap) {
+                           setSelectedClinicForMap(null);
+                        }
+                      }}
                     >
                       {showDesktopMap ? <><FaList /> Hide map</> : <><FaMapMarkedAlt /> Show map</>}
                     </Button>
@@ -283,7 +285,6 @@ export const Search: React.FC = () => {
             )}
           </div>
 
-          {/* Popular Categories */}
           <div className="max-w-full px-4 pt-4 flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth">
             {['All', 'Hair Removal', 'Injectables', 'Skin Care', 'Body', 'Surgery', 'Dental'].map((cat) => (
               <button
@@ -304,7 +305,6 @@ export const Search: React.FC = () => {
             ))}
           </div>
 
-          {/* Filters Row */}
           <div className="max-w-full px-4 py-3 flex flex-wrap items-center gap-3 border-b border-gray-100 relative">
             <div className="relative">
               <button
@@ -352,7 +352,6 @@ export const Search: React.FC = () => {
             )}
           </div>
 
-          {/* Results List */}
           <div className="p-4 md:p-6 lg:p-8 flex-1">
             <div className="mb-6">
               <h1 className="text-2xl font-black text-gray-900 leading-tight">
@@ -400,12 +399,7 @@ export const Search: React.FC = () => {
                           key={t.id} 
                           treatment={t} 
                           onSelect={() => {
-                            if (t.offerings?.length === 1) {
-                              const offering = t.offerings[0];
-                              navigate(`/appointment/booking?clinicId=${offering.clinic.id}&serviceIds=${offering.offeringId}`);
-                            } else {
-                              navigate(`/treatment/${t.id}`);
-                            }
+                            navigate(`/treatment/${t.id}`);
                           }} 
                         />
                       ))}
@@ -413,7 +407,18 @@ export const Search: React.FC = () => {
                   ) : (
                     <div className="space-y-6">
                       {filteredClinics.map((c, idx) => (
-                        <ClinicCard key={c.id} clinic={c} index={idx} searchQuery={query} searchDate={searchDate || undefined} onSelect={() => navigate(`/clinic/${c.id}`)} />
+                        <ClinicCard 
+                          key={c.id} 
+                          clinic={c} 
+                          index={idx} 
+                          searchQuery={query} 
+                          searchDate={searchDate || undefined} 
+                          onSelect={() => navigate(`/clinic/${c.id}`)} 
+                          onShowMap={(clinic) => {
+                            setSelectedClinicForMap(clinic);
+                            setShowDesktopMap(true);
+                          }}
+                        />
                       ))}
                     </div>
                   )}
@@ -423,10 +428,24 @@ export const Search: React.FC = () => {
           </div>
         </div>
 
-        {/* Map Column */}
         {showDesktopMap && (
-          <aside className="hidden lg:block lg:w-[45%] xl:w-[40%] bg-gray-100 h-[calc(100vh-112px)] sticky top-[112px] border-l border-gray-200">
-            <ClinicMap clinics={clinics} center={mapCenter} zoom={13} />
+          <aside className="hidden lg:block lg:w-[45%] xl:w-[40%] bg-gray-100 h-[calc(100vh-112px)] sticky top-[112px] border-l border-gray-200 animate-in slide-in-from-right duration-300">
+            <div className="relative h-full">
+              <button 
+                onClick={() => {
+                   setShowDesktopMap(false);
+                   setSelectedClinicForMap(null);
+                }}
+                className="absolute top-4 left-4 z-[1000] bg-white size-10 rounded-full shadow-xl flex items-center justify-center text-gray-400 hover:text-black hover:scale-110 transition-all border border-gray-100"
+              >
+                <X size={20} />
+              </button>
+              <ClinicMap 
+                clinics={selectedClinicForMap ? [selectedClinicForMap] : clinics} 
+                center={mapCenter} 
+                zoom={selectedClinicForMap ? 15 : 13} 
+              />
+            </div>
           </aside>
         )}
 

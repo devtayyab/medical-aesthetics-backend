@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Input } from "@/components/atoms/Input/Input";
 import { Button } from "@/components/atoms/Button/Button";
 
@@ -43,7 +43,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
               className="ml-2 text-red-600"
               onClick={() => onRemoveTag(tag)}
             >
-              ×
+              Ã—
             </button>
           </span>
         ))}

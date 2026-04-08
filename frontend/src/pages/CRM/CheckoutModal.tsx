@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store';
 import { completeAppointment } from '@/store/slices/bookingSlice';
-import { X, DollarSign, CreditCard, Banknote } from 'lucide-react';
+import { X, Euro, CreditCard, Banknote } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import type { Appointment } from '@/types';
 
@@ -53,7 +53,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
                     <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-emerald-500" />
+                        <Euro className="w-5 h-5 text-emerald-500" />
                         Checkout
                     </h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors bg-white hover:bg-gray-100 rounded-full p-2 border border-gray-200/50">
@@ -74,7 +74,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
                     <div className="space-y-1.5">
                         <label className="text-sm font-semibold text-gray-700">Total Amount</label>
                         <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
                                 required
                                 type="number"

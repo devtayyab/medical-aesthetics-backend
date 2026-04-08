@@ -10,10 +10,12 @@ import { bookingAPI } from '@/services/api';
 
 import type { RootState, AppDispatch } from '@/store';
 import {
+  createAction,
   updateAction,
   deleteAction,
   fetchActions,
   fetchTaskKpis,
+  fetchClinics,
   logCommunication,
   fetchSalespersons
 } from '@/store/slices/crmSlice';
@@ -162,7 +164,7 @@ interface TasksPageProps {
 
 
 export const Tasks: React.FC<TasksPageProps> = () => {
-  const { actions: tasks, isLoading, taskKpis, salespersons } = useSelector((state: RootState) => state.crm);
+  const { actions: tasks, isLoading, taskKpis, salespersons, clinics } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
 
@@ -190,6 +192,17 @@ export const Tasks: React.FC<TasksPageProps> = () => {
   const [assigningTask, setAssigningTask] = useState<CrmAction | null>(null);
   const [newOwnerId, setNewOwnerId] = useState("");
 
+  // New Interaction States for strict workflow
+  const [interactionOutcome, setInteractionOutcome] = useState("");
+  const [interactionClinic, setInteractionClinic] = useState("");
+  const [followUpData, setFollowUpData] = useState({
+    title: '',
+    therapy: '',
+    dueDate: '',
+    reminderDate: '',
+    priority: 'medium'
+  });
+
 
   const [taskFormData, setTaskFormData] = useState<any>({
     title: '',
@@ -207,6 +220,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
 
   useEffect(() => {
     dispatch(fetchSalespersons());
+    dispatch(fetchClinics());
   }, [dispatch]);
 
   useEffect(() => {
@@ -216,21 +230,26 @@ export const Tasks: React.FC<TasksPageProps> = () => {
   }, [dispatch, selectedSalespersonId]);
 
   useEffect(() => {
-    if (showInteractionModal && interactionTask?.metadata?.appointmentId) {
-      const fetchAptDetail = async () => {
-        setIsFetchingApt(true);
-        try {
-          const res = await bookingAPI.getAppointment(interactionTask.metadata.appointmentId);
-          setAppointmentDetail(res.data);
-        } catch (err) {
-          console.error("Failed to fetch appointment detail for task:", err);
-        } finally {
-          setIsFetchingApt(false);
-        }
-      };
-      fetchAptDetail();
+    if (showInteractionModal && interactionTask) {
+      setInteractionClinic(interactionTask.clinic || interactionTask.metadata?.clinic || "");
+      
+      if (interactionTask.metadata?.appointmentId) {
+        const fetchAptDetail = async () => {
+          setIsFetchingApt(true);
+          try {
+            const res = await bookingAPI.getAppointment(interactionTask.metadata.appointmentId);
+            setAppointmentDetail(res.data);
+          } catch (err) {
+            console.error("Failed to fetch appointment detail for task:", err);
+          } finally {
+            setIsFetchingApt(false);
+          }
+        };
+        fetchAptDetail();
+      }
     } else {
       setAppointmentDetail(null);
+      setInteractionClinic("");
     }
   }, [showInteractionModal, interactionTask]);
 
@@ -321,37 +340,85 @@ export const Tasks: React.FC<TasksPageProps> = () => {
 
 
   const handleSaveInteraction = async () => {
-    if (!interactionTask) return;
+    if (!interactionTask || !interactionOutcome || !interactionNotes.trim() || !interactionClinic) {
+      toast.error("Outcome, Clinic, and Notes are mandatory.");
+      return;
+    }
+
+    // If outcome is NOT "not_interested", follow-up fields are mandatory
+    if (interactionOutcome !== 'not_interested') {
+      if (!followUpData.title || !followUpData.dueDate || !followUpData.reminderDate || !followUpData.therapy) {
+        toast.error("Please complete all Mandatory Follow-up fields.");
+        return;
+      }
+    }
 
     try {
-      // 1. Log the communication
       await dispatch(logCommunication({
-        customerId: interactionTask.customerId || interactionTask.relatedLeadId || '',
-        salespersonId: currentUserId || '',
-        type: 'call',
+        customerId: interactionTask?.customerId || (interactionTask?.customer as any)?.id || undefined,
+        relatedLeadId: interactionTask?.relatedLeadId || undefined,
+        salespersonId: currentUserId || undefined,
+        type: (interactionTask?.actionType === 'mobile_message' ? 'sms' : 
+               (interactionTask?.actionType === 'email' ? 'email' : 'call')) as any,
         direction: 'outgoing',
         status: 'completed',
-        subject: `Follow Up Call: ${interactionTask.title}`,
+        subject: `[${interactionOutcome.toUpperCase()}] Follow Up: ${interactionTask?.title || 'Interaction'}`,
         notes: interactionNotes,
         createdAt: new Date().toISOString(),
-        metadata: { clickOnly: true }
+        metadata: { 
+          callOutcome: interactionOutcome,
+          originalTaskId: interactionTask?.id,
+          clinic: interactionClinic
+        }
       })).unwrap();
 
-      // 2. Complete the task
-      await dispatch(updateAction({
-        id: interactionTask.id,
-        updates: { status: 'completed' }
-      })).unwrap();
+      // 2. Create follow-up task if needed
+      if (interactionOutcome !== 'not_interested') {
+        await dispatch(createAction({
+          customerId: interactionTask?.customerId || undefined,
+          relatedLeadId: interactionTask?.relatedLeadId || undefined,
+          salespersonId: currentUserId || undefined,
+          title: followUpData.title,
+          description: `Follow-up from previous call (${interactionTask?.title}). Notes: ${interactionNotes.slice(0, 50)}...`,
+          actionType: 'follow_up_call',
+          therapy: followUpData.therapy,
+          status: 'pending',
+          priority: followUpData.priority as any,
+          dueDate: new Date(followUpData.dueDate).toISOString(),
+          reminderDate: new Date(followUpData.reminderDate).toISOString(),
+          metadata: {
+             sourceTaskId: interactionTask?.id
+          },
+          clinic: interactionClinic
+        } as any)).unwrap();
+        toast.success("Follow-up task scheduled!");
+      }
+
+      // 3. Complete the current task
+      if (interactionTask?.id) {
+        await dispatch(updateAction({
+          id: interactionTask.id,
+          updates: { 
+            status: 'completed',
+            metadata: { ...interactionTask.metadata, callOutcome: interactionOutcome }
+          }
+        })).unwrap();
+      }
 
       setShowInteractionModal(false);
       setInteractionNotes("");
+      setInteractionOutcome("");
+      setInteractionClinic("");
       setInteractionTask(null);
+      setFollowUpData({ title: '', therapy: '', dueDate: '', reminderDate: '', priority: 'medium' });
 
       const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
       dispatch(fetchActions({ salespersonId: sid }));
       dispatch(fetchTaskKpis(sid));
+      toast.success("Interaction logged successfully!");
     } catch (error) {
       console.error("Failed to save interaction:", error);
+      toast.error("Failed to process task. Please verify your data.");
     }
   };
 
@@ -721,27 +788,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                           >
                             <CornerUpRight className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="xs"
-                            variant="white"
-                            className="h-8 w-8 p-0 bg-white border-slate-200 text-red-500 hover:text-red-700 hover:bg-red-50 hover:border-red-300 transition-all shadow-sm"
-                            title="Delete Task"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
-                                try {
-                                  await dispatch(deleteAction(task.id)).unwrap();
-                                  const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-                                  dispatch(fetchActions({ salespersonId: sid }));
-                                } catch (err) {
-                                  console.error("Failed to delete task:", err);
-                                  toast.error("Failed to delete task.");
-                                }
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+
                           {user?.role === 'SUPER_ADMIN' && (
                             <Button
                               size="xs"
@@ -905,20 +952,28 @@ export const Tasks: React.FC<TasksPageProps> = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <div>
-                <h3 className="text-lg font-black text-slate-800">Interaction Panel</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  Patient: {
-                    interactionTask.customer?.customer
-                      ? `${interactionTask.customer.customer.firstName || ''} ${interactionTask.customer.customer.lastName || ''}`
-                      : interactionTask.relatedLead
-                        ? `${interactionTask.relatedLead.firstName || ''} ${interactionTask.relatedLead.lastName || ''}`
-                        : 'Unassigned'
-                  }
-                </p>
+                <h3 className="text-lg font-black text-slate-800">Processing Task</h3>
+                <div className="flex items-center gap-2 mt-0.5">
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                     Patient: {
+                       interactionTask.customer?.customer
+                         ? `${interactionTask.customer.customer.firstName || ''} ${interactionTask.customer.customer.lastName || ''}`
+                         : interactionTask.relatedLead
+                           ? `${interactionTask.relatedLead.firstName || ''} ${interactionTask.relatedLead.lastName || ''}`
+                           : 'Unassigned'
+                     }
+                   </p>
+                </div>
               </div>
-              <Button variant="ghost" onClick={handleCloseInteraction} className="h-10 w-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                <X className="h-6 w-6" />
-              </Button>
+              <div className="flex flex-col items-end">
+                 <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-tighter mb-1">
+                   {interactionTask.therapy || 'Standard Therapy'}
+                 </span>
+                 <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                   {interactionTask.metadata?.clinic || 'Main Clinic'}
+                 </span>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -936,70 +991,133 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                 </Button>
               </div>
 
-              {/* Remarks Box */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Call Remarks / Outcome</span>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[10px] font-bold bg-white text-slate-700 border-slate-200"
-                      onClick={() => setShowBookingModal(true)}
-                    >
-                      <Calendar className="w-3 h-3 mr-1.5 text-blue-500" /> WANTS BOOKING
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[10px] font-bold bg-white text-slate-700 border-slate-200"
-                      onClick={async () => {
-                        try {
-                          // 1. Reset status to pending in DB
-                          await dispatch(updateAction({
-                            id: interactionTask.id,
-                            updates: { status: 'pending' }
-                          })).unwrap();
-
-                          // 2. Open edit form
-                          setSelectedTask(interactionTask);
-                          setTaskFormData({
-                            customerId: interactionTask.customerId || '',
-                            relatedLeadId: interactionTask.relatedLeadId || '',
-                            title: interactionTask.title || '',
-                            description: interactionTask.description || '',
-                            actionType: interactionTask.actionType,
-                            status: 'pending', // Explicitly set to pending
-                            dueDate: interactionTask.dueDate ? new Date(interactionTask.dueDate).toISOString().slice(0, 16) : '',
-                            reminderDate: interactionTask.reminderDate ? new Date(interactionTask.reminderDate).toISOString().slice(0, 16) : '',
-                            priority: interactionTask.priority as any,
-                            isRecurring: interactionTask.isRecurring || false,
-                            recurrenceType: interactionTask.recurrenceType as any || 'weekly',
-                            recurrenceInterval: interactionTask.recurrenceInterval || 1
-                          });
-                          setIsEditing(true);
-
-                          // 3. Close interaction modal
-                          setShowInteractionModal(false);
-
-                          const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-                          dispatch(fetchActions({ salespersonId: sid }));
-                        } catch (err) {
-                          console.error("Failed to reset task to pending:", err);
-                        }
-                      }}
-                    >
-                      <Edit className="w-3 h-3 mr-1.5 text-slate-400" /> EDIT DETAIL
+              {/* Mandatory Outcome & Remarks */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-1 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Call Outcome</label>
+                    <span className="text-[9px] font-black text-red-500 uppercase tracking-tighter">Required</span>
+                  </div>
+                  <Select
+                    placeholder="Choose Result..."
+                    value={interactionOutcome}
+                    onChange={(val) => {
+                      setInteractionOutcome(val);
+                      if (val !== 'not_interested') {
+                        setFollowUpData(prev => ({ 
+                           ...prev, 
+                           title: `Follow-up: ${interactionTask.title}`,
+                           therapy: interactionTask.therapy || ''
+                        }));
+                      }
+                    }}
+                    options={[
+                      { value: 'interested', label: 'Interested â­' },
+                      { value: 'callback', label: 'Call Back Later ðŸ•’' },
+                      { value: 'not_interested', label: 'Not Interested âŒ' },
+                      { value: 'no_answer', label: 'No Answer ðŸ“µ' },
+                      { value: 'booked', label: 'Booked Appointment âœ…' },
+                      { value: 'wrong_number', label: 'Wrong Number âš ï¸' }
+                    ]}
+                    className="w-full"
+                  />
+                  
+                  <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
+                     <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">Clinic Assignment</p>
+                     <Select
+                        placeholder="Assign Clinic..."
+                        value={interactionClinic}
+                        onChange={(val) => setInteractionClinic(val)}
+                        options={clinics.map((c: any) => ({ value: c.id, label: c.name }))}
+                        className="w-full"
+                      />
+                  </div>
+                  
+                  <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
+                     <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">Quick Actions</p>
+                     <Button
+                        size="sm"
+                        variant="ghost"
+                        className="w-full h-8 text-[10px] font-bold bg-white text-blue-700 border border-blue-100 hover:bg-blue-50"
+                        onClick={() => setShowBookingModal(true)}
+                      >
+                        <Calendar className="w-3 h-3 mr-1.5 text-blue-500" /> CREATE BOOKING
                     </Button>
                   </div>
                 </div>
-                <Textarea
-                  placeholder="Summarize the patient's response and next steps..."
-                  value={interactionNotes}
-                  onChange={(e) => setInteractionNotes(e.target.value)}
-                  className="min-h-[120px] rounded-xl border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all resize-none text-sm p-4"
-                />
+
+                <div className="md:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Call Remarks / Private Notes</label>
+                    <span className="text-[9px] font-black text-red-500 uppercase tracking-tighter">Required</span>
+                  </div>
+                  <Textarea
+                    placeholder="Describe exactly what happened during the call..."
+                    value={interactionNotes}
+                    onChange={(e) => setInteractionNotes(e.target.value)}
+                    className="min-h-[140px] rounded-xl border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all resize-none text-sm p-4 font-medium"
+                  />
+                </div>
               </div>
+
+              {/* Conditional Follow-up Section (Strict Workflow) */}
+              {interactionOutcome && interactionOutcome !== 'not_interested' && (
+                <div className="bg-amber-50/50 border border-amber-200 rounded-[2rem] p-6 space-y-6 animate-in slide-in-from-top-4 duration-300">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shadow-inner">
+                        <Clock className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-slate-800 tracking-tight">Schedule Mandatory Follow-up</h4>
+                        <p className="text-[10px] font-bold text-amber-600/70 uppercase tracking-widest">Strict Protocol Requirement</p>
+                      </div>
+                    </div>
+                    <div className="px-3 py-1 bg-amber-100 rounded-full text-[9px] font-black text-amber-700 uppercase tracking-widest border border-amber-200">
+                      Step Mandatory
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Follow-up Title</label>
+                        <Input 
+                          placeholder="e.g. Try calling again for Botox" 
+                          value={followUpData.title}
+                          onChange={(e) => setFollowUpData({...followUpData, title: e.target.value})}
+                          className="h-10 text-xs font-bold rounded-xl border-slate-200 focus:bg-white"
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Therapy Interest</label>
+                        <Input 
+                          placeholder="e.g. Chemical Peel" 
+                          value={followUpData.therapy}
+                          onChange={(e) => setFollowUpData({...followUpData, therapy: e.target.value})}
+                          className="h-10 text-xs font-bold rounded-xl border-slate-200 focus:bg-white"
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Next Contact Date</label>
+                        <Input 
+                          type="datetime-local" 
+                          value={followUpData.dueDate}
+                          onChange={(e) => setFollowUpData({...followUpData, dueDate: e.target.value})}
+                          className="h-10 text-xs font-bold rounded-xl border-slate-200 focus:bg-white"
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Reminder (Push Alert)</label>
+                        <Input 
+                          type="datetime-local" 
+                          value={followUpData.reminderDate}
+                          onChange={(e) => setFollowUpData({...followUpData, reminderDate: e.target.value})}
+                          className="h-10 text-xs font-bold rounded-xl border-slate-200 focus:bg-white"
+                        />
+                     </div>
+                  </div>
+                </div>
+              )}
 
               {/* Specialized Confirmation Outcome Buttons */}
               {interactionTask?.title === 'Confirmation Call Reminder' && appointmentDetail && (
@@ -1020,7 +1138,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                         </div>
                         <div className="flex flex-col">
                            <span className="text-[9px] font-bold text-slate-400 uppercase">Amount</span>
-                           <span className="text-xs font-black text-blue-700">€{appointmentDetail.totalAmount || 0}</span>
+                           <span className="text-xs font-black text-blue-700">{'€'}{appointmentDetail.totalAmount || 0}</span>
                         </div>
                         <div className="flex flex-col">
                            <span className="text-[9px] font-bold text-slate-400 uppercase">Scheduled Time</span>
@@ -1083,21 +1201,20 @@ export const Tasks: React.FC<TasksPageProps> = () => {
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={handleCloseInteraction}
-                className="h-10 px-6 font-bold text-xs bg-white text-slate-700 shadow-sm border-slate-200 rounded-xl"
-              >
-                Discard
-              </Button>
-              <Button
-                onClick={handleSaveInteraction}
-                disabled={!interactionNotes.trim()}
-                className="h-10 px-8 font-black text-xs bg-slate-900 text-white shadow-lg rounded-xl hover:bg-slate-800 transition-all disabled:opacity-50"
-              >
-                Log Interaction & Finish
-              </Button>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                 Strict Workflow Active: Exit Restricted
+              </div>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <Button
+                  onClick={handleSaveInteraction}
+                  disabled={!interactionNotes.trim() || !interactionOutcome || (interactionOutcome !== 'not_interested' && (!followUpData.title || !followUpData.dueDate || !followUpData.reminderDate || !followUpData.therapy))}
+                  className="w-full md:h-12 md:px-12 font-black text-xs bg-slate-900 text-white shadow-[0_10px_20px_rgba(15,23,42,0.2)] rounded-2xl hover:bg-slate-800 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" /> Save Interaction & Close File
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1179,7 +1296,7 @@ export const Tasks: React.FC<TasksPageProps> = () => {
               
               <Button 
                 onClick={handleAssignTask}
-                disabled={!newOwnerId || newOwnerId === assigningTask.salespersonId}
+                disabled={!newOwnerId || newOwnerId === assigningTask?.salespersonId}
                 className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg active:scale-95"
               >
                 Confirm Assignment

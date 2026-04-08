@@ -2591,3 +2591,198 @@
 [2026-04-02T11:34:53.096Z] ✅ Clinic is open on thursday from 09:00 to 17:00 
 [2026-04-02T11:34:53.176Z] 🔵 Checking availability for 3 providers 
 [2026-04-02T11:34:53.281Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T06:24:34.100Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T06:24:34.402Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T06:24:34.417Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T06:24:34.427Z] 🔵 Total duration: 60
+[2026-04-06T06:24:34.428Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T06:24:34.497Z] 🔵 Day of week: "monday"
+[2026-04-06T06:24:34.498Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T06:24:34.499Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T06:24:34.502Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T06:24:34.554Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T06:24:34.658Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T07:09:58.143Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T07:09:58.413Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T07:09:58.426Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T07:09:58.431Z] 🔵 Total duration: 60
+[2026-04-06T07:09:58.432Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T07:09:58.436Z] 🔵 Day of week: "monday"
+[2026-04-06T07:09:58.437Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T07:09:58.437Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T07:09:58.441Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T07:09:58.470Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T07:09:58.628Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T07:10:05.280Z] 🔵 Availability Request: {"clinicId":"c07c073a-ad9e-44fd-b1b7-0b82ac7ed194","serviceIds":["bdd6033a-d623-4770-a2a4-f62177b3c3f3"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T07:10:05.281Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T07:10:05.301Z] 🔵 Clinic: "abc clinic"
+[2026-04-06T07:10:05.309Z] 🔵 Total duration: 60
+[2026-04-06T07:10:05.310Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T07:10:05.317Z] 🔵 Day of week: "monday"
+[2026-04-06T07:10:05.318Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T07:10:05.318Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T07:10:05.319Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T07:10:05.347Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T07:10:05.369Z] ✅ Found 15 slots for clinic: abc clinic 
+[2026-04-06T07:10:05.389Z] 🔵 Availability Request: {"clinicId":"c07c073a-ad9e-44fd-b1b7-0b82ac7ed194","serviceIds":["bdd6033a-d623-4770-a2a4-f62177b3c3f3"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T07:10:05.398Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T07:10:05.428Z] 🔵 Clinic: "abc clinic"
+[2026-04-06T07:10:05.433Z] 🔵 Total duration: 60
+[2026-04-06T07:10:05.434Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T07:10:05.435Z] 🔵 Day of week: "monday"
+[2026-04-06T07:10:05.436Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T07:10:05.436Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T07:10:05.442Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T07:10:05.470Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T07:10:05.503Z] ✅ Found 15 slots for clinic: abc clinic 
+[2026-04-06T07:35:05.303Z] 🔵 Availability Request: {"clinicId":"c07c073a-ad9e-44fd-b1b7-0b82ac7ed194","serviceIds":["bdd6033a-d623-4770-a2a4-f62177b3c3f3"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T07:35:05.574Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T07:35:05.593Z] 🔵 Clinic: "abc clinic"
+[2026-04-06T07:35:05.598Z] 🔵 Total duration: 60
+[2026-04-06T07:35:05.599Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T07:35:05.601Z] 🔵 Day of week: "monday"
+[2026-04-06T07:35:05.602Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T07:35:05.603Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T07:35:05.605Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T07:35:05.625Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T07:35:05.643Z] ✅ Found 15 slots for clinic: abc clinic 
+[2026-04-06T08:08:44.454Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7f3c5ca1-1704-4f54-b909-f1532dd200b0"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T08:08:44.708Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T08:08:44.722Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T08:08:44.727Z] 🔵 Total duration: 60
+[2026-04-06T08:08:44.727Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T08:08:44.728Z] 🔵 Day of week: "monday"
+[2026-04-06T08:08:44.729Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T08:08:44.729Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T08:08:44.730Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T08:08:44.757Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T08:08:44.785Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T08:21:26.118Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T08:21:26.374Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T08:21:26.386Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T08:21:26.391Z] 🔵 Total duration: 60
+[2026-04-06T08:21:26.392Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T08:21:26.393Z] 🔵 Day of week: "monday"
+[2026-04-06T08:21:26.394Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T08:21:26.395Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T08:21:26.395Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T08:21:26.428Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T08:21:26.484Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T08:32:29.168Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T08:32:29.176Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T08:32:29.211Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T08:32:29.219Z] 🔵 Total duration: 60
+[2026-04-06T08:32:29.223Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T08:32:29.231Z] 🔵 Day of week: "monday"
+[2026-04-06T08:32:29.232Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T08:32:29.237Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T08:32:29.244Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T08:32:29.375Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T08:32:29.489Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T09:29:23.819Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T09:29:24.091Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T09:29:24.117Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T09:29:24.130Z] 🔵 Total duration: 60
+[2026-04-06T09:29:24.132Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T09:29:24.136Z] 🔵 Day of week: "monday"
+[2026-04-06T09:29:24.137Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T09:29:24.138Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T09:29:24.139Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T09:29:24.235Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T09:29:24.422Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T09:30:08.260Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7f3c5ca1-1704-4f54-b909-f1532dd200b0"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T09:30:08.264Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T09:30:08.305Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T09:30:08.320Z] 🔵 Total duration: 60
+[2026-04-06T09:30:08.336Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T09:30:08.427Z] 🔵 Day of week: "monday"
+[2026-04-06T09:30:08.446Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T09:30:08.448Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T09:30:08.465Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T09:30:08.764Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T09:30:08.941Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T09:31:35.782Z] 🔵 Availability Request: {"clinicId":"c07c073a-ad9e-44fd-b1b7-0b82ac7ed194","serviceIds":["bdd6033a-d623-4770-a2a4-f62177b3c3f3"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T09:31:35.784Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T09:31:35.808Z] 🔵 Clinic: "abc clinic"
+[2026-04-06T09:31:35.816Z] 🔵 Total duration: 60
+[2026-04-06T09:31:35.817Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T09:31:35.847Z] 🔵 Day of week: "monday"
+[2026-04-06T09:31:35.847Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T09:31:35.851Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T09:31:35.860Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T09:31:35.943Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T09:31:36.043Z] ✅ Found 15 slots for clinic: abc clinic 
+[2026-04-06T09:31:56.852Z] 🔵 Availability Request: {"clinicId":"c07c073a-ad9e-44fd-b1b7-0b82ac7ed194","serviceIds":["bdd6033a-d623-4770-a2a4-f62177b3c3f3"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T09:31:56.853Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T09:31:56.890Z] 🔵 Clinic: "abc clinic"
+[2026-04-06T09:31:56.896Z] 🔵 Total duration: 60
+[2026-04-06T09:31:56.897Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T09:31:56.898Z] 🔵 Day of week: "monday"
+[2026-04-06T09:31:56.899Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T09:31:56.900Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T09:31:56.901Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T09:31:56.930Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T09:31:57.068Z] ✅ Found 15 slots for clinic: abc clinic 
+[2026-04-06T10:00:59.832Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T10:01:00.099Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T10:01:00.135Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T10:01:00.153Z] 🔵 Total duration: 60
+[2026-04-06T10:01:00.154Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T10:01:00.177Z] 🔵 Day of week: "monday"
+[2026-04-06T10:01:00.178Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T10:01:00.180Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T10:01:00.182Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T10:01:00.269Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T10:01:00.354Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T12:09:06.416Z] 🔵 Availability Request: {"clinicId":"c07c073a-ad9e-44fd-b1b7-0b82ac7ed194","serviceIds":["bdd6033a-d623-4770-a2a4-f62177b3c3f3"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T12:09:06.711Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T12:09:06.731Z] 🔵 Clinic: "abc clinic"
+[2026-04-06T12:09:06.740Z] 🔵 Total duration: 60
+[2026-04-06T12:09:06.743Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T12:09:06.752Z] 🔵 Day of week: "monday"
+[2026-04-06T12:09:06.753Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T12:09:06.754Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T12:09:06.756Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T12:09:06.775Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T12:09:06.806Z] ✅ Found 15 slots for clinic: abc clinic 
+[2026-04-06T12:09:11.135Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["bdd6033a-d623-4770-a2a4-f62177b3c3f3"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T12:09:11.136Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T12:09:11.165Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T12:09:11.186Z] ❌ Error in getAvailableSlots: {"response":{"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","error":"Not Found","statusCode":404},"status":404,"options":{},"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","name":"NotFoundException"}
+[2026-04-06T12:09:13.193Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["dfe5bfd5-1b83-4a33-804e-ce044e5c66af"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T12:09:13.194Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T12:09:13.208Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T12:09:13.213Z] 🔵 Total duration: 60
+[2026-04-06T12:09:13.213Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T12:09:13.214Z] 🔵 Day of week: "monday"
+[2026-04-06T12:09:13.215Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T12:09:13.219Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T12:09:13.220Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T12:09:13.261Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T12:09:13.299Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T12:26:37.838Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["bdd6033a-d623-4770-a2a4-f62177b3c3f3"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T12:26:38.119Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T12:26:38.179Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T12:26:38.192Z] ❌ Error in getAvailableSlots: {"response":{"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","error":"Not Found","statusCode":404},"status":404,"options":{},"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","name":"NotFoundException"}
+[2026-04-06T12:29:02.960Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["dfe5bfd5-1b83-4a33-804e-ce044e5c66af"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T12:29:02.964Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T12:29:03.088Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T12:29:03.100Z] 🔵 Total duration: 60
+[2026-04-06T12:29:03.101Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T12:29:03.118Z] 🔵 Day of week: "monday"
+[2026-04-06T12:29:03.118Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T12:29:03.122Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T12:29:03.127Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T12:29:03.170Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T12:29:03.224Z] ✅ Found 15 slots for clinic: ehsan clinic 
+[2026-04-06T12:29:32.243Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["dfe5bfd5-1b83-4a33-804e-ce044e5c66af"],"providerId":null,"date":"2026-04-06"}
+[2026-04-06T12:29:32.244Z] 🔵 Using date: "2026-04-06"
+[2026-04-06T12:29:32.258Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-06T12:29:32.280Z] 🔵 Total duration: 60
+[2026-04-06T12:29:32.296Z] 🔵 Using timezone: "America/New_York"
+[2026-04-06T12:29:32.317Z] 🔵 Day of week: "monday"
+[2026-04-06T12:29:32.325Z] 🔵 Business hours for monday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-06T12:29:32.342Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-06T12:29:32.406Z] ✅ Clinic is open on monday from 09:00 to 17:00 
+[2026-04-06T12:29:32.450Z] 🔵 Checking availability for 3 providers 
+[2026-04-06T12:29:32.509Z] ✅ Found 15 slots for clinic: ehsan clinic 

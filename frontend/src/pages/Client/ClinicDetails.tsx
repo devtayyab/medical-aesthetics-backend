@@ -58,7 +58,7 @@ export const ClinicDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { selectedClinic, services, isLoading, error, clinics } = useSelector(
+  const { selectedClinic, services, isLoading, clinics } = useSelector(
     (state: RootState) => state.client
   );
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -379,7 +379,7 @@ export const ClinicDetails: React.FC = () => {
                    <div>
                       <p className="text-[9px] font-black uppercase tracking-widest text-[#CBFF38] italic mb-1">Total Payload</p>
                       <p className="text-3xl font-black italic tracking-tighter">
-                         {selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                         <span className="font-sans">€</span>{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                    </div>
                 </div>

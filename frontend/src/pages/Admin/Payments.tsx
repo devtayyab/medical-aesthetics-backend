@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { DollarSign, Download, Filter, RotateCcw, XCircle, Search, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Euro, Download, RotateCcw, XCircle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPaymentsLedger, fetchAdminClinics, fetchUsers } from '@/store/slices/adminSlice';
 import { adminAPI } from '@/services/api';
@@ -76,7 +76,7 @@ export const Payments: React.FC = () => {
                         <Download className="w-4 h-4" /> Export CSV
                     </button>
                     <button className="flex items-center gap-2 bg-[#405C0B] text-white px-5 py-2.5 font-semibold rounded-xl hover:bg-[#304608] shadow-md transition-all text-sm">
-                        <DollarSign className="w-4 h-4" /> New Manual Record
+                        <Euro className="w-4 h-4" /> New Manual Record
                     </button>
                 </div>
             </div>
@@ -248,7 +248,7 @@ export const Payments: React.FC = () => {
                                 <tr>
                                     <td colSpan={7} className="px-6 py-20 text-center text-sm text-gray-500 border-none">
                                         <div className="flex flex-col items-center justify-center text-gray-400 font-medium h-full">
-                                            <DollarSign className="w-12 h-12 mb-3 opacity-20 text-gray-400" />
+                                            <Euro className="w-12 h-12 mb-3 opacity-20 text-gray-400" />
                                             No financial records found matching these filters.
                                         </div>
                                     </td>

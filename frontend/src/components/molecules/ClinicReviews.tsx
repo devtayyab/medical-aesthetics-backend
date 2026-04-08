@@ -27,7 +27,7 @@ type ClinicReviewsProps = {
   handleRemoveService?: (serviceId: string) => void;
 };
 
-const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId, ServiceData, handleAddService, handleRemoveService }) => {
+const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId, ServiceData: _ServiceData, handleAddService: _handleAddService, handleRemoveService: _handleRemoveService }) => {
   const { selectedClinic, clinics } = useSelector(
     (state: RootState) => state.client
   );

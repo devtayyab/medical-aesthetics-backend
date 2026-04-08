@@ -12,7 +12,7 @@ const services = [
     title: "Glossy Blow Dry",
     duration: "1 hr",
     description: "Show details",
-    price: "67$",
+    price: "67€",
     discount: "save up to 90%",
   },
   {
@@ -20,7 +20,7 @@ const services = [
     title: "Glossy Blow Dry",
     duration: "1 hr",
     description: "Show details",
-    price: "67$",
+    price: "67€",
     discount: "save up to 90%",
 
   },
@@ -29,7 +29,7 @@ const services = [
     title: "Glossy Blow Dry",
     duration: "1 hr",
     description: "Show details",
-    price: "67$",
+    price: "67€",
     discount: "save up to 90%",
   },
 ];
@@ -44,7 +44,7 @@ export const Clinic: React.FC = () => {
           <p className="flex items-center text-xl   text-yellow-500 gap-2 ">
             4.0
             <span className=" text-yellow-500 text-xl">
-              ★★★★☆
+              â˜…â˜…â˜…â˜…â˜†
             </span>
           </p>
         </div>

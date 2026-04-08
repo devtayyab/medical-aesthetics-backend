@@ -200,7 +200,7 @@ export const SalesCalendar: React.FC = () => {
                         </div>
                         <div className="grid grid-cols-3 gap-12">
                             <div className="text-center md:text-left group cursor-default">
-                                <div className="text-4xl font-extrabold tracking-tight group-hover:scale-105 transition-transform duration-300">{progress.sales.toLocaleString('de-DE')} €</div>
+                                <div className="text-4xl font-extrabold tracking-tight group-hover:scale-105 transition-transform duration-300">{progress.sales.toLocaleString('de-DE')} {'€'}</div>
                                 <div className="text-xs font-bold uppercase tracking-widest text-blue-200 mt-2">Total Sales</div>
                             </div>
                             <div className="text-center md:text-left group cursor-default">
