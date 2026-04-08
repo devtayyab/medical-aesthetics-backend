@@ -760,7 +760,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                                                 </div>
                                                                 <div>
                                                                     <p className="font-bold text-gray-900 text-sm leading-tight">{srv.treatment?.name || srv.name}</p>
-                                                                    <p className="text-[10px] text-gray-500 font-bold mt-1 uppercase tracking-tighter opacity-80">{srv.durationMinutes || srv.duration} mins • €{srv.price}</p>
+                                                                    <p className="text-[10px] text-gray-500 font-bold mt-1 uppercase tracking-tighter opacity-80">{srv.durationMinutes || srv.duration} mins · €{srv.price}</p>
                                                                 </div>
                                                             </div>
                                                             {isSelected && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
@@ -907,9 +907,9 @@ export const SalesWeekCalendar: React.FC = () => {
                             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex justify-between items-center">
                                 <div>
                                     <p className="font-bold text-gray-900">{selectedApt.serviceName || selectedApt.service?.treatment?.name || selectedApt.service?.name || 'Service'}</p>
-                                    <p className="text-xs text-gray-500">{selectedApt.service?.durationMinutes || selectedApt.service?.duration || '—'} mins</p>
+                                    <p className="text-xs text-gray-500">{selectedApt.service?.durationMinutes || selectedApt.service?.duration || '–'} mins</p>
                                 </div>
-                                <span className="text-lg font-black text-gray-900">€{selectedApt.service?.price ?? selectedApt.totalAmount ?? '—'}</span>
+                                <span className="text-lg font-black text-gray-900">€{selectedApt.service?.price ?? selectedApt.totalAmount ?? '–'}</span>
                             </div>
                         </div>
 
@@ -957,7 +957,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                     value={selectedApt.providerId || ''}
                                     onChange={(e) => setSelectedApt({ ...selectedApt, providerId: e.target.value })}
                                 >
-                                    {!selectedApt.providerId && <option value="">— Unassigned —</option>}
+                                    {!selectedApt.providerId && <option value="">– Unassigned –</option>}
                                     {/* Current provider first if not in salespersons list */}
                                     {selectedApt.providerName && !salespersons.find((s: any) => s.id === selectedApt.providerId) && (
                                         <option value={selectedApt.providerId}>{selectedApt.providerName}</option>

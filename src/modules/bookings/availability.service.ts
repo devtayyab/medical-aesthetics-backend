@@ -32,6 +32,7 @@ export class AvailabilityService {
     serviceId: string | string[],
     providerId?: string | null,
     date?: string,
+    allowPast = false
   ): Promise<{ slots: any[]; count: number; reason?: string; debug?: any }> {
     const logPath = path.join(process.cwd(), 'logs', 'availability-debug.log');
     if (!fs.existsSync(path.dirname(logPath))) {
@@ -204,7 +205,7 @@ export class AvailabilityService {
         const slotStart = new Date(currentSlot);
         const slotEnd = new Date(currentSlot.getTime() + (totalDurationMinutes * 60000));
 
-        if (slotStart >= now) {
+        if (allowPast || slotStart >= now) {
           // Find WHICH providers are free for this specific slot
           const availableProviders = providers.filter(provider => {
             const pid = provider.id;

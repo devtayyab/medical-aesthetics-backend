@@ -387,7 +387,7 @@ export const AppointmentBooking: React.FC = () => {
                 <p className="text-xs font-bold text-gray-500 mt-1">{format(selectedDateState, "EEEE, MMMM d")}</p>
               </div>
               <button onClick={() => setShowMobileTimes(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 hover:bg-gray-200">
-                ✕
+                âœ•
               </button>
             </div>
 

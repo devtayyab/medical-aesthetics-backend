@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../store";
 import { fetchClients } from "../../store/slices/clinicSlice";
 import clinicApi from "../../services/api/clinicApi";
-import { Users, Search, Calendar, DollarSign, TrendingUp, X, Mail, Phone, ArrowUpRight, Plus } from "lucide-react";
+import { Users, Search, Calendar, Euro, TrendingUp, X, Mail, Phone, ArrowUpRight, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ClinicBookingModal from "../../components/clinic/ClinicBookingModal";
 
@@ -85,9 +85,9 @@ const ClientsPage: React.FC = () => {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           <StatCard title="Active Patients" value={clients.length.toString()} icon={<Users size={20} />} trend="+12%" highlight />
-          <StatCard title="Total Revenue" value={`${totalRevenue.toLocaleString()}`} icon={<DollarSign size={20} />} trend="+5.4%" />
+          <StatCard title="Total Revenue" value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={20} />} trend="+5.4%" />
           <StatCard title="Clinical Visits" value={totalAppointments.toString()} icon={<Calendar size={20} />} trend="+18%" />
-          <StatCard title="Avg Patient LTV" value={`${avgLTV.toFixed(0)}`} icon={<TrendingUp size={20} />} trend="+2.1%" />
+          <StatCard title="Avg Patient LTV" value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={20} />} trend="+2.1%" />
         </div>
 
         {/* Clients Table/Grid */}
@@ -155,9 +155,7 @@ const ClientsPage: React.FC = () => {
                         </p>
                       </td>
                       <td className="px-8 py-6">
-                        <div className="inline-flex items-center gap-1 px-3 py-1 bg-[#CBFF38] text-black rounded-lg">
-                           <span className="text-xs font-black italic">{(Number(client.lifetimeValue) || 0).toLocaleString()}</span>
-                        </div>
+                           <span className="text-xs font-black italic">€{(Number(client.lifetimeValue) || 0).toLocaleString()}</span>
                       </td>
                       <td className="px-8 py-6 text-right">
                          <button className="size-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-black group-hover:text-[#CBFF38] transition-all group-hover:rotate-12">
@@ -349,7 +347,7 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
                  <div className="space-y-6">
                     <div>
                        <p className="text-3xl font-black italic tracking-tighter text-gray-900 leading-none mb-2">
-                          {(Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0).toLocaleString()}
+                          €{(Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0).toLocaleString()}
                        </p>
                        <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Lifetime Investment</p>
                     </div>
@@ -360,7 +358,7 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
                        </div>
                        <div className="p-4 bg-white rounded-2xl shadow-sm">
                           <p className="text-xl font-black italic text-[#CBFF38] bg-black inline-block px-1 rounded leading-none mb-1">
-                             {appointments.length > 0 ? `${((Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0) / appointments.length).toFixed(0)}` : "0"}
+                             {appointments.length > 0 ? `€${((Number(client.summary?.totalSpent) || Number(client.lifetimeValue) || 0) / appointments.length).toFixed(0)}` : `€0`}
                           </p>
                           <p className="text-[8px] font-black uppercase text-gray-400">Average Unit</p>
                        </div>

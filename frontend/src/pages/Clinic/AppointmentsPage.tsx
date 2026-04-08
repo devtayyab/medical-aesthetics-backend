@@ -298,7 +298,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
             <h4 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 leading-none">
               {appointment.serviceName || appointment.service?.treatment?.name}
             </h4>
-            <p className="text-xs font-bold text-[#CBFF38] bg-black inline-block px-1.5 rounded italic">{appointment.totalAmount || appointment.service?.price}</p>
+            <p className="text-xs font-bold text-[#CBFF38] bg-black inline-block px-1.5 rounded italic">€{appointment.totalAmount || appointment.service?.price}</p>
           </div>
 
           <div className="space-y-1 hidden lg:block">

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Clock, AlertCircle, CheckCircle, Search, User as UserIcon, X, Calendar } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle, Search, User as UserIcon, X, Calendar, Euro } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Select } from '@/components/atoms/Select/Select';
@@ -17,6 +17,7 @@ import type { AppDispatch, RootState } from '@/store';
 import type { CrmAction } from '@/types';
 import { userAPI, crmAPI } from '@/services/api';
 import toast from 'react-hot-toast';
+import { cn } from "@/lib/utils";
 
 interface ActionFormProps {
   customerId: string;
@@ -50,7 +51,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     dueDate: prefilledData?.dueDate || '',
     metadata: {
       ...(prefilledData?.metadata || {}),
-      // Initialize metadata fields from prefilledData if they exist in metadata
       ...((prefilledData as any)?.metadata?.clinic && { clinic: (prefilledData as any).metadata.clinic }),
       ...((prefilledData as any)?.metadata?.proposedTreatment && { proposedTreatment: (prefilledData as any).metadata.proposedTreatment }),
       ...((prefilledData as any)?.metadata?.callOutcome && { callOutcome: (prefilledData as any).metadata.callOutcome }),
@@ -129,64 +129,67 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        // Initial fetch only if we have IDs or to show first few
-        if (propCustomerId || prefilledData?.relatedLeadId) {
-          const targetId = propCustomerId || prefilledData?.relatedLeadId;
-          const [custRes, leadRes] = await Promise.all([
-            userAPI.getAllUsers({ role: 'client', limit: 50 }).catch(() => ({ data: { users: [] } })),
-            crmAPI.getLeads().catch(() => ({ data: [] }))
-          ]);
-
-          const customersData = Array.isArray(custRes.data) ? custRes.data : custRes.data.users || [];
-          const leadsData = leadRes.data || [];
-
-          const options = [
-            ...customersData.map((u: any) => ({
-              value: u.id,
-              type: 'customer' as const,
-              email: u.email,
-              label: `${u.email || 'No email'} (${u.firstName} ${u.lastName})`
-            })),
-            ...leadsData.map((l: any) => ({
-              value: l.id,
-              type: 'lead' as const,
-              email: l.email,
-              label: `${l.email || 'No email'} (${l.firstName} ${l.lastName}) - LEAD`
-            }))
-          ];
-          setCustomers(options);
-
-          const matched = options.find((o: any) => o.value === targetId);
-          if (matched) {
-            const displayLabel = matched.email || matched.label;
-            setSelectedCustomerLabel(displayLabel);
-            setSearchTerm(displayLabel);
-          }
-        }
-
-        // Fetch clinics and salespersons
-        const [clinicRes, salesRes] = await Promise.all([
-          crmAPI.getAccessibleClinics().catch(() => ({ data: [] })),
-          userAPI.getAllUsers({ role: 'salesperson', limit: 100 }).catch(() => ({ data: { users: [] } }))
-        ]);
+        const targetId = propCustomerId || prefilledData?.relatedLeadId;
         
+        const [clinicRes, salesRes, custRes, leadRes] = await Promise.all([
+          crmAPI.getAccessibleClinics().catch(() => ({ data: [] })),
+          userAPI.getAllUsers({ role: 'salesperson', limit: 100 }).catch(() => ({ data: { users: [] } })),
+          userAPI.getAllUsers({ role: 'client', limit: 50 }).catch(() => ({ data: { users: [] } })),
+          crmAPI.getLeads().catch(() => ({ data: [] }))
+        ]);
+
         const clinicOptions = (clinicRes.data || []).map((c: any) => ({ value: c.id, label: c.name }));
         setClinics(clinicOptions);
 
         const salesData = Array.isArray(salesRes.data) ? salesRes.data : salesRes.data.users || [];
         const salesOptions = salesData.map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName}`, role: s.role }));
-        
-        // Ensure doctors and managers are also available if needed? The user asked for "which salesperson". We fetch salespersons.
         setSalespersons(salesOptions);
+
+        const customersData = Array.isArray(custRes.data) ? custRes.data : custRes.data.users || [];
+        const leadsData = leadRes.data || [];
+
+        const options = [
+          ...customersData.map((u: any) => ({
+            value: u.id,
+            type: 'customer' as const,
+            email: u.email,
+            label: `${u.email || 'No email'} (${u.firstName} ${u.lastName})`
+          })),
+          ...leadsData.map((l: any) => ({
+            value: l.id,
+            type: 'lead' as const,
+            email: l.email,
+            label: `${l.email || 'No email'} (${l.firstName} ${l.lastName}) - LEAD`
+          }))
+        ];
+        setCustomers(options);
+
+        if (targetId) {
+          const matched = options.find((o: any) => o.value === targetId);
+          if (matched) {
+            const displayLabel = matched.email || matched.label;
+            setSelectedCustomerLabel(displayLabel);
+            setSearchTerm(displayLabel);
+          } else {
+            try {
+              const res = await crmAPI.getCustomerRecord(targetId);
+              if (res.data?.record?.customer) {
+                const c = res.data.record.customer;
+                const display = c.email || `${c.firstName} ${c.lastName}`;
+                setSelectedCustomerLabel(display);
+                setSearchTerm(display);
+              }
+            } catch (err) {
+              console.error("Failed to fetch specific target details:", err);
+            }
+          }
+        }
       } catch (e) {
         console.error('ActionForm initialization failed:', e);
-        setCustomers([]);
-        setClinics([]);
-        setSalespersons([]);
       }
     };
     fetchData();
-  }, [propCustomerId, prefilledData?.relatedLeadId]);
+  }, [propCustomerId, prefilledData?.relatedLeadId, prefilledData?.customerId]);
 
   const handleInputChange = (field: string, value: any) => {
     if (field === 'customerId') {
@@ -207,7 +210,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       setFormData(prev => ({ ...prev, [field]: value }));
     }
 
-    // Clear validation errors when user starts typing
     if (validationErrors.includes(field.replace('metadata.', ''))) {
       setValidationErrors(prev => prev.filter(err => err !== field.replace('metadata.', '')));
     }
@@ -235,7 +237,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         toast.success("Validation passed, but look at the suggestions below.");
       } else {
         toast.success("Validation successful! Form is complete.");
-        onSuccess?.(); // closes the form
+        onSuccess?.();
       }
     } else {
       toast.error("Validation failed. Please fill all required fields.");
@@ -245,14 +247,11 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Core Principle: Tasks are mandatory reminder-based
-    // 1. No task is valid without a reminder.
     if (!formData.reminderDate) {
       toast.error("Task validation failed: Reminder Date & Time is mandatory.");
       return;
     }
 
-    // 2. No reminder can be set more than 1 year from task creation date.
     const reminderDateObj = new Date(formData.reminderDate);
     const maxDate = new Date();
     maxDate.setFullYear(maxDate.getFullYear() + 1);
@@ -262,9 +261,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       return;
     }
 
-    // 3. Reminder date cannot be before current time (for better immediate feedback)
     const now = new Date();
-    // Allow 1 minute grace for frontend
     if (reminderDateObj < new Date(now.getTime() - 60000)) {
       toast.error("Task validation failed: Reminder cannot be set in the past.");
       return;
@@ -275,13 +272,11 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       validation = await handleValidate();
     } catch (e) {
       console.error("Validation failed:", e);
-      // Fallback if the validate endpoint is not available
       validation = { isValid: true, missingFields: [], warnings: [] };
     }
 
     if (validation.isValid) {
       try {
-        // Prepare payload according to backend entity structure
         const payload: Partial<CrmAction> = {
           customerId: (customerId || propCustomerId || (prefilledData as any)?.customerId) || undefined,
           relatedLeadId: (formData.relatedLeadId || (prefilledData as any)?.relatedLeadId) || undefined,
@@ -300,7 +295,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           metadata: formData.metadata || {}
         };
 
-        // Remove undefined, null or empty string values to prevent SQL/Validation errors
         Object.keys(payload).forEach(key => {
           const val = payload[key as keyof CrmAction];
           if (val === undefined || val === null || val === '') {
@@ -362,23 +356,27 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             <CheckCircle className="h-4 w-4 text-emerald-500" />
             <span className="text-sm font-bold text-slate-700">Create Task/Action</span>
           </div>
-          {/* Searchable Customer Selection */}
           <div className="relative" ref={searchRef}>
             <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">Associated Contact</label>
             <div className="relative group">
               <Input
-                value={propCustomerId ? selectedCustomerLabel : searchTerm}
+                value={(propCustomerId || prefilledData?.relatedLeadId) ? (selectedCustomerLabel || searchTerm) : searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setShowResults(true);
                 }}
-                onFocus={() => !propCustomerId && setShowResults(true)}
-                placeholder={propCustomerId ? selectedCustomerLabel : "Search by Client ID or Name..."}
-                disabled={!!propCustomerId}
-                className="pl-11 h-12 bg-slate-50 border-slate-200 rounded-xl focus:bg-white transition-all font-medium"
+                onFocus={() => {
+                  if (!(propCustomerId || prefilledData?.relatedLeadId)) setShowResults(true);
+                }}
+                placeholder={(propCustomerId || prefilledData?.relatedLeadId) ? (selectedCustomerLabel || "Loading contact...") : "Search by Client ID or Name..."}
+                disabled={Boolean(propCustomerId || prefilledData?.relatedLeadId)}
+                className={cn(
+                  "pl-11 h-12 bg-slate-50 border-slate-200 rounded-xl focus:bg-white transition-all font-medium",
+                  (Boolean(propCustomerId || prefilledData?.relatedLeadId)) && "bg-slate-50 border-slate-100 text-slate-500"
+                )}
                 leftIcon={<Search className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />}
               />
-              {!propCustomerId && searchTerm && (
+              {!propCustomerId && !prefilledData?.relatedLeadId && searchTerm && (
                 <button
                   type="button"
                   onClick={() => {
@@ -395,7 +393,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               )}
             </div>
 
-            {/* Floating Search Results */}
             {showResults && !propCustomerId && searchTerm.length > 0 && (
               <div className="absolute z-[100] left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 max-h-[300px] overflow-y-auto">
                 {isLoading && (
@@ -436,7 +433,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             )}
           </div>
 
-          {/* Action Type and Priority */}
           <div className="grid grid-cols-2 gap-4">
             <Select
               label="Task Type (Required)"
@@ -468,7 +464,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             />
           </div>
 
-          {/* Core Requirements: Salesperson, Clinic, Service */}
           <div className="grid grid-cols-2 gap-4">
             {(user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager' || user?.role === 'clinic_owner') ? (
               <Select
@@ -504,7 +499,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             />
           </div>
 
-          {/* Title and Due Dates */}
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Task Title (Required)"
@@ -522,7 +516,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             />
           </div>
 
-          {/* Reminder Date */}
           <div className="grid grid-cols-1 gap-4">
             <Input
               label="Reminder Date & Time (Mandatory)"
@@ -534,7 +527,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             />
           </div>
 
-          {/* Recurring Options */}
           <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
             <div className="flex items-center gap-2 mb-3">
               <input
@@ -568,7 +560,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             )}
           </div>
 
-          {/* Description */}
           <Textarea
             label="Description"
             value={formData.description || ''}
@@ -577,7 +568,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             rows={3}
           />
 
-          {/* Email Specific: Body Content */}
           {formData.actionType === 'email' && (
             <div className="mb-4 animate-in slide-in-from-top-2">
               <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">Email Body Content (Copied from platform)</label>
@@ -591,7 +581,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             </div>
           )}
 
-          {/* Platform selection for Mobile Message */}
           {formData.actionType === 'mobile_message' && (
             <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 animate-in slide-in-from-top-2">
               <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3 block">Service Platforms (Select at least one)</label>
@@ -621,7 +610,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             </div>
           )}
 
-          {/* Appointment/Calendar Redirect Notice */}
           {formData.actionType === 'appointment' && (
             <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 animate-in zoom-in-95 fill-mode-both mb-4">
               <div className="flex items-start gap-4">
@@ -670,6 +658,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   value={formData.metadata?.cost || ''}
                   onChange={(e) => handleInputChange('metadata.cost', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                   placeholder="0.00"
+                  leftIcon={<Euro className="w-4 h-4 text-slate-400" />}
                 />
 
                 <Select
@@ -689,7 +678,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             </>
           )}
 
-          {/* Validation Errors */}
           {validationErrors.length > 0 && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-md">
               <div className="flex items-center gap-2 text-red-800">
@@ -704,7 +692,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             </div>
           )}
 
-          {/* Validation Warnings */}
           {validationWarnings.length > 0 && (
             <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
               <div className="flex items-center gap-2 text-yellow-800">

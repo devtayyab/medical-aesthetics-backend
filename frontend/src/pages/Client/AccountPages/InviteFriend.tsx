@@ -45,8 +45,8 @@ export const InviteFriend: React.FC = () => {
 
   const faqs = [
     {
-      q: "How do I earn the 5 bonus?",
-      a: "Just share your unique referral link. When they register and complete their first booking, both of you receive 5 in loyalty points.",
+      q: "How do I earn the €5 bonus?",
+      a: "Just share your unique referral link. When they register and complete their first booking, both of you receive €5 in loyalty points.",
     },
     {
       q: "Is there a limit to invitations?",
@@ -71,10 +71,10 @@ export const InviteFriend: React.FC = () => {
                 <span>Referral Program</span>
               </div>
               <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-[0.9] mb-4">
-                Invite Friends <br className="hidden md:block" /> <span className="text-[#CBFF38]">Earn 5</span>
+                Invite Friends <br className="hidden md:block" /> <span className="text-[#CBFF38]">Earn €5</span>
               </h1>
               <p className="text-gray-400 font-medium text-lg max-w-lg mx-auto md:mx-0">
-                Share the beauty with your inner circle. Both of you get 5 when they book their first treatment.
+                Share the beauty with your inner circle. Both of you get €5 when they book their first treatment.
               </p>
             </div>
             
@@ -141,7 +141,7 @@ export const InviteFriend: React.FC = () => {
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pending</p>
                </div>
                <div className="text-center">
-                  <div className="text-2xl font-black text-lime-600 leading-none mb-1">0</div>
+                  <div className="text-2xl font-black text-lime-600 leading-none mb-1">€0</div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Earned</p>
                </div>
             </div>
@@ -157,7 +157,7 @@ export const InviteFriend: React.FC = () => {
                    {[
                      { step: "01", text: "Invite a friend using your unique link." },
                      { step: "02", text: "They book and complete their first visit." },
-                     { step: "03", text: "You both get 5 added to your reward balance." }
+                     { step: "03", text: "You both get €5 added to your reward balance." }
                    ].map((s, i) => (
                      <div key={i} className="flex gap-4">
                         <span className="text-[10px] font-black text-[#CBFF38] italic shrink-0 mt-1">{s.step}</span>

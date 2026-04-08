@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import {
     Building2, Users, Calendar, CheckCircle, XCircle, AlertTriangle,
-    TrendingUp, Filter, RefreshCw, DollarSign, Database, MapPin
+    TrendingUp, Filter, RefreshCw, Euro, Database, MapPin
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 import { Button } from '@/components/atoms/Button/Button';
@@ -57,7 +57,7 @@ export const ClinicAnalyticsPage = () => {
         if (!confirm("This will add mock leads, calls, and appointments for testing purposes. Continue?")) return;
         setIsLoading(true);
         try {
-            await crmAPI.axiosInstance.get('/crm/manager-crm/seed-mock-data');
+            await (adminAPI as any).axiosInstance.get('/crm/manager-crm/seed-mock-data');
             await fetchData();
             alert("Data seeded successfully! Refreshing dashboard...");
         } catch (e) {
@@ -68,12 +68,12 @@ export const ClinicAnalyticsPage = () => {
         }
     };
 
-    useEffect(() => { 
+    useEffect(() => {
         fetchClinics();
     }, []);
 
-    useEffect(() => { 
-        fetchData(); 
+    useEffect(() => {
+        fetchData();
     }, [fetchData]);
 
     // Aggregated totals
@@ -177,7 +177,7 @@ export const ClinicAnalyticsPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <Card className="border-none shadow-sm bg-slate-900 text-white overflow-hidden relative rounded-2xl h-32">
                             <div className="absolute right-0 top-0 opacity-10 scale-150 rotate-12 -mt-6">
-                                <DollarSign className="w-24 h-24" />
+                                <Euro className="w-24 h-24" />
                             </div>
                             <CardContent className="p-6 flex flex-col justify-between h-full">
                                 <div>

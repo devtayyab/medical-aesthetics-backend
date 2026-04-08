@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+﻿import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { LoyaltyDashboard } from "@/components/organisms/LoyaltyDashboard";
 import { fetchLoyaltyBalance } from "@/store/slices/clientSlice";

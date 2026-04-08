@@ -43,6 +43,7 @@ export class BookingsController {
         query.serviceId,
         query.providerId || null,
         query.date,
+        query.allowPast === 'true' || query.allowPast === true
       );
       return result;
     } catch (error) {

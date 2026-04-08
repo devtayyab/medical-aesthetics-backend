@@ -240,7 +240,7 @@ export const TherapyCatalog: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredTreatments.map(t => (
                             <div key={t.id} className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
-                                {!t.imageUrl && <div className="absolute top-0 right-0 w-24 h-24 bg-[#CBFF38]/10 rounded-bl-[64px] transition-all group-hover:scale-110" />}
+                                {!t.imageUrl && <div className="absolute top-0 right-0 w-24 h-24 bg-[#CBFF38]/10 rounded-bl-[64px] transition-all group-hover:scale-110 pointer-events-none" />}
 
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="flex items-center gap-3">

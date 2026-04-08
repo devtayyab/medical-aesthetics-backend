@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Appointment } from '../../types/clinic.types';
-import { X, User, Calendar, Clock, DollarSign, FileText, Shield, Info, ExternalLink } from 'lucide-react';
+import { X, User, Calendar, Clock, Euro, FileText, Shield, Info, ExternalLink } from 'lucide-react';
 
 interface AppointmentDetailModalProps {
   appointment: Appointment;
@@ -175,7 +175,7 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
               <div className="text-right">
                 <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Price</p>
                 <div className="flex items-center gap-2 text-[#CBFF38]">
-                  <DollarSign size={20} />
+                  <Euro size={20} />
                   <span className="text-3xl font-black italic tracking-tighter">
                     {appointment.totalAmount || appointment.service?.price}
                   </span>
@@ -188,7 +188,7 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
           {(appointment.paymentMethod || appointment.amountPaid !== undefined) && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <DollarSign size={14} className="text-[#CBFF38]" />
+                <Euro size={14} className="text-[#CBFF38]" />
                 <h3 className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Payment & Settlement</h3>
               </div>
               <div className="p-6 bg-white border border-gray-100 rounded-[32px] shadow-sm">

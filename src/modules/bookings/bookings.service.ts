@@ -1381,64 +1381,58 @@ export class BookingsService {
     userRole: string,
     query: { startDate?: string; endDate?: string; serviceId?: string; clinicId?: string },
   ): Promise<any> {
-    // Build query based on user role
-    let baseQuery = this.appointmentsRepository.createQueryBuilder('appointment')
-      .select([
-        'COUNT(appointment.id) as totalAppointments',
-        'AVG(appointment.totalAmount) as avgAmount',
-        'SUM(appointment.totalAmount) as totalRevenue',
-        'appointment.status',
-      ])
-      .groupBy('appointment.status');
-    // Filter analytics based on user role and clinical association
+    const qb = this.appointmentsRepository.createQueryBuilder('appointment');
+    
+    // Authorization filter
     if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
-      // Admins and SUPER_ADMINs see all. No restrictions.
-      baseQuery.where('1=1');
-    } else if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      // Get the user to check their clinic associations
+      qb.where('1=1');
+    } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
       const user = await this.usersRepository.findOne({
         where: { id: userId },
         relations: ['ownedClinics'],
       });
-
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-
+      if (!user) throw new NotFoundException('User not found');
       const clinicIds = (user.ownedClinics || []).map(c => c.id);
-      if (user.assignedClinicId) {
-        clinicIds.push(user.assignedClinicId);
-      }
-
+      if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
       if (clinicIds.length > 0) {
-        baseQuery = baseQuery.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds });
+        qb.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds });
       } else {
-        // Fallback: If no clinic assigned, only show their own
-        baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
+        qb.andWhere('appointment.providerId = :userId', { userId });
       }
     } else if (userRole === 'manager' && query.clinicId) {
-      baseQuery = baseQuery.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
+      qb.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
     } else {
-      // For salespeople and others, only show those where they are provider or involved
-      baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
+      qb.where('appointment.providerId = :userId', { userId });
     }
 
     if (query.startDate && query.endDate) {
-      baseQuery = baseQuery.andWhere('appointment.startTime BETWEEN :startDate AND :endDate', {
+      qb.andWhere('appointment.startTime BETWEEN :startDate AND :endDate', {
         startDate: new Date(query.startDate),
         endDate: new Date(query.endDate),
       });
     }
 
     if (query.serviceId) {
-      baseQuery = baseQuery.andWhere('appointment.serviceId = :serviceId', { serviceId: query.serviceId });
+      qb.andWhere('appointment.serviceId = :serviceId', { serviceId: query.serviceId });
     }
 
-    const analytics = await baseQuery.getRawMany();
+    const appointments = await qb.getMany();
+
+    const totalAppointments = appointments.length;
+    const completedAppointments = appointments.filter(a => a.status === AppointmentStatus.COMPLETED || a.status === AppointmentStatus.EXECUTED).length;
+    const cancelledAppointments = appointments.filter(a => a.status === AppointmentStatus.CANCELLED || a.status === AppointmentStatus.DELETED).length;
+    const noShows = appointments.filter(a => a.status === AppointmentStatus.NO_SHOW).length;
+    const totalRevenue = appointments.reduce((sum, a) => sum + (Number(a.amountPaid) || 0), 0);
+    const averageAppointmentValue = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
 
     return {
-      period: { startDate: query.startDate, endDate: query.endDate },
-      analytics,
+      totalAppointments,
+      completedAppointments,
+      cancelledAppointments,
+      noShows,
+      totalRevenue,
+      averageAppointmentValue,
+      period: { startDate: query.startDate, endDate: query.endDate }
     };
   }
 
@@ -1447,61 +1441,60 @@ export class BookingsService {
     userRole: string,
     query: { startDate?: string; endDate?: string; serviceId?: string; clinicId?: string },
   ): Promise<any> {
-    // Similar to appointment analytics but focused on revenue
-    let baseQuery = this.appointmentsRepository.createQueryBuilder('appointment')
-      .select([
-        'SUM(appointment.totalAmount) as totalRevenue',
-        'SUM(appointment.advancePaymentAmount) as advancePayments',
-        'appointment.paymentMethod',
-        'COUNT(CASE WHEN appointment.paymentMethod = \'cash\' THEN 1 END) as cashPayments',
-        'COUNT(CASE WHEN appointment.paymentMethod = \'card\' THEN 1 END) as cardPayments',
-      ])
-      .groupBy('appointment.paymentMethod');
-    // Filter revenue based on user role and clinical association
+    const qb = this.appointmentsRepository.createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.service', 'service')
+      .leftJoinAndSelect('service.treatment', 'treatment');
+
+    // Handle Auth
     if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
-      // Admins and SUPER_ADMINs see all. No restrictions.
-      baseQuery.where('1=1');
+      qb.where('1=1');
     } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
-      // Get the user to check their clinic associations
-      const user = await this.usersRepository.findOne({
-        where: { id: userId },
-        relations: ['ownedClinics'],
-      });
-
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-
+      const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+      if (!user) throw new NotFoundException('User not found');
       const clinicIds = (user.ownedClinics || []).map(c => c.id);
-      if (user.assignedClinicId) {
-        clinicIds.push(user.assignedClinicId);
-      }
-
+      if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
       if (clinicIds.length > 0) {
-        baseQuery = baseQuery.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds });
+        qb.andWhere('appointment.clinicId IN (:...clinicIds)', { clinicIds });
       } else {
-        // Fallback: If no clinic assigned, only show their own
-        baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
+        qb.andWhere('appointment.providerId = :userId', { userId });
       }
     } else if (userRole === 'manager' && query.clinicId) {
-      baseQuery = baseQuery.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
+      qb.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
     } else {
-      // For salespeople and others, only show those where they are provider or involved
-      baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
+      qb.where('appointment.providerId = :userId', { userId });
     }
 
     if (query.startDate && query.endDate) {
-      baseQuery = baseQuery.andWhere('appointment.startTime BETWEEN :startDate AND :endDate', {
+      qb.andWhere('appointment.startTime BETWEEN :startDate AND :endDate', {
         startDate: new Date(query.startDate),
         endDate: new Date(query.endDate),
       });
     }
 
-    const revenueData = await baseQuery.getRawMany();
+    const appointments = await qb.getMany();
+
+    // Filter to ones with financial impact
+    const paidAppts = appointments.filter(a => (Number(a.amountPaid) || 0) > 0);
+    const totalRevenue = paidAppts.reduce((sum, a) => sum + Number(a.amountPaid), 0);
+    const averageAppointmentValue = paidAppts.length > 0 ? totalRevenue / paidAppts.length : 0;
+
+    // Revenue by service
+    const serviceMap = new Map<string, { serviceName: string, revenue: number, count: number }>();
+    paidAppts.forEach(a => {
+      const sName = a.service?.treatment?.name || 'Unknown';
+      const current = serviceMap.get(sName) || { serviceName: sName, revenue: 0, count: 0 };
+      current.revenue += Number(a.amountPaid);
+      current.count += 1;
+      serviceMap.set(sName, current);
+    });
+
+    const revenueByService = Array.from(serviceMap.values()).sort((a, b) => b.revenue - a.revenue);
 
     return {
-      period: { startDate: query.startDate, endDate: query.endDate },
-      revenueData,
+      totalRevenue,
+      averageAppointmentValue,
+      revenueByService,
+      period: { startDate: query.startDate, endDate: query.endDate }
     };
   }
 
@@ -1510,44 +1503,65 @@ export class BookingsService {
     userRole: string,
     query: { startDate?: string; endDate?: string; clinicId?: string },
   ): Promise<any> {
-    // Analyze client return patterns
-    let baseQuery = this.appointmentsRepository.createQueryBuilder('appointment')
-      .select([
-        'appointment.clientId',
-        'COUNT(appointment.id) as visitCount',
-        'MIN(appointment.startTime) as firstVisit',
-        'MAX(appointment.startTime) as lastVisit',
-      ])
-      .groupBy('appointment.clientId')
-      .having('COUNT(appointment.id) > 1');
+    const qb = this.appointmentsRepository.createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.client', 'client');
 
-    // SECRETARIAT and CLINIC_OWNER have same permissions
+    // Permissions
     if (userRole === 'clinic_owner' || userRole === 'secretariat') {
-      baseQuery = baseQuery.leftJoin('appointment.clinic', 'clinic')
+      qb.leftJoin('appointment.clinic', 'clinic')
         .where('clinic.ownerId = :userId', { userId });
     } else if (userRole === 'manager' && query.clinicId) {
-      baseQuery = baseQuery.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
+      qb.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
+    } else if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
+      qb.where('1=1');
     } else {
-      baseQuery = baseQuery.where('appointment.providerId = :userId', { userId });
+      qb.where('appointment.providerId = :userId', { userId });
     }
 
-    if (query.startDate && query.endDate) {
-      baseQuery = baseQuery.andWhere('appointment.startTime BETWEEN :startDate AND :endDate', {
-        startDate: new Date(query.startDate),
-        endDate: new Date(query.endDate),
-      });
-    }
+    const appointments = await qb.getMany();
 
-    const repeatClients = await baseQuery.getRawMany();
+    // Map clients to their visits
+    const clientMap = new Map<string, any>();
+    appointments.forEach(a => {
+      if (!a.clientId) return;
+      const current = clientMap.get(a.clientId) || {
+        id: a.clientId,
+        name: a.client ? `${a.client.firstName} ${a.client.lastName}` : 'Guest',
+        visitCount: 0,
+        lastVisit: a.startTime,
+        totalRevenue: 0,
+        expectedNextVisit: null,
+      };
+      current.visitCount += 1;
+      if (new Date(a.startTime) > new Date(current.lastVisit)) {
+        current.lastVisit = a.startTime;
+      }
+      current.totalRevenue += Number(a.amountPaid || 0);
+      clientMap.set(a.clientId, current);
+    });
+
+    const clients = Array.from(clientMap.values());
+    const repeatClients = clients.filter(c => c.visitCount > 1);
+    
+    // Simple math for forecast
+    const repeatRate = clients.length > 0 ? (repeatClients.length / clients.length) * 100 : 0;
+    const customersExpectedNextMonth = Math.ceil(repeatClients.length * 0.85); // Assume 85% return rate for repeaters
+    const avgLifetimeValue = clients.length > 0 ? clients.reduce((s, c) => s + c.totalRevenue, 0) / clients.length : 0;
+    const estimatedRevenue = customersExpectedNextMonth * avgLifetimeValue;
+
+    // Set expected next visit for top repeaters
+    repeatClients.forEach(c => {
+      const nextDate = new Date(c.lastVisit);
+      nextDate.setDate(nextDate.getDate() + 45); // Prediction: return every 45 days
+      c.expectedNextVisit = nextDate.toISOString();
+    });
 
     return {
-      period: { startDate: query.startDate, endDate: query.endDate },
-      repeatClients,
-      forecast: {
-        // Simple forecast logic - clients who visited 3+ times are likely to return
-        likelyToReturn: repeatClients.filter(client => client.visitCount >= 3).length,
-        totalRepeatClients: repeatClients.length,
-      },
+      customersExpectedNextMonth,
+      estimatedRevenue,
+      repeatRate,
+      customers: repeatClients.sort((a, b) => b.visitCount - a.visitCount),
+      period: { startDate: query.startDate, endDate: query.endDate }
     };
   }
 

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Link } from "react-router-dom";
 import { css } from "@emotion/css";
 import LayeredBG from "@/assets/LayeredBg.svg";
@@ -63,7 +63,7 @@ export const ChatSupport: React.FC = () => {
                 </div>
                 <h2 className="text-[#33373F] text-[30px] font-black italic uppercase mb-8">Live <span className="text-lime-700">Chat</span></h2>
                 <Card className="bg-white p-12 rounded-2xl shadow-2xl border border-gray-100 text-center max-w-lg mx-auto">
-                    <div className="size-20 bg-lime-50 rounded-full flex items-center justify-center mx-auto mb-6"><span className="text-lime-600 text-3xl shrink-0">💬</span></div>
+                    <div className="size-20 bg-lime-50 rounded-full flex items-center justify-center mx-auto mb-6"><span className="text-lime-600 text-3xl shrink-0">ðŸ’¬</span></div>
                     <h3 className="text-2xl font-black italic uppercase text-gray-900 mb-4">Connect with an Expert</h3>
                     <p className="text-gray-500 italic mb-8">Our support specialists are available 24/7 to help you with your booking or any questions about our treatments.</p>
                     <button className="w-full bg-[#CBFF38] hover:bg-lime-600 text-black font-black uppercase tracking-widest py-4 rounded-xl shadow-lg transition-transform active:scale-95">Start Chat Now</button>

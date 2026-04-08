@@ -182,7 +182,7 @@ export const SalesAnalyticsDashboard = () => {
                 </div>
             ) : data && (
                 <div className="space-y-12">
-                    {/* LAYER 1 — Revenue Control (Performance KPI Bar) */}
+                    {/* LAYER 1 €– Revenue Control (Performance KPI Bar) */}
                     <div className="space-y-4 shadow-sm pb-2">
                         <div className="flex items-center gap-2 mb-2">
                             <Target className="w-4 h-4 text-slate-800" />
@@ -280,7 +280,7 @@ export const SalesAnalyticsDashboard = () => {
                         </div>
                     </div>
 
-                    {/* LAYER 2 — Sales Intelligence (Proactive Action Center) */}
+                    {/* LAYER 2 €– Sales Intelligence (Proactive Action Center) */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 mb-2">
                             <Zap className="w-4 h-4 text-slate-800" />
@@ -341,7 +341,7 @@ export const SalesAnalyticsDashboard = () => {
                         </div>
                     </div>
 
-                    {/* LAYER 3 — Pipeline & Distribution (Final strategic view) */}
+                    {/* LAYER 3 €– Pipeline & Distribution (Final strategic view) */}
                     <div className="space-y-8">
                         <div className="flex items-center gap-2 mb-2">
                             <TrendingUp className="w-4 h-4 text-slate-800" />
@@ -527,7 +527,7 @@ export const SalesAnalyticsDashboard = () => {
                                                 </td>
                                                 <td className="p-4">
                                                     <span className={`text-xs font-black ${row.revenue > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
-                                                        {row.revenue > 0 ? `€${row.revenue.toLocaleString()}` : '—'}
+                                                        {row.revenue > 0 ? `€${row.revenue.toLocaleString()}` : '€–'}
                                                     </span>
                                                 </td>
                                                 <td className="p-4">

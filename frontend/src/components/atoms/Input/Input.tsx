@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { css } from "@emotion/css";
 
 export interface InputProps
@@ -169,7 +169,7 @@ export const Input: React.FC<InputProps> = ({
             onClick={() => setShowPassword((s) => !s)}
             className={passwordToggleButtonStyle}
           >
-            {showPassword ? "🙈" : "👁"}
+            {showPassword ? "ðŸ™ˆ" : "ðŸ‘"}
           </button>
         )}
       </div>

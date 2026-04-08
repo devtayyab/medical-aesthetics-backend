@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import type { CrmAction } from "@/types";
 
 interface ActionLogProps {

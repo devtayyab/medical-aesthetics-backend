@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 
 type ReviewCardProps =
 {
@@ -38,7 +38,7 @@ const ClinicReviewCard: React.FC<ReviewCardProps> = ({
               i < rating ? "opacity-100" : "opacity-30"
             }`}
           >
-            ★
+            â˜…
           </span>
         ))}
       </div>

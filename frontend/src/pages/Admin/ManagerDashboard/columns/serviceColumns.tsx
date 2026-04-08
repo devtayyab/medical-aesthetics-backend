@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 // Format currency utility function
 const formatCurrency = (value: number): string => {

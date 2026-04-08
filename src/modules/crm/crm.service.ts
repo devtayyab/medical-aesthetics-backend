@@ -134,7 +134,13 @@ export class CrmService implements OnModuleInit {
       }
 
       // If not a lead, check customer record
-      const record = await this.customerRecordsRepository.findOne({ where: { customerId } });
+      // Check both if 'customerId' is User ID or Record ID
+      const record = await this.customerRecordsRepository.findOne({
+        where: [
+          { customerId: customerId },
+          { id: customerId }
+        ]
+      });
       // Allow access if unassigned OR assigned to this salesperson
       return !record?.assignedSalespersonId || record?.assignedSalespersonId === userId;
     }
@@ -731,6 +737,28 @@ export class CrmService implements OnModuleInit {
     return customer;
   }
 
+  /**
+   * Helper to resolve an ID that could be a User ID, a CustomerRecord ID, or a Lead ID.
+   * Returns the resolved User ID (if customer) or the original ID if it's a lead.
+   */
+  private async resolveEntityIds(id: string): Promise<{ userId?: string; leadId?: string; type: 'customer' | 'lead' | 'unknown' }> {
+    if (!id || !isUuid(id)) return { type: 'unknown' };
+
+    // 1. Check if it's a direct User ID
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (user) return { userId: id, type: 'customer' };
+
+    // 2. Check if it's a CustomerRecord ID
+    const record = await this.customerRecordsRepository.findOne({ where: { id } });
+    if (record) return { userId: record.customerId, type: 'customer' };
+
+    // 3. Check if it's a Lead ID
+    const lead = await this.leadsRepository.findOne({ where: { id } });
+    if (lead) return { leadId: id, type: 'lead' };
+
+    return { type: 'unknown' };
+  }
+
   // Customer Record Management
   async getCustomerRecord(customerId: string, salespersonId?: string): Promise<any> {
     // 0. Validate UUID format to avoid DB crashes
@@ -738,13 +766,15 @@ export class CrmService implements OnModuleInit {
       throw new NotFoundException('Invalid Customer or Lead ID format');
     }
 
-    // Check if user exists first
-    const customer = await this.usersRepository.findOne({ where: { id: customerId } });
+    const resolved = await this.resolveEntityIds(customerId);
+    
+    if (resolved.type === 'unknown') {
+      throw new NotFoundException('Customer or Lead not found');
+    }
 
-    // If not a user/customer, check if it's a Lead
-    if (!customer) {
+    if (resolved.type === 'lead') {
       const lead = await this.leadsRepository.findOne({
-        where: { id: customerId },
+        where: { id: resolved.leadId },
         relations: ['assignedSales', 'tags']
       });
 
@@ -851,14 +881,19 @@ export class CrmService implements OnModuleInit {
       };
     }
 
+    const resolvedUserId = resolved.userId;
+
     // Existing logic for real Customers
     let record = await this.customerRecordsRepository.findOne({
-      where: { customerId },
+      where: [
+        { customerId: resolvedUserId },
+        { id: customerId } // Handle if record ID was passed
+      ],
       relations: ['customer', 'assignedSalesperson', 'communications', 'actions', 'tags'],
     });
 
     if (record && salespersonId) {
-      const access = await this.userHasAccessToCustomer(salespersonId, customerId);
+      const access = await this.userHasAccessToCustomer(salespersonId, resolvedUserId);
       if (!access) {
         throw new NotFoundException('Customer not found (Access Denied)');
       }
@@ -866,20 +901,20 @@ export class CrmService implements OnModuleInit {
 
     if (!record) {
       // User exists (checked above), ensure record exists
-      record = await this.createCustomerRecord(customerId, salespersonId);
+      record = await this.createCustomerRecord(resolvedUserId, salespersonId);
       // Reload with relations
       record = await this.customerRecordsRepository.findOne({
-        where: { customerId },
+        where: { customerId: resolvedUserId },
         relations: ['customer', 'assignedSalesperson', 'communications', 'actions', 'tags'],
       });
     }
 
     // Get appointments - include any booked while they were a lead
     const originalLead = await this.leadsRepository.createQueryBuilder('lead')
-      .where("lead.metadata->>'convertedToCustomerId' = :customerId", { customerId })
+      .where("lead.metadata->>'convertedToCustomerId' = :resolvedUserId", { resolvedUserId })
       .getOne();
 
-    const idMatchList = [customerId, record.id];
+    const idMatchList = [resolvedUserId, record.id];
     if (originalLead) idMatchList.push(originalLead.id);
 
     const appointments = await this.appointmentsRepository.createQueryBuilder('apt')
@@ -906,7 +941,7 @@ export class CrmService implements OnModuleInit {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 50);
 
-    this.logger.log(`[getCustomerRecord] customerId: ${customerId}, dbLogs: ${dbLogs.length}, metadataLogs: ${metadataLogs.length}, total: ${communications.length}`);
+    this.logger.log(`[getCustomerRecord] resolvedUserId: ${resolvedUserId}, dbLogs: ${dbLogs.length}, metadataLogs: ${metadataLogs.length}, total: ${communications.length}`);
 
     // Get actions/tasks - include anything created while they were a lead
     const actions = await this.crmActionsRepository.find({
@@ -920,15 +955,15 @@ export class CrmService implements OnModuleInit {
 
     // Get tags
     const tags = await this.customerTagsRepository.find({
-      where: { customerId },
+      where: { customerId: resolvedUserId },
       relations: ['tag', 'addedByUser'],
     });
 
     // Get clinic and doctor affiliations
-    const clinicAffiliations = await this.customerAffiliationService.getClinicAffiliations(customerId);
-    const doctorAffiliations = await this.customerAffiliationService.getDoctorAffiliations(customerId);
-    const preferredClinic = await this.customerAffiliationService.getPreferredClinic(customerId);
-    const preferredDoctor = await this.customerAffiliationService.getPreferredDoctor(customerId);
+    const clinicAffiliations = await this.customerAffiliationService.getClinicAffiliations(resolvedUserId);
+    const doctorAffiliations = await this.customerAffiliationService.getDoctorAffiliations(resolvedUserId);
+    const preferredClinic = await this.customerAffiliationService.getPreferredClinic(resolvedUserId);
+    const preferredDoctor = await this.customerAffiliationService.getPreferredDoctor(resolvedUserId);
 
     return {
       record,
@@ -1045,10 +1080,21 @@ export class CrmService implements OnModuleInit {
   }
 
   async updateCustomerRecord(customerId: string, updateData: Partial<CustomerRecord>): Promise<CustomerRecord> {
-    let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
+    const resolved = await this.resolveEntityIds(customerId);
+    const resolvedUserId = resolved.type === 'customer' ? resolved.userId : customerId;
+
+    let record = await this.customerRecordsRepository.findOne({
+      where: [
+        { customerId: resolvedUserId },
+        { id: customerId }
+      ]
+    });
 
     if (!record) {
-      record = await this.createCustomerRecord(customerId);
+      if (resolved.type !== 'customer') {
+        throw new BadRequestException('Cannot update record for a lead as customer record doesn\'t exist');
+      }
+      record = await this.createCustomerRecord(resolvedUserId);
     }
 
     Object.assign(record, updateData);
@@ -1061,12 +1107,21 @@ export class CrmService implements OnModuleInit {
     if (data.customerId === '' || data.customerId === 'undefined') data.customerId = null;
     if (data.relatedLeadId === '' || data.relatedLeadId === 'undefined') data.relatedLeadId = null;
 
-    const originalId = data.customerId;
-    const leadId = data.customerId || data.relatedLeadId;
+    const inputId = data.customerId || data.relatedLeadId;
+    if (!inputId) {
+      throw new BadRequestException('Either customerId or relatedLeadId must be provided');
+    }
 
+    const resolved = await this.resolveEntityIds(inputId);
     let lead = null;
-    if (leadId && leadId.length === 36) { // Basic UUID length check to avoid DB crash
-      lead = await this.leadsRepository.findOne({ where: { id: leadId } });
+
+    if (resolved.type === 'lead') {
+      lead = await this.leadsRepository.findOne({ where: { id: resolved.leadId } });
+      data.relatedLeadId = resolved.leadId;
+      data.customerId = null;
+    } else if (resolved.type === 'customer') {
+      data.customerId = resolved.userId;
+      data.relatedLeadId = null;
     }
 
     if (lead) {
@@ -1101,7 +1156,7 @@ export class CrmService implements OnModuleInit {
 
     // Enforce mandatory field validation for call communications, except click-only logs
     if (data.type === 'call' && !(data.metadata && (data.metadata as any).clickOnly === true)) {
-      await this.mandatoryFieldValidationService.enforceFieldCompletion(originalId, data);
+      await this.mandatoryFieldValidationService.enforceFieldCompletion(inputId, data);
     }
 
     // If durationSeconds is provided but not part of schema, ensure it's in metadata
@@ -1133,7 +1188,7 @@ export class CrmService implements OnModuleInit {
           lastContactedAt: new Date(),
         });
       } else {
-        await this.updateCustomerRecord(originalId, {
+        await this.updateCustomerRecord(inputId, {
           lastContactDate: new Date(),
         });
       }
@@ -1577,10 +1632,7 @@ export class CrmService implements OnModuleInit {
   }
 
   async deleteAction(id: string): Promise<void> {
-    const result = await this.crmActionsRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Action with ID "${id}" not found`);
-    }
+    throw new ForbiddenException('Tasks cannot be deleted. They should only be rescheduled or marked as cancelled/completed.');
   }
 
   private async handleTaskRecurrence(action: CrmAction, updateData: Partial<CrmAction>) {

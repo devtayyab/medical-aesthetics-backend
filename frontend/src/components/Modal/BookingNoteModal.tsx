@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { BiX } from 'react-icons/bi';
 
 interface BookingNoteModalProps {

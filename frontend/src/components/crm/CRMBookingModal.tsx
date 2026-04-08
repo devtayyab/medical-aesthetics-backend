@@ -47,9 +47,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     const propCustomerEmail = customer?.email || customerEmail || '';
     const propCustomerPhone = customer?.phone || customerPhone || '';
 
-    if (isOpen === false) return null;
     const { user } = useSelector((state: RootState) => state.auth);
-
+    
     // Internal state for selected client (if selection happens in Step 0)
     const [selectedClient, setSelectedClient] = useState<any>(null);
     const [clientSearch, setClientSearch] = useState('');
@@ -79,7 +78,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
 
     // Search Clients logic
     useEffect(() => {
-        if (step !== 0 || !clientSearch || clientSearch.length < 2) {
+        if (!isOpen || step !== 0 || !clientSearch || clientSearch.length < 2) {
             setClientResults([]);
             return;
         }
@@ -87,8 +86,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
         const searchTimer = setTimeout(async () => {
             setIsLoading(true);
             try {
-                const res = await crmAPI.getLeads({ search: clientSearch, status: 'converted' });
-                setClientResults(res.data.leads || []);
+                const res = await crmAPI.getLeads({ search: clientSearch });
+                setClientResults(res.data || []);
             } catch (err) {
                 console.error("Search failed", err);
             } finally {
@@ -97,10 +96,11 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
         }, 500);
 
         return () => clearTimeout(searchTimer);
-    }, [clientSearch, step]);
+    }, [clientSearch, step, isOpen]);
 
     // Fetch Clinics on mount
     useEffect(() => {
+        if (!isOpen) return;
         const fetchClinics = async () => {
             setIsLoading(true);
             try {
@@ -113,11 +113,11 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
             }
         };
         fetchClinics();
-    }, []);
+    }, [isOpen]);
 
     // Fetch Services when clinic changes
     useEffect(() => {
-        if (!selectedClinic) return;
+        if (!isOpen || !selectedClinic) return;
         const fetchServices = async () => {
             setIsLoading(true);
             try {
@@ -132,11 +132,11 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
         fetchServices();
         setSelectedService('');
         setSelectedSlot(null);
-    }, [selectedClinic]);
+    }, [selectedClinic, isOpen]);
 
     // Fetch Slots when service/date changes
     useEffect(() => {
-        if (!selectedClinic || !selectedService || !selectedDate) return;
+        if (!isOpen || !selectedClinic || !selectedService || !selectedDate) return;
         const fetchSlots = async () => {
             setIsLoading(true);
             try {
@@ -154,7 +154,9 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
         };
         fetchSlots();
         setSelectedSlot(null);
-    }, [selectedClinic, selectedService, selectedDate]);
+    }, [selectedClinic, selectedService, selectedDate, isOpen]);
+
+    if (!isOpen) return null;
 
     const handleConfirmBooking = async () => {
         if (!selectedClinic || !selectedService || !selectedSlot || !finalCustomerId) return;

@@ -6,7 +6,7 @@ import {
   Calendar,
   MapPin,
   Clock,
-  DollarSign,
+  Euro,
   TrendingUp,
   Star,
   Award,
@@ -194,9 +194,9 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
 
   const formatCurrency = (amount: any) => {
     const value = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IE', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'EUR'
     }).format(value || 0);
   };
 
@@ -406,7 +406,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-600" />
+              <Euro className="h-5 w-5 text-green-600" />
               <div>
                 <div className="text-2xl font-bold">{formatCurrency(summary.lifetimeValue)}</div>
                 <div className="text-sm text-gray-500">Lifetime Value</div>

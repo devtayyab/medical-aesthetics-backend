@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { SalesDiary } from "@/components/organisms/SalesDiary/SalesDiary";
 
 export const SalesDiaryPage: React.FC = () => {

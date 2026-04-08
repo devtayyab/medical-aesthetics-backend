@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { css } from "@emotion/css";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, User, Bell, Menu, X, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
@@ -399,7 +399,7 @@ export const Header: React.FC = () => {
                     style={{ textDecoration: 'none' }}
                   >
                     <div className="size-8 bg-white/10 rounded-full flex items-center justify-center shadow-sm border border-white/10 group-hover:border-black/20 transition-colors">
-                      <span className="text-white group-hover:text-black font-bold text-xs">📞</span>
+                      <span className="text-white group-hover:text-black font-bold text-xs">ðŸ“ž</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5 group-hover:text-black/60">Call Us</span>

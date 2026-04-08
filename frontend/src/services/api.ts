@@ -233,6 +233,7 @@ export const bookingAPI = {
     serviceId: string | string[];
     providerId?: string;
     date: string;
+    allowPast?: boolean;
   }) => api.get("/availability", { 
     params,
     paramsSerializer: {

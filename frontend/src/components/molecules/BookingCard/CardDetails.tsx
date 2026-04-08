@@ -1,4 +1,4 @@
-
+﻿
 type CardDetailsProps = {
   name: string;
   price: number;
@@ -23,7 +23,7 @@ const CardDetails: React.FC<CardDetailsProps> = ({ name, price, location }) => {
 
   <div className="flex items-center gap-3 text-gray-700 text-sm">
     4.0
-    <span className="text-yellow-500 text-lg">★★★★☆</span>
+    <span className="text-yellow-500 text-lg">â˜…â˜…â˜…â˜…â˜†</span>
     <span className="text-gray-400 whitespace-nowrap">2 reviews</span>
   </div>
 

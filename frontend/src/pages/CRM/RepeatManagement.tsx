@@ -7,7 +7,7 @@ import type { AppDispatch, RootState } from "@/store";
 import { Select } from "@/components/atoms/Select/Select";
 import { userAPI, crmAPI, clinicsAPI } from "@/services/api";
 import { useSelector } from "react-redux";
-import { User, Calendar, Clock, RotateCcw, Building } from "lucide-react";
+import { User, Calendar, Clock, RotateCcw } from "lucide-react";
 
 export const RepeatManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -67,7 +67,7 @@ export const RepeatManagement: React.FC = () => {
       const serviceList = Array.isArray(response.data) ? response.data : [];
       setServices(serviceList.map((service: any) => ({
         value: service.id,
-        label: `${service.name || service.treatment?.name || 'Service'} ($${service.price})`
+        label: `${service.name || service.treatment?.name || 'Service'} (€${service.price})`
       })));
     } catch (err) {
       console.error("Failed to fetch services:", err);
@@ -279,7 +279,7 @@ export const RepeatManagement: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right font-medium text-gray-900">
-                          {apt.totalAmount ? `$${Number(apt.totalAmount).toFixed(2)}` : '-'}
+                          {apt.totalAmount ? `€${Number(apt.totalAmount).toFixed(2)}` : '-'}
                         </td>
                       </tr>
                     ))}

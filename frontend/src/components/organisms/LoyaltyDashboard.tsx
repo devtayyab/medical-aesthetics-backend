@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { LoyaltyCard } from "@/components/molecules/LoyaltyCard";
 import type { LoyaltyBalance } from "@/types";
 

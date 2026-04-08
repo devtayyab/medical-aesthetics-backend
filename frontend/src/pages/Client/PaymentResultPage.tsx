@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { css } from '@emotion/css';
 
@@ -122,7 +122,7 @@ export const PaymentResultPage: React.FC = () => {
         return (
             <div className={container}>
                 <div className={card}>
-                    <div className={`${iconWrap} ${successIcon}`}>✅</div>
+                    <div className={`${iconWrap} ${successIcon}`}>âœ…</div>
                     <h1 className={title}>Payment Successful!</h1>
                     <p className={subtitle}>
                         Your appointment has been confirmed and payment received.
@@ -148,7 +148,7 @@ export const PaymentResultPage: React.FC = () => {
       padding: 24px;
     `}>
             <div className={card}>
-                <div className={`${iconWrap} ${failureIcon}`}>❌</div>
+                <div className={`${iconWrap} ${failureIcon}`}>âŒ</div>
                 <h1 className={title}>Payment Not Completed</h1>
                 <p className={subtitle}>
                     Your payment was not processed. Your appointment reservation may still be active for a short time.

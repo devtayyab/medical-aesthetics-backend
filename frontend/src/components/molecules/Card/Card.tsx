@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Card as CardAtom, CardProps as CardAtomProps } from '@/components/atoms/Card/Card';
 
 interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
