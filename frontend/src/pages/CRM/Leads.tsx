@@ -468,7 +468,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       {Object.keys(leadFilters).some(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search') && (
         <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
           {Object.entries(leadFilters).map(([key, value]) => {
-            if (!value || key === 'search') return null;
+            if (!value || key === 'search' || key === 'page') return null;
             let label = key;
             if (key === 'status') label = 'Status';
             if (key === 'source') label = 'Source';
