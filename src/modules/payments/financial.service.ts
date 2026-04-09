@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaymentRecord, PaymentMethod, PaymentType, PaymentStatus } from './entities/payment-record.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class FinancialService {
@@ -13,6 +14,7 @@ export class FinancialService {
         @InjectRepository(Appointment)
         private appointmentsRepository: Repository<Appointment>,
         private eventEmitter: EventEmitter2,
+        private notificationsService: NotificationsService,
     ) {}
 
     async recordPayment(data: {
@@ -37,6 +39,15 @@ export class FinancialService {
         });
 
         const savedPayment = await this.paymentRecordsRepository.save(payment);
+
+        // Notify Staff about payment
+        if (savedPayment.type === PaymentType.PAYMENT) {
+          this.notificationsService.notifyAllStaff(
+            'New Payment Received',
+            `A payment of ${savedPayment.amount} has been recorded via ${savedPayment.method}.`,
+            { paymentId: savedPayment.id }
+          );
+        }
 
         // Update appointment if linked
         if (data.appointmentId) {
@@ -135,6 +146,13 @@ export class FinancialService {
         // Update original payment status
         await this.paymentRecordsRepository.update(paymentId, { status: PaymentStatus.REFUNDED });
 
+        // Notify Admin specifically for Refund (Cancel Amount)
+        this.notificationsService.notifyAllStaff(
+            'Payment Refunded (Amount Cancelled)',
+            `A refund of ${originalPayment.amount} has been processed for appointment ${originalPayment.appointmentId}.`,
+            { paymentId, originalPaymentId: paymentId, type: 'REFUND' }
+        );
+
         this.eventEmitter.emit('audit.log', {
             userId: recordedById,
             action: 'PAYMENT_REFUND',
@@ -173,6 +191,13 @@ export class FinancialService {
 
         // Update original payment status
         await this.paymentRecordsRepository.update(paymentId, { status: PaymentStatus.VOIDED });
+
+        // Notify Admin specifically for Void (Amount Cancelled)
+        this.notificationsService.notifyAllStaff(
+            'Payment Voided (Amount Cancelled)',
+            `A payment of ${originalPayment.amount} has been voided.`,
+            { paymentId, type: 'VOID' }
+        );
 
         this.eventEmitter.emit('audit.log', {
             userId: recordedById,

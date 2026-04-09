@@ -454,6 +454,22 @@ export class BookingsService {
       });
     }
 
+    // Notify Staff
+    await this.notificationsService.notifyAllStaff(
+      'New Appointment Booked',
+      `Client ${appointmentWithRelations.client?.firstName || 'Guest'} booked ${appointmentWithRelations.service?.treatment?.name || 'Treatment'} for ${appointmentWithRelations.startTime.toLocaleString()}`,
+      { appointmentId: savedAppointment.id }
+    );
+
+    if (appointmentWithRelations.clinicId) {
+      await this.notificationsService.notifyClinicStaff(
+        appointmentWithRelations.clinicId,
+        'New Clinic Appointment',
+        `A new appointment has been scheduled for your clinic on ${appointmentWithRelations.startTime.toLocaleString()}`,
+        { appointmentId: savedAppointment.id }
+      );
+    }
+
     // If card payment, generate Viva Wallet redirect URL
     if (createAppointmentDto.paymentMethod === 'card') {
       const clientName = appointmentWithRelations.client
@@ -676,6 +692,22 @@ export class BookingsService {
         });
       }
 
+      // Notify Staff about status change
+      await this.notificationsService.notifyAllStaff(
+        `Appointment ${status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}`,
+        `Appointment for ${updatedAppointment.client?.firstName || 'Guest'} has been ${status.toLowerCase()} by ${userId ? 'staff' : 'system'}.`,
+        { appointmentId: id, status }
+      );
+
+      if (updatedAppointment.clinicId) {
+        await this.notificationsService.notifyClinicStaff(
+          updatedAppointment.clinicId,
+          `Appointment Status: ${status}`,
+          `Appointment on ${updatedAppointment.startTime.toLocaleString()} is now ${status.toLowerCase()}.`,
+          { appointmentId: id, status }
+        );
+      }
+
       // Emit events for status changes
       this.eventEmitter.emit('appointment.status.changed', {
         appointment: updatedAppointment,
@@ -723,6 +755,13 @@ export class BookingsService {
         clinicName: appointment.clinic?.name,
       });
     }
+
+    // Notify Staff
+    await this.notificationsService.notifyAllStaff(
+      'Appointment Rescheduled',
+      `Appointment for ${appointment.client?.firstName || 'Guest'} moved to ${appointment.startTime.toLocaleString()}.`,
+      { appointmentId: id }
+    );
 
     this.eventEmitter.emit('appointment.rescheduled', appointment);
 

@@ -285,7 +285,7 @@ export const bookingAPI = {
     endTime: string;
     reason?: string;
   }) => api.post("/blocked-slots", data),
-  updateAppointment: (id: string, data: { startTime?: string; endTime?: string; providerId?: string; notes?: string }) =>
+  updateAppointment: (id: string, data: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string }) =>
     api.patch(`/appointments/${id}/update`, data),
   deleteAppointment: (id: string) => api.patch(`/appointments/${id}/delete`),
 };
@@ -349,6 +349,7 @@ export const crmAPI = {
   updateLead: (id: string, data: Partial<Lead>) =>
     api.patch(`/crm/leads/${id}`, data),
   deleteLead: (id: string) => api.delete(`/crm/leads/${id}`),
+  bulkCreateLeads: (leads: any[]) => api.post("/crm/leads/bulk", leads),
 
   // Facebook Integration
   handleFacebookWebhook: (data: any) => api.post("/crm/facebook/webhook", data),

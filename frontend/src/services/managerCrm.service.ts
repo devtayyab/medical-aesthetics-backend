@@ -93,6 +93,7 @@ export interface ClientBenefit {
 
 export interface NoShowAlert {
   appointmentId: string;
+  patientId?: string;
   patientName: string;
   agentName: string;
   clinicName: string;

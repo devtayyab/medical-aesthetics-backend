@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -19,7 +19,18 @@ import {
   User,
   Globe,
   Tag,
-  MessageSquare
+  MessageSquare,
+  Calendar,
+  List,
+  FilePlus,
+  CalendarPlus,
+  Zap,
+  Upload,
+  Download,
+  FileText,
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
@@ -38,6 +49,7 @@ import {
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
+import { crmAPI, bookingAPI } from '@/services/api';
 
 interface LeadsPageProps {
   onViewLead?: (lead: Lead) => void;
@@ -58,6 +70,45 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   const [showDuplicateResults, setShowDuplicateResults] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+
+  // Bulk import state
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [csvRows, setCsvRows] = useState<Record<string, string>[]>([]);
+  const [csvFileName, setCsvFileName] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<{ success: number; errors: { row: number; message: string }[] } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Post-log action states
+  const [createFollowUpTask, setCreateFollowUpTask] = useState(false);
+  const [taskData, setTaskData] = useState({
+    subject: '',
+    dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Default to tomorrow
+    priority: 'medium'
+  });
+
+  const [scheduleAppointment, setScheduleAppointment] = useState(false);
+  const [appointmentData, setAppointmentData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    time: '10:00',
+    serviceId: '',
+    clinicId: ''
+  });
+
+  const [clinics, setClinics] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const clinicRes = await crmAPI.getAccessibleClinics();
+        const clinicOptions = (clinicRes.data || []).map((c: any) => ({ value: c.id, label: c.name }));
+        setClinics(clinicOptions);
+      } catch (e) {
+        console.error("Failed to load clinics", e);
+      }
+    })();
+  }, []);
 
   // Initial form state
   const initialFormState = {
@@ -117,9 +168,51 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   const handleCreateLead = async () => {
     if (!formData.firstName || !formData.lastName || !formData.email) return;
     try {
-      await dispatch(createLead(formData)).unwrap();
+      const result = await dispatch(createLead(formData)).unwrap();
+      const leadId = result.id;
+
+      // Handle follow-up actions
+      const actions: Promise<any>[] = [];
+      
+      if (createFollowUpTask) {
+        actions.push(crmAPI.createAction({
+          customerId: leadId,
+          actionType: 'follow_up_call',
+          title: taskData.subject || `Follow up: ${formData.firstName} ${formData.lastName}`,
+          description: `Automated follow-up task created during lead creation.`,
+          dueDate: taskData.dueDate,
+          priority: taskData.priority as any,
+          status: 'pending',
+          salespersonId: (user as any)?.id
+        }));
+      }
+
+      if (scheduleAppointment && appointmentData.serviceId && appointmentData.clinicId) {
+        const startStr = `${appointmentData.date}T${appointmentData.time}:00`;
+        const startDate = new Date(startStr);
+        const endDate = new Date(startDate.getTime() + 30 * 60000); // 30 min default
+        
+        actions.push(bookingAPI.createAppointment({
+          clientId: leadId,
+          clinicId: appointmentData.clinicId,
+          serviceId: appointmentData.serviceId,
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+          status: 'PENDING',
+          notes: `Scheduled during lead creation.`
+        }));
+      }
+
+      if (actions.length > 0) {
+        await Promise.all(actions);
+      }
+
       setShowCreateForm(false);
       setFormData(initialFormState);
+      
+      // Reset action states
+      setCreateFollowUpTask(false);
+      setScheduleAppointment(false);
     } catch (error) {
       console.error('Failed to create lead:', error);
     }
@@ -164,11 +257,108 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         source: editingLead.source,
       };
       await dispatch(updateLead({ id: editingLead.id, updates })).unwrap();
+      
+      // Handle follow-up actions
+      const actions: Promise<any>[] = [];
+      
+      if (createFollowUpTask) {
+        actions.push(crmAPI.createAction({
+          customerId: editingLead.id,
+          actionType: 'follow_up_call',
+          title: taskData.subject || `Follow up: ${editingLead.firstName} ${editingLead.lastName}`,
+          description: `Automated follow-up task created during lead edit.`,
+          dueDate: taskData.dueDate,
+          priority: taskData.priority as any,
+          status: 'pending',
+          salespersonId: (user as any)?.id
+        }));
+      }
+
+      if (scheduleAppointment && appointmentData.serviceId && appointmentData.clinicId) {
+        const startStr = `${appointmentData.date}T${appointmentData.time}:00`;
+        const startDate = new Date(startStr);
+        const endDate = new Date(startDate.getTime() + 30 * 60000); // 30 min default
+        
+        actions.push(bookingAPI.createAppointment({
+          clientId: editingLead.id,
+          clinicId: appointmentData.clinicId,
+          serviceId: appointmentData.serviceId,
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+          status: 'PENDING',
+          notes: `Scheduled during lead edit.`
+        }));
+      }
+
+      if (actions.length > 0) {
+        await Promise.all(actions);
+      }
+
       setShowModal(false);
       setEditingLead(null);
+      
+      // Reset action states
+      setCreateFollowUpTask(false);
+      setScheduleAppointment(false);
+
       dispatch(fetchLeads(leadFilters));
     } catch (error) {
       console.error("Update failed:", error);
+    }
+  };
+
+  // CSV Bulk Import helpers
+  const parseCsv = (file: File) => {
+    setCsvFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) return;
+      // Normalize headers: trim whitespace & lowercase
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const rows: Record<string, string>[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        if (values.every(v => !v)) continue; // skip blank lines
+        const row: Record<string, string> = {};
+        headers.forEach((h, idx) => { row[h] = values[idx] ?? ''; });
+        rows.push(row);
+      }
+      setCsvRows(rows);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleBulkImport = async () => {
+    const validRows = csvRows.filter(r => r.firstName && r.lastName && r.email);
+    if (validRows.length === 0) return;
+    setImportLoading(true);
+    try {
+      const payload = validRows.map(r => ({
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: r.email,
+        phone: r.phone || undefined,
+        source: r.source || 'manual',
+        status: r.status || 'new',
+        notes: r.notes || undefined,
+      }));
+      const res = await crmAPI.bulkCreateLeads(payload);
+      const data = res.data;
+      
+      const succeeded = data.created ?? 0;
+      const errors: { row: number; message: string }[] = (data.results || [])
+        .map((r: any, i: number) => r.status === 'error' ? { row: i + 2, message: r.message } : null)
+        .filter(Boolean);
+
+      setImportResult({ success: succeeded, errors });
+      dispatch(fetchLeads(leadFilters));
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Import failed';
+      setImportResult({ success: 0, errors: [{ row: 0, message: msg }] });
+    } finally {
+      setImportLoading(false);
     }
   };
 
@@ -211,7 +401,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
     </Card>
   );
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager';
+
 
   return (
     <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 pb-10">
@@ -245,6 +435,13 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
           >
             <Filter className={`w-3.5 h-3.5 mr-1.5 ${showFilters ? 'text-white' : 'text-gray-400'}`} />
             {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => { setShowBulkImport(true); setCsvRows([]); setCsvFileName(''); setImportResult(null); }}
+            className="h-10 text-[11px] font-bold border-gray-200 bg-white text-gray-600 hover:bg-violet-50 hover:border-violet-300 hover:text-violet-700 transition-all"
+          >
+            <Upload className="w-3.5 h-3.5 mr-1.5" /> Import CSV
           </Button>
           <Button onClick={() => setShowCreateForm(true)} className="h-10 px-4 bg-[#CBFF38] text-gray-900 hover:bg-[#b3d81b] shadow-sm border-none rounded-xl font-bold text-[11px] transition-all hover:scale-[1.02] active:scale-[0.98]">
             <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Lead
@@ -677,6 +874,122 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     options={[{ value: 'facebook_ads', label: 'Facebook Ads' }, { value: 'website', label: 'Website' }, { value: 'referral', label: 'Referral' }]}
                   />
                 </div>
+
+                {/* Integrated Post-Edit Actions */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200">
+                    <div className="bg-blue-600 p-1.5 rounded-lg">
+                      <Zap className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-wider">Post-Update Continuity</h3>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 py-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="createTaskEdit"
+                        checked={createFollowUpTask}
+                        onChange={(e) => setCreateFollowUpTask(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <label htmlFor="createTaskEdit" className="text-[11px] font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
+                        <FilePlus className="w-3.5 h-3.5 text-blue-500" />
+                        Add Follow-up Task
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="scheduleAppEdit"
+                        checked={scheduleAppointment}
+                        onChange={(e) => setScheduleAppointment(e.target.checked)}
+                        className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                      />
+                      <label htmlFor="scheduleAppEdit" className="text-[11px] font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
+                        <CalendarPlus className="w-3.5 h-3.5 text-purple-500" />
+                        Book Appointment
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Conditional Task Fields */}
+                  {createFollowUpTask && (
+                    <div className="p-3 bg-white rounded-xl border border-blue-100 space-y-3 animate-in slide-in-from-top-1">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input
+                          label="Task Subject"
+                          value={taskData.subject}
+                          onChange={(e) => setTaskData({ ...taskData, subject: e.target.value })}
+                          placeholder="e.g. Call back"
+                          className="bg-white text-xs h-8"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            label="Due Date"
+                            type="date"
+                            value={taskData.dueDate}
+                            onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
+                            className="bg-white text-xs h-8"
+                          />
+                          <Select
+                            label="Priority"
+                            value={taskData.priority}
+                            onChange={(val) => setTaskData({ ...taskData, priority: val })}
+                            options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]}
+                            className="bg-white text-xs h-8"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Conditional Appointment Fields */}
+                  {scheduleAppointment && (
+                    <div className="p-3 bg-white rounded-xl border border-purple-100 space-y-3 animate-in slide-in-from-top-1">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            label="Date"
+                            type="date"
+                            value={appointmentData.date}
+                            onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
+                            className="bg-white text-xs h-8"
+                          />
+                          <Input
+                            label="Time"
+                            type="time"
+                            value={appointmentData.time}
+                            onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
+                            className="bg-white text-xs h-8"
+                          />
+                        </div>
+                        <Select
+                          label="Service"
+                          value={appointmentData.serviceId}
+                          onChange={(val) => setAppointmentData({ ...appointmentData, serviceId: val })}
+                          options={[
+                            { value: 'botox', label: 'Botox' },
+                            { value: 'fillers', label: 'Fillers' },
+                            { value: 'laser', label: 'Laser' },
+                            { value: 'consult', label: 'Consult' }
+                          ]}
+                          className="bg-white text-xs h-8"
+                        />
+                      </div>
+                      <Select
+                        label="Clinic"
+                        value={appointmentData.clinicId}
+                        onChange={(val) => setAppointmentData({ ...appointmentData, clinicId: val })}
+                        options={clinics}
+                        className="bg-white text-xs h-8"
+                      />
+                    </div>
+                  )}
+                </div>
               </CardContent>
               <div className="p-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50 rounded-b-xl">
                 <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
@@ -810,10 +1123,137 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     </div>
                   </div>
                 </div>
+
+                {/* Section 3: Process Continuity (Integrated Actions) */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-4">
+                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200">
+                    <div className="bg-slate-900 p-2 rounded-lg">
+                      <Zap className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-tight">Post-Creation Actions</h3>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Maintain workflow continuity</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-6 py-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="createTaskNew"
+                        checked={createFollowUpTask}
+                        onChange={(e) => setCreateFollowUpTask(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <label htmlFor="createTaskNew" className="text-xs font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
+                        <FilePlus className="w-3.5 h-3.5 text-blue-500" />
+                        Create Follow-up Task
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="scheduleAppNew"
+                        checked={scheduleAppointment}
+                        onChange={(e) => setScheduleAppointment(e.target.checked)}
+                        className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                      />
+                      <label htmlFor="scheduleAppNew" className="text-xs font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
+                        <CalendarPlus className="w-3.5 h-3.5 text-purple-500" />
+                        Schedule Appointment
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Conditional Task Fields */}
+                  {createFollowUpTask && (
+                    <div className="p-4 bg-white rounded-xl border border-blue-100 space-y-4 animate-in slide-in-from-top-1">
+                      <h4 className="text-[10px] font-black text-blue-900 uppercase tracking-wider flex items-center gap-2">
+                        <List className="w-3 h-3" /> Task Configuration
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                          label="Task Subject"
+                          value={taskData.subject}
+                          onChange={(e) => setTaskData({ ...taskData, subject: e.target.value })}
+                          placeholder="e.g. Call back to finalize price"
+                          className="bg-white text-xs"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            label="Due Date"
+                            type="date"
+                            value={taskData.dueDate}
+                            onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
+                            className="bg-white text-xs"
+                          />
+                          <Select
+                            label="Priority"
+                            value={taskData.priority}
+                            onChange={(val) => setTaskData({ ...taskData, priority: val })}
+                            options={[
+                              { value: 'low', label: 'Low' },
+                              { value: 'medium', label: 'Medium' },
+                              { value: 'high', label: 'High' }
+                            ]}
+                            className="bg-white text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Conditional Appointment Fields */}
+                  {scheduleAppointment && (
+                    <div className="p-4 bg-white rounded-xl border border-purple-100 space-y-4 animate-in slide-in-from-top-1">
+                      <h4 className="text-[10px] font-black text-purple-900 uppercase tracking-wider flex items-center gap-2">
+                        <Calendar className="w-3 h-3" /> Appointment Scheduling
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            label="Date"
+                            type="date"
+                            value={appointmentData.date}
+                            onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
+                            className="bg-white text-xs"
+                          />
+                          <Input
+                            label="Time"
+                            type="time"
+                            value={appointmentData.time}
+                            onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
+                            className="bg-white text-xs"
+                          />
+                        </div>
+                        <Select
+                          label="Proposed Service"
+                          value={appointmentData.serviceId}
+                          onChange={(val) => setAppointmentData({ ...appointmentData, serviceId: val })}
+                          options={[
+                            { value: 'botox', label: 'Botox Treatment' },
+                            { value: 'fillers', label: 'Dermal Fillers' },
+                            { value: 'laser', label: 'Laser Session' },
+                            { value: 'consult', label: 'General Consultation' }
+                          ]}
+                          className="bg-white text-xs"
+                        />
+                      </div>
+                      <Select
+                        label="Select Clinic"
+                        value={appointmentData.clinicId}
+                        onChange={(val) => setAppointmentData({ ...appointmentData, clinicId: val })}
+                        options={clinics}
+                        className="bg-white text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Footer */}
-              <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-3 backdrop-blur-sm flex-none">
+              <div className="p-6 bg-white border-t border-gray-100 flex justify-end gap-3 flex-none shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
                 <Button
                   variant="white"
                   onClick={() => setShowCreateForm(false)}
@@ -875,6 +1315,237 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
           </div>
         )
       }
-    </div >
+
+      {/* ── Bulk CSV Import Modal ── */}
+      {showBulkImport && (
+        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="bg-violet-100 p-2.5 rounded-xl">
+                  <Upload className="w-5 h-5 text-violet-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Bulk Lead Import</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Upload a CSV file to create multiple leads at once</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBulkImport(false)}
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              {/* Template download */}
+              <div className="flex items-center justify-between bg-violet-50 border border-violet-100 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-4 h-4 text-violet-600" />
+                  <span className="text-xs font-bold text-violet-800">Need the CSV template?</span>
+                  <span className="text-[11px] text-violet-600">Columns: firstName, lastName, email, phone, source, status, notes</span>
+                </div>
+                <button
+                  onClick={() => {
+                    const header = 'firstName,lastName,email,phone,source,status,notes';
+                    const sample = 'Sarah,Johnson,sarah@example.com,+971501234567,facebook_ads,new,Interested in Botox';
+                    const blob = new Blob([header + '\n' + sample], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = 'leads_template.csv'; a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="flex items-center gap-1.5 bg-white border border-violet-200 text-violet-700 text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-violet-100 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download Template
+                </button>
+              </div>
+
+              {!importResult ? (
+                <>
+                  {/* Drop Zone */}
+                  {csvRows.length === 0 && (
+                    <div
+                      className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${
+                        isDragging
+                          ? 'border-violet-400 bg-violet-50'
+                          : 'border-gray-200 bg-gray-50 hover:border-violet-300 hover:bg-violet-50/50'
+                      }`}
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragging(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) parseCsv(file);
+                      }}
+                    >
+                      <div className="flex flex-col items-center gap-3">
+                        <div className={`p-4 rounded-2xl transition-colors ${ isDragging ? 'bg-violet-200' : 'bg-gray-200' }`}>
+                          <Upload className={`w-8 h-8 transition-colors ${ isDragging ? 'text-violet-700' : 'text-gray-400' }`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-700">Drop your CSV file here</p>
+                          <p className="text-xs text-gray-400 mt-1">or <span className="text-violet-600 font-bold underline underline-offset-2">click to browse</span></p>
+                        </div>
+                        <p className="text-[11px] text-gray-400">Supports .csv files up to 5 MB</p>
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".csv,text/csv"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) parseCsv(file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Preview Table */}
+                  {csvRows.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                          <span className="text-xs font-bold text-gray-800">Parsed {csvRows.length} rows from <span className="text-violet-600">{csvFileName}</span></span>
+                        </div>
+                        <button
+                          onClick={() => { setCsvRows([]); setCsvFileName(''); }}
+                          className="text-[11px] font-bold text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" /> Clear
+                        </button>
+                      </div>
+
+                      {/* Validation warnings */}
+                      {csvRows.filter(r => !r.firstName || !r.lastName || !r.email).length > 0 && (
+                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                          <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                          <p className="text-[11px] text-amber-800 font-medium">
+                            <strong>{csvRows.filter(r => !r.firstName || !r.lastName || !r.email).length} rows</strong> are missing required fields (firstName, lastName, email) and will be skipped.
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="overflow-auto rounded-xl border border-gray-100 max-h-64">
+                        <table className="w-full text-[11px]">
+                          <thead className="bg-gray-50 sticky top-0">
+                            <tr>
+                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">#</th>
+                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">First</th>
+                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Last</th>
+                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Email</th>
+                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Phone</th>
+                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Source</th>
+                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Valid</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {csvRows.map((row, i) => {
+                              const valid = !!(row.firstName && row.lastName && row.email);
+                              return (
+                                <tr key={i} className={valid ? 'bg-white hover:bg-gray-50' : 'bg-red-50'}>
+                                  <td className="px-3 py-2 text-gray-400 font-mono">{i + 1}</td>
+                                  <td className="px-3 py-2 font-semibold text-gray-800">{row.firstName || <span className="text-red-400 italic">missing</span>}</td>
+                                  <td className="px-3 py-2 text-gray-700">{row.lastName || <span className="text-red-400 italic">missing</span>}</td>
+                                  <td className="px-3 py-2 text-gray-600">{row.email || <span className="text-red-400 italic">missing</span>}</td>
+                                  <td className="px-3 py-2 text-gray-500">{row.phone || '—'}</td>
+                                  <td className="px-3 py-2 text-gray-500">{row.source || 'manual'}</td>
+                                  <td className="px-3 py-2 text-gray-500">{row.status || 'new'}</td>
+                                  <td className="px-3 py-2">
+                                    {valid
+                                      ? <span className="inline-flex items-center gap-1 text-emerald-700 font-bold"><CheckCircle2 className="w-3.5 h-3.5" /> OK</span>
+                                      : <span className="inline-flex items-center gap-1 text-red-500 font-bold"><AlertCircle className="w-3.5 h-3.5" /> Skip</span>
+                                    }
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Result Summary */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 text-center">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                      <p className="text-3xl font-black text-emerald-700">{importResult.success}</p>
+                      <p className="text-xs font-bold text-emerald-600 mt-1">Leads Imported</p>
+                    </div>
+                    <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center">
+                      <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                      <p className="text-3xl font-black text-red-600">{importResult.errors.length}</p>
+                      <p className="text-xs font-bold text-red-500 mt-1">Failed Rows</p>
+                    </div>
+                  </div>
+                  {importResult.errors.length > 0 && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 space-y-2 max-h-40 overflow-y-auto">
+                      <p className="text-[11px] font-black text-red-700 uppercase tracking-wider">Error Details</p>
+                      {importResult.errors.map((err, i) => (
+                        <div key={i} className="flex items-start gap-2 text-[11px] text-red-600">
+                          <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                          <span><strong>Row {err.row}:</strong> {err.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-gray-100 px-8 py-5 bg-gray-50 flex items-center justify-between flex-none">
+              <span className="text-[11px] text-gray-400 font-medium">
+                {csvRows.length > 0 && !importResult
+                  ? `${csvRows.filter(r => r.firstName && r.lastName && r.email).length} of ${csvRows.length} rows will be imported`
+                  : importResult
+                  ? 'Import complete'
+                  : 'Upload a CSV file to get started'}
+              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowBulkImport(false)}
+                  className="px-4 py-2 text-[11px] font-bold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  {importResult ? 'Close' : 'Cancel'}
+                </button>
+                {!importResult && csvRows.filter(r => r.firstName && r.lastName && r.email).length > 0 && (
+                  <button
+                    disabled={importLoading}
+                    onClick={handleBulkImport}
+                    className="flex items-center gap-2 px-6 py-2 text-[11px] font-bold bg-violet-600 text-white rounded-xl hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-md shadow-violet-200"
+                  >
+                    {importLoading ? (
+                      <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full" /> Importing...</>
+                    ) : (
+                      <><Upload className="w-3.5 h-3.5" /> Import {csvRows.filter(r => r.firstName && r.lastName && r.email).length} Leads</>
+                    )}
+                  </button>
+                )}
+                {importResult && (
+                  <button
+                    onClick={() => { setCsvRows([]); setCsvFileName(''); setImportResult(null); }}
+                    className="flex items-center gap-2 px-6 py-2 text-[11px] font-bold bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition-colors shadow-md shadow-violet-200"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Import Another File
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };

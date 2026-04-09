@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Phone, AlertCircle, CheckCircle, Clock, User } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
@@ -7,26 +7,32 @@ import { Select } from '@/components/atoms/Select/Select';
 import { Textarea } from '@/components/atoms/Textarea';
 import {
   logCommunication,
+  updateCommunication,
   validateCommunication,
   getRequiredFieldsForCall
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { CommunicationLog } from '@/types';
-import { crmAPI, userAPI } from '@/services/api';
+import { crmAPI, userAPI, bookingAPI } from '@/services/api';
+import { Calendar, List, FilePlus, CalendarPlus } from 'lucide-react';
 
 interface CommunicationFormProps {
   customerId: string;
+  initialData?: CommunicationLog;
   onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 export const CommunicationForm: React.FC<CommunicationFormProps> = ({
   customerId,
-  onSuccess
+  initialData,
+  onSuccess,
+  onCancel
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { requiredFields, fieldValidation } = useSelector((state: RootState) => state.crm);
-  const [formData, setFormData] = useState<Partial<CommunicationLog>>({
+  const [formData, setFormData] = useState<Partial<CommunicationLog>>(initialData || {
     customerId,
     type: 'call',
     direction: 'outgoing',
@@ -34,6 +40,24 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
     metadata: {},
     salespersonId: (user as any)?.id || undefined
   });
+
+  // Post-log action states
+  const [createFollowUpTask, setCreateFollowUpTask] = useState(false);
+  const [taskData, setTaskData] = useState({
+    subject: '',
+    dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Default to tomorrow
+    priority: 'medium'
+  });
+
+  const [scheduleAppointment, setScheduleAppointment] = useState(false);
+  const [appointmentData, setAppointmentData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    time: '10:00',
+    serviceId: '',
+    clinicId: ''
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [clinics, setClinics] = useState<{ value: string; label: string }[]>([]);
@@ -122,8 +146,50 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
     setValidationWarnings(validation.warnings || []);
 
     if (validation.isValid) {
+      setIsSubmitting(true);
       try {
-        await dispatch(logCommunication(payload)).unwrap();
+        if (initialData?.id) {
+          await dispatch(updateCommunication({ id: initialData.id, updates: payload })).unwrap();
+        } else {
+          await dispatch(logCommunication(payload)).unwrap();
+          
+          // Handle post-log actions only for new communications
+          const actions: Promise<any>[] = [];
+          
+          if (createFollowUpTask) {
+            actions.push(crmAPI.createAction({
+              customerId,
+              actionType: 'follow_up_call',
+              title: taskData.subject || `Follow up: ${payload.subject || 'Interaction'}`,
+              description: `Automated follow-up task from communication log.`,
+              dueDate: taskData.dueDate,
+              priority: taskData.priority as any,
+              status: 'pending',
+              salespersonId: (user as any)?.id
+            }));
+          }
+          
+          if (scheduleAppointment && appointmentData.serviceId && appointmentData.clinicId) {
+            const startStr = `${appointmentData.date}T${appointmentData.time}:00`;
+            const startDate = new Date(startStr);
+            const endDate = new Date(startDate.getTime() + 30 * 60000); // 30 min default
+            
+            actions.push(bookingAPI.createAppointment({
+              clientId: customerId,
+              clinicId: appointmentData.clinicId,
+              serviceId: appointmentData.serviceId,
+              startTime: startDate.toISOString(),
+              endTime: endDate.toISOString(),
+              status: 'PENDING',
+              notes: `Scheduled during communication: ${payload.subject || 'No subject'}`
+            }));
+          }
+          
+          if (actions.length > 0) {
+            await Promise.all(actions);
+          }
+        }
+
         setFormData({
           customerId,
           type: 'call',
@@ -136,7 +202,9 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
         setValidationWarnings([]);
         onSuccess?.();
       } catch (error) {
-        console.error('Failed to log communication:', error);
+        console.error('Failed to log/update communication:', error);
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
@@ -310,6 +378,125 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
         />
       </div>
 
+      {/* Process Continuity Options (Only for new logs) */}
+      {!initialData && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="createTask"
+                checked={createFollowUpTask}
+                onChange={(e) => setCreateFollowUpTask(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
+              <label htmlFor="createTask" className="text-xs font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
+                <FilePlus className="w-3.5 h-3.5 text-blue-500" />
+                Create Follow-up Task
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="scheduleApp"
+                checked={scheduleAppointment}
+                onChange={(e) => setScheduleAppointment(e.target.checked)}
+                className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+              />
+              <label htmlFor="scheduleApp" className="text-xs font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
+                <CalendarPlus className="w-3.5 h-3.5 text-purple-500" />
+                Schedule Appointment
+              </label>
+            </div>
+          </div>
+
+          {/* Conditional Task Fields */}
+          {createFollowUpTask && (
+            <div className="p-4 bg-blue-50/30 rounded-xl border border-blue-100 space-y-4 animate-in slide-in-from-top-1">
+              <h4 className="text-[11px] font-black text-blue-900 uppercase tracking-wider flex items-center gap-2">
+                <List className="w-3.5 h-3.5" /> Follow-up Task Details
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Task Subject"
+                  value={taskData.subject}
+                  onChange={(e) => setTaskData({ ...taskData, subject: e.target.value })}
+                  placeholder="e.g. Call back to finalize price"
+                  className="bg-white text-xs"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    label="Due Date"
+                    type="date"
+                    value={taskData.dueDate}
+                    onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
+                    className="bg-white text-xs"
+                  />
+                  <Select
+                    label="Priority"
+                    value={taskData.priority}
+                    onChange={(val) => setTaskData({ ...taskData, priority: val })}
+                    options={[
+                      { value: 'low', label: 'Low' },
+                      { value: 'medium', label: 'Medium' },
+                      { value: 'high', label: 'High' }
+                    ]}
+                    className="bg-white text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Conditional Appointment Fields */}
+          {scheduleAppointment && (
+            <div className="p-4 bg-purple-50/30 rounded-xl border border-purple-100 space-y-4 animate-in slide-in-from-top-1">
+              <h4 className="text-[11px] font-black text-purple-900 uppercase tracking-wider flex items-center gap-2">
+                <Calendar className="w-3.5 h-3.5" /> Quick Appointment
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    label="Date"
+                    type="date"
+                    value={appointmentData.date}
+                    onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
+                    className="bg-white text-xs"
+                  />
+                  <Input
+                    label="Time"
+                    type="time"
+                    value={appointmentData.time}
+                    onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
+                    className="bg-white text-xs"
+                  />
+                </div>
+                <Select
+                  label="Proposed Service"
+                  value={appointmentData.serviceId}
+                  onChange={(val) => setAppointmentData({ ...appointmentData, serviceId: val })}
+                  options={[
+                    { value: 'botox', label: 'Botox Treatment' },
+                    { value: 'fillers', label: 'Dermal Fillers' },
+                    { value: 'laser', label: 'Laser Session' },
+                    { value: 'consult', label: 'General Consultation' }
+                  ]}
+                  className="bg-white text-xs"
+                />
+              </div>
+              <Select
+                label="Select Clinic"
+                value={appointmentData.clinicId}
+                onChange={(val) => setAppointmentData({ ...appointmentData, clinicId: val })}
+                options={clinics}
+                className="bg-white text-xs"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Validation Messages */}
       {validationErrors.length > 0 && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl animate-in zoom-in-95">
@@ -341,17 +528,32 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+        {(initialData || onCancel) && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onCancel}
+            className="text-gray-500"
+          >
+            Cancel
+          </Button>
+        )}
         <Button
           type="button"
           variant="ghost"
           onClick={handleValidate}
+          disabled={isSubmitting}
           className="text-gray-600 hover:text-gray-900"
         >
           Validate Only
         </Button>
-        <Button type="submit" variant="primary" className="pl-4 pr-6">
-          <CheckCircle className="h-4 w-4 mr-2" />
-          Save Communication
+        <Button type="submit" variant="primary" className="pl-4 pr-6" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+          ) : (
+            <CheckCircle className="h-4 w-4 mr-2" />
+          )}
+          {initialData ? 'Update Interaction' : 'Save Communication'}
         </Button>
       </div>
     </form>

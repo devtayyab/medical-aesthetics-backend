@@ -99,7 +99,7 @@ export class CrmListener {
                 );
 
                 // Notify Platform Admins (Logic in service now restricts to Admins only)
-                await this.notificationsService.notifyPlatformStaff(
+                await this.notificationsService.sendToPlatformAdmins(
                     'Appointment Executed',
                     `${appointment.client?.firstName || 'Client'} has completed their ${therapyName} at ${appointment.clinic?.name}.`,
                     { appointmentId: appointment.id, type: 'execution' }

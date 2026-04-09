@@ -122,6 +122,8 @@ export const SalesAnalyticsDashboard = () => {
     const conversionPercentage = (currentRevenue / targetRevenue) * 100;
     const amountRemaining = Math.max(0, targetRevenue - currentRevenue);
 
+    const canSeeFinancials = ['admin', 'SUPER_ADMIN', 'doctor'].includes(user?.role);
+
     return (
         <div className="p-6 space-y-6 animate-in fade-in bg-gray-50 min-h-screen">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -182,103 +184,105 @@ export const SalesAnalyticsDashboard = () => {
                 </div>
             ) : data && (
                 <div className="space-y-12">
-                    {/* LAYER 1 €– Revenue Control (Performance KPI Bar) */}
-                    <div className="space-y-4 shadow-sm pb-2">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Target className="w-4 h-4 text-slate-800" />
-                            <h2 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em]">01. Revenue Control</h2>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            {/* 1. Monthly Target */}
-                            <Card className="border-none shadow-sm bg-[#0f172a] text-white overflow-hidden relative rounded-xl h-36">
-                                <div className="absolute right-0 top-0 opacity-10 scale-150 rotate-12 -mt-10">
-                                    <Target className="w-32 h-32" />
-                                </div>
-                                <CardContent className="p-5 flex flex-col justify-between h-full">
-                                    <div>
-                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Monthly Target</p>
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-xl font-bold opacity-60">€</span>
-                                            <h3 className="text-3xl font-black tracking-tighter">{(data.monthlyTarget || 125000).toLocaleString()}</h3>
+                    {/* LAYER 1 €– Revenue Control (Performance KPI Bar) - ONLY FOR ADMIN/DOCTOR */}
+                    {canSeeFinancials && (
+                        <div className="space-y-4 shadow-sm pb-2">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Target className="w-4 h-4 text-slate-800" />
+                                <h2 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em]">01. Revenue Control</h2>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                {/* 1. Monthly Target */}
+                                <Card className="border-none shadow-sm bg-[#0f172a] text-white overflow-hidden relative rounded-xl h-36">
+                                    <div className="absolute right-0 top-0 opacity-10 scale-150 rotate-12 -mt-10">
+                                        <Target className="w-32 h-32" />
+                                    </div>
+                                    <CardContent className="p-5 flex flex-col justify-between h-full">
+                                        <div>
+                                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Monthly Target</p>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-xl font-bold opacity-60">€</span>
+                                                <h3 className="text-3xl font-black tracking-tighter">{(data.monthlyTarget || 125000).toLocaleString()}</h3>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div>
-                                        <span className="text-[8px] font-black uppercase tracking-widest bg-white/10 px-2.5 py-1 rounded">Quota Active</span>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                        <div>
+                                            <span className="text-[8px] font-black uppercase tracking-widest bg-white/10 px-2.5 py-1 rounded">Quota Active</span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
 
-                            {/* 2. Revenue Month-to-Date */}
-                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-100 rounded-xl h-36">
-                                <CardContent className="p-5 flex flex-col justify-between h-full">
-                                    <div>
-                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Revenue MTD</p>
-                                        <div className="flex items-baseline gap-1 flex-wrap">
-                                            <span className="text-xl font-bold text-slate-400">€</span>
-                                            <h3 className="text-3xl font-black tracking-tighter text-slate-900">
-                                                {data.salesConversionAnalytics?.totalRevenue?.toLocaleString() || '0'}
+                                {/* 2. Revenue Month-to-Date */}
+                                <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-100 rounded-xl h-36">
+                                    <CardContent className="p-5 flex flex-col justify-between h-full">
+                                        <div>
+                                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Revenue MTD</p>
+                                            <div className="flex items-baseline gap-1 flex-wrap">
+                                                <span className="text-xl font-bold text-slate-400">€</span>
+                                                <h3 className="text-3xl font-black tracking-tighter text-slate-900">
+                                                    {data.salesConversionAnalytics?.totalRevenue?.toLocaleString() || '0'}
+                                                </h3>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase tracking-widest px-2.5 py-1 rounded">
+                                                Live Collections
+                                            </span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* 3. Target % */}
+                                <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-100 rounded-xl h-36">
+                                    <CardContent className="p-5 flex flex-col justify-between h-full">
+                                        <div>
+                                            <div className="flex justify-between items-start">
+                                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Target Achievement</p>
+                                                <Activity className="w-3 h-3 text-blue-500" />
+                                            </div>
+                                            <h3 className="text-3xl font-black tracking-tighter text-blue-600">
+                                                {(Number(conversionPercentage) || 0).toFixed(1)}%
                                             </h3>
                                         </div>
-                                    </div>
-                                    <div>
-                                        <span className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase tracking-widest px-2.5 py-1 rounded">
-                                            Live Collections
-                                        </span>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                        <div>
+                                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                                <div
+                                                    className="h-full bg-blue-600 rounded-full transition-all duration-1000"
+                                                    style={{ width: `${Math.min(100, conversionPercentage)}%` }}
+                                                />
+                                            </div>
+                                            <p className="text-[8px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest">
+                                                €{amountRemaining.toLocaleString()} to Goal
+                                            </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
 
-                            {/* 3. Target % */}
-                            <Card className="border-none shadow-sm bg-white overflow-hidden border border-slate-100 rounded-xl h-36">
-                                <CardContent className="p-5 flex flex-col justify-between h-full">
-                                    <div>
-                                        <div className="flex justify-between items-start">
-                                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Target Achievement</p>
-                                            <Activity className="w-3 h-3 text-blue-500" />
+                                {/* 4. Conversion % */}
+                                <Card className="border-none shadow-sm bg-[#3b82f6] text-white overflow-hidden relative rounded-xl h-36">
+                                    <CardContent className="p-5 flex flex-col justify-between h-full">
+                                        <div>
+                                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-200 mb-1">Conversion Ratio</p>
+                                            <h3 className="text-3xl font-black tracking-tighter">
+                                                {data.salesConversionAnalytics?.leads > 0
+                                                    ? ((Number(data.salesConversionAnalytics.confirmedBookings || 0) / Number(data.salesConversionAnalytics.leads)) * 100).toFixed(0)
+                                                    : '0'}%
+                                            </h3>
                                         </div>
-                                        <h3 className="text-3xl font-black tracking-tighter text-blue-600">
-                                            {conversionPercentage.toFixed(1)}%
-                                        </h3>
-                                    </div>
-                                    <div>
-                                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                            <div
-                                                className="h-full bg-blue-600 rounded-full transition-all duration-1000"
-                                                style={{ width: `${Math.min(100, conversionPercentage)}%` }}
-                                            />
+                                        <div className="flex items-center justify-between text-[10px] font-black mt-2">
+                                            <div className="flex flex-col text-left">
+                                                <span className="text-blue-200 text-[7px] uppercase tracking-widest">Bookings</span>
+                                                <span className="text-base leading-none">{data.salesConversionAnalytics?.confirmedBookings || 0}</span>
+                                            </div>
+                                            <div className="flex flex-col text-right">
+                                                <span className="text-blue-200 text-[7px] uppercase tracking-widest">Leads</span>
+                                                <span className="text-base leading-none">{data.salesConversionAnalytics?.leads || 0}</span>
+                                            </div>
                                         </div>
-                                        <p className="text-[8px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest">
-                                            €{amountRemaining.toLocaleString()} to Goal
-                                        </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* 4. Conversion % */}
-                            <Card className="border-none shadow-sm bg-[#3b82f6] text-white overflow-hidden relative rounded-xl h-36">
-                                <CardContent className="p-5 flex flex-col justify-between h-full">
-                                    <div>
-                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-200 mb-1">Conversion Ratio</p>
-                                        <h3 className="text-3xl font-black tracking-tighter">
-                                            {data.salesConversionAnalytics?.leads > 0
-                                                ? ((data.salesConversionAnalytics.confirmedBookings / data.salesConversionAnalytics.leads) * 100).toFixed(0)
-                                                : '0'}%
-                                        </h3>
-                                    </div>
-                                    <div className="flex items-center justify-between text-[10px] font-black mt-2">
-                                        <div className="flex flex-col text-left">
-                                            <span className="text-blue-200 text-[7px] uppercase tracking-widest">Bookings</span>
-                                            <span className="text-base leading-none">{data.salesConversionAnalytics?.confirmedBookings || 0}</span>
-                                        </div>
-                                        <div className="flex flex-col text-right">
-                                            <span className="text-blue-200 text-[7px] uppercase tracking-widest">Leads</span>
-                                            <span className="text-base leading-none">{data.salesConversionAnalytics?.leads || 0}</span>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* LAYER 2 €– Sales Intelligence (Proactive Action Center) */}
                     <div className="space-y-4">
@@ -391,7 +395,7 @@ export const SalesAnalyticsDashboard = () => {
                                                     paddingAngle={2}
                                                     dataKey="count"
                                                     nameKey="source"
-                                                    label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                                    label={({ name, percent }: any) => `${name} ${(Number(percent || 0) * 100).toFixed(0)}%`}
                                                     labelLine={false}
                                                 >
                                                     {data.pipeline.sourceBreakdown.map((_entry: any, index: number) => (
@@ -411,29 +415,31 @@ export const SalesAnalyticsDashboard = () => {
                             </Card>
 
                             {/* 3. Clinic Distribution (Revenue) */}
-                            <Card className="border-none shadow-sm bg-white overflow-hidden rounded-xl">
-                                <CardHeader className="pt-6 px-6 pb-2">
-                                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Clinic Attribution (Revenue)</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-6 h-72">
-                                    {data.clinicPerformance?.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={data.clinicPerformance.map((v: any) => ({ ...v, revenue: Number(v.revenue || 0) }))} layout="vertical">
-                                                <CartesianGrid strokeDasharray="3 3" horizontal={true} stroke="#f8fafc" />
-                                                <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
-                                                <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fontWeight: 'bold' }} width={80} axisLine={false} tickLine={false} />
-                                                <RechartsTooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} formatter={(val: any) => `€${val.toLocaleString()}`} />
-                                                <Bar dataKey="revenue" name="MTD Revenue" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={30} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                                            <Building className="w-8 h-8 mb-2 opacity-50" />
-                                            <span className="text-[10px] uppercase font-black tracking-widest">No Clinic Data</span>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
+                            {canSeeFinancials && (
+                                <Card className="border-none shadow-sm bg-white overflow-hidden rounded-xl">
+                                    <CardHeader className="pt-6 px-6 pb-2">
+                                        <CardTitle className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Clinic Attribution (Revenue)</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-6 h-72">
+                                        {data.clinicPerformance?.length > 0 ? (
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={data.clinicPerformance.map((v: any) => ({ ...v, revenue: Number(v.revenue || 0) }))} layout="vertical">
+                                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} stroke="#f8fafc" />
+                                                    <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                                    <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fontWeight: 'bold' }} width={80} axisLine={false} tickLine={false} />
+                                                    <RechartsTooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} formatter={(val: any) => `€${val.toLocaleString()}`} />
+                                                    <Bar dataKey="revenue" name="MTD Revenue" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={30} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        ) : (
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                                                <Building className="w-8 h-8 mb-2 opacity-50" />
+                                                <span className="text-[10px] uppercase font-black tracking-widest">No Clinic Data</span>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
 
                             {/* 4. Personal Pipeline (Agent Contribution) */}
                             <Card className="border-none shadow-sm bg-white overflow-hidden rounded-xl">
@@ -443,12 +449,13 @@ export const SalesAnalyticsDashboard = () => {
                                 <CardContent className="p-6 h-72">
                                     {data.performanceReport?.length > 0 ? (
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={data.performanceReport.map((v: any) => ({ ...v, totalRevenue: Number(v.totalRevenue || 0) }))}>
+                                            <BarChart data={data.performanceReport.map((v: any) => ({ ...v, totalRevenue: Number(v.totalRevenue || 0), calls: Number(v.calls || 0) }))}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
                                                 <XAxis dataKey="salesPersonName" tick={{ fontSize: 9, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
                                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />
                                                 <RechartsTooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                                                <Bar dataKey="totalRevenue" name="Revenue Contributed" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                                                {canSeeFinancials && <Bar dataKey="totalRevenue" name="Revenue Contributed" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={60} />}
+                                                <Bar dataKey="calls" name="Calls Made" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={60} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     ) : (
@@ -496,7 +503,7 @@ export const SalesAnalyticsDashboard = () => {
                                             <th className="p-4">Agent</th>
                                             <th className="p-4">Type / Action</th>
                                             <th className="p-4">Status</th>
-                                            <th className="p-4">Revenue</th>
+                                            {canSeeFinancials && <th className="p-4">Revenue</th>}
                                             <th className="p-4">Date</th>
                                         </tr>
                                     </thead>
@@ -525,11 +532,13 @@ export const SalesAnalyticsDashboard = () => {
                                                         {row.bookingStatus !== 'N/A' ? row.bookingStatus : row.taskResult}
                                                     </span>
                                                 </td>
-                                                <td className="p-4">
-                                                    <span className={`text-xs font-black ${row.revenue > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
-                                                        {row.revenue > 0 ? `€${row.revenue.toLocaleString()}` : '€–'}
-                                                    </span>
-                                                </td>
+                                                {canSeeFinancials && (
+                                                    <td className="p-4">
+                                                        <span className={`text-xs font-black ${row.revenue > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
+                                                            {row.revenue > 0 ? `€${row.revenue.toLocaleString()}` : '€–'}
+                                                        </span>
+                                                    </td>
+                                                )}
                                                 <td className="p-4">
                                                     <div className="flex flex-col">
                                                         <span className="text-xs font-bold text-slate-700">{format(new Date(row.date), 'MMM do')}</span>

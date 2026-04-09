@@ -189,7 +189,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
                                                    <span className={`text-[10px] font-bold truncate transition-colors ${isSelected ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'}`}>{user.email}</span>
                                                 </div>
                                             </div>
-                                            <div className={`size-10 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-black border-black text-[#CBFF38]' : 'border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black group-hover:border-[#CBFF38] opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0'}`}>
+                                            <div className={`size-10 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-black border-black text-[#CBFF38]' : 'border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black group-hover:border-[#CBFF38] transition-all'}`}>
                                                 {isSelected ? <X size={20} /> : <ArrowRight size={20} />}
                                             </div>
                                         </motion.button>

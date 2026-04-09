@@ -25,6 +25,7 @@ interface CRMBookingModalProps {
     clinicId?: string;
     onClose: () => void;
     onSuccess?: () => void;
+    initialAppointment?: any;
 }
 
 export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
@@ -39,7 +40,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     bookedBy,
     clinicId,
     onClose,
-    onSuccess
+    onSuccess,
+    initialAppointment
 }) => {
     // Determine initial client state
     const propCustomerId = customer?.id || customerId || '';
@@ -64,11 +66,36 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     const [slots, setSlots] = useState<any[]>([]);
 
     // Selection
-    const [selectedClinic, setSelectedClinic] = useState<string>(clinicId || '');
-    const [selectedService, setSelectedService] = useState<string>('');
-    const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-    const [selectedSlot, setSelectedSlot] = useState<any>(null);
-    const [notes, setNotes] = useState('');
+    const [selectedClinic, setSelectedClinic] = useState<string>(initialAppointment?.clinicId || clinicId || '');
+    const [selectedService, setSelectedService] = useState<string>(initialAppointment?.serviceId || '');
+    const [selectedDate, setSelectedDate] = useState<string>(
+        initialAppointment?.startTime 
+            ? format(new Date(initialAppointment.startTime), 'yyyy-MM-dd') 
+            : format(new Date(), 'yyyy-MM-dd')
+    );
+    const [selectedSlot, setSelectedSlot] = useState<any>(
+        initialAppointment ? {
+            startTime: format(new Date(initialAppointment.startTime), 'HH:mm'),
+            endTime: format(new Date(initialAppointment.endTime || initialAppointment.startTime), 'HH:mm'),
+        } : null
+    );
+    const [notes, setNotes] = useState(initialAppointment?.notes || '');
+
+    useEffect(() => {
+        if (initialAppointment && isOpen) {
+            setSelectedClinic(initialAppointment.clinicId);
+            setSelectedService(initialAppointment.serviceId);
+            setSelectedDate(format(new Date(initialAppointment.startTime), 'yyyy-MM-dd'));
+            setSelectedSlot({
+                startTime: format(new Date(initialAppointment.startTime), 'HH:mm'),
+                endTime: format(new Date(initialAppointment.endTime || initialAppointment.startTime), 'HH:mm'),
+                // We don't have the full slot object but startTime/endTime are enough for the API
+            });
+            setNotes(initialAppointment.notes || '');
+            setStep(1); // Start at clinic selection or skip if already selected? 
+            // Better to let them navigate.
+        }
+    }, [initialAppointment, isOpen]);
 
     // Derived client data
     const finalCustomerId = selectedClient?.id || propCustomerId;
@@ -168,10 +195,10 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                 clientId: finalCustomerId,
                 clinicId: selectedClinic,
                 serviceId: selectedService,
-                startTime: selectedSlot.startTime,
-                endTime: selectedSlot.endTime,
+                startTime: selectedSlot.startTime.includes('T') ? selectedSlot.startTime : `${selectedDate}T${selectedSlot.startTime}:00Z`,
+                endTime: selectedSlot.endTime.includes('T') ? selectedSlot.endTime : `${selectedDate}T${selectedSlot.endTime}:00Z`,
                 notes,
-                status: 'CONFIRMED',
+                status: initialAppointment?.status || 'CONFIRMED',
                 clientDetails: {
                     fullName: finalCustomerName || 'Unknown',
                     email: finalCustomerEmail || `noemail@placeholder.com`,
@@ -182,7 +209,20 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
             if (bookedByIdUUID) {
                 bookingPayload.bookedById = bookedByIdUUID;
             }
-            await bookingAPI.createAppointment(bookingPayload);
+
+            if (initialAppointment?.id) {
+                // UPDATE branch
+                await bookingAPI.updateAppointment(initialAppointment.id, {
+                    clinicId: selectedClinic,
+                    serviceId: selectedService,
+                    startTime: bookingPayload.startTime,
+                    endTime: bookingPayload.endTime,
+                    notes: bookingPayload.notes
+                });
+            } else {
+                // CREATE branch
+                await bookingAPI.createAppointment(bookingPayload);
+            }
 
             if (taskId && onTaskComplete) {
                 await onTaskComplete(taskId);
@@ -192,7 +232,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
             onClose();
         } catch (err) {
             console.error("Booking failed", err);
-            alert("Failed to book appointment. Slot might be taken.");
+            alert("Failed to process appointment. Slot might be taken or invalid.");
         } finally {
             setIsLoading(false);
         }

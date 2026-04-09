@@ -20,7 +20,7 @@ import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 
 // Images
-import HeaderBanner from "@/assets/HeaderBanner.svg";
+import HeaderBanner from "@/assets/HeroBanner_New.png";
 import LayeredBG from "@/assets/LayeredBg.svg";
 import PlusIcon from "@/assets/Icons/PlusIcon.svg";
 import CalendarIcon from "@/assets/Icons/CalendarIcon.svg";
@@ -164,7 +164,7 @@ export const HomePage: React.FC = () => {
     <div>
       {/* Hero Section */}
       <section
-        className="relative bg-cover bg-center min-h-[400px] sm:min-h-[550px] flex items-center"
+        className="relative bg-cover bg-top min-h-[400px] sm:min-h-[550px] flex items-center"
         style={{
           backgroundImage: `url(${HeaderBanner})`,
         }}

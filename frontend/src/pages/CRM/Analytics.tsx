@@ -58,6 +58,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
     endDate: new Date().toISOString().split('T')[0]
   });
 
+  const canSeeFinancials = ['admin', 'SUPER_ADMIN', 'doctor', 'ADMIN', 'DOCTOR'].includes(user?.role);
+
   const turnoverChartData = React.useMemo(() => {
     if (!analytics?.turnoverTimeSeries) return [];
     let cumulative = 0;
@@ -196,43 +198,47 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
       </div>
 
       {/* Turnover KPI Section */}
-      <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Turnover for Period</h2>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
-        <MetricCard
-          title="Period Target"
-          value={analytics?.turnoverStats?.targetIsSet ? `€${analytics?.turnoverStats?.monthlyTarget.toLocaleString()}` : 'Not set'}
-          icon={<Target className="w-5 h-5 text-gray-600" />}
-          trend={!analytics?.turnoverStats?.targetIsSet ? "Missing target" : "Current period goal"}
-          color={analytics?.turnoverStats?.targetIsSet ? "bg-gray-50 text-gray-700" : "bg-red-50 text-red-700"}
-        />
-        <MetricCard
-          title="Turnover"
-          value={`€${(analytics?.turnoverStats?.achieved || 0).toLocaleString()}`}
-          icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
-          trend="Euros achieved up to today"
-          color="bg-emerald-50 text-emerald-700"
-        />
-        <MetricCard
-          title="Target Progress"
-          value={analytics?.turnoverStats?.targetIsSet ? formatPercent(analytics?.turnoverStats?.progress) : '€–'}
-          icon={<CheckCircle className="w-5 h-5 text-blue-600" />}
-          trend={analytics?.turnoverStats?.targetIsSet ? "Progress towards goal" : "No target set"}
-          color="bg-blue-50 text-blue-700"
-        />
-        <MetricCard
-          title="Pacing vs Target"
-          value={analytics?.turnoverStats?.targetIsSet ? 
-            `${analytics?.turnoverStats?.pacingStatus} ${(analytics?.turnoverStats?.pacingDelta || 0) > 0 ? '+' : ''}${formatPercent(analytics?.turnoverStats?.pacingDelta)}` 
-            : '€–'}
-          icon={<Clock className="w-5 h-5 text-purple-600" />}
-          trend={analytics?.turnoverStats?.targetIsSet ? `Expected progress by today: ${formatPercent(analytics?.turnoverStats?.expectedProgress)}` : "No target set"}
-          color={
-            analytics?.turnoverStats?.pacingStatus === 'Ahead' ? "bg-emerald-50 text-emerald-700" :
-              analytics?.turnoverStats?.pacingStatus === 'Behind' ? "bg-red-50 text-red-700" :
-                "bg-blue-50 text-blue-700"
-          }
-        />
-      </div>
+      {canSeeFinancials && (
+        <>
+          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Turnover for Period</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
+            <MetricCard
+              title="Period Target"
+              value={analytics?.turnoverStats?.targetIsSet ? `€${analytics?.turnoverStats?.monthlyTarget.toLocaleString()}` : 'Not set'}
+              icon={<Target className="w-5 h-5 text-gray-600" />}
+              trend={!analytics?.turnoverStats?.targetIsSet ? "Missing target" : "Current period goal"}
+              color={analytics?.turnoverStats?.targetIsSet ? "bg-gray-50 text-gray-700" : "bg-red-50 text-red-700"}
+            />
+            <MetricCard
+              title="Turnover"
+              value={`€${(analytics?.turnoverStats?.achieved || 0).toLocaleString()}`}
+              icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
+              trend="Euros achieved up to today"
+              color="bg-emerald-50 text-emerald-700"
+            />
+            <MetricCard
+              title="Target Progress"
+              value={analytics?.turnoverStats?.targetIsSet ? formatPercent(analytics?.turnoverStats?.progress) : '€–'}
+              icon={<CheckCircle className="w-5 h-5 text-blue-600" />}
+              trend={analytics?.turnoverStats?.targetIsSet ? "Progress towards goal" : "No target set"}
+              color="bg-blue-50 text-blue-700"
+            />
+            <MetricCard
+              title="Pacing vs Target"
+              value={analytics?.turnoverStats?.targetIsSet ? 
+                `${analytics?.turnoverStats?.pacingStatus} ${(analytics?.turnoverStats?.pacingDelta || 0) > 0 ? '+' : ''}${formatPercent(analytics?.turnoverStats?.pacingDelta)}` 
+                : '€–'}
+              icon={<Clock className="w-5 h-5 text-purple-600" />}
+              trend={analytics?.turnoverStats?.targetIsSet ? `Expected progress by today: ${formatPercent(analytics?.turnoverStats?.expectedProgress)}` : "No target set"}
+              color={
+                analytics?.turnoverStats?.pacingStatus === 'Ahead' ? "bg-emerald-50 text-emerald-700" :
+                  analytics?.turnoverStats?.pacingStatus === 'Behind' ? "bg-red-50 text-red-700" :
+                    "bg-blue-50 text-blue-700"
+              }
+            />
+          </div>
+        </>
+      )}
 
       {/* Appointments Funnel KPI Section */}
       <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider mt-5">Appointments Funnel</h2>
@@ -328,7 +334,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
                 {/* Turnover Chart Panel OR Leaderboard */}
                 <div className="md:col-span-2 mt-1 space-y-2">
                   <h3 className="font-bold text-gray-500 text-[9px] uppercase tracking-wider">
-                    {salespersonId === 'all' ? 'Agent Turnover Leaderboard' : 'Turnover Trend'}
+                    {salespersonId === 'all' ? 'Agent Leaderboard' : 'Activity Trend'}
                   </h3>
                   <div className="h-48 w-full bg-white border border-gray-100 rounded-lg p-2 shadow-sm overflow-hidden" style={{ minWidth: 0 }}>
                     
@@ -339,18 +345,27 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
                           <ComposedChart data={turnoverChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
                             <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} dy={5} />
-                            <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
-                            <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
+                            {canSeeFinancials ? (
+                              <>
+                                <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
+                                <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
+                                <Bar yAxisId="left" dataKey="amount" name="Daily Revenue" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={30} />
+                                <Line yAxisId="right" type="monotone" dataKey="cumulative" name="Cumulative MTD" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} />
+                              </>
+                            ) : (
+                              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} />
+                            )}
                             <Tooltip
-                              contentStyle={{ borderRadius: '6px', border: 'none', boxShadow: '0 2px 4px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
-                              formatter={(value: number) => [`€${value.toLocaleString()}`, undefined]}
+                                contentStyle={{ borderRadius: '6px', border: 'none', boxShadow: '0 2px 4px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
+                                formatter={(value: number, name: string) => {
+                                  if (!canSeeFinancials && (name.includes('Revenue') || name.includes('MTD'))) return [null, null];
+                                  return [name.includes('Revenue') ? `€${value.toLocaleString()}` : value, name];
+                                }}
                             />
-                            <Bar yAxisId="left" dataKey="amount" name="Daily Revenue" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={30} />
-                            <Line yAxisId="right" type="monotone" dataKey="cumulative" name="Cumulative MTD" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} />
                           </ComposedChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">No turnover data</div>
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">No activity data</div>
                       )
                     )}
 
@@ -360,18 +375,22 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
                         <ResponsiveContainer width="99%" height="100%" debounce={50}>
                           <BarChart data={analytics?.agentLeaderboard} margin={{ top: 5, right: 5, left: -20, bottom: 0 }} layout="vertical">
                             <CartesianGrid strokeDasharray="3 3" horizontal={true} stroke="#F3F4F6" />
-                            <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
+                            <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => canSeeFinancials ? `€${val}` : val} />
                             <YAxis dataKey="agent" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#374151', fontWeight: 'bold' }} width={80} />
                             <Tooltip
                               cursor={{ fill: '#f8fafc' }}
                               contentStyle={{ borderRadius: '6px', border: 'none', boxShadow: '0 2px 4px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
-                              formatter={(value: number) => [`€${value.toLocaleString()}`, 'Total Generated']}
+                              formatter={(value: number) => [canSeeFinancials ? `€${value.toLocaleString()}` : '***', canSeeFinancials ? 'Total Generated' : 'Restricted']}
                             />
-                            <Bar dataKey="amount" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={25} />
+                            {canSeeFinancials ? (
+                              <Bar dataKey="amount" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={25} />
+                            ) : (
+                              <Bar dataKey="leads" fill="#94a3b8" radius={[0, 4, 4, 0]} maxBarSize={25} />
+                            )}
                           </BarChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">No leaderbord data</div>
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">No leaderboard data</div>
                       )
                     )}
 
@@ -471,7 +490,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
                     <div className="mt-3 p-2.5 bg-emerald-50 rounded-lg">
                       <p className="text-[10px] text-emerald-700 font-medium whitespace-nowrap">Lifetime Revenue</p>
                       <p className="text-lg font-black text-emerald-900 mt-0.5">
-                        €{(analytics.customerStats?.totalRevenue || 0).toLocaleString()}
+                        {canSeeFinancials ? `€${(analytics.customerStats?.totalRevenue || 0).toLocaleString()}` : '€–'}
                       </p>
                     </div>
 
@@ -600,7 +619,7 @@ const QuickInsights = ({ analytics }: { analytics: any }) => {
   const turnover = analytics.turnoverStats || {};
 
   // 1. No-show Insight
-  const noShowRate = ((stats.noShow || 0) / (stats.total || 1)) * 100;
+  const noShowRate = ((Number(stats.noShow) || 0) / (Number(stats.total) || 1)) * 100;
   if (noShowRate > 10) {
     insights.push({
       type: 'warning',
@@ -610,7 +629,7 @@ const QuickInsights = ({ analytics }: { analytics: any }) => {
   }
 
   // 2. Conversion Insight
-  const conversionRate = ((stats.completed || 0) / (stats.total || 1)) * 100;
+  const conversionRate = ((Number(stats.completed) || 0) / (Number(stats.total) || 1)) * 100;
   if (conversionRate < 70 && stats.total > 0) {
     insights.push({
       type: 'info',
@@ -622,9 +641,11 @@ const QuickInsights = ({ analytics }: { analytics: any }) => {
   // 3. Pacing Insight
   if (turnover.targetIsSet) {
     const isBehind = turnover.pacingStatus === 'Behind';
+    const progressPercent = (Number(turnover.progress) || 0) * 100;
+    const expectedPercent = (Number(turnover.expectedProgress) || 0) * 100;
     insights.push({
       type: isBehind ? 'warning' : 'success',
-      text: `You're at ${(turnover.progress * 100).toFixed(1)}% of target; expected by today is ${(turnover.expectedProgress * 100).toFixed(1)}%.`,
+      text: `You're at ${progressPercent.toFixed(1)}% of target; expected by today is ${expectedPercent.toFixed(1)}%.`,
       icon: isBehind ? <Zap className="w-4 h-4 text-red-600" /> : <CheckCircle className="w-4 h-4 text-emerald-600" />
     });
   }

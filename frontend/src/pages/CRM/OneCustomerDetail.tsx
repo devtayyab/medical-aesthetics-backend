@@ -264,12 +264,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const [isEditingOwners, setIsEditingOwners] = useState(false);
     const [isEditingCore, setIsEditingCore] = useState(false);
     const [editedProperties, setEditedProperties] = useState<any>({});
+    const [selectedAppointmentForEdit, setSelectedAppointmentForEdit] = useState<any>(null);
     const [callSearchTerm, setCallSearchTerm] = useState('');
     const [timelineFilter, setTimelineFilter] = useState('all');
 
     const { salespersons, clinics } = crmState;
 
     const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager';
+    const canSeeFinancials = ['admin', 'SUPER_ADMIN', 'doctor', 'ADMIN', 'DOCTOR', 'manager'].includes(user?.role);
 
     useEffect(() => {
         if (customer) {
@@ -1007,9 +1009,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 {[
                     { label: 'Total Appointments', value: summary?.summary?.totalAppointments || 0, icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50' },
                     { label: 'Completed', value: summary?.summary?.completedAppointments || 0, icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Lifetime Value', value: `€${summary?.summary?.lifetimeValue?.toFixed(2) || '0.00'}`, icon: ShieldCheck, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+                    canSeeFinancials && { label: 'Lifetime Value', value: `€${(Number(summary?.summary?.lifetimeValue) || 0).toFixed(2)}`, icon: ShieldCheck, color: 'text-indigo-500', bg: 'bg-indigo-50' },
                     { label: 'Repeat Visits', value: summary?.summary?.repeatCount || 0, icon: Repeat, color: 'text-amber-500', bg: 'bg-amber-50' }
-                ].map((kpi, idx) => (
+                ].filter(Boolean).map((kpi, idx) => (
                     <Card key={idx} className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200 group hover:shadow-md transition-all">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -1275,19 +1277,21 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                             <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Commercial Intel</CardTitle>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
-                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><Clock className="w-3 h-3" /> Est. Value</label>
-                                {isEditingCore ? (
-                                    <Input 
-                                        type="number"
-                                        value={editedProperties.estimatedValue || 0}
-                                        onChange={(e) => setEditedProperties({ ...editedProperties, estimatedValue: parseFloat(e.target.value) })}
-                                        className="h-8 text-xs font-bold mt-1"
-                                    />
-                                ) : (
-                                    <div className="text-sm font-black text-slate-900 line-clamp-1">€{customer.estimatedValue || '0.00'}</div>
-                                )}
-                            </div>
+                            {canSeeFinancials && (
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><Clock className="w-3 h-3" /> Est. Value</label>
+                                    {isEditingCore ? (
+                                        <Input 
+                                            type="number"
+                                            value={editedProperties.estimatedValue || 0}
+                                            onChange={(e) => setEditedProperties({ ...editedProperties, estimatedValue: parseFloat(e.target.value) })}
+                                            className="h-8 text-xs font-bold mt-1"
+                                        />
+                                    ) : (
+                                        <div className="text-sm font-black text-slate-900 line-clamp-1">€{customer.estimatedValue || '0.00'}</div>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="flex flex-col py-3 px-4 bg-slate-50 rounded-xl border border-slate-100 group transition-all">
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1.5 flex items-center gap-1.5">
@@ -1636,7 +1640,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                     <Button 
                                                                         variant="outline" 
                                                                         size="sm" 
-                                                                        onClick={() => setShowDiaryModal(true)}
+                                                                        onClick={() => {
+                                                                            setSelectedAppointmentForEdit(item.data);
+                                                                            setShowBookingModal(true);
+                                                                        }}
                                                                         className="h-7 text-[9px] font-black uppercase border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg px-3"
                                                                     >
                                                                         Edit
@@ -1787,6 +1794,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                     <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Item</th>
                                                     <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Clinic Location</th>
                                                     <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
+                                                    <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1802,6 +1810,19 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                 <Badge className={`${apt.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'} text-[9px] font-black uppercase px-2.5 py-1 rounded-lg border shadow-sm`}>
                                                                     {apt.status}
                                                                 </Badge>
+                                                            </td>
+                                                            <td className="p-5 text-right">
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="sm" 
+                                                                    onClick={() => {
+                                                                        setSelectedAppointmentForEdit(apt);
+                                                                        setShowBookingModal(true);
+                                                                    }}
+                                                                    className="h-8 text-[10px] font-bold text-blue-600 hover:bg-blue-50 rounded-lg"
+                                                                >
+                                                                    Edit
+                                                                </Button>
                                                             </td>
                                                         </tr>
                                                     ))
@@ -2115,7 +2136,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 onClose={() => {
                     setShowBookingModal(false);
                     setPendingTaskId(undefined);
+                    setSelectedAppointmentForEdit(null);
                 }}
+                initialAppointment={selectedAppointmentForEdit}
                 onSuccess={async () => {
                     if (!isConverted) {
                         try {

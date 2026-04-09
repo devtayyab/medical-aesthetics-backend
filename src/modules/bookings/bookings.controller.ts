@@ -142,13 +142,15 @@ export class BookingsController {
   @ApiOperation({ summary: 'Update appointment details (provider, time, notes)' })
   async updateAppointment(
     @Param('id') id: string,
-    @Body() body: { startTime?: string; endTime?: string; providerId?: string; notes?: string },
+    @Body() body: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string },
     @Request() req,
   ) {
     const updateData: any = {};
     if (body.startTime) updateData.startTime = new Date(body.startTime);
     if (body.endTime) updateData.endTime = new Date(body.endTime);
     if (body.providerId !== undefined) updateData.providerId = body.providerId;
+    if (body.clinicId !== undefined) updateData.clinicId = body.clinicId;
+    if (body.serviceId !== undefined) updateData.serviceId = body.serviceId;
     if (body.notes !== undefined) updateData.notes = body.notes;
     await this.bookingsService['appointmentsRepository'].update(id, updateData);
     return this.bookingsService.findById(id);

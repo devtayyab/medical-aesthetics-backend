@@ -22,6 +22,8 @@ import { adminAPI, bookingAPI } from "@/services/api";
 import { Button } from "@/components/atoms/Button/Button";
 import { Card, CardContent } from "@/components/molecules/Card/Card";
 import { RescheduleModal } from "@/components/organisms/RescheduleModal";
+import { CRMBookingModal } from "@/components/crm/CRMBookingModal";
+import { AppointmentStatus } from "@/types";
 type GlobalCalendarAppointment = {
   id: string;
   clinicId: string;
@@ -39,12 +41,13 @@ type GlobalCalendarAppointment = {
 };
 
 const STATUS_ACTIONS = [
-  { key: "confirmed", label: "Confirm", status: "confirmed", icon: CheckCircle },
-  { key: "arrived", label: "Arrived", status: "arrived", icon: MapPin },
-  { key: "completed", label: "Done", status: "completed", icon: Check },
-  { key: "no_show", label: "No-show", status: "no_show", icon: UserX },
+  { key: "edit", label: "Edit", status: null, icon: CalendarIcon },
+  { key: "confirmed", label: "Confirm", status: AppointmentStatus.CONFIRMED, icon: CheckCircle },
+  { key: "arrived", label: "Arrived", status: AppointmentStatus.ARRIVED, icon: MapPin },
+  { key: "completed", label: "Done", status: AppointmentStatus.COMPLETED, icon: Check },
+  { key: "no_show", label: "No-show", status: AppointmentStatus.NO_SHOW, icon: UserX },
   { key: "reschedule", label: "Reschedule", status: null, icon: CalendarClock },
-  { key: "cancelled", label: "Cancel", status: "cancelled", icon: XCircle },
+  { key: "cancelled", label: "Cancel", status: AppointmentStatus.CANCELLED, icon: XCircle },
 ] as const;
 
 function canShowAction(
@@ -52,11 +55,14 @@ function canShowAction(
   currentStatus: string,
   apt?: GlobalCalendarAppointment
 ): boolean {
-  const s = currentStatus?.toLowerCase();
+  if (actionKey === "edit") return true;
+  const s = currentStatus?.toLowerCase() || "";
+  
   if (actionKey === "reschedule") {
     const canReschedule = !["completed", "cancelled", "no_show"].includes(s);
     return canReschedule && !!(apt?.clinicId && apt?.serviceId);
   }
+  
   switch (actionKey) {
     case "confirmed":
       return s === "pending" || s === "pending_payment";
@@ -77,12 +83,14 @@ interface AppointmentCardActionsProps {
   apt: GlobalCalendarAppointment;
   onActionDone: () => void;
   onReschedule: () => void;
+  onEdit?: () => void;
 }
 
 const AppointmentCardActions: React.FC<AppointmentCardActionsProps> = ({
   apt,
   onActionDone,
   onReschedule,
+  onEdit,
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
@@ -143,10 +151,16 @@ const AppointmentCardActions: React.FC<AppointmentCardActionsProps> = ({
     onReschedule();
   };
 
+  const handleEdit = () => {
+    setOpen(false);
+    if (onEdit) onEdit();
+  };
+
   const visibleActions = STATUS_ACTIONS.filter((a) =>
-    a.key === "reschedule" ? canShowAction("reschedule", apt.status, apt) : a.status ? canShowAction(a.key, apt.status) : false
+    a.key === "edit" ? true : a.key === "reschedule" ? canShowAction("reschedule", apt.status, apt) : a.status ? canShowAction(a.key, apt.status) : false
   );
 
+  // Still check visibleActions, but since "edit" is always true, it will always show if not blocked
   if (visibleActions.length === 0) return null;
 
   return (
@@ -163,6 +177,19 @@ const AppointmentCardActions: React.FC<AppointmentCardActionsProps> = ({
         <div className="absolute right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[140px]">
           {visibleActions.map((a) => {
             const Icon = a.icon;
+            if (a.key === "edit") {
+              return (
+                <button
+                  key={a.key}
+                  type="button"
+                  onClick={handleEdit}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] hover:bg-slate-100"
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {a.label}
+                </button>
+              );
+            }
             if (a.key === "reschedule") {
               return (
                 <button
@@ -258,6 +285,7 @@ export const GlobalCalendar: React.FC<GlobalCalendarProps> = ({ defaultWeekStart
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rescheduleApt, setRescheduleApt] = useState<GlobalCalendarAppointment | null>(null);
+  const [editApt, setEditApt] = useState<GlobalCalendarAppointment | null>(null);
 
   const refetch = useMemo(
     () => () =>
@@ -387,11 +415,12 @@ export const GlobalCalendar: React.FC<GlobalCalendarProps> = ({ defaultWeekStart
                                     BD
                                   </span>
                                 )}
-                                {apt.isBeautyDoctorsClient && !apt.isBlocked && (
+                                {!apt.isBlocked && (
                                   <AppointmentCardActions
                                     apt={apt}
                                     onActionDone={refetch}
                                     onReschedule={() => setRescheduleApt(apt)}
+                                    onEdit={() => setEditApt(apt)}
                                   />
                                 )}
                               </div>
@@ -438,9 +467,25 @@ export const GlobalCalendar: React.FC<GlobalCalendarProps> = ({ defaultWeekStart
           } as any}
         />
       )}
+
+      {editApt && (
+        <CRMBookingModal
+          isOpen={!!editApt}
+          customerId={editApt.clientId || undefined}
+          customerName={editApt.clientName}
+          onClose={() => {
+            setEditApt(null);
+            refetch();
+          }}
+          initialAppointment={editApt}
+          onSuccess={() => {
+            setEditApt(null);
+            refetch();
+          }}
+        />
+      )}
     </div>
   );
 };
 
 export default GlobalCalendar;
-

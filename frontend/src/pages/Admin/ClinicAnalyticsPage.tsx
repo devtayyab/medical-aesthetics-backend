@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 import { Button } from '@/components/atoms/Button/Button';
 import { Select } from '@/components/atoms/Select/Select';
-import { crmAPI } from '@/services/api';
+import { crmAPI, adminAPI } from '@/services/api';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ec4899', '#0ea5e9', '#a78bfa'];
 
