@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/Button/Button";
 import type { RootState } from "@/store";
 import { css } from "@emotion/css";
-import { FaChevronRight, FaTrophy, FaStar, FaLock, FaGift } from "react-icons/fa6";
+import { FaChevronRight, FaTrophy, FaStar, FaLock, FaGift, FaRotate } from "react-icons/fa6";
 import { motion } from "framer-motion";
+import { loyaltyAPI } from "@/services/api";
+import { toast } from "react-hot-toast";
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -28,7 +30,55 @@ const premiumCard = css`
 
 export const Rewards: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
-  const userPoints = (user as any)?.points || 125;
+  const [userPoints, setUserPoints] = useState<number>((user as any)?.points || 0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRedeeming, setIsRedeeming] = useState<string | null>(null);
+
+  const fetchBalance = async () => {
+    if (!user?.id) return;
+    try {
+      setIsLoading(true);
+      const res = await loyaltyAPI.getBalance(user.id);
+      setUserPoints(res.data.totalPoints || 0);
+    } catch (err) {
+      console.error("Failed to fetch loyalty balance", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBalance();
+  }, [user?.id]);
+
+  const handleRedeem = async (reward: any) => {
+    if (!user?.id) return;
+    if (userPoints < reward.points) {
+      toast.error("Insufficient points");
+      return;
+    }
+
+    const confirm = window.confirm(`Redeem ${reward.points} points for ${reward.name}?`);
+    if (!confirm) return;
+
+    try {
+      setIsRedeeming(reward.id);
+      await loyaltyAPI.redeemPoints({
+        clientId: user.id,
+        clinicId: "", // Optional in backend for global, or pass a default
+        points: reward.points,
+        description: `Redeemed for ${reward.name}`
+      });
+      
+      toast.success(`${reward.name} redeemed successfully!`);
+      await fetchBalance();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Redemption failed");
+    } finally {
+      setIsRedeeming(null);
+    }
+  };
+
   const nextTierPoints = 500;
   const progressPercent = Math.min((userPoints / nextTierPoints) * 100, 100);
 
@@ -66,36 +116,47 @@ export const Rewards: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className={`${premiumCard} lg:col-span-1 bg-black text-white border-black`}
+            className={`${premiumCard} lg:col-span-1 bg-black text-white border-black flex flex-col justify-between`}
           >
-            <div className="mb-8">
-               <span className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] italic">Current Balance</span>
-               <h2 className="text-6xl font-black italic mt-2">{userPoints}</h2>
-               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Reward Points</p>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-[10px] font-black uppercase text-gray-400">Next Level: Silver</span>
-                  <span className="text-[10px] font-black uppercase text-[#CBFF38]">{nextTierPoints - userPoints} left</span>
-                </div>
-                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progressPercent}%` }}
-                    className="h-full bg-[#CBFF38] shadow-[0_0_15px_rgba(203,255,56,0.5)]"
-                  />
-                </div>
-                <p className="text-[10px] text-gray-500 mt-4 leading-relaxed font-bold uppercase italic">
-                  Complete 2 more visits to unlock silver membership status.
-                </p>
+            <div>
+              <div className="flex justify-between items-start mb-8">
+                 <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] italic">Current Balance</span>
+                    <h2 className="text-6xl font-black italic mt-2">{userPoints}</h2>
+                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Reward Points</p>
+                 </div>
+                 <button 
+                  onClick={fetchBalance}
+                  className={`p-2 bg-white/5 rounded-full hover:bg-white/10 transition-all ${isLoading ? 'animate-spin' : ''}`}
+                 >
+                   <FaRotate size={12} className="text-[#CBFF38]" />
+                 </button>
               </div>
 
-              <Button className="w-full bg-[#CBFF38] text-black h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-lime-400">
-                How to Earn
-              </Button>
+              <div className="space-y-6">
+                <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-[10px] font-black uppercase text-gray-400">Next Level: Silver</span>
+                    <span className="text-[10px] font-black uppercase text-[#CBFF38]">{Math.max(0, 500 - userPoints)} left</span>
+                  </div>
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <motion.div 
+                      key={userPoints}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progressPercent}%` }}
+                      className="h-full bg-[#CBFF38] shadow-[0_0_15px_rgba(203,255,56,0.5)]"
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-4 leading-relaxed font-bold uppercase italic">
+                    {progressPercent < 100 ? "Complete more visits to unlock silver membership status." : "Highest tier achieved!"}
+                  </p>
+                </div>
+              </div>
             </div>
+
+            <Button className="w-full bg-[#CBFF38] text-black h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-lime-400 mt-8">
+              How to Earn
+            </Button>
           </motion.div>
 
           {/* Rewards Grid */}
@@ -108,13 +169,14 @@ export const Rewards: React.FC = () => {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                {rewards.map((reward, idx) => {
                  const isLocked = userPoints < reward.points;
+                 const redeemingThis = isRedeeming === reward.id;
                  return (
                     <motion.div 
                       key={reward.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.1 }}
-                      className={`${premiumCard} !p-6 flex flex-col justify-between group cursor-pointer ${isLocked ? 'opacity-70 grayscale' : 'hover:border-lime-300'}`}
+                      className={`${premiumCard} !p-6 flex flex-col justify-between group  ${isLocked ? 'opacity-70 grayscale' : 'hover:border-lime-300'}`}
                     >
                       <div>
                         <div className="flex justify-between items-start mb-4">
@@ -130,9 +192,15 @@ export const Rewards: React.FC = () => {
                       <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between">
                          <span className="text-[10px] font-black uppercase tracking-widest text-lime-600">{reward.points} Points</span>
                          {isLocked ? (
-                           <div className="text-[10px] font-black uppercase italic text-gray-400">Locked</div>
+                           <div className="text-[10px] font-black uppercase italic text-gray-400 font-mono tracking-tighter">LOCKED</div>
                          ) : (
-                           <button className="text-[10px] font-black uppercase italic text-black hover:text-[#CBFF38] transition-colors">Redeem →</button>
+                           <button 
+                            disabled={!!isRedeeming}
+                            onClick={() => handleRedeem(reward)}
+                            className="text-[10px] font-black uppercase italic text-black hover:text-lime-600 transition-colors flex items-center gap-1 group/btn"
+                           >
+                            {redeemingThis ? "REDEEMING..." : <>REDEEM <span className="group-hover/btn:translate-x-1 transition-transform">→</span></>}
+                           </button>
                          )}
                       </div>
                     </motion.div>
