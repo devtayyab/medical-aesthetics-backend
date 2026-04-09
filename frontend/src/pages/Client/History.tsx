@@ -1,9 +1,9 @@
-﻿import React, { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppointmentCard } from "@/components/molecules/AppointmentCard";
 import { fetchUserAppointments } from "@/store/slices/clientSlice";
 import type { RootState, AppDispatch } from "@/store";
-import type { Appointment } from "@/types";
+import { Appointment, AppointmentStatus } from "@/types";
 
 export const History: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -22,7 +22,7 @@ export const History: React.FC = () => {
       {error && <p className="text-red-600">{error}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {appointments
-          .filter((a: Appointment) => a.status === "completed")
+          .filter((a: Appointment) => a.status === AppointmentStatus.COMPLETED)
           .map((appointment: Appointment) => (
             <AppointmentCard key={appointment.id} appointment={appointment} />
           ))}

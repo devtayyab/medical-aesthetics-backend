@@ -485,7 +485,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="h-4 w-4 p-0 transition-opacity"
                                     onClick={() => toggleClinic(c)}
                                   >
                                     <X className="w-3 h-3" />
@@ -934,7 +934,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                             <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
                               {new Date(call.createdAt).toLocaleString()}
                             </span>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center gap-1 transition-opacity">
                               <Button
                                 variant="ghost"
                                 size="sm"

@@ -1,7 +1,8 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
 import { fetchUserAppointments, submitReview } from "@/store/slices/clientSlice";
+import { AppointmentStatus } from "@/types";
 import { ReviewForm } from "@/components/molecules/ReviewForm";
 import { format } from "date-fns";
 import { Star, Clock, MapPin, ArrowLeft } from "lucide-react";
@@ -39,7 +40,7 @@ export const Reviews: React.FC = () => {
   }, [dispatch]);
 
   const completedAppointments = appointments.filter(
-    (apt) => apt.status === "completed"
+    (apt) => apt.status === AppointmentStatus.COMPLETED
   );
 
   const handleSubmitReview = async (rating: number, comment: string) => {

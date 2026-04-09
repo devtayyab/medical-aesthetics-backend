@@ -44,6 +44,14 @@ export class CrmController {
     return this.crmService.create(createLeadDto);
   }
 
+  @Post('leads/bulk')
+  @ApiOperation({ summary: 'Create multiple leads' })
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  bulkCreate(@Body() leads: CreateLeadDto[]) {
+    return this.crmService.bulkCreate(leads);
+  }
+
   @Get('leads')
   @ApiOperation({ summary: 'Get leads with filters' })
   @ApiQuery({ name: 'status', required: false })
@@ -642,11 +650,11 @@ export class CrmController {
   }
 
   @Post('no-show-alerts/:id/resolve')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
+  @Roles(UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Resolve a no-show alert' })
-  resolveNoShowAlert(@Param('id') id: string, @Body('actionTaken') actionTaken: string) {
-    return this.crmService.resolveNoShowAlert(id, actionTaken);
+  resolveNoShowAlert(@Param('id') id: string, @Body('actionTaken') resolutionNote: string) {
+    return this.crmService.resolveNoShowAlert(id, resolutionNote);
   }
 
   @Get('agents/emails')

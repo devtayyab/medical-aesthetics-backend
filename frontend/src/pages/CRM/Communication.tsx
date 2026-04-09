@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   MessageSquare,
@@ -10,12 +10,12 @@ import {
   Phone,
   Mail,
   FileText,
-  ExternalLink
+  ExternalLink,
+  Edit2
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
-import { Select } from "@/components/atoms/Select/Select";
 import { fetchCommunicationHistory } from "@/store/slices/crmSlice";
 import { CommunicationForm } from "@/components/organisms/CommunicationForm/CommunicationForm";
 import type { RootState, AppDispatch } from "@/store";
@@ -33,6 +33,7 @@ export const Communication: React.FC = () => {
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editingCommunication, setEditingCommunication] = useState<CommunicationLog | null>(null);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
 
   const [isSearching, setIsSearching] = useState(false);
@@ -153,6 +154,7 @@ export const Communication: React.FC = () => {
 
   const handleCommunicationLogged = () => {
     setShowForm(false);
+    setEditingCommunication(null);
     if (selectedCustomerId) {
       dispatch(fetchCommunicationHistory({ customerId: selectedCustomerId }));
     }
@@ -179,8 +181,8 @@ export const Communication: React.FC = () => {
           disabled={!selectedCustomerId || !selectedCustomerId.trim()}
           className="flex items-center gap-2"
         >
-          {showForm ? <FileText className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-          {showForm ? "View History" : "Log Communication"}
+          {showForm || editingCommunication ? <FileText className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+          {showForm || editingCommunication ? "View History" : "Log Communication"}
         </Button>
       </div>
 
@@ -303,15 +305,22 @@ export const Communication: React.FC = () => {
 
         {/* Main Content */}
         <div className="lg:col-span-2">
-          {showForm && selectedCustomerId ? (
+          { (showForm || editingCommunication) && selectedCustomerId ? (
             <Card className="border-none shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
               <CardHeader className="bg-primary/5 border-b border-primary/10 py-3">
-                <CardTitle className="text-sm font-bold text-primary">Log New Interaction</CardTitle>
+                <CardTitle className="text-sm font-bold text-primary">
+                  {editingCommunication ? "Edit Interaction" : "Log New Interaction"}
+                </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
                 <CommunicationForm
                   customerId={selectedCustomerId}
+                  initialData={editingCommunication || undefined}
                   onSuccess={handleCommunicationLogged}
+                  onCancel={() => {
+                    setEditingCommunication(null);
+                    setShowForm(false);
+                  }}
                 />
               </CardContent>
             </Card>
@@ -378,8 +387,18 @@ export const Communication: React.FC = () => {
                             </p>
                           </div>
 
-                          <div className="text-[9px] text-gray-400 font-medium whitespace-nowrap text-right">
-                            {new Date(comm.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          <div className="text-right space-y-1">
+                            <div className="text-[9px] text-gray-400 font-medium whitespace-nowrap">
+                              {new Date(comm.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingCommunication(comm)}
+                              className="h-6 w-6 p-0 hover:bg-blue-50 hover:text-blue-600"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
                           </div>
                         </div>
                       </div>

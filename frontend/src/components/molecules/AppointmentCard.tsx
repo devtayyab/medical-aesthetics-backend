@@ -1,7 +1,8 @@
-﻿import React from "react";
+import React from "react";
 import { Card } from "@/components/atoms/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
 import type { Appointment } from "@/types";
+import { AppointmentStatus } from "@/types";
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -24,7 +25,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
         </p>
         <p className="text-gray-600">Status: {appointment.status}</p>
         <div className="flex gap-2">
-          {onReschedule && appointment.status === "confirmed" && (
+          {onReschedule && appointment.status === AppointmentStatus.CONFIRMED && (
             <Button
               variant="outline"
               size="sm"
@@ -33,7 +34,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
               Reschedule
             </Button>
           )}
-          {onCancel && appointment.status === "confirmed" && (
+          {onCancel && appointment.status === AppointmentStatus.CONFIRMED && (
             <Button
               variant="outline"
               size="sm"

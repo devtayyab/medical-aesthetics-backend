@@ -1,11 +1,11 @@
-﻿import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 interface TabsContextType {
   activeTab: string;
   onTabChange: (value: string) => void;
 }
 
-interface TabsProps {
+export interface TabsProps {
   value?: string;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
@@ -13,18 +13,18 @@ interface TabsProps {
   className?: string;
 }
 
-interface TabsListProps {
+export interface TabsListProps {
   children: React.ReactNode;
   className?: string;
 }
 
-interface TabsTriggerProps {
+export interface TabsTriggerProps {
   value: string;
   children: React.ReactNode;
   className?: string;
 }
 
-interface TabsContentProps {
+export interface TabsContentProps {
   value: string;
   children: React.ReactNode;
   className?: string;

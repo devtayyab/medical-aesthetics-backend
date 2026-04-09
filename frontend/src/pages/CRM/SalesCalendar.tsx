@@ -368,7 +368,7 @@ export const SalesCalendar: React.FC = () => {
                                                             <p className="pl-3 pr-4 leading-relaxed text-gray-800">{note.content}</p>
                                                             <button
                                                                 onClick={() => setNotes(notes.filter(n => n.id !== note.id))}
-                                                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-black/5 rounded-full text-current transition-opacity"
+                                                                className="absolute top-2 right-2 p-1.5 hover:bg-black/5 rounded-full text-current transition-opacity"
                                                             >
                                                                 <XCircle className="w-3.5 h-3.5" />
                                                             </button>

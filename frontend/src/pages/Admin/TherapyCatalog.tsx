@@ -290,7 +290,7 @@ export const TherapyCatalog: React.FC = () => {
                                 <div className="size-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-800 font-black italic">
                                     {cat.icon || cat.name.charAt(0)}
                                 </div>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                <div className="flex gap-1 transition-all">
                                     <button onClick={() => { setEditingItem(cat); setCategoryForm({ name: cat.name, description: cat.description || "", icon: cat.icon || "", isActive: cat.isActive }); setIsCategoryModalOpen(true); }} className="p-2 text-gray-400 hover:text-blue-600"><Edit2 size={14} /></button>
                                 </div>
                             </div>

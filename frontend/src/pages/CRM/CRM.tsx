@@ -1,17 +1,15 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Users,
   Phone,
   Calendar,
   Plus,
-  Loader2,
   Search,
   X,
   ArrowUpRight,
   FileText,
-  ChevronDown,
-  Target
+  ChevronDown
 } from 'lucide-react';
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 import { Button } from '@/components/atoms/Button/Button';
@@ -25,37 +23,28 @@ import { OneCustomerDetail } from '@/pages/CRM/OneCustomerDetail';
 import {
   fetchOverdueTasks,
   fetchAutomationRules,
-  runTaskAutomationCheck,
   fetchSalespersons,
   fetchLeads,
   fetchActions,
-  fetchSalespersonAnalytics,
   fetchCrmMetrics
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
-import type { Lead } from '@/types/crm.types';
-import type { Task, AuthState } from '@/types';
+import type { Lead, CrmAction } from '@/types/crm.types';
+import type { Task } from '@/types';
 import { Analytics } from '@/pages/CRM/Analytics';
 import { SalesWeekCalendar } from '@/pages/CRM/SalesWeekCalendar';
 import { Calls as ManagerCrmCalls } from '@/pages/Admin/ManagerCRM/Calls';
 
 export const CRM: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.auth as AuthState);
-  const {
-    leads,
-    isLoading
-  } = useSelector((state: RootState) => state.crm);
-
-  const { actions: tasks } = useSelector((state: RootState) => state.crm);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { leads } = useSelector((state: RootState) => state.crm);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCustomer, setSelectedCustomer] = useState<Lead | null>(null);
-  const [setSelectedTask] = useState<Task | null>(null);
   const [forceShowCreateForm, setForceShowCreateForm] = useState(false);
 
   // New state for buttons
-  const [isAutomationRunning, setIsAutomationRunning] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [showQuickBooking, setShowQuickBooking] = useState(false);
   const [bookingCustomer, setBookingCustomer] = useState<{ id: string; name: string; email?: string; phone?: string } | null>(null);
@@ -85,30 +74,19 @@ export const CRM: React.FC = () => {
     dispatch(fetchCrmMetrics());
   }, [dispatch, user]);
 
-  const handleRunAutomation = async () => {
-    setIsAutomationRunning(true);
-    try {
-      await dispatch(runTaskAutomationCheck()).unwrap();
-      alert('Automation check completed. Any required tasks have been created.');
-      dispatch(fetchActions({ salespersonId: user?.id }));
-      dispatch(fetchOverdueTasks(user?.id!));
-    } catch (error) {
-      console.error('Failed to run automation:', error);
-      alert('Failed to run automation check.');
-    } finally {
-      setIsAutomationRunning(false);
-    }
-  };
 
   const handleViewCustomer = (customer: Lead) => {
     setSelectedCustomer(customer);
     setActiveTab('customer');
   };
 
-  const handleViewTask = (task: any) => {
-    setSelectedTask(task);
-    setActiveTab('task');
+  const handleViewTask = (task: CrmAction) => {
+    const customer = task.customer?.customer || task.relatedLead;
+    if (customer) {
+      handleViewCustomer(customer as Lead);
+    }
   };
+
 
   if (selectedCustomer) {
     return (
@@ -155,20 +133,6 @@ export const CRM: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4 flex-wrap justify-center">
-            <Button
-              variant="outline"
-              className={`bg-white text-slate-700 border-slate-200 hover:bg-slate-50 font-bold h-10 px-4 shadow-sm text-xs ${isAutomationRunning ? 'animate-pulse opacity-80' : ''}`}
-              onClick={handleRunAutomation}
-              disabled={isAutomationRunning}
-            >
-              {isAutomationRunning ? (
-                <Loader2 className="h-3.5 w-3.5 mr-2 text-blue-500 animate-spin" />
-              ) : (
-                <Target className="h-3.5 w-3.5 mr-2 text-slate-400" />
-              )}
-              Run Automation
-            </Button>
-
             <div className="relative">
               <Button
                 className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-bold px-4 h-10 text-xs"
@@ -190,7 +154,7 @@ export const CRM: React.FC = () => {
                         <div className="p-2 bg-blue-50 rounded-lg group-hover:scale-110 transition-transform"><Plus className="h-4 w-4 text-blue-600" /></div>
                         <span className="text-sm font-bold text-gray-700">Add New Lead</span>
                       </div>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-all" />
+                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 transition-all" />
                     </button>
                     <button
                       onClick={() => { window.location.href = 'tel:'; setShowQuickActions(false); }}
@@ -200,7 +164,7 @@ export const CRM: React.FC = () => {
                         <div className="p-2 bg-green-50 rounded-lg group-hover:scale-110 transition-transform"><Phone className="h-4 w-4 text-green-600" /></div>
                         <span className="text-sm font-bold text-gray-700">Log Call / Dialer</span>
                       </div>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-all" />
+                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 transition-all" />
                     </button>
                     <button
                       onClick={() => { setActiveTab('tasks'); setShowQuickActions(false); }}
@@ -210,7 +174,7 @@ export const CRM: React.FC = () => {
                         <div className="p-2 bg-purple-50 rounded-lg group-hover:scale-110 transition-transform"><FileText className="h-4 w-4 text-purple-600" /></div>
                         <span className="text-sm font-bold text-gray-700">View Tasks</span>
                       </div>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-all" />
+                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 transition-all" />
                     </button>
                     <div className="h-px bg-gray-50 my-1 mx-2" />
                     <button
@@ -221,7 +185,17 @@ export const CRM: React.FC = () => {
                         <div className="p-2 bg-orange-50 rounded-lg group-hover:scale-110 transition-transform"><Calendar className="h-4 w-4 text-orange-600" /></div>
                         <span className="text-sm font-bold text-gray-700">Meeting / Calendar</span>
                       </div>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-all" />
+                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 transition-all" />
+                    </button>
+                    <button
+                      onClick={() => { setShowQuickBooking(true); setShowQuickActions(false); }}
+                      className="w-full text-left px-4 py-3 hover:bg-rose-50/50 rounded-xl flex items-center justify-between group transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-rose-50 rounded-lg group-hover:scale-110 transition-transform"><Calendar className="h-4 w-4 text-rose-600" /></div>
+                        <span className="text-sm font-bold text-gray-700">Quick Booking</span>
+                      </div>
+                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 transition-all" />
                     </button>
                   </div>
                 </div>

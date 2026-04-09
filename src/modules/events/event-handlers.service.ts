@@ -162,7 +162,7 @@ export class EventHandlersService {
 
       // Notify Sales and Admin on every completion as requested
       const clinicName = appointment.clinic?.name || 'Clinic';
-      await this.notificationsService.notifyPlatformStaff(
+      await this.notificationsService.sendToPlatformAdmins(
         'Appointment Executed',
         `${serviceName} executed at ${clinicName} for ${appointment.client?.firstName || 'Client'}`,
         { appointmentId: appointment.id, clinicId: appointment.clinicId }

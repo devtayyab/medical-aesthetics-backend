@@ -219,7 +219,7 @@ export const Payments: React.FC = () => {
                                             {txn.type === 'refund' || txn.type === 'void' ? '-' : ''}€{Number(txn.amount).toFixed(2)}
                                         </td>
                                         <td className="px-6 py-5 whitespace-nowrap text-center">
-                                            <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex justify-center gap-2 transition-opacity">
                                                 {txn.status === 'completed' && txn.type === 'payment' && (
                                                     <>
                                                         <button

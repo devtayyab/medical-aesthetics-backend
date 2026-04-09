@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PenTool, Plus, BookOpen, Search, Trash2, Tag as TagIcon, Eye, EyeOff } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -171,7 +171,7 @@ export const BlogManagement: React.FC = () => {
                                         )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center justify-end gap-3 transition-opacity">
                                             <button
                                                 title="Toggle Visibility"
                                                 onClick={() => dispatch(toggleBlogPostStatus(post))}

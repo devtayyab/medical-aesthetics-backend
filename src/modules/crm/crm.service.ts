@@ -192,6 +192,30 @@ export class CrmService implements OnModuleInit {
     return finalLead;
   }
 
+  async bulkCreate(leads: CreateLeadDto[]): Promise<{ created: number; skipped: number; results: any[] }> {
+    const results = [];
+    let createdCount = 0;
+    let skippedCount = 0;
+
+    for (const leadDto of leads) {
+      try {
+        const lead = await this.create(leadDto);
+        results.push({ status: 'success', email: leadDto.email, id: lead.id });
+        createdCount++;
+      } catch (error) {
+        this.logger.error(`Failed to create lead for ${leadDto.email}: ${error.message}`);
+        results.push({ status: 'error', email: leadDto.email, message: error.message });
+        skippedCount++;
+      }
+    }
+
+    return {
+      created: createdCount,
+      skipped: skippedCount,
+      results,
+    };
+  }
+
   async update(id: string, updateLeadDto: UpdateLeadDto): Promise<Lead> {
     const lead = await this.findById(id);
 
@@ -701,16 +725,30 @@ export class CrmService implements OnModuleInit {
   }
 
   async findById(id: string): Promise<Lead> {
-    const lead = await this.leadsRepository.findOne({
-      where: { id },
-      relations: ['assignedSales', 'tags', 'tasks', 'multiOwners', 'clinics', 'clinicStatuses', 'clinicStatuses.clinic'],
-    });
+    try {
+      if (!id || !isUuid(id)) {
+        this.logger.warn(`[findById] Invalid UUID format received: "${id}"`);
+        throw new BadRequestException(`Invalid Lead ID format: "${id}"`);
+      }
 
-    if (!lead) {
-      throw new NotFoundException('Lead not found');
+      const lead = await this.leadsRepository.findOne({
+        where: { id },
+        relations: ['assignedSales', 'tags', 'tasks', 'multiOwners', 'clinics', 'clinicStatuses', 'clinicStatuses.clinic'],
+      });
+
+      if (!lead) {
+        this.logger.warn(`[findById] Lead ${id} not found in database`);
+        throw new NotFoundException('Lead not found');
+      }
+
+      return lead;
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.error(`[findById] Unexpected error fetching lead ${id}: ${error.message}`, error.stack);
+      throw new BadRequestException(`Error fetching lead details: ${error.message}`);
     }
-
-    return lead;
   }
 
 
@@ -3246,11 +3284,13 @@ export class CrmService implements OnModuleInit {
 
     let qb = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .leftJoin('apt.client', 'agent')
+      .leftJoin('apt.representative', 'rep')
+      .leftJoin('apt.bookedBy', 'agent')
       .leftJoin('apt.clinic', 'clinic')
-      .leftJoin('users', 'client', 'client.id = apt.clientId')
+      .leftJoin('apt.client', 'client')
       .select('apt.id', 'appointmentId')
-      .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
+      .addSelect('apt.clientId', 'patientId')
+      .addSelect("COALESCE(CONCAT(rep.firstName, ' ', rep.lastName), CONCAT(agent.firstName, ' ', agent.lastName))", 'agentName')
       .addSelect('clinic.name', 'clinicName')
       .addSelect('apt.startTime', 'date')
       .addSelect('EXTRACT(DAY FROM CURRENT_DATE - apt.startTime)', 'daysAgo')
@@ -3263,8 +3303,9 @@ export class CrmService implements OnModuleInit {
     const results = await qb.getRawMany();
     return results.map(row => ({
       appointmentId: row.appointmentId,
+      patientId: row.patientId,
       patientName: row.patientName?.trim() || 'Unknown',
-      agentName: row.agentName,
+      agentName: row.agentName || 'Unassigned',
       clinicName: row.clinicName,
       date: row.date.toISOString().split('T')[0],
       daysAgo: parseInt(row.daysAgo) || 0,
@@ -3272,22 +3313,48 @@ export class CrmService implements OnModuleInit {
     }));
   }
 
-  async resolveNoShowAlert(appointmentId: string, actionTaken: string) {
+  async resolveNoShowAlert(appointmentId: string, resolutionNote: string, salespersonId?: string) {
     const appointment = await this.appointmentsRepository.findOne({
-      where: { id: appointmentId }
+      where: { id: appointmentId },
+      relations: ['client', 'representative', 'bookedBy']
     });
 
     if (!appointment) {
       throw new NotFoundException('Appointment not found');
     }
 
-    // Since Appointment doesn't have metadata, we'll update the notes field
-    // In a real implementation, you might add a separate table for tracking no-show resolutions
-    const resolutionNote = `No-show resolved on ${new Date().toISOString()}: ${actionTaken}`;
-    appointment.notes = appointment.notes ? `${appointment.notes}\n${resolutionNote}` : resolutionNote;
+    const record = await this.customerRecordsRepository.findOne({ where: { customerId: appointment.clientId } });
+    
+    // Assign to: salespersonId (if provided) -> appointment.representativeId -> appointment.bookedById -> customerRecord.assignedSalespersonId -> fallback
+    let assignedId = salespersonId || appointment.representativeId || appointment.bookedById || record?.assignedSalespersonId;
+    
+    if (!assignedId) {
+      const fallbackAgent = await this.usersRepository.findOne({ 
+        where: { role: In([UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN]) } 
+      });
+      assignedId = fallbackAgent?.id;
+    }
 
-    await this.appointmentsRepository.save(appointment);
-    return { success: true };
+    if (assignedId && appointment.clientId) {
+      this.logger.log(`[resolveNoShowAlert] Creating follow-up task for appointment ${appointmentId}, patient ${appointment.clientId}`);
+      
+      try {
+        await this.createAction({
+          customerId: appointment.clientId,
+          salespersonId: assignedId,
+          actionType: 'follow_up_call' as any,
+          title: `High Priority: No-Show Follow-up`,
+          description: `Patient missed appointment on ${appointment.startTime.toLocaleDateString()}. Resolution note: ${resolutionNote}. Please follow up to reschedule.`,
+          priority: 'high',
+          dueDate: new Date(Date.now() + 86400000), // Tomorrow
+          status: 'pending'
+        });
+      } catch (error) {
+        this.logger.error(`[resolveNoShowAlert] Failed to create follow-up task: ${error.message}`);
+      }
+    }
+
+    return { success: true, message: 'No-show resolved and task created' };
   }
 
   // Additional Analytics Methods

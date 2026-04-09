@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Card } from "@/components/atoms/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
 import type { Notification } from "@/types";
@@ -20,7 +20,7 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({
         <p className="text-gray-600">
           {new Date(notification.createdAt).toLocaleString()}
         </p>
-        {!notification.read && onMarkAsRead && (
+        {!notification.isRead && onMarkAsRead && (
           <Button
             variant="outline"
             size="sm"

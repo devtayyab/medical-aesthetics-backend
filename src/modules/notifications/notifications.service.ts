@@ -224,16 +224,45 @@ export class NotificationsService implements OnModuleInit {
     };
   }
 
-  async notifyPlatformStaff(
+  async notifyAllStaff(
     title: string,
     message: string,
     data?: any,
   ): Promise<{ sentTo: number }> {
-    // Find all admin users only (NOT all salespersons anymore)
+    // Find all users who should be notified (Admins, Super Admins, and Salespeople)
     const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true });
     const superAdmins = await this.usersService.findAll({ role: UserRole.SUPER_ADMIN, isActive: true });
+    const salespeople = await this.usersService.findAll({ role: UserRole.SALESPERSON, isActive: true });
 
-    const recipientIds = [...admins, ...superAdmins].map(u => u.id);
+    const recipientIds = [...new Set([...admins, ...superAdmins, ...salespeople].map(u => u.id))];
+
+    if (recipientIds.length === 0) return { sentTo: 0 };
+
+    await this.sendBulk(
+      recipientIds,
+      NotificationType.PUSH,
+      title,
+      message,
+      data
+    );
+
+    return { sentTo: recipientIds.length };
+  }
+
+  async notifyClinicStaff(
+    clinicId: string,
+    title: string,
+    message: string,
+    data?: any,
+  ): Promise<{ sentTo: number }> {
+    // Find all users related to this clinic (Owners, Secretariat, Doctors)
+    const users = await this.usersService.findAll({ isActive: true });
+    const clinicStaff = users.filter(u => 
+      u.assignedClinicId === clinicId || 
+      [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(u.role as UserRole)
+    );
+
+    const recipientIds = clinicStaff.map(u => u.id);
 
     if (recipientIds.length === 0) return { sentTo: 0 };
 

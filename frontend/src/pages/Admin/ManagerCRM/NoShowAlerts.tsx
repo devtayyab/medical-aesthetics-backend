@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/atoms/Button/Button";
@@ -18,6 +19,7 @@ import { fetchNoShowAlerts, resolveNoShowAlert, NoShowAlert } from "@/services/m
 import { cn } from "@/lib/utils";
 
 export const NoShowAlerts: React.FC = () => {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<NoShowAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -41,20 +43,24 @@ export const NoShowAlerts: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const handleResolve = async (id: string) => {
+  const handleResolve = async (id: string, agentName: string) => {
     try {
-      await resolveNoShowAlert(id, "Followed up via phone call");
-      alert("Alert resolved successfully");
+      await resolveNoShowAlert(id, `Manager resolved no-show, assigned to ${agentName}`);
+      alert(`No-show resolved. Follow-up task has been assigned to ${agentName}.`);
       loadData(true);
     } catch (error) {
       alert("Failed to resolve alert");
     }
   };
 
-  const handleViewPatient = (appointmentId: string) => {
-    // Navigate to customer details (need customer ID from rows usually, but using appointmentId as fallback or searching)
-    // For now, let's assume we can navigate to the appointment or related customer
-    // toast.success("Navigating to patient record...");
+  const handleViewPatient = (patientId: string) => {
+    if (patientId) {
+      // Sanitize ID: remove any potential suffixes like ':1' that sometimes appear in console/logs
+      const sanitizedId = patientId.split(':')[0];
+      navigate(`/crm/customer/${sanitizedId}`);
+    } else {
+      alert("No patient ID available for this record.");
+    }
   };
 
   const columns = [
@@ -132,7 +138,7 @@ export const NoShowAlerts: React.FC = () => {
             variant="outline"
             size="sm"
             className="h-8 gap-2 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
-            onClick={() => handleResolve(row.original.appointmentId)}
+            onClick={() => handleResolve(row.original.appointmentId, row.original.agentName)}
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
             Resolve
@@ -141,7 +147,7 @@ export const NoShowAlerts: React.FC = () => {
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-gray-400 hover:text-gray-900"
-            onClick={() => handleViewPatient(row.original.appointmentId)}
+            onClick={() => handleViewPatient(row.original.patientId)}
           >
             <ArrowRight className="h-4 w-4" />
           </Button>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
@@ -163,10 +164,11 @@ interface TasksPageProps {
 
 
 
-export const Tasks: React.FC<TasksPageProps> = () => {
+export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   const { actions: tasks, isLoading, taskKpis, salespersons, clinics } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
 
   const currentUserId = user?.id;
 
@@ -655,18 +657,36 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                       </td>
                       <td className="p-2.5">
                         {(task.customerId || task.relatedLeadId) ? (
-                          <Link
-                            to={`/crm/customer/${task.customerId || task.relatedLeadId}`}
-                            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-bold text-[10px] transition-all
-                              ${task.customerId ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}
-                          >
-                            <Users className="h-2.5 w-2.5 opacity-60" />
-                            {task.customer?.customer
-                              ? `${task.customer.customer.firstName || ''} ${task.customer.customer.lastName || ''}`
-                              : task.relatedLead
-                                ? `${task.relatedLead.firstName || ''} ${task.relatedLead.lastName || ''}`
-                                : 'View Profile'}
-                          </Link>
+                          onViewTask ? (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                onViewTask(task);
+                              }}
+                              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-bold text-[10px] transition-all
+                                ${task.customerId ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}
+                            >
+                              <Users className="h-2.5 w-2.5 opacity-60" />
+                              {task.customer?.customer
+                                ? `${task.customer.customer.firstName || ''} ${task.customer.customer.lastName || ''}`
+                                : task.relatedLead
+                                  ? `${task.relatedLead.firstName || ''} ${task.relatedLead.lastName || ''}`
+                                  : 'View Profile'}
+                            </button>
+                          ) : (
+                            <Link
+                              to={`/crm/customer/${task.customerId || task.relatedLeadId}`}
+                              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-bold text-[10px] transition-all
+                                ${task.customerId ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}
+                            >
+                              <Users className="h-2.5 w-2.5 opacity-60" />
+                              {task.customer?.customer
+                                ? `${task.customer.customer.firstName || ''} ${task.customer.customer.lastName || ''}`
+                                : task.relatedLead
+                                  ? `${task.relatedLead.firstName || ''} ${task.relatedLead.lastName || ''}`
+                                  : 'View Profile'}
+                            </Link>
+                          )
                         ) : (
                           <span className="text-slate-300 text-[10px] font-medium italic">Unassigned</span>
                         )}
@@ -721,17 +741,23 @@ export const Tasks: React.FC<TasksPageProps> = () => {
                       </td>
                       <td className="p-2.5">
                         <div className="flex gap-1 items-center justify-center">
-                          <Button
-                            size="xs"
-                            variant="white"
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md" 
                             onClick={(e) => {
                               e.stopPropagation();
-                              setViewingTask(task);
+                              if (onViewTask) {
+                                onViewTask(task);
+                              } else {
+                                const id = task.customerId || task.relatedLeadId;
+                                if (id) navigate(`/crm/customer/${id}`);
+                                else setViewingTask(task);
+                              }
                             }}
-                            className="h-8 w-8 p-0 bg-white border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-all shadow-sm"
                             title="View Detail"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="xs"
