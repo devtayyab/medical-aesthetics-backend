@@ -388,10 +388,52 @@ export class NotificationsService implements OnModuleInit {
         content: 'Hi {{customerName}},\n\nYour appointment for {{serviceName}} has been booked for {{appointmentDate}} at {{appointmentTime}} at {{clinicName}}.\n\nThank you!',
       },
       {
+        trigger: NotificationTrigger.APPOINTMENT_BOOKED,
+        type: NotificationType.PUSH,
+        subject: 'New Appointment Booked',
+        content: 'Your appointment for {{serviceName}} has been scheduled for {{appointmentDate}} at {{appointmentTime}}.',
+      },
+      {
         trigger: NotificationTrigger.APPOINTMENT_CONFIRMED,
         type: NotificationType.PUSH,
         subject: 'Appointment Confirmed!',
         content: 'Your {{serviceName}} at {{clinicName}} is confirmed for {{appointmentDate}} at {{appointmentTime}}.',
+      },
+      {
+        trigger: NotificationTrigger.APPOINTMENT_CONFIRMED,
+        type: NotificationType.EMAIL,
+        subject: 'Confirmed: Your Appointment at {{clinicName}}',
+        content: 'Dear {{customerName}},\n\nWe are happy to confirm your appointment for {{serviceName}} on {{appointmentDate}} at {{appointmentTime}}.\n\nLocation: {{clinicName}}\n\nWe look forward to seeing you!',
+      },
+      {
+        trigger: NotificationTrigger.APPOINTMENT_RESCHEDULED,
+        type: NotificationType.PUSH,
+        subject: 'Appointment Rescheduled',
+        content: 'Your appointment for {{serviceName}} has been moved to {{appointmentDate}} at {{appointmentTime}}.',
+      },
+      {
+        trigger: NotificationTrigger.APPOINTMENT_RESCHEDULED,
+        type: NotificationType.EMAIL,
+        subject: 'Updated Appointment Details',
+        content: 'Hi {{customerName}},\n\nYour appointment for {{serviceName}} has been rescheduled. Your new time is {{appointmentDate}} at {{appointmentTime}}.\n\nPlease let us know if this doesn\'t work for you.',
+      },
+      {
+        trigger: NotificationTrigger.APPOINTMENT_CANCELED,
+        type: NotificationType.EMAIL,
+        subject: 'Appointment Cancelled',
+        content: 'Hi {{customerName}},\n\nThis is to confirm that your appointment for {{serviceName}} on {{appointmentDate}} has been cancelled. If you didn\'t request this, please contact us immediately.',
+      },
+      {
+        trigger: NotificationTrigger.APPOINTMENT_REMINDER,
+        type: NotificationType.PUSH,
+        subject: 'Upcoming Appointment Reminder',
+        content: 'Don\'t forget! You have an appointment for {{serviceName}} tomorrow at {{appointmentTime}}.',
+      },
+      {
+        trigger: NotificationTrigger.POST_VISIT_THANK_YOU,
+        type: NotificationType.EMAIL,
+        subject: 'Thank You for Choosing {{clinicName}}',
+        content: 'Hi {{customerName}},\n\nIt was a pleasure seeing you today for your {{serviceName}} treatment. We hope you had a great experience!\n\nBest regards,\nThe {{clinicName}} Team',
       },
       {
         trigger: NotificationTrigger.TASK_REMINDER,
@@ -399,7 +441,18 @@ export class NotificationsService implements OnModuleInit {
         subject: 'Task Reminder',
         content: 'Reminder: Task "{{taskTitle}}" is due on {{dueDate}}.',
       },
-      // Add more as per user request
+      {
+        trigger: NotificationTrigger.WELCOME_CREDENTIALS,
+        type: NotificationType.EMAIL,
+        subject: 'Welcome to Beauty & Doctors - Your Account is Ready',
+        content: 'Hi {{customerName}},\n\nWelcome to our platform! Your account has been created successfully.\n\nYou can now log in to the portal using your email and manage your appointments and rewards.\n\nSee you inside!',
+      },
+      {
+        trigger: NotificationTrigger.EXECUTION_NOTIFICATION,
+        type: NotificationType.PUSH,
+        subject: 'Action Completed',
+        content: 'The action "{{actionName}}" has been executed successfully.',
+      },
     ];
 
     for (const data of defaults) {
@@ -408,8 +461,9 @@ export class NotificationsService implements OnModuleInit {
       });
 
       if (!existing) {
-        await this.templateRepository.save(this.templateRepository.create(data));
+        await this.templateRepository.save(this.templateRepository.create({ ...data, isActive: true }));
       }
     }
   }
+
 }
