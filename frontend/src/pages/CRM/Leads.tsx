@@ -743,6 +743,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   </TableHead>
                   <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3">Lead Name</TableHead>
                   <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3">Contact Info</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3">Assigned To</TableHead>
                   <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3">Status</TableHead>
                   <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3">Source</TableHead>
                   <TableHead className="text-[10px] uppercase font-bold tracking-wider px-3 text-emerald-600 bg-emerald-50/50">Last Form</TableHead>
@@ -791,6 +792,25 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                           </div>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell className="py-2 px-3">
+                      {lead.assignedSales ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[10px] font-black uppercase">
+                            {lead.assignedSales.firstName[0]}{lead.assignedSales.lastName[0]}
+                          </div>
+                          <span className="text-[11px] font-bold text-gray-700">
+                            {lead.assignedSales.firstName} {lead.assignedSales.lastName}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 opacity-50">
+                          <div className="w-6 h-6 rounded-full bg-gray-50 text-gray-300 border border-dashed border-gray-200 flex items-center justify-center text-[10px]">
+                            <User className="w-3 h-3" />
+                          </div>
+                          <span className="text-[10px] text-gray-400 italic font-medium">Unassigned</span>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="py-2 px-3">
                       <Badge className={`${getStatusBadge(lead.status)} border px-2 py-0.5 rounded-full capitalize font-bold text-[9px] tracking-wider`}>
