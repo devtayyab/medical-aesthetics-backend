@@ -50,6 +50,8 @@ import {
 import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
 import { crmAPI, bookingAPI } from '@/services/api';
+import { toast } from 'react-hot-toast';
+
 
 interface LeadsPageProps {
   onViewLead?: (lead: Lead) => void;
@@ -235,14 +237,27 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
   const handleBulkAction = async (action: string, value?: string) => {
     if (selectedLeads.length === 0) return;
-    if (action === 'delete') {
-      for (const leadId of selectedLeads) await dispatch(deleteLead(leadId));
-    } else if (action === 'mark_contacted') {
-      for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { status: 'contacted' } }));
-    } else if (action === 'assign' && value) {
-      for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { assignedSalesId: value } }));
+    
+    const count = selectedLeads.length;
+    const toastId = toast.loading(`Performing bulk ${action}...`);
+    
+    try {
+      if (action === 'delete') {
+        for (const leadId of selectedLeads) await dispatch(deleteLead(leadId)).unwrap();
+      } else if (action === 'mark_contacted') {
+        for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { status: 'contacted' } })).unwrap();
+      } else if (action === 'assign' && value) {
+        for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { assignedSalesId: value } })).unwrap();
+      }
+      
+      toast.success(`Successfully updated ${count} leads`, { id: toastId });
+      setSelectedLeads([]);
+      // Refresh list to be sure
+      dispatch(fetchLeads(leadFilters));
+    } catch (error: any) {
+      console.error(`Bulk ${action} failed:`, error);
+      toast.error(`Failed to update some leads: ${error.message || 'Unknown error'}`, { id: toastId });
     }
-    setSelectedLeads([]);
   };
 
   const handleSaveEdit = async () => {
