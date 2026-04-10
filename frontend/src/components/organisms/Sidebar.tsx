@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
@@ -53,50 +53,53 @@ const doctorLinks: SidebarItem[] = [
 ];
 
 const crmLinks: SidebarItem[] = [
-  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" />, group: "CRM" },
   { path: "/crm/customers", label: "Customers", icon: <Users className="w-5 h-5" />, group: "CRM" },
-  { path: "/crm/archive", label: "Archive", icon: <Archive className="w-5 h-5" />, group: "CRM" },
-  { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" />, group: "Sales" },
-  { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "Operations" },
-  { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
-  { path: "/crm/communication", label: "Communication Flow", icon: <Phone className="w-5 h-5" />, group: "Communication" },
-  { path: "/crm/analytics", label: "Analytics", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
-  { path: "/crm/sales-analytics", label: "Sales Dashboard", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
+  
   { path: "/crm/calendar", label: "Sales Week Calendar", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
-  { path: "/crm/tag", label: "Tags", icon: <Tag className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
+  { path: "/crm/archive", label: "Archive", icon: <Archive className="w-5 h-5" />, group: "Operations" },
+  { path: "/crm/tag", label: "Tags", icon: <Tag className="w-5 h-5" />, group: "Operations" },
+
+  { path: "/crm/communication", label: "Communication Flow", icon: <Phone className="w-5 h-5" />, group: "Performance" },
+  { path: "/crm/analytics", label: "Statistics", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
+  { path: "/crm/sales-analytics", label: "Sales Dashboard", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
   { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "Account" },
 ];
 
 const managerLinks: SidebarItem[] = [
   { path: "/admin/manager-dashboard", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, group: "Main" },
-  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
-  { path: "/admin/clinics", label: "Clinics", icon: <Building2 className="w-5 h-5" />, group: "Main" },
-  { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Main" },
+  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/customers", label: "Customers", icon: <Users className="w-5 h-5" />, group: "Sales" },
 
-  { path: "/crm/customers", label: "Contacts", icon: <Users className="w-5 h-5" />, group: "CRM" },
-  { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" />, group: "CRM" },
-  { path: "/crm/archive", label: "Archive", icon: <Archive className="w-5 h-5" />, group: "CRM" },
-  { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "CRM" },
-
-  { path: "/crm/analytics", label: "Sales Analytics", icon: <BarChart2 className="w-5 h-5" />, group: "Sales" },
-  { path: "/admin/clinic-analytics", label: "Clinic Analytics", icon: <Building2 className="w-5 h-5" />, group: "Sales" },
-   { path: "/admin/manager-dashboard?tab=calendar-global", label: "Global Calendar", icon: <CalendarRange className="w-5 h-5" />, group: "Sales" },
-   { path: "/admin/manager-crm/calls", label: "Calls", icon: <Phone className="w-5 h-5" />, group: "Sales" },
+  { path: "/admin/clinics", label: "Clinics", icon: <Building2 className="w-5 h-5" />, group: "Infrastructure" },
+  { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Infrastructure" },
+  
+  { path: "/crm/analytics", label: "Sales Analytics", icon: <BarChart2 className="w-5 h-5" />, group: "Intelligence" },
+  { path: "/admin/clinic-analytics", label: "Clinic Analytics", icon: <Building2 className="w-5 h-5" />, group: "Intelligence" },
+   { path: "/admin/manager-dashboard?tab=calendar-global", label: "Global Calendar", icon: <CalendarRange className="w-5 h-5" />, group: "Intelligence" },
+   { path: "/admin/manager-crm/calls", label: "Calls", icon: <Phone className="w-5 h-5" />, group: "Intelligence" },
+   
    { path: "/admin/manager-crm/reports", label: "Reports", icon: <FileText className="w-5 h-5" />, group: "Analytics" },
    { path: "/admin/manager-crm/advertising", label: "Advertising", icon: <BarChart className="w-5 h-5" />, group: "Analytics" },
    { path: "/admin/broadcast", label: "Broadcast", icon: <Bell className="w-5 h-5" />, group: "Marketing" },
    { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
-   { path: "/admin/manager-crm/access", label: "Access Control", icon: <Shield className="w-5 h-5" />, group: "CRM Management" },
-   { path: "/admin/manager-crm/benefits", label: "Client Benefits", icon: <Tag className="w-5 h-5" />, group: "CRM Management" },
-   { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <Eye className="w-5 h-5" />, group: "CRM Management" },
+   
+   { path: "/admin/manager-crm/access", label: "Access Control", icon: <Shield className="w-5 h-5" />, group: "Management" },
+   { path: "/admin/manager-crm/benefits", label: "Client Benefits", icon: <Tag className="w-5 h-5" />, group: "Management" },
+   { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <Eye className="w-5 h-5" />, group: "Management" },
 
   { path: "/admin/payments", label: "Payments & Turnover", icon: <DollarSign className="w-5 h-5" />, group: "Finance" },
   { path: "/admin/gift-cards", label: "Gift Cards", icon: <Tag className="w-5 h-5" />, group: "Finance" },
   { path: "/admin/wallet", label: "Loyalty & Wallet", icon: <ClipboardList className="w-5 h-5" />, group: "Finance" },
 
-  { path: "/admin/reviews", label: "Review Approvals", icon: <Eye className="w-5 h-5" />, group: "Content & Approvals" },
-  { path: "/admin/treatments", label: "Therapy Catalog", icon: <ListChecks className="w-5 h-5" />, group: "Content & Approvals" },
-  { path: "/admin/blog", label: "Blog & Content", icon: <FileText className="w-5 h-5" />, group: "Content & Approvals" },
+  { path: "/admin/reviews", label: "Review Approvals", icon: <Eye className="w-5 h-5" />, group: "Content" },
+  { path: "/admin/treatments", label: "Therapy Catalog", icon: <ListChecks className="w-5 h-5" />, group: "Content" },
+  { path: "/admin/blog", label: "Blog & Content", icon: <FileText className="w-5 h-5" />, group: "Content" },
 
   { path: "/admin/integrations", label: "Integrations", icon: <Settings className="w-5 h-5" />, group: "System" },
   { path: "/admin/system-lists", label: "System-wide Lists", icon: <ListChecks className="w-5 h-5" />, group: "System" },

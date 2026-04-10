@@ -1,7 +1,7 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction, Reducer } from "@reduxjs/toolkit";
 import { Task } from "@/types";
 import { TaskAPI } from "@/services/api";
-interface TaskState {
+export interface TaskState {
     tasks: Task[];
     isLoading: boolean;
     error: string | null;
@@ -130,4 +130,5 @@ export const {
     setError,
 } = taskSlice.actions;
 
-export default taskSlice.reducer;
+const taskReducer: Reducer<TaskState> = taskSlice.reducer;
+export default taskReducer;

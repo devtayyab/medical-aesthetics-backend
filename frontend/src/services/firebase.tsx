@@ -1,7 +1,10 @@
+import React from "react";
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
-import { useDispatch } from "react-redux";
 import { notificationsAPI } from "./api";
+import { toast } from "react-hot-toast";
+import type { AppDispatch } from "@/store";
+import { openDialer } from "@/store/slices/dialerSlice";
 
 const firebaseConfig = {
   // Replace with your Firebase config
@@ -17,7 +20,7 @@ const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
 export const initializeFirebase = async (
-  dispatch: ReturnType<typeof useDispatch>
+  dispatch: AppDispatch
 ) => {
   try {
     // Request permission for notifications
@@ -42,9 +45,38 @@ export const initializeFirebase = async (
     // Handle foreground messages
     onMessage(messaging, (payload) => {
       console.log("Message received:", payload);
+      const data = payload.data as any;
+      const isCallAction = data?.trigger === 'DIALER_CALLBACK';
+
+      // Show clickable toast
+      toast((t) => (
+        <div 
+          onClick={() => {
+            toast.dismiss(t.id);
+            if (isCallAction && data?.phoneNumber) {
+              dispatch(openDialer({
+                customerName: data.customerName || "Meta Lead",
+                phoneNumber: data.phoneNumber,
+                taskId: data.actionId || data.taskId || undefined
+              }));
+            }
+          }}
+          className="cursor-pointer"
+        >
+          <div className="font-bold text-sm">{payload.notification?.title}</div>
+          <div className="text-xs text-gray-500">{payload.notification?.body}</div>
+          {isCallAction && (
+             <div className="mt-1 text-[10px] font-bold text-blue-600">Click to Call Now</div>
+          )}
+        </div>
+      ), {
+        duration: isCallAction ? 10000 : 4000,
+        icon: isCallAction ? '📞' : '🔔'
+      });
+
       const notification = {
         id: payload.messageId,
-        recipientId: "", // Set based on user context
+        recipientId: "", 
         type: "push",
         title: payload.notification?.title || "",
         message: payload.notification?.body || "",
@@ -54,7 +86,7 @@ export const initializeFirebase = async (
         sentAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       };
-      // Dispatch to notifications slice (assumes you have an action to add notifications)
+      
       dispatch({
         type: "notifications/addNotification",
         payload: notification,

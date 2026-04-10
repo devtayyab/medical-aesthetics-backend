@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction, Reducer } from '@reduxjs/toolkit';
 import { api } from '../../services/api';
 
 export interface Message {
@@ -39,7 +39,7 @@ export interface Conversation {
     updatedAt: string;
     unreadCount?: number;
 }
-interface MessagesState {
+export interface MessagesState {
     conversations: Conversation[];
     searchResults: Conversation[];
     activeConversationMessages: Message[];
@@ -188,4 +188,5 @@ const messagesSlice = createSlice({
 });
 
 export const { setActiveConversation, receiveMessage, newConversation } = messagesSlice.actions;
-export default messagesSlice.reducer;
+const messagesReducer: Reducer<MessagesState> = messagesSlice.reducer;
+export default messagesReducer;

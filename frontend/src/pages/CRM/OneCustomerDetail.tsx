@@ -34,6 +34,7 @@ import {
     fetchSalespersons,
     fetchClinics
 } from "@/store/slices/crmSlice";
+import { openDialer } from "@/store/slices/dialerSlice";
 import { AuthState } from "@/store/slices/authSlice";
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
 import { updateAppointmentStatus, completeAppointment } from "@/store/slices/bookingSlice";
@@ -198,10 +199,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     // Priority: Updated Prop from Redux > Prop > Nested User in Record > The Record itself
     const updatedSelectedCustomer = SelectedCustomer ? leads.find(l => l.id === SelectedCustomer.id) || SelectedCustomer : null;
     const customer = updatedSelectedCustomer || (customerRecord?.record?.customer as any) || (customerRecord?.record as any);
-    
+
     // The ID to use for CRM updates (Must be the Lead/User ID, not the Record ID)
     const effectiveId = SelectedCustomer?.id || (customerRecord?.record?.customerId) || (customerRecord?.record?.id) || customerId;
-    
+
     const firstName = customer?.firstName || (customerRecord?.record?.customer as any)?.firstName || (customerRecord?.record as any)?.firstName || "";
     const lastName = customer?.lastName || (customerRecord?.record?.customer as any)?.lastName || (customerRecord?.record as any)?.lastName || "";
     const fullName = `${firstName} ${lastName}`.trim();
@@ -210,7 +211,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
     // Status can be in Lead record, or on the Customer profile if synced
     const displayStatus = customer?.status || (customerRecord as any)?.record?.status || 'new';
-    
+
     // State for Workflow
     const [workflowStep, setWorkflowStep] = useState<1 | 2 | 3 | 4>(1);
     const [interactionType, setInteractionType] = useState<'call' | 'meeting' | 'email'>('call');
@@ -382,9 +383,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 })).unwrap();
 
                 // Rule: Update Last Contacted At
-                await dispatch(updateLead({ 
-                    id: customer.id, 
-                    updates: { lastContactedAt: new Date().toISOString() } 
+                await dispatch(updateLead({
+                    id: customer.id,
+                    updates: { lastContactedAt: new Date().toISOString() }
                 })).unwrap();
             }
             setPhoneCallNotes("");
@@ -410,9 +411,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
             })).unwrap();
 
             // Rule: Update Last Contacted At
-            await dispatch(updateLead({ 
-                id: customer.id, 
-                updates: { lastContactedAt: new Date().toISOString() } 
+            await dispatch(updateLead({
+                id: customer.id,
+                updates: { lastContactedAt: new Date().toISOString() }
             })).unwrap();
 
             setEmailNotes("");
@@ -571,16 +572,16 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
             // Rule: Update Last Contacted At (Internal Rule: call, email, viber, notes as contact attempts)
             const isContactAttempt = interactionType === 'call' || interactionType === 'email' || finalNotes.toLowerCase().includes('viber') || finalNotes.toLowerCase().includes('whatsapp');
             if (isContactAttempt) {
-                await dispatch(updateLead({ 
-                    id: customer.id, 
-                    updates: { lastContactedAt: new Date().toISOString() } 
+                await dispatch(updateLead({
+                    id: customer.id,
+                    updates: { lastContactedAt: new Date().toISOString() }
                 })).unwrap();
             }
 
             if (currentAutoTask) {
                 const taskDate = currentAutoTask.date ? new Date(currentAutoTask.date) : new Date();
                 const safeDate = !isNaN(taskDate.getTime()) ? taskDate.toISOString() : new Date().toISOString();
-                
+
                 await dispatch(createAction({
                     customerId: customer.id,
                     salespersonId: user?.id || undefined,
@@ -647,9 +648,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 notes: `Completed from CRM Detail view. Amount: ${paymentAmt} via ${paymentMethod}`
             };
 
-            await dispatch(completeAppointment({ 
-                id: pendingAptId, 
-                completionData: { ...paymentData, completionReport } 
+            await dispatch(completeAppointment({
+                id: pendingAptId,
+                completionData: { ...paymentData, completionReport }
             })).unwrap();
 
             // Create follow-up task
@@ -673,7 +674,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
             setPendingAptId(null);
             setPendingAptObj(null);
             dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
-            
+
             alert("Appointment completed and payment recorded.");
         } catch (error) {
             console.error("Completion failed", error);
@@ -930,7 +931,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 mix-blend-overlay pointer-events-none" />
                 <div className="absolute -left-20 -top-20 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px]" />
                 <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-[100px]" />
-                
+
                 <div className="p-6 relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="flex items-center gap-5">
                         <div className="relative">
@@ -958,11 +959,11 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
                     <div className="flex items-center gap-3">
                         {isAdmin && (
-                            <Button 
-                                variant="ghost" 
+                            <Button
+                                variant="ghost"
                                 className="h-10 px-4 text-slate-400 hover:text-red-400 hover:bg-red-400/10 font-bold text-xs rounded-xl transition-all"
                                 onClick={async () => {
-                                    if(confirm('Delete this record?')) {
+                                    if (confirm('Delete this record?')) {
                                         await dispatch(deleteLead(customer.id));
                                         window.location.href = '/crm/leads';
                                     }
@@ -971,7 +972,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                 <Trash2 className="w-4 h-4 mr-2" /> Delete
                             </Button>
                         )}
-                        <Button 
+                        <Button
                             className="h-10 px-6 bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95"
                             onClick={() => setShowBookingModal(true)}
                         >
@@ -1031,8 +1032,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
             {/* 2. Quick Action Toolbar (The "Big 5" Sales Interactions) */}
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm animate-in slide-in-from-top-5">
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
-                    <Button 
-                        onClick={() => setShowPhoneCallModal(true)} 
+                    <Button
+                        onClick={() => setShowPhoneCallModal(true)}
                         className="h-16 flex flex-col items-center justify-center gap-1.5 bg-white hover:bg-emerald-50 border-slate-200 hover:border-emerald-200 text-slate-700 transition-all rounded-2xl shadow-sm group"
                     >
                         <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
@@ -1041,7 +1042,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                         <span className="text-[10px] font-black uppercase tracking-tighter">Add Call Notes</span>
                     </Button>
 
-                    <Button 
+                    <Button
                         onClick={() => window.open(`https://wa.me/${customer.phone?.replace(/[^0-9]/g, '')}`, '_blank')}
                         className="h-16 flex flex-col items-center justify-center gap-1.5 bg-white hover:bg-emerald-50 border-slate-200 hover:border-emerald-200 text-slate-700 transition-all rounded-2xl shadow-sm group"
                     >
@@ -1051,8 +1052,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                         <span className="text-[10px] font-black uppercase tracking-tighter">WhatsApp</span>
                     </Button>
 
-                    <Button 
-                        onClick={() => setShowEmailModal(true)} 
+                    <Button
+                        onClick={() => setShowEmailModal(true)}
                         className="h-16 flex flex-col items-center justify-center gap-1.5 bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-200 text-slate-700 transition-all rounded-2xl shadow-sm group"
                     >
                         <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
@@ -1061,8 +1062,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                         <span className="text-[10px] font-black uppercase tracking-tighter">Log Email Sent</span>
                     </Button>
 
-                    <Button 
-                        onClick={() => setShowTaskModal(true)} 
+                    <Button
+                        onClick={() => setShowTaskModal(true)}
                         className="h-16 flex flex-col items-center justify-center gap-1.5 bg-white hover:bg-amber-50 border-slate-200 hover:border-amber-200 text-slate-700 transition-all rounded-2xl shadow-sm group"
                     >
                         <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
@@ -1071,8 +1072,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                         <span className="text-[10px] font-black uppercase tracking-tighter">Follow up</span>
                     </Button>
 
-                    <Button 
-                        onClick={() => setShowBookingModal(true)} 
+                    <Button
+                        onClick={() => setShowBookingModal(true)}
                         className="h-16 flex flex-col items-center justify-center gap-1.5 bg-white hover:bg-indigo-50 border-slate-200 hover:border-indigo-200 text-slate-700 transition-all rounded-2xl shadow-sm group"
                     >
                         <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
@@ -1085,7 +1086,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
             {/* 4. Main Two-Column Content Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                
+
                 {/* ---------- LEFT COLUMN: CRM PROPERTIES (4 COLS) ---------- */}
                 <div className="lg:col-span-4 space-y-6">
                     {/* D. Clinique Status Card (Critical Requirement) */}
@@ -1112,13 +1113,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                     <span className="text-xs font-black text-slate-800">{aff.clinic?.name || 'Unknown Clinic'}</span>
                                                 </div>
                                                 {isEditingClinics && (
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
                                                         className="h-6 w-6 p-0 text-slate-300 hover:text-red-500"
                                                         onClick={async () => {
                                                             const currentAffs = (customer as any).clinicStatuses || [];
-                                                            const updatedAffs = currentAffs.filter((a: any) => a.clinicId !== aff.clinicId).map((a:any) => ({ clinicId: a.clinicId, status: a.status }));
+                                                            const updatedAffs = currentAffs.filter((a: any) => a.clinicId !== aff.clinicId).map((a: any) => ({ clinicId: a.clinicId, status: a.status }));
                                                             await dispatch(updateLead({ id: effectiveId, updates: { clinicAffiliations: updatedAffs } as any })).unwrap();
                                                             dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
                                                         }}
@@ -1127,14 +1128,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                     </Button>
                                                 )}
                                             </div>
-                                            
+
                                             <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-50">
                                                 <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Clinic Status</span>
-                                                <Select 
+                                                <Select
                                                     value={aff.status}
                                                     onChange={async (val) => {
                                                         const currentAffs = (customer as any).clinicStatuses || [];
-                                                        const updatedAffs = currentAffs.map((a: any) => 
+                                                        const updatedAffs = currentAffs.map((a: any) =>
                                                             a.clinicId === aff.clinicId ? { clinicId: a.clinicId, status: val } : { clinicId: a.clinicId, status: a.status }
                                                         );
                                                         await dispatch(updateLead({ id: effectiveId, updates: { clinicAffiliations: updatedAffs } as any })).unwrap();
@@ -1152,7 +1153,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                             </div>
                                         </div>
                                     ))}
-                                    
+
                                     {(!(customer as any).clinicStatuses || (customer as any).clinicStatuses.length === 0) && (
                                         <div className="py-4 px-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">No Active Clinique Linked</p>
@@ -1160,19 +1161,19 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                     )}
 
                                     {isEditingClinics && (
-                                         <div className="pt-2">
-                                            <Select 
+                                        <div className="pt-2">
+                                            <Select
                                                 placeholder="Link new clinic..."
                                                 onChange={async (val) => {
                                                     const currentAffs = (customer as any).clinicStatuses || [];
-                                                    const updatedAffs = [...currentAffs.map((a:any) => ({ clinicId: a.clinicId, status: a.status })), { clinicId: val, status: 'new' }];
+                                                    const updatedAffs = [...currentAffs.map((a: any) => ({ clinicId: a.clinicId, status: a.status })), { clinicId: val, status: 'new' }];
                                                     await dispatch(updateLead({ id: effectiveId, updates: { clinicAffiliations: updatedAffs } as any })).unwrap();
                                                     dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
                                                 }}
-                                                options={(clinics || []).filter((c:any) => !(customer as any).clinicStatuses?.some((a:any) => a.clinicId === c.id)).map((c:any) => ({ value: c.id, label: c.name }))}
+                                                options={(clinics || []).filter((c: any) => !(customer as any).clinicStatuses?.some((a: any) => a.clinicId === c.id)).map((c: any) => ({ value: c.id, label: c.name }))}
                                                 className="h-10 text-xs border-slate-200 font-black uppercase tracking-tighter"
                                             />
-                                         </div>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -1183,9 +1184,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
                         <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
                             <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Sales Record</CardTitle>
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
+                            <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => isEditingCore ? handleSaveCoreProperties() : setIsEditingCore(true)}
                                 className="h-7 px-2 text-[10px] font-bold text-blue-600 hover:bg-blue-50"
                             >
@@ -1196,7 +1197,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                             {/* Sales Status */}
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Lead Status</label>
-                                <Select 
+                                <Select
                                     value={displayStatus}
                                     onChange={async (val) => {
                                         await dispatch(updateLead({ id: effectiveId, updates: { status: val as Lead['status'] } })).unwrap();
@@ -1217,8 +1218,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">First Name</label>
                                     {isEditingCore ? (
-                                        <Input 
-                                            value={editedProperties.firstName} 
+                                        <Input
+                                            value={editedProperties.firstName}
                                             onChange={(e) => setEditedProperties({ ...editedProperties, firstName: e.target.value })}
                                             className="h-8 text-xs font-bold bg-slate-50"
                                         />
@@ -1229,8 +1230,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Last Name</label>
                                     {isEditingCore ? (
-                                        <Input 
-                                            value={editedProperties.lastName} 
+                                        <Input
+                                            value={editedProperties.lastName}
                                             onChange={(e) => setEditedProperties({ ...editedProperties, lastName: e.target.value })}
                                             className="h-8 text-xs font-bold bg-slate-50"
                                         />
@@ -1239,14 +1240,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                     )}
                                 </div>
                             </div>
-                            
+
                             <div className="space-y-4 pt-4 border-t border-slate-50">
                                 <div className="flex flex-col gap-3">
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Email Address</label>
                                         {isEditingCore ? (
-                                            <Input 
-                                                value={editedProperties.email} 
+                                            <Input
+                                                value={editedProperties.email}
                                                 onChange={(e) => setEditedProperties({ ...editedProperties, email: e.target.value })}
                                                 className="h-8 text-xs font-bold bg-slate-50"
                                             />
@@ -1257,8 +1258,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Phone Number</label>
                                         {isEditingCore ? (
-                                            <Input 
-                                                value={editedProperties.phone} 
+                                            <Input
+                                                value={editedProperties.phone}
                                                 onChange={(e) => setEditedProperties({ ...editedProperties, phone: e.target.value })}
                                                 className="h-8 text-xs font-bold bg-slate-50"
                                             />
@@ -1281,7 +1282,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><Clock className="w-3 h-3" /> Est. Value</label>
                                     {isEditingCore ? (
-                                        <Input 
+                                        <Input
                                             type="number"
                                             value={editedProperties.estimatedValue || 0}
                                             onChange={(e) => setEditedProperties({ ...editedProperties, estimatedValue: parseFloat(e.target.value) })}
@@ -1299,15 +1300,15 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                 </span>
                                 {isEditingCore ? (
                                     <div className="space-y-2">
-                                        <Input 
-                                            placeholder="Form Name" 
-                                            value={editedProperties.lastMetaFormName || ""} 
+                                        <Input
+                                            placeholder="Form Name"
+                                            value={editedProperties.lastMetaFormName || ""}
                                             onChange={(e) => setEditedProperties({ ...editedProperties, lastMetaFormName: e.target.value })}
                                             className="h-8 text-xs font-bold"
                                         />
-                                        <Input 
-                                            placeholder="Facebook Ad Name" 
-                                            value={editedProperties.facebookAdName || ""} 
+                                        <Input
+                                            placeholder="Facebook Ad Name"
+                                            value={editedProperties.facebookAdName || ""}
                                             onChange={(e) => setEditedProperties({ ...editedProperties, facebookAdName: e.target.value })}
                                             className="h-8 text-xs font-bold"
                                         />
@@ -1315,10 +1316,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                 ) : (
                                     <>
                                         <span className="text-xs font-black text-blue-600">{(customer as any).lastMetaFormName || 'No Meta Data Detected'}</span>
-                                        { (customer as any).facebookAdName && (
+                                        {(customer as any).facebookAdName && (
                                             <span className="text-[10px] text-slate-500 font-bold mt-1">Ad: {(customer as any).facebookAdName}</span>
                                         )}
-                                        { (customer as any).lastMetaFormSubmittedAt && (
+                                        {(customer as any).lastMetaFormSubmittedAt && (
                                             <span className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-tighter">Submitted: {new Date((customer as any).lastMetaFormSubmittedAt).toLocaleString()}</span>
                                         )}
                                     </>
@@ -1347,18 +1348,18 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                     <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100 max-h-40 overflow-y-auto">
                                         {salespersons?.filter(sp => sp.role === 'salesperson' || sp.role === 'manager').map(sp => (
                                             <label key={sp.id} className="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded transition-colors">
-                                                <input 
-                                                    type="checkbox" 
+                                                <input
+                                                    type="checkbox"
                                                     checked={(customer as any).multiOwners?.some((o: any) => o.id === sp.id)}
                                                     onChange={async (e) => {
                                                         const currentIds = (customer as any).multiOwners?.map((o: any) => o.id) || [];
-                                                        const newIds = e.target.checked 
+                                                        const newIds = e.target.checked
                                                             ? [...currentIds, sp.id]
                                                             : currentIds.filter((id: string) => id !== sp.id);
-                                                        
-                                                        await dispatch(updateLead({ 
-                                                            id: effectiveId, 
-                                                            updates: { multiOwnerIds: newIds } as any 
+
+                                                        await dispatch(updateLead({
+                                                            id: effectiveId,
+                                                            updates: { multiOwnerIds: newIds } as any
                                                         })).unwrap();
                                                         dispatch(fetchCustomerRecord({ customerId: effectiveId, salespersonId: user?.id }));
                                                     }}
@@ -1416,10 +1417,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                     <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">Activity Feed</h3>
                                     <div className="flex gap-1">
                                         {['all', 'actions', 'comms', 'forms', 'appointments'].map(f => (
-                                            <Button 
-                                                key={f} 
-                                                variant="ghost" 
-                                                size="sm" 
+                                            <Button
+                                                key={f}
+                                                variant="ghost"
+                                                size="sm"
                                                 onClick={() => setTimelineFilter(f)}
                                                 className={`h-7 px-2.5 text-[9px] font-black uppercase rounded-lg tracking-tighter
                                                     ${timelineFilter === f ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
@@ -1433,15 +1434,15 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                 <div className="relative pl-8 pr-2 py-4">
                                     {/* Vertical Line Track */}
                                     <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-slate-100 rounded-full" />
-                                    
+
                                     <div className="space-y-8">
                                         {(() => {
                                             const actionEvents = (summary?.actions || []).flatMap(a => {
                                                 const events = [];
-                                                events.push({ 
-                                                    type: a.originalTaskId ? 'action_autogenerated' : 'action_created', 
-                                                    date: new Date(a.createdAt), 
-                                                    data: a 
+                                                events.push({
+                                                    type: a.originalTaskId ? 'action_autogenerated' : 'action_created',
+                                                    date: new Date(a.createdAt),
+                                                    data: a
                                                 });
                                                 if (a.status === 'completed' && a.completedAt) {
                                                     events.push({ type: 'action_completed', date: new Date(a.completedAt), data: a });
@@ -1460,21 +1461,21 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                 ...((customer as any).lastMetaFormName ? [{
                                                     type: 'form',
                                                     date: new Date((customer as any).lastMetaFormSubmittedAt || customer.createdAt),
-                                                    data: { 
+                                                    data: {
                                                         formName: (customer as any).lastMetaFormName,
                                                         adName: (customer as any).facebookAdName
                                                     }
                                                 }] : [])
                                             ]
-                                            .filter(item => {
-                                                if (timelineFilter === 'all') return true;
-                                                if (timelineFilter === 'actions') return item.type.startsWith('action');
-                                                if (timelineFilter === 'comms') return item.type === 'communication';
-                                                if (timelineFilter === 'forms') return item.type === 'form';
-                                                if (timelineFilter === 'appointments') return item.type === 'appointment';
-                                                return true;
-                                            })
-                                            .sort((a, b) => b.date.getTime() - a.date.getTime());
+                                                .filter(item => {
+                                                    if (timelineFilter === 'all') return true;
+                                                    if (timelineFilter === 'actions') return item.type.startsWith('action');
+                                                    if (timelineFilter === 'comms') return item.type === 'communication';
+                                                    if (timelineFilter === 'forms') return item.type === 'form';
+                                                    if (timelineFilter === 'appointments') return item.type === 'appointment';
+                                                    return true;
+                                                })
+                                                .sort((a, b) => b.date.getTime() - a.date.getTime());
 
                                             if (timelineItems.length === 0) {
                                                 return (
@@ -1497,7 +1498,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                     const isCall = c.type === 'call';
                                                     const isViber = (c.type as string) === 'viber' || c.notes?.toLowerCase().includes('viber');
                                                     const isWhatsApp = (c.type as string) === 'whatsapp' || c.notes?.toLowerCase().includes('whatsapp');
-                                                    
+
                                                     if (isCall) {
                                                         icon = <PhoneCall className="w-3.5 h-3.5" />;
                                                         iconBg = 'bg-blue-500 text-white shadow-lg shadow-blue-500/20';
@@ -1536,7 +1537,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                         .filter(([k]) => k !== 'ad_name' && k !== 'form_name')
                                                         .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
                                                         .join(' | ');
-                                                    
+
                                                     content = `Form: ${item.data.formName}${questions ? ` • ${questions}` : ''}`;
                                                     meta = (customer as any).lastMetaFormName ? `Ad: ${(customer as any).lastMetaFormName}` : 'Inbound Source';
                                                 } else if (item.type.startsWith('action_')) {
@@ -1544,7 +1545,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                     const isCompleted = item.type === 'action_completed';
                                                     icon = isCompleted ? <CheckCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />;
                                                     iconBg = isCompleted ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-800 text-white';
-                                                    
+
                                                     if (act.actionType === 'confirmation_call_reminder') {
                                                         title = `Appointment Confirmation Reminder`;
                                                         icon = <Phone className="w-3.5 h-3.5" />;
@@ -1562,7 +1563,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
                                                     content = act.title;
                                                     meta = `Assignee: ${(act as any).assigneeName || 'Self'} • Due: ${act.dueDate ? new Date(act.dueDate).toLocaleString() : 'N/A'}`;
-                                                    
+
                                                     if (act.relatedAppointmentId) {
                                                         meta += ` • Linked to Appt #${act.relatedAppointmentId.slice(0, 8)}`;
                                                     }
@@ -1574,7 +1575,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                         <div className={`absolute left-[-25px] top-1 w-4.5 h-4.5 rounded-full border-4 border-white flex items-center justify-center z-10 transition-transform group-hover:scale-110 ${iconBg} w-[18px] h-[18px]`}>
                                                             <div className="scale-75">{icon}</div>
                                                         </div>
-                                                        
+
                                                         {/* Card Content (Glassmorphic) */}
                                                         <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow group-hover:border-slate-200">
                                                             <div className="flex items-center justify-between mb-2">
@@ -1592,12 +1593,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                     ))}
                                                                 </div>
                                                             )}
-                                                            
+
                                                             {item.type === 'appointment' && (
                                                                 <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-slate-50">
                                                                     {item.data.status?.toUpperCase() === 'COMPLETED' ? (
-                                                                        <Button 
-                                                                            size="sm" 
+                                                                        <Button
+                                                                            size="sm"
                                                                             variant="outline"
                                                                             onClick={() => {
                                                                                 setPendingAptId(item.data.id);
@@ -1612,23 +1613,23 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                         </Button>
                                                                     ) : (
                                                                         <>
-                                                                            <Button 
-                                                                                size="sm" 
+                                                                            <Button
+                                                                                size="sm"
                                                                                 onClick={() => handleUpdateAppointmentStatus(item.data.id, 'COMPLETED', item.data)}
                                                                                 className="h-7 text-[9px] font-black uppercase bg-emerald-500 hover:bg-emerald-600 text-white border-none rounded-lg px-3"
                                                                             >
                                                                                 Complete
                                                                             </Button>
-                                                                            <Button 
-                                                                                size="sm" 
+                                                                            <Button
+                                                                                size="sm"
                                                                                 variant="outline"
                                                                                 onClick={() => handleUpdateAppointmentStatus(item.data.id, 'NO_SHOW', item.data)}
                                                                                 className="h-7 text-[9px] font-black uppercase border-amber-200 text-amber-600 hover:bg-amber-50 rounded-lg px-3"
                                                                             >
                                                                                 No Show
                                                                             </Button>
-                                                                            <Button 
-                                                                                size="sm" 
+                                                                            <Button
+                                                                                size="sm"
                                                                                 variant="outline"
                                                                                 onClick={() => handleUpdateAppointmentStatus(item.data.id, 'CANCELLED', item.data)}
                                                                                 className="h-7 text-[9px] font-black uppercase border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-3"
@@ -1637,9 +1638,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                             </Button>
                                                                         </>
                                                                     )}
-                                                                    <Button 
-                                                                        variant="outline" 
-                                                                        size="sm" 
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
                                                                         onClick={() => {
                                                                             setSelectedAppointmentForEdit(item.data);
                                                                             setShowBookingModal(true);
@@ -1661,7 +1662,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                         </div>
                     )}
 
-                    
+
                     {activeTab === 'tasks' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
                             <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200">
@@ -1697,7 +1698,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                         onChange={async (e) => {
                                                                             e.preventDefault();
                                                                             const isCompleting = task.status !== 'completed';
-                                                                            
+
                                                                             if (isCompleting && (task.actionType === 'call' || task.actionType === 'follow_up_call' || task.actionType === 'confirmation_call_reminder' || task.actionType === 'mobile_message')) {
                                                                                 setInteractionType('call');
                                                                                 setWorkflowStep(2);
@@ -1812,9 +1813,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                 </Badge>
                                                             </td>
                                                             <td className="p-5 text-right">
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="sm" 
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
                                                                     onClick={() => {
                                                                         setSelectedAppointmentForEdit(apt);
                                                                         setShowBookingModal(true);
@@ -1872,12 +1873,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                                     Edit
                                                                 </Button>
                                                             )}
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="sm" 
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
                                                                 className="h-8 px-3 text-[10px] font-bold text-red-600 hover:bg-red-50"
                                                                 onClick={async () => {
-                                                                    if(confirm('Delete log?')) {
+                                                                    if (confirm('Delete log?')) {
                                                                         await dispatch(deleteCommunication(comm.id));
                                                                         dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
                                                                     }
@@ -2061,7 +2062,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                 <X className="w-5 h-5 text-slate-400" />
                             </Button>
                         </div>
-                        
+
                         <div className="p-8 space-y-6">
                             <div className="space-y-4">
                                 <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100/50 space-y-2">

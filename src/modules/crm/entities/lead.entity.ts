@@ -90,6 +90,9 @@ export class Lead {
   lastMetaFormName: string;
 
   @Column({ type: 'timestamptz', nullable: true })
+  scheduledAt: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
   convertedAt: Date;
 
   @CreateDateColumn()

@@ -26,7 +26,8 @@ import { Select } from '@/components/atoms/Select/Select';
 import {
   CheckCircle, Clock, AlertTriangle, Users, Repeat,
   PhoneCall, MoreHorizontal, User, Eye, Plus, Edit, X,
-  CornerUpRight, Calendar, Phone, Trash2, UserPlus
+  CornerUpRight, Calendar, Phone, Trash2, UserPlus, Mail,
+  Target, Tag, ArrowLeft, ArrowRight, Building2, MousePointer2, Check, MessageSquare
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -188,6 +189,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   const [interactionNotes, setInteractionNotes] = useState("");
   const [showDialer, setShowDialer] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [appointmentDetail, setAppointmentDetail] = useState<any>(null);
   const [isFetchingApt, setIsFetchingApt] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -195,8 +197,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   const [newOwnerId, setNewOwnerId] = useState("");
 
   // New Interaction States for strict workflow
+  const [workflowStep, setWorkflowStep] = useState(1);
   const [interactionOutcome, setInteractionOutcome] = useState("");
   const [interactionClinic, setInteractionClinic] = useState("");
+  const [callbackDate, setCallbackDate] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [followUpData, setFollowUpData] = useState({
     title: '',
     therapy: '',
@@ -355,6 +361,15 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       }
     }
 
+    // Compile final notes based on outcome sub-data
+    let finalNotes = interactionNotes;
+    if (interactionOutcome === 'interested' && callbackDate) {
+      finalNotes = `[Callback Scheduled: ${new Date(callbackDate).toLocaleString()}]\n\n${finalNotes}`;
+    }
+    if (selectedTags.length > 0) {
+      finalNotes = `[Tags: ${selectedTags.join(', ')}]\n${finalNotes}`;
+    }
+
     try {
       await dispatch(logCommunication({
         customerId: interactionTask?.customerId || (interactionTask?.customer as any)?.id || undefined,
@@ -365,12 +380,14 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         direction: 'outgoing',
         status: 'completed',
         subject: `[${interactionOutcome.toUpperCase()}] Follow Up: ${interactionTask?.title || 'Interaction'}`,
-        notes: interactionNotes,
+        notes: finalNotes,
         createdAt: new Date().toISOString(),
+        durationSeconds: 0, // Injected if dialer used
         metadata: { 
           callOutcome: interactionOutcome,
           originalTaskId: interactionTask?.id,
-          clinic: interactionClinic
+          clinic: interactionClinic,
+          tags: selectedTags
         }
       })).unwrap();
 
@@ -412,6 +429,9 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       setInteractionOutcome("");
       setInteractionClinic("");
       setInteractionTask(null);
+      setWorkflowStep(1);
+      setSelectedTags([]);
+      setCallbackDate("");
       setFollowUpData({ title: '', therapy: '', dueDate: '', reminderDate: '', priority: 'medium' });
 
       const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
@@ -444,6 +464,17 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     } catch (error) {
       console.error("Failed to complete task after booking:", error);
     }
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !selectedTags.includes(tagInput.trim())) {
+      setSelectedTags([...selectedTags, tagInput.trim()]);
+      setTagInput("");
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    setSelectedTags(selectedTags.filter(t => t !== tag));
   };
 
   const handleCloseInteraction = async () => {
@@ -801,6 +832,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
                                 setInteractionTask({ ...task, status: 'in_progress' });
                                 setInteractionNotes(task.description || "");
+                                setWorkflowStep(1);
+                                setSelectedTags([]);
                                 setShowInteractionModal(true);
 
                                 if (true) {
@@ -1002,245 +1035,300 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Call Controls */}
-              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex items-center justify-between shadow-sm">
-                <div className="space-y-1">
-                  <div className="text-sm font-bold text-slate-800">Active Outreach</div>
-                  <div className="text-xs text-slate-500 font-medium">Ready to contact patient via dialer</div>
-                </div>
-                <Button
-                  onClick={() => setShowDialer(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold h-12 px-6 rounded-xl shadow-lg shadow-green-200 flex items-center gap-2 transition-all active:scale-95"
-                >
-                  <PhoneCall className="w-5 h-5" /> Let's Call
-                </Button>
+            {/* Multi-Step Interaction Flow Header */}
+            <div className="px-8 pt-8 flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                {[
+                  { step: 1, label: 'Outreach', icon: <PhoneCall className="w-4 h-4" /> },
+                  { step: 2, label: 'Result', icon: <Target className="w-4 h-4" /> },
+                  { step: 3, label: 'Classification', icon: <Tag className="w-4 h-4" /> },
+                  { step: 4, label: 'Finish', icon: <CheckCircle className="w-4 h-4" /> }
+                ].map((s) => (
+                  <div key={s.step} className={`flex items-center gap-2 group transition-all ${workflowStep === s.step ? 'scale-110' : 'opacity-40 grayscale'}`}>
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-lg transition-all ${workflowStep === s.step ? 'bg-slate-900 text-white shadow-slate-200 rotate-3' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
+                      {s.icon}
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${workflowStep === s.step ? 'text-slate-900 underline decoration-2 underline-offset-4' : 'text-slate-400'}`}>
+                      {s.label}
+                    </span>
+                    {s.step < 4 && <div className="h-[2px] w-4 bg-slate-100 mx-2" />}
+                  </div>
+                ))}
               </div>
-
-              {/* Mandatory Outcome & Remarks */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-1 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Call Outcome</label>
-                    <span className="text-[9px] font-black text-red-500 uppercase tracking-tighter">Required</span>
-                  </div>
-                  <Select
-                    placeholder="Choose Result..."
-                    value={interactionOutcome}
-                    onChange={(val) => {
-                      setInteractionOutcome(val);
-                      if (val !== 'not_interested') {
-                        setFollowUpData(prev => ({ 
-                           ...prev, 
-                           title: `Follow-up: ${interactionTask.title}`,
-                           therapy: interactionTask.therapy || ''
-                        }));
-                      }
-                    }}
-                    options={[
-                      { value: 'interested', label: 'Interested â­' },
-                      { value: 'callback', label: 'Call Back Later ðŸ•’' },
-                      { value: 'not_interested', label: 'Not Interested âŒ' },
-                      { value: 'no_answer', label: 'No Answer ðŸ“µ' },
-                      { value: 'booked', label: 'Booked Appointment âœ…' },
-                      { value: 'wrong_number', label: 'Wrong Number âš ï¸' }
-                    ]}
-                    className="w-full"
-                  />
-                  
-                  <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
-                     <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">Clinic Assignment</p>
-                     <Select
-                        placeholder="Assign Clinic..."
-                        value={interactionClinic}
-                        onChange={(val) => setInteractionClinic(val)}
-                        options={clinics.map((c: any) => ({ value: c.id, label: c.name }))}
-                        className="w-full"
-                      />
-                  </div>
-                  
-                  <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
-                     <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">Quick Actions</p>
-                     <Button
-                        size="sm"
-                        variant="ghost"
-                        className="w-full h-8 text-[10px] font-bold bg-white text-blue-700 border border-blue-100 hover:bg-blue-50"
-                        onClick={() => setShowBookingModal(true)}
-                      >
-                        <Calendar className="w-3 h-3 mr-1.5 text-blue-500" /> CREATE BOOKING
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="md:col-span-2 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Call Remarks / Private Notes</label>
-                    <span className="text-[9px] font-black text-red-500 uppercase tracking-tighter">Required</span>
-                  </div>
-                  <Textarea
-                    placeholder="Describe exactly what happened during the call..."
-                    value={interactionNotes}
-                    onChange={(e) => setInteractionNotes(e.target.value)}
-                    className="min-h-[140px] rounded-xl border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all resize-none text-sm p-4 font-medium"
-                  />
+              <div className="text-right">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Clinic Center</p>
+                <div className="flex items-center gap-2 text-indigo-600 font-black text-sm">
+                  <Building2 className="w-4 h-4" />
+                  {interactionTask.metadata?.clinic || 'Main Clinic'}
                 </div>
               </div>
-
-              {/* Conditional Follow-up Section (Strict Workflow) */}
-              {interactionOutcome && interactionOutcome !== 'not_interested' && (
-                <div className="bg-amber-50/50 border border-amber-200 rounded-[2rem] p-6 space-y-6 animate-in slide-in-from-top-4 duration-300">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shadow-inner">
-                        <Clock className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-black text-slate-800 tracking-tight">Schedule Mandatory Follow-up</h4>
-                        <p className="text-[10px] font-bold text-amber-600/70 uppercase tracking-widest">Strict Protocol Requirement</p>
-                      </div>
-                    </div>
-                    <div className="px-3 py-1 bg-amber-100 rounded-full text-[9px] font-black text-amber-700 uppercase tracking-widest border border-amber-200">
-                      Step Mandatory
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Follow-up Title</label>
-                        <Input 
-                          placeholder="e.g. Try calling again for Botox" 
-                          value={followUpData.title}
-                          onChange={(e) => setFollowUpData({...followUpData, title: e.target.value})}
-                          className="h-10 text-xs font-bold rounded-xl border-slate-200 focus:bg-white"
-                        />
-                     </div>
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Therapy Interest</label>
-                        <Input 
-                          placeholder="e.g. Chemical Peel" 
-                          value={followUpData.therapy}
-                          onChange={(e) => setFollowUpData({...followUpData, therapy: e.target.value})}
-                          className="h-10 text-xs font-bold rounded-xl border-slate-200 focus:bg-white"
-                        />
-                     </div>
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Next Contact Date</label>
-                        <Input 
-                          type="datetime-local" 
-                          value={followUpData.dueDate}
-                          onChange={(e) => setFollowUpData({...followUpData, dueDate: e.target.value})}
-                          className="h-10 text-xs font-bold rounded-xl border-slate-200 focus:bg-white"
-                        />
-                     </div>
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Reminder (Push Alert)</label>
-                        <Input 
-                          type="datetime-local" 
-                          value={followUpData.reminderDate}
-                          onChange={(e) => setFollowUpData({...followUpData, reminderDate: e.target.value})}
-                          className="h-10 text-xs font-bold rounded-xl border-slate-200 focus:bg-white"
-                        />
-                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Specialized Confirmation Outcome Buttons */}
-              {interactionTask?.title === 'Confirmation Call Reminder' && appointmentDetail && (
-                <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
-                   <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 space-y-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Calendar className="w-4 h-4 text-blue-600" />
-                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Appointment to Confirm</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-y-3 gap-x-4">
-                        <div className="flex flex-col">
-                           <span className="text-[9px] font-bold text-slate-400 uppercase">Clinic</span>
-                           <span className="text-xs font-black text-slate-700">{appointmentDetail.clinic?.name || 'Clinic'}</span>
-                        </div>
-                        <div className="flex flex-col">
-                           <span className="text-[9px] font-bold text-slate-400 uppercase">Treatment</span>
-                           <span className="text-xs font-black text-slate-700">{appointmentDetail.service?.treatment?.name || 'Treatment'}</span>
-                        </div>
-                        <div className="flex flex-col">
-                           <span className="text-[9px] font-bold text-slate-400 uppercase">Amount</span>
-                           <span className="text-xs font-black text-blue-700">{'€'}{appointmentDetail.totalAmount || 0}</span>
-                        </div>
-                        <div className="flex flex-col">
-                           <span className="text-[9px] font-bold text-slate-400 uppercase">Scheduled Time</span>
-                           <span className="text-xs font-black text-slate-700">
-                             {formatDate(appointmentDetail.startTime)}
-                           </span>
-                        </div>
-                      </div>
-                   </div>
-
-                   <div className="grid grid-cols-2 gap-3">
-                      <Button 
-                        onClick={async () => {
-                          setInteractionNotes(prev => `CONFIRMED: ${prev}`);
-                          // Update appointment to confirmed
-                          try {
-                            await bookingAPI.updateStatus(appointmentDetail.id, 'CONFIRMED');
-                            toast.success("Appointment Confirmed!");
-                          } catch (e) {
-                            console.error("Failed to confirm appointment", e);
-                          }
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase h-11 rounded-xl shadow-lg shadow-emerald-100"
-                      >
-                        Yes, Confirmed
-                      </Button>
-                      <Button 
-                        onClick={async () => {
-                          setInteractionNotes(prev => `CANCELLED: ${prev}`);
-                          try {
-                            await bookingAPI.updateStatus(appointmentDetail.id, 'CANCELLED');
-                            toast.error("Appointment Cancelled.");
-                          } catch (e) {
-                            console.error("Failed to cancel appointment", e);
-                          }
-                        }}
-                        className="bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase h-11 rounded-xl shadow-lg shadow-red-100"
-                      >
-                        No, Cancelled
-                      </Button>
-                      <Button 
-                        onClick={() => {
-                          setInteractionNotes(prev => `DID NOT ANSWER: ${prev}`);
-                        }}
-                        className="bg-slate-700 hover:bg-slate-800 text-white font-black text-[10px] uppercase h-11 rounded-xl"
-                      >
-                        Did not Answer
-                      </Button>
-                      <Button 
-                        onClick={() => {
-                          setShowBookingModal(true);
-                          setInteractionNotes(prev => `RESCHEDULING: ${prev}`);
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase h-11 rounded-xl"
-                      >
-                        Reschedule / Transfer
-                      </Button>
-                   </div>
-                </div>
-              )}
             </div>
 
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                 Strict Workflow Active: Exit Restricted
-              </div>
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <Button
-                  onClick={handleSaveInteraction}
-                  disabled={!interactionNotes.trim() || !interactionOutcome || (interactionOutcome !== 'not_interested' && (!followUpData.title || !followUpData.dueDate || !followUpData.reminderDate || !followUpData.therapy))}
-                  className="w-full md:h-12 md:px-12 font-black text-xs bg-slate-900 text-white shadow-[0_10px_20px_rgba(15,23,42,0.2)] rounded-2xl hover:bg-slate-800 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" /> Save Interaction & Close File
-                </Button>
-              </div>
+            <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+              
+              {/* Step 1: Outreach */}
+              {workflowStep === 1 && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-slate-200 relative overflow-hidden group">
+                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                      <div className="space-y-4 text-center md:text-left">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Live Dialer Ready
+                        </div>
+                        <h3 className="text-3xl font-black tracking-tight leading-tight">Initiate Active Outreach</h3>
+                        <p className="text-slate-400 font-medium max-w-sm">Use our integrated dialer to contact the patient. Duration and outcome will be logged automatically.</p>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          setShowDialer(true);
+                        }}
+                        className="bg-[#CBFF38] hover:bg-[#A3D900] text-slate-900 font-black h-20 px-12 rounded-3xl shadow-xl shadow-[#CBFF38]/20 flex items-center gap-4 transition-all active:scale-95 text-lg group"
+                      >
+                        <div className="w-10 h-10 rounded-2xl bg-slate-900/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
+                          <PhoneCall className="w-6 h-6" />
+                        </div>
+                        START CALL NOW
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all cursor-pointer" onClick={() => setWorkflowStep(2)}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-900 shadow-sm transition-transform group-hover:scale-110">
+                          <MousePointer2 className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-slate-800">Skip to Result</p>
+                          <p className="text-xs text-slate-500 font-medium tracking-tight">Logger without calling</p>
+                        </div>
+                        <ArrowRight className="w-5 h-5 ml-auto text-slate-300 group-hover:text-slate-900" />
+                      </div>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all cursor-pointer" onClick={() => setShowEmailModal(true)}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-900 shadow-sm transition-transform group-hover:scale-110">
+                          <MessageSquare className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-slate-800">Switch to Messaging</p>
+                          <p className="text-xs text-slate-500 font-medium tracking-tight">Log email or chat instead</p>
+                        </div>
+                        <ArrowRight className="w-5 h-5 ml-auto text-slate-300 group-hover:text-slate-900" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Result Selection */}
+              {workflowStep === 2 && (
+                <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">What was the outcome?</h3>
+                    <Button variant="ghost" onClick={() => setWorkflowStep(1)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 bg-slate-50 rounded-xl px-4">
+                      <ArrowLeft className="w-3.5 h-3.5 mr-2" /> Back to Outreach
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {[
+                      { value: 'interested', label: 'Interested', icon: '⭐', color: 'hover:border-amber-400 hover:bg-amber-50 shadow-amber-100' },
+                      { value: 'call_later', label: 'Call Back Later', icon: '⏰', color: 'hover:border-blue-400 hover:bg-blue-50 shadow-blue-100' },
+                      { value: 'no_answer', label: 'No Answer', icon: '🔇', color: 'hover:border-gray-400 hover:bg-gray-50 shadow-gray-100' },
+                      { value: 'not_interested', label: 'Not Interested', icon: '❌', color: 'hover:border-red-400 hover:bg-red-50 shadow-red-100' },
+                      { value: 'appointment_booked', label: 'Appointment Booked', icon: '✅', color: 'hover:border-emerald-400 hover:bg-emerald-50 shadow-emerald-100' },
+                      { value: 'wrong_number', label: 'Wrong Number', icon: '⚠️', color: 'hover:border-yellow-400 hover:bg-yellow-50 shadow-yellow-100' }
+                    ].map((opt) => (
+                      <div 
+                        key={opt.value}
+                        onClick={() => {
+                          setInteractionOutcome(opt.value);
+                          if (opt.value === 'appointment_booked') {
+                            setShowBookingModal(true);
+                          } else {
+                            setWorkflowStep(3);
+                          }
+                        }}
+                        className={`group relative p-6 rounded-[2rem] border-2 transition-all cursor-pointer text-center bg-white hover:scale-[1.02] hover:shadow-2xl flex flex-col items-center justify-center gap-3 ${interactionOutcome === opt.value ? 'border-indigo-600 bg-indigo-50 shadow-indigo-100' : 'border-slate-100 ' + opt.color}`}
+                      >
+                        <span className="text-4xl filter grayscale group-hover:grayscale-0 transition-all transform group-hover:scale-110">{opt.icon}</span>
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-800">{opt.label}</span>
+                        <div className="absolute top-4 right-4 w-6 h-6 rounded-full border-2 border-slate-100 group-hover:border-slate-900 transition-colors flex items-center justify-center">
+                          <Check className={`w-3 h-3 ${interactionOutcome === opt.value ? 'text-indigo-600' : 'opacity-0'}`} strokeWidth={4} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Outcome specific logic like "Call Later" date picker */}
+                  {interactionOutcome === 'call_later' && (
+                    <div className="bg-blue-50/50 border border-blue-100 rounded-[2rem] p-6 animate-in slide-in-from-top-4">
+                       <p className="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-4 px-1">When should we callback?</p>
+                       <Input 
+                          type="datetime-local" 
+                          value={callbackDate}
+                          onChange={(e) => setCallbackDate(e.target.value)}
+                          className="h-14 text-sm font-black rounded-2xl border-blue-200 focus:bg-white bg-white/50"
+                        />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 3: Classification (Tags) */}
+              {workflowStep === 3 && (
+                <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Classify this Outcome</h3>
+                    <Button variant="ghost" onClick={() => setWorkflowStep(2)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 bg-slate-50 rounded-xl px-4">
+                      <ArrowLeft className="w-3.5 h-3.5 mr-2" /> Back to Outcome
+                    </Button>
+                  </div>
+
+                  <div className="bg-slate-50/50 border border-slate-200 rounded-[2.5rem] p-8 space-y-6">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Mandatory Classification Tags</label>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {selectedTags.map(tag => (
+                          <span key={tag} className="flex items-center gap-2 bg-slate-900 text-[#CBFF38] text-[10px] font-black px-4 py-2 rounded-xl shadow-lg shadow-slate-200 border border-slate-800 animate-in zoom-in-50">
+                            {tag}
+                            <X className="w-3 h-3 cursor-pointer" onClick={() => setSelectedTags(selectedTags.filter(t => t !== tag))} />
+                          </span>
+                        ))}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {['HIGH PRIORITY', 'NO ANSWER', 'CALL AGAIN', 'WARM LEAD', 'PRICE SENSITIVE', 'SERIOUS INTEREST', 'INFO ONLY', 'WRONG NUMBER'].map(tag => (
+                          <button 
+                            key={tag}
+                            onClick={() => {
+                              if (selectedTags.includes(tag)) {
+                                removeTag(tag);
+                              } else {
+                                setSelectedTags([...selectedTags, tag]);
+                              }
+                            }}
+                            className={`p-3 rounded-xl border text-[10px] font-black uppercase tracking-tight transition-all text-center ${selectedTags.includes(tag) ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-900 hover:text-slate-900'}`}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-200">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Add Specialized Tag</label>
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="e.g. Needs Botox Special..." 
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+                          className="h-12 text-sm font-bold rounded-2xl border-slate-200"
+                        />
+                        <Button onClick={handleAddTag} className="h-12 px-6 bg-slate-900 text-white font-black text-[10px] uppercase rounded-2xl">Add</Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={() => setWorkflowStep(4)}
+                    className="w-full h-16 bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-3xl shadow-2xl shadow-slate-300 transition-all active:scale-95 flex items-center justify-center gap-3"
+                  >
+                    CONTINUE TO FINAL REVIEW <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Step 4: Finish & Review */}
+              {workflowStep === 4 && (
+                <div className="space-y-8 animate-in slide-in-from-right-8 duration-500 pb-10">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Final Summary & Protocol</h3>
+                    <Button variant="ghost" onClick={() => setWorkflowStep(3)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 bg-slate-50 rounded-xl px-4">
+                      <ArrowLeft className="w-3.5 h-3.5 mr-2" /> Back to Tags
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                       <div className="p-1 bg-slate-50 rounded-[3rem] border border-slate-100 shadow-inner">
+                         <div className="p-8 space-y-4">
+                           <div className="flex items-center justify-between">
+                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Internal Remarks</label>
+                             <span className="text-[9px] font-black text-red-500 uppercase tracking-tighter">Required for logs</span>
+                           </div>
+                           <Textarea
+                             placeholder="Describe the interaction details for the team..."
+                             value={interactionNotes}
+                             onChange={(e) => setInteractionNotes(e.target.value)}
+                             className="min-h-[220px] rounded-[2rem] border-transparent focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50 transition-all resize-none text-sm p-6 font-medium shadow-none bg-white"
+                           />
+                         </div>
+                       </div>
+                    </div>
+
+                    <div className="space-y-6">
+                       {/* Mandatory Follow-up for anything not terminal */}
+                       {interactionOutcome !== 'not_interested' && interactionOutcome !== 'wrong_number' && (
+                         <div className="bg-amber-50/50 border-2 border-amber-200 rounded-[2.5rem] p-8 space-y-6">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-[1.25rem] bg-amber-100 flex items-center justify-center text-amber-600 shadow-inner">
+                                <Clock className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <h4 className="text-md font-black text-slate-800">Mandatory Follow-up</h4>
+                                <p className="text-[10px] font-bold text-amber-600/70 uppercase tracking-widest">Protocol strictly enforced</p>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Follow-up Goal</label>
+                                <Input 
+                                  placeholder="e.g. Re-try calling..." 
+                                  value={followUpData.title}
+                                  onChange={(e) => setFollowUpData({...followUpData, title: e.target.value})}
+                                  className="h-12 text-xs font-bold rounded-2xl border-amber-100"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Next Contact</label>
+                                  <Input type="datetime-local" value={followUpData.dueDate} onChange={(e) => setFollowUpData({...followUpData, dueDate: e.target.value})} className="h-12 text-xs font-bold rounded-2xl border-amber-100" />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Protocol Ref</label>
+                                  <Input placeholder="Botox" value={followUpData.therapy} onChange={(e) => setFollowUpData({...followUpData, therapy: e.target.value})} className="h-12 text-xs font-bold rounded-2xl border-amber-100" />
+                                </div>
+                              </div>
+                            </div>
+                         </div>
+                       )}
+
+                       {/* Confirmation Specific Section */}
+                       {interactionTask?.title === 'Confirmation Call Reminder' && (
+                          <div className="bg-blue-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-blue-100 space-y-4">
+                            <h4 className="text-xs font-black uppercase tracking-widest opacity-80">Quick Confirmation</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Button onClick={() => setInteractionNotes(n => `CONFIRMED: ${n}`)} className="h-12 bg-white/10 hover:bg-white/20 text-white font-black text-[10px] uppercase rounded-2xl border border-white/20">Yes, Confirmed</Button>
+                              <Button onClick={() => setInteractionNotes(n => `CANCELLED: ${n}`)} className="h-12 bg-white/10 hover:bg-white/20 text-white font-black text-[10px] uppercase rounded-2xl border border-white/20">Client Cancelled</Button>
+                            </div>
+                          </div>
+                       )}
+
+                       <Button
+                        onClick={handleSaveInteraction}
+                        disabled={!interactionNotes.trim() || (interactionOutcome !== 'not_interested' && interactionOutcome !== 'wrong_number' && (!followUpData.title || !followUpData.dueDate || !followUpData.therapy))}
+                        className="w-full h-16 bg-[#CBFF38] hover:bg-[#A3D900] text-slate-900 font-black text-xs uppercase tracking-[0.25em] rounded-[2rem] shadow-2xl shadow-[#CBFF38]/30 transition-all flex items-center justify-center gap-3 disabled:grayscale disabled:opacity-50"
+                      >
+                        <CheckCircle className="w-5 h-5" /> SAVE COMPLETE RECORD
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1326,6 +1414,76 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                 className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg active:scale-95"
               >
                 Confirm Assignment
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Messaging Modal */}
+      {showEmailModal && interactionTask && (
+        <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-lg font-black text-slate-800">Direct Messaging</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Logging Email/SMS Communication</p>
+              </div>
+              <Button variant="ghost" onClick={() => setShowEmailModal(false)} className="h-10 w-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                <X className="h-6 w-6" />
+               </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+               <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-indigo-600 shadow-sm">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1">Target Recipient</p>
+                    <p className="text-sm font-black text-indigo-900">
+                      {interactionTask.customer?.customer
+                        ? `${interactionTask.customer.customer.firstName} ${interactionTask.customer.customer.lastName}`
+                        : interactionTask.relatedLead
+                        ? `${interactionTask.relatedLead.firstName} ${interactionTask.relatedLead.lastName}`
+                        : 'Unknown Client'}
+                    </p>
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Communication Channel</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" className={`h-12 rounded-xl text-xs font-black ${interactionTask.actionType === 'email' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100'}`}>
+                        EMAIL PORTAL
+                      </Button>
+                      <Button variant="outline" className={`h-12 rounded-xl text-xs font-black ${interactionTask.actionType === 'mobile_message' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100'}`}>
+                        SMS / WHATSAPP
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Message Detail / Log</label>
+                     <Textarea 
+                        placeholder="Paste message content here or describe the communication..."
+                        value={interactionNotes}
+                        onChange={(e) => setInteractionNotes(e.target.value)}
+                        className="min-h-[150px] rounded-2xl border-slate-100 focus:ring-4 focus:ring-indigo-50 transition-all text-sm p-4 font-medium"
+                     />
+                  </div>
+               </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
+              <Button variant="ghost" onClick={() => setShowEmailModal(false)} className="h-12 flex-1 rounded-xl font-bold text-slate-500 hover:bg-white text-xs">Cancel</Button>
+              <Button 
+                onClick={() => {
+                  setShowEmailModal(false);
+                  setWorkflowStep(2); // Move to outcome step after logging message
+                }}
+                disabled={!interactionNotes.trim()}
+                className="h-12 flex-[2] bg-slate-900 text-white hover:bg-black rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200 transition-all active:scale-95"
+              >
+                Continue to Outcome
               </Button>
             </div>
           </div>

@@ -47,6 +47,7 @@ import {
   setLeadFilters,
   fetchSalespersons
 } from '@/store/slices/crmSlice';
+import { openDialer } from '@/store/slices/dialerSlice';
 import type { RootState, AppDispatch } from '@/store';
 import type { Lead } from '@/types/crm.types';
 import { crmAPI, bookingAPI } from '@/services/api';
@@ -81,6 +82,19 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   const [importLoading, setImportLoading] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; errors: { row: number; message: string }[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Facebook Form Schedule State
+  const [showFormScheduleModal, setShowFormScheduleModal] = useState(false);
+  const [facebookForms, setFacebookForms] = useState<any[]>([]);
+  const [selectedForms, setSelectedForms] = useState<string[]>([]);
+  const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [showBulkTaskModal, setShowBulkTaskModal] = useState(false);
+  const [bulkTaskData, setBulkTaskData] = useState({
+    salespersonId: '',
+    dueDate: new Date().toISOString().split('T')[0],
+    title: 'Follow-up Call'
+  });
 
   // Post-log action states
   const [createFollowUpTask, setCreateFollowUpTask] = useState(false);
@@ -260,6 +274,29 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
     }
   };
 
+  const handleBulkCreateTasks = async () => {
+    if (selectedLeads.length === 0 || !bulkTaskData.salespersonId) {
+      toast.error('Please select leads and a salesperson');
+      return;
+    }
+
+    const toastId = toast.loading(`Creating ${selectedLeads.length} tasks...`);
+    try {
+      await crmAPI.bulkCreateTasks({
+        leadIds: selectedLeads,
+        salespersonId: bulkTaskData.salespersonId,
+        dueDate: bulkTaskData.dueDate,
+        title: bulkTaskData.title
+      });
+      toast.success(`Successfully created tasks for ${selectedLeads.length} leads`, { id: toastId });
+      setShowBulkTaskModal(false);
+      setSelectedLeads([]);
+      dispatch(fetchLeads(leadFilters));
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to create bulk tasks', { id: toastId });
+    }
+  };
+
   const handleSaveEdit = async () => {
     if (!editingLead) return;
     try {
@@ -377,6 +414,37 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
     }
   };
 
+  const fetchFacebookForms = async () => {
+    try {
+      const res = await crmAPI.getFacebookForms();
+      setFacebookForms(res.data || []);
+    } catch (error) {
+      toast.error('Failed to fetch Facebook forms');
+    }
+  };
+
+  const handleAssignForms = async () => {
+    if (selectedForms.length === 0) {
+      toast.error('Please select at least one form');
+      return;
+    }
+    setIsAssigning(true);
+    try {
+      const res = await crmAPI.assignFormsToDay({
+        formNames: selectedForms,
+        scheduledAt: scheduleDate
+      });
+      toast.success(res.data?.message || `Succesfully scheduled leads`);
+      setShowFormScheduleModal(false);
+      setSelectedForms([]);
+      dispatch(fetchLeads(leadFilters));
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to assign forms');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
   // UI Helpers
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -451,13 +519,27 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             <Filter className={`w-3.5 h-3.5 mr-1.5 ${showFilters ? 'text-white' : 'text-gray-400'}`} />
             {showFilters ? 'Hide Filters' : 'Show Filters'}
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => { setShowBulkImport(true); setCsvRows([]); setCsvFileName(''); setImportResult(null); }}
-            className="h-10 text-[11px] font-bold border-gray-200 bg-white text-gray-600 hover:bg-violet-50 hover:border-violet-300 hover:text-violet-700 transition-all"
-          >
-            <Upload className="w-3.5 h-3.5 mr-1.5" /> Import CSV
-          </Button>
+          {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => { setShowBulkImport(true); setCsvRows([]); setCsvFileName(''); setImportResult(null); }}
+                className="h-10 text-[11px] font-bold border-gray-200 bg-white text-gray-600 hover:bg-violet-50 hover:border-violet-300 hover:text-violet-700 transition-all"
+              >
+                <Upload className="w-3.5 h-3.5 mr-1.5" /> Import CSV
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowFormScheduleModal(true);
+                  fetchFacebookForms();
+                }}
+                className="h-10 text-[11px] font-bold border-gray-200 bg-white text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-all"
+              >
+                <Globe className="w-3.5 h-3.5 mr-1.5" /> Schedule Forms
+              </Button>
+            </>
+          )}
           <Button onClick={() => setShowCreateForm(true)} className="h-10 px-4 bg-[#CBFF38] text-gray-900 hover:bg-[#b3d81b] shadow-sm border-none rounded-xl font-bold text-[11px] transition-all hover:scale-[1.02] active:scale-[0.98]">
             <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Lead
           </Button>
@@ -472,7 +554,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             let label = key;
             if (key === 'status') label = 'Status';
             if (key === 'source') label = 'Source';
-            if (key === 'metaFormName') label = 'Form';
+            if (key === 'formNames') label = 'Form';
             if (key === 'submissionDateFrom') label = 'From';
             if (key === 'submissionDateTo') label = 'To';
             if (key === 'lastContactedFrom') label = 'Contact From';
@@ -567,7 +649,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
                 <Select
                   value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
-                  onChange={(val) => handleFilterChange('formNames', val ? [val] : [])}
+                  onChange={(val) => {
+                    dispatch(setLeadFilters({ ...leadFilters, formNames: val ? [val] : [], search: searchTerm }));
+                    toast.success(`Filtering by: ${val || 'All'}`);
+                  }}
                   placeholder="Select form..."
                   options={[
                     { value: '', label: 'All Forms' },
@@ -678,6 +763,29 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                 <Button size="sm" onClick={handleSearch} className="h-8 px-6 text-[10px] font-bold bg-slate-900 text-white">
                   Apply Filters
                 </Button>
+                {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
+                  <Button 
+                    size="sm" 
+                    onClick={async () => {
+                      try {
+                        const currentForm = Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] : leadFilters.formNames;
+                        if (currentForm) {
+                          setSelectedForms([currentForm]);
+                        } else {
+                          setSelectedForms([]);
+                        }
+                        await fetchFacebookForms();
+                        setShowFormScheduleModal(true);
+                      } catch (e) {
+                        setShowFormScheduleModal(true);
+                      }
+                    }} 
+                    className="h-8 px-4 text-[10px] font-bold bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm border-none transition-all flex items-center gap-1.5"
+                  >
+                    <CalendarPlus className="w-3.5 h-3.5" /> 
+                    Schedule This Filter
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -696,7 +804,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             </div>
           </div>
           <div className="flex gap-2 items-center">
-            {user?.role !== 'salesperson' && (
+            {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
               <Select
                 placeholder="Assign to..."
                 options={(salespersons || []).map((sp:any) => ({
@@ -707,10 +815,23 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                 className="w-40 text-xs h-8"
               />
             )}
-            <Button variant="white" size="sm" onClick={() => handleBulkAction('mark_contacted')} className="h-8 text-[10px] hover:border-primary/30">
+            {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
+              <Button 
+                 variant="white" 
+                 size="sm" 
+                 onClick={() => {
+                   setBulkTaskData(prev => ({ ...prev, salespersonId: '' }));
+                   setShowBulkTaskModal(true);
+                 }} 
+                 className="h-8 text-[10px] bg-slate-900 text-white hover:bg-slate-800 border-none"
+              >
+                <CalendarPlus className="w-3.5 h-3.5 mr-1" /> Create Task
+              </Button>
+            )}
+            <Button variant="white" size="sm" onClick={() => handleBulkAction('mark_contacted')} className="h-8 text-[10px] hover:border-primary/30 text-gray-700">
               Mark Contacted
             </Button>
-            {user?.role !== 'salesperson' && (
+            {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
               <Button variant="white" size="sm" onClick={() => handleBulkAction('delete')} className="h-8 text-[10px] text-red-600 hover:bg-red-50 border-red-100">
                 <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
               </Button>
@@ -787,8 +908,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                           <Mail className="h-3 w-3 text-gray-400" /> {lead.email}
                         </div>
                         {lead.phone && (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                            <Phone className="h-3 w-3 text-gray-400" /> {lead.phone}
+                          <div className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
+                            <Phone className="h-3 w-3" /> {lead.phone}
                           </div>
                         )}
                       </div>
@@ -1579,6 +1700,203 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Facebook Form Schedule Modal */}
+      {showFormScheduleModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-blue-600 text-white flex-none">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/10 rounded-xl">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black tracking-tight">Schedule Forms</h2>
+                  <p className="text-xs text-blue-100 font-medium">Assign Facebook leads to a specific day</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowFormScheduleModal(false)} className="text-white hover:bg-white/10 rounded-full">
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            <div className="p-8 space-y-6 overflow-y-auto flex-1">
+              {/* Date Selection */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Assignment Date</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    className="h-12 bg-gray-50 border-gray-100 focus:ring-blue-500 rounded-xl font-bold"
+                  />
+                  <div className="flex flex-col gap-1">
+                     <button onClick={() => {
+                       const d = new Date();
+                       setScheduleDate(d.toISOString().split('T')[0]);
+                     }} className="text-[9px] font-bold text-blue-600 hover:underline">Today</button>
+                     <button onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + 1);
+                        setScheduleDate(d.toISOString().split('T')[0]);
+                     }} className="text-[9px] font-bold text-gray-400 hover:underline">Tomorrow</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Selection */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Forms ({selectedForms.length})</label>
+                  <button 
+                    onClick={() => setSelectedForms(facebookForms.length === selectedForms.length ? [] : facebookForms.map(f => f.name))}
+                    className="text-[10px] font-bold text-blue-600"
+                  >
+                    {facebookForms.length === selectedForms.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                  {facebookForms.length === 0 ? (
+                    <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-100">
+                      <p className="text-xs text-gray-400">No active forms found</p>
+                    </div>
+                  ) : (
+                    facebookForms.map((form) => (
+                      <div 
+                        key={form.id} 
+                        onClick={() => {
+                          setSelectedForms(prev => 
+                            prev.includes(form.name) 
+                              ? prev.filter(n => n !== form.name) 
+                              : [...prev, form.name]
+                          );
+                        }}
+                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer group flex items-center justify-between ${
+                          selectedForms.includes(form.name) 
+                          ? 'border-blue-500 bg-blue-50/50 shadow-sm' 
+                          : 'border-gray-50 bg-white hover:border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                            selectedForms.includes(form.name) ? 'bg-blue-600 border-blue-600' : 'border-gray-200 group-hover:border-blue-300'
+                          }`}>
+                            {selectedForms.includes(form.name) && <CheckCircle2 className="w-3 h-3 text-white" />}
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-gray-900">{form.name}</p>
+                            <div className="flex gap-2 mt-0.5">
+                              <span className="text-[9px] font-bold text-gray-400">{form.id.startsWith('db_') ? 'From Leads' : 'Active API'}</span>
+                              {form.leads_count !== undefined && <span className="text-[9px] font-bold text-emerald-600">({form.leads_count} leads)</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg border ${
+                          form.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-50 text-gray-400 border-gray-100'
+                        }`}>
+                          {form.status || 'READY'}
+                        </Badge>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 bg-gray-50 border-t border-gray-100 flex gap-4 flex-none">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowFormScheduleModal(false)}
+                className="flex-1 h-12 rounded-2xl font-bold text-gray-500"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAssignForms}
+                disabled={isAssigning || selectedForms.length === 0}
+                className="flex-[3] h-12 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {isAssigning ? 'Scheduling...' : `Schedule Leads from ${selectedForms.length} Forms`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Bulk Task Modal */}
+      {showBulkTaskModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in">
+          <Card className="w-full max-w-md shadow-2xl rounded-3xl overflow-hidden border-none">
+            <div className="px-8 py-6 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/10 rounded-xl">
+                  <CalendarPlus className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight">Bulk Create Task</h2>
+                  <p className="text-[10px] text-slate-400 font-medium">Assign tasks for {selectedLeads.length} leads</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowBulkTaskModal(false)} className="text-white hover:bg-white/10 rounded-full">
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            <CardContent className="p-8 space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Task Title</label>
+                <Input 
+                   value={bulkTaskData.title} 
+                   onChange={(e) => setBulkTaskData({ ...bulkTaskData, title: e.target.value })}
+                   className="h-11 rounded-xl border-gray-100 bg-gray-50 focus:bg-white transition-all font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Due Date</label>
+                <Input 
+                   type="date" 
+                   value={bulkTaskData.dueDate} 
+                   onChange={(e) => setBulkTaskData({ ...bulkTaskData, dueDate: e.target.value })}
+                   className="h-11 rounded-xl border-gray-100 bg-gray-50 focus:bg-white transition-all font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Assign To Salesperson</label>
+                <Select
+                  value={bulkTaskData.salespersonId}
+                  onChange={(val) => setBulkTaskData({ ...bulkTaskData, salespersonId: val })}
+                  placeholder="Select Salesperson..."
+                  options={(salespersons || []).map((sp:any) => ({
+                    value: sp.id,
+                    label: `${sp.firstName} ${sp.lastName}`
+                  }))}
+                  className="h-11 rounded-xl border-gray-100 bg-gray-50"
+                />
+              </div>
+            </CardContent>
+
+            <div className="p-8 bg-gray-50 border-t border-gray-100 flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowBulkTaskModal(false)} 
+                className="flex-1 h-11 rounded-xl font-bold border-gray-200"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleBulkCreateTasks}
+                disabled={!bulkTaskData.salespersonId}
+                className="flex-[2] h-11 bg-slate-900 text-white rounded-xl font-bold shadow-lg hover:bg-slate-800 disabled:opacity-50 transition-all"
+              >
+                Create Tasks
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
     </div>

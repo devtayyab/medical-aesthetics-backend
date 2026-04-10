@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction, Reducer } from "@reduxjs/toolkit";
 import { authAPI, userAPI } from "@/services/api";
 import type { User } from "@/types";
 
@@ -357,4 +357,5 @@ const authSlice = createSlice({
 });
 
 export const { clearError, setTokens, setAccessToken } = authSlice.actions;
-export default authSlice.reducer;
+const authReducer: Reducer<AuthState> = authSlice.reducer;
+export default authReducer;

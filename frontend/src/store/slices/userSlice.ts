@@ -1,8 +1,8 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, Reducer } from '@reduxjs/toolkit';
 import { userAPI, loyaltyAPI } from '@/services/api';
 import type { User, LoyaltyBalance } from '@/types';
 
-interface UserState {
+export interface UserState {
   profile: User | null;
   loyaltyBalance: LoyaltyBalance | null;
   isLoading: boolean;
@@ -75,4 +75,5 @@ const userSlice = createSlice({
 });
 
 export const { clearError } = userSlice.actions;
-export default userSlice.reducer;
+const userReducer: Reducer<UserState> = userSlice.reducer;
+export default userReducer;

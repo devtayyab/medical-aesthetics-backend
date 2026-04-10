@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { Bell, CheckCircle, Clock, ExternalLink } from "lucide-react";
@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { css } from "@emotion/css";
 import type { RootState, AppDispatch } from "@/store";
 import { fetchNotifications, markAsRead, markAllAsRead, fetchUnreadCount } from "@/store/slices/notificationsSlice";
+import { openDialer } from "@/store/slices/dialerSlice";
 
 const dropdownStyle = css`
   position: absolute;
@@ -194,6 +195,14 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
                                 if (!notif.isRead) {
                                     dispatch(markAsRead(notif.id));
                                 }
+                                
+                                // Old Logic: Navigate to customer detail page
+                                const data = notif.data as any;
+                                const cid = data?.customerId || data?.leadId;
+                                if (cid) {
+                                    navigate(`/crm/customer/${cid}`);
+                                }
+                                
                                 onClose();
                             }}
                         >
