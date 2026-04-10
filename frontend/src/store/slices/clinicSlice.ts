@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, Reducer } from '@reduxjs/toolkit';
 import clinicApi from '../../services/api/clinicApi';
 import {
   ClinicProfile,
@@ -13,7 +13,7 @@ import {
   AppointmentStatus,
 } from '../../types/clinic.types';
 
-interface ClinicState {
+export interface ClinicState {
   profile: ClinicProfile | null;
   services: Service[];
   appointments: Appointment[];
@@ -369,4 +369,5 @@ const clinicSlice = createSlice({
 });
 
 export const { clearError, clearSelectedAppointment } = clinicSlice.actions;
-export default clinicSlice.reducer;
+const clinicReducer: Reducer<ClinicState> = clinicSlice.reducer;
+export default clinicReducer;

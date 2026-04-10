@@ -1,13 +1,16 @@
-﻿import React, { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { formatDistanceToNow } from "date-fns";
 import { Bell, CheckCircle, Clock, CheckCheck } from "lucide-react";
 import { fetchNotifications, markAsRead, markAllAsRead } from "@/store/slices/notificationsSlice";
 import type { RootState, AppDispatch } from "@/store";
 import { Card, CardContent } from "@/components/molecules/Card/Card";
+import { useNavigate } from "react-router-dom";
+import { openDialer } from "@/store/slices/dialerSlice";
 
 export const Notifications: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
+    const navigate = useNavigate();
     const { notifications, isLoading } = useSelector((state: RootState) => state.notifications);
 
     useEffect(() => {
@@ -65,8 +68,17 @@ export const Notifications: React.FC = () => {
                         notifications.map((notif) => (
                             <div
                                 key={notif.id}
-                                className={`p-4 flex gap-4 transition-colors hover:bg-gray-50 ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
-                                onClick={() => !notif.isRead && dispatch(markAsRead(notif.id))}
+                                className={`p-4 flex gap-4 transition-colors hover:bg-gray-50 cursor-pointer ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
+                                onClick={() => {
+                                    if (!notif.isRead) dispatch(markAsRead(notif.id));
+
+                                    // Old Logic: Navigate to customer detail page
+                                    const data = notif.data as any;
+                                    const cid = data?.customerId || data?.leadId;
+                                    if (cid) {
+                                        navigate(`/crm/customer/${cid}`);
+                                    }
+                                }}
                             >
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${getBgColor(notif.type || 'general')}`}>
                                     {getIcon(notif.type || 'general')}

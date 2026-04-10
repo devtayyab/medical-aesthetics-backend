@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, Reducer } from "@reduxjs/toolkit";
 import { adminAPI } from "@/services/api";
 import type { User, LoyaltyTier } from "@/types";
 
@@ -285,4 +285,5 @@ const adminSlice = createSlice({
 });
 
 export const { clearError } = adminSlice.actions;
-export default adminSlice.reducer;
+const adminReducer: Reducer<AdminState> = adminSlice.reducer;
+export default adminReducer;

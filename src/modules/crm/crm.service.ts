@@ -691,17 +691,17 @@ export class CrmService implements OnModuleInit {
     }
 
     if (filters.submissionDateFrom) {
-      qb.andWhere('lead.lastMetaFormSubmittedAt >= :submissionDateFrom', { submissionDateFrom: filters.submissionDateFrom });
+      qb.andWhere('CAST(lead.lastMetaFormSubmittedAt AS DATE) >= :submissionDateFrom', { submissionDateFrom: filters.submissionDateFrom });
     }
     if (filters.submissionDateTo) {
-      qb.andWhere('lead.lastMetaFormSubmittedAt <= :submissionDateTo', { submissionDateTo: filters.submissionDateTo });
+      qb.andWhere('CAST(lead.lastMetaFormSubmittedAt AS DATE) <= :submissionDateTo', { submissionDateTo: filters.submissionDateTo });
     }
 
     if (filters.lastContactedFrom) {
-      qb.andWhere('lead.lastContactedAt >= :lastContactedFrom', { lastContactedFrom: filters.lastContactedFrom });
+      qb.andWhere('CAST(lead.lastContactedAt AS DATE) >= :lastContactedFrom', { lastContactedFrom: filters.lastContactedFrom });
     }
     if (filters.lastContactedTo) {
-      qb.andWhere('lead.lastContactedAt <= :lastContactedTo', { lastContactedTo: filters.lastContactedTo });
+      qb.andWhere('CAST(lead.lastContactedAt AS DATE) <= :lastContactedTo', { lastContactedTo: filters.lastContactedTo });
     }
 
     // ACL: if requester is salesperson, only show leads assigned to them
@@ -805,7 +805,7 @@ export class CrmService implements OnModuleInit {
     }
 
     const resolved = await this.resolveEntityIds(customerId);
-    
+
     if (resolved.type === 'unknown') {
       throw new NotFoundException('Customer or Lead not found');
     }
@@ -1514,7 +1514,7 @@ export class CrmService implements OnModuleInit {
     // 5. Assign salesperson if missing (use lead/customer assigned salesperson)
     if (!data.salespersonId) {
       if (data.customerId) {
-        const record = await this.customerRecordsRepository.findOne({ 
+        const record = await this.customerRecordsRepository.findOne({
           where: { id: data.customerId },
           relations: ['assignedSalesperson']
         });
@@ -1539,14 +1539,14 @@ export class CrmService implements OnModuleInit {
       if (error.code === '23503') {
         this.logger.warn(`[createAction] Database schema/FK mismatch detected for customerId: ${data.customerId}`);
         let fallbackSucceeded = false;
-        
+
         // 1. AWS Schema Fallback: Try User ID instead of CustomerRecord ID
         try {
           const searchId = originalCustomerId || data.customerId;
           let record = await this.customerRecordsRepository.findOne({ where: { id: searchId } });
-          
+
           if (!record && originalCustomerId !== data.customerId) {
-             record = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
+            record = await this.customerRecordsRepository.findOne({ where: { id: data.customerId } });
           }
 
           if (record && record.customerId) {
@@ -1557,37 +1557,61 @@ export class CrmService implements OnModuleInit {
             fallbackSucceeded = true;
           }
         } catch (fallbackError) {
-           this.logger.warn(`[createAction] AWS Schema fallback also failed with FK violation.`);
+          this.logger.warn(`[createAction] AWS Schema fallback also failed with FK violation.`);
         }
 
         // 2. Ultimate Safe Fallback: Nullify customerId and persist data to avoid 500 crashes + data loss
         if (!fallbackSucceeded) {
-           this.logger.warn(`[createAction] Proceeding with ULTIMATE safe fallback. Nullifying customerId and saving to metadata to bypass corrupt Postgres DB state.`);
-           const safeData = {
-               ...data,
-               customerId: null,
-               metadata: {
-                   ...(data.metadata || {}),
-                   orphanedReferenceId: data.customerId || originalCustomerId,
-                   fallbackReason: 'Database FK 23503 constraint violation'
-               }
-           };
-           const safeAction = this.crmActionsRepository.create(safeData);
-           savedAction = await this.crmActionsRepository.save(safeAction);
+          this.logger.warn(`[createAction] Proceeding with ULTIMATE safe fallback. Nullifying customerId and saving to metadata to bypass corrupt Postgres DB state.`);
+          const safeData = {
+            ...data,
+            customerId: null,
+            metadata: {
+              ...(data.metadata || {}),
+              orphanedReferenceId: data.customerId || originalCustomerId,
+              fallbackReason: 'Database FK 23503 constraint violation'
+            }
+          };
+          const safeAction = this.crmActionsRepository.create(safeData);
+          savedAction = await this.crmActionsRepository.save(safeAction);
         }
       } else {
         throw error;
       }
     }
 
-    // Send notification if it's a pending task
-    if (data.status === 'pending' && data.dueDate && data.salespersonId) {
+    // Send enhanced notification for dialer integration
+    if (data.status === 'pending' && data.salespersonId) {
+      let customerPhone = '';
+      let customerName = data.therapy || 'Patient';
+
+      try {
+        if (data.relatedLeadId) {
+          const lead = await this.leadsRepository.findOne({ where: { id: data.relatedLeadId } });
+          customerPhone = lead?.phone || '';
+          customerName = `${lead?.firstName} ${lead?.lastName}`;
+        } else if (data.customerId) {
+          const rec = await this.customerRecordsRepository.findOne({ where: { id: data.customerId }, relations: ['customer'] });
+          customerPhone = rec?.customer?.phone || '';
+          customerName = `${rec?.customer?.firstName} ${rec?.customer?.lastName}`;
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to fetch phone for dialer notification: ${e.message}`);
+      }
+
+      const isCallAction = data.actionType === 'follow_up_call' || data.actionType === 'call';
+      
       await this.notificationsService.create(
         data.salespersonId,
         NotificationType.PUSH,
-        'New Task Created',
-        `${data.title} - Due: ${data.dueDate}`,
-        { actionId: savedAction.id },
+        isCallAction ? `📞 Call Back: ${customerName}` : 'New Task Created',
+        isCallAction ? `Call ${customerPhone} now regarding ${data.title}` : `${data.title} - Due: ${data.dueDate}`,
+        { 
+          actionId: savedAction.id,
+          trigger: isCallAction ? 'DIALER_CALLBACK' : 'TASK_OPEN',
+          phoneNumber: customerPhone,
+          customerName: customerName
+        },
       );
     }
 
@@ -1604,12 +1628,12 @@ export class CrmService implements OnModuleInit {
 
     // Reminder validation and auto-fix
     const now = new Date();
-    
+
     // Ensure we have a reminderDate if it's missing from DB and not provided in update
     // (Happens with legacy tasks or tasks created before the strict rule)
-    if (!action.reminderDate && !updateData.reminderDate && 
-        action.status !== 'completed' && action.status !== 'cancelled' &&
-        updateData.status !== 'completed' && updateData.status !== 'cancelled') {
+    if (!action.reminderDate && !updateData.reminderDate &&
+      action.status !== 'completed' && action.status !== 'cancelled' &&
+      updateData.status !== 'completed' && updateData.status !== 'cancelled') {
       this.logger.log(`[updateAction] Action ${id} missing reminderDate. Auto-assigning current time.`);
       updateData.reminderDate = now;
     }
@@ -1651,7 +1675,7 @@ export class CrmService implements OnModuleInit {
             updatedAt: new Date()
           });
           this.logger.log(`[Flow] Appointment ${appointmentId} auto-confirmed via CRM task completion.`);
-          
+
           // Trigger Notification for Confirmation
           this.eventEmitter.emit('appointment.confirmed', { id: appointmentId });
         } catch (confirmErr) {
@@ -1762,11 +1786,11 @@ export class CrmService implements OnModuleInit {
         // Find record ID to match both possible storage locations
         const record = await this.customerRecordsRepository.findOne({ where: { customerId: filters.customerId } });
         const recordId = record?.id;
-        
+
         if (recordId) {
-          qb.andWhere('(action.customerId = :recordId OR action.customerId = :custId OR action.relatedLeadId = :custId)', { 
+          qb.andWhere('(action.customerId = :recordId OR action.customerId = :custId OR action.relatedLeadId = :custId)', {
             recordId: recordId,
-            custId: filters.customerId 
+            custId: filters.customerId
           });
         } else {
           qb.andWhere('(action.customerId = :customerId OR action.relatedLeadId = :customerId)', { customerId: filters.customerId });
@@ -1799,7 +1823,7 @@ export class CrmService implements OnModuleInit {
     const now = new Date();
 
     const qb = this.crmActionsRepository.createQueryBuilder('action');
-    
+
     if (salespersonId && salespersonId !== 'all') {
       qb.where('action.salespersonId = :sid', { sid: salespersonId });
     }
@@ -2367,7 +2391,108 @@ export class CrmService implements OnModuleInit {
   }
 
   async getFacebookForms() {
-    return this.facebookService.getForms();
+    let fbForms = [];
+    try {
+      fbForms = await this.facebookService.getForms();
+    } catch (e) {
+      this.logger.warn('Failed to fetch forms from Facebook API, using DB fallback only');
+    }
+
+    // Get unique form names with counts from our database
+    const dbFormStats = await this.leadsRepository
+      .createQueryBuilder('lead')
+      .select('lead.lastMetaFormName', 'name')
+      .addSelect('COUNT(lead.id)', 'count')
+      .where('lead.lastMetaFormName IS NOT NULL')
+      .groupBy('lead.lastMetaFormName')
+      .getRawMany();
+
+    // Combine them, preferring real API data but enriching with DB counts
+    const processedForms = (fbForms || []).map(f => {
+      const dbStat = dbFormStats.find(d => d.name === f.name);
+      return {
+        ...f,
+        leads_count: parseInt(dbStat?.count || '0')
+      };
+    });
+
+    dbFormStats.forEach(dbf => {
+      if (!processedForms.some(f => f.name === dbf.name)) {
+        processedForms.push({
+          id: `db_${dbf.name}`,
+          name: dbf.name,
+          status: 'READY',
+          source: 'database',
+          leads_count: parseInt(dbf.count || '0')
+        });
+      }
+    });
+
+    return processedForms;
+  }
+
+  async assignFormsToDay(formNames: string[], scheduledAt: Date) {
+    if (!formNames || formNames.length === 0) {
+      throw new BadRequestException('Form names are required');
+    }
+
+    // 1. Find all processable leads from these forms
+    const leads = await this.leadsRepository.find({
+      where: {
+        lastMetaFormName: In(formNames),
+        status: In([LeadStatus.NEW, LeadStatus.CONTACTED]),
+      },
+      select: ['id', 'firstName', 'lastName', 'assignedSalesId']
+    });
+
+    if (leads.length === 0) {
+      return {
+        success: true,
+        affected: 0,
+        message: 'No new or contacted leads found for these forms.'
+      };
+    }
+
+    // 2. Update leads with scheduled date
+    await this.leadsRepository.update(
+      { id: In(leads.map(l => l.id)) },
+      { scheduledAt }
+    );
+
+    // 3. Create Tasks (CrmActions) for each lead
+    const tasks = leads.map(lead => {
+      return this.crmActionsRepository.create({
+        title: `Follow-up: ${lead.firstName} ${lead.lastName}`,
+        actionType: 'follow_up_call' as any,
+        status: 'pending',
+        priority: 'medium',
+        dueDate: scheduledAt,
+        reminderDate: new Date(scheduledAt.getTime() - 30 * 60000), // 30 mins before
+        relatedLeadId: lead.id,
+        salespersonId: lead.assignedSalesId || (/* fallback to admin if unassigned */ (leads[0] as any).tempAdminId),
+        description: `Scheduled bulk follow-up from Facebook Form: ${formNames.join(', ')}`
+      });
+    });
+
+    // Special handling for salespersonId if missing (fetch a default admin ID)
+    let defaultAdminId: string;
+    if (leads.some(l => !l.assignedSalesId)) {
+      const admin = await this.usersRepository.findOne({ where: { role: UserRole.SUPER_ADMIN } });
+      defaultAdminId = admin?.id;
+      tasks.forEach(t => {
+        if (!t.salespersonId) t.salespersonId = defaultAdminId;
+      });
+    }
+
+    await this.crmActionsRepository.save(tasks);
+
+    this.logger.log(`Scheduled ${leads.length} leads and created tasks from forms [${formNames.join(', ')}] to ${scheduledAt}`);
+
+    return {
+      success: true,
+      affected: leads.length,
+      message: `Successfully scheduled ${leads.length} leads and created follow-up tasks for ${scheduledAt.toLocaleDateString()}`
+    };
   }
 
   async getManagerAgentKpis(dateRange?: { startDate: Date; endDate: Date }): Promise<any> {
@@ -2432,7 +2557,7 @@ export class CrmService implements OnModuleInit {
         avgAppointmentValue: 0,
         conversionRate: 0,
       };
-      
+
       agentMap.set(comm.agentId, {
         ...existing,
         totalCommunications: parseInt(comm.totalCommunications, 10) || 0,
@@ -2558,7 +2683,7 @@ export class CrmService implements OnModuleInit {
   async getClinicAnalytics(dateRange?: { startDate: Date; endDate: Date }, clinicId?: string): Promise<any[]> {
     // 1. Get clinics
     const clinics = await this.clinicsRepository.find({
-      where: { 
+      where: {
         isActive: true,
         ...(clinicId ? { id: clinicId } : {})
       },
@@ -3324,20 +3449,20 @@ export class CrmService implements OnModuleInit {
     }
 
     const record = await this.customerRecordsRepository.findOne({ where: { customerId: appointment.clientId } });
-    
+
     // Assign to: salespersonId (if provided) -> appointment.representativeId -> appointment.bookedById -> customerRecord.assignedSalespersonId -> fallback
     let assignedId = salespersonId || appointment.representativeId || appointment.bookedById || record?.assignedSalespersonId;
-    
+
     if (!assignedId) {
-      const fallbackAgent = await this.usersRepository.findOne({ 
-        where: { role: In([UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN]) } 
+      const fallbackAgent = await this.usersRepository.findOne({
+        where: { role: In([UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN]) }
       });
       assignedId = fallbackAgent?.id;
     }
 
     if (assignedId && appointment.clientId) {
       this.logger.log(`[resolveNoShowAlert] Creating follow-up task for appointment ${appointmentId}, patient ${appointment.clientId}`);
-      
+
       try {
         await this.createAction({
           customerId: appointment.clientId,
@@ -3895,7 +4020,7 @@ export class CrmService implements OnModuleInit {
 
       if (!existing) {
         const record = await this.customerRecordsRepository.findOne({ where: { customerId: apt.clientId } });
-        
+
         await this.crmActionsRepository.save({
           title: `Confirm Appointment: ${apt.service?.treatment?.name || 'Treatment'}`,
           actionType: 'confirmation_call_reminder',
@@ -3947,7 +4072,7 @@ export class CrmService implements OnModuleInit {
 
       if (!existing) {
         const record = await this.customerRecordsRepository.findOne({ where: { customerId: apt.clientId } });
-        
+
         await this.crmActionsRepository.save({
           title: `Post-Treatment Follow-up: ${apt.service?.treatment?.name || 'Treatment'}`,
           actionType: 'follow_up_call',
@@ -4035,6 +4160,64 @@ export class CrmService implements OnModuleInit {
     return { message: 'Mock data seeded successfully', ...results };
   }
 
+  async seedFacebookTestLeads(): Promise<any> {
+    const agents = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON } });
+    const admin = await this.usersRepository.findOne({ where: { role: UserRole.SUPER_ADMIN } });
 
+    const testForms = ['Special Promo Form', 'Consultation Ad 2024', 'Website Leadgen'];
+    const names = [['Ahmed', 'Khan'], ['Sara', 'Zafar'], ['Usman', 'Ali'], ['Zoya', 'Malik']];
+
+    let seeded = 0;
+    for (let i = 0; i < names.length; i++) {
+      const lead = this.leadsRepository.create({
+        firstName: names[i][0],
+        lastName: names[i][1],
+        email: `test_meta_${i}_${Date.now()}@example.com`,
+        phone: `+92300123456${i}`,
+        source: 'facebook_ads',
+        status: LeadStatus.NEW,
+        lastMetaFormName: testForms[i % testForms.length],
+        assignedSalesId: agents.length > 0 ? agents[i % agents.length].id : (admin?.id || null),
+        lastMetaFormSubmittedAt: new Date(),
+        createdAt: new Date()
+      });
+      await this.leadsRepository.save(lead);
+      seeded++;
+    }
+
+    return {
+      message: `Successfully seeded ${seeded} test leads with Facebook form names`,
+      forms: testForms
+    };
+  }
+
+  async bulkCreateActions(leadIds: string[], taskData: Partial<CrmAction>): Promise<any> {
+    const results = [];
+    for (const leadId of leadIds) {
+      try {
+        // 1. Update the lead's owner (Assigned Salesperson)
+        if (taskData.salespersonId) {
+          await this.leadsRepository.update(leadId, {
+            assignedSalesId: taskData.salespersonId
+          });
+        }
+
+        // 2. Create the task
+        const action = await this.createAction({
+          ...taskData,
+          relatedLeadId: leadId,
+          reminderDate: taskData.reminderDate || taskData.dueDate || new Date()
+        });
+        results.push(action);
+      } catch (e) {
+        this.logger.error(`Failed to create bulk action or assign lead ${leadId}: ${e.message}`);
+      }
+    }
+    return {
+      success: true,
+      count: results.length,
+      message: `Successfully created ${results.length} tasks and assigned leads`
+    };
+  }
 
 }

@@ -1,8 +1,8 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, Reducer } from '@reduxjs/toolkit';
 import { clinicsAPI } from '@/services/api';
 import type { Clinic, Service, SearchFilters } from '@/types';
 
-interface ClinicsState {
+export interface ClinicsState {
   clinics: Clinic[];
   featuredClinics: Clinic[];
   selectedClinic: Clinic | null;
@@ -124,4 +124,5 @@ const clinicsSlice = createSlice({
 });
 
 export const { clearError, setSearchFilters, clearSearchResults, clearSelectedClinic } = clinicsSlice.actions;
-export default clinicsSlice.reducer;
+const clinicsReducer: Reducer<ClinicsState> = clinicsSlice.reducer;
+export default clinicsReducer;

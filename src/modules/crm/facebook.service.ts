@@ -202,12 +202,28 @@ export class FacebookService {
       };
     }
   }
-  async getForms(): Promise<any[]> {
-    // Mock implementation since we don't have page access tokens configured
-    return [
-      { id: '12', name: 'Newsletter Signup', status: 'ACTIVE' },
-      { id: '13', name: 'Spring Promo', status: 'ACTIVE' },
-      { id: '14', name: 'Consultation Request', status: 'PAUSED' },
-    ];
+  async getForms(pageId?: string): Promise<any[]> {
+    if (!this.accessToken || this.accessToken === 'MOCK_TOKEN' || this.accessToken === 'your-facebook-access-token') {
+      return [
+        { id: '12', name: 'Newsletter Signup', status: 'ACTIVE' },
+        { id: '13', name: 'Spring Promo', status: 'ACTIVE' },
+        { id: '14', name: 'Consultation Request', status: 'PAUSED' },
+      ];
+    }
+
+    try {
+      const targetId = pageId || 'me'; // Use 'me' to get forms for the connected user/page
+      const response = await this.axiosInstance.get(`/${targetId}/leadgen_forms`, {
+        params: {
+          access_token: this.accessToken,
+          fields: 'id,name,status,leads_count',
+        },
+      });
+
+      return response.data.data || [];
+    } catch (error) {
+      this.logger.error(`Failed to fetch Facebook forms: ${error.message}`);
+      return [];
+    }
   }
 }

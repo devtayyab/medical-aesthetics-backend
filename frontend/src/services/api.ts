@@ -357,6 +357,8 @@ export const crmAPI = {
     api.post(`/crm/facebook/import/${formId}`, {}, { params: { limit } }),
   getFacebookForms: () => api.get("/crm/facebook/forms"),
   testFacebookConnection: () => api.get("/crm/facebook/test"),
+  assignFormsToDay: (data: { formNames: string[]; scheduledAt: string }) => api.post('/crm/facebook/forms/assign', data),
+  bulkCreateTasks: (data: { leadIds: string[]; salespersonId: string; dueDate: string; title: string }) => api.post('/crm/actions/bulk', data),
 
   // Duplicate Detection
   checkForDuplicates: (data: {

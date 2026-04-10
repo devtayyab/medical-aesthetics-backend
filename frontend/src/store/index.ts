@@ -1,15 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
-import authSlice from './slices/authSlice';
-import clinicsSlice from './slices/clinicsSlice';
-import bookingSlice from './slices/bookingSlice';
-import userSlice from './slices/userSlice';
-import notificationsSlice from './slices/notificationsSlice';
-import clientSlice from './slices/clientSlice';
-import clinicSlice from './slices/clinicSlice';
-import crmSlice from './slices/crmSlice';
-import adminSlice from './slices/adminSlice';
-import taskSlice from './slices/TaskSlice';
-import messagesSlice from './slices/messagesSlice';
+import authSlice from '@/store/slices/authSlice';
+import clinicsSlice from '@/store/slices/clinicsSlice';
+import bookingSlice from '@/store/slices/bookingSlice';
+import userSlice from '@/store/slices/userSlice';
+import notificationsSlice from '@/store/slices/notificationsSlice';
+import clientSlice from '@/store/slices/clientSlice';
+import clinicSlice from '@/store/slices/clinicSlice';
+import crmSlice from '@/store/slices/crmSlice';
+import adminSlice from '@/store/slices/adminSlice';
+import taskSlice from '@/store/slices/TaskSlice';
+import messagesSlice from '@/store/slices/messagesSlice';
+import dialerSlice from '@/store/slices/dialerSlice';
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +25,7 @@ export const store = configureStore({
     admin: adminSlice,
     task: taskSlice,
     messages: messagesSlice,
+    dialer: dialerSlice,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

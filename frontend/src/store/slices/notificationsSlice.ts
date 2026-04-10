@@ -1,8 +1,8 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, Reducer } from '@reduxjs/toolkit';
 import { notificationsAPI } from '@/services/api';
 import type { Notification } from '@/types';
 
-interface NotificationsState {
+export interface NotificationsState {
   notifications: Notification[];
   unreadCount: number;
   isLoading: boolean;
@@ -110,4 +110,5 @@ const notificationsSlice = createSlice({
 });
 
 export const { clearError } = notificationsSlice.actions;
-export default notificationsSlice.reducer;
+const notificationsReducer: Reducer<NotificationsState> = notificationsSlice.reducer;
+export default notificationsReducer;

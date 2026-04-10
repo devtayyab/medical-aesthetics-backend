@@ -457,6 +457,37 @@ export class CrmController {
     return this.crmService.getFacebookForms();
   }
 
+  @Post('actions/bulk')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Create tasks in bulk for multiple leads' })
+  bulkCreateTasks(@Body() data: { leadIds: string[]; salespersonId: string; dueDate: string; title: string }) {
+    return this.crmService.bulkCreateActions(data.leadIds, {
+      salespersonId: data.salespersonId,
+      dueDate: new Date(data.dueDate),
+      title: data.title,
+      actionType: 'follow_up_call',
+      status: 'pending'
+    });
+  }
+
+  @Post('facebook/forms/assign')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Assign multiple forms to a specific day' })
+  assignFormsToDay(
+    @Body() data: { formNames: string[]; scheduledAt: string }
+  ) {
+    return this.crmService.assignFormsToDay(data.formNames, new Date(data.scheduledAt));
+  }
+
+  @Public()
+  @Get('facebook/seed-test-leads')
+  @ApiOperation({ summary: 'Seed test leads with Facebook form names (UNPROTECTED FOR TESTING)' })
+  seedFacebookTestLeads() {
+    return this.crmService.seedFacebookTestLeads();
+  }
+
   @Get('customer/:id')
   @ApiOperation({ summary: 'Get customer details' })
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -109,6 +109,8 @@ import { ChangePassword } from "@/pages/Account/ChangePassword";
 import { Toaster } from "react-hot-toast";
 import { MessagesPage } from "@/pages/Messages/MessagesPage";
 import { SalesWeekCalendar } from "./pages/CRM/SalesWeekCalendar";
+import { initializeFirebase } from "@/services/firebase";
+import { GlobalDialer } from "./components/crm/GlobalDialer";
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -164,6 +166,12 @@ function AppContent() {
       dispatch(restoreSession()).finally(() => setHasRestoredSession(true));
     }
   }, [dispatch]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      initializeFirebase(dispatch);
+    }
+  }, [isAuthenticated, dispatch]);
 
   // Role-aware redirect after session restore or login
   useEffect(() => {
@@ -1012,6 +1020,7 @@ function App() {
   return (
     <Provider store={store}>
       <Toaster position="top-right" reverseOrder={false} />
+      <GlobalDialer />
       <Router>
         <AppContent />
       </Router>

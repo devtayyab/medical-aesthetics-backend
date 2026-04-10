@@ -46,9 +46,8 @@ export const SalesWeekCalendar: React.FC = () => {
     const [viewDate, setViewDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
     const [selectedClinicId, setSelectedClinicId] = useState<string>('all');
-    const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
-
-    const isManager = user?.role === 'manager' || user?.role === 'admin';
+    const isManager = user?.role === 'manager' || user?.role === 'admin' || user?.role === 'SUPER_ADMIN';
+    const [selectedProviderId, setSelectedProviderId] = useState<string>(user?.id || 'all');
 
     // Drawers state
     const [isAddWizardOpen, setIsAddWizardOpen] = useState(false);
@@ -110,11 +109,15 @@ export const SalesWeekCalendar: React.FC = () => {
 
     useEffect(() => {
         const filters: any = {};
-        if (selectedProviderId !== 'all') {
+        if (!isManager) {
+            filters.providerId = user?.id; // Strictly force personal view for salespeople
+        } else if (selectedProviderId !== 'all') {
             filters.providerId = selectedProviderId;
-        } else if (!isManager && user?.id) {
-            filters.providerId = user.id;
         }
+        
+        // Also ensure date range is respected if backend supports it
+        filters.date = format(viewDate, 'yyyy-MM-dd');
+
         if (selectedClinicId !== 'all') {
             filters.clinicId = selectedClinicId;
             dispatch(fetchAvailability(selectedClinicId));
@@ -322,22 +325,39 @@ export const SalesWeekCalendar: React.FC = () => {
     return (
         <div className="flex h-full w-full bg-gray-50 relative overflow-hidden rounded-xl border border-gray-200 shadow-sm">
             {/* Left Sidebar: Team List - MANAGER ONLY */}
-            {isManager && (
-                <div className="w-48 bg-white border-r border-gray-100 flex flex-col hidden lg:flex">
+            {/* Team List Sidebar - Visible for Managers and Salespeople (to see all) */}
+            <div className="w-48 bg-white border-r border-gray-100 flex flex-col hidden lg:flex">
                     <div className="p-4 border-b border-gray-100 bg-gray-50/50">
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">TEAM EXPERTS</h3>
+                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">MY SCHEDULE</h3>
                         <p className="text-[9px] text-gray-500 font-bold uppercase">{(salespersons || []).length + 1} ACTIVE</p>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                        <div 
-                            onClick={() => setSelectedProviderId('all')}
-                            className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 ${selectedProviderId === 'all' ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50 text-gray-500'}`}
-                        >
-                            <Users size={14} />
-                            <span className="text-xs font-bold leading-none">Full Roster</span>
-                        </div>
                         
-                        <div className="h-px bg-gray-100 my-2 mx-2" />
+                        {isManager && (
+                            <>
+                                <div 
+                                    onClick={() => setSelectedProviderId('all')}
+                                    className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 ${selectedProviderId === 'all' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
+                                >
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === 'all' ? 'bg-indigo-400' : 'bg-indigo-100'}`}>
+                                        <Users className={`w-3 h-3 ${selectedProviderId === 'all' ? 'text-white' : 'text-indigo-600'}`} />
+                                    </div>
+                                    <span className="text-xs truncate">Full Roster</span>
+                                </div>
+
+                                {(salespersons || []).filter(s => s.id !== user?.id).map(s => (
+                                    <div 
+                                        key={s.id}
+                                        onClick={() => setSelectedProviderId(s.id)}
+                                        className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 group ${selectedProviderId === s.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
+                                    >
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === s.id ? 'bg-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>{s.firstName?.[0]}</div>
+                                        <span className="text-xs truncate">{s.firstName}</span>
+                                    </div>
+                                ))}
+                                <div className="h-px bg-gray-100 my-2 mx-2" />
+                            </>
+                        )}
                         
                         <div 
                             onClick={() => setSelectedProviderId(user?.id || '')}
@@ -346,20 +366,8 @@ export const SalesWeekCalendar: React.FC = () => {
                             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === user?.id ? 'bg-indigo-400' : 'bg-indigo-100'}`}>{user?.firstName?.[0]}</div>
                             <span className="text-xs truncate">Me</span>
                         </div>
-
-                        {(salespersons || []).filter(s => s.id !== user?.id).map(s => (
-                            <div 
-                                key={s.id}
-                                onClick={() => setSelectedProviderId(s.id)}
-                                className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 group ${selectedProviderId === s.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
-                            >
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === s.id ? 'bg-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>{s.firstName?.[0]}</div>
-                                <span className="text-xs truncate">{s.firstName}</span>
-                            </div>
-                        ))}
                     </div>
                 </div>
-            )}
 
             {/* Main Calendar View */}
             <div className={`flex flex-col flex-1 transition-all duration-300 ${isAddWizardOpen || (isDetailDrawerOpen && selectedApt) ? 'mr-96 lg:mr-[400px]' : ''}`}>
@@ -566,7 +574,12 @@ export const SalesWeekCalendar: React.FC = () => {
                                                         <span className="text-[7px] px-1 rounded bg-black/10 font-black ml-auto">RET</span>
                                                     )}
                                                 </div>
-                                                <div className="text-[9px] font-bold opacity-80 truncate">{apt.service?.name}</div>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="text-[9px] font-bold opacity-80 truncate">{apt.service?.name}</div>
+                                                    <div className="text-[8px] font-black text-indigo-600 truncate uppercase mt-0.5">
+                                                        {apt.providerId === user?.id ? (apt.clinic?.name || 'My Clinic') : `${apt.provider?.firstName || 'Staff'}`}
+                                                    </div>
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -787,7 +800,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                                 onChange={(e) => setWizardProviderId(e.target.value)}
                                             >
                                                 <option value={user?.id}>Me ({user?.firstName} {user?.lastName})</option>
-                                                {(salespersons || []).filter(s => s.id !== user?.id).map(s => (
+                                                {isManager && (salespersons || []).filter(s => s.id !== user?.id).map(s => (
                                                     <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
                                                 ))}
                                             </select>
@@ -964,7 +977,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                     )}
                                     {/* All team members */}
                                     <option value={user?.id}>⭐ Me ({user?.firstName} {user?.lastName})</option>
-                                    {(salespersons || []).filter((s: any) => s.id !== user?.id).map((s: any) => (
+                                    {isManager && (salespersons || []).filter((s: any) => s.id !== user?.id).map((s: any) => (
                                         <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
                                     ))}
                                 </select>

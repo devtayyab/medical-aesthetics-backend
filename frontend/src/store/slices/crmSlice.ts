@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction, Action } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction, Action, Reducer } from "@reduxjs/toolkit";
 import { crmAPI } from "@/services/api";
 import type { Lead } from "@/types/crm.types";
 import type {
@@ -15,7 +15,7 @@ import type {
   User
 } from "@/types";
 import type { Customer } from "@/types/crm.types";
-interface CrmState {
+export interface CrmState {
   // Lead Management
   leads: Lead[];
   selectedLead: Lead | null;
@@ -841,4 +841,5 @@ export const {
 } = crmSlice.actions;
 
 
-export default crmSlice.reducer;
+const crmReducer: Reducer<CrmState> = crmSlice.reducer;
+export default crmReducer;
