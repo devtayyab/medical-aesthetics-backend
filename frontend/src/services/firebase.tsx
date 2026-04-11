@@ -1,6 +1,6 @@
 import React from "react";
 import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 import { notificationsAPI } from "./api";
 import { toast } from "react-hot-toast";
 import type { AppDispatch } from "@/store";
@@ -17,12 +17,19 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
 
 export const initializeFirebase = async (
   dispatch: AppDispatch
 ) => {
   try {
+    const supported = await isSupported();
+    if (!supported) {
+      console.warn("FCM is not supported in this environment (likely non-HTTPS or incompatible browser).");
+      return;
+    }
+
+    const messaging = getMessaging(app);
+
     // Request permission for notifications
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
