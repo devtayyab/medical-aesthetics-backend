@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -112,6 +112,9 @@ import { SalesWeekCalendar } from "./pages/CRM/SalesWeekCalendar";
 import { initializeFirebase } from "@/services/firebase";
 import { GlobalDialer } from "./components/crm/GlobalDialer";
 
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword/ResetPassword'));
+
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
     <div className="max-w-[480px] mx-auto p-4 flex items-center justify-center">
@@ -206,9 +209,15 @@ function AppContent() {
     );
   }
 
+  const isAuthPage =
+    location.pathname === "/login" ||
+    location.pathname === "/register" ||
+    location.pathname === "/forgot-password" ||
+    location.pathname === "/reset-password";
+
   return (
     <div className="App">
-      {location.pathname === "/login" || location.pathname === "/register" ? (
+      {isAuthPage ? (
         <AuthHeader />
       ) : (
         <Header />
@@ -223,6 +232,30 @@ function AppContent() {
             element={
               !isAuthenticated ? (
                 <Login />
+              ) : (
+                <Navigate to={getRoleHomePath(user?.role)} replace />
+              )
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              !isAuthenticated ? (
+                <Suspense fallback={<div>Loading...</div>}>
+                  <ForgotPassword />
+                </Suspense>
+              ) : (
+                <Navigate to={getRoleHomePath(user?.role)} replace />
+              )
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              !isAuthenticated ? (
+                <Suspense fallback={<div>Loading...</div>}>
+                  <ResetPassword />
+                </Suspense>
               ) : (
                 <Navigate to={getRoleHomePath(user?.role)} replace />
               )
@@ -1009,7 +1042,7 @@ function AppContent() {
           />
         </Routes>
       </main>
-      {location.pathname !== "/login" && location.pathname !== "/register" && (
+      {!isAuthPage && (
         <Footer />
       )}
     </div>

@@ -1,7 +1,8 @@
-﻿import React from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { FaFacebookF, FaLinkedinIn } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
+import { Phone, Mail } from "lucide-react";
 
 export const Footer: React.FC = () => {
   return (
@@ -18,15 +19,13 @@ export const Footer: React.FC = () => {
               <span className="text-[#CBFF38]">med</span>logo
             </Link>
             <p className="mt-4 text-[18px] text-center text-white lg:text-left">
-              Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-              Praesentium natus quod eveniet aut perferendis distinctio iusto
-              repudiandae, provident velit earum?
+              Our aesthetics platform is dedicated to providing high-quality treatments and personalized care. Explore our range of services to find the perfect solution for your beauty and wellness needs.
             </p>
           </div>
 
           {/* Right Side */}
           <div className="grid grid-cols-1 gap-8 text-center lg:grid-cols-3 lg:text-left">
-            {/* Services */}
+            {/* Overview */}
             <div>
               <strong className="font-semibold text-[20px] text-[#CBFF38]">
                 Overview
@@ -34,32 +33,32 @@ export const Footer: React.FC = () => {
               <ul className="mt-6 space-y-[10px]">
                 <li>
                   <Link
-                    to="#"
+                    to="/treatments"
                     className="text-white transition hover:text-[#CBFF38]"
                   >
-                    Medicines
+                    Treatments
                   </Link>
                 </li>
                 <li>
                   <Link
-                    to="#"
+                    to="/services"
                     className="text-white transition hover:text-[#CBFF38]"
                   >
-                    Healthcare Devices
+                    All Services
                   </Link>
                 </li>
                 <li>
                   <Link
-                    to="#"
+                    to="/blog"
                     className="text-white transition hover:text-[#CBFF38]"
                   >
-                    Health Progress
+                    Latest Articles
                   </Link>
                 </li>
               </ul>
             </div>
 
-            {/* About */}
+            {/* Company */}
             <div>
               <strong className="font-semibold text-[20px] text-[#CBFF38]">
                 Company
@@ -67,7 +66,7 @@ export const Footer: React.FC = () => {
               <ul className="mt-6 space-y-[10px]">
                 <li>
                   <Link
-                    to="#"
+                    to="/"
                     className="text-white transition hover:text-[#CBFF38]"
                   >
                     Home
@@ -75,7 +74,7 @@ export const Footer: React.FC = () => {
                 </li>
                 <li>
                   <Link
-                    to="#"
+                    to="/about"
                     className="text-white transition hover:text-[#CBFF38]"
                   >
                     About us
@@ -83,10 +82,10 @@ export const Footer: React.FC = () => {
                 </li>
                 <li>
                   <Link
-                    to="#"
+                    to="/contact"
                     className="text-white transition hover:text-[#CBFF38]"
                   >
-                    Services
+                    Support
                   </Link>
                 </li>
               </ul>
@@ -101,17 +100,23 @@ export const Footer: React.FC = () => {
                 <li>
                   <a
                     href="tel:6948880498"
-                    className="text-white transition hover:text-[#CBFF38]"
+                    className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
+                    style={{ textDecoration: 'none' }}
                   >
-                    ðŸ“ž 6948880498
+                    <span className="flex items-center gap-2">
+                       <Phone size={14} className="text-[#CBFF38]" /> 6948880498
+                    </span>
                   </a>
                 </li>
                 <li>
                   <a
                     href="mailto:info@beautydoctors.gr"
-                    className="text-white transition hover:text-[#CBFF38]"
+                    className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
+                    style={{ textDecoration: 'none' }}
                   >
-                    âœ‰ï¸ info@beautydoctors.gr
+                    <span className="flex items-center gap-2">
+                       <Mail size={14} className="text-[#CBFF38]" /> info@beautydoctors.gr
+                    </span>
                   </a>
                 </li>
               </ul>
@@ -141,9 +146,9 @@ export const Footer: React.FC = () => {
               <FaLinkedinIn size={18} />
             </a>
           </div>
-          <form>
+          <form onSubmit={(e) => e.preventDefault()}>
             <div className="flex justify-between items-center gap-3">
-              <label className="text-white" htmlFor="email">
+              <label className="text-white text-xs font-bold uppercase tracking-wider" htmlFor="email">
                 Newsletter
               </label>
 
@@ -156,7 +161,7 @@ export const Footer: React.FC = () => {
 
               <button
                 type="submit"
-                className="rounded-[12px] bg-[#CBFF38] px-5 py-3 font-medium text-[#2D3748] transition hover:bg-lime-400"
+                className="rounded-[12px] bg-[#CBFF38] px-5 py-3 font-black text-xs uppercase tracking-widest text-[#2D3748] transition hover:bg-lime-400"
               >
                 Subscribe
               </button>
