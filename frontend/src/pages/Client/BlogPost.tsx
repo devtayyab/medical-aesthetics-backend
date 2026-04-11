@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { publicBlogsAPI } from "@/services/api";
 import { css } from "@emotion/css";
@@ -6,14 +6,14 @@ import { FaChevronRight, FaArrowLeft, FaCalendar, FaUser, FaTag } from "react-ic
 import { motion } from "framer-motion";
 
 const articleBody = css`
-  font-family: 'Georgia', serif;
+  font-family: 'Manrope', sans-serif;
   font-size: 1.125rem;
   line-height: 1.9;
   color: #374151;
 
   h1, h2, h3, h4 {
-    font-family: 'Inter', sans-serif;
-    font-weight: 900;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
     text-transform: uppercase;
     font-style: italic;
     color: #111827;
