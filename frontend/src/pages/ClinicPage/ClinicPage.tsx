@@ -1,4 +1,5 @@
 import React from "react";
+import { Star } from "lucide-react";
 import { Button } from "@/components/atoms/Button/Button";
 import clinic from "@/assets/clinic.png";
 import { FaLocationDot } from "react-icons/fa6";
@@ -43,8 +44,12 @@ export const Clinic: React.FC = () => {
           <h2 className="  text-black  pt-9 font-semibold items-center text-2xl ">Botox Treatment</h2>
           <p className="flex items-center text-xl   text-yellow-500 gap-2 ">
             4.0
-            <span className=" text-yellow-500 text-xl">
-              â˜…â˜…â˜…â˜…â˜†
+            <span className="flex items-center">
+              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+              <Star className="w-5 h-5 text-gray-300" />
             </span>
           </p>
         </div>

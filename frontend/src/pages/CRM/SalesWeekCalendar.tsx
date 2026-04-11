@@ -390,7 +390,7 @@ export const SalesWeekCalendar: React.FC = () => {
                             className="bg-gray-100 border border-gray-200 text-gray-900 rounded-lg px-4 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer appearance-none pr-8 min-w-[180px]"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
                         >
-                            <option value="all">🏥 All Clinics</option>
+                            <option value="all">All Clinics</option>
                             {availableClinics.map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -402,8 +402,8 @@ export const SalesWeekCalendar: React.FC = () => {
                                 onChange={(e) => setSelectedProviderId(e.target.value)}
                                 className="bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg px-4 py-1.5 text-xs font-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer min-w-[150px]"
                             >
-                                <option value="all">👥 All Team</option>
-                                <option value={user?.id}>⭐ Me ({user?.firstName})</option>
+                                <option value="all">All Team</option>
+                                <option value={user?.id}>Me ({user?.firstName})</option>
                                 {(salespersons || []).filter(s => s.id !== user?.id).map(s => (
                                     <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
                                 ))}
@@ -976,7 +976,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                         <option value={selectedApt.providerId}>{selectedApt.providerName}</option>
                                     )}
                                     {/* All team members */}
-                                    <option value={user?.id}>⭐ Me ({user?.firstName} {user?.lastName})</option>
+                                    <option value={user?.id}>Me ({user?.firstName} {user?.lastName})</option>
                                     {isManager && (salespersons || []).filter((s: any) => s.id !== user?.id).map((s: any) => (
                                         <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
                                     ))}

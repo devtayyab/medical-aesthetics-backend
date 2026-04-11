@@ -1,4 +1,5 @@
-﻿// import { TfiMapAlt } from "react-icons/tfi"; // location pin icon
+import React from "react";
+import { Star } from "lucide-react";
 
 type ClinicCardProps = {
   name: string;
@@ -23,7 +24,13 @@ const ClinicCard: React.FC<ClinicCardProps> = ({ name, price, location }) => {
 
   <div className="flex items-center gap-3 text-gray-700 text-sm">
     4.0
-    <span className="text-yellow-500 text-lg">â˜…â˜…â˜…â˜…â˜†</span>
+    <span className="flex items-center">
+      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+      <Star className="w-5 h-5 text-gray-200" />
+    </span>
     <span className="text-gray-400 whitespace-nowrap">2 reviews</span>
   </div>
 

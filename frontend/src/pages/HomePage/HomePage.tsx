@@ -10,6 +10,7 @@ import {
   FaTh,
   FaMapMarkerAlt
 } from "react-icons/fa";
+import { ArrowRight } from "lucide-react";
 import { SearchBar } from "@/components/organisms/SearchBar";
 
 
@@ -244,7 +245,7 @@ export const HomePage: React.FC = () => {
               onClick={() => navigate('/search')}
               className="text-lime-600 font-medium hover:text-lime-700 transition"
             >
-              See All Clinics &rarr;
+              See All Clinics <ArrowRight className="inline-block ml-1 h-4 w-4" />
             </button>
           </div>
 
@@ -373,9 +374,9 @@ export const HomePage: React.FC = () => {
                 Give the gift of expert medical beauty treatments — from
                 dermatology to aesthetic enhancements.
               </p>
-              <button className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm">
+              <button className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm gap-2">
                 Send a Gift Card
-                <span className="ml-2">→</span>
+                <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -393,9 +394,9 @@ export const HomePage: React.FC = () => {
               <p className="text-gray-600 text-base leading-relaxed flex-1 mb-6">
                 Discover clinics recognized for excellence. Backed by real patient reviews, so you can book with confidence.
               </p>
-              <button className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm">
+              <button className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm gap-2">
                 Explore Top Clinics
-                <span className="ml-2">→</span>
+                <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -471,7 +472,7 @@ export const HomePage: React.FC = () => {
                 onClick={() => navigate('/search')}
                 className="border border-lime-600 text-lime-700 px-6 py-2 rounded-md text-sm font-medium hover:bg-lime-50 transition flex items-center justify-center mx-auto gap-2"
               >
-                View More <span className="text-lg">→</span>
+                View More <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>

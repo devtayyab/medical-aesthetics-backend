@@ -27,7 +27,8 @@ import {
   CheckCircle, Clock, AlertTriangle, Users, Repeat,
   PhoneCall, MoreHorizontal, User, Eye, Plus, Edit, X,
   CornerUpRight, Calendar, Phone, Trash2, UserPlus, Mail,
-  Target, Tag, ArrowLeft, ArrowRight, Building2, MousePointer2, Check, MessageSquare
+  Target, Tag, ArrowLeft, ArrowRight, Building2, MousePointer2, Check, MessageSquare,
+  Star, PhoneOff, XCircle, CheckCircle2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -1133,12 +1134,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                   
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {[
-                      { value: 'interested', label: 'Interested', icon: '⭐', color: 'hover:border-amber-400 hover:bg-amber-50 shadow-amber-100' },
-                      { value: 'call_later', label: 'Call Back Later', icon: '⏰', color: 'hover:border-blue-400 hover:bg-blue-50 shadow-blue-100' },
-                      { value: 'no_answer', label: 'No Answer', icon: '🔇', color: 'hover:border-gray-400 hover:bg-gray-50 shadow-gray-100' },
-                      { value: 'not_interested', label: 'Not Interested', icon: '❌', color: 'hover:border-red-400 hover:bg-red-50 shadow-red-100' },
-                      { value: 'appointment_booked', label: 'Appointment Booked', icon: '✅', color: 'hover:border-emerald-400 hover:bg-emerald-50 shadow-emerald-100' },
-                      { value: 'wrong_number', label: 'Wrong Number', icon: '⚠️', color: 'hover:border-yellow-400 hover:bg-yellow-50 shadow-yellow-100' }
+                      { value: 'interested', label: 'Interested', icon: <Star className="w-8 h-8 fill-amber-400 text-amber-400" />, color: 'hover:border-amber-400 hover:bg-amber-50 shadow-amber-100' },
+                      { value: 'call_later', label: 'Call Back Later', icon: <Clock className="w-8 h-8 text-blue-500" />, color: 'hover:border-blue-400 hover:bg-blue-50 shadow-blue-100' },
+                      { value: 'no_answer', label: 'No Answer', icon: <PhoneOff className="w-8 h-8 text-slate-400" />, color: 'hover:border-gray-400 hover:bg-gray-50 shadow-gray-100' },
+                      { value: 'not_interested', label: 'Not Interested', icon: <XCircle className="w-8 h-8 text-red-500" />, color: 'hover:border-red-400 hover:bg-red-50 shadow-red-100' },
+                      { value: 'appointment_booked', label: 'Appointment Booked', icon: <CheckCircle2 className="w-8 h-8 text-emerald-500" />, color: 'hover:border-emerald-400 hover:bg-emerald-50 shadow-emerald-100' },
+                      { value: 'wrong_number', label: 'Wrong Number', icon: <AlertTriangle className="w-8 h-8 text-yellow-500" />, color: 'hover:border-yellow-400 hover:bg-yellow-50 shadow-yellow-100' }
                     ].map((opt) => (
                       <div 
                         key={opt.value}
@@ -1152,7 +1153,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                         }}
                         className={`group relative p-6 rounded-[2rem] border-2 transition-all cursor-pointer text-center bg-white hover:scale-[1.02] hover:shadow-2xl flex flex-col items-center justify-center gap-3 ${interactionOutcome === opt.value ? 'border-indigo-600 bg-indigo-50 shadow-indigo-100' : 'border-slate-100 ' + opt.color}`}
                       >
-                        <span className="text-4xl filter grayscale group-hover:grayscale-0 transition-all transform group-hover:scale-110">{opt.icon}</span>
+                        <div className="filter grayscale group-hover:grayscale-0 transition-all transform group-hover:scale-110">{opt.icon}</div>
                         <span className="text-xs font-black uppercase tracking-widest text-slate-800">{opt.label}</span>
                         <div className="absolute top-4 right-4 w-6 h-6 rounded-full border-2 border-slate-100 group-hover:border-slate-900 transition-colors flex items-center justify-center">
                           <Check className={`w-3 h-3 ${interactionOutcome === opt.value ? 'text-indigo-600' : 'opacity-0'}`} strokeWidth={4} />

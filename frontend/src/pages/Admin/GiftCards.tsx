@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Gift, Search, Plus } from 'lucide-react';
+import { Gift, Search, Plus, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchGiftCardsSummary, fetchGiftCards, generateGiftCard, redeemGiftCardThunk } from '@/store/slices/adminSlice';
 import type { AppDispatch, RootState } from '@/store';
@@ -200,7 +200,7 @@ export const GiftCards: React.FC = () => {
                     <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xl font-bold text-gray-900">Generate Gift Card</h3>
-                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">&times;</button>
+                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
                         </div>
 
                         <div className="mb-4">
@@ -251,7 +251,7 @@ export const GiftCards: React.FC = () => {
                     <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xl font-bold text-gray-900">Redeem Gift Card</h3>
-                            <button onClick={() => setShowRedeemModal(false)} className="text-gray-400 hover:text-gray-600">&times;</button>
+                            <button onClick={() => setShowRedeemModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
                         </div>
 
                         <div className="mb-4">

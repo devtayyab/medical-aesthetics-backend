@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms/Button/Button";
 import {
@@ -387,7 +388,7 @@ export const AppointmentBooking: React.FC = () => {
                 <p className="text-xs font-bold text-gray-500 mt-1">{format(selectedDateState, "EEEE, MMMM d")}</p>
               </div>
               <button onClick={() => setShowMobileTimes(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 hover:bg-gray-200">
-                âœ•
+                <X className="w-4 h-4" />
               </button>
             </div>
 

@@ -467,10 +467,10 @@ export const TherapyCatalog: React.FC = () => {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Icon/Emoji</label>
+                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Category Icon</label>
                                 <input
                                     className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#CBFF38] font-bold text-center text-2xl"
-                                    placeholder="✨"
+                                    placeholder="Icon identifier..."
                                     value={categoryForm.icon}
                                     onChange={e => setCategoryForm({ ...categoryForm, icon: e.target.value })}
                                 />
