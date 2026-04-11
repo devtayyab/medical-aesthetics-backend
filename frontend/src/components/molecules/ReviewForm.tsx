@@ -1,4 +1,5 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
+import { Star } from "lucide-react";
 import { Input } from "@/components/atoms/Input/Input";
 import { Button } from "@/components/atoms/Button/Button";
 
@@ -31,9 +32,11 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({ onSubmit }) => {
               key={star}
               type="button"
               onClick={() => setRating(star)}
-              className={`text-2xl ${star <= rating ? "text-yellow-400" : "text-gray-300"}`}
+              className="transition-all hover:scale-110 active:scale-95 px-0.5"
             >
-              â˜…
+              <Star 
+                className={`w-7 h-7 transition-colors ${star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} 
+              />
             </button>
           ))}
         </div>

@@ -1,5 +1,6 @@
-﻿import React from "react";
+import React from "react";
 import { css } from "@emotion/css";
+import { Eye, EyeOff } from "lucide-react";
 
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -169,7 +170,7 @@ export const Input: React.FC<InputProps> = ({
             onClick={() => setShowPassword((s) => !s)}
             className={passwordToggleButtonStyle}
           >
-            {showPassword ? "ðŸ™ˆ" : "ðŸ‘"}
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         )}
       </div>

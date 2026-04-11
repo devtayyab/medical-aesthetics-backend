@@ -4,6 +4,7 @@ import { notificationsAPI } from "./api";
 import { toast } from "react-hot-toast";
 import type { AppDispatch } from "@/store";
 import { openDialer } from "@/store/slices/dialerSlice";
+import { Phone, Bell } from "lucide-react";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "your-api-key",
@@ -85,7 +86,7 @@ export const initializeFirebase = async (
         </div>
       ), {
         duration: isCallAction ? 10000 : 4000,
-        icon: isCallAction ? '📞' : '🔔'
+        icon: isCallAction ? <Phone className="h-4 w-4 text-blue-500" /> : <Bell className="h-4 w-4 text-indigo-500" />
       });
 
       const notification = {

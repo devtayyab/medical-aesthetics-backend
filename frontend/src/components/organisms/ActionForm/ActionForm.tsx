@@ -684,9 +684,12 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                 <AlertCircle className="h-4 w-4" />
                 <span className="font-medium">Missing Required Fields:</span>
               </div>
-              <ul className="mt-2 text-sm text-red-700">
+              <ul className="mt-2 text-sm text-red-700 space-y-1">
                 {validationErrors.map((error, index) => (
-                  <li key={index}>• {error.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</li>
+                  <li key={index} className="flex items-center gap-2 italic">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    {error.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -698,9 +701,12 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                 <Clock className="h-4 w-4" />
                 <span className="font-medium">Suggestions:</span>
               </div>
-              <ul className="mt-2 text-sm text-yellow-700">
+              <ul className="mt-2 text-sm text-yellow-700 space-y-1">
                 {validationWarnings.map((warning, index) => (
-                  <li key={index}>• {warning}</li>
+                  <li key={index} className="flex items-center gap-2 italic">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    {warning}
+                  </li>
                 ))}
               </ul>
             </div>

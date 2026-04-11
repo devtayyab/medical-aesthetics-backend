@@ -1,4 +1,5 @@
-﻿import React from "react";
+import React from "react";
+import { Star } from "lucide-react";
 
 type ReviewCardProps =
 {
@@ -30,16 +31,12 @@ const ClinicReviewCard: React.FC<ReviewCardProps> = ({
         </span>
         </div>
       {/* Stars */}
-      <div className="flex mb-2">
+      <div className="flex mb-2 gap-0.5">
         {Array.from({ length: 5 }).map((_, i) => (
-          <span
+          <Star 
             key={i}
-            className={`text-yellow-400 ${
-              i < rating ? "opacity-100" : "opacity-30"
-            }`}
-          >
-            â˜…
-          </span>
+            className={`w-4 h-4 ${i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} 
+          />
         ))}
       </div>
 

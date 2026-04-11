@@ -83,7 +83,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
                 <span className="truncate">{clinic.address?.city}</span>
                 {clinic.distance !== undefined && (
                     <>
-                    <span className="mx-1">•</span>
+                    <span className="mx-1 text-gray-300">·</span>
                     <span className="shrink-0 text-lime-600">{Number(clinic.distance).toFixed(1)}km away</span>
                     </>
                 )}
