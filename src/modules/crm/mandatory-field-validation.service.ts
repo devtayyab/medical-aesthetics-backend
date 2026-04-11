@@ -37,9 +37,7 @@ export class MandatoryFieldValidationService {
     // For call communications, these fields are mandatory
     if (communicationData.type === 'call') {
       const data = communicationData.metadata || {};
-      if (!data.clinic) {
-        missingFields.push('clinic');
-      }
+      // Clinic is now optional (relaxed per user request)
 
       if (!data.callOutcome) {
         missingFields.push('callOutcome');
@@ -106,9 +104,7 @@ export class MandatoryFieldValidationService {
     }
 
     const clinic = actionData.metadata?.clinic || (actionData as any).clinic;
-    if (!clinic) {
-      missingFields.push('clinic');
-    }
+    // Clinic is now optional (relaxed per user request)
 
     return {
       isValid: missingFields.length === 0,
@@ -153,7 +149,7 @@ export class MandatoryFieldValidationService {
       (action) =>
         action.status === 'pending' &&
         action.actionType === 'follow_up' &&
-        (!action.metadata?.clinic || !action.metadata?.proposedTreatment),
+        (!action.metadata?.proposedTreatment),
     );
 
     if (pendingActions.length > 0) {
@@ -206,7 +202,7 @@ export class MandatoryFieldValidationService {
 
   getRequiredFieldsForCall(): RequiredFields {
     return {
-      clinic: true,
+      clinic: false,
       proposedTreatment: true,
       cost: true,
       callOutcome: true,
@@ -218,7 +214,7 @@ export class MandatoryFieldValidationService {
     // Current user requirements: Salesperson, Clinic, and Service (Therapy) are always required for actions.
     return {
       salespersonId: true,
-      clinic: true,
+      clinic: false,
       therapy: true,
       title: false,
       dueDate: false,

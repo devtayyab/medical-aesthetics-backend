@@ -349,18 +349,14 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
 
   const handleSaveInteraction = async () => {
-    if (!interactionTask || !interactionOutcome || !interactionNotes.trim() || !interactionClinic) {
-      toast.error("Outcome, Clinic, and Notes are mandatory.");
-      return;
-    }
+    // No mandatory fields anymore, but we need an outcome to know what to log.
+    // We'll use "none" as a fallback.
+    const effectiveOutcome = interactionOutcome || 'none';
+    const effectiveNotes = interactionNotes.trim() || 'Interaction logged';
 
-    // If outcome is NOT "not_interested", follow-up fields are mandatory
-    if (interactionOutcome !== 'not_interested') {
-      if (!followUpData.title || !followUpData.dueDate || !followUpData.reminderDate || !followUpData.therapy) {
-        toast.error("Please complete all Mandatory Follow-up fields.");
-        return;
-      }
-    }
+    // Follow-up logic
+    const hasFollowUpInfo = followUpData.title || followUpData.dueDate || followUpData.therapy;
+    const isFollowUpComplete = followUpData.title && followUpData.dueDate && followUpData.therapy;
 
     // Compile final notes based on outcome sub-data
     let finalNotes = interactionNotes;
@@ -380,38 +376,48 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                (interactionTask?.actionType === 'email' ? 'email' : 'call')) as any,
         direction: 'outgoing',
         status: 'completed',
-        subject: `[${interactionOutcome.toUpperCase()}] Follow Up: ${interactionTask?.title || 'Interaction'}`,
+        subject: `[${effectiveOutcome.toUpperCase()}] Follow Up: ${interactionTask?.title || 'Interaction'}`,
         notes: finalNotes,
         createdAt: new Date().toISOString(),
-        durationSeconds: 0, // Injected if dialer used
+        durationSeconds: 0, 
         metadata: { 
-          callOutcome: interactionOutcome,
+          callOutcome: effectiveOutcome,
           originalTaskId: interactionTask?.id,
-          clinic: interactionClinic,
+          clinic: interactionClinic || interactionTask?.clinic || interactionTask?.metadata?.clinic || undefined,
           tags: selectedTags
         }
       })).unwrap();
 
-      // 2. Create follow-up task if needed
-      if (interactionOutcome !== 'not_interested') {
+      // 2. Create follow-up task
+      const shouldCreateTask = (effectiveOutcome === 'not_interested') || (followUpData.title && followUpData.dueDate && followUpData.therapy);
+      
+      if (shouldCreateTask && effectiveOutcome !== 'wrong_number') {
+        const safeISO = (d: string) => {
+          if (!d) return undefined;
+          const date = new Date(d);
+          return isNaN(date.getTime()) ? undefined : date.toISOString();
+        };
+        const defaultDateStr = new Date(Date.now() + 86400000 * 7).toISOString();
+        
         await dispatch(createAction({
           customerId: interactionTask?.customerId || undefined,
           relatedLeadId: interactionTask?.relatedLeadId || undefined,
           salespersonId: currentUserId || undefined,
-          title: followUpData.title,
-          description: `Follow-up from previous call (${interactionTask?.title}). Notes: ${interactionNotes.slice(0, 50)}...`,
+          title: followUpData.title || `Follow-up: ${effectiveOutcome.replace('_', ' ')}`,
+          description: `Interaction Notes: ${effectiveNotes.slice(0, 100)}`,
           actionType: 'follow_up_call',
-          therapy: followUpData.therapy,
+          therapy: followUpData.therapy || interactionTask?.therapy || 'General',
           status: 'pending',
-          priority: followUpData.priority as any,
-          dueDate: new Date(followUpData.dueDate).toISOString(),
-          reminderDate: new Date(followUpData.reminderDate).toISOString(),
+          priority: followUpData.priority || 'medium',
+          dueDate: safeISO(followUpData.dueDate) || defaultDateStr,
+          reminderDate: safeISO(followUpData.reminderDate) || safeISO(followUpData.dueDate) || defaultDateStr,
           metadata: {
-             sourceTaskId: interactionTask?.id
+             sourceTaskId: interactionTask?.id,
+             outcome: effectiveOutcome
           },
-          clinic: interactionClinic
+          clinic: interactionClinic || interactionTask?.clinic || interactionTask?.metadata?.clinic || undefined
         } as any)).unwrap();
-        toast.success("Follow-up task scheduled!");
+        toast.success(effectiveOutcome === 'not_interested' ? "Re-engagement task created." : "Follow-up task scheduled!");
       }
 
       // 3. Complete the current task
@@ -420,7 +426,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
           id: interactionTask.id,
           updates: { 
             status: 'completed',
-            metadata: { ...interactionTask.metadata, callOutcome: interactionOutcome }
+            metadata: { ...(interactionTask.metadata || {}), callOutcome: effectiveOutcome }
           }
         })).unwrap();
       }
@@ -1145,7 +1151,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                         key={opt.value}
                         onClick={() => {
                           setInteractionOutcome(opt.value);
-                          if (opt.value === 'appointment_booked') {
+                          if (opt.value === 'appointment_booked' || opt.value === 'interested') {
                             setShowBookingModal(true);
                           } else {
                             setWorkflowStep(3);
@@ -1252,8 +1258,74 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                     </Button>
                   </div>
 
+                  {/* Quick Summary Bar */}
+                  <div className="flex flex-wrap items-center gap-3 mb-6 p-6 bg-slate-900 rounded-[2.5rem] shadow-2xl border border-white/5">
+                      <div className="flex items-center gap-3 px-5 py-3 bg-white/10 rounded-2xl border border-white/5">
+                         <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></div>
+                         <div className="flex flex-col">
+                            <span className="text-[7px] font-black text-white/40 uppercase tracking-[0.2em] leading-tight">Outcome</span>
+                            <span className="text-[11px] font-black text-white uppercase tracking-wider">{interactionOutcome?.replace('_', ' ') || 'NONE SELECTED'}</span>
+                         </div>
+                      </div>
+                      
+                      <div className="flex-1 min-w-[200px] flex items-center gap-3 px-5 py-3 bg-white/10 rounded-2xl border border-white/5">
+                         <Tag className="w-3 h-3 text-[#CBFF38]" />
+                         <div className="flex flex-col w-full">
+                            <span className="text-[7px] font-black text-white/40 uppercase tracking-[0.2em] leading-tight">Interaction Tags</span>
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar py-0.5">
+                               {selectedTags.length > 0 ? selectedTags.map(t => (
+                                 <span key={t} className="text-[9px] font-black text-[#CBFF38] uppercase tracking-tighter whitespace-nowrap bg-[#CBFF38]/10 px-2 py-0.5 rounded-md border border-[#CBFF38]/20">#{t}</span>
+                               )) : <span className="text-[9px] font-black text-white/20 uppercase tracking-tighter">NO TAGS APPLIED</span>}
+                            </div>
+                         </div>
+                      </div>
+
+                      {(interactionOutcome === 'interested' || interactionOutcome === 'appointment_booked') && (
+                        <Button 
+                          onClick={() => setShowBookingModal(true)}
+                          className="px-6 py-3 bg-[#CBFF38] hover:bg-[#A3D900] text-slate-900 font-extrabold text-[10px] uppercase tracking-widest rounded-2xl flex items-center gap-2 shadow-lg shadow-[#CBFF38]/20 transition-all hover:scale-105 active:scale-95"
+                        >
+                          <Calendar className="w-3.5 h-3.5" /> Book Now
+                        </Button>
+                      )}
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-6">
+                       {/* Customer Detail Card */}
+                       <div className="bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700"></div>
+                          <div className="relative z-10 space-y-6">
+                             <div className="flex items-start justify-between">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Target Profile</p>
+                                    <h4 className="text-2xl font-black text-white tracking-tight">
+                                      {interactionTask?.customer?.firstName} {interactionTask?.customer?.lastName || interactionTask?.title}
+                                    </h4>
+                                </div>
+                                <div className="px-3 py-1 bg-[#CBFF38]/20 rounded-full border border-[#CBFF38]/30">
+                                   <span className="text-[9px] font-black text-[#CBFF38] uppercase tracking-widest">{interactionTask?.actionType || 'call'}</span>
+                                </div>
+                             </div>
+
+                             <div className="grid grid-cols-2 gap-4 pt-2">
+                                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                   <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Phone Line</p>
+                                   <p className="text-xs font-bold text-white tracking-tight">{interactionTask?.customer?.phone || interactionTask?.metadata?.phone || 'N/A'}</p>
+                                </div>
+                                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                   <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Source Path</p>
+                                   <p className="text-xs font-bold text-white tracking-tight capitalize">{interactionTask?.customer?.source || 'Manual CRM'}</p>
+                                </div>
+                             </div>
+
+                             <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
+                                <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest mb-1">Notes Archive</p>
+                                <p className="text-[11px] font-medium text-indigo-50 line-clamp-2 italic opacity-80">"{interactionTask?.description || 'No initial strategy provided'}"</p>
+                             </div>
+                          </div>
+                       </div>
+
                        <div className="p-1 bg-slate-50 rounded-[3rem] border border-slate-100 shadow-inner">
                          <div className="p-8 space-y-4">
                            <div className="flex items-center justify-between">
@@ -1319,9 +1391,22 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                           </div>
                        )}
 
+                       <div className="bg-slate-50/50 rounded-[2.5rem] p-8 space-y-4 border border-slate-100 shadow-sm">
+                          <div className="flex items-center justify-between px-1">
+                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assign to Clinic</label>
+                             <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter italic">Optional Field</span>
+                          </div>
+                          <Select 
+                            value={interactionClinic} 
+                            onChange={(val) => setInteractionClinic(val)}
+                            options={(clinics || []).map(c => ({ value: c.id, label: c.name }))}
+                            placeholder="All Clinics (Select if specific)"
+                            className="h-14 text-sm font-black rounded-[1.5rem] border-slate-200 bg-white"
+                          />
+                       </div>
+
                        <Button
                         onClick={handleSaveInteraction}
-                        disabled={!interactionNotes.trim() || (interactionOutcome !== 'not_interested' && interactionOutcome !== 'wrong_number' && (!followUpData.title || !followUpData.dueDate || !followUpData.therapy))}
                         className="w-full h-16 bg-[#CBFF38] hover:bg-[#A3D900] text-slate-900 font-black text-xs uppercase tracking-[0.25em] rounded-[2rem] shadow-2xl shadow-[#CBFF38]/30 transition-all flex items-center justify-center gap-3 disabled:grayscale disabled:opacity-50"
                       >
                         <CheckCircle className="w-5 h-5" /> SAVE COMPLETE RECORD
