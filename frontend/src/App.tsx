@@ -168,7 +168,7 @@ function AppContent() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (isAuthenticated && window.isSecureContext) {
+    if (isAuthenticated) {
       initializeFirebase(dispatch);
     }
   }, [isAuthenticated, dispatch]);
