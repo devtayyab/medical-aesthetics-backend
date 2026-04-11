@@ -20,12 +20,32 @@ export const initializeFirebase = async (
   dispatch: AppDispatch
 ) => {
   try {
-    // Dynamic import to prevent premature SDK initialization
+    // 1. Strict Environment Pre-checks
+    // FCM requires: Browser environment, HTTPS (isSecureContext), ServiceWorker support, and Notification support.
+    
+    if (typeof window === 'undefined') return;
+
+    if (!window.isSecureContext) {
+      console.warn("FCM: Secure context (HTTPS) is required but not detected. Skipping initialization.");
+      return;
+    }
+
+    if (!('serviceWorker' in navigator)) {
+      console.warn("FCM: Service Workers are not supported in this browser. Skipping initialization.");
+      return;
+    }
+
+    if (!('Notification' in window)) {
+      console.warn("FCM: Notifications are not supported in this browser. Skipping initialization.");
+      return;
+    }
+
+    // 2. Dynamic import to prevent SDK bootstrap if basic APIs are missing
     const { getMessaging, getToken, onMessage, isSupported } = await import("firebase/messaging");
     
-    const supported = await isSupported();
+    const supported = await isSupported().catch(() => false);
     if (!supported) {
-      console.warn("FCM is not supported in this environment (likely non-HTTPS or incompatible browser).");
+      console.warn("FCM: isSupported() returned false. Browser might be unsupported.");
       return;
     }
 
