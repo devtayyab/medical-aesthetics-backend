@@ -20,9 +20,8 @@ import { Login } from "@/pages/Login/Login";
 import { Register } from "@/pages/Register/Register";
 import { ProtectedLayout } from "@/components/organisms/ProtectedLayout";
 import { Search } from "@/pages/Client/Search";
+import { ClinicDetails } from "@/pages/Client/ClinicDetails";
 import { TreatmentDetails } from "@/pages/Client/TreatmentDetails";
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword/ForgotPassword'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword/ResetPassword'));
 import { AppointmentBooking } from "@/pages/Client/AppointmentBooking";
 import { Appointments } from "@/pages/Client/Appointments";
 import { History } from "@/pages/Client/History";
@@ -112,6 +111,9 @@ import { MessagesPage } from "@/pages/Messages/MessagesPage";
 import { SalesWeekCalendar } from "./pages/CRM/SalesWeekCalendar";
 import { initializeFirebase } from "@/services/firebase";
 import { GlobalDialer } from "./components/crm/GlobalDialer";
+
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword/ResetPassword'));
 
 const AuthHeader: React.FC = () => (
   <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
@@ -207,9 +209,15 @@ function AppContent() {
     );
   }
 
+  const isAuthPage =
+    location.pathname === "/login" ||
+    location.pathname === "/register" ||
+    location.pathname === "/forgot-password" ||
+    location.pathname === "/reset-password";
+
   return (
     <div className="App">
-      {location.pathname === "/login" || location.pathname === "/register" ? (
+      {isAuthPage ? (
         <AuthHeader />
       ) : (
         <Header />
@@ -1034,7 +1042,7 @@ function AppContent() {
           />
         </Routes>
       </main>
-      {location.pathname !== "/login" && location.pathname !== "/register" && (
+      {!isAuthPage && (
         <Footer />
       )}
     </div>

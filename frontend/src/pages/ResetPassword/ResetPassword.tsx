@@ -75,7 +75,7 @@ const errorStyle = css`
   text-align: center;
 `;
 
-export const ResetPassword: React.FC = () => {
+const ResetPassword: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

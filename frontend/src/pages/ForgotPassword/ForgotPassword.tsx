@@ -126,7 +126,7 @@ const successStyle = css`
   text-align: center;
 `;
 
-export const ForgotPassword: React.FC = () => {
+const ForgotPassword: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
