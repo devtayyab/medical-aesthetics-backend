@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { login, forgotPassword, resetPassword } from "@/store/slices/authSlice";
@@ -242,14 +242,13 @@ export const Login: React.FC = () => {
             <div>
               <div className="flex justify-between">
                 <label htmlFor="password">Password</label>
-                <Button
-                  className={`${linkStyle} !bg-transparent !border-none !shadow-none hover:!bg-transparent hover:!shadow-none hover:text-cornflowerblue`}
-                  onClick={handleForgotPassword}
-                  style={{ color: "cornflowerblue" }}
-                  type="button"
+                <Link
+                  to="/forgot-password"
+                  className={linkStyle}
+                  style={{ color: "cornflowerblue", fontSize: "14px" }}
                 >
                   Forgot?
-                </Button>
+                </Link>
               </div>
               <Input
                 type="password"

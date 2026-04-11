@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -20,8 +20,9 @@ import { Login } from "@/pages/Login/Login";
 import { Register } from "@/pages/Register/Register";
 import { ProtectedLayout } from "@/components/organisms/ProtectedLayout";
 import { Search } from "@/pages/Client/Search";
-import { ClinicDetails } from "@/pages/Client/ClinicDetails";
 import { TreatmentDetails } from "@/pages/Client/TreatmentDetails";
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword/ResetPassword'));
 import { AppointmentBooking } from "@/pages/Client/AppointmentBooking";
 import { Appointments } from "@/pages/Client/Appointments";
 import { History } from "@/pages/Client/History";
@@ -223,6 +224,30 @@ function AppContent() {
             element={
               !isAuthenticated ? (
                 <Login />
+              ) : (
+                <Navigate to={getRoleHomePath(user?.role)} replace />
+              )
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              !isAuthenticated ? (
+                <Suspense fallback={<div>Loading...</div>}>
+                  <ForgotPassword />
+                </Suspense>
+              ) : (
+                <Navigate to={getRoleHomePath(user?.role)} replace />
+              )
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              !isAuthenticated ? (
+                <Suspense fallback={<div>Loading...</div>}>
+                  <ResetPassword />
+                </Suspense>
               ) : (
                 <Navigate to={getRoleHomePath(user?.role)} replace />
               )
