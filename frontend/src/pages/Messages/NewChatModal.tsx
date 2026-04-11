@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { X, Search, ArrowRight, Check, Users } from 'lucide-react';
-import { userAPI, crmAPI } from '../../services/api';
+import { userAPI } from '../../services/api';
 import { createConversation } from '../../store/slices/messagesSlice';
 import type { AppDispatch } from '../../store';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,37 +32,11 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
     const searchUsers = async () => {
         setIsLoading(true);
         try {
-            const [usersRes, leadsRes] = await Promise.all([
-                userAPI.getAllUsers({ search: searchTerm, limit: 20 }),
-                crmAPI.getLeads({ search: searchTerm })
-            ]);
-
-            const users = Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.users || [];
-            const leads = Array.isArray(leadsRes.data) ? leadsRes.data : leadsRes.data.leads || [];
-
-            const userResults = users.map((u: any) => ({
-                ...u,
-                id: u.id,
-                firstName: u.firstName,
-                lastName: u.lastName,
-                email: u.email,
-                role: u.role,
-                type: 'User'
-            }));
-
-            const leadResults = leads.map((l: any) => ({
-                ...l,
-                id: l.id, // Note: Leads might not have a userId for messaging
-                firstName: l.firstName,
-                lastName: l.lastName,
-                email: l.email,
-                role: 'Lead',
-                type: 'Lead'
-            }));
-
-            setResults([...userResults, ...leadResults]);
+            const response = await userAPI.getAllUsers({ search: searchTerm, limit: 50 });
+            const users = Array.isArray(response.data) ? response.data : response.data.users || [];
+            setResults(users);
         } catch (error) {
-            console.error('Failed to search registry:', error);
+            console.error('Failed to search users:', error);
         } finally {
             setIsLoading(false);
         }
@@ -211,9 +185,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
                                                     {user.firstName} {user.lastName}
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                   <span className={`text-[9px] font-black uppercase tracking-widest italic px-2 py-0.5 rounded transition-colors ${isSelected ? 'text-black bg-black/10' : 'text-[#CBFF38] bg-[#CBFF38]/10 group-hover:bg-[#CBFF38]/20 group-hover:text-[#CBFF38]'}`}>
-                                                      {user.type} • {user.role?.replace('_', ' ')}
-                                                   </span>
+                                                   <span className={`text-[9px] font-black uppercase tracking-widest italic bg-black/5 px-2 py-0.5 rounded transition-colors ${isSelected ? 'text-black bg-black/10' : 'text-[#CBFF38] group-hover:bg-[#CBFF38]/20 group-hover:text-[#CBFF38]'}`}>{user.role?.replace('_', ' ')}</span>
                                                    <span className={`text-[10px] font-bold truncate transition-colors ${isSelected ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'}`}>{user.email}</span>
                                                 </div>
                                             </div>
