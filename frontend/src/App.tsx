@@ -110,7 +110,6 @@ import { Toaster } from "react-hot-toast";
 import { MessagesPage } from "@/pages/Messages/MessagesPage";
 import { SalesWeekCalendar } from "./pages/CRM/SalesWeekCalendar";
 import { initializeFirebase } from "@/services/firebase";
-import { fetchNotifications } from "@/store/slices/notificationsSlice";
 import { GlobalDialer } from "./components/crm/GlobalDialer";
 
 const AuthHeader: React.FC = () => (
@@ -170,21 +169,7 @@ function AppContent() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      if (window.isSecureContext) {
-        initializeFirebase(dispatch);
-      } else {
-        // Fallback for HTTP: Poll for notifications every 30 seconds
-        console.log("FCM: HTTP detected. Starting periodic polling fallback for notifications.");
-        
-        // Initial fetch
-        dispatch(fetchNotifications(20));
-
-        const interval = setInterval(() => {
-          dispatch(fetchNotifications(20));
-        }, 30000); // 30 seconds
-        
-        return () => clearInterval(interval);
-      }
+      initializeFirebase(dispatch);
     }
   }, [isAuthenticated, dispatch]);
 

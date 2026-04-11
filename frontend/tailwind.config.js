@@ -7,6 +7,17 @@ export default {
 			screens: {
 				xs: "480px",
 			},
+			fontFamily: {
+				sans: ["Manrope", "sans-serif"],
+			},
+			fontWeight: {
+				normal: "400",
+				medium: "500",
+				semibold: "600",
+				bold: "700",
+				extrabold: "800",
+				black: "800",
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
