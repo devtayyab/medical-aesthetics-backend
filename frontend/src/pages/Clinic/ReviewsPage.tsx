@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
 import { fetchReviews, fetchReviewStatistics } from '../../store/slices/clinicSlice';
@@ -57,55 +57,53 @@ const ReviewsPage: React.FC = () => {
     );
   };
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Premium Header */}
-      <div className="bg-black text-white pt-16 pb-24 px-6 md:px-10 rounded-b-[48px] shadow-2xl relative overflow-hidden">
-        <div className="absolute top-[-20%] right-[-10%] size-[500px] bg-[#CBFF38]/10 blur-[120px] rounded-full" />
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
-                <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] italic">Public Feedback Analysis</span>
-              </div>
-              <div className="space-y-1">
-                <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">Trust Matrix</h1>
-                <p className="text-gray-400 font-medium max-w-md">Monitor and curate patient testimonials to maintain high operational clinical standards.</p>
-              </div>
+    return (
+        <div className="min-h-screen bg-[#F8FAFC]">
+            {/* Minimal Header */}
+            <div className="relative pt-8 pb-16 px-6 md:px-10 border-b border-gray-100 bg-white">
+                <div className="max-w-7xl mx-auto relative z-10">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                        <div className="space-y-3">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
+                                <div className="size-1.5 rounded-full bg-green-500" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 italic">Public Feedback Analysis</span>
+                            </div>
+                            <div className="space-y-1">
+                                <h1 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter leading-none text-gray-900">Trust Matrix</h1>
+                                <p className="text-gray-500 font-medium max-w-md text-sm">Monitor and curate patient signal protocols and clinical standards.</p>
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-4">
+                            <div className="px-5 py-2.5 bg-gray-50 border border-gray-100 rounded-xl flex items-center gap-3">
+                                <div className="size-2 bg-green-500 rounded-full" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 italic">Curation Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            
-            <div className="flex items-center gap-4">
-               <div className="px-6 py-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl flex items-center gap-3">
-                  <div className="size-2 bg-green-500 rounded-full" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38]">Live Curation Active</span>
-               </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-6 md:px-10 -mt-10 relative z-20 pb-20">
-        {/* Statistics Grid */}
-        {reviewStats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
-            <StatCard title="Total Verdicts" value={reviewStats.totalReviews.toString()} icon={<MessageSquare size={18} />} highlight />
-            <StatCard 
-               title="Aggregate Score" 
-               value={reviewStats.averageRating.toFixed(1)} 
-               icon={<Star size={18} />} 
-               subText="Global Average"
-            />
-            {([5, 4, 3]).map(rating => (
-              <StatCard 
-                 key={rating}
-                 title={`${rating} Star Signal`} 
-                 value={reviewStats.distribution[rating] || 0} 
-                 icon={<ArrowUpRight size={18} />} 
-              />
-            ))}
-          </div>
-        )}
+            <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
+                {/* Statistics Grid */}
+                {reviewStats && (
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8">
+                        <StatCard title="Total Verdicts" value={reviewStats.totalReviews.toString()} icon={<MessageSquare size={16} />} highlight />
+                        <StatCard 
+                            title="Global Score" 
+                            value={reviewStats.averageRating.toFixed(1)} 
+                            icon={<Star size={16} />} 
+                        />
+                        {([5, 4, 3]).map(rating => (
+                            <StatCard 
+                                key={rating}
+                                title={`${rating} Star Signal`} 
+                                value={reviewStats.distribution[rating] || 0} 
+                                icon={<ArrowUpRight size={14} />} 
+                            />
+                        ))}
+                    </div>
+                )}
 
         {/* Reviews Modules */}
         {isLoading ? (
@@ -120,26 +118,24 @@ const ReviewsPage: React.FC = () => {
             <p className="text-gray-400 font-medium max-w-sm mx-auto">No patients have submitted clinical feedback to the central database yet.</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {reviews.map((review) => (
-              <motion.div
-                key={review.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-[40px] p-8 md:p-10 shadow-xl border border-gray-100 relative group overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-gray-50/50 to-transparent pointer-events-none" />
-                
-                <div className="flex flex-col md:flex-row gap-8 relative z-10">
-                  <div className="shrink-0 flex flex-col items-center gap-4">
-                    <div className="size-16 rounded-[24px] bg-black text-[#CBFF38] flex items-center justify-center font-black text-2xl italic shadow-lg">
-                      {review.client.firstName[0]}
-                    </div>
-                    {!review.isVisible && (
-                       <div className="px-2 py-1 bg-red-100 text-red-600 rounded-md text-[8px] font-black uppercase tracking-widest">Hidden</div>
-                    )}
-                  </div>
+                        <div className="space-y-6">
+                            {reviews.map((review) => (
+                                <motion.div
+                                    key={review.id}
+                                    layout
+                                    initial={{ opacity: 0, y: 15 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm relative group overflow-hidden"
+                                >
+                                    <div className="flex flex-col md:flex-row gap-6 relative z-10">
+                                        <div className="shrink-0 flex flex-col items-center gap-3">
+                                            <div className="size-14 rounded-2xl bg-black text-[#CBFF38] flex items-center justify-center font-black text-xl italic shadow-md">
+                                                {review.client.firstName[0]}
+                                            </div>
+                                            {!review.isVisible && (
+                                                <div className="px-2 py-0.5 bg-red-50 text-red-500 rounded-md text-[7px] font-black uppercase tracking-widest">Hidden</div>
+                                            )}
+                                        </div>
 
                   <div className="flex-1">
                     <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-6">
@@ -243,22 +239,21 @@ const ReviewsPage: React.FC = () => {
   );
 };
 
-const StatCard = ({ title, value, icon, subText, highlight }: any) => (
-  <div className={`bg-white p-6 rounded-[32px] border transition-all duration-300 group relative overflow-hidden ${
-    highlight ? 'border-[#CBFF38] shadow-lg shadow-lime-500/10' : 'border-gray-100 hover:border-black'
-  }`}>
-    <div className="flex items-start justify-between mb-6">
-       <div className={`size-10 rounded-xl flex items-center justify-center transition-all bg-gray-50 group-hover:bg-black group-hover:text-[#CBFF38] ${highlight ? 'text-[#CBFF38] bg-black' : 'text-gray-400'}`}>
-          {icon}
-       </div>
-       {highlight && <div className="text-[8px] font-black text-[#CBFF38] bg-black px-2 py-0.5 rounded-full italic animate-pulse">LIVE</div>}
+const StatCard = ({ title, value, icon, highlight }: any) => (
+    <div className={`bg-white p-5 rounded-3xl border transition-all duration-300 group ${
+        highlight ? 'border-[#CBFF38] shadow-sm' : 'border-gray-50 hover:border-black'
+    }`}>
+        <div className="flex items-center justify-between mb-4">
+            <div className={`size-8 rounded-xl flex items-center justify-center transition-all bg-gray-50 group-hover:bg-black group-hover:text-[#CBFF38] ${highlight ? 'text-black bg-[#CBFF38]' : 'text-gray-400'}`}>
+                {icon}
+            </div>
+            {highlight && <div className="text-[7px] font-black text-gray-400 uppercase italic tracking-widest">Active Ops</div>}
+        </div>
+        <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors mb-0.5 whitespace-nowrap">{title}</p>
+            <h3 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 leading-none">{value}</h3>
+        </div>
     </div>
-    <div>
-       <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors mb-1">{title}</p>
-       <h3 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900 leading-none">{value}</h3>
-       {subText && <p className="text-[8px] font-black text-gray-300 uppercase mt-1 italic">{subText}</p>}
-    </div>
-  </div>
 );
 
 export default ReviewsPage;

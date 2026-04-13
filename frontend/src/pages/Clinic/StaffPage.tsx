@@ -97,48 +97,51 @@ const StaffPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#F8FAFC]">
-            {/* Premium Header Section */}
-            <div className="bg-black text-white pt-16 pb-24 px-6 md:px-10 rounded-b-[48px] shadow-2xl relative overflow-hidden">
-                <div className="absolute top-[-20%] right-[-10%] size-[500px] bg-[#CBFF38]/10 blur-[120px] rounded-full" />
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8 relative z-10">
-                    <div className="space-y-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
-                            <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] italic">Operational Force</span>
+            {/* Minimal Header */}
+            <div className="relative pt-8 pb-16 px-6 md:px-10 border-b border-gray-100 bg-white">
+                <div className="max-w-7xl mx-auto relative z-10">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                        <div className="space-y-3">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
+                                <div className="size-1.5 rounded-full bg-blue-500" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 italic">Operational Force</span>
+                            </div>
+                            <div className="space-y-1">
+                                <h1 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter leading-none text-gray-900">Personnel Registry</h1>
+                                <p className="text-gray-500 font-medium max-w-md text-sm">Manage your clinical elite. Coordinate specialists and support teams.</p>
+                            </div>
                         </div>
-                        <div className="space-y-1">
-                            <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">Personnel Registry</h1>
-                            <p className="text-gray-400 font-medium max-w-md">Manage your clinical elite. Coordinate doctors, specialists, and support teams.</p>
+                        
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => setShowAddModal(true)}
+                                className="h-12 px-6 bg-[#CBFF38] text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all shadow-lg shadow-lime-500/10 flex items-center gap-3"
+                            >
+                                <UserPlus size={16} />
+                                Enlist Specialist
+                            </button>
                         </div>
                     </div>
-                    
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="group h-14 px-8 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white transition-all shadow-xl shadow-lime-500/10 flex items-center gap-3"
-                    >
-                        <UserPlus className="group-hover:rotate-12 transition-transform duration-300" size={18} />
-                        Enlist New Specialist
-                    </button>
                 </div>
             </div>
 
             {/* Search & Stats Bar */}
-            <div className="max-w-7xl mx-auto px-6 md:px-10 -mt-10 relative z-20 space-y-8 pb-20">
-                <div className="bg-white p-4 rounded-[32px] shadow-xl border border-gray-100 flex flex-col md:flex-row gap-4">
+            <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 space-y-8 pb-20">
+                <div className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-3">
                     <div className="relative flex-1">
-                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
                         <input
                             type="text"
-                            placeholder="Identify personal by name, email or designation..."
-                            className="w-full pl-14 pr-6 h-14 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-black transition-all font-bold text-sm"
+                            placeholder="Identify personnel by name, email or designation..."
+                            className="w-full h-11 pl-12 pr-6 bg-gray-50 border-none rounded-xl focus:bg-white focus:ring-1 focus:ring-black transition-all font-bold text-xs placeholder:text-gray-300"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
                     <div className="flex gap-2">
-                        <div className="h-14 px-6 bg-gray-50 rounded-2xl flex items-center gap-3 border border-gray-100 italic">
-                            <Users size={18} className="text-gray-400" />
-                            <span className="text-sm font-black uppercase italic tracking-tighter">{filteredStaff.length} TOTAL</span>
+                        <div className="h-11 px-5 bg-gray-50 rounded-xl flex items-center gap-3 border border-gray-50 italic">
+                            <Users size={14} className="text-gray-400" />
+                            <span className="text-[10px] font-black uppercase italic tracking-tighter">{filteredStaff.length} TOTAL</span>
                         </div>
                     </div>
                 </div>
@@ -294,64 +297,62 @@ const StaffPage: React.FC = () => {
 
 const StaffCard = ({ member, onRemove, onViewSchedule }: any) => {
     return (
-        <div className="bg-white rounded-[40px] border border-gray-100 p-8 shadow-sm hover:border-black hover:shadow-2xl transition-all duration-500 group relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:border-black transition-all duration-300 group relative">
+            <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                     onClick={onRemove}
-                    className="size-10 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                    className="size-8 bg-white border border-gray-100 text-gray-400 rounded-lg flex items-center justify-center hover:bg-black hover:text-white transition-all shadow-sm"
                 >
-                    <Trash2 size={18} />
+                    <Trash2 size={14} />
                 </button>
             </div>
 
             <div className="flex flex-col h-full">
-                <div className="flex items-center gap-6 mb-8">
-                    <div className="size-20 rounded-[28px] bg-black flex items-center justify-center text-[#CBFF38] shadow-lg group-hover:rotate-6 transition-transform">
-                        <Users size={32} />
+                <div className="flex items-start gap-4 mb-6">
+                    <div className="size-14 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-[#CBFF38] transition-all duration-500">
+                        <Users size={22} strokeWidth={2.5} />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-black bg-[#CBFF38] text-black px-2 py-0.5 rounded-full italic tracking-widest uppercase">
+                    <div className="flex-1 min-w-0 pt-1">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-[8px] font-black bg-black text-[#CBFF38] px-2 py-0.5 rounded flex items-center gap-1 italic tracking-widest uppercase">
+                                <Shield size={8} />
                                 {member.role?.replace('_', ' ')}
                             </span>
                             {member.isActive && (
-                                <div className="size-2 bg-green-500 rounded-full animate-pulse" />
+                                <div className="size-1.5 bg-green-500 rounded-full" />
                             )}
                         </div>
-                        <h3 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900 leading-none">
+                        <h3 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 leading-none truncate">
                             {member.firstName} {member.lastName}
                         </h3>
                     </div>
                 </div>
 
-                <div className="space-y-4 flex-1">
-                    <div className="p-4 bg-gray-50 rounded-2xl flex items-center gap-4 group-hover:bg-black group-hover:text-white transition-colors">
-                        <Mail className="text-[#CBFF38]" size={16} />
-                        <span className="text-xs font-bold truncate italic">{member.email}</span>
+                <div className="space-y-2 mb-6">
+                    <div className="px-3 py-2 bg-gray-50/50 rounded-xl flex items-center gap-3 border border-gray-50/50">
+                        <Mail className="text-gray-400" size={12} />
+                        <span className="text-[10px] font-bold truncate italic text-gray-600">{member.email}</span>
                     </div>
                     {member.phone && (
-                        <div className="p-4 bg-gray-50 rounded-2xl flex items-center gap-4 group-hover:bg-black group-hover:text-white transition-colors">
-                            <Phone className="text-[#CBFF38]" size={16} />
-                            <span className="text-xs font-bold italic">{member.phone}</span>
+                        <div className="px-3 py-2 bg-gray-50/50 rounded-xl flex items-center gap-3 border border-gray-50/50">
+                            <Phone className="text-gray-400" size={12} />
+                            <span className="text-[10px] font-bold italic text-gray-600">{member.phone}</span>
                         </div>
                     )}
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-gray-50 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <Shield size={14} className="text-gray-400" />
-                        <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Security Clearance Level 4</span>
-                    </div>
+                <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
+                    <p className="text-[7px] font-black uppercase tracking-widest text-gray-300 italic">Clearance Active</p>
                     <button 
                         onClick={onViewSchedule}
-                        className="text-[10px] font-black uppercase tracking-widest text-black hover:text-[#CBFF38] transition-colors italic decoration-[#CBFF38] underline underline-offset-4"
+                        className="text-[9px] font-black uppercase tracking-widest text-black hover:opacity-50 transition-all italic border-b-2 border-transparent hover:border-[#CBFF38]"
                     >
-                        View Schedule
+                        Timeline
                     </button>
                 </div>
             </div>
         </div>
-  );
+    );
 };
 
 export default StaffPage;

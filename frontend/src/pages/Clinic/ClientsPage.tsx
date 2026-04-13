@@ -51,43 +51,42 @@ const ClientsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Premium Header */}
-      <div className="bg-black text-white pt-16 pb-24 px-6 md:px-10 rounded-b-[48px] shadow-2xl relative overflow-hidden">
-        <div className="absolute top-[-20%] right-[-10%] size-[500px] bg-[#CBFF38]/10 blur-[120px] rounded-full" />
+      {/* Refined Minimal Header */}
+      <div className="relative pt-8 pb-16 px-6 md:px-10 border-b border-gray-100 bg-white">
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
-                <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] italic">CRM Database</span>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
+                <div className="size-1.5 rounded-full bg-green-500" />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 italic">CRM Database</span>
               </div>
               <div className="space-y-1">
-                <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">Client Registry</h1>
-                <p className="text-gray-400 font-medium max-w-md">Comprehensive database of your medical aesthetic patients and their treatment history.</p>
+                <h1 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter leading-none text-gray-900">Client Registry</h1>
+                <p className="text-gray-500 font-medium max-w-md text-sm">Comprehensive patient therapeutic records and historical insights.</p>
               </div>
             </div>
             
             <div className="relative w-full md:w-96">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
               <input
                 type="text"
-                placeholder="Search by name or email..."
+                placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-6 h-14 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl text-white font-bold text-sm focus:ring-2 focus:ring-[#CBFF38] transition-all outline-none"
+                className="w-full pl-10 pr-4 h-11 bg-gray-50 border-none rounded-xl text-gray-900 font-semibold text-xs focus:ring-1 focus:ring-black transition-all outline-none"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 md:px-10 -mt-10 relative z-20 pb-20">
+      <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <StatCard title="Active Patients" value={clients.length.toString()} icon={<Users size={20} />} trend="+12%" highlight />
-          <StatCard title="Total Revenue" value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={20} />} trend="+5.4%" />
-          <StatCard title="Clinical Visits" value={totalAppointments.toString()} icon={<Calendar size={20} />} trend="+18%" />
-          <StatCard title="Avg Patient LTV" value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={20} />} trend="+2.1%" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          <StatCard title="Active Patients" value={clients.length.toString()} icon={<Users size={16} />} trend="+12%" highlight />
+          <StatCard title="Total Revenue" value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={16} />} trend="+5.4%" />
+          <StatCard title="Clinical Visits" value={totalAppointments.toString()} icon={<Calendar size={16} />} trend="+18%" />
+          <StatCard title="Avg Patient LTV" value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={16} />} trend="+2.1%" />
         </div>
 
         {/* Clients Table/Grid */}
@@ -103,63 +102,54 @@ const ClientsPage: React.FC = () => {
             <p className="text-gray-400 font-medium max-w-sm mx-auto">No patients match your current search parameters in the database.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-[40px] shadow-xl border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-50 bg-gray-50/50">
-                    <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Patient Ident</th>
-                    <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Contact Vector</th>
-                    <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Activity</th>
-                    <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Total Value</th>
-                    <th className="px-8 py-6 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Operational Log</th>
+                  <tr className="border-b border-gray-50 bg-gray-50/20">
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">Patient</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">Contact</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">Activity</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-gray-400">LTV</th>
+                    <th className="px-6 py-4 text-right text-[9px] font-black uppercase tracking-widest text-gray-400">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filteredClients.map((client) => (
-                    <tr key={client.id} className="group hover:bg-gray-50/80 transition-all cursor-pointer" onClick={() => handleViewDetails(client.id)}>
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-4">
-                          <div className="size-12 rounded-2xl bg-black text-[#CBFF38] flex items-center justify-center font-black italic shadow-lg group-hover:rotate-6 transition-transform">
+                    <tr key={client.id} className="group hover:bg-gray-50/50 transition-all cursor-pointer" onClick={() => handleViewDetails(client.id)}>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="size-9 rounded-xl bg-black text-[#CBFF38] flex items-center justify-center font-black italic shadow-sm group-hover:scale-105 transition-transform">
                             {client.firstName?.[0] || client.email?.[0] || "?"}
                           </div>
                           <div>
-                            <p className="font-black uppercase italic tracking-tighter text-gray-900 leading-none mb-1">
-                              {`${client.firstName} ${client.lastName}`.trim() || client.email || "ANONYMOUS PATIENT"}
+                            <p className="font-black uppercase italic tracking-tighter text-gray-900 leading-none text-xs mb-0.5">
+                              {`${client.firstName} ${client.lastName}`.trim() || client.email || "ANONYMOUS"}
                             </p>
-                            <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">ID: {client.id.slice(0, 8)}</p>
+                            <p className="text-[7px] font-black uppercase tracking-widest text-gray-300">#{client.id.slice(0, 8)}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-8 py-6">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-gray-600">
-                             <Mail size={12} className="text-[#CBFF38]" />
-                             <span className="text-xs font-bold italic">{client.email || "N/A"}</span>
+                      <td className="px-6 py-4">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5 text-gray-600">
+                             <Mail size={10} className="text-[#CBFF38]" />
+                             <span className="text-[10px] font-bold italic truncate max-w-[120px]">{client.email || "N/A"}</span>
                           </div>
-                          {client.phone && (
-                            <div className="flex items-center gap-2 text-gray-600">
-                               <Phone size={12} className="text-[#CBFF38]" />
-                               <span className="text-[10px] font-bold italic">{client.phone}</span>
-                            </div>
-                          )}
                         </div>
                       </td>
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-2">
-                           <Calendar size={12} className="text-gray-400" />
-                           <span className="text-xs font-black italic text-gray-900">{client.totalAppointments || 0} Visits</span>
-                        </div>
-                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                           Last: {client.lastAppointment ? new Date(client.lastAppointment).toLocaleDateString() : "Never"}
+                      <td className="px-6 py-4">
+                        <span className="text-[10px] font-black italic text-gray-900 leading-none">{client.totalAppointments || 0} Visits</span>
+                        <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest">
+                           Avg: €{client.totalAppointments > 0 ? ((Number(client.lifetimeValue) || 0) / client.totalAppointments).toFixed(0) : 0}
                         </p>
                       </td>
-                      <td className="px-8 py-6">
-                           <span className="text-xs font-black italic">€{(Number(client.lifetimeValue) || 0).toLocaleString()}</span>
+                      <td className="px-6 py-4">
+                           <span className="text-[11px] font-black italic text-gray-900">€{(Number(client.lifetimeValue) || 0).toLocaleString()}</span>
                       </td>
-                      <td className="px-8 py-6 text-right">
-                         <button className="size-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-black group-hover:text-[#CBFF38] transition-all group-hover:rotate-12">
-                            <ArrowUpRight size={18} />
+                      <td className="px-6 py-4 text-right">
+                         <button className="h-8 px-4 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-[#CBFF38] transition-all italic text-[9px] font-black uppercase tracking-widest">
+                            View Detail
                          </button>
                       </td>
                     </tr>
@@ -208,18 +198,18 @@ const ClientsPage: React.FC = () => {
 };
 
 const StatCard = ({ title, value, icon, trend, highlight }: any) => (
-  <div className={`bg-white p-6 rounded-[32px] border transition-all duration-300 group relative overflow-hidden ${
-    highlight ? 'border-[#CBFF38] shadow-lg shadow-lime-500/10' : 'border-gray-100 hover:border-black'
+  <div className={`bg-white p-5 rounded-2xl border transition-all duration-300 group relative overflow-hidden ${
+    highlight ? 'border-[#CBFF38] shadow-sm shadow-lime-500/5' : 'border-gray-100 hover:border-gray-200'
   }`}>
-    <div className="flex items-start justify-between mb-6">
-       <div className={`size-10 rounded-xl flex items-center justify-center transition-all bg-gray-50 group-hover:bg-black group-hover:text-[#CBFF38] ${highlight ? 'text-[#CBFF38] bg-black' : 'text-gray-400'}`}>
+    <div className="flex items-start justify-between mb-4">
+       <div className={`size-8 rounded-lg flex items-center justify-center transition-all bg-gray-50 group-hover:bg-black group-hover:text-[#CBFF38] ${highlight ? 'text-[#CBFF38] bg-black' : 'text-gray-400'}`}>
           {icon}
        </div>
-       <div className="text-[10px] font-black text-[#CBFF38] bg-black px-2 py-0.5 rounded-full italic">{trend}</div>
+       <div className="text-[8px] font-black text-[#CBFF38] bg-black px-2 py-0.5 rounded-full italic">{trend}</div>
     </div>
     <div>
-       <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors mb-1">{title}</p>
-       <h3 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900">{value}</h3>
+       <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors mb-0.5">{title}</p>
+       <h3 className="text-xl font-black uppercase italic tracking-tighter text-gray-900">{value}</h3>
     </div>
   </div>
 );

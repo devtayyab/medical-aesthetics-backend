@@ -130,6 +130,29 @@ const userMenuButtonStyle = css`
   }
 `;
 
+const navItemStyle = css`
+  color: #CBD5E0;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  background-color: #2D3748;
+  white-space: nowrap;
+  
+  &:hover {
+    background-color: #CBFF38;
+    color: black;
+  }
+`;
+
+const activeNavItemStyle = css`
+  background-color: #CBFF38;
+  color: black;
+`;
+
 const userMenuDropdownStyle = css`
   position: absolute;
   top: calc(100% + 12px);
@@ -321,7 +344,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="bg-[#000000] py-4 sm:py-6 sticky top-0 z-50 border-b border-white/5 backdrop-blur-md">
+      <header className="bg-[#000000] py-2 sm:py-3 sticky top-0 z-50 border-b border-white/5 backdrop-blur-md">
         <div className={containerStyle}>
           <div className="flex items-center gap-4">
             <button
@@ -342,8 +365,7 @@ export const Header: React.FC = () => {
               to={
                 clinicRoles.includes(user?.role || "") ? "/clinic/dashboard" : (user?.role === "SUPER_ADMIN" || user?.role === "manager") ? "/admin/manager-dashboard" : "/"
               }
-              className={`flex items-center ml-2 ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""
-                }`}
+              className={`flex items-center ml-2 no-underline ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""}`}
             >
               <img src={SiteLogo} alt="Site Logo" className="w-[220px] sm:w-[320px] drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] transition-all" />
             </Link>
@@ -392,34 +414,26 @@ export const Header: React.FC = () => {
               )}
 
               {user?.role !== 'salesperson' && (
-                <div className="hidden lg:flex items-center gap-6 mr-4">
-                  <a
-                    href="tel:6948880498"
-                    className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-2 hover:bg-[#CBFF38] transition-all group decoration-0"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <div className="size-8 bg-white/10 rounded-full flex items-center justify-center shadow-sm border border-white/10 group-hover:border-black/20 transition-colors">
-                      <Phone className="h-4 w-4 text-white group-hover:text-black" />
+                <div className="hidden xl:flex items-center gap-8 mr-8">
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
+                      <Phone className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5 group-hover:text-black/60">Call Us</span>
-                      <span className="text-sm font-bold text-white group-hover:text-black leading-none">6948880498</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Call Us</span>
+                      <span className="text-xs font-black text-white leading-none">6948880498 / 2112184564</span>
                     </div>
-                  </a>
+                  </div>
 
-                  <a
-                    href="mailto:info@beautydoctors.gr"
-                    className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-2 hover:bg-[#CBFF38] transition-all group decoration-0"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <div className="size-8 bg-white/10 rounded-full flex items-center justify-center shadow-sm border border-white/10 group-hover:border-black/20 transition-colors">
-                      <MessageCircle size={16} className="text-white group-hover:text-black" />
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
+                      <MessageCircle size={18} className="text-white" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-0.5 group-hover:text-black/60">Email</span>
-                      <span className="text-sm font-bold text-white group-hover:text-black leading-none">info@beautydoctors.gr</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Email</span>
+                      <span className="text-xs font-black text-white leading-none">info@beautydoctors.gr</span>
                     </div>
-                  </a>
+                  </div>
                 </div>
               )}
 
@@ -510,14 +524,18 @@ export const Header: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Button
-                      variant="ghost"
-                      className="text-white hover:text-black"
+                    <button
+                      className="text-white font-bold hover:text-[#CBFF38] transition-all uppercase text-[12px] tracking-wider whitespace-nowrap"
                       onClick={() => navigate("/login")}
                     >
                       Sign In
-                    </Button>
-                    <Button onClick={() => navigate("/register")}>Sign Up</Button>
+                    </button>
+                    <Link 
+                      to="/register" 
+                      className="bg-[#A3E635] text-black px-5 py-2 rounded-lg font-black uppercase text-[12px] tracking-wider hover:bg-white hover:scale-105 transition-all shadow-[0_10px_20px_-5px_rgba(163,230,53,0.3)] whitespace-nowrap"
+                    >
+                      Sign Up
+                    </Link>
                   </>
                 )}
               </nav>
@@ -533,63 +551,13 @@ export const Header: React.FC = () => {
         </div>
 
         {!isAuthenticated && (
-          <div className="hidden md:flex items-center gap-4 justify-center mt-5 relative z-10 flex-wrap px-4">
-            <Link
-              to="/"
-              className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1 transition-all text-xs font-bold uppercase tracking-wider"
-            >
-              Home
-            </Link>
-
-            <div className="relative group">
-              <button className="text-white rounded bg-[#2D3748] group-hover:bg-[#CBFF38] group-hover:text-black px-3 py-1 flex items-center gap-1 cursor-pointer transition-all text-xs font-bold uppercase tracking-wider">
-                Hair Removal
-              </button>
-              <div className="absolute top-full left-0 mt-0 w-56 bg-[#1a202c] rounded-xl shadow-2xl overflow-hidden hidden group-hover:block border border-white/10 z-50">
-                <Link to="/search?q=Laser Alexandrite" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Laser Alexandrite</Link>
-                <Link to="/search?q=Triple Wave Laser" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all">Triple Wave Laser</Link>
-              </div>
-            </div>
-
-            <div className="relative group">
-              <button className="text-white rounded bg-[#2D3748] group-hover:bg-[#CBFF38] group-hover:text-black px-3 py-1 flex items-center gap-1 cursor-pointer transition-all text-xs font-bold uppercase tracking-wider">
-                Facial Aesthetics
-              </button>
-              <div className="absolute top-full left-0 mt-0 w-64 bg-[#1a202c] rounded-xl shadow-2xl overflow-hidden hidden group-hover:block border border-white/10 z-50">
-                <Link to="/search?q=Botox" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Botox-Dysport</Link>
-                <Link to="/search?q=Hyaluronic Acid" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Hyaluronic Acid</Link>
-                <Link to="/search?q=Fractional Laser" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Fractional Laser</Link>
-                <Link to="/search?q=Thread Lift" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Thread Lift (Threads)</Link>
-                <Link to="/search?q=Dermapen" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Dermapen</Link>
-                <Link to="/search?q=PRP" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all">PRP Therapy</Link>
-              </div>
-            </div>
-
-            <div className="relative group">
-              <button className="text-white rounded bg-[#2D3748] group-hover:bg-[#CBFF38] group-hover:text-black px-3 py-1 flex items-center gap-1 cursor-pointer transition-all text-xs font-bold uppercase tracking-wider">
-                Body Aesthetics
-              </button>
-              <div className="absolute top-full left-0 mt-0 w-60 bg-[#1a202c] rounded-xl shadow-2xl overflow-hidden hidden group-hover:block border border-white/10 z-50">
-                <Link to="/search?q=Aqualyx" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Aqualyx (Lipolysis)</Link>
-                <Link to="/search?q=Cryolipolysis" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Cryolipolysis</Link>
-                <Link to="/search?q=Mesotherapy" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all border-b border-white/5">Mesotherapy</Link>
-                <Link to="/search?q=Body Thread Lift" className="block px-4 py-3 text-gray-300 hover:bg-[#CBFF38] hover:text-black text-xs font-bold transition-all">Body Thread Lift</Link>
-              </div>
-            </div>
-
-            <Link
-              to="/search?q=Clinical Dermatology"
-              className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1 transition-all text-xs font-bold uppercase tracking-wider"
-            >
-              Clinical Dermatology
-            </Link>
-            
-            <Link
-              to="/search?q=Plastic Surgery"
-              className="text-white rounded bg-[#2D3748] hover:bg-[#CBFF38] hover:text-black px-3 py-1 transition-all text-xs font-bold uppercase tracking-wider"
-            >
-              Plastic Surgery
-            </Link>
+          <div className="hidden md:flex items-center gap-2 justify-center mt-5 relative z-10 flex-wrap px-4">
+            <Link to="/" className={`${navItemStyle} ${location.pathname === '/' ? activeNavItemStyle : ''}`}>Home</Link>
+            <Link to="/search?category=hair-removal" className={navItemStyle}>Hair Removal</Link>
+            <Link to="/search?category=facial-aesthetics" className={navItemStyle}>Facial Aesthetics</Link>
+            <Link to="/search?category=body-aesthetics" className={navItemStyle}>Body Aesthetics</Link>
+            <Link to="/search?q=Clinical Dermatology" className={navItemStyle}>Clinical Dermatology</Link>
+            <Link to="/search?q=Plastic Surgery" className={navItemStyle}>Plastic Surgery</Link>
           </div>
         )}
       </header>

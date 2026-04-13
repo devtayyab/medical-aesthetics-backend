@@ -984,7 +984,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
 
             {/* 3. Main Navigation Tabs */}
-            <div className="flex items-center gap-1 border-b border-slate-200 bg-white sticky top-[137px] z-30">
+            <div className="flex items-center gap-1 border-b border-slate-100 bg-white overflow-x-auto no-scrollbar">
                 {[
                     { id: 'overview', label: 'Overview', icon: Activity },
                     { id: 'appointments', label: 'Appointments', icon: Calendar },

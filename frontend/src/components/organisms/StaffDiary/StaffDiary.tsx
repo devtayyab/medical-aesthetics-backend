@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     format,
@@ -19,7 +19,8 @@ import {
     Search,
     User as UserIcon,
     Calendar as CalendarIcon,
-    MoreHorizontal
+    MoreHorizontal,
+    Clock
 } from 'lucide-react';
 import { RootState, AppDispatch } from '@/store';
 import { fetchAppointments, fetchClinicProviders } from '@/store/slices/clinicSlice';
@@ -169,63 +170,75 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     };
 
     const renderDayView = () => (
-        <div className="diary-grid-container">
-            <div className="diary-time-column">
-                <div className="diary-header-cell spacer"></div>
-                {timeSlots.map(time => (
-                    <div key={time} className="diary-time-cell">
-                        {time}
-                    </div>
-                ))}
+        <div className="flex h-full overflow-hidden">
+            {/* Time Column */}
+            <div className="w-[60px] flex-shrink-0 border-r border-gray-50 bg-gray-50/10">
+                <div className="h-14 border-b border-gray-50 flex items-center justify-center p-2 bg-gray-50/20">
+                    <Clock size={12} className="text-gray-400" />
+                </div>
+                <div className="overflow-y-auto no-scrollbar h-[calc(100%-56px)]">
+                    {timeSlots.map(time => (
+                        <div key={time} className="h-14 flex items-center justify-center text-[9px] font-black text-gray-300 italic border-b border-gray-50/50">
+                            {time}
+                        </div>
+                    ))}
+                </div>
             </div>
-            <div className="diary-staff-columns custom-scrollbar">
-                <div className="diary-staff-scroll-wrapper" style={{ width: `${Math.max(staff.length * 200, 800)}px` }}>
+
+            {/* Staff Columns */}
+            <div className="flex-1 overflow-x-auto custom-scrollbar bg-white">
+                <div className="flex min-h-full" style={{ width: `${Math.max(staff.length * 220, 800)}px` }}>
                     {staff.map(member => (
-                        <div key={member.id} className="diary-staff-column">
-                            <div className="diary-header-cell staff-info">
-                                <div className="staff-avatar">
+                        <div key={member.id} className="w-[220px] flex-shrink-0 border-r border-gray-50 relative group/col transition-colors duration-300">
+                            {/* Staff Header */}
+                            <div className="h-14 px-4 border-b border-gray-50 flex items-center gap-3 bg-white sticky top-0 z-20">
+                                <div className="size-8 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm group-hover/col:border-black transition-all">
                                     {member.profilePictureUrl ? (
-                                        <img src={member.profilePictureUrl} alt={member.fullName} />
+                                        <img src={member.profilePictureUrl} alt={member.fullName} className="w-full h-full object-cover" />
                                     ) : (
-                                        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                            <UserIcon className="w-4 h-4 text-gray-400" />
-                                        </div>
+                                        <UserIcon size={14} className="text-gray-300" />
                                     )}
                                 </div>
-                                <div className="staff-meta">
-                                    <span className="staff-name">{member.fullName}</span>
-                                    <span className="staff-role">{member.role?.replace('_', ' ')}</span>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black uppercase italic tracking-tighter text-gray-900 leading-none truncate mb-0.5">{member.fullName}</p>
+                                    <p className="text-[7px] font-black uppercase tracking-widest text-gray-400 truncate">{member.role?.replace('_', ' ')}</p>
                                 </div>
                             </div>
-                            <div className="diary-slots-container">
+
+                            {/* Grid Slots */}
+                            <div className="relative">
                                 {timeSlots.map(time => (
-                                    <div key={time} className="diary-slot-cell" onClick={() => console.log('Book at', time, 'for', member.fullName)}></div>
+                                    <div key={time} className="h-14 border-b border-gray-50/50 hover:bg-gray-50/50 transition-colors pointer-events-none" />
                                 ))}
+
+                                {/* Appointments */}
                                 {getAppointmentsForProvider(member.id, selectedDate).map(apt => {
                                     const start = new Date(apt.startTime);
                                     const end = new Date(apt.endTime);
                                     const startMinutes = start.getHours() * 60 + start.getMinutes();
-                                    const dayStartMinutes = 0 * 60;
-                                    const top = ((startMinutes - dayStartMinutes) / 30) * 60; // 60px per 30 mins
+                                    const top = (startMinutes / 30) * 56;
                                     const duration = (end.getTime() - start.getTime()) / (1000 * 60);
-                                    const height = (duration / 30) * 60;
+                                    const height = (duration / 30) * 56;
 
                                     return (
                                         <div
                                             key={apt.id}
-                                            className={`appointment-block status-${apt.status}`}
-                                            style={{ top: `${top}px`, height: `${height - 4}px` }}
+                                            className={`absolute left-2 right-2 rounded-xl p-3 border-l-4 shadow-sm group hover:scale-[1.02] hover:z-30 transition-all cursor-pointer status-${apt.status}`}
+                                            style={{ top: `${top + 4}px`, height: `${height - 8}px` }}
                                         >
-                                            <div className="flex justify-between items-start">
-                                                <div className="apt-info">
-                                                    <span className="apt-service">{apt.serviceName || (apt.service as any)?.treatment?.name || (apt.service as any)?.name}</span>
-                                                    <span className="apt-client">{apt.clientDetails?.fullName || 'Walk-in'}</span>
-                                                </div>
-                                                <button className="p-1 hover:bg-black/5 rounded-md">
-                                                    <MoreHorizontal className="w-3 h-3 text-gray-400" />
-                                                </button>
+                                            <div className="flex justify-between items-start gap-2 mb-1">
+                                                <p className="text-[10px] font-black uppercase italic tracking-tighter text-gray-900 leading-tight truncate">
+                                                    {apt.serviceName || (apt.service as any)?.name || 'Procedure'}
+                                                </p>
+                                                <MoreHorizontal size={10} className="text-gray-400 shrink-0" />
                                             </div>
-                                            <div className="apt-time">{format(start, 'HH:mm')} - {format(end, 'HH:mm')}</div>
+                                            <div className="flex items-center gap-1.5 mb-1.5 min-w-0">
+                                                <UserIcon size={8} className="text-gray-400 shrink-0" />
+                                                <p className="text-[8px] font-bold text-gray-500 truncate">{apt.clientDetails?.fullName || 'Walk-in'}</p>
+                                            </div>
+                                            <div className="absolute bottom-2 right-2 text-[8px] font-black italic text-gray-400 tabular-nums">
+                                                {format(start, 'HH:mm')}
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -238,104 +251,97 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     );
 
     return (
-        <div className="staff-diary-root">
-            {/* Toolbar */}
-            <div className="diary-toolbar">
-                <div className="toolbar-left">
-                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-                        {user?.role === 'doctor' ? 'My Schedule' : 'Clinic Schedule'}
-                    </h1>
-                    <div className="date-nav">
-                        <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')} className="nav-btn">
-                            <ChevronLeft className="w-5 h-5" />
-                        </Button>
-                        <span className="current-date-display font-bold">
-                            {format(selectedDate, 'EEEE, MMM do, yyyy')}
-                        </span>
-                        <Button variant="ghost" size="icon" onClick={() => navigateDate('next')} className="nav-btn">
-                            <ChevronRight className="w-5 h-5" />
-                        </Button>
-                    </div>
-                </div>
+        <div className="min-h-screen bg-[#F8FAFC]">
+            {/* Minimal Header */}
+            <div className="relative pt-8 pb-16 px-6 md:px-10 border-b border-gray-100 bg-white">
+                <div className="max-w-7xl mx-auto relative z-10">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        <div className="space-y-3">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
+                                <div className="size-1.5 rounded-full bg-green-500" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 italic">Diary Terminal</span>
+                            </div>
+                            <div className="space-y-1">
+                                <h1 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter leading-none text-gray-900">Clinic Diary</h1>
+                                <p className="text-gray-500 font-medium max-w-md text-sm">Real-time scheduling matrix and clinician deployment.</p>
+                            </div>
+                        </div>
 
-                <div className="toolbar-right">
-                    <div className="view-switcher bg-gray-100 p-1 rounded-xl flex">
-                        {(['day', 'week', 'month'] as const).map(mode => (
+                        <div className="flex flex-wrap items-center gap-3">
+                            {/* Date Nav */}
+                            <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-100">
+                                <button onClick={() => navigateDate('prev')} className="size-9 flex items-center justify-center hover:bg-white rounded-lg transition-all text-gray-500">
+                                    <ChevronLeft size={16} />
+                                </button>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-900 px-2 min-w-[140px] text-center italic">
+                                    {format(selectedDate, 'EEE, MMM do, yyyy')}
+                                </span>
+                                <button onClick={() => navigateDate('next')} className="size-9 flex items-center justify-center hover:bg-white rounded-lg transition-all text-gray-500">
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+
+                            {/* View Switcher */}
+                            <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100 overflow-hidden">
+                                {(['day', 'week', 'month'] as const).map(mode => (
+                                    <button
+                                        key={mode}
+                                        onClick={() => setViewMode(mode)}
+                                        className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === mode ? 'bg-black text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        {mode}
+                                    </button>
+                                ))}
+                            </div>
+
                             <button
-                                key={mode}
-                                onClick={() => setViewMode(mode)}
-                                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${viewMode === mode ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500'}`}
+                                onClick={() => setIsBookingModalOpen(true)}
+                                className="h-11 px-6 bg-black text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all shadow-lg flex items-center gap-3"
                             >
-                                {mode}
+                                <Plus size={16} />
+                                <span className="hidden sm:inline">New Appointment</span>
                             </button>
-                        ))}
-                    </div>
-                    <div className="search-box relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search client..."
-                            className="pl-9 pr-4 py-2 bg-gray-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all w-64"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    {user?.role !== 'doctor' && (
-                        <Button
-                            onClick={() => {
-                                if (onNewAppointment) {
-                                    onNewAppointment();
-                                } else {
-                                    setIsBookingModalOpen(true);
-                                }
-                            }}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20"
-                        >
-                            <Plus className="w-4 h-4 mr-2" /> New Appointment
-                        </Button>
-                    )}
-                </div>
-            </div>
-
-            {/* Main Calendar Area */}
-            <div className="diary-content-area relative">
-                {isLoading && (
-                    <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[2px] flex items-center justify-center rounded-3xl">
-                        <div className="flex flex-col items-center gap-3">
-                            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                            <span className="text-xs font-black uppercase tracking-widest text-indigo-600">Syncing Diary...</span>
                         </div>
                     </div>
-                )}
-                <Card className="diary-card border-none shadow-2xl shadow-gray-200/50 bg-white rounded-3xl overflow-hidden">
-                    <CardContent className="p-0 h-full">
-                        {viewMode === 'day' ? renderDayView() : viewMode === 'week' ? renderWeekView() : (
-                            <div className="flex flex-col items-center justify-center h-[600px] text-gray-400">
-                                <CalendarIcon className="w-16 h-16 mb-4 opacity-20" />
-                                <p className="font-bold">{viewMode.toUpperCase()} VIEW UNDER DEVELOPMENT</p>
-                                <Button variant="link" onClick={() => setViewMode('day')}>Return to Day View</Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                </div>
             </div>
 
-            {/* Status Footer */}
-            <div className="diary-footer mt-6 flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-indigo-500" /> Booked
+            <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
+                <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[700px] relative">
+                    {isLoading && (
+                        <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-black italic">Syncing...</span>
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="flex-1 overflow-hidden transition-all duration-300">
+                        {viewMode === 'day' ? renderDayView() : viewMode === 'week' ? renderWeekView() : (
+                            <div className="flex flex-col items-center justify-center h-full text-gray-300 gap-4">
+                                <CalendarIcon className="w-12 h-12 opacity-10" />
+                                <p className="text-[10px] font-black uppercase tracking-widest italic">{viewMode} View Standby</p>
+                                <button onClick={() => setViewMode('day')} className="text-[#CBFF38] bg-black px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest">Day View</button>
+                            </div>
+                        )}
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500" /> Completed
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500" /> Arrived
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500" /> No Show
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gray-300" /> Cancelled
+
+                {/* Status legend */}
+                <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 px-4 py-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                    {[
+                        { label: 'Booked', color: 'bg-indigo-500' },
+                        { label: 'Completed', color: 'bg-emerald-500' },
+                        { label: 'Arrived', color: 'bg-amber-500' },
+                        { label: 'No Show', color: 'bg-red-500' },
+                        { label: 'Cancelled', color: 'bg-gray-300' }
+                    ].map(status => (
+                        <div key={status.label} className="flex items-center gap-3 group">
+                            <div className={`w-3 h-3 rounded-full ${status.color} shadow-sm group-hover:scale-125 transition-transform`} />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-gray-500 group-hover:text-black transition-colors italic">{status.label}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -345,7 +351,6 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
               onClose={() => setIsBookingModalOpen(false)}
               clinicId={clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.ownedClinics?.[0]?.id}
               onSuccess={() => {
-                // Refresh appointments
                 const targetClinicId = clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.ownedClinics?.[0]?.id;
                 const filters: any = {};
                 if (targetClinicId) filters.clinicId = targetClinicId;

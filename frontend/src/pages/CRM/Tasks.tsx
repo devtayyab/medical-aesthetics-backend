@@ -28,7 +28,7 @@ import {
   PhoneCall, MoreHorizontal, User, Eye, Plus, Edit, X,
   CornerUpRight, Calendar, Phone, Trash2, UserPlus, Mail,
   Target, Tag, ArrowLeft, ArrowRight, Building2, MousePointer2, Check, MessageSquare,
-  Star, PhoneOff, XCircle, CheckCircle2
+  Star, PhoneOff, XCircle, CheckCircle2, Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -537,109 +537,109 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       </div>
 
       {/* KPI Summary */}
-      {/* KPI Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <div className="bg-white border border-slate-100 rounded-lg shadow-sm px-3 py-2 flex flex-col justify-center">
-          <div className="flex items-center gap-1.5 mb-0.5 text-blue-600">
-            <Users className="h-3.5 w-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total</span>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-4 flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-2 text-blue-600">
+            <Users className="h-4 w-4" />
+            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Total</span>
           </div>
-          <div className="text-lg font-black text-slate-800 leading-none">{taskKpis?.total || 0}</div>
+          <div className="text-2xl font-black text-slate-900 leading-none">{taskKpis?.total || 0}</div>
         </div>
 
-        <div className="bg-white border border-slate-100 rounded-lg shadow-sm px-3 py-2 flex flex-col justify-center">
-          <div className="flex items-center gap-1.5 mb-0.5 text-yellow-600">
-            <Clock className="h-3.5 w-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pending</span>
+        <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-4 flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-2 text-yellow-600">
+            <Clock className="h-4 w-4" />
+            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Pending</span>
           </div>
-          <div className="text-lg font-black text-slate-800 leading-none">{taskKpis?.pending || 0}</div>
+          <div className="text-2xl font-black text-slate-900 leading-none">{taskKpis?.pending || 0}</div>
         </div>
 
-        <div className="bg-white border border-slate-100 rounded-lg shadow-sm px-3 py-2 flex flex-col justify-center">
-          <div className="flex items-center gap-1.5 mb-0.5 text-red-600">
-            <AlertTriangle className="h-3.5 w-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Overdue</span>
+        <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-4 flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-2 text-red-600">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Overdue</span>
           </div>
-          <div className="text-lg font-black text-slate-800 leading-none">{taskKpis?.overdue || 0}</div>
+          <div className="text-2xl font-black text-slate-900 leading-none">{taskKpis?.overdue || 0}</div>
         </div>
 
-        <div className="bg-white border border-slate-100 rounded-lg shadow-sm px-3 py-2 flex flex-col justify-center">
-          <div className="flex items-center gap-1.5 mb-0.5 text-indigo-600">
-            <Repeat className="h-3.5 w-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">In Progress</span>
+        <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-4 flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-2 text-indigo-600">
+            <Repeat className="h-4 w-4" />
+            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">In-progress</span>
           </div>
-          <div className="text-lg font-black text-slate-800 leading-none">{taskKpis?.inProgress || 0}</div>
+          <div className="text-2xl font-black text-slate-900 leading-none">{taskKpis?.inProgress || 0}</div>
         </div>
 
-        <div className="bg-white border border-slate-100 rounded-lg shadow-sm px-3 py-2 flex flex-col justify-center">
-          <div className="flex items-center gap-1.5 mb-0.5 text-green-600">
-            <CheckCircle className="h-3.5 w-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Completed</span>
+        <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-4 flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-2 text-green-600">
+            <CheckCircle className="h-4 w-4" />
+            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Done</span>
           </div>
-          <div className="text-lg font-black text-slate-800 leading-none">{taskKpis?.completed || 0}</div>
+          <div className="text-2xl font-black text-slate-900 leading-none">{taskKpis?.completed || 0}</div>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-2 bg-white px-3 py-2 rounded-lg shadow-sm border border-slate-100 items-center">
-        <div className="flex-1 w-full">
-          <Input
-            placeholder="Search tasks by title, contact, type..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full transition-all h-8 text-[11px]"
-          />
+      <div className="flex flex-col gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+        <div className="w-full">
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-black" />
+            <Input
+              placeholder="Search tasks by title, contact, type..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full h-10 pl-10 text-xs font-bold bg-slate-50/50 border-slate-100 rounded-xl focus:bg-white transition-all"
+            />
+          </div>
         </div>
 
-        <div className={`grid grid-cols-1 md:grid-cols-${user?.role === 'SUPER_ADMIN' ? '4' : '3'} gap-2 flex-2 min-w-[65%] w-full`}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {user?.role === 'SUPER_ADMIN' && (
             <Select
-              placeholder="Select Salesperson"
+              placeholder="All Salespersons"
               options={[
-                { value: 'all', label: 'All Salespersons' },
+                { value: 'all', label: 'Global Team' },
                 ...(salespersons || []).map(sp => ({
                   value: sp.id,
-                  label: `${sp.firstName} ${sp.lastName} (${sp.pendingTasksCount || 0} Pending)`
+                  label: `${sp.firstName} ${sp.lastName}`
                 }))
               ]}
               value={selectedSalespersonId}
               onChange={(val) => setSelectedSalespersonId(val)}
-              className="flex-1"
+              className="h-10 text-[10px] font-black uppercase italic"
             />
           )}
           <Select
             options={[
               { value: 'all', label: 'All Statuses' },
-              { value: 'pending', label: 'Pending' },
+              { value: 'pending', label: 'Pending Status' },
               { value: 'in_progress', label: 'In Progress' },
-              { value: 'completed', label: 'Completed' },
-              { value: 'cancelled', label: 'Cancelled' },
-              { value: 'missed', label: 'Missed' }
+              { value: 'completed', label: 'Done' }
             ]}
             value={filterStatus}
             onChange={(val) => setFilterStatus(val)}
+            className="h-10 text-[10px] font-black uppercase italic"
           />
           <Select
             options={[
-              { value: 'all', label: 'All Types' },
-              { value: 'call', label: 'Call' },
-              { value: 'mobile_message', label: 'Mobile Message' },
-              { value: 'follow_up_call', label: 'Follow up Call' },
-              { value: 'email', label: 'Email' },
-              { value: 'appointment', label: 'Appointment (Calendar)' },
-              { value: 'confirmation_call_reminder', label: 'Confirmation Call Reminder' }
+              { value: 'all', label: 'All Action Types' },
+              { value: 'call', label: 'Calls Only' },
+              { value: 'mobile_message', label: 'SMS/Mobile' },
+              { value: 'appointment', label: 'Appointments' }
             ]}
             value={filterType}
             onChange={(val) => setFilterType(val)}
+            className="h-10 text-[10px] font-black uppercase italic"
           />
           <Select
             options={[
-              { value: 'all', label: 'Any Date' },
-              { value: 'today', label: 'Today' },
-              { value: 'next_7_days', label: 'Next 7 Days' },
-              { value: 'overdue', label: 'Overdue' }
+              { value: 'all', label: 'Timeline: Any' },
+              { value: 'today', label: 'Due: Today' },
+              { value: 'next_7_days', label: 'Due: Next 7 Days' },
+              { value: 'overdue', label: 'Status: Overdue' }
             ]}
             value={filterDateRange}
             onChange={(val) => setFilterDateRange(val)}
+            className="h-10 text-[10px] font-black uppercase italic"
           />
         </div>
       </div>
@@ -1012,116 +1012,93 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         </div>
       )}
 
-      {/* Interaction Modal */}
       {showInteractionModal && interactionTask && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-              <div>
-                <h3 className="text-lg font-black text-slate-800">Processing Task</h3>
-                <div className="flex items-center gap-2 mt-0.5">
-                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                     Patient: {
-                       interactionTask.customer?.customer
-                         ? `${interactionTask.customer.customer.firstName || ''} ${interactionTask.customer.customer.lastName || ''}`
-                         : interactionTask.relatedLead
-                           ? `${interactionTask.relatedLead.firstName || ''} ${interactionTask.relatedLead.lastName || ''}`
-                           : 'Unassigned'
-                     }
-                   </p>
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex justify-end animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-[500px] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col h-full border-l border-slate-100">
+            <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#CBFF38] animate-pulse" />
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-tighter">Process Task</h3>
                 </div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                  {interactionTask.customer?.customer
+                    ? `${interactionTask.customer.customer.firstName || ''} ${interactionTask.customer.customer.lastName || ''}`
+                    : interactionTask.relatedLead
+                      ? `${interactionTask.relatedLead.firstName || ''} ${interactionTask.relatedLead.lastName || ''}`
+                      : 'Unassigned'}
+                </p>
               </div>
-              <div className="flex flex-col items-end">
-                 <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-tighter mb-1">
-                   {interactionTask.therapy || 'Standard Therapy'}
-                 </span>
-                 <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
-                   {interactionTask.metadata?.clinic || 'Main Clinic'}
-                 </span>
-              </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowInteractionModal(false)} className="rounded-xl hover:bg-slate-50">
+                <X className="w-5 h-5 text-slate-400" />
+              </Button>
             </div>
 
-            {/* Multi-Step Interaction Flow Header */}
-            <div className="px-8 pt-8 flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                {[
-                  { step: 1, label: 'Outreach', icon: <PhoneCall className="w-4 h-4" /> },
-                  { step: 2, label: 'Result', icon: <Target className="w-4 h-4" /> },
-                  { step: 3, label: 'Classification', icon: <Tag className="w-4 h-4" /> },
-                  { step: 4, label: 'Finish', icon: <CheckCircle className="w-4 h-4" /> }
-                ].map((s) => (
-                  <div key={s.step} className={`flex items-center gap-2 group transition-all ${workflowStep === s.step ? 'scale-110' : 'opacity-40 grayscale'}`}>
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-lg transition-all ${workflowStep === s.step ? 'bg-slate-900 text-white shadow-slate-200 rotate-3' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
-                      {s.icon}
+            {/* Vertical Stepper Header */}
+            <div className="px-6 py-4 bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {[1, 2, 3, 4].map((s) => (
+                  <div key={s} className="flex items-center">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-black transition-all ${workflowStep === s ? 'bg-black text-[#CBFF38] shadow-lg shadow-lime-500/20' : workflowStep > s ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-400'}`}>
+                      {workflowStep > s ? <Check className="w-4 h-4" /> : s}
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${workflowStep === s.step ? 'text-slate-900 underline decoration-2 underline-offset-4' : 'text-slate-400'}`}>
-                      {s.label}
-                    </span>
-                    {s.step < 4 && <div className="h-[2px] w-4 bg-slate-100 mx-2" />}
+                    {s < 4 && <div className={`w-4 h-px mx-1 ${workflowStep > s ? 'bg-slate-900' : 'bg-slate-200'}`} />}
                   </div>
                 ))}
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Clinic Center</p>
-                <div className="flex items-center gap-2 text-indigo-600 font-black text-sm">
-                  <Building2 className="w-4 h-4" />
-                  {interactionTask.metadata?.clinic || 'Main Clinic'}
-                </div>
-              </div>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
+                Step {workflowStep}/4
+              </span>
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
               
               {/* Step 1: Outreach */}
               {workflowStep === 1 && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-slate-200 relative overflow-hidden group">
-                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-                      <div className="space-y-4 text-center md:text-left">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-400">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Live Dialer Ready
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                  <div className="bg-slate-900 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden group">
+                    <div className="relative z-10 space-y-6">
+                      <div className="space-y-2">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#CBFF38] animate-pulse" /> Live Dialer Ready
                         </div>
-                        <h3 className="text-3xl font-black tracking-tight leading-tight">Initiate Active Outreach</h3>
-                        <p className="text-slate-400 font-medium max-w-sm">Use our integrated dialer to contact the patient. Duration and outcome will be logged automatically.</p>
+                        <h3 className="text-2xl font-black tracking-tighter leading-tight italic">Initiate Call</h3>
+                        <p className="text-slate-400 text-[11px] font-medium leading-relaxed max-w-[280px]">Automated logging is active. Click below to begin the outreach session.</p>
                       </div>
+                      
                       <Button
-                        onClick={() => {
-                          setShowDialer(true);
-                        }}
-                        className="bg-[#CBFF38] hover:bg-[#A3D900] text-slate-900 font-black h-20 px-12 rounded-3xl shadow-xl shadow-[#CBFF38]/20 flex items-center gap-4 transition-all active:scale-95 text-lg group"
+                        onClick={() => setShowDialer(true)}
+                        className="w-full bg-[#CBFF38] hover:bg-[#D9FF66] text-black font-black h-16 rounded-2xl shadow-xl shadow-lime-500/10 flex items-center justify-center gap-3 transition-all active:scale-95 text-xs uppercase tracking-[0.15em]"
                       >
-                        <div className="w-10 h-10 rounded-2xl bg-slate-900/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
-                          <PhoneCall className="w-6 h-6" />
-                        </div>
-                        START CALL NOW
+                        <PhoneCall className="w-5 h-5" />
+                        Start Active Call
                       </Button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all cursor-pointer" onClick={() => setWorkflowStep(2)}>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-900 shadow-sm transition-transform group-hover:scale-110">
-                          <MousePointer2 className="w-6 h-6" />
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white hover:shadow-lg transition-all cursor-pointer" onClick={() => setWorkflowStep(2)}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-900 border border-slate-100">
+                          <MousePointer2 className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="text-sm font-black text-slate-800">Skip to Result</p>
-                          <p className="text-xs text-slate-500 font-medium tracking-tight">Logger without calling</p>
+                          <p className="text-[11px] font-black text-slate-900 uppercase">Skip to Result</p>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Log without calling</p>
                         </div>
-                        <ArrowRight className="w-5 h-5 ml-auto text-slate-300 group-hover:text-slate-900" />
+                        <ArrowRight className="w-4 h-4 ml-auto text-slate-300 group-hover:text-black" />
                       </div>
                     </div>
-                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all cursor-pointer" onClick={() => setShowEmailModal(true)}>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-900 shadow-sm transition-transform group-hover:scale-110">
-                          <MessageSquare className="w-6 h-6" />
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white hover:shadow-lg transition-all cursor-pointer" onClick={() => setShowEmailModal(true)}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-900 border border-slate-100">
+                          <MessageSquare className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="text-sm font-black text-slate-800">Switch to Messaging</p>
-                          <p className="text-xs text-slate-500 font-medium tracking-tight">Log email or chat instead</p>
+                          <p className="text-[11px] font-black text-slate-900 uppercase">Switch to Email</p>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Send message instead</p>
                         </div>
-                        <ArrowRight className="w-5 h-5 ml-auto text-slate-300 group-hover:text-slate-900" />
+                        <ArrowRight className="w-4 h-4 ml-auto text-slate-300 group-hover:text-black" />
                       </div>
                     </div>
                   </div>
@@ -1130,22 +1107,22 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
               {/* Step 2: Result Selection */}
               {workflowStep === 2 && (
-                <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">What was the outcome?</h3>
-                    <Button variant="ghost" onClick={() => setWorkflowStep(1)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 bg-slate-50 rounded-xl px-4">
-                      <ArrowLeft className="w-3.5 h-3.5 mr-2" /> Back to Outreach
+                <div className="space-y-6 animate-in slide-in-from-right-8 duration-500">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-black text-slate-900 uppercase italic">Interaction Result</h3>
+                    <Button variant="ghost" onClick={() => setWorkflowStep(1)} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-black">
+                      <ArrowLeft className="w-3 h-3 mr-1" /> Back
                     </Button>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     {[
-                      { value: 'interested', label: 'Interested', icon: <Star className="w-8 h-8 fill-amber-400 text-amber-400" />, color: 'hover:border-amber-400 hover:bg-amber-50 shadow-amber-100' },
-                      { value: 'call_later', label: 'Call Back Later', icon: <Clock className="w-8 h-8 text-blue-500" />, color: 'hover:border-blue-400 hover:bg-blue-50 shadow-blue-100' },
-                      { value: 'no_answer', label: 'No Answer', icon: <PhoneOff className="w-8 h-8 text-slate-400" />, color: 'hover:border-gray-400 hover:bg-gray-50 shadow-gray-100' },
-                      { value: 'not_interested', label: 'Not Interested', icon: <XCircle className="w-8 h-8 text-red-500" />, color: 'hover:border-red-400 hover:bg-red-50 shadow-red-100' },
-                      { value: 'appointment_booked', label: 'Appointment Booked', icon: <CheckCircle2 className="w-8 h-8 text-emerald-500" />, color: 'hover:border-emerald-400 hover:bg-emerald-50 shadow-emerald-100' },
-                      { value: 'wrong_number', label: 'Wrong Number', icon: <AlertTriangle className="w-8 h-8 text-yellow-500" />, color: 'hover:border-yellow-400 hover:bg-yellow-50 shadow-yellow-100' }
+                      { value: 'interested', label: 'Interested', icon: <Star className="w-5 h-5 fill-amber-400 text-amber-400" />, color: 'hover:border-amber-400 hover:bg-amber-50' },
+                      { value: 'call_later', label: 'Call Later', icon: <Clock className="w-5 h-5 text-blue-500" />, color: 'hover:border-blue-400 hover:bg-blue-50' },
+                      { value: 'no_answer', label: 'No Answer', icon: <PhoneOff className="w-5 h-5 text-slate-400" />, color: 'hover:border-gray-400 hover:bg-gray-50' },
+                      { value: 'not_interested', label: 'Not Interested', icon: <XCircle className="w-5 h-5 text-red-500" />, color: 'hover:border-red-400 hover:bg-red-50' },
+                      { value: 'appointment_booked', label: 'Booked', icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />, color: 'hover:border-emerald-400 hover:bg-emerald-50' },
+                      { value: 'wrong_number', label: 'Wrong Num', icon: <AlertTriangle className="w-5 h-5 text-yellow-500" />, color: 'hover:border-yellow-400 hover:bg-yellow-50' }
                     ].map((opt) => (
                       <div 
                         key={opt.value}
@@ -1157,12 +1134,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                             setWorkflowStep(3);
                           }
                         }}
-                        className={`group relative p-6 rounded-[2rem] border-2 transition-all cursor-pointer text-center bg-white hover:scale-[1.02] hover:shadow-2xl flex flex-col items-center justify-center gap-3 ${interactionOutcome === opt.value ? 'border-indigo-600 bg-indigo-50 shadow-indigo-100' : 'border-slate-100 ' + opt.color}`}
+                        className={`group relative p-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3 bg-white ${interactionOutcome === opt.value ? 'border-black bg-slate-50' : 'border-slate-100 ' + opt.color}`}
                       >
-                        <div className="filter grayscale group-hover:grayscale-0 transition-all transform group-hover:scale-110">{opt.icon}</div>
-                        <span className="text-xs font-black uppercase tracking-widest text-slate-800">{opt.label}</span>
-                        <div className="absolute top-4 right-4 w-6 h-6 rounded-full border-2 border-slate-100 group-hover:border-slate-900 transition-colors flex items-center justify-center">
-                          <Check className={`w-3 h-3 ${interactionOutcome === opt.value ? 'text-indigo-600' : 'opacity-0'}`} strokeWidth={4} />
+                        <div className="transition-transform group-hover:scale-110">{opt.icon}</div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">{opt.label}</span>
+                        <div className={`ml-auto w-4 h-4 rounded-full border flex items-center justify-center ${interactionOutcome === opt.value ? 'bg-black border-black' : 'border-slate-200'}`}>
+                          {interactionOutcome === opt.value && <Check className="w-2.5 h-2.5 text-[#CBFF38]" strokeWidth={4} />}
                         </div>
                       </div>
                     ))}
@@ -1170,13 +1147,13 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
                   {/* Outcome specific logic like "Call Later" date picker */}
                   {interactionOutcome === 'call_later' && (
-                    <div className="bg-blue-50/50 border border-blue-100 rounded-[2rem] p-6 animate-in slide-in-from-top-4">
-                       <p className="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-4 px-1">When should we callback?</p>
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-in slide-in-from-top-4">
+                       <p className="text-[9px] font-black text-blue-800 uppercase tracking-widest mb-3">Recall Schedule</p>
                        <Input 
                           type="datetime-local" 
                           value={callbackDate}
                           onChange={(e) => setCallbackDate(e.target.value)}
-                          className="h-14 text-sm font-black rounded-2xl border-blue-200 focus:bg-white bg-white/50"
+                          className="h-10 text-[11px] font-black rounded-lg border-blue-200 bg-white"
                         />
                     </div>
                   )}
@@ -1185,27 +1162,25 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
               {/* Step 3: Classification (Tags) */}
               {workflowStep === 3 && (
-                <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+                <div className="space-y-6 animate-in slide-in-from-right-8 duration-500">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Classify this Outcome</h3>
-                    <Button variant="ghost" onClick={() => setWorkflowStep(2)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 bg-slate-50 rounded-xl px-4">
-                      <ArrowLeft className="w-3.5 h-3.5 mr-2" /> Back to Outcome
+                    <h3 className="text-sm font-black text-slate-900 uppercase italic">Classification</h3>
+                    <Button variant="ghost" onClick={() => setWorkflowStep(2)} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-black">
+                      <ArrowLeft className="w-3 h-3 mr-1" /> Back
                     </Button>
                   </div>
-
-                  <div className="bg-slate-50/50 border border-slate-200 rounded-[2.5rem] p-8 space-y-6">
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Mandatory Classification Tags</label>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {selectedTags.map(tag => (
-                          <span key={tag} className="flex items-center gap-2 bg-slate-900 text-[#CBFF38] text-[10px] font-black px-4 py-2 rounded-xl shadow-lg shadow-slate-200 border border-slate-800 animate-in zoom-in-50">
-                            {tag}
-                            <X className="w-3 h-3 cursor-pointer" onClick={() => setSelectedTags(selectedTags.filter(t => t !== tag))} />
-                          </span>
-                        ))}
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTags.map(tag => (
+                        <span key={tag} className="flex items-center gap-1.5 bg-black text-[#CBFF38] text-[9px] font-black px-3 py-1.5 rounded-lg border border-black shadow-lg shadow-lime-500/10">
+                          {tag}
+                          <X className="w-3 h-3 cursor-pointer" onClick={() => setSelectedTags(selectedTags.filter(t => t !== tag))} />
+                        </span>
+                      ))}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
                         {['HIGH PRIORITY', 'NO ANSWER', 'CALL AGAIN', 'WARM LEAD', 'PRICE SENSITIVE', 'SERIOUS INTEREST', 'INFO ONLY', 'WRONG NUMBER'].map(tag => (
                           <button 
                             key={tag}
@@ -1216,203 +1191,103 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                                 setSelectedTags([...selectedTags, tag]);
                               }
                             }}
-                            className={`p-3 rounded-xl border text-[10px] font-black uppercase tracking-tight transition-all text-center ${selectedTags.includes(tag) ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-900 hover:text-slate-900'}`}
+                            className={`p-2.5 rounded-lg border text-[9px] font-black uppercase tracking-tight transition-all text-center ${selectedTags.includes(tag) ? 'bg-black border-black text-[#CBFF38]' : 'bg-white border-slate-100 text-slate-400 hover:border-black hover:text-black'}`}
                           >
                             {tag}
                           </button>
                         ))}
-                      </div>
                     </div>
 
-                    <div className="pt-6 border-t border-slate-200">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Add Specialized Tag</label>
-                      <div className="flex gap-2">
+                    <div className="flex gap-2 pt-2">
                         <Input 
-                          placeholder="e.g. Needs Botox Special..." 
+                          placeholder="Custom tag..." 
                           value={tagInput}
                           onChange={(e) => setTagInput(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
-                          className="h-12 text-sm font-bold rounded-2xl border-slate-200"
+                          className="h-10 text-[11px] font-bold rounded-lg border-slate-200"
                         />
-                        <Button onClick={handleAddTag} className="h-12 px-6 bg-slate-900 text-white font-black text-[10px] uppercase rounded-2xl">Add</Button>
-                      </div>
+                        <Button onClick={handleAddTag} className="h-10 px-4 bg-black text-[#CBFF38] font-black text-[9px] uppercase rounded-lg">Add</Button>
                     </div>
                   </div>
 
                   <Button 
                     onClick={() => setWorkflowStep(4)}
-                    className="w-full h-16 bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-3xl shadow-2xl shadow-slate-300 transition-all active:scale-95 flex items-center justify-center gap-3"
+                    className="w-full h-14 bg-black text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
                   >
-                    CONTINUE TO FINAL REVIEW <ArrowRight className="w-4 h-4" />
+                    Review Final Protocol <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
               )}
 
               {/* Step 4: Finish & Review */}
               {workflowStep === 4 && (
-                <div className="space-y-8 animate-in slide-in-from-right-8 duration-500 pb-10">
+                <div className="space-y-6 animate-in slide-in-from-right-8 duration-500 pb-10">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Final Summary & Protocol</h3>
-                    <Button variant="ghost" onClick={() => setWorkflowStep(3)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 bg-slate-50 rounded-xl px-4">
-                      <ArrowLeft className="w-3.5 h-3.5 mr-2" /> Back to Tags
+                    <h3 className="text-sm font-black text-slate-900 uppercase italic">Final Protocol</h3>
+                    <Button variant="ghost" onClick={() => setWorkflowStep(3)} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-black">
+                      <ArrowLeft className="w-3 h-3 mr-1" /> Back
                     </Button>
                   </div>
-
-                  {/* Quick Summary Bar */}
-                  <div className="flex flex-wrap items-center gap-3 mb-6 p-6 bg-slate-900 rounded-[2.5rem] shadow-2xl border border-white/5">
-                      <div className="flex items-center gap-3 px-5 py-3 bg-white/10 rounded-2xl border border-white/5">
-                         <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></div>
-                         <div className="flex flex-col">
-                            <span className="text-[7px] font-black text-white/40 uppercase tracking-[0.2em] leading-tight">Outcome</span>
-                            <span className="text-[11px] font-black text-white uppercase tracking-wider">{interactionOutcome?.replace('_', ' ') || 'NONE SELECTED'}</span>
-                         </div>
-                      </div>
-                      
-                      <div className="flex-1 min-w-[200px] flex items-center gap-3 px-5 py-3 bg-white/10 rounded-2xl border border-white/5">
-                         <Tag className="w-3 h-3 text-[#CBFF38]" />
-                         <div className="flex flex-col w-full">
-                            <span className="text-[7px] font-black text-white/40 uppercase tracking-[0.2em] leading-tight">Interaction Tags</span>
-                            <div className="flex gap-2 overflow-x-auto no-scrollbar py-0.5">
-                               {selectedTags.length > 0 ? selectedTags.map(t => (
-                                 <span key={t} className="text-[9px] font-black text-[#CBFF38] uppercase tracking-tighter whitespace-nowrap bg-[#CBFF38]/10 px-2 py-0.5 rounded-md border border-[#CBFF38]/20">#{t}</span>
-                               )) : <span className="text-[9px] font-black text-white/20 uppercase tracking-tighter">NO TAGS APPLIED</span>}
-                            </div>
-                         </div>
-                      </div>
-
-                      {(interactionOutcome === 'interested' || interactionOutcome === 'appointment_booked') && (
-                        <Button 
-                          onClick={() => setShowBookingModal(true)}
-                          className="px-6 py-3 bg-[#CBFF38] hover:bg-[#A3D900] text-slate-900 font-extrabold text-[10px] uppercase tracking-widest rounded-2xl flex items-center gap-2 shadow-lg shadow-[#CBFF38]/20 transition-all hover:scale-105 active:scale-95"
-                        >
-                          <Calendar className="w-3.5 h-3.5" /> Book Now
-                        </Button>
-                      )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                       {/* Customer Detail Card */}
-                       <div className="bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700"></div>
-                          <div className="relative z-10 space-y-6">
-                             <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Target Profile</p>
-                                    <h4 className="text-2xl font-black text-white tracking-tight">
-                                      {interactionTask?.customer?.firstName} {interactionTask?.customer?.lastName || interactionTask?.title}
-                                    </h4>
-                                </div>
-                                <div className="px-3 py-1 bg-[#CBFF38]/20 rounded-full border border-[#CBFF38]/30">
-                                   <span className="text-[9px] font-black text-[#CBFF38] uppercase tracking-widest">{interactionTask?.actionType || 'call'}</span>
-                                </div>
-                             </div>
-
-                             <div className="grid grid-cols-2 gap-4 pt-2">
-                                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                   <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Phone Line</p>
-                                   <p className="text-xs font-bold text-white tracking-tight">{interactionTask?.customer?.phone || interactionTask?.metadata?.phone || 'N/A'}</p>
-                                </div>
-                                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                   <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Source Path</p>
-                                   <p className="text-xs font-bold text-white tracking-tight capitalize">{interactionTask?.customer?.source || 'Manual CRM'}</p>
-                                </div>
-                             </div>
-
-                             <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
-                                <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest mb-1">Notes Archive</p>
-                                <p className="text-[11px] font-medium text-indigo-50 line-clamp-2 italic opacity-80">"{interactionTask?.description || 'No initial strategy provided'}"</p>
-                             </div>
-                          </div>
-                       </div>
-
-                       <div className="p-1 bg-slate-50 rounded-[3rem] border border-slate-100 shadow-inner">
-                         <div className="p-8 space-y-4">
-                           <div className="flex items-center justify-between">
-                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Internal Remarks</label>
-                             <span className="text-[9px] font-black text-red-500 uppercase tracking-tighter">Required for logs</span>
-                           </div>
-                           <Textarea
-                             placeholder="Describe the interaction details for the team..."
-                             value={interactionNotes}
-                             onChange={(e) => setInteractionNotes(e.target.value)}
-                             className="min-h-[220px] rounded-[2rem] border-transparent focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50 transition-all resize-none text-sm p-6 font-medium shadow-none bg-white"
-                           />
-                         </div>
-                       </div>
+ 
+                  <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl space-y-4">
+                    <div className="flex items-center justify-between">
+                       <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">Outcome</span>
+                       <span className="text-[10px] font-black text-[#CBFF38] uppercase tracking-widest italic">{interactionOutcome?.replace('_', ' ')}</span>
                     </div>
+                    
+                    <Textarea
+                      placeholder="Enter internal interaction remarks..."
+                      value={interactionNotes}
+                      onChange={(e) => setInteractionNotes(e.target.value)}
+                      className="min-h-[120px] rounded-xl border-white/10 bg-white/5 text-white text-[11px] font-medium p-4 focus:bg-white/10"
+                    />
 
-                    <div className="space-y-6">
-                       {/* Mandatory Follow-up for anything not terminal */}
-                       {interactionOutcome !== 'not_interested' && interactionOutcome !== 'wrong_number' && (
-                         <div className="bg-amber-50/50 border-2 border-amber-200 rounded-[2.5rem] p-8 space-y-6">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-[1.25rem] bg-amber-100 flex items-center justify-center text-amber-600 shadow-inner">
-                                <Clock className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <h4 className="text-md font-black text-slate-800">Mandatory Follow-up</h4>
-                                <p className="text-[10px] font-bold text-amber-600/70 uppercase tracking-widest">Protocol strictly enforced</p>
-                              </div>
-                            </div>
-
-                            <div className="space-y-4">
-                              <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Follow-up Goal</label>
-                                <Input 
-                                  placeholder="e.g. Re-try calling..." 
-                                  value={followUpData.title}
-                                  onChange={(e) => setFollowUpData({...followUpData, title: e.target.value})}
-                                  className="h-12 text-xs font-bold rounded-2xl border-amber-100"
-                                />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Next Contact</label>
-                                  <Input type="datetime-local" value={followUpData.dueDate} onChange={(e) => setFollowUpData({...followUpData, dueDate: e.target.value})} className="h-12 text-xs font-bold rounded-2xl border-amber-100" />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Protocol Ref</label>
-                                  <Input placeholder="Botox" value={followUpData.therapy} onChange={(e) => setFollowUpData({...followUpData, therapy: e.target.value})} className="h-12 text-xs font-bold rounded-2xl border-amber-100" />
-                                </div>
-                              </div>
-                            </div>
-                         </div>
-                       )}
-
-                       {/* Confirmation Specific Section */}
-                       {interactionTask?.title === 'Confirmation Call Reminder' && (
-                          <div className="bg-blue-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-blue-100 space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-widest opacity-80">Quick Confirmation</h4>
-                            <div className="grid grid-cols-2 gap-3">
-                              <Button onClick={() => setInteractionNotes(n => `CONFIRMED: ${n}`)} className="h-12 bg-white/10 hover:bg-white/20 text-white font-black text-[10px] uppercase rounded-2xl border border-white/20">Yes, Confirmed</Button>
-                              <Button onClick={() => setInteractionNotes(n => `CANCELLED: ${n}`)} className="h-12 bg-white/10 hover:bg-white/20 text-white font-black text-[10px] uppercase rounded-2xl border border-white/20">Client Cancelled</Button>
-                            </div>
-                          </div>
-                       )}
-
-                       <div className="bg-slate-50/50 rounded-[2.5rem] p-8 space-y-4 border border-slate-100 shadow-sm">
-                          <div className="flex items-center justify-between px-1">
-                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assign to Clinic</label>
-                             <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter italic">Optional Field</span>
-                          </div>
-                          <Select 
-                            value={interactionClinic} 
-                            onChange={(val) => setInteractionClinic(val)}
-                            options={(clinics || []).map(c => ({ value: c.id, label: c.name }))}
-                            placeholder="All Clinics (Select if specific)"
-                            className="h-14 text-sm font-black rounded-[1.5rem] border-slate-200 bg-white"
-                          />
-                       </div>
-
-                       <Button
-                        onClick={handleSaveInteraction}
-                        className="w-full h-16 bg-[#CBFF38] hover:bg-[#A3D900] text-slate-900 font-black text-xs uppercase tracking-[0.25em] rounded-[2rem] shadow-2xl shadow-[#CBFF38]/30 transition-all flex items-center justify-center gap-3 disabled:grayscale disabled:opacity-50"
+                    {(interactionOutcome === 'interested' || interactionOutcome === 'appointment_booked') && (
+                      <Button 
+                        onClick={() => setShowBookingModal(true)}
+                        className="w-full h-10 bg-[#CBFF38] text-black font-black text-[9px] uppercase tracking-widest rounded-lg flex items-center justify-center gap-2"
                       >
-                        <CheckCircle className="w-5 h-5" /> SAVE COMPLETE RECORD
+                        <Calendar className="w-3.5 h-3.5" /> Open Booking System
                       </Button>
-                    </div>
+                    )}
                   </div>
+
+                  {interactionOutcome !== 'not_interested' && interactionOutcome !== 'wrong_number' && (
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span className="text-[10px] font-black text-slate-900 uppercase">Follow-up Goal</span>
+                      </div>
+                      <Input 
+                        placeholder="Next contact goal..." 
+                        value={followUpData.title}
+                        onChange={(e) => setFollowUpData({...followUpData, title: e.target.value})}
+                        className="h-10 text-[11px] font-bold rounded-lg border-amber-200"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input type="datetime-local" value={followUpData.dueDate} onChange={(e) => setFollowUpData({...followUpData, dueDate: e.target.value})} className="h-10 text-[10px] font-bold rounded-lg border-amber-200" />
+                        <Input placeholder="Therapy" value={followUpData.therapy} onChange={(e) => setFollowUpData({...followUpData, therapy: e.target.value})} className="h-10 text-[10px] font-bold rounded-lg border-amber-200" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Assign to Clinic</label>
+                    <Select 
+                      value={interactionClinic} 
+                      onChange={(val) => setInteractionClinic(val)}
+                      options={(clinics || []).map(c => ({ value: c.id, label: c.name }))}
+                      placeholder="Select Clinic..."
+                      className="h-12 text-[11px] font-black rounded-xl border-slate-100 bg-white"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleSaveInteraction}
+                    className="w-full h-16 bg-black text-[#CBFF38] font-black text-[11px] uppercase tracking-[0.2em] rounded-2xl shadow-2xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle className="w-5 h-5" /> Save Complete Record
+                  </Button>
                 </div>
               )}
             </div>
@@ -1471,7 +1346,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reassign Task Owner</p>
               </div>
               <Button variant="ghost" onClick={() => setShowAssignModal(false)} className="h-8 w-8 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                <X className="h-5 h-5" />
+                <X className="h-5 w-5" />
               </Button>
             </div>
             <div className="p-6 space-y-4">

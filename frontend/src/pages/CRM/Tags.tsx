@@ -1,4 +1,4 @@
-﻿import {
+import {
   Trash2,
   Plus,
   Hash,
@@ -166,257 +166,311 @@ export const Tags: React.FC = () => {
     setSearchResults([]);
   };
 
+  const handleRefresh = async () => {
+    try {
+      const tagsRes = await adminAPI.getTags();
+      setAvailableTags(tagsRes.data);
+      if (selectedTagHeader) {
+        handleFetchCustomersByTag(selectedTagHeader);
+      }
+    } catch (err) {
+      console.error("Refresh failed", err);
+    }
+  };
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-top-4 duration-1000">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 border-b border-gray-100 pb-10">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-slate-200">
-            <Layers className="w-3 h-3" /> Customer Segmentation
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-            Customer Tags
-          </h1>
-          <p className="text-slate-500 font-medium text-base max-w-2xl">
-            Manage and assign tags to segment your customers.
-          </p>
+    <div className='p-6 max-w-[1600px] mx-auto space-y-6 animate-in fade-in slide-in-from-top-4 duration-700'>
+      {/* 1. Sleek Header */}
+      <div className='flex flex-col md:flex-row md:items-center justify-between gap-4'>
+        <div className='space-y-1'>
+          <h1 className='text-2xl font-black text-slate-900 tracking-tight'>Tag Studio</h1>
+          <p className='text-slate-500 font-medium text-xs'>Segment your database with precision tags and custom attributes.</p>
         </div>
-        <div className="flex items-center gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active User</span>
-            <span className="font-bold text-slate-900 text-sm">{user?.firstName} {user?.lastName}</span>
-          </div>
-          <div className="w-11 h-11 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-            {user?.firstName?.[0]}
-          </div>
+        <div className='flex items-center gap-2'>
+          <Button
+            variant='outline'
+            onClick={handleRefresh}
+            className='h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs rounded-xl transition-all'
+          >
+            <Activity className='w-3.5 h-3.5 mr-2' /> Refresh Data
+          </Button>
         </div>
       </div>
 
-      {/* KPI Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* 2. KPI Section */}
+      <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
         {[
-          { label: 'Total Tags', value: availableTags.length, icon: Hash, color: 'blue', subtext: 'Definitions' },
-          { label: 'Recent Tags', value: '...', icon: TrendingUp, color: 'emerald', subtext: 'Interaction count' },
-          { label: 'Sync Status', value: '99.9%', icon: Activity, color: 'indigo', subtext: 'Connected' },
+          { label: 'Tag Definitions', value: availableTags.length, icon: Hash, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Active Segments', value: availableTags.filter(t => t.usageCount > 0).length || 0, icon: Layers, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Direct Assignments', value: 'Live', icon: TrendingUp, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+          { label: 'Sync Status', value: '99.2%', icon: CheckCircle, color: 'text-amber-500', bg: 'bg-amber-50' },
         ].map((kpi, i) => (
-          <Card key={i} className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-            <CardContent className="p-6 flex items-center justify-between">
-              <div className="space-y-0.5">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{kpi.label}</p>
-                <div className="flex items-baseline gap-1.5">
-                  <p className="text-2xl font-bold text-slate-900">{kpi.value}</p>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase">{kpi.subtext}</span>
+          <Card
+            key={i}
+            className='border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200 group hover:shadow-md transition-all'
+          >
+            <CardContent className='p-4 flex items-center justify-between'>
+              <div className='flex items-center gap-3'>
+                <div className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center ${kpi.color}`}>
+                  <kpi.icon className='w-5 h-5' />
                 </div>
-              </div>
-              <div className={`p-4 rounded-lg bg-slate-50 text-slate-400 border border-slate-100`}>
-                <kpi.icon className="w-5 h-5" />
+                <div className='flex flex-col'>
+                  <span className='text-[10px] font-black uppercase text-slate-400 tracking-widest'>{kpi.label}</span>
+                  <span className='text-sm font-black text-slate-900 mt-0.5'>{kpi.value}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-        {/* Assignment Card */}
-        <Card className="xl:col-span-3 border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-          <CardHeader className="bg-slate-50 border-b border-slate-100 p-6">
-            <CardTitle className="text-slate-900 flex items-center justify-between">
-              <div className="flex items-center gap-3 font-bold">
-                <div className="p-2 bg-white rounded-lg border border-slate-200 text-blue-600 shadow-sm">
-                  <Plus className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">Assign Tag</h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                    Categorize customer records
-                  </p>
-                </div>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-8 space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              <div className="space-y-8">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      Find Customer
-                    </label>
-                    <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded">Required</span>
-                  </div>
-                  <div className="flex gap-2 relative">
-                    <div className="relative flex-1">
+      <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'>
+        {/* ---------- LEFT COLUMN: ASSIGNMENT & CREATION (8 COLS) ---------- */}
+        <div className='lg:col-span-8 space-y-6'>
+          {/* A. Tag Assignment Card */}
+          <Card className='border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-100'>
+            <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between'>
+              <CardTitle className='text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2'>
+                <Plus className='w-4 h-4 text-[#CBFF38]' /> Assign Tag to Customer
+              </CardTitle>
+              <div className='px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold border border-blue-100 uppercase tracking-widest'>Required</div>
+            </CardHeader>
+            <CardContent className='p-6 space-y-6'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-1.5'>
+                  <label className='text-[10px] font-black uppercase text-slate-400 tracking-widest px-1'>Find Customer</label>
+                  <div className='relative'>
+                    <div className='relative'>
+                      <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400' />
                       <Input
-                        placeholder="Search by name or email..."
+                        placeholder='Search name or email...'
                         value={customerSearch}
                         onChange={(e) => handleCustomerSearch(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && searchCustomers()}
-                        className="h-11 border-slate-200 bg-white rounded-lg text-sm font-medium px-4 shadow-sm"
+                        className='h-11 pl-10 border-slate-100 bg-slate-50/50 focus:bg-white rounded-xl text-sm font-bold transition-all'
                       />
-                      {isSearching && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                          <div className="animate-spin h-4 w-4 border-b-2 border-blue-500 rounded-full"></div>
-                        </div>
-                      )}
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => searchCustomers()}
-                      className="h-11 px-4 border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-lg shadow-sm border"
-                      title="Find Customer"
-                    >
-                      <Search className="w-4 h-4" />
-                    </Button>
-
                     {searchResults.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-slate-200 z-[100] overflow-hidden p-2">
+                      <div className='absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden p-1.5 animate-in fade-in slide-in-from-top-2'>
                         {searchResults.map((res) => (
                           <div
                             key={res.value}
                             onClick={() => selectCustomer(res)}
-                            className="p-3 hover:bg-slate-50 cursor-pointer flex items-center justify-between rounded-md transition-all"
+                            className='p-3 hover:bg-[#CBFF38]/10 cursor-pointer flex items-center justify-between rounded-lg transition-all group'
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400 text-xs text-uppercase">
+                            <div className='flex items-center gap-3'>
+                              <div className='w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-400 group-hover:bg-white group-hover:text-black transition-colors'>
                                 {res.label[0]}
                               </div>
-                              <div className="flex flex-col">
-                                <span className="font-bold text-slate-800 text-sm leading-tight">{res.label}</span>
-                                <span className="text-[10px] text-slate-400 font-medium">Customer Profile</span>
+                              <div className='flex flex-col'>
+                                <span className='font-bold text-slate-800 text-xs leading-tight'>{res.label}</span>
+                                <span className='text-[10px] text-slate-400 font-medium'>Database Match</span>
                               </div>
                             </div>
-                            <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
+                            <ArrowRight className='w-3.5 h-3.5 text-slate-200 group-hover:text-black transition-all' />
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {tagData.customerId && !searchResults.length && (
-                    <div className="mt-2 text-emerald-500 flex items-center gap-2 bg-white px-2 py-1 rounded-md border border-emerald-100 shadow-sm w-fit">
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Customer Matched</span>
-                    </div>
-                  )}
+                <div className='space-y-1.5'>
+                  <label className='text-[10px] font-black uppercase text-slate-400 tracking-widest px-1'>Select Label</label>
+                  <Select
+                    value={tagData.tagId}
+                    onChange={(val) => setTagData(prev => ({ ...prev, tagId: val }))}
+                    options={availableTags.map(t => ({ value: t.id, label: t.name }))}
+                    placeholder='Select a definition...'
+                    className='h-11 border-slate-100 bg-slate-50/50 rounded-xl font-bold shadow-none'
+                  />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Select Tag
-                </label>
-                <Select
-                  value={tagData.tagId}
-                  onChange={(val) => setTagData(prev => ({ ...prev, tagId: val }))}
-                  options={availableTags.map(t => ({ value: t.id, label: t.name }))}
-                  placeholder="Choose tag definition..."
-                  className="h-11 rounded-lg border-slate-200 bg-white focus:ring-blue-500/5 transition-all text-sm font-medium px-4 shadow-sm"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Internal Notes
-                </label>
-                <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded">Optional</span>
-              </div>
-              <div className="relative">
+              <div className='space-y-1.5'>
+                <label className='text-[10px] font-black uppercase text-slate-400 tracking-widest px-1'>Assignment Notes</label>
                 <textarea
-                  placeholder="Add specific context or rationale for this tag..."
+                  placeholder='Why are you applying this tag? (Optional)'
                   value={tagData.notes}
                   onChange={(e) => setTagData(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full min-h-[140px] p-4 bg-white border border-slate-200 rounded-lg focus:border-blue-300 focus:ring-4 focus:ring-blue-50 outline-none transition-all text-sm font-medium leading-relaxed resize-none shadow-sm"
+                  className='w-full min-h-[100px] p-4 bg-slate-50/50 border border-slate-100 rounded-2xl focus:bg-white focus:border-[#CBFF38] outline-none transition-all text-sm font-medium leading-relaxed resize-none'
                 />
               </div>
-            </div>
 
-            <div className="pt-4 flex justify-end">
-              <Button
-                onClick={handleAddTag}
-                disabled={isLoading || !tagData.customerId || !tagData.tagId}
-                className="h-11 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 text-sm shadow-sm"
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 animate-spin" />
-                    <span>Saving...</span>
-                  </div>
-                ) : (
-                  'Save Tag Assignment'
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className='flex justify-end pt-2'>
+                <Button
+                  onClick={handleAddTag}
+                  disabled={isLoading || !tagData.customerId || !tagData.tagId}
+                  className='h-11 px-8 bg-black text-[#CBFF38] border-none hover:bg-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-black/10 transition-all active:scale-[0.98]'
+                >
+                  {isLoading ? 'Processing...' : 'Assign Tag'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Tag Navigator */}
-        <div className="space-y-6">
-          <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-            <CardHeader className="p-5 pb-3 bg-slate-50 border-b border-slate-100">
-              <CardTitle className="text-slate-900 text-sm flex items-center gap-2 font-bold uppercase tracking-tight">
-                <Filter className="w-4 h-4 text-blue-500" />
-                Tag List
+          {/* B. Results Grid (Dynamic) */}
+          {customersByTag.length > 0 && (
+            <div id='results-section' className='space-y-6 animate-in slide-in-from-bottom-8 duration-700'>
+              <div className='flex items-center justify-between px-2 pt-4 border-t border-slate-100'>
+                <div className='flex items-center gap-3'>
+                  <div className='w-2 h-2 rounded-full bg-[#CBFF38] animate-pulse' />
+                  <h2 className='text-sm font-black text-slate-900 uppercase tracking-widest'>
+                    Found {customersByTag.length} Customers with "{selectedTagHeader?.name}"
+                  </h2>
+                </div>
+                <div className='relative'>
+                  <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400' />
+                  <Input
+                    placeholder='Filter results...'
+                    value={resultsSearch}
+                    onChange={(e) => setResultsSearch(e.target.value)}
+                    className='h-8 w-48 pl-9 bg-slate-50 border-none rounded-lg text-xs font-bold'
+                  />
+                </div>
+              </div>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                {customersByTag.filter(customer =>
+                  customer.customer?.firstName?.toLowerCase().includes(resultsSearch.toLowerCase()) ||
+                  customer.customer?.lastName?.toLowerCase().includes(resultsSearch.toLowerCase()) ||
+                  customer.customer?.email?.toLowerCase().includes(resultsSearch.toLowerCase())
+                ).map((customer: any) => (
+                  <Card
+                    key={customer.id}
+                    className='border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200 group hover:shadow-md transition-all'
+                  >
+                    <CardContent className='p-5 space-y-4'>
+                      <div className='flex justify-between items-start'>
+                        <div className='flex items-center gap-3'>
+                          <div className='w-10 h-10 rounded-xl bg-slate-900 text-[#CBFF38] flex items-center justify-center font-bold text-sm'>
+                            {customer.customer?.firstName?.[0]}{customer.customer?.lastName?.[0]}
+                          </div>
+                          <div>
+                            <h3 className='font-black text-slate-800 text-sm leading-tight group-hover:text-blue-600 transition-colors'>
+                              {customer.customer?.firstName} {customer.customer?.lastName}
+                            </h3>
+                            <p className='text-[10px] font-bold text-slate-400 mt-0.5'>{customer.customer?.email}</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          className='h-8 w-8 p-0 text-slate-300 hover:text-red-500 transition-colors'
+                          onClick={() => {
+                            if (confirm("Remove tag?")) {
+                              dispatch(removeCustomerTag(customer.id)).then(() => {
+                                setCustomersByTag(prev => prev.filter(c => c.id !== customer.id));
+                              });
+                            }
+                          }}
+                        >
+                          <Trash2 className='w-4 h-4' />
+                        </Button>
+                      </div>
+
+                      {customer.notes && (
+                        <div className='p-3 bg-slate-50 rounded-xl border border-slate-100'>
+                          <p className='text-[10px] text-slate-500 font-medium italic leading-relaxed'>
+                            "{customer.notes}"
+                          </p>
+                        </div>
+                      )}
+
+                      <div className='flex items-center gap-2 pt-1'>
+                        <Button
+                          variant='outline'
+                          className='flex-1 h-8 rounded-lg border-slate-100 text-slate-500 font-black text-[9px] uppercase tracking-widest hover:bg-slate-50'
+                          onClick={() => navigate(`/crm/customer/${customer.customer?.id}`)}
+                        >
+                          <ExternalLink className='w-3 h-3 mr-1.5' /> Profile
+                        </Button>
+                        <Button
+                          variant='outline'
+                          className='flex-1 h-8 rounded-lg border-slate-100 text-slate-500 font-black text-[9px] uppercase tracking-widest hover:bg-slate-50'
+                        >
+                          <Mail className='w-3 h-3 mr-1.5' /> Contact
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ---------- RIGHT COLUMN: DEFINITION LIBRARY (4 COLS) ---------- */}
+        <div className='lg:col-span-4 space-y-6'>
+          {/* C. Library List */}
+          <Card className='border-none shadow-sm bg-white rounded-2xl overflow-hidden border border-slate-200'>
+            <CardHeader className='bg-slate-50 border-b border-slate-100 py-4 px-6'>
+              <CardTitle className='text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2'>
+                <Filter className='w-4 h-4 text-blue-500' /> Definition Library
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 pt-1 space-y-4">
-              <div className="relative">
+            <CardContent className='p-4 space-y-4'>
+              <div className='relative'>
+                <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400' />
                 <Input
-                  placeholder="Find tag..."
+                  placeholder='Find definition...'
                   value={tagSearch}
                   onChange={(e) => setTagSearch(e.target.value)}
-                  className="h-9 text-xs border-slate-100 bg-slate-50/50 rounded-lg pl-8"
+                  className='h-9 text-xs pl-9 border-none bg-slate-50 rounded-xl font-bold'
                 />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
               </div>
-              <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+
+              <div className='space-y-1 max-h-[400px] overflow-y-auto pr-1 no-scrollbar'>
                 {availableTags.filter(t => t.name.toLowerCase().includes(tagSearch.toLowerCase())).map(tag => (
-                  <div
+                  <button
                     key={tag.id}
-                    className={`flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer border ${selectedTagHeader?.id === tag.id
-                      ? 'bg-blue-600 border-blue-500 shadow-sm text-white'
-                      : 'bg-white border-slate-100 hover:bg-slate-50 hover:border-slate-200'
-                      }`}
                     onClick={() => handleFetchCustomersByTag(tag)}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all group overflow-hidden relative ${selectedTagHeader?.id === tag.id
+                      ? 'bg-slate-900 text-white shadow-lg'
+                      : 'bg-white border border-transparent hover:bg-slate-50 hover:border-slate-100'
+                      }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: tag.color || '#3b82f6' }} />
-                      <span className="text-sm font-bold tracking-tight">
+                    {selectedTagHeader?.id === tag.id && (
+                      <div className='absolute left-0 top-0 bottom-0 w-1 bg-[#CBFF38]' />
+                    )}
+                    <div className='flex items-center gap-3 relative z-10'>
+                      <div className='w-2 h-2 rounded-full' style={{ backgroundColor: tag.color || '#3b82f6' }} />
+                      <span className={`text-xs font-black tracking-tight ${selectedTagHeader?.id === tag.id ? 'text-white' : 'text-slate-700'}`}>
                         {tag.name}
                       </span>
                     </div>
-                    <ArrowRight className={`w-3.5 h-3.5 transition-all ${selectedTagHeader?.id === tag.id ? 'text-white' : 'text-slate-300'}`} />
-                  </div>
+                    <ArrowRight className={`w-3.5 h-3.5 transition-all ${selectedTagHeader?.id === tag.id ? 'translate-x-0' : '-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100'}`} />
+                  </button>
                 ))}
               </div>
 
-              <div className="pt-6 border-t border-slate-100 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Create New Tag</h4>
-                  <div className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold border border-blue-100 uppercase tracking-widest">Master List</div>
+              {/* D. Create New Definition */}
+              <div className='pt-6 border-t border-slate-100 space-y-4'>
+                <div className='flex items-center justify-between'>
+                  <h4 className='text-[10px] font-black uppercase text-slate-400 tracking-widest'>New Definition</h4>
+                  <Layers className='w-3.5 h-3.5 text-slate-300' />
                 </div>
-                <div className="space-y-3">
+                <div className='space-y-3'>
                   <Input
-                    placeholder="Enter tag name..."
+                    placeholder='Internal Label Name...'
                     value={newTag.name}
                     onChange={(e) => setNewTag(prev => ({ ...prev, name: e.target.value }))}
-                    className="bg-white border-slate-200 text-slate-900 h-10 rounded-lg pl-3 font-bold text-sm shadow-sm"
+                    className='h-10 border-slate-100 bg-slate-50 focus:bg-white rounded-xl text-xs font-bold'
                   />
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 rounded-lg bg-white p-0.5 border border-slate-200 shadow-sm">
+                  <div className='flex items-center gap-2'>
+                    <div className='relative w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden p-0.5 flex-shrink-0'>
                       <input
-                        type="color"
+                        type='color'
                         value={newTag.color}
                         onChange={(e) => setNewTag(prev => ({ ...prev, color: e.target.value }))}
-                        className="w-full h-full rounded bg-transparent cursor-pointer overflow-hidden border-none p-0"
+                        className='absolute inset-0 w-[150%] h-[150%] -translate-x-1/4 -translate-y-1/4 cursor-pointer scale-125'
                       />
                     </div>
                     <Button
                       onClick={handleCreateTag}
-                      className="flex-1 h-10 bg-slate-900 hover:bg-black text-white font-bold rounded-lg transition-all text-xs"
+                      disabled={!newTag.name}
+                      className='flex-1 h-10 bg-black text-white hover:bg-slate-900 border-none rounded-xl font-black text-[9px] uppercase tracking-widest shadow-md transition-all active:scale-95'
                     >
-                      Create definition
+                      Store Label
                     </Button>
                   </div>
                 </div>
@@ -425,120 +479,6 @@ export const Tags: React.FC = () => {
           </Card>
         </div>
       </div>
-
-      {/* Results Section */}
-      {customersByTag.length > 0 && (
-        <div id="results-section" className="space-y-10 pt-16 pb-32 scroll-mt-20">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-blue-600 rounded-xl shadow-sm">
-                <Users className="w-5 h-5 text-white" />
-              </div>
-              <div className="space-y-0.5">
-                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                  Customers with <span className="text-blue-600">"{selectedTagHeader?.name}"</span> tag
-                </h2>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: selectedTagHeader?.color }} />
-                  <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                    {customersByTag.filter(c =>
-                      c.customer?.firstName?.toLowerCase().includes(resultsSearch.toLowerCase()) ||
-                      c.customer?.lastName?.toLowerCase().includes(resultsSearch.toLowerCase()) ||
-                      c.customer?.email?.toLowerCase().includes(resultsSearch.toLowerCase())
-                    ).length} customers found
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Input
-                  placeholder="Find in results..."
-                  value={resultsSearch}
-                  onChange={(e) => setResultsSearch(e.target.value)}
-                  className="h-10 w-64 border-slate-200 bg-white rounded-lg text-sm pl-9 shadow-sm"
-                />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              </div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                Filtered List View
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in slide-in-from-bottom-12 duration-1000">
-            {customersByTag.filter(customer =>
-              customer.customer?.firstName?.toLowerCase().includes(resultsSearch.toLowerCase()) ||
-              customer.customer?.lastName?.toLowerCase().includes(resultsSearch.toLowerCase()) ||
-              customer.customer?.email?.toLowerCase().includes(resultsSearch.toLowerCase())
-            ).map((customer: any, idx) => (
-              <Card
-                key={customer.id}
-                className="group border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white"
-              >
-                <CardContent className="p-6 space-y-6">
-                  <div className="flex justify-between items-start">
-                    <div className="w-12 h-12 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center font-bold text-lg border border-slate-200">
-                      {customer.customer?.firstName?.[0]}{customer.customer?.lastName?.[0]}
-                    </div>
-                    <div className="px-3 py-1 bg-slate-50 rounded-lg text-[9px] font-bold text-slate-400 uppercase tracking-widest border border-slate-100">
-                      ID {idx + 1}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider block">Customer Details</span>
-                    <h3 className="font-bold text-slate-900 text-lg tracking-tight">
-                      {customer.customer?.firstName} {customer.customer?.lastName}
-                    </h3>
-                    <div className="text-xs text-slate-500 font-medium flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5"><Mail className="w-3 h-3 pt-0.5" /> {customer.customer?.email}</div>
-                      {customer.customer?.phone && (
-                        <div className="flex items-center gap-1.5"><Phone className="w-3 h-3 pt-0.5" /> {customer.customer?.phone}</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {customer.notes && (
-                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
-                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Notes</div>
-                      <p className="text-xs text-slate-600 font-medium leading-relaxed italic">
-                        "{customer.notes}"
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="pt-2 flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 h-10 rounded-lg border-slate-200 hover:bg-slate-50 text-slate-600 font-bold transition-all text-xs"
-                      onClick={() => navigate(`/crm/customer/${customer.customer?.id}`)}
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 mr-2" />
-                      View Profile
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-10 h-10 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 p-0 transition-all border border-transparent hover:border-red-100"
-                      onClick={() => {
-                        if (confirm("Remove this tag from customer?")) {
-                          dispatch(removeCustomerTag(customer.id)).then(() => {
-                            setCustomersByTag(prev => prev.filter(c => c.id !== customer.id));
-                          });
-                        }
-                      }}
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

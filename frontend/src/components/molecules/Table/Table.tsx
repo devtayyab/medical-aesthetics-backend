@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
   children: React.ReactNode;
@@ -31,9 +31,9 @@ interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
 }
 
 export const Table: React.FC<TableProps> = ({ children, className = '', ...props }) => (
-  <div className="relative w-full overflow-auto">
+  <div className="relative w-full overflow-auto no-scrollbar">
     <table
-      className={`w-full caption-bottom text-sm border-collapse ${className}`}
+      className={`caption-bottom text-sm border-collapse ${className}`}
       {...props}
     >
       {children}
