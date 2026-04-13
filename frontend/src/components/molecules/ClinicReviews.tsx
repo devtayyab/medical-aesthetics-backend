@@ -441,7 +441,7 @@ className="w-full h-[300px] object-cover rounded-lg"
             to="/"
             className="text-[#203400] flex flex-row font-medium text-sm mt-5"
           >
-            Other Clinics in Barnes, London
+            Other Clinics in your area
             <span className="text-green-900">
               <MoveUpRight size={16} />
             </span>
@@ -455,9 +455,9 @@ className="w-full h-[300px] object-cover rounded-lg"
 // Placeholder function to calculate distance (replace with actual geolocation logic)
 const calculateDistance = (city: string) => {
   // Simple hardcoded distances based on city (replace with real calculation)
-  const distances = {
-    Barnes: 5,
-    "Los Angeles": 10,
+  const distances: Record<string, number> = {
+    Athens: 5,
+    Thessaloniki: 10,
   };
   return distances[city] || 0;
 };

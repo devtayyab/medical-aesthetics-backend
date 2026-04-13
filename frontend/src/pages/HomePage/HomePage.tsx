@@ -10,8 +10,16 @@ import {
   FaTh,
   FaMapMarkerAlt
 } from "react-icons/fa";
-import { ArrowRight } from "lucide-react";
 import { SearchBar } from "@/components/organisms/SearchBar";
+import {
+  ArrowRight,
+  ShieldCheck,
+  Stethoscope,
+  Sparkles,
+  CalendarCheck,
+  MousePointerClick,
+  Lock
+} from "lucide-react";
 
 
 // import { Button } from "@/components/atoms/Button/Button";
@@ -21,7 +29,7 @@ import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 
 // Images
-import HeaderBanner from "@/assets/HeroBanner_New.png";
+import HeaderBanner from "@/assets/HeroBanner_Premium.png";
 import LayeredBG from "@/assets/LayeredBg.svg";
 import PlusIcon from "@/assets/Icons/PlusIcon.svg";
 import CalendarIcon from "@/assets/Icons/CalendarIcon.svg";
@@ -164,148 +172,166 @@ export const HomePage: React.FC = () => {
   return (
     <div>
       {/* Hero Section */}
-      <section
-        className="relative bg-cover bg-top min-h-[400px] sm:min-h-[550px] flex items-center"
-        style={{
+      <section 
+        className="relative w-full bg-cover bg-no-repeat flex items-center"
+        style={{ 
           backgroundImage: `url(${HeaderBanner})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'right center',
+          backgroundRepeat: 'no-repeat',
+          height: '70vh',
+          minHeight: '520px'
         }}
       >
-        <div className="max-w-[1200px] mx-auto grid grid-cols-1 gap-8 items-center h-full px-4 sm:px-6 py-10 sm:py-0">
-          <div className="w-full max-w-[900px] mx-auto">
-            <h2 className="text-white text-3xl sm:text-[48px] font-black text-center mb-8 leading-tight drop-shadow-md uppercase italic">
-              Book your next <span className="text-[#CBFF38]">beauty treatment</span>
-            </h2>
+        <div className="absolute inset-0 bg-white/10 lg:bg-transparent" />
 
-            <SearchBar
-              onSearch={handleSearch}
-              className="mx-auto !p-6 bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl"
-            />
+        {/* Content Overlay */}
+        <div className="relative z-10 w-full">
+          <div className="max-w-[1200px] mx-auto w-full px-6">
+            <div className="flex flex-col max-w-xl">
+              <h1 className="text-black text-2xl sm:text-[40px] font-black mb-1 leading-tight uppercase tracking-tight">
+                BOOK YOUR NEXT <br />
+                <span className="text-[#A3E635] whitespace-nowrap">BEAUTY TREATMENT</span>
+              </h1>
+
+              <p className="text-gray-700 text-sm mb-4 max-w-md leading-snug font-medium">
+                Book your appointment easily and quickly
+                with specialized doctors and modern treatments.
+              </p>
+
+              <div className="w-full max-w-[480px]">
+                <SearchBar
+                  onSearch={handleSearch}
+                  className="!shadow-2xl border-none"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Main Categories Section (New Requirement) */}
-      <section className="py-10 bg-white border-b border-gray-100">
-        <div className="max-w-[1200px] mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {mainCategories.map((cat) => (
-              <div
-                key={cat.id}
-                onClick={() => navigate(cat.link)}
-                className="cursor-pointer bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#CBFF38] transition-all flex items-center gap-4 group"
-              >
-                <div className="size-14 bg-gray-50 rounded-xl flex items-center justify-center text-gray-600 group-hover:bg-[#CBFF38] group-hover:text-black transition-colors">
-                  {cat.icon}
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-lime-700 transition-colors">{cat.name}</h3>
-                  <p className="text-gray-500 text-sm">{cat.description}</p>
+      {/* Main Categories Section (New Requirement) */ }
+  <section className="py-10 bg-white border-b border-gray-100">
+    <div className="max-w-[1200px] mx-auto px-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {mainCategories.map((cat) => (
+          <div
+            key={cat.id}
+            onClick={() => navigate(cat.link)}
+            className="cursor-pointer bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#CBFF38] transition-all flex items-center gap-4 group"
+          >
+            <div className="size-14 bg-gray-50 rounded-xl flex items-center justify-center text-gray-600 group-hover:bg-[#CBFF38] group-hover:text-black transition-colors">
+              {cat.icon}
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 group-hover:text-lime-700 transition-colors">{cat.name}</h3>
+              <p className="text-gray-500 text-sm">{cat.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  {/* Popular Categories Section */ }
+  <section className="py-12 bg-white">
+    <div className="max-w-[1200px] mx-auto px-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-[#33373F]">Popular Categories</h2>
+          <p className="text-gray-600 mt-1">Explore top treatments by category</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {categories.map((category) => (
+          <button
+            key={category.id}
+            onClick={() => handleCategoryClick(category.id)}
+            className="flex flex-col items-center p-6 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-[#CBFF38] transition-all group"
+          >
+            <div className="size-16 bg-[#F7FAFC] rounded-full flex items-center justify-center mb-4 group-hover:bg-[#CBFF38] transition-colors">
+              <img src={category.icon} alt={category.name} className="size-8" />
+            </div>
+            <span className="font-semibold text-[#33373F] text-sm">{category.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  {/* Featured Clinics Section */ }
+  <section className="py-12 bg-gray-50">
+    <div className="max-w-[1200px] mx-auto px-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-[#33373F]">Featured Clinics</h2>
+          <p className="text-gray-600 mt-1">Top-rated clinics recommended for you</p>
+        </div>
+        <button
+          onClick={() => navigate('/search')}
+          className="text-lime-600 font-medium hover:text-lime-700 transition"
+        >
+          See All Clinics <ArrowRight className="inline-block ml-1 h-4 w-4" />
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-500"></div>
+        </div>
+      ) : featuredClinics && featuredClinics.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {featuredClinics.map((clinic) => (
+            <div
+              key={clinic.id}
+              onClick={() => handleClinicSelect(clinic)}
+              className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group border border-gray-100 flex flex-col h-full"
+            >
+              <div className="h-48 bg-gray-200 relative overflow-hidden">
+                <img
+                  src={clinic.images && clinic.images.length > 0 ? clinic.images[0] : "https://placehold.co/600x400?text=Clinic"}
+                  alt={clinic.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1">
+                  <FaStar className="text-yellow-400" />
+                  <span>
+                    {(clinic.rating !== null && clinic.rating !== undefined)
+                      ? Number(clinic.rating).toFixed(1)
+                      : "New"}
+                  </span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Popular Categories Section */}
-      <section className="py-12 bg-white">
-        <div className="max-w-[1200px] mx-auto px-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-[#33373F]">Popular Categories</h2>
-              <p className="text-gray-600 mt-1">Explore top treatments by category</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => handleCategoryClick(category.id)}
-                className="flex flex-col items-center p-6 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-[#CBFF38] transition-all group"
-              >
-                <div className="size-16 bg-[#F7FAFC] rounded-full flex items-center justify-center mb-4 group-hover:bg-[#CBFF38] transition-colors">
-                  <img src={category.icon} alt={category.name} className="size-8" />
+              <div className="p-5 flex flex-col flex-1">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">{clinic.name}</h3>
+                <div className="flex items-center text-gray-500 text-sm mb-3">
+                  <FaMapMarkerAlt className="mr-1 text-gray-400" />
+                  <span>{clinic.address.city}, {clinic.address.country}</span>
                 </div>
-                <span className="font-semibold text-[#33373F] text-sm">{category.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Clinics Section */}
-      <section className="py-12 bg-gray-50">
-        <div className="max-w-[1200px] mx-auto px-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-[#33373F]">Featured Clinics</h2>
-              <p className="text-gray-600 mt-1">Top-rated clinics recommended for you</p>
-            </div>
-            <button
-              onClick={() => navigate('/search')}
-              className="text-lime-600 font-medium hover:text-lime-700 transition"
-            >
-              See All Clinics <ArrowRight className="inline-block ml-1 h-4 w-4" />
-            </button>
-          </div>
-
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-500"></div>
-            </div>
-          ) : featuredClinics && featuredClinics.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredClinics.map((clinic) => (
-                <div
-                  key={clinic.id}
-                  onClick={() => handleClinicSelect(clinic)}
-                  className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group border border-gray-100 flex flex-col h-full"
-                >
-                  <div className="h-48 bg-gray-200 relative overflow-hidden">
-                    <img
-                      src={clinic.images && clinic.images.length > 0 ? clinic.images[0] : "https://placehold.co/600x400?text=Clinic"}
-                      alt={clinic.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1">
-                      <FaStar className="text-yellow-400" />
-                      <span>
-                        {(clinic.rating !== null && clinic.rating !== undefined)
-                          ? Number(clinic.rating).toFixed(1)
-                          : "New"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-5 flex flex-col flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">{clinic.name}</h3>
-                    <div className="flex items-center text-gray-500 text-sm mb-3">
-                      <FaMapMarkerAlt className="mr-1 text-gray-400" />
-                      <span>{clinic.address.city}, {clinic.address.country}</span>
-                    </div>
-                    <p className="text-gray-600 text-sm line-clamp-2 mb-4 flex-1">
-                      {clinic.description}
-                    </p>
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
-                      <span className="text-gray-400 text-xs">
-                        {clinic.reviewCount || 0} review{clinic.reviewCount !== 1 ? 's' : ''}
-                      </span>
-                      <span className="text-lime-600 font-medium text-sm group-hover:underline">
-                        View Details
-                      </span>
-                    </div>
-                  </div>
+                <p className="text-gray-600 text-sm line-clamp-2 mb-4 flex-1">
+                  {clinic.description}
+                </p>
+                <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
+                  <span className="text-gray-400 text-xs">
+                    {clinic.reviewCount || 0} review{clinic.reviewCount !== 1 ? 's' : ''}
+                  </span>
+                  <span className="text-lime-600 font-medium text-sm group-hover:underline">
+                    View Details
+                  </span>
                 </div>
-              ))}
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
-              <p>No featured clinics found.</p>
-            </div>
-          )}
+          ))}
         </div>
-      </section>
+      ) : (
+        <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
+          <p>No featured clinics found.</p>
+        </div>
+      )}
+    </div>
+  </section>
 
-      {/* How It Works Section */}
+  {/* How It Works Section */ }
       <section className="py-16 bg-white overflow-hidden">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
@@ -452,13 +478,13 @@ export const HomePage: React.FC = () => {
                   </div>
                   <ul className="space-y-1 text-gray-700">
                     {[
-                      "London",
-                      "Edinburgh",
-                      "Leeds",
-                      "Liverpool",
-                      "Bristol",
-                      "Glasgow",
-                      "Manchester",
+                      "Athens",
+                      "Thessaloniki",
+                      "Patras",
+                      "Heraklion",
+                      "Larissa",
+                      "Volos",
+                      "Ioannina",
                     ].map((city, i) => (
                       <li key={i} className="hover:text-lime-600 cursor-pointer" onClick={() => navigate(`/search?category=${category.id}&location=${city}`)}>{city}</li>
                     ))}
@@ -529,6 +555,6 @@ export const HomePage: React.FC = () => {
           className="absolute bottom-0 left-0 w-full pointer-events-none select-none"
         />
       </section>
-    </div>
+    </div >
   );
 };

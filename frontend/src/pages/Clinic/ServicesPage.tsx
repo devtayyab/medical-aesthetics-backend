@@ -41,76 +41,78 @@ const ServicesPage: React.FC = () => {
   const canManage = hasPermission(user?.role, "canManageServices");
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Premium Header */}
-      <div className="bg-black text-white pt-16 pb-24 px-6 md:px-10 rounded-b-[48px] shadow-2xl relative overflow-hidden">
-        <div className="absolute top-[-20%] right-[-10%] size-[500px] bg-[#CBFF38]/10 blur-[120px] rounded-full" />
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8 relative z-10">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
-              <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] italic">Catalog Management</span>
+        <div className="min-h-screen bg-[#F8FAFC]">
+            {/* Minimal Header */}
+            <div className="relative pt-8 pb-16 px-6 md:px-10 border-b border-gray-100 bg-white">
+                <div className="max-w-7xl mx-auto relative z-10">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                        <div className="space-y-3">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
+                                <div className="size-1.5 rounded-full bg-green-500" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 italic">Catalog Management</span>
+                            </div>
+                            <div className="space-y-1">
+                                <h1 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter leading-none text-gray-900">Treatments & Pricing</h1>
+                                <p className="text-gray-500 font-medium max-w-md text-sm">Orchestrate clinical offerings and deployment protocol.</p>
+                            </div>
+                        </div>
+                        
+                        {canManage && (
+                            <button
+                                onClick={() => {
+                                    setEditingService(null);
+                                    setShowModal(true);
+                                }}
+                                className="group h-12 px-8 bg-black text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all shadow-lg flex items-center gap-3"
+                            >
+                                <Plus size={16} />
+                                Provision New Therapy
+                            </button>
+                        )}
             </div>
-            <div className="space-y-1">
-              <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">Treatments & Pricing</h1>
-              <p className="text-gray-400 font-medium max-w-md">Orchestrate your clinical offerings with precision. Adjust pricing models and availability in real-time.</p>
-            </div>
-          </div>
-          {canManage && (
-            <button
-              onClick={() => {
-                setEditingService(null);
-                setShowModal(true);
-              }}
-              className="group h-14 px-8 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white transition-all shadow-xl shadow-lime-500/10 flex items-center gap-3"
-            >
-              <Plus className="group-hover:rotate-90 transition-transform duration-500" size={18} />
-              Provision New Therapy
-            </button>
-          )}
         </div>
-      </div>
- 
-      {/* Main Grid */}
-      <div className="max-w-7xl mx-auto px-6 md:px-10 -mt-12 relative z-20 pb-20">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-40 gap-4 bg-white rounded-[48px] shadow-sm border border-gray-100">
-            <div className="size-10 border-4 border-[#CBFF38] border-t-transparent rounded-full animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 italic">Syncing treatment registry...</p>
-          </div>
-        ) : services.length === 0 ? (
-          <div className="bg-white rounded-[40px] p-20 text-center border border-gray-100 shadow-sm">
-            <div className="size-20 bg-gray-50 rounded-[32px] flex items-center justify-center mx-auto mb-6 text-gray-200">
-               <Settings size={32} />
+    </div>
+
+    {/* Main Grid */}
+            <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-32 gap-3 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                        <div className="size-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
+                        <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 italic">Processing Registry...</p>
+                    </div>
+                ) : services.length === 0 ? (
+                    <div className="bg-white rounded-3xl p-16 text-center border border-gray-100 shadow-sm">
+                        <div className="size-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-gray-200">
+                            <Settings size={28} />
+                        </div>
+                        <h3 className="text-lg font-black uppercase italic tracking-tighter text-gray-900 mb-2">Registry Offline</h3>
+                        <p className="text-[10px] text-gray-400 font-bold mb-8 uppercase tracking-widest">No therapies provisioned yet.</p>
+                        {canManage && (
+                            <button
+                                onClick={() => setShowModal(true)}
+                                className="h-12 px-8 bg-black text-[#CBFF38] rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all"
+                            >
+                                Provision Therapy
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {services.map((service) => (
+                            <ServiceCard 
+                                key={service.id} 
+                                service={service} 
+                                canManage={canManage}
+                                onToggle={() => handleToggleStatus(service.id)}
+                                onEdit={() => {
+                                    setEditingService(service);
+                                    setShowModal(true);
+                                }}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
-            <h3 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 mb-2">Registry is Empty</h3>
-            <p className="text-gray-400 font-medium mb-8">Start your clinical journey by adding your first treatment offering.</p>
-            {canManage && (
-              <button
-                onClick={() => setShowModal(true)}
-                className="h-14 px-8 bg-black text-[#CBFF38] rounded-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition-all"
-              >
-                Provision First Therapy
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.map((service) => (
-              <ServiceCard 
-                 key={service.id} 
-                 service={service} 
-                 canManage={canManage}
-                 onToggle={() => handleToggleStatus(service.id)}
-                 onEdit={() => {
-                   setEditingService(service);
-                   setShowModal(true);
-                 }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
  
       {/* Service Modal */}
       {showModal && (
@@ -137,76 +139,70 @@ const ServiceCard = ({ service, canManage, onToggle, onEdit }: any) => {
   const isActive = service.isActive;
   
   return (
-    <div className={`bg-white rounded-[40px] border transition-all duration-500 overflow-hidden group flex flex-col ${
-      isActive ? 'border-gray-100 shadow-sm hover:border-black hover:shadow-xl' : 'border-gray-100 grayscale opacity-60'
+    <div className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden group flex flex-col ${
+      isActive ? 'border-gray-50 shadow-sm hover:border-black hover:shadow-lg' : 'border-gray-50 grayscale opacity-60'
     }`}>
-       {/* Visual Layer */}
-       <div className="h-48 relative overflow-hidden bg-gray-100 italic">
-          {service.treatment?.imageUrl ? (
-             <img 
-               src={service.treatment.imageUrl} 
-               alt={service.treatment?.name}
-               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-             />
-          ) : (
-             <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-200">
-                <Settings size={64} />
-             </div>
-          )}
-          <div className="absolute top-4 left-4">
-             <span className="px-3 py-1.5 bg-black/80 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-full border border-white/10">
-                {service.treatment?.category || 'Clinical'}
-             </span>
-          </div>
-          {canManage && (
-             <button 
-               onClick={(e) => { e.stopPropagation(); onToggle(); }}
-               className="absolute top-4 right-4 size-10 bg-white/90 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-lg hover:bg-[#CBFF38] transition-all"
-             >
-                {isActive ? <ToggleRight className="text-black" /> : <ToggleLeft className="text-gray-400" />}
-             </button>
-          )}
-       </div>
- 
-       {/* Content Layer */}
-       <div className="p-8 flex-1 flex flex-col">
-          <div className="flex-1 space-y-4">
-             <div>
-                <h3 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 mb-1 group-hover:translate-x-1 transition-transform">{service.treatment?.name}</h3>
-                <p className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] bg-black inline-block px-2 py-0.5 rounded italic">Protocol 4.0</p>
-             </div>
-             
-             <p className="text-gray-500 text-sm font-medium line-clamp-2 leading-relaxed italic">
-                {service.treatment?.shortDescription || "Premium medical aesthetic procedure following high clinical standards."}
-             </p>
- 
-             <div className="flex items-center gap-6 py-4 border-y border-gray-50">
-                <div className="space-y-1">
-                   <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Duration</p>
-                   <div className="flex items-center gap-2 text-gray-900">
-                      <Clock size={14} className="text-[#CBFF38]" />
-                      <span className="text-sm font-black italic">{service.durationMinutes} MIN</span>
-                   </div>
+        {/* Visual Layer */}
+        <div className="h-40 relative overflow-hidden bg-gray-50">
+            {service.treatment?.imageUrl ? (
+                <img 
+                    src={service.treatment.imageUrl} 
+                    alt={service.treatment?.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                />
+            ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-200">
+                    <Settings size={48} />
                 </div>
-                <div className="space-y-1">
-                   <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Valuation</p>
-                   <div className="text-xl font-black tracking-tighter text-gray-900 italic">
-                      €{service.price}
-                   </div>
+            )}
+            <div className="absolute top-3 left-3">
+                <span className="px-2.5 py-1 bg-black/80 text-[#CBFF38] text-[8px] font-black uppercase tracking-[0.2em] rounded-lg">
+                    {service.treatment?.category || 'Clinical'}
+                </span>
+            </div>
+            {canManage && (
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onToggle(); }}
+                    className="absolute top-3 right-3 size-8 bg-white/90 backdrop-blur-md rounded-xl flex items-center justify-center shadow-lg hover:bg-[#CBFF38] transition-all"
+                >
+                    {isActive ? <ToggleRight className="text-black" size={16} /> : <ToggleLeft className="text-gray-400" size={16} />}
+                </button>
+            )}
+        </div>
+
+        {/* Content Layer */}
+        <div className="p-6 flex-1 flex flex-col">
+            <div className="flex-1 space-y-3">
+                <div>
+                    <h3 className="text-lg font-black uppercase italic tracking-tighter text-gray-900 leading-none group-hover:translate-x-1 transition-transform mb-1.5">{service.treatment?.name}</h3>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 italic">Deploy v4.0</p>
                 </div>
-             </div>
-          </div>
- 
-          {canManage && (
-             <button 
-               onClick={onEdit}
-               className="mt-6 w-full h-12 bg-gray-50 hover:bg-black hover:text-[#CBFF38] rounded-2xl flex items-center justify-center gap-2 transition-all font-black uppercase text-[10px] tracking-widest italic border border-gray-100 shadow-sm"
-             >
-                <Edit2 size={14} />
-                Modify Parameters
-             </button>
-          )}
-       </div>
+                
+                <p className="text-gray-500 text-[11px] font-medium line-clamp-2 leading-tight italic">
+                    {service.treatment?.shortDescription || "Premium medical aesthetic procedure matrix."}
+                </p>
+
+                <div className="flex items-center gap-4 py-3 border-y border-gray-50/50">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <Clock size={12} className="text-gray-300" />
+                        <span className="text-[10px] font-black text-gray-900 italic uppercase">{service.durationMinutes}m</span>
+                    </div>
+                    <div className="text-lg font-black tracking-tighter text-gray-900 italic">
+                        €{service.price}
+                    </div>
+                </div>
+            </div>
+
+            {canManage && (
+                <button 
+                    onClick={onEdit}
+                    className="mt-4 w-full h-10 bg-gray-50 hover:bg-black hover:text-[#CBFF38] rounded-xl flex items-center justify-center gap-2 transition-all font-black uppercase text-[9px] tracking-widest italic"
+                >
+                    <Edit2 size={12} />
+                    Parameters
+                </button>
+            )}
+        </div>
     </div>
   );
 };

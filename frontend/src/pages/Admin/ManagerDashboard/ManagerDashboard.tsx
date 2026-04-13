@@ -508,48 +508,104 @@ export const ManagerDashboard = () => {
   // Render Agent Detail View
   if (selectedAgent) {
     return (
-      <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => {
-            setSelectedAgent(null);
-            dispatch(setLeadFilters({})); // Reset filters
-          }}>
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Agents
-          </Button>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="w-6 h-6 text-gray-400" />
-            {selectedAgent.agentName}
-          </h1>
-          <div className="ml-auto flex gap-2">
-            <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-bold">
-              Rev: {formatCurrency(selectedAgent.totalRevenue)}
+      <div className="space-y-8 animate-in slide-in-from-right-8 duration-500 ease-out pb-20">
+        {/* Premium Header Architecture */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/20">
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={() => {
+                setSelectedAgent(null);
+                dispatch(setLeadFilters({}));
+              }}
+              className="size-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white hover:bg-[#CBFF38] hover:text-black hover:rotate-[-8deg] transition-all duration-300 shadow-xl shadow-slate-900/20"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <Users className="w-5 h-5 text-slate-500" />
+                </div>
+                <h1 className="text-3xl font-black text-slate-900 tracking-tight italic">
+                  {selectedAgent.agentName}
+                </h1>
+              </div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic ml-10">Strategic Deployment Terminal</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="px-6 py-4 bg-slate-900 rounded-[1.5rem] shadow-2xl shadow-slate-900/10 border border-slate-800">
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 italic">Generated Revenue</p>
+              <div className="flex items-center gap-3">
+                <div className="size-8 rounded-full bg-[#CBFF38] flex items-center justify-center text-black">
+                  <Euro size={14} strokeWidth={3} />
+                </div>
+                <span className="text-2xl font-black text-white tabular-nums tracking-tighter">
+                  {formatCurrency(selectedAgent.totalRevenue)}
+                </span>
+              </div>
+            </div>
+            
+            <div className="hidden lg:flex flex-col gap-1 px-4 border-l border-slate-100">
+               <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">Mission Velocity</span>
+               <div className="flex items-center gap-2">
+                  <TrendingUp size={12} className="text-[#CBFF38]" />
+                  <span className="text-xs font-black text-slate-900">{(selectedAgent.conversionRate * 100).toFixed(1)}%</span>
+               </div>
             </div>
           </div>
         </div>
 
-        <Tabs defaultValue="diary" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="diary">Sales Diary</TabsTrigger>
-            <TabsTrigger value="leads">Assigned Leads</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-          </TabsList>
+        {/* High-Contrast Tab Navigation */}
+        <div className="space-y-6">
+          <Tabs defaultValue="diary" className="w-full">
+            <div className="flex items-center justify-center lg:justify-start mb-8">
+              <TabsList className="bg-slate-100/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/50">
+                <TabsTrigger 
+                  value="diary" 
+                  className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
+                >
+                  Sales Diary
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="leads" 
+                  className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
+                >
+                  Assigned Leads
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="performance" 
+                  className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
+                >
+                  Analytics
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-          <TabsContent value="diary">
-            <SalesDiary salespersonId={selectedAgent.agentId} />
-          </TabsContent>
+            <TabsContent value="diary" className="mt-0 ring-offset-0 focus-visible:outline-none">
+              <div className="animate-in fade-in zoom-in-95 duration-500">
+                <SalesDiary salespersonId={selectedAgent.agentId} />
+              </div>
+            </TabsContent>
 
-          <TabsContent value="leads">
-            <Card>
-              <CardContent className="p-0">
-                <LeadsPage forceShowCreateForm={false} />
-              </CardContent>
-            </Card>
-          </TabsContent>
+            <TabsContent value="leads" className="mt-0 ring-offset-0 focus-visible:outline-none">
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <Card className="border-none shadow-2xl shadow-slate-200/50 bg-white rounded-[2rem] overflow-hidden">
+                  <CardContent className="p-0">
+                    <LeadsPage forceShowCreateForm={false} />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
 
-          <TabsContent value="performance">
-            <Analytics initialSalespersonId={selectedAgent.agentId} />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="performance" className="mt-0 ring-offset-0 focus-visible:outline-none">
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <Analytics initialSalespersonId={selectedAgent.agentId} />
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     );
   }

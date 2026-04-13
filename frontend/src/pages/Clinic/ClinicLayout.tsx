@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
@@ -22,7 +22,9 @@ import {
   BookOpen,
   UserCog,
   FileText,
+  Phone,
 } from 'lucide-react';
+import { fetchUnreadCount } from '@/store/slices/notificationsSlice';
 
 const iconMap: Record<string, React.ReactNode> = {
   LayoutDashboard: <LayoutDashboard className="w-5 h-5" />,
@@ -38,6 +40,7 @@ const iconMap: Record<string, React.ReactNode> = {
   BookOpen: <BookOpen className="w-5 h-5" />,
   UserCog: <UserCog className="w-5 h-5" />,
   FileText: <FileText className="w-5 h-5" />,
+  Phone: <Phone className="w-5 h-5" />,
 };
 
 const ClinicLayout: React.FC = () => {
@@ -45,13 +48,17 @@ const ClinicLayout: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const user = useSelector((state: RootState) => state.auth.user);
   const { profile } = useSelector((state: RootState) => state.clinic);
+  const { unreadCount } = useSelector((state: RootState) => state.notifications);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   React.useEffect(() => {
     if (!profile) {
       dispatch(fetchClinicProfile());
     }
-  }, [dispatch, profile]);
+    if (user) {
+      dispatch(fetchUnreadCount());
+    }
+  }, [dispatch, profile, user]);
 
   const menuItems = getMenuItemsForRole(user?.role || '');
 
@@ -130,19 +137,24 @@ const ClinicLayout: React.FC = () => {
                 to={item.path}
                 onClick={closeSidebar}
                 className={({ isActive }) =>
-                  `group flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 ${isActive
-                    ? 'bg-black text-[#CBFF38] shadow-xl shadow-lime-500/10'
+                  `group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isActive
+                    ? 'bg-black text-[#CBFF38]'
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`
                 }
               >
-                <div className="transition-transform duration-300 group-hover:scale-110">
+                <div className="transition-transform duration-300 group-hover:scale-105">
                    {iconMap[item.icon]}
                 </div>
-                <span className="text-xs font-black uppercase tracking-widest">{item.label}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest italic">{item.label}</span>
                 {item.id === 'appointments' && (
-                   <div className="ml-auto size-5 rounded-full bg-[#CBFF38] text-black text-[10px] font-black flex items-center justify-center animate-bounce shadow-sm">
+                   <div className="ml-auto size-4 rounded-full bg-[#CBFF38] text-black text-[8px] font-black flex items-center justify-center shadow-sm">
                       !
+                   </div>
+                )}
+                {item.id === 'my-notifications' && unreadCount > 0 && (
+                   <div className="ml-auto bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm">
+                      {unreadCount > 99 ? '99+' : unreadCount}
                    </div>
                 )}
               </NavLink>
@@ -151,23 +163,23 @@ const ClinicLayout: React.FC = () => {
         </nav>
  
         {/* User Profile & Logout */}
-        <div className="p-6 m-4 bg-gray-50 rounded-[32px] border border-gray-100">
+        <div className="p-5 m-4 bg-gray-50 rounded-2xl border border-gray-100">
           <div className="flex items-center gap-3 mb-4">
-            <div className="size-10 bg-white shadow-sm rounded-2xl flex items-center justify-center shrink-0">
-              <span className="text-black font-black text-sm italic">
+            <div className="size-9 bg-white shadow-sm rounded-xl flex items-center justify-center shrink-0">
+              <span className="text-black font-black text-xs italic">
                 {user?.firstName?.[0]}{user?.lastName?.[0]}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-black text-[10px] uppercase tracking-tighter text-gray-900 truncate italic">
+              <p className="font-black text-[9px] uppercase tracking-tighter text-gray-900 truncate italic">
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight truncate leading-none mt-1">{user?.role?.replace('_', ' ')}</p>
+              <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tight truncate leading-none mt-1">{user?.role?.replace('_', ' ')}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-2xl border border-gray-100 transition-all font-black uppercase text-[10px] tracking-widest shadow-sm"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-xl border border-gray-100 transition-all font-black uppercase text-[9px] tracking-widest shadow-sm"
           >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>

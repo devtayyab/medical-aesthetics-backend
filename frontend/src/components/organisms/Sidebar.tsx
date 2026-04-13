@@ -4,10 +4,10 @@ import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
 import { fetchConversations } from "@/store/slices/messagesSlice";
 import { useEffect } from "react";
-
-import {
-  LayoutDashboard, Users, BarChart2, Tag, Eye, Settings,
-  Building2,
+import { fetchUnreadCount } from "@/store/slices/notificationsSlice";
+import { 
+  LayoutDashboard, Users, BarChart2, Tag, Eye, Settings, 
+  Building2, 
   Calendar, CalendarRange, FileText, BarChart, Shield, DollarSign,
   ClipboardList, Repeat, UserCog, ListChecks, Clock,
   Phone, Search, LogOut, MessageSquare, Archive, Bell, Key
@@ -31,14 +31,18 @@ const clientLinks: SidebarItem[] = [
 ];
 
 const clinicLinks: SidebarItem[] = [
-  { path: "/messages", label: "Messages", icon: <MessageSquare className="w-5 h-5" />, group: "Communication" },
-  { path: "/clinic/profile", label: "Profile", icon: <UserCog className="w-5 h-5" />, group: "Account" },
-  { path: "/clinic/staff", label: "Staff Management", icon: <Users className="w-5 h-5" />, group: "Account" },
-  { path: "/clinic/diary", label: "Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
-  { path: "/clinic/availability", label: "Availability", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
-  { path: "/clinic/execution", label: "Execution", icon: <ListChecks className="w-5 h-5" />, group: "Operations" },
-  { path: "/clinic/reports", label: "Reports", icon: <BarChart className="w-5 h-5" />, group: "Operations" },
-  { path: "/change-password", label: "Change Password", icon: <Key className="w-5 h-5" />, group: "Account" },
+  { path: "/clinic/dashboard", label: "Overview", icon: <LayoutDashboard size={20} />, group: "Main" },
+  { path: "/clinic/my-notifications", label: "Notifications", icon: <Bell size={20} />, group: "Communication" },
+  { path: "/messages", label: "Messages", icon: <MessageSquare size={20} />, group: "Communication" },
+  { path: "/clinic/notifications", label: "Campaign Outreach", icon: <Phone size={20} />, group: "Communication" },
+  
+  { path: "/clinic/profile", label: "Profile", icon: <UserCog size={20} />, group: "Account" },
+  { path: "/clinic/staff", label: "Staff Hub", icon: <Users size={20} />, group: "Account" },
+  
+  { path: "/clinic/diary", label: "Service Diary", icon: <FileText size={20} />, group: "Operations" },
+  { path: "/clinic/availability", label: "Availability", icon: <Calendar size={20} />, group: "Operations" },
+  { path: "/clinic/execution", label: "Clinical Execution", icon: <ListChecks size={20} />, group: "Operations" },
+  { path: "/clinic/reports", label: "Metric Reports", icon: <BarChart size={20} />, group: "Operations" },
 ];
 
 const secretariatLinks: SidebarItem[] = [
@@ -128,18 +132,24 @@ const getAdminLinks = (role: string): SidebarItem[] => {
   ];
 };
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { conversations } = useAppSelector((state) => state.messages);
+  const { unreadCount } = useAppSelector((state) => state.notifications);
 
   const totalUnread = (conversations || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
   useEffect(() => {
     if (user) {
       dispatch(fetchConversations());
+      dispatch(fetchUnreadCount());
     }
   }, [dispatch, user]);
 
@@ -148,21 +158,20 @@ export const Sidebar: React.FC = () => {
     navigate("/login");
   };
   const role = (user?.role as string) || "";
+  const normalizedRole = role.toLowerCase();
 
   const links =
-    role === "client"
+    normalizedRole === "client"
       ? clientLinks
-      : role === "clinic_owner" || role === "secretariat" || role === "doctor"
+      : normalizedRole === "clinic_owner" || normalizedRole === "secretariat" || normalizedRole === "doctor"
         ? clinicLinks
-      : role === "admin"
+      : normalizedRole === "admin" || normalizedRole === "super_admin"
             ? getAdminLinks(role)
-            : role === "SUPER_ADMIN"
-              ? getAdminLinks(role)
-              : role === "salesperson"
+      : normalizedRole === "salesperson" || normalizedRole === "sales_person"
                 ? crmLinks
-                : role === "manager"
-                  ? managerLinks
-                  : [];
+      : normalizedRole === "manager"
+                ? managerLinks
+                : [];
 
   // Group links by their group property
   const groupedLinks = links.reduce<Record<string, SidebarItem[]>>((acc, link) => {
@@ -189,27 +198,35 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-64 bg-[#0B1120] text-gray-300 flex flex-col border-r border-gray-800 shadow-2xl z-40 sticky top-[88px] sm:top-[104px] h-[calc(100vh-88px)] sm:h-[calc(100vh-104px)]">
-      <div className="p-6 border-b border-gray-800/50 bg-[#0B1120]">
-        <Link to={getHomePath(role)} className="flex items-center gap-3 group">
-          <div className="bg-gradient-to-br from-[#CBFF38] to-[#A3D900] text-gray-900 p-2 rounded-xl shadow-lg shadow-[#CBFF38]/20 group-hover:scale-105 transition-transform duration-300">
-            <LayoutDashboard className="w-5 h-5" strokeWidth={2.5} />
+    <aside className="w-64 lg:w-72 bg-white text-gray-900 flex flex-col border-r border-gray-100 shadow-sm h-full overflow-hidden shrink-0">
+      <Link to={getHomePath(role)} className="p-6 border-b border-gray-50 bg-gradient-to-tr from-white to-gray-50/50 block hover:bg-gray-50/80 transition-all group">
+        <div className="flex items-center gap-4">
+          <div className="size-12 bg-black rounded-2xl flex items-center justify-center text-[#CBFF38] shadow-xl shadow-lime-500/10 font-black italic text-xl border border-white/10 group-hover:rotate-6 transition-transform">
+            {user.firstName?.substring(0, 1).toUpperCase() || 'U'}
           </div>
-          <span className="text-lg font-bold text-white tracking-tight group-hover:text-gray-200 transition-colors">
-            {role === 'salesperson' ? 'Sales Panel' : role === 'clinic_owner' ? 'Clinic Panel' : 'Manager Panel'}
-          </span>
-        </Link>
-      </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-black text-black uppercase italic tracking-tighter leading-tight truncate">
+              {user?.firstName} {user?.lastName}
+            </h2>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="size-1.5 bg-[#CBFF38] rounded-full animate-pulse shadow-[0_0_5px_#CBFF38]" />
+              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 italic">
+                {role.replace('_', ' ')}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Link>
 
-      <nav className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
+      <nav className="flex-1 overflow-y-auto py-8 px-5 no-scrollbar space-y-8">
         {Object.entries(groupedLinks).map(([group, groupLinks]) => (
-          <div key={group} className="mb-6 last:mb-0">
+          <div key={group}>
             {group !== 'General' && (
-              <h3 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest px-4 mb-3 opacity-80">
+              <h3 className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] px-4 mb-4 italic">
                 {group}
               </h3>
             )}
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {groupLinks.map((link) => {
                 const isActive = link.path.includes('?')
                   ? location.pathname + (location.search || '') === link.path
@@ -219,6 +236,7 @@ export const Sidebar: React.FC = () => {
                     <Link
                       to={link.path}
                       onClick={(e) => {
+                         if (onNavigate) onNavigate();
                          const restrictedPaths = ['/clinic/dashboard', '/clinic/analytics', '/clinic/staff', '/clinic/settings'];
                          const isRestrictedRole = role === 'doctor' || role === 'secretariat';
                          if (isRestrictedRole && restrictedPaths.includes(link.path)) {
@@ -226,24 +244,29 @@ export const Sidebar: React.FC = () => {
                            return;
                          }
                       }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group relative overflow-hidden ${isActive
-                        ? 'text-[#0B1120] bg-[#CBFF38] shadow-lg shadow-[#CBFF38]/10'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                      className={`flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all duration-300 group relative ${isActive
+                        ? 'text-black bg-[#CBFF38] shadow-lg shadow-lime-500/10'
+                        : 'text-gray-500 hover:text-black hover:bg-gray-50'
                         }`}
                     >
-                      <span className={`relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
-                        {link.icon}
+                      <div className={`transition-transform duration-500 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+                        {React.cloneElement(link.icon as React.ReactElement, { size: 18, strokeWidth: isActive ? 3 : 2 })}
+                      </div>
+                      <span className={`text-[10px] font-black uppercase tracking-widest italic flex-1 ${isActive ? 'text-black' : 'text-gray-500 group-hover:text-black'}`}>
+                        {link.label}
                       </span>
-                      <span className="relative z-10 flex-1">{link.label}</span>
 
                       {link.path === '/messages' && totalUnread > 0 && (
-                        <div className="relative z-10 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-md shadow-red-500/20 animate-pulse">
+                        <div className="bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm">
                           {totalUnread > 99 ? '99+' : totalUnread}
                         </div>
                       )}
 
-                      {/* Active Indicator (optional, keeping minimal as per request) */}
-
+                      {link.path === '/clinic/my-notifications' && unreadCount > 0 && (
+                        <div className="bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </div>
+                      )}
                     </Link>
                   </li>
                 );
@@ -253,45 +276,33 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-800 bg-[#0B1120]">
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/40 border border-gray-800 hover:bg-gray-800 hover:border-gray-700 transition-all cursor-pointer group">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#CBFF38] to-[#98CC00] flex items-center justify-center shadow-lg shadow-[#CBFF38]/10 group-hover:scale-105 transition-transform">
-            <span className="text-gray-900 font-bold text-sm">
-              {user.firstName?.substring(0, 2).toUpperCase() || 'US'}
-            </span>
+      <div className="p-4 border-t border-gray-50 bg-gray-50/20">
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-2">
+            <div className="size-2 bg-gray-200 rounded-full" />
+            <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest italic">Session Active</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white truncate group-hover:text-[#CBFF38] transition-colors">
-              {user?.firstName || 'User'}
-            </p>
-            <p className="text-xs text-gray-500 truncate font-medium">
-              {role.replace('_', ' ').toLowerCase()}
-            </p>
-          </div>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => {
-                if (role === 'salesperson') {
-                  navigate('/crm/settings');
-                } else if (role === 'clinic_owner') {
-                  navigate('/clinic/settings');
-                } else if (role === 'client') {
-                  navigate('/settings');
-                } else if (role === 'doctor' || role === 'secretariat') {
-                   // Clicking settings does nothing for them as requested
-                }
+                const routes: Record<string, string> = {
+                  'salesperson': '/crm/settings',
+                  'clinic_owner': '/clinic/settings',
+                  'client': '/settings'
+                };
+                if (routes[role]) navigate(routes[role]);
               }}
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-all"
               title="Settings"
             >
-              <Settings className="w-4 h-4" />
+              <Settings size={14} />
             </button>
             <button
               onClick={handleLogout}
-              className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
               title="Logout"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut size={14} />
             </button>
           </div>
         </div>

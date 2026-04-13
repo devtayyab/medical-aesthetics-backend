@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { css } from "@emotion/css";
@@ -32,11 +32,11 @@ const sectionStyles = css`
 const appointmentCard = css`
   background: white;
   border: 1px solid #F1F5F9;
-  border-radius: 24px;
-  padding: 24px;
+  border-radius: 20px;
+  padding: 20px;
   @media (min-width: 768px) {
-    border-radius: 28px;
-    padding: 32px;
+    border-radius: 24px;
+    padding: 24px;
   }
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -79,9 +79,9 @@ const statusBadge = (status: string) => {
   }
 
   return css`
-    padding: 6px 14px;
-    border-radius: 12px;
-    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 9px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -90,7 +90,7 @@ const statusBadge = (status: string) => {
     border: 1px solid ${border};
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
   `;
 };
 
@@ -150,15 +150,15 @@ export const Appointments: React.FC = () => {
   return (
     <section className={sectionStyles}>
       {/* Visual Header */}
-      <div className="bg-[#1A1A1A] text-white pt-16 pb-24 md:pt-24 md:pb-48 px-6">
+      <div className="bg-[#1A1A1A] text-white pt-12 pb-20 md:pt-16 md:pb-32 px-6">
         <div className="max-w-6xl mx-auto">
-          <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 hover:text-[#CBFF38] transition-all mb-6 md:mb-8">
+          <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 hover:text-[#CBFF38] transition-all mb-4 md:mb-6">
             <FaChevronLeft size={10} /> Back
           </button>
-          <h1 className="text-3xl md:text-6xl font-black uppercase italic tracking-tighter leading-none mb-3 md:mb-4">
+          <h1 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter leading-none mb-2 md:mb-3">
             My Reservations
           </h1>
-          <p className="text-gray-400 font-medium tracking-wide border-l-2 border-[#CBFF38] pl-4 uppercase text-[9px] md:text-xs">
+          <p className="text-gray-400 font-medium tracking-wide border-l-2 border-[#CBFF38] pl-4 uppercase text-[9px] md:text-[10px]">
             Manage your aesthetic journey and upcoming clinic visits.
           </p>
         </div>
@@ -181,12 +181,12 @@ export const Appointments: React.FC = () => {
             {appointments.map((apt: Appointment) => (
               <div key={apt.id} className={appointmentCard}>
                 {/* Header: Clinic & Status */}
-                <div className="flex justify-between items-start mb-8">
-                   <div className="flex items-center gap-3">
-                      <div className="size-10 rounded-xl bg-gray-50 flex items-center justify-center text-[#1A1A1A]">
-                        <FaClinicMedical size={18} />
+                <div className="flex justify-between items-start mb-6">
+                   <div className="flex items-center gap-2.5">
+                      <div className="size-8 rounded-lg bg-gray-50 flex items-center justify-center text-[#1A1A1A]">
+                        <FaClinicMedical size={14} />
                       </div>
-                      <h3 className="text-sm font-black uppercase tracking-tight text-gray-900 leading-none">
+                      <h3 className="text-[12px] font-black uppercase tracking-tight text-gray-900 leading-none">
                         {apt.clinic?.name || "B&D Clinic"}
                       </h3>
                    </div>
@@ -201,27 +201,27 @@ export const Appointments: React.FC = () => {
                       <span className={statusBadge(apt.status)}>{apt.status}</span>
                    )}
                 </div>
-
+ 
                 {/* Service Detail */}
-                <div className="mb-8">
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Selected Treatment</p>
-                   <p className="text-lg md:text-xl font-black uppercase italic text-gray-900 tracking-tighter leading-tight">
+                <div className="mb-6">
+                   <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Selected Treatment</p>
+                   <p className="text-base md:text-lg font-black uppercase italic text-gray-900 tracking-tighter leading-tight">
                      {(apt as any).serviceName || apt.service?.treatment?.name || "Aesthetic Service"}
                    </p>
                 </div>
 
                 {/* Date & Time */}
-                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-2xl mb-8">
+                <div className="grid grid-cols-2 gap-3 mb-6">
                    <div className="flex flex-col gap-1">
-                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Date</span>
-                      <div className="flex items-center gap-2 text-gray-900 font-bold text-[10px] md:text-xs uppercase italic whitespace-nowrap">
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Date</span>
+                      <div className="flex items-center gap-1.5 text-gray-900 font-bold text-[10px] md:text-xs uppercase italic whitespace-nowrap">
                          <FaCalendarAlt size={10} className="text-[#CBFF38]" />
                          {new Date(apt.startTime).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}
                       </div>
                    </div>
                    <div className="flex flex-col gap-1">
-                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Time</span>
-                      <div className="flex items-center gap-2 text-gray-900 font-bold text-[10px] md:text-xs uppercase italic">
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Time</span>
+                      <div className="flex items-center gap-1.5 text-gray-900 font-bold text-[10px] md:text-xs uppercase italic">
                          <FaClock size={10} className="text-[#CBFF38]" />
                          {new Date(apt.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </div>
@@ -229,7 +229,7 @@ export const Appointments: React.FC = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="flex gap-2">
                       {(apt.status as any) === AppointmentStatus.COMPLETED && (
                         <button onClick={() => navigate('/reviews')} className="size-9 rounded-xl bg-yellow-50 text-yellow-600 flex items-center justify-center hover:bg-yellow-100 transition-colors" title="Leave Review">

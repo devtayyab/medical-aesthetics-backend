@@ -186,13 +186,21 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
     });
   }
 
-  // Notifications - for clinic owner and secretariat
+  // Notifications (Alerts/Received) - for all clinic roles
+  menuItems.push({
+    id: 'my-notifications',
+    label: 'Notifications',
+    path: '/clinic/my-notifications',
+    icon: 'Bell',
+  });
+
+  // Campaign Outreach - for clinic owner and secretariat
   if (hasPermission(userRole, 'canSendNotifications')) {
     menuItems.push({
       id: 'notifications',
-      label: 'Notifications',
+      label: 'Campaign Outreach',
       path: '/clinic/notifications',
-      icon: 'Bell',
+      icon: 'Phone',
     });
   }
 

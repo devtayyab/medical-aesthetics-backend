@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
@@ -21,22 +21,18 @@ const navContainer = css`
   position: sticky;
   top: 4rem; /* Below the main header */
   z-index: 40;
-  overflow-x: auto;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  overflow: hidden; /* Prevent horizontal scrolling */
 `;
 
 const navContent = css`
-  max-width: 1200px;
+  max-width: 1250px;
   margin: 0 auto;
   display: flex;
   padding: 0 1rem;
-  gap: 2rem;
-  height: 4rem;
+  gap: 1rem;
+  height: 3.5rem;
   align-items: center;
+  justify-content: center;
 `;
 
 const navItem = css`
@@ -45,7 +41,7 @@ const navItem = css`
   gap: 0.5rem;
   text-decoration: none;
   color: #64748b;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -72,17 +68,17 @@ const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   }
 
   const menuItems = [
-    { title: "Home", icon: <TbHome size={18} />, link: "/" },
-    { title: "My Appointments", icon: <TbCalendarClock size={18} />, link: "/appointments" },
-    { title: "Personal Details", icon: <ImProfile size={18} />, link: "/personal-details" },
-    { title: "Payments", icon: <TbReceipt2 size={18} />, link: "/payments" },
-    { title: "Gift Cards", icon: <HiOutlineGift size={18} />, link: "/gift-card" },
-    { title: "Invite & Earn", icon: <IoPersonAddOutline size={18} />, link: "/invite-friend" },
-    { title: "Rewards", icon: <AiOutlineTrophy size={18} />, link: "/rewards" },
-    { title: "My Reviews", icon: <FaStar size={16} />, link: "/reviews" },
-    { title: "Blog", icon: <FaBookOpen size={16} />, link: "/blog" },
-    { title: "Settings", icon: <TbSettings size={18} />, link: "/settings" },
-    { title: "My Account", icon: <TbHome size={18} />, link: "/my-account" },
+    { title: "Home", icon: <TbHome size={15} />, link: "/" },
+    { title: "My Appointments", icon: <TbCalendarClock size={15} />, link: "/appointments" },
+    { title: "Personal Details", icon: <ImProfile size={15} />, link: "/personal-details" },
+    { title: "Payments", icon: <TbReceipt2 size={15} />, link: "/payments" },
+    { title: "Gift Cards", icon: <HiOutlineGift size={15} />, link: "/gift-card" },
+    { title: "Invite & Earn", icon: <IoPersonAddOutline size={15} />, link: "/invite-friend" },
+    { title: "Rewards", icon: <AiOutlineTrophy size={15} />, link: "/rewards" },
+    { title: "My Reviews", icon: <FaStar size={14} />, link: "/reviews" },
+    { title: "Blog", icon: <FaBookOpen size={14} />, link: "/blog" },
+    { title: "Settings", icon: <TbSettings size={15} />, link: "/settings" },
+    { title: "My Account", icon: <TbHome size={15} />, link: "/my-account" },
   ];
 
   return (

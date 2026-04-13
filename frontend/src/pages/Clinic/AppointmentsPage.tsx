@@ -78,64 +78,64 @@ const AppointmentsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Premium Header */}
-      <div className="bg-black text-white pt-16 pb-24 px-6 md:px-10 rounded-b-[48px] shadow-2xl relative overflow-hidden">
-        <div className="absolute top-[-20%] right-[-10%] size-[500px] bg-[#CBFF38]/10 blur-[120px] rounded-full" />
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8 relative z-10">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
-              <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] italic">Live Operations</span>
+      {/* Refined Minimal Header */}
+      <div className="relative pt-8 pb-16 px-6 md:px-10 border-b border-gray-100 bg-white">
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
+                <div className="size-1.5 rounded-full bg-green-500" />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 italic">Live Operations</span>
+              </div>
+              <div className="space-y-1">
+                <h1 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter leading-none text-gray-900">Appointments</h1>
+                <p className="text-gray-500 font-medium max-w-md text-sm">Real-time clinical scheduling and management engine.</p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">Appointments</h1>
-              <p className="text-gray-400 font-medium max-w-md">Manage and track your clinic appointments in real-time.</p>
-            </div>
+            {activeClinicId && (
+              <button
+                onClick={() => setShowBookingModal(true)}
+                className="group h-12 px-6 bg-black text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all shadow-lg flex items-center gap-3"
+              >
+                <Calendar className="transition-transform" size={16} />
+                Book Appointment
+              </button>
+            )}
           </div>
-          {activeClinicId && (
-            <button
-              onClick={() => setShowBookingModal(true)}
-              className="group h-14 px-8 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white transition-all shadow-xl shadow-lime-500/10 flex items-center gap-3"
-            >
-              <Calendar className="group-hover:scale-110 transition-transform" size={18} />
-              Book Appointment
-            </button>
-          )}
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="max-w-7xl mx-auto px-6 md:px-10 -mt-10 relative z-20 space-y-8 pb-20">
-        <div className="bg-white p-4 rounded-[32px] shadow-xl border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+      <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 space-y-8 pb-16">
+        <div className="bg-white p-3 rounded-2xl border border-gray-100 flex flex-wrap items-center gap-3 shadow-sm">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
             <input
               type="text"
-              placeholder="Search client or service..."
+              placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 h-14 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-black font-bold text-sm"
+              className="w-full pl-10 pr-4 h-11 bg-gray-50 border-none rounded-xl focus:ring-1 focus:ring-black font-semibold text-xs"
             />
           </div>
 
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="h-14 px-6 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-black font-black uppercase italic text-xs tracking-widest appearance-none cursor-pointer"
+            className="h-11 px-4 bg-gray-50 border-none rounded-xl focus:ring-1 focus:ring-black font-black uppercase italic text-[9px] tracking-widest appearance-none cursor-pointer min-w-[140px]"
           >
-            <option value="all">All Status</option>
+            <option value="all">Status</option>
             <option value="pending">Pending</option>
             <option value="confirmed">Confirmed</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
-            <option value="no_show">No Show</option>
           </select>
 
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="h-14 px-6 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-black font-black uppercase text-xs tracking-widest cursor-pointer"
+            className="h-11 px-4 bg-gray-50 border-none rounded-xl focus:ring-1 focus:ring-black font-black uppercase text-[9px] tracking-widest cursor-pointer"
           />
 
           <button
@@ -144,9 +144,9 @@ const AppointmentsPage: React.FC = () => {
               setSearchTerm('');
               setSelectedDate('');
             }}
-            className="h-14 px-6 bg-black text-[#CBFF38] rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-800 transition-all"
+            className="h-11 px-5 border border-gray-100 text-gray-400 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all"
           >
-            Clear Filters
+            Reset
           </button>
         </div>
 
@@ -251,102 +251,98 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
   const status = appointment.status.toLowerCase();
 
   return (
-    <div className={`bg-white rounded-[40px] border p-8 transition-all duration-500 group relative overflow-hidden flex flex-col md:flex-row md:items-center gap-8 ${isPlatform ? 'border-[#CBFF38] shadow-lime-500/5' : 'border-gray-100 shadow-sm hover:border-black'
-      }`}>
+    <div className={`bg-white rounded-2xl border p-5 transition-all duration-300 group relative flex flex-col md:flex-row md:items-center gap-6 ${
+      isPlatform ? 'border-[#CBFF38] shadow-sm' : 'border-gray-100 hover:border-gray-300'
+    }`}>
       {/* Temporal Node */}
-      <div className="flex flex-col items-center justify-center size-24 bg-black rounded-[32px] text-[#CBFF38] shrink-0 shadow-lg group-hover:rotate-6 transition-transform">
-        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
+      <div className="flex flex-col items-center justify-center size-16 bg-black rounded-xl text-[#CBFF38] shrink-0 group-hover:scale-105 transition-transform">
+        <span className="text-[7px] font-black uppercase tracking-widest opacity-60">
           {new Date(appointment.startTime).toLocaleDateString([], { month: 'short' })}
         </span>
-        <span className="text-3xl font-black italic tracking-tighter">
+        <span className="text-xl font-black italic tracking-tighter leading-none my-0.5">
           {new Date(appointment.startTime).getDate()}
         </span>
-        <span className="text-[10px] font-black italic">
+        <span className="text-[7px] font-black italic">
           {new Date(appointment.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
         </span>
       </div>
 
       {/* Content Cluster */}
-      <div className="flex-1 space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest italic border ${status === 'confirmed' ? 'bg-[#CBFF38] text-black border-[#CBFF38]' :
-              status === 'pending' ? 'bg-black text-[#CBFF38] border-black' : 'bg-gray-100 text-gray-400 border-gray-100'
-            }`}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-3">
+          <span className={`px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest italic border ${
+            status === 'confirmed' ? 'bg-[#CBFF38] text-black border-[#CBFF38]' :
+            status === 'pending' ? 'bg-black text-[#CBFF38] border-black' : 'bg-gray-50 text-gray-400 border-gray-100'
+          }`}>
             {appointment.status.replace('_', ' ')}
           </span>
           {isPlatform && (
-            <span className="px-3 py-1 bg-black text-[#CBFF38] text-[8px] font-black rounded-full uppercase tracking-widest italic animate-pulse">
-              Diamond Client
+            <span className="px-2 py-0.5 bg-gray-900 text-[#CBFF38] text-[7px] font-black rounded-full uppercase tracking-widest italic">
+              Diamond
             </span>
           )}
-          <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
-            ID: {appointment.id.slice(0, 8)}
+          <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest">
+            #{appointment.id.slice(0, 8)}
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="space-y-1">
-            <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Client</p>
-            <h4 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 leading-none">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-0.5">
+            <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">Client</p>
+            <h4 className="text-sm font-black uppercase italic tracking-tighter text-gray-900 truncate">
               {appointment.isBlocked ? 'Blocked Time' : `${appointment.client?.firstName} ${appointment.client?.lastName}`}
             </h4>
-            <p className="text-xs font-bold text-gray-400 italic">{appointment.client?.email || 'N/A'}</p>
           </div>
 
-          <div className="space-y-1">
-            <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Service</p>
-            <h4 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 leading-none">
+          <div className="space-y-0.5">
+            <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">Service</p>
+            <h4 className="text-sm font-black uppercase italic tracking-tighter text-gray-900 truncate">
               {appointment.serviceName || appointment.service?.treatment?.name}
             </h4>
-            <p className="text-xs font-bold text-[#CBFF38] bg-black inline-block px-1.5 rounded italic">€{appointment.totalAmount || appointment.service?.price}</p>
+            <div className="text-[9px] font-bold text-black bg-[#CBFF38] inline-block px-1 rounded-sm mt-0.5">€{appointment.totalAmount}</div>
           </div>
 
-          <div className="space-y-1 hidden lg:block">
-            <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Booked By</p>
-            <div className="flex items-center gap-2">
-              <div className="size-4 bg-gray-100 rounded-full flex items-center justify-center">
-                <User size={8} />
-              </div>
-              <span className="text-xs font-black uppercase italic text-gray-900">
-                {appointment.bookedByInfo ? appointment.bookedByInfo.name : 'System'}
-              </span>
+          <div className="space-y-0.5 hidden lg:block">
+            <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">Provider</p>
+            <div className="flex items-center gap-1.5">
+               <div className="size-4 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100">
+                  <User size={8} className="text-gray-400" />
+               </div>
+               <span className="text-[9px] font-black uppercase italic text-gray-600">
+                 {appointment.bookedByInfo ? appointment.bookedByInfo.name : 'System'}
+               </span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Control Layer */}
-      <div className="flex md:flex-col gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 md:border-l border-gray-100 md:pl-6">
         {!appointment.isBlocked && (
           <>
             {status === 'pending' && hasPermission(user?.role, 'canConfirmAppointments') && (
-              <button onClick={onConfirm} className="h-10 px-6 bg-black text-[#CBFF38] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all border border-black group-hover:border-transparent">
+              <button onClick={onConfirm} className="h-9 px-4 bg-black text-[#CBFF38] rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all">
                 Confirm
               </button>
             )}
             {status === 'confirmed' && hasPermission(user?.role, 'canCompleteAppointments') && (
-              <button onClick={onExecute} className="h-10 px-6 bg-[#CBFF38] text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all shadow-lg shadow-lime-500/20">
+              <button onClick={onExecute} className="h-9 px-4 bg-[#CBFF38] text-black rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all">
                 Execute
               </button>
             )}
             {['pending', 'confirmed'].includes(status) && (
-              <div className="flex gap-2">
-                {hasPermission(user?.role, 'canMarkNoShow') && (
-                   <button onClick={onNoShow} className="h-10 px-4 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-600 hover:text-white transition-all border border-orange-100 italic">
-                      No Show
-                   </button>
-                )}
-                <button onClick={onReschedule} className="size-10 bg-gray-50 text-gray-400 rounded-xl flex items-center justify-center hover:bg-black hover:text-[#CBFF38] transition-all border border-gray-100 hover:border-black">
-                  <Clock size={16} />
+              <div className="flex gap-1.5">
+                <button onClick={onReschedule} className="size-9 bg-gray-50 text-gray-400 rounded-lg flex items-center justify-center hover:bg-black hover:text-[#CBFF38] transition-all border border-gray-100">
+                  <Clock size={14} />
                 </button>
-                <button onClick={onCancel} className="size-10 bg-gray-50 text-red-100 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all border border-red-500 hover:border-red-500">
-                  <X size={16} />
+                <button onClick={onCancel} className="size-9 bg-gray-50 text-red-400 rounded-lg flex items-center justify-center hover:bg-red-500 hover:text-white transition-all border border-gray-100">
+                  <X size={14} />
                 </button>
               </div>
             )}
           </>
         )}
-        <button onClick={onOverview} className="h-10 px-6 bg-gray-50 text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all border border-gray-100 hover:border-black italic">
+        <button onClick={onOverview} className="h-9 px-4 bg-gray-100 text-gray-600 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all italic">
           Overview
         </button>
       </div>

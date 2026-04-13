@@ -50,98 +50,99 @@ const AnalyticsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Premium Header */}
-      <div className="bg-black text-white pt-16 pb-24 px-6 md:px-10 rounded-b-[48px] shadow-2xl relative overflow-hidden">
-        <div className="absolute top-[-20%] right-[-10%] size-[500px] bg-[#CBFF38]/10 blur-[120px] rounded-full" />
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
-                <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] italic">Operational Intelligence</span>
-              </div>
-              <div className="space-y-1">
-                <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">Analysis & Insights</h1>
-                <p className="text-gray-400 font-medium max-w-md">Real-time performance telemetry for treatment volume, revenue scaling, and patient retention.</p>
-              </div>
-            </div>
-            
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-4">
-               <div className="flex items-center gap-2">
-                  <Filter size={14} className="text-[#CBFF38]" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 italic mr-2">Timeline Filter</span>
-               </div>
-               <div className="flex items-center gap-3">
-                  <input
-                    type="date"
-                    value={dateRange.startDate}
-                    onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-                    className="bg-black/40 border-none text-white font-black uppercase text-[10px] tracking-widest rounded-xl px-4 py-2 focus:ring-1 focus:ring-[#CBFF38] outline-none"
-                  />
-                  <div className="h-px w-4 bg-white/20" />
-                  <input
-                    type="date"
-                    value={dateRange.endDate}
-                    onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-                    className="bg-black/40 border-none text-white font-black uppercase text-[10px] tracking-widest rounded-xl px-4 py-2 focus:ring-1 focus:ring-[#CBFF38] outline-none"
-                  />
-               </div>
-               <button
-                  onClick={fetchAnalytics}
-                  className="size-10 bg-[#CBFF38] rounded-xl flex items-center justify-center text-black hover:bg-white transition-all shadow-lg"
-               >
-                  <ArrowUpRight size={18} />
-               </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 md:px-10 -mt-10 relative z-20 pb-20">
-        {/* Top Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-           <PremiumStatCard title="Throughput" value={appointmentAnalytics?.totalAppointments || 0} subValue="Total Appts" icon={<Calendar size={20} />} highlight />
-           <PremiumStatCard title="Conversion" value={appointmentAnalytics?.completedAppointments || 0} subValue="Completed" icon={<BarChart3 size={20} />} />
-           <PremiumStatCard title="Yield" value={`€${(revenueAnalytics?.totalRevenue || 0).toLocaleString()}`} subValue="Gross Revenue" icon={<DollarSign size={20} />} />
-           <PremiumStatCard title="Efficiency" value={`€${(revenueAnalytics?.averageAppointmentValue || 0).toFixed(0)}`} subValue="Avg Ticket" icon={<TrendingUp size={20} />} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-           {/* Revenue Stream Analysis */}
-           <div className="lg:col-span-8 bg-white rounded-[40px] p-8 md:p-10 shadow-xl border border-gray-100 relative overflow-hidden">
-              <div className="flex items-center gap-4 mb-10">
-                 <div className="size-12 bg-black rounded-2xl flex items-center justify-center text-[#CBFF38]">
-                    <TrendingUp size={22} />
-                 </div>
-                 <h2 className="text-xl font-black uppercase italic tracking-tighter text-gray-900">Yield by Service Category</h2>
-              </div>
-              
-              <div className="space-y-6">
-                 {revenueAnalytics?.revenueByService?.map((item: any, index: number) => (
-                    <div key={index} className="group flex flex-col gap-3">
-                       <div className="flex items-center justify-between px-2">
-                          <div>
-                             <p className="font-black uppercase italic tracking-tighter text-gray-900 leading-none mb-1">{item.serviceName}</p>
-                             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400">{item.count} Processed Events</p>
-                          </div>
-                          <div className="text-right">
-                             <p className="text-lg font-black italic tracking-tighter text-black leading-none mb-1">€{item.revenue.toLocaleString()}</p>
-                             <p className="text-[8px] font-black uppercase text-[#CBFF38] bg-black px-1.5 py-0.5 rounded italic inline-block">Top Performer</p>
-                          </div>
-                       </div>
-                       <div className="h-4 w-full bg-gray-50 rounded-full overflow-hidden p-1">
-                          <motion.div 
-                             initial={{ width: 0 }}
-                             animate={{ width: `${(item.revenue / revenueAnalytics.totalRevenue) * 100}%` }}
-                             transition={{ duration: 1, delay: 0.2 * index }}
-                             className="h-full bg-black rounded-full shadow-[0_0_10px_rgba(203,255,56,0.3)] border-r-2 border-[#CBFF38]" 
-                          />
-                       </div>
+        <div className="min-h-screen bg-[#F8FAFC]">
+            {/* Minimal Header */}
+            <div className="relative pt-8 pb-16 px-6 md:px-10 border-b border-gray-100 bg-white">
+                <div className="max-w-7xl mx-auto relative z-10">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                        <div className="space-y-3">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
+                                <div className="size-1.5 rounded-full bg-green-500" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 italic">Operational Intelligence</span>
+                            </div>
+                            <div className="space-y-1">
+                                <h1 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter leading-none text-gray-900">Analysis & Insights</h1>
+                                <p className="text-gray-500 font-medium max-w-md text-sm">Real-time performance telemetry and revenue scaling matrix.</p>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-3">
+                            <div className="flex items-center gap-2 px-2 border-r border-gray-200 sm:pr-4">
+                                <Filter size={12} className="text-gray-400" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 italic">Matrix Range</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="date"
+                                    value={dateRange.startDate}
+                                    onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
+                                    className="bg-white border border-gray-100 text-gray-900 font-black uppercase text-[9px] tracking-widest rounded-lg px-3 py-2 outline-none focus:border-black transition-all"
+                                />
+                                <div className="h-px w-2 bg-gray-200" />
+                                <input
+                                    type="date"
+                                    value={dateRange.endDate}
+                                    onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
+                                    className="bg-white border border-gray-100 text-gray-900 font-black uppercase text-[9px] tracking-widest rounded-lg px-3 py-2 outline-none focus:border-black transition-all"
+                                />
+                                <button
+                                    onClick={fetchAnalytics}
+                                    className="size-9 bg-black rounded-lg flex items-center justify-center text-[#CBFF38] hover:bg-[#CBFF38] hover:text-black transition-all shadow-sm"
+                                >
+                                    <ArrowUpRight size={16} />
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                 ))}
-              </div>
-           </div>
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
+                {/* Top Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                    <PremiumStatCard title="Throughput" value={appointmentAnalytics?.totalAppointments || 0} subValue="Events Matrix" icon={<Calendar size={18} />} highlight />
+                    <PremiumStatCard title="Conversion" value={appointmentAnalytics?.completedAppointments || 0} subValue="Finalized Ops" icon={<BarChart3 size={18} />} />
+                    <PremiumStatCard title="Yield" value={`€${(revenueAnalytics?.totalRevenue || 0).toLocaleString()}`} subValue="Gross Volume" icon={<DollarSign size={18} />} />
+                    <PremiumStatCard title="Efficiency" value={`€${(revenueAnalytics?.averageAppointmentValue || 0).toFixed(0)}`} subValue="Unit Velocity" icon={<TrendingUp size={18} />} />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Revenue Stream Analysis */}
+                    <div className="lg:col-span-8 bg-white rounded-3xl p-6 md:p-10 border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+                        <div className="flex items-center gap-4 mb-10">
+                            <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
+                                <TrendingUp size={20} />
+                            </div>
+                            <h2 className="text-lg font-black uppercase italic tracking-tighter text-gray-900">Yield by Service Category</h2>
+                        </div>
+                        
+                        <div className="space-y-6 flex-1">
+                            {revenueAnalytics?.revenueByService?.map((item: any, index: number) => (
+                                <div key={index} className="group flex flex-col gap-2">
+                                    <div className="flex items-center justify-between px-1">
+                                        <div>
+                                            <p className="text-[11px] font-black uppercase italic tracking-tighter text-gray-900 leading-none mb-1">{item.serviceName}</p>
+                                            <p className="text-[7px] font-black uppercase tracking-[0.2em] text-gray-400">{item.count} Transactions</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-base font-black italic tracking-tighter text-black leading-none mb-1">€{item.revenue.toLocaleString()}</p>
+                                            <div className="h-1 w-8 bg-black rounded-full ml-auto overflow-hidden">
+                                                <div className="h-full bg-[#CBFF38]" style={{ width: '60%' }} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="h-2 w-full bg-gray-50 rounded-full overflow-hidden">
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${(item.revenue / revenueAnalytics.totalRevenue) * 100}%` }}
+                                            transition={{ duration: 1, delay: 0.1 * index }}
+                                            className="h-full bg-black rounded-full" 
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
            {/* Loyalty Integration */}
            <div className="lg:col-span-4 space-y-8">
@@ -236,21 +237,20 @@ const AnalyticsPage: React.FC = () => {
 };
 
 const PremiumStatCard = ({ title, value, subValue, icon, highlight }: any) => (
-  <div className={`bg-white p-8 rounded-[40px] border transition-all duration-300 group relative overflow-hidden ${
-    highlight ? 'border-[#CBFF38] shadow-xl shadow-lime-500/10' : 'border-gray-100 hover:border-black'
-  }`}>
-    <div className="flex items-center justify-between mb-8">
-       <div className={`size-12 rounded-2xl flex items-center justify-center transition-all bg-gray-50 group-hover:bg-black group-hover:text-[#CBFF38] ${highlight ? 'text-[#CBFF38] bg-black shadow-lg shadow-lime-500/20' : 'text-gray-400'}`}>
-          {icon}
-       </div>
-       <div className="bg-gray-50 h-px w-10 flex-1 mx-4" />
-       <div className="text-[8px] font-black text-gray-300 uppercase italic tracking-widest">{title}</div>
+    <div className={`bg-white p-6 rounded-3xl border transition-all duration-300 group relative overflow-hidden flex flex-col justify-between ${
+        highlight ? 'border-[#CBFF38] shadow-lg shadow-lime-500/10' : 'border-gray-100 hover:border-black shadow-sm'
+    }`}>
+        <div className="flex items-center justify-between mb-6">
+            <div className={`size-10 rounded-xl flex items-center justify-center transition-all bg-gray-50 group-hover:bg-black group-hover:text-[#CBFF38] ${highlight ? 'text-[#CBFF38] bg-black shadow-lg shadow-lime-500/20' : 'text-gray-400'}`}>
+                {icon}
+            </div>
+            <div className="text-[7px] font-black text-gray-300 uppercase italic tracking-widest">{title}</div>
+        </div>
+        <div>
+            <h3 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900 leading-none mb-1 transition-all group-hover:translate-x-1">{value}</h3>
+            <p className="text-[8px] font-black uppercase tracking-[0.1em] text-gray-400 italic">{subValue}</p>
+        </div>
     </div>
-    <div>
-       <h3 className="text-3xl font-black uppercase italic tracking-tighter text-gray-900 leading-none mb-1 transition-all group-hover:translate-x-1">{value}</h3>
-       <p className="text-[9px] font-black uppercase tracking-[0.1em] text-gray-400">{subValue}</p>
-    </div>
-  </div>
 );
 
 const ForecastStat = ({ label, value, unit }: any) => (

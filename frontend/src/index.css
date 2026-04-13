@@ -51,6 +51,14 @@
   background: #cbd5e1;
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 a {
   font-weight: 500;
   color: #646cff;

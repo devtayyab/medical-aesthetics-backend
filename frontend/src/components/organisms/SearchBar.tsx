@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/atoms/Button/Button";
 import { Search, MapPin, Calendar as CalendarIcon, Clock, ChevronDown } from "lucide-react";
 
@@ -39,7 +39,7 @@ const SUGGESTIONS = {
     { id: "t6", name: "Fat Dissolving", category: "Body" },
   ],
   clinics: [
-    { id: "cl1", name: "Luxe Aesthetics London" },
+    { id: "cl1", name: "Aesthetic Excellence Clinic" },
     { id: "cl2", name: "SkinHealth Clinic" },
   ]
 };
@@ -117,16 +117,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <div className={`bg-white rounded-[24px] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.1)] w-full max-w-[520px] z-20 border border-gray-100 ${className || ""}`}>
-      <div className="flex flex-col gap-6">
+    <div className={`bg-white rounded-[20px] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.1)] w-full max-w-[520px] z-20 border border-gray-100 ${className || ""}`}>
+      <div className="flex flex-col gap-2">
 
         {/* S1: Treatment / Service */}
         <div className="relative" ref={searchRef}>
-          <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1.5 block px-1">What</label>
-          <div className="border-2 border-gray-100 focus-within:border-black rounded-2xl p-4 flex items-center transition-all bg-gray-50 group hover:bg-white hover:border-gray-200">
-            <Search className="text-gray-400 w-5 h-5 mr-4 shrink-0 group-focus-within:text-black transition-colors" />
+          <label className="text-[11px] font-[900] uppercase text-[#A3E635] tracking-[0.15em] mb-1 block px-1">WHAT</label>
+          <div className="border-2 border-gray-100 focus-within:border-[#A3E635] rounded-lg p-2 flex items-center transition-all bg-[#F8FAFC] group hover:bg-white">
+            <Search className="text-gray-400 w-4 h-4 mr-2 shrink-0 group-focus-within:text-[#A3E635] transition-colors" />
             <input
-              className="w-full outline-none font-black text-lg text-gray-900 bg-transparent placeholder:text-gray-300 placeholder:italic"
+              className="w-full outline-none font-bold text-sm text-gray-900 bg-transparent placeholder:text-gray-400"
               placeholder="Search treatments / clinics"
               value={query}
               onChange={(e) => {
@@ -203,11 +203,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
         {/* S2: Location */}
         <div className="relative">
-          <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1.5 block px-1">Where</label>
-          <div className="border-2 border-gray-100 focus-within:border-black rounded-2xl p-4 flex items-center transition-all bg-gray-50 group hover:bg-white hover:border-gray-200">
-            <MapPin className="text-gray-400 w-5 h-5 mr-4 shrink-0 group-focus-within:text-black transition-colors" />
+          <label className="text-[11px] font-[900] uppercase text-[#A3E635] tracking-[0.15em] mb-1 block px-1">WHERE</label>
+          <div className="border-2 border-gray-100 focus-within:border-[#A3E635] rounded-lg p-2 flex items-center transition-all bg-[#F8FAFC] group hover:bg-white">
+            <MapPin className="text-gray-400 w-4 h-4 mr-2 shrink-0 group-focus-within:text-[#A3E635] transition-colors" />
             <input
-              className="w-full outline-none font-black text-lg text-gray-900 bg-transparent placeholder:text-gray-300 placeholder:italic"
+              className="w-full outline-none font-bold text-sm text-gray-900 bg-transparent placeholder:text-gray-400"
               placeholder="Area or Postcode"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -234,15 +234,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
         {/* S3: Date & Time */}
         <div className="relative" ref={dateRef}>
-          <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1.5 block px-1">When</label>
+          <label className="text-[11px] font-[900] uppercase text-[#A3E635] tracking-[0.15em] mb-1 block px-1">WHEN</label>
           <div
-            className="border-2 border-gray-100 hover:border-black rounded-2xl p-4 flex items-center justify-between transition-all bg-gray-50 hover:bg-white cursor-pointer group"
+            className="border-2 border-gray-100 hover:border-[#A3E635] rounded-lg p-2 flex items-center justify-between transition-all bg-[#F8FAFC] hover:bg-white cursor-pointer group"
             onClick={() => setShowDatePicker(!showDatePicker)}
           >
             <div className="flex items-center">
-              <CalendarIcon className="text-gray-400 w-5 h-5 mr-4 shrink-0 group-hover:text-black transition-colors" />
-              <div className={`font-black text-lg ${searchDate || searchTimeWindow ? 'text-gray-900' : 'text-gray-300 italic'} truncate`}>
-                {getDisplayDateTime()}
+              <CalendarIcon className="text-gray-400 w-4 h-4 mr-2 shrink-0 group-hover:text-[#A3E635] transition-colors" />
+              <div className={`font-bold text-sm ${searchDate || searchTimeWindow ? 'text-gray-900' : 'text-gray-400'} truncate`}>
+                {searchDate || searchTimeWindow ? getDisplayDateTime() : "Any Date, Any Time"}
               </div>
             </div>
             <ChevronDown className="text-gray-400 w-5 h-5 shrink-0 group-hover:text-black transition-colors" />
@@ -363,9 +363,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         <Button
           type="button"
           onClick={handleSearchClick}
-          className="w-full bg-[#CBFF38] text-black hover:bg-black hover:text-white py-5 rounded-2xl flex items-center justify-center font-black uppercase tracking-widest text-base transition-all duration-300 shadow-xl shadow-[#CBFF38]/20 mt-4 active:scale-95"
+          className="w-full bg-[#A3E635] text-black hover:bg-white hover:border-[#A3E635] border-2 border-transparent py-2.5 rounded-xl flex items-center justify-center font-[900] uppercase tracking-widest text-sm transition-all duration-300 shadow-xl shadow-[#A3E635]/20 mt-1 active:scale-95"
         >
-          Search Availability
+          SEARCH AVAILABILITY
         </Button>
       </div>
     </div>

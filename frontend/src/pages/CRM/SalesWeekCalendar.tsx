@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     ChevronLeft, ChevronRight, Plus, Clock, User, Users, Scissors, CheckCircle2,
-    XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone
+    XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone, ArrowLeft
 } from 'lucide-react';
 import {
     format, startOfWeek, endOfWeek, addDays, eachDayOfInterval, isSameDay,
@@ -226,7 +226,7 @@ export const SalesWeekCalendar: React.FC = () => {
         setIsAddWizardOpen(true);
     };
 
-    const handleSaveWizard = async () => {
+    const handleCreateBooking = async () => {
         let clientId = wizardClient ? wizardClient.id : null;
         let clientData = wizardClient || {};
 
@@ -371,96 +371,83 @@ export const SalesWeekCalendar: React.FC = () => {
 
             {/* Main Calendar View */}
             <div className={`flex flex-col flex-1 transition-all duration-300 ${isAddWizardOpen || (isDetailDrawerOpen && selectedApt) ? 'mr-96 lg:mr-[400px]' : ''}`}>
-                <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 z-10 sticky top-0">
-                    <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-indigo-600" />
-                        <div>
-                            <h1 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-                                Sales Schedule
-                                <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">24H UPDATED</span>
-                            </h1>
-                            <p className="text-xs font-bold text-gray-400">View & Manage your Appointments</p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <select
-                            value={selectedClinicId}
-                            onChange={(e) => setSelectedClinicId(e.target.value)}
-                            className="bg-gray-100 border border-gray-200 text-gray-900 rounded-lg px-4 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer appearance-none pr-8 min-w-[180px]"
-                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
-                        >
-                            <option value="all">All Clinics</option>
-                            {availableClinics.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
-
-                        {isManager && (
-                            <select
-                                value={selectedProviderId}
-                                onChange={(e) => setSelectedProviderId(e.target.value)}
-                                className="bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg px-4 py-1.5 text-xs font-black focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer min-w-[150px]"
-                            >
-                                <option value="all">All Team</option>
-                                <option value={user?.id}>Me ({user?.firstName})</option>
-                                {(salespersons || []).filter(s => s.id !== user?.id).map(s => (
-                                    <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
-                                ))}
-                            </select>
-                        )}
-
-                        <div className="flex gap-1 items-center bg-gray-100 p-1 rounded-lg">
-                            <button onClick={() => setViewMode('day')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'day' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Day</button>
-                            <button onClick={() => setViewMode('week')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'week' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Week</button>
+                <div className="bg-white border-b border-gray-200 z-10 sticky top-0">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between px-4 lg:px-6 py-4 gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="size-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                                <Calendar className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h1 className="text-lg lg:text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                                    Sales Schedule
+                                    <span className="hidden sm:inline-block text-[8px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-black">LIVE</span>
+                                </h1>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Schedule & Dispatch</p>
+                            </div>
                         </div>
 
-                        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg p-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewDate(d => viewMode === 'week' ? subWeeks(d, 1) : subDays(d, 1))}>
-                                <ChevronLeft className="w-4 h-4" />
+                        <div className="flex flex-wrap items-center gap-2 lg:gap-4">
+                            <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg p-1 w-full sm:w-auto">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewDate(d => viewMode === 'week' ? subWeeks(d, 1) : subDays(d, 1))}>
+                                    <ChevronLeft className="w-4 h-4" />
+                                </Button>
+                                <span className="text-[11px] font-black text-gray-700 min-w-[120px] text-center uppercase italic">
+                                    {viewMode === 'week'
+                                        ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[weekDays.length - 1], 'MMM d')}`
+                                        : format(viewDate, 'EEEE, MMM d')}
+                                </span>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewDate(d => viewMode === 'week' ? addWeeks(d, 1) : addDays(d, 1))}>
+                                    <ChevronRight className="w-4 h-4" />
+                                </Button>
+                            </div>
+
+                            <div className="flex-1 sm:flex-none">
+                                <select
+                                    value={selectedClinicId}
+                                    onChange={(e) => setSelectedClinicId(e.target.value)}
+                                    className="w-full bg-gray-50 border border-gray-100 text-gray-900 rounded-lg px-3 py-2 text-[10px] font-black uppercase italic focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer appearance-none pr-8"
+                                    style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.2em 1.2em` }}
+                                >
+                                    <option value="all">Global (All Clinics)</option>
+                                    {availableClinics.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex gap-1 items-center bg-gray-100 p-1 rounded-lg">
+                                <button onClick={() => setViewMode('day')} className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${viewMode === 'day' ? 'bg-white shadow-sm text-indigo-600 px-4' : 'text-gray-400'}`}>Day</button>
+                                <button onClick={() => setViewMode('week')} className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${viewMode === 'week' ? 'bg-white shadow-sm text-indigo-600 px-4' : 'text-gray-400'}`}>Week</button>
+                            </div>
+
+                            <Button onClick={() => handleOpenWizard()} className="bg-black text-[#CBFF38] hover:bg-zinc-800 font-black uppercase italic text-[10px] h-10 px-4 gap-2 shadow-xl shadow-lime-500/10 border-0">
+                                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add Apt</span>
                             </Button>
-                            <span className="text-sm font-bold text-gray-700 min-w-[140px] text-center">
-                                {viewMode === 'week'
-                                    ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[weekDays.length - 1], 'MMM d')}`
-                                    : format(viewDate, 'EEEE, MMM d')}
-                            </span>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewDate(d => viewMode === 'week' ? addWeeks(d, 1) : addDays(d, 1))}>
-                                <ChevronRight className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" className="h-7 px-3 text-xs font-bold ml-1 hover:bg-white" onClick={() => setViewDate(new Date())}>Today</Button>
                         </div>
-
-                        <Button onClick={() => handleOpenWizard()} className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-lg shadow-indigo-100">
-                            <Plus className="w-4 h-4" /> Add Appointment
-                        </Button>
                     </div>
                 </div>
 
                 {/* Weekly Stats Header */}
-                <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-6 overflow-x-auto no-scrollbar">
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Booked</span>
-                        <span className="text-sm font-black text-gray-900">{weeklyStats.booked}</span>
+                <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <div className="flex flex-col p-2 bg-gray-50 rounded-lg border border-gray-100">
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Booked</span>
+                        <span className="text-sm font-black text-gray-900 leading-none">{weeklyStats.booked}</span>
                     </div>
-                    <div className="h-6 w-px bg-gray-100" />
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider">Done</span>
-                        <span className="text-sm font-black text-emerald-700">{weeklyStats.done}</span>
+                    <div className="flex flex-col p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                        <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mb-1">Done</span>
+                        <span className="text-sm font-black text-emerald-700 leading-none">{weeklyStats.done}</span>
                     </div>
-                    <div className="h-6 w-px bg-gray-100" />
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-orange-500 uppercase tracking-wider">No-show</span>
-                        <span className="text-sm font-black text-orange-700">{weeklyStats.noShow}</span>
+                    <div className="flex flex-col p-2 bg-orange-50 rounded-lg border border-orange-100">
+                        <span className="text-[8px] font-black text-orange-600 uppercase tracking-widest mb-1">No-show</span>
+                        <span className="text-sm font-black text-orange-700 leading-none">{weeklyStats.noShow}</span>
                     </div>
-                    <div className="h-6 w-px bg-gray-100" />
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider">Canceled</span>
-                        <span className="text-sm font-black text-red-700">{weeklyStats.cancelled}</span>
+                    <div className="flex flex-col p-2 bg-red-50 rounded-lg border border-red-100">
+                        <span className="text-[8px] font-black text-red-600 uppercase tracking-widest mb-1">Canceled</span>
+                        <span className="text-sm font-black text-red-700 leading-none">{weeklyStats.cancelled}</span>
                     </div>
-                    <div className="h-6 w-px bg-gray-100" />
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider">Returned</span>
-                        <span className="text-sm font-black text-blue-700">{weeklyStats.returned}</span>
+                    <div className="flex flex-col p-2 bg-blue-50 rounded-lg border border-blue-100">
+                        <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest mb-1">Returned</span>
+                        <span className="text-sm font-black text-blue-700 leading-none">{weeklyStats.returned}</span>
                     </div>
                 </div>
 
@@ -590,9 +577,9 @@ export const SalesWeekCalendar: React.FC = () => {
                 </div>
             </div>
 
-            {/* Appointment Creation Wizard Drawer - Two Panel Layout */}
+            {/* Appointment Creation Wizard Drawer - Minimal & Compact */}
             {isAddWizardOpen && (
-                <div className="fixed top-0 right-0 w-[400px] lg:w-[800px] h-screen bg-white border-l border-gray-200 shadow-2xl flex flex-col z-[100] animate-in slide-in-from-right transition-all duration-300">
+                <div className="fixed top-0 right-0 w-full sm:w-[450px] h-screen bg-white border-l border-slate-200 shadow-[-10px_0_50px_rgba(0,0,0,0.1)] flex flex-col z-[100] animate-in slide-in-from-right transition-all duration-300">
                     <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
                         <div className="flex flex-col">
                             <h2 className="text-lg font-black text-gray-900 leading-none">New Booking</h2>
@@ -601,149 +588,139 @@ export const SalesWeekCalendar: React.FC = () => {
                         <button onClick={() => setIsAddWizardOpen(false)} className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-gray-100"><X size={20} /></button>
                     </div>
 
-                    <div className="flex px-4 py-2 border-b border-gray-100 bg-white items-center text-xs font-bold text-gray-400 gap-1">
-                        <span className={wizardStep === 1 ? 'text-indigo-600 bg-indigo-50 px-2 py-1 rounded' : 'px-2'}>1. Client & Service</span>
-                        <ChevronRight size={12} />
-                        <span className={wizardStep === 2 ? 'text-indigo-600 bg-indigo-50 px-2 py-1 rounded' : 'px-2'}>2. Time & Assignment</span>
+                    <div className="flex px-5 py-3 border-b border-gray-100 bg-white items-center text-[10px] font-black text-gray-400 gap-2 uppercase tracking-widest">
+                        <span className={wizardStep === 1 ? 'text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100' : 'px-2'}>01. Identity</span>
+                        <div className="h-[1px] w-4 bg-slate-200"></div>
+                        <span className={wizardStep === 2 ? 'text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100' : 'px-2'}>02. Logistics</span>
                     </div>
 
                     <div className="flex-1 overflow-y-auto custom-scrollbar">
                         {wizardStep === 1 && (
-                            <div className="flex h-full flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
-                                {/* Left Panel: Client */}
-                                <div className="flex-1 p-6 space-y-4 bg-gray-50/30">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <label className="text-xs font-black uppercase text-gray-400 tracking-wider">Select Client</label>
-                                        <div className="flex gap-1 p-0.5 bg-gray-200 rounded-md">
-                                            <button onClick={() => setIsWalkIn(false)} className={`text-[9px] font-black px-2 py-1 rounded ${!isWalkIn ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>LEAD / CLIENT</button>
-                                            <button onClick={() => setIsWalkIn(true)} className={`text-[9px] font-black px-2 py-1 rounded ${isWalkIn ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>WALK-IN</button>
+                            <div className="flex flex-col h-full divide-y divide-slate-100">
+                                {/* Section 1: Client Selection */}
+                                <div className="p-5 space-y-4 bg-slate-50/50">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Patient Profile</label>
+                                        <div className="flex gap-1 p-0.5 bg-slate-200 rounded-lg">
+                                            <button onClick={() => setIsWalkIn(false)} className={`text-[9px] font-black px-3 py-1.5 rounded-md transition-all ${!isWalkIn ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}>EXISTING</button>
+                                            <button onClick={() => setIsWalkIn(true)} className={`text-[9px] font-black px-3 py-1.5 rounded-md transition-all ${isWalkIn ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}>WALK-IN</button>
                                         </div>
                                     </div>
 
                                     {!isWalkIn ? (
-                                        <>
+                                        <div className="space-y-3">
                                             <div className="relative group">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-indigo-500" />
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
                                                 <input
                                                     type="text"
-                                                    placeholder="Search client by name, phone..."
-                                                    className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-indigo-100 transition-all font-medium"
+                                                    placeholder="Search database..."
+                                                    className="w-full pl-10 pr-4 py-2.5 border-none rounded-xl text-sm bg-white shadow-sm focus:ring-2 focus:ring-indigo-100 transition-all font-bold placeholder:text-slate-300"
                                                     value={searchQuery}
                                                     onChange={(e) => setSearchQuery(e.target.value)}
                                                 />
                                             </div>
-                                            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                                <p className="text-[10px] font-bold text-gray-500 uppercase px-1">Recent & Matched</p>
+                                            <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
+                                                <div className="flex items-center justify-between px-1">
+                                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Matching Records</p>
+                                                   <span className="text-[9px] font-bold text-slate-300">{leads.length} found</span>
+                                                </div>
                                                 {leads.map(lead => (
                                                     <div
                                                         key={lead.id}
                                                         onClick={() => setWizardClient(lead)}
-                                                        className={`p-3 rounded-xl border cursor-pointer transition-all ${wizardClient?.id === lead.id ? 'border-indigo-600 bg-indigo-50 shadow-sm' : 'border-white hover:border-gray-200 bg-white'}`}
+                                                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${wizardClient?.id === lead.id ? 'border-indigo-600 bg-white shadow-md' : 'border-transparent bg-white hover:border-slate-100'}`}
                                                     >
-                                                        <p className="font-black text-gray-900 text-sm leading-tight">{lead.firstName} {lead.lastName}</p>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className="text-[10px] text-gray-500 font-medium">{lead.phone || 'No phone'}</span>
-                                                            <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                            <span className="text-[10px] text-gray-400 truncate max-w-[120px]">{lead.email}</span>
+                                                        <div className="flex items-center gap-3">
+                                                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${wizardClient?.id === lead.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                              {lead.firstName[0]}{lead.lastName[0]}
+                                                           </div>
+                                                           <div>
+                                                              <p className="font-black text-slate-900 text-xs leading-none mb-1">{lead.firstName} {lead.lastName}</p>
+                                                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{lead.phone || lead.email || 'No contact info'}</p>
+                                                           </div>
                                                         </div>
+                                                        {wizardClient?.id === lead.id && <CheckCircle2 size={12} className="text-indigo-600" />}
                                                     </div>
                                                 ))}
-                                                {leads.length === 0 && <p className="text-xs text-center text-gray-400 p-8">No matching clients found.</p>}
+                                                {leads.length === 0 && searchQuery && <p className="text-[10px] text-center text-slate-400 py-4 font-bold uppercase italic">No Matches Found</p>}
                                             </div>
-                                        </>
+                                        </div>
                                     ) : (
-                                        <div className="space-y-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                                            <div className="flex items-center gap-2 text-indigo-600 mb-2">
-                                                <User size={14} strokeWidth={3} />
-                                                <span className="text-xs font-black uppercase">Personal Info</span>
+                                        <div className="space-y-3 bg-white p-4 rounded-xl shadow-sm">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input type="text" placeholder="First Name *" value={walkInForm.firstName} onChange={(e) => setWalkInForm({ ...walkInForm, firstName: e.target.value })} className="w-full p-2.5 border border-slate-100 rounded-lg text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none font-bold italic" />
+                                                <input type="text" placeholder="Last Name" value={walkInForm.lastName} onChange={(e) => setWalkInForm({ ...walkInForm, lastName: e.target.value })} className="w-full p-2.5 border border-slate-100 rounded-lg text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none font-bold italic" />
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <input type="text" placeholder="First Name *" value={walkInForm.firstName} onChange={(e) => setWalkInForm({ ...walkInForm, firstName: e.target.value })} className="w-full p-2.5 border border-gray-100 rounded-lg text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none" />
-                                                <input type="text" placeholder="Last Name" value={walkInForm.lastName} onChange={(e) => setWalkInForm({ ...walkInForm, lastName: e.target.value })} className="w-full p-2.5 border border-gray-100 rounded-lg text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none" />
-                                            </div>
-                                            <input type="text" placeholder="Phone Number (At least at phone) *" value={walkInForm.phone} onChange={(e) => setWalkInForm({ ...walkInForm, phone: e.target.value })} className="w-full p-2.5 border border-gray-100 rounded-lg text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none" />
-                                            <p className="text-[9px] text-gray-400 italic">* Minimal record will be created to track attribution.</p>
+                                            <input type="text" placeholder="Phone Number *" value={walkInForm.phone} onChange={(e) => setWalkInForm({ ...walkInForm, phone: e.target.value })} className="w-full p-2.5 border border-slate-100 rounded-lg text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none font-bold italic" />
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Right Panel: Service */}
-                                <div className="flex-1 p-6 space-y-4">
-                                    <div className="relative group">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <label className="text-xs font-black uppercase text-gray-400 tracking-wider">Select Clinic</label>
-                                            <span className="text-[9px] font-black text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">Location</span>
-                                        </div>
-                                        
-                                        <div className="relative">
-                                            <div 
-                                                className="w-full pl-3 pr-10 py-2 border border-gray-200 rounded-xl text-sm bg-gray-100 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100 transition-all font-black cursor-pointer flex items-center justify-between"
+                                {/* Section 2: Service Selection */}
+                                <div className="flex-1 p-5 space-y-4">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Service Logic</label>
+                                           <div 
+                                                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-black cursor-pointer flex items-center gap-1.5 transition-all"
                                                 onClick={() => setIsClinicDropdownOpen(!isClinicDropdownOpen)}
                                             >
-                                                <span className="truncate">{wizardClinic?.name || 'Select Clinic...'}</span>
-                                                <MapPin size={14} className="text-gray-400" />
+                                                <MapPin size={10} />
+                                                <span className="truncate max-w-[100px]">{wizardClinic?.name || 'Switch Clinic'}</span>
                                             </div>
-
-                                            {isClinicDropdownOpen && (
-                                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl z-[150] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                    <div className="p-2 border-b border-gray-50 bg-gray-50/50">
-                                                        <div className="relative">
-                                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Search clinic..."
-                                                                className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-100"
-                                                                value={clinicSearchQuery}
-                                                                onChange={(e) => setClinicSearchQuery(e.target.value)}
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                autoFocus
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
-                                                        {availableClinics
-                                                            .filter(c => c.name.toLowerCase().includes(clinicSearchQuery.toLowerCase()))
-                                                            .map(c => (
-                                                                <div
-                                                                    key={c.id}
-                                                                    className={`px-4 py-2.5 text-xs font-bold cursor-pointer transition-colors flex items-center justify-between hover:bg-indigo-50 hover:text-indigo-700 ${wizardClinic?.id === c.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600'}`}
-                                                                    onClick={async () => {
-                                                                        setWizardClinic(c);
-                                                                        setIsClinicDropdownOpen(false);
-                                                                        setClinicSearchQuery('');
-                                                                        try {
-                                                                            const srvRes = await clinicsAPI.getServices(c.id);
-                                                                            setAvailableServices(srvRes.data);
-                                                                        } catch (err) {
-                                                                            console.error(err);
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <span>{c.name}</span>
-                                                                    {wizardClinic?.id === c.id && <CheckCircle2 size={12} />}
-                                                                </div>
-                                                            ))}
-                                                        {availableClinics.filter(c => c.name.toLowerCase().includes(clinicSearchQuery.toLowerCase())).length === 0 && (
-                                                            <div className="p-4 text-center text-[10px] font-bold text-gray-400 italic">No clinics found</div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
+                                        
+                                        {isClinicDropdownOpen && (
+                                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-2 animate-in zoom-in-95 duration-200">
+                                                <div className="relative">
+                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Quick search clinic..."
+                                                        className="w-full pl-8 pr-3 py-2 bg-white border border-slate-100 rounded-lg text-xs font-bold outline-none ring-offset-0 focus:ring-2 focus:ring-indigo-100"
+                                                        value={clinicSearchQuery}
+                                                        onChange={(e) => setClinicSearchQuery(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[120px] overflow-y-auto custom-scrollbar space-y-1">
+                                                    {availableClinics
+                                                        .filter(c => c.name.toLowerCase().includes(clinicSearchQuery.toLowerCase()))
+                                                        .map(c => (
+                                                            <div
+                                                                key={c.id}
+                                                                className={`px-3 py-2 text-[10px] font-black cursor-pointer transition-all flex items-center justify-between rounded-md ${wizardClinic?.id === c.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
+                                                                onClick={async () => {
+                                                                    setWizardClinic(c);
+                                                                    setIsClinicDropdownOpen(false);
+                                                                    setClinicSearchQuery('');
+                                                                    try {
+                                                                        const srvRes = await clinicsAPI.getServices(c.id);
+                                                                        setAvailableServices(srvRes.data);
+                                                                    } catch (err) { console.error(err); }
+                                                                }}
+                                                            >
+                                                                <span>{c.name}</span>
+                                                                {wizardClinic?.id === c.id && <CheckCircle2 size={10} />}
+                                                            </div>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="relative group">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-500" />
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
                                         <input
                                             type="text"
-                                            placeholder="Search injectable, laser, facial..."
-                                            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-100 transition-all font-medium"
+                                            placeholder="Find treatment..."
+                                            className="w-full pl-10 pr-4 py-2.5 border-none rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-100 transition-all font-bold placeholder:text-slate-300"
                                             value={serviceSearchQuery}
                                             onChange={(e) => setServiceSearchQuery(e.target.value)}
                                         />
                                     </div>
 
-                                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
                                         {Object.entries(
                                             (availableServices || [])
                                                 .filter(s => (s.treatment?.name || s.name || '').toLowerCase().includes(serviceSearchQuery.toLowerCase()))
@@ -754,8 +731,8 @@ export const SalesWeekCalendar: React.FC = () => {
                                                     return acc;
                                                 }, {})
                                         ).map(([category, services]: [string, any]) => (
-                                            <div key={category} className="space-y-2 mb-4">
-                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">{category}</p>
+                                            <div key={category} className="space-y-1.5 mb-3">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] pl-1 mb-1">{category}</p>
                                                 {services.map((srv: any) => {
                                                     const isSelected = wizardServices.find(s => s.id === srv.id);
                                                     return (
@@ -765,105 +742,105 @@ export const SalesWeekCalendar: React.FC = () => {
                                                                 if (isSelected) setWizardServices(ws => ws.filter(x => x.id !== srv.id));
                                                                 else setWizardServices([...wizardServices, srv]);
                                                             }}
-                                                            className={`p-4 rounded-xl border cursor-pointer transition-all flex justify-between items-center group/item ${isSelected ? 'border-emerald-600 bg-emerald-50 shadow-sm' : 'border-gray-100 hover:border-gray-200 bg-white'}`}
+                                                            className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center group/item ${isSelected ? 'border-emerald-500 bg-white shadow-sm' : 'border-transparent bg-slate-50 hover:bg-slate-100'}`}
                                                         >
                                                             <div className="flex items-center gap-3">
-                                                                <div className={`p-2 rounded-lg ${isSelected ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500 group-hover/item:bg-emerald-100 group-hover/item:text-emerald-700'}`}>
-                                                                    <Scissors size={14} />
+                                                                <div className={`p-1.5 rounded-lg transition-colors ${isSelected ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                                                    <Scissors size={12} />
                                                                 </div>
-                                                                <div>
-                                                                    <p className="font-bold text-gray-900 text-sm leading-tight">{srv.treatment?.name || srv.name}</p>
-                                                                    <p className="text-[10px] text-gray-500 font-bold mt-1 uppercase tracking-tighter opacity-80">{srv.durationMinutes || srv.duration} mins · €{srv.price}</p>
+                                                                <div className="flex flex-col">
+                                                                    <p className="font-black text-slate-900 text-[11px] leading-none mb-1">{srv.treatment?.name || srv.name}</p>
+                                                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter ">{srv.durationMinutes || srv.duration}M · €{srv.price}</p>
                                                                 </div>
                                                             </div>
-                                                            {isSelected && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+                                                            {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
                                                         </div>
                                                     );
                                                 })}
                                             </div>
                                         ))}
-                                        {availableServices.length === 0 && <p className="text-xs text-center text-gray-400 p-8">No services available for this clinic.</p>}
+                                        {availableServices.length === 0 && <p className="text-[10px] text-center text-slate-400 py-6 uppercase font-black italic">Select Clinic first</p>}
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {wizardStep === 2 && (
-                            <div className="p-6 space-y-6 max-w-lg mx-auto">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-6">
-                                        <div>
-                                            <label className="text-xs font-black uppercase text-gray-400 tracking-wider">Assigned Staff</label>
-                                            <select
-                                                className="w-full mt-2 p-3 border border-gray-100 rounded-xl text-sm bg-gray-50 font-black cursor-pointer shadow-inner focus:ring-2 focus:ring-indigo-100 outline-none"
-                                                value={wizardProviderId || user?.id || ''}
-                                                onChange={(e) => setWizardProviderId(e.target.value)}
-                                            >
-                                                <option value={user?.id}>Me ({user?.firstName} {user?.lastName})</option>
-                                                {isManager && (salespersons || []).filter(s => s.id !== user?.id).map(s => (
-                                                    <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
-                                                ))}
-                                            </select>
-                                        </div>
+                            <div className="p-5 space-y-5 animate-in slide-in-from-bottom-4 duration-300">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Assigned Professional</label>
+                                        <select
+                                            className="w-full mt-2 p-3 border-none rounded-xl text-sm bg-slate-50 font-black cursor-pointer ring-offset-0 focus:ring-2 focus:ring-indigo-100 outline-none"
+                                            value={wizardProviderId || user?.id || ''}
+                                            onChange={(e) => setWizardProviderId(e.target.value)}
+                                        >
+                                            <option value={user?.id}>Personal Schedule ({user?.firstName})</option>
+                                            {isManager && (salespersons || []).filter(s => s.id !== user?.id).map(s => (
+                                                <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
+                                            ))}
+                                        </select>
+                                    </div>
 
+                                    <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="text-xs font-black uppercase text-gray-400 tracking-wider">Appointment Date</label>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Target Date</label>
                                             <div className="relative mt-2">
                                                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
-                                                <input type="date" value={format(wizardDate, 'yyyy-MM-dd')} onChange={(e) => setWizardDate(parseISO(e.target.value))} className="w-full pl-10 pr-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 font-black outline-none focus:ring-2 focus:ring-indigo-100" />
+                                                <input type="date" value={format(wizardDate, 'yyyy-MM-dd')} onChange={(e) => setWizardDate(parseISO(e.target.value))} className="w-full pl-10 pr-3 py-3 border-none rounded-xl text-sm bg-slate-50 font-black outline-none focus:ring-2 focus:ring-indigo-100" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Custom Time</label>
+                                            <div className="relative mt-2">
+                                                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
+                                                <input type="time" value={wizardTime} onChange={(e) => setWizardTime(e.target.value)} className="w-full pl-10 pr-3 py-3 border-none rounded-xl text-sm bg-slate-50 font-black outline-none focus:ring-2 focus:ring-indigo-100" />
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-center mb-1">
-                                            <label className="text-xs font-black uppercase text-gray-400 tracking-wider">Target Time Slot</label>
-                                            {isLoadingSlots && <span className="text-[10px] font-black text-indigo-500 animate-pulse">Checking Availability...</span>}
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Available Windows</label>
+                                            {isLoadingSlots && <span className="text-[9px] font-black text-indigo-500 animate-pulse tracking-tighter uppercase">Computing...</span>}
                                         </div>
-                                        <div className="grid grid-cols-3 gap-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar p-1">
+                                        <div className="grid grid-cols-4 gap-2 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar p-1">
                                             {availableTimeSlots.map((slot: any, idx) => (
                                                 <div
                                                     key={idx}
                                                     onClick={() => setWizardTime(format(new Date(slot.startTime), 'HH:mm'))}
-                                                    className={`p-2.5 text-center text-xs font-black rounded-xl border cursor-pointer transition-all ${wizardTime === format(new Date(slot.startTime), 'HH:mm')
-                                                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-                                                        : 'border-gray-50 hover:border-indigo-200 text-gray-600 bg-gray-50/50 hover:bg-white'
+                                                    className={`py-2 text-center text-[10px] font-black rounded-lg border-2 cursor-pointer transition-all ${wizardTime === format(new Date(slot.startTime), 'HH:mm')
+                                                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-md'
+                                                        : 'border-transparent hover:border-indigo-100 text-slate-600 bg-slate-50'
                                                         }`}
                                                 >
                                                     {format(new Date(slot.startTime), 'HH:mm')}
                                                 </div>
                                             ))}
-                                            {availableTimeSlots.length === 0 && !isLoadingSlots && (
-                                                <div className="col-span-3 text-center py-4 text-[10px] font-bold text-orange-400 bg-orange-50 rounded-xl border border-orange-100">No slots available for this staff/date.</div>
-                                            )}
-                                        </div>
-                                        <div className="mt-3">
-                                            <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Manual Override</p>
-                                            <input type="time" value={wizardTime} onChange={(e) => setWizardTime(e.target.value)} className="w-full p-2.5 border border-gray-100 rounded-lg text-sm bg-gray-50 font-black focus:bg-white outline-none" />
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="bg-gradient-to-br from-indigo-900 to-indigo-950 p-6 rounded-2xl text-white shadow-xl mt-4">
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex justify-between items-start border-b border-white/10 pb-3">
+                                <div className="bg-slate-900 mx-5 p-5 rounded-2xl text-white shadow-2xl relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10" />
+                                    <div className="relative z-10 flex flex-col gap-4">
+                                        <div className="flex justify-between items-start border-b border-white/5 pb-3">
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Client Engagement</span>
-                                                <p className="text-lg font-black">{isWalkIn ? walkInForm.firstName : (wizardClient?.firstName + ' ' + (wizardClient?.lastName || ''))}</p>
+                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Engagement</span>
+                                                <p className="text-sm font-black text-white/90">{isWalkIn ? walkInForm.firstName : (wizardClient?.firstName + ' ' + (wizardClient?.lastName || '')) || 'Guest Patient'}</p>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Total Investment</span>
-                                                <p className="text-2xl font-black text-indigo-400">€{wizardServices.reduce((a, b) => a + parseFloat(b.price || '0'), 0).toFixed(2)}</p>
+                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Total Value</span>
+                                                <p className="text-xl font-black text-[#CBFF38]">€{wizardServices.reduce((a, b) => a + parseFloat(b.price || '0'), 0).toFixed(2)}</p>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4 text-xs">
+                                        <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <span className="text-[10px] font-bold text-white/30 uppercase block mb-1">Assigned Expert</span>
-                                                <p className="font-black text-white/90">{salespersons.find(s => s.id === (wizardProviderId || user?.id))?.firstName || user?.firstName} {salespersons.find(s => s.id === (wizardProviderId || user?.id))?.lastName || user?.lastName || ''}</p>
+                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">Assigned To</span>
+                                                <p className="text-[11px] font-black text-white/80 uppercase italic">{salespersons.find(s => s.id === (wizardProviderId || user?.id))?.firstName || user?.firstName}</p>
                                             </div>
-                                            <div>
-                                                <span className="text-[10px] font-bold text-white/30 uppercase block mb-1">Services Breakdown</span>
-                                                <p className="font-black text-white/90">{wizardServices.length} Treatment{wizardServices.length !== 1 ? 's' : ''} Selected</p>
+                                            <div className="text-right">
+                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">Service Count</span>
+                                                <p className="text-[11px] font-black text-white/80 uppercase">{wizardServices.length} ITEMS SELECTED</p>
                                             </div>
                                         </div>
                                     </div>
@@ -872,15 +849,21 @@ export const SalesWeekCalendar: React.FC = () => {
                         )}
                     </div>
 
-                    <div className="p-4 border-t border-gray-200 bg-white flex gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] selection:bg-indigo-100">
-                        {wizardStep > 1 && (
-                            <Button variant="outline" className="flex-1 py-6 rounded-xl border-gray-200 font-black text-gray-500" onClick={() => setWizardStep(s => s - 1)}>Back to Selection</Button>
-                        )}
-                        {wizardStep < 2 ? (
-                            <Button onClick={() => setWizardStep(s => s + 1)} className="flex-1 py-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-lg shadow-indigo-100" disabled={(wizardStep === 1 && !wizardClient && !isWalkIn) || (wizardServices.length === 0)}>Save & Continue to Time</Button>
-                        ) : (
-                            <Button onClick={handleSaveWizard} className="flex-1 py-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black shadow-lg shadow-emerald-100" disabled={!wizardTime}>Finalize Appointment</Button>
-                        )}
+                    <div className="p-5 bg-white border-t border-slate-100 mt-auto shadow-[-20px_0_40px_rgba(0,0,0,0.05)]">
+                        <div className="flex gap-3">
+                            {wizardStep === 2 && (
+                                <Button variant="outline" onClick={() => setWizardStep(1)} className="h-14 w-14 p-0 rounded-2xl border-slate-200 text-slate-400 hover:text-slate-900 transition-all">
+                                    <ArrowLeft className="w-5 h-5" />
+                                </Button>
+                            )}
+                            <Button 
+                                onClick={wizardStep === 1 ? () => setWizardStep(2) : handleCreateBooking}
+                                disabled={wizardStep === 1 ? (!wizardClient && !isWalkIn) || wizardServices.length === 0 : !wizardTime}
+                                className={`flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.25em] transition-all active:scale-[0.98] shadow-xl ${wizardStep === 1 ? 'bg-slate-900 text-white hover:bg-black' : 'bg-[#CBFF38] text-slate-900 hover:bg-[#A3D900] shadow-[#CBFF38]/20'}`}
+                            >
+                                {wizardStep === 1 ? 'Configure Schedule' : 'Launch Appointment'}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../store";
 import {
@@ -227,65 +227,66 @@ const AvailabilityPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Premium Header */}
-      <div className="bg-black text-white pt-16 pb-24 px-6 md:px-10 rounded-b-[48px] shadow-2xl relative overflow-hidden">
-        <div className="absolute top-[-20%] right-[-10%] size-[500px] bg-[#CBFF38]/10 blur-[120px] rounded-full" />
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8 relative z-10">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
-              <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] italic">Operational Status: Online</span>
-            </div>
-            <div className="space-y-1">
-              <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">Availability</h1>
-              <p className="text-gray-400 font-medium max-w-md">Manage your clinic's working hours and blocked dates for seamless scheduling.</p>
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            {availableClinics.length > 1 && (
-              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-2 pl-4 flex items-center gap-3">
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 italic">Select Clinic</span>
-                <select
-                  value={selectedClinicId}
-                  onChange={(e) => setSelectedClinicId(e.target.value)}
-                  className="bg-transparent border-none text-white font-black uppercase text-[10px] tracking-widest outline-none cursor-pointer"
-                >
-                  {availableClinics.map(c => (
-                    <option key={c.id} value={c.id} className="bg-black">{c.name}</option>
-                  ))}
-                </select>
+      {/* Refined Minimal Header */}
+      <div className="relative pt-8 pb-16 px-6 md:px-10 border-b border-gray-100 bg-white">
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
+                <div className="size-1.5 rounded-full bg-green-500" />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 italic">Operational Status: Online</span>
               </div>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="group h-14 px-8 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-white transition-all shadow-xl shadow-lime-500/10 flex items-center gap-3"
-            >
-              <Save className="group-hover:scale-110 transition-transform" size={18} />
-              {isSaving ? "Saving..." : "Save Changes"}
-            </button>
+              <div className="space-y-1">
+                <h1 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter leading-none text-gray-900">Availability</h1>
+                <p className="text-gray-500 font-medium max-w-md text-sm">Clinical scheduling configuration and blackout management.</p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              {availableClinics.length > 1 && (
+                <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 h-12 flex items-center gap-3 shadow-sm">
+                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 italic">Clinic</span>
+                  <select
+                    value={selectedClinicId}
+                    onChange={(e) => setSelectedClinicId(e.target.value)}
+                    className="bg-transparent border-none text-gray-900 font-black uppercase text-[10px] tracking-widest outline-none cursor-pointer"
+                  >
+                    {availableClinics.map(c => (
+                      <option key={c.id} value={c.id} className="bg-white">{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="group h-12 px-6 bg-black text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all shadow-lg flex items-center gap-3"
+              >
+                <Save className="transition-transform" size={16} />
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 md:px-10 -mt-10 relative z-20 pb-20">
+      <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Business Hours Section */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white rounded-[40px] p-8 md:p-10 shadow-xl border border-gray-100 relative overflow-hidden">
-              <div className="flex items-center justify-between mb-10">
-                <div className="flex items-center gap-4">
-                  <div className="size-12 bg-black rounded-2xl flex items-center justify-center text-[#CBFF38]">
-                    <Clock size={22} />
+            <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
+                    <Clock size={18} />
                   </div>
-                  <h2 className="text-xl font-black uppercase italic tracking-tighter text-gray-900">Working Hours</h2>
+                  <h2 className="text-lg font-black uppercase italic tracking-tighter text-gray-900">Working Hours</h2>
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {days.map((day) => (
-                  <div key={day} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-gray-50/50 rounded-3xl border border-gray-50 hover:border-black transition-all group">
-                    <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                  <div key={day} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-black transition-all group">
+                    <div className="flex items-center gap-3 mb-4 sm:mb-0">
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
@@ -293,55 +294,54 @@ const AvailabilityPage: React.FC = () => {
                           onChange={(e) => updateDayHours(day, "isOpen", e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#CBFF38]" />
+                        <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#CBFF38]" />
                       </label>
-                      <span className="text-xs font-black uppercase tracking-widest text-gray-900 group-hover:italic transition-all capitalize">{day}</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-900 group-hover:italic transition-all capitalize">{day}</span>
                     </div>
 
                     {businessHours[day]?.isOpen ? (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <div className="relative">
-                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                           <input
                             type="time"
                             value={businessHours[day]?.open || "09:00"}
                             onChange={(e) => updateDayHours(day, "open", e.target.value)}
-                            className="h-10 pl-10 pr-4 bg-white border border-gray-100 rounded-xl font-black text-xs text-gray-900 focus:ring-2 focus:ring-black outline-none white-indicator"
+                            onClick={(e) => (e.target as any).showPicker?.()}
+                            className="h-10 px-3 bg-white border border-gray-100 rounded-lg font-black text-[10px] text-gray-900 focus:ring-1 focus:ring-black outline-none white-indicator"
                           />
                         </div>
-                        <span className="text-[10px] font-black text-gray-300 uppercase italic">To</span>
+                        <span className="text-[9px] font-black text-gray-300 uppercase italic">To</span>
                         <div className="relative">
-                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                           <input
                             type="time"
                             value={businessHours[day]?.close || "17:00"}
                             onChange={(e) => updateDayHours(day, "close", e.target.value)}
-                            className="h-10 pl-10 pr-4 bg-white border border-gray-100 rounded-xl font-black text-xs text-gray-900 focus:ring-2 focus:ring-black outline-none white-indicator"
+                            onClick={(e) => (e.target as any).showPicker?.()}
+                            className="h-10 px-3 bg-white border border-gray-100 rounded-lg font-black text-[10px] text-gray-900 focus:ring-1 focus:ring-black outline-none white-indicator"
                           />
                         </div>
                       </div>
                     ) : (
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-300 italic">Clinic Closed</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-gray-300 italic">Clinic Closed</span>
                     )}
                   </div>
                 ))}
               </div>
 
-              <div className="mt-10 pt-8 border-t border-gray-100">
-                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 px-1 italic">Timeline Configuration</p>
+              <div className="mt-8 pt-6 border-t border-gray-100">
+                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 px-1 italic">Timeline Configuration</p>
                 <div className="relative">
                   <select
                     value={timezone}
                     onChange={(e) => setTimezone(e.target.value)}
-                    className="w-full h-14 pl-6 pr-10 bg-gray-50 border-none rounded-2xl font-black uppercase text-[10px] tracking-widest appearance-none focus:ring-2 focus:ring-black cursor-pointer"
+                    className="w-full h-11 pl-5 pr-10 bg-gray-50 border-none rounded-xl font-black uppercase text-[9px] tracking-widest appearance-none focus:ring-1 focus:ring-black cursor-pointer"
                   >
+                    <option value="Europe/Athens">Athens (GMT+2)</option>
                     <option value="Europe/London">London (GMT)</option>
                     <option value="Europe/Paris">Paris (CET)</option>
-                    <option value="America/New_York">Eastern Time (ET)</option>
-                    <option value="Asia/Dubai">Dubai (GST)</option>
                   </select>
-                  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                    <Clock size={14} />
+                  <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                    <Clock size={12} />
                   </div>
                 </div>
               </div>
@@ -350,32 +350,32 @@ const AvailabilityPage: React.FC = () => {
 
           <div className="space-y-8">
             {/* Blocked Dates */}
-            <section className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-sm relative overflow-hidden">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
-                  <Calendar size={18} />
+            <section className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm relative overflow-hidden">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="size-9 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
+                  <Calendar size={16} />
                 </div>
-                <h2 className="text-[15px] font-black uppercase italic tracking-tighter text-gray-900">Blackout Dates</h2>
+                <h2 className="text-sm font-black uppercase italic tracking-tighter text-gray-900">Blackout Dates</h2>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="relative">
                   <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-2 mb-2 italic">Add New Block</p>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                       <input
                         type="date"
                         value={newBlockedDate}
                         onChange={(e) => setNewBlockedDate(e.target.value)}
-                        className="w-full h-12 pl-10 pr-4 bg-gray-50 border-none rounded-2xl font-black uppercase text-[10px] tracking-widest focus:ring-2 focus:ring-black outline-none white-indicator"
+                        onClick={(e) => (e.target as any).showPicker?.()}
+                        className="w-full h-10 px-4 bg-gray-50 border-none rounded-xl font-black uppercase text-[9px] tracking-widest focus:ring-1 focus:ring-black outline-none white-indicator appearance-none"
                       />
                     </div>
                     <button
                       onClick={addBlockedDate}
-                      className="size-12 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all shadow-lg"
+                      className="size-10 bg-black text-[#CBFF38] rounded-xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all shadow-sm"
                     >
-                      <Plus size={18} />
+                      <Plus size={16} />
                     </button>
                   </div>
                 </div>
@@ -412,57 +412,60 @@ const AvailabilityPage: React.FC = () => {
             </section>
 
             {/* Temporary Blocks */}
-            <section className="bg-[#0D0D0D] rounded-[40px] p-8 border border-white/5 shadow-2xl relative overflow-hidden">
+            <section className="bg-[#0D0D0D] rounded-[32px] p-6 border border-white/5 shadow-2xl relative overflow-hidden">
               <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="size-10 bg-[#CBFF38] rounded-xl flex items-center justify-center text-white">
-                    <Clock size={18} />
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="size-9 bg-[#CBFF38] rounded-xl flex items-center justify-center text-white">
+                    <Clock size={16} />
                   </div>
-                  <h2 className="text-[15px] font-black uppercase italic tracking-tighter text-white">Temporary Blocks</h2>
+                  <h2 className="text-sm font-black uppercase italic tracking-tighter text-white">Temporary Blocks</h2>
                 </div>
 
-                <div className="space-y-4 mb-8">
-                  <div className="space-y-2">
+                <div className="space-y-3 mb-6">
+                  <div className="space-y-1.5">
                     <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 italic">Date</p>
                     <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" size={14} />
                       <input
                         type="date"
                         value={newSlot.date}
                         onChange={(e) => setNewSlot({ ...newSlot, date: e.target.value })}
-                        className="w-full h-12 pl-10 pr-12 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none white-indicator appearance-none"
+                        onClick={(e) => (e.target as any).showPicker?.()}
+                        className="w-full h-10 pl-10 pr-4 bg-white/5 border border-white/10 rounded-xl text-white font-black text-[9px] tracking-widest focus:ring-1 focus:ring-[#CBFF38] outline-none white-indicator appearance-none"
                       />
                     </div>
                   </div>
-                  <div className="flex gap-4">
-                    <div className="flex-1 space-y-2">
+                  <div className="flex gap-3">
+                    <div className="flex-1 space-y-1.5">
                       <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 italic">Entry</p>
                       <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" size={14} />
                         <input
                           type="time"
                           value={newSlot.startTime}
                           onChange={(e) => setNewSlot({ ...newSlot, startTime: e.target.value })}
-                          className="w-full h-12 pl-10 pr-12 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none white-indicator appearance-none"
+                          onClick={(e) => (e.target as any).showPicker?.()}
+                          className="w-full h-10 pl-10 pr-4 bg-white/5 border border-white/10 rounded-xl text-white font-black text-[9px] tracking-widest focus:ring-1 focus:ring-[#CBFF38] outline-none white-indicator appearance-none"
                         />
                       </div>
                     </div>
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-1.5">
                       <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 italic">Exit</p>
                       <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" size={14} />
                         <input
                           type="time"
                           value={newSlot.endTime}
                           onChange={(e) => setNewSlot({ ...newSlot, endTime: e.target.value })}
-                          className="w-full h-12 pl-10 pr-12 bg-white/5 border border-white/10 rounded-2xl text-white font-black text-[10px] tracking-widest focus:ring-2 focus:ring-[#CBFF38] outline-none white-indicator appearance-none"
+                          onClick={(e) => (e.target as any).showPicker?.()}
+                          className="w-full h-10 pl-10 pr-4 bg-white/5 border border-white/10 rounded-xl text-white font-black text-[9px] tracking-widest focus:ring-1 focus:ring-[#CBFF38] outline-none white-indicator appearance-none"
                         />
                       </div>
                     </div>
                   </div>
                   <button
                     onClick={addBlockedSlot}
-                    className="w-full h-12 bg-white text-black hover:bg-[#CBFF38] rounded-2xl flex items-center justify-center gap-3 transition-all font-black uppercase text-[10px] tracking-widest italic"
+                    className="w-full h-10 bg-white text-black hover:bg-[#CBFF38] rounded-xl flex items-center justify-center gap-2 transition-all font-black uppercase text-[9px] tracking-widest italic mt-2"
                   >
                     <Plus size={14} /> Add Block
                   </button>

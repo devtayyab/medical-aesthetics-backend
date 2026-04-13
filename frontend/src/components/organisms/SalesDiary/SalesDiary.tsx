@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     format,
@@ -233,98 +233,120 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
     );
 
     return (
-        <div className="staff-diary-root sales-diary-root">
-            {/* Toolbar */}
-            <div className="diary-toolbar">
-                <div className="toolbar-left">
-                    <div>
-                        <h1 className="text-2xl font-black text-gray-900 tracking-tight">Sales Diary</h1>
-                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1">Lead & Activity Tracking</p>
-                    </div>
-                    <div className="date-nav ml-4">
-                        <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')} className="nav-btn">
-                            <ChevronLeft className="w-5 h-5" />
-                        </Button>
-                        <span className="current-date-display font-black text-sm uppercase tracking-wider">
-                            {format(selectedDate, 'EEEE, MMM do, yyyy')}
-                        </span>
-                        <Button variant="ghost" size="icon" onClick={() => navigateDate('next')} className="nav-btn">
-                            <ChevronRight className="w-5 h-5" />
-                        </Button>
-                    </div>
-                </div>
-
-                <div className="toolbar-right">
-                    <div className="view-switcher bg-gray-100 p-1 rounded-xl flex">
-                        {(['day', 'week'] as const).map(mode => (
-                            <button
-                                key={mode}
-                                onClick={() => setViewMode(mode)}
-                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${viewMode === mode ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}
-                            >
-                                {mode}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="search-box relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Find activity..."
-                            className="pl-9 pr-4 py-2 bg-gray-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all w-64"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <Button
-                        onClick={() => setIsBookingsModalOpen(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg border-none px-4 mr-2"
-                    >
-                        <CalendarIcon className="w-4 h-4 mr-2" /> Bookings
-                    </Button>
-                    <Button className="bg-[#b3d81b] hover:bg-[#a1c218] text-white font-bold rounded-xl shadow-lg shadow-lime-500/20 border-none px-6">
-                        <Plus className="w-4 h-4 mr-2" /> Log Activity
-                    </Button>
-                </div>
+    <div className="flex flex-col h-full bg-white rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-200/50 border border-slate-100 relative">
+      {/* 1. Specialized High-Fidelity Toolbar */}
+      <div className="px-8 py-6 border-b border-slate-50 bg-white sticky top-0 z-40">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+            <div className="hidden sm:block">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">Sales Diary</h1>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1.5 flex items-center gap-2">
+                <span className="w-1 h-1 rounded-full bg-[#CBFF38]"></span>
+                Activity Matrix
+              </p>
             </div>
 
-            {/* Main Calendar Area */}
-            <div className="diary-content-area relative">
-                {isLoading && (
-                    <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[2px] flex items-center justify-center rounded-3xl">
-                        <div className="flex flex-col items-center gap-3">
-                            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                            <span className="text-xs font-black uppercase tracking-widest text-blue-600">Syncing Activities...</span>
-                        </div>
-                    </div>
-                )}
-                <Card className="diary-card border-none shadow-2xl shadow-gray-200/50 bg-white rounded-3xl overflow-hidden">
-                    <CardContent className="p-0 h-full">
-                        {viewMode === 'day' ? renderDayView() : renderWeekView()}
-                    </CardContent>
-                </Card>
+            <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-2xl border border-slate-100">
+              <button 
+                onClick={() => navigateDate('prev')} 
+                className="w-9 h-9 flex items-center justify-center hover:bg-white rounded-xl transition-all text-slate-400 hover:text-slate-900 shadow-sm hover:shadow-slate-200/50"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="px-4 text-center min-w-[170px]">
+                <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest italic">
+                  {format(selectedDate, 'EEEE, MMM do')}
+                </span>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter -mt-0.5">{format(selectedDate, 'yyyy')}</p>
+              </div>
+              <button 
+                onClick={() => navigateDate('next')} 
+                className="w-9 h-9 flex items-center justify-center hover:bg-white rounded-xl transition-all text-slate-400 hover:text-slate-900 shadow-sm hover:shadow-slate-200/50"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-100">
+              {(['day', 'week'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    viewMode === mode 
+                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/20' 
+                    : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
             </div>
 
-            {/* Status Footer */}
-            <div className="diary-footer mt-6 flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-500" /> Pending Action
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500" /> Completed
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500" /> Follow-up
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500" /> Missed
-                </div>
+            <div className="relative group flex-1 min-w-[240px] sm:flex-none">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-300 group-focus-within:text-[#CBFF38] transition-all duration-300 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search matrix missions..."
+                className="w-full sm:w-80 pl-14 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-[1.25rem] text-[12px] font-black placeholder:text-slate-300 focus:bg-white focus:ring-[6px] focus:ring-[#CBFF38]/10 transition-all outline-none shadow-sm cursor-text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
 
-            <SalesBookingsModal
-                isOpen={isBookingsModalOpen}
-                onClose={() => setIsBookingsModalOpen(false)}
-            />
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setIsBookingsModalOpen(true)}
+                variant="outline"
+                className="h-11 px-5 border-slate-200 text-slate-600 font-black uppercase tracking-widest text-[9px] rounded-2xl hover:bg-slate-50 transition-all"
+              >
+                <CalendarIcon className="w-4 h-4 mr-2 text-slate-400" /> Bookings
+              </Button>
+              <Button className="h-11 px-6 bg-[#CBFF38] text-black font-black uppercase tracking-widest text-[9px] rounded-2xl shadow-xl shadow-[#CBFF38]/20 hover:bg-[#b3d81b] hover:scale-[1.03] active:scale-[0.97] transition-all border-none">
+                <Plus className="w-4 h-4 mr-2" /> Log Activity
+              </Button>
+            </div>
+          </div>
         </div>
-    );
+      </div>
+
+      {/* 2. Main High-Contrast Content Area */}
+      <div className="flex-1 overflow-hidden relative bg-white">
+        {isLoading && (
+          <div className="absolute inset-0 z-50 bg-white/40 backdrop-blur-md flex items-center justify-center transition-all duration-500">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-slate-900 border-t-[#CBFF38] rounded-full animate-spin" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 italic">Synchronizing Matrix</span>
+            </div>
+          </div>
+        )}
+
+        <div className="h-full overflow-hidden flex flex-col">
+          {viewMode === 'day' ? renderDayView() : renderWeekView()}
+        </div>
+      </div>
+
+      {/* 3. Specialized Status Ledger */}
+      <div className="px-8 py-5 border-t border-slate-50 bg-slate-50/30 flex flex-wrap items-center justify-center gap-8">
+        {[
+          { label: 'Pending Action', color: 'bg-blue-500 shadow-blue-500/30' },
+          { label: 'Deployed/Success', color: 'bg-emerald-500 shadow-emerald-500/30' },
+          { label: 'Follow-up Required', color: 'bg-amber-500 shadow-amber-500/30' },
+          { label: 'Mission Missed', color: 'bg-red-500 shadow-red-500/30' }
+        ].map(status => (
+          <div key={status.label} className="flex items-center gap-2.5 group cursor-default">
+            <div className={`w-2.5 h-2.5 rounded-full ${status.color} shadow-lg transition-transform group-hover:scale-125 duration-300`} />
+            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400 group-hover:text-slate-900 transition-colors duration-300 italic">{status.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <SalesBookingsModal
+        isOpen={isBookingsModalOpen}
+        onClose={() => setIsBookingsModalOpen(false)}
+      />
+    </div>
+  );
 };
