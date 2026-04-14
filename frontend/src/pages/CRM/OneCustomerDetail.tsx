@@ -597,7 +597,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
             // If appointment booked tagging, ensure logic
             if (interactionOutcome === 'appointment_booked' && !isConverted) {
-                await dispatch(updateLead({ id: customer.id, updates: { status: 'converted' } })).unwrap();
+                try {
+                    // Check if lead still exists or if it was converted in background
+                    await dispatch(updateLead({ id: customer.id, updates: { status: 'converted' } })).unwrap();
+                } catch (updateErr) {
+                    console.warn("Lead update skipped (maybe already converted):", updateErr);
+                }
             }
 
             resetWorkflow();
