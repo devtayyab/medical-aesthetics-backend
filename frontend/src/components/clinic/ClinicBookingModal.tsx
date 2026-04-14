@@ -80,7 +80,10 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
         }
     }, [selectedService, selectedDate, selectedProvider]);
 
+    const [slotReason, setSlotReason] = useState<string | null>(null);
+
     const fetchSlots = async () => {
+        setSlotReason(null);
         try {
             const res = await bookingAPI.getAvailability({
                 clinicId,
@@ -89,9 +92,14 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
                 date: selectedDate,
                 allowPast: true
             });
-            setAvailableSlots(res.data.slots || res.data || []);
-        } catch (err) {
+            const data = res.data;
+            setAvailableSlots(data.slots || []);
+            if (!data.slots?.length && data.reason) {
+                setSlotReason(data.reason);
+            }
+        } catch (err: any) {
             console.error('Failed to fetch slots', err);
+            setSlotReason(err.response?.data?.message || 'Could not fetch availability');
         }
     };
 
@@ -275,7 +283,15 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
                                             </button>
                                         ))}
                                         {availableSlots.length === 0 && (
-                                            <p className="col-span-2 text-center py-4 text-gray-400 text-sm">No slots available for this date.</p>
+                                            <div className="col-span-2 flex flex-col items-center justify-center p-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                                <Clock className="w-8 h-8 text-gray-300 mb-2" />
+                                                <p className="text-gray-500 font-bold text-xs text-center">No slots available</p>
+                                                {slotReason && (
+                                                    <p className="text-red-500 text-[10px] mt-1 text-center font-medium max-w-[200px]">
+                                                        {slotReason}
+                                                    </p>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 </div>

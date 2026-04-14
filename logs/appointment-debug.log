@@ -67,3 +67,5 @@
 [2026-04-14T05:59:53.726Z] --- BOOKING PROCESS STARTED --- {"clientId":"ba589ff1-ddbc-4fef-9db0-987c52dd0e21","hasDetails":false}
 [2026-04-14T06:33:40.748Z] --- BOOKING PROCESS STARTED --- {"clientId":"9eba50ad-ee80-4424-94b4-532bfdd265bb","hasDetails":true}
 [2026-04-14T09:00:32.553Z] --- BOOKING PROCESS STARTED --- {"clientId":"9eba50ad-ee80-4424-94b4-532bfdd265bb","hasDetails":true}
+[2026-04-14T15:47:06.812Z] --- BOOKING PROCESS STARTED --- {"clientId":"d87c31da-ff3e-4406-80af-39dd44ff7a3a","hasDetails":false}
+[2026-04-14T15:47:06.841Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"d87c31da-ff3e-4406-80af-39dd44ff7a3a"}
