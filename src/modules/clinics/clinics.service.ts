@@ -547,7 +547,6 @@ export class ClinicsService {
         { assignedClinicId: clinicId, role: UserRole.DOCTOR },
         { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER },
         { assignedClinicId: clinicId, role: UserRole.SECRETARIAT },
-        { assignedClinicId: clinicId, role: 'secretaria' as any }
       ]
     });
 
