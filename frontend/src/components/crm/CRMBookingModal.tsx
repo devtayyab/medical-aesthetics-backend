@@ -199,6 +199,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                 endTime: selectedSlot.endTime.includes('T') ? selectedSlot.endTime : `${selectedDate}T${selectedSlot.endTime}:00Z`,
                 notes,
                 status: initialAppointment?.status || 'CONFIRMED',
+                providerId: selectedSlot.providerId,
                 clientDetails: {
                     fullName: finalCustomerName || 'Unknown',
                     email: finalCustomerEmail || `noemail@placeholder.com`,

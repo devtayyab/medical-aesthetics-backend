@@ -150,7 +150,11 @@ export class AvailabilityService {
         where: {
           clinicId,
           startTime: Between(startOfDay, endOfDay),
-          status: AppointmentStatus.CONFIRMED,
+          status: In([
+            AppointmentStatus.CONFIRMED,
+            AppointmentStatus.PENDING,
+            AppointmentStatus.PENDING_PAYMENT,
+          ]),
         },
       });
 

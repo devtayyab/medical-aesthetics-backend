@@ -357,7 +357,13 @@ export class BookingsService {
 
     let conflictQuery = this.appointmentsRepository.createQueryBuilder('apt')
       .where('apt.clinicId = :clinicId', { clinicId: createAppointmentDto.clinicId })
-      .andWhere('apt.status = :status', { status: AppointmentStatus.CONFIRMED })
+      .andWhere('apt.status IN (:...statuses)', { 
+          statuses: [
+              AppointmentStatus.CONFIRMED, 
+              AppointmentStatus.PENDING, 
+              AppointmentStatus.PENDING_PAYMENT
+          ] 
+      })
       .andWhere('apt.startTime < :newEnd', { newEnd })
       .andWhere('apt.endTime > :newStart', { newStart });
 
@@ -369,8 +375,12 @@ export class BookingsService {
     const conflictingAppointment = await conflictQuery.getOne();
 
     if (conflictingAppointment) {
-      console.log('❌ [BookingsService] Conflict detected: Time slot already booked.');
-      throw new ConflictException('Time slot is already booked');
+      this.logDebug('❌ [BookingsService] Conflict detected: Time slot already occupied.', {
+          conflictingAptId: conflictingAppointment.id,
+          status: conflictingAppointment.status,
+          requestedTime: { start: newStart, end: newEnd }
+      });
+      throw new ConflictException('Time slot is already booked or pending payment');
     }
     console.log('✅ [BookingsService] No conflicting appointments found.');
 
