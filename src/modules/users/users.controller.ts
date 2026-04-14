@@ -47,7 +47,7 @@ export class UsersController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER)
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SUPER_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create new user (Agent/Staff)' })
   create(@Body() createUserDto: CreateUserDto) {
@@ -56,7 +56,7 @@ export class UsersController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update user details (Admin only)' })
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {

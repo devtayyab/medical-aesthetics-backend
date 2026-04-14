@@ -12,7 +12,10 @@ import {
   Request,
   HttpStatus,
   HttpCode,
+  BadRequestException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ClinicsService } from './clinics.service';
 import { BookingsService } from '../bookings/bookings.service';
@@ -38,6 +41,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
+import { User } from '../users/entities/user.entity';
 
 @ApiTags('Clinic Management')
 @Controller('clinic')
@@ -50,6 +54,8 @@ export class ClinicManagementController {
     private readonly loyaltyService: LoyaltyService,
     private readonly availabilityService: AvailabilityService,
     private readonly notificationsService: NotificationsService,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
   ) { }
 
   // Clinic Profile Management
@@ -99,7 +105,7 @@ export class ClinicManagementController {
   }
 
   @Post('appointments')
-  @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Create clinic own appointment' })
   @ApiResponse({ status: 201, description: 'Appointment created successfully' })
   async createClinicAppointment(
@@ -612,14 +618,30 @@ export class ClinicManagementController {
     return this.clinicsService.createClinicStaff(req.user.id, req.user.role, staffData);
   }
 
-  @Delete('staff/:id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT)
   @ApiOperation({ summary: 'Remove staff member from clinic' })
   async removeStaff(
     @Param('id') id: string,
     @Request() req,
   ) {
-    return this.clinicsService.removeStaff(req.user.id, req.user.role, id);
+    const role = req.user.role;
+    let clinicToUse;
+    
+    if (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER) {
+      // For admins, we need to know WHICH clinic they are removing staff from.
+      // Usually passed via query or the staff member's own assignment
+      const staff = await this.usersRepository.findOne({ where: { id: id } });
+      clinicToUse = staff?.assignedClinicId;
+    } else {
+      const clinic = await this.clinicsService.findByOwnerId(req.user.id);
+      clinicToUse = clinic.id;
+    }
+
+    if (!clinicToUse) {
+      throw new BadRequestException('Could not determine clinic context for staff removal');
+    }
+
+    return this.clinicsService.removeStaffById(id, clinicToUse);
   }
 
   // Predefined Treatment Management
