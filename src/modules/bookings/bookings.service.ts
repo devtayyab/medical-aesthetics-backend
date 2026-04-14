@@ -815,14 +815,16 @@ export class BookingsService {
         .leftJoinAndSelect('appointment.client', 'client')
         .leftJoinAndSelect('appointment.bookedBy', 'bookedBy');
 
+      const normalizedRole = userRole.toLowerCase();
       // 1. Role-based visibility
-      if (userRole === 'admin' || userRole === 'SUPER_ADMIN' || userRole === 'manager') {
+      if (normalizedRole === 'admin' || normalizedRole === 'super_admin' || normalizedRole === 'manager') {
         queryBuilder.where('1=1');
-      } else if (userRole === 'clinic_owner' || userRole === 'secretariat' || userRole === 'doctor') {
+      } else if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat' || normalizedRole === 'doctor') {
         const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
         if (!user) throw new NotFoundException('User not found');
         const clinicIds = (user.ownedClinics || []).map(c => c.id);
         if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
+        
         if (clinicIds.length > 0) {
           queryBuilder.where('appointment.clinicId IN (:...clinicIds)', { clinicIds });
         } else {
