@@ -114,9 +114,9 @@ export const rescheduleAppointment = createAsyncThunk(
 
 export const completeAppointment = createAsyncThunk(
   'booking/completeAppointment',
-  async (data: { id: string; completionData?: any }) => {
-    const response = await bookingAPI.complete(data.id, data.completionData);
-    return { id: data.id, ...response.data };
+  async (params: { id: string; data?: any }) => {
+    const response = await bookingAPI.complete(params.id, params.data);
+    return { id: params.id, ...response.data };
   }
 );
 

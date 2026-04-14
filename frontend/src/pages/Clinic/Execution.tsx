@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { completeAppointment } from "@/store/slices/clinicSlice";
 import { RootState } from "@/store";
@@ -21,11 +21,10 @@ export const Execution: React.FC = () => {
         completeAppointment({
           id: selectedAppointmentId,
           data: {
-            paymentData: {
-              paymentMethod: paymentMethod as any,
-              amount: finalAmount,
-              isAdvancePayment: false
-            },
+            amountPaid: finalAmount,
+            totalAmount: finalAmount,
+            paymentMethod: paymentMethod as any,
+            serviceExecuted: true,
             treatmentDetails: {}
           }
         })
