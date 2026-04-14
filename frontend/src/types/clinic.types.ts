@@ -208,6 +208,10 @@ export interface RecordPaymentDto {
 }
 
 export interface CompleteAppointmentDto {
+  amountPaid?: number;
+  totalAmount?: number;
+  paymentMethod?: string;
+  serviceExecuted?: boolean;
   paymentData?: RecordPaymentDto;
   treatmentDetails?: any;
   completionReport?: {

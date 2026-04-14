@@ -238,10 +238,18 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
     }
   };
 
-  const handleCompleteAppointment = async (id: string) => {
-    if (confirm('Are you sure you want to mark this appointment as completed?')) {
+  const handleCompleteAppointment = async (appointment: any) => {
+    if (confirm(`Are you sure you want to mark "${appointment.serviceName}" as completed? Revenue will be recorded as ${formatCurrency(appointment.totalAmount || 0)}.`)) {
       try {
-        await dispatch(completeAppointment({ id })).unwrap();
+        await dispatch(completeAppointment({ 
+          id: appointment.id,
+          data: {
+            amountPaid: appointment.totalAmount || 0,
+            totalAmount: appointment.totalAmount || 0,
+            paymentMethod: 'card', // Default for quick complete
+            serviceExecuted: true
+          }
+        })).unwrap();
         onUpdate?.();
       } catch (error) {
         console.error('Failed to complete appointment:', error);
@@ -796,7 +804,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                           <Button
                             size="xs"
                             variant="primary"
-                            onClick={() => handleCompleteAppointment(appointment.id)}
+                            onClick={() => handleCompleteAppointment(appointment)}
                             className="text-[10px] h-7 px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             Mark Completed

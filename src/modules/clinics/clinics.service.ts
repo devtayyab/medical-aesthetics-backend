@@ -525,11 +525,12 @@ export class ClinicsService {
   async getClinicProviders(clinicId: string): Promise<any[]> {
     const uniqueProviders = new Map();
 
-    // 1. Get all users who have the role of doctor and are assigned to this clinic
+    // 1. Get all users who have the role of doctor, owner or secretariat and are assigned to this clinic
     const assignedStaff = await this.usersRepository.find({
       where: [
         { assignedClinicId: clinicId, role: UserRole.DOCTOR },
-        { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER }
+        { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER },
+        { assignedClinicId: clinicId, role: UserRole.SECRETARIAT }
       ]
     });
 

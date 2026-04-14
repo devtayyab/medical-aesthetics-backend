@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store';
 import { completeAppointment } from '@/store/slices/bookingSlice';
@@ -34,10 +34,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
         try {
             await dispatch(completeAppointment({
                 id: appointment.id,
-                completionData: {
+                data: {
                     paymentMethod,
                     amountPaid,
-                    finalPrice: appointment.service?.price
+                    totalAmount: appointment.totalAmount || amountPaid,
+                    serviceExecuted: true
                 }
             })).unwrap();
 

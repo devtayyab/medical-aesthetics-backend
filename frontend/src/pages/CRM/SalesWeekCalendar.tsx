@@ -290,18 +290,16 @@ export const SalesWeekCalendar: React.FC = () => {
     const handleCompletePayment = async () => {
         if (!selectedApt) return;
         try {
+            const amountValue = parseFloat(paymentAmt) || 0;
             await dispatch(completeAppointment({
                 id: selectedApt.id,
-                completionData: {
-                    paymentData: {
-                        amount: parseFloat(paymentAmt) || 0,
-                        paymentMethod: paymentMethod.toUpperCase(),
-                        notes: 'Sales Calendar Checkout'
-                    },
-                    completionReport: {
+                data: {
+                    amountPaid: amountValue,
+                    totalAmount: amountValue,
+                    paymentMethod: paymentMethod.toUpperCase(),
+                    serviceExecuted: true,
+                    treatmentDetails: {
                         patientCame: true,
-                        amountPaid: parseFloat(paymentAmt) || 0,
-                        servicePerformed: selectedApt.serviceName || 'Treatment',
                         notes: 'Checkout confirmed via Sales Calendar'
                     }
                 }

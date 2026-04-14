@@ -637,11 +637,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const handleCompletePayment = async () => {
         if (!pendingAptId) return;
         try {
-            const paymentData = {
-                amount: parseFloat(paymentAmt) || 0,
-                paymentMethod: paymentMethod,
-            };
-
+            const amountValue = parseFloat(paymentAmt) || 0;
             const completionReport = {
                 patientCame: true,
                 servicePerformed: true,
@@ -650,7 +646,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
             await dispatch(completeAppointment({
                 id: pendingAptId,
-                completionData: { ...paymentData, completionReport }
+                data: {
+                    amountPaid: amountValue,
+                    totalAmount: amountValue,
+                    paymentMethod: paymentMethod,
+                    serviceExecuted: true,
+                    treatmentDetails: completionReport
+                }
             })).unwrap();
 
             // Create follow-up task
