@@ -26,17 +26,17 @@ const AppointmentsPage: React.FC = () => {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  // Get clinicId from first appointment or user context
-  const clinicId = user?.role === 'clinic_owner' ? (user as any).ownedClinics?.[0]?.id : (user as any).associatedClinicId;
-  const activeClinicId = clinicId || appointments[0]?.clinicId;
+  // Get clinicId from user context
+  const clinicId = user?.role === 'clinic_owner' 
+    ? (user as any).ownedClinics?.[0]?.id 
+    : (user as any).assignedClinicId;
+  const activeClinicId = clinicId || (appointments.length > 0 ? appointments[0]?.clinicId : null);
 
   useEffect(() => {
     dispatch(fetchAppointments(undefined));
   }, [dispatch]);
 
-  const isDoctor = user?.role === 'doctor';
   const filteredAppointments = appointments.filter((apt) => {
-    const matchesProvider = !isDoctor || apt.providerId === user?.id;
     const matchesStatus = selectedStatus === 'all' || apt.status.toLowerCase() === selectedStatus.toLowerCase();
     const matchesSearch =
       searchTerm === '' ||
@@ -45,7 +45,7 @@ const AppointmentsPage: React.FC = () => {
       (apt.serviceName || apt.service?.treatment?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDate = selectedDate === '' || apt.startTime.split('T')[0] === selectedDate;
 
-    return matchesProvider && matchesStatus && matchesSearch && matchesDate;
+    return matchesStatus && matchesSearch && matchesDate;
   });
 
   const handleConfirm = async (id: string) => {
