@@ -54,6 +54,8 @@ export class QueueService {
     templateId: string,
     frequency: string, // 'weekly', 'monthly', 'quarterly'
     clientId: string,
+    clinicId: string,
+    providerId?: string,
   ): Promise<void> {
     let cronExpression: string;
 
@@ -73,7 +75,7 @@ export class QueueService {
 
     await this.recurringQueue.add(
       'create-recurring-appointment',
-      { templateId, clientId },
+      { templateId, clientId, clinicId, providerId },
       {
         repeat: { cron: cronExpression },
         attempts: 3,
@@ -81,7 +83,7 @@ export class QueueService {
       },
     );
 
-    this.logger.log(`Scheduled recurring appointments for client ${clientId}`);
+    this.logger.log(`Scheduled recurring appointments for client ${clientId} in clinic ${clinicId} with staff ${providerId || 'unassigned'}`);
   }
 
   // Loyalty point expiration

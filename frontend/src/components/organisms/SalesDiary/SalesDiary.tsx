@@ -182,7 +182,13 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                                 </div>
                                 <div className="staff-meta">
                                     <span className="staff-name">{member.firstName} {member.lastName}</span>
-                                    <span className="staff-role">Sales Agent</span>
+                                    <span className="staff-role">
+                                        {member.role === 'doctor' ? 'Doctor' : 
+                                         member.role === 'manager' ? 'Manager' : 
+                                         member.role === 'admin' ? 'Administrator' : 
+                                         member.role === 'SUPER_ADMIN' ? 'System Admin' : 
+                                         member.role === 'clinic_owner' ? 'Owner' : 'Sales Agent'}
+                                    </span>
                                 </div>
                             </div>
                             <div className="diary-slots-container">
@@ -199,6 +205,7 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                                     const height = Math.max((duration / 30) * 60, 40);
 
                                     const getIcon = () => {
+                                        if (act.type === 'appointment') return <CalendarIcon className="w-3 h-3" />;
                                         if (act.actionType === 'call') return <Phone className="w-3 h-3" />;
                                         if (act.actionType === 'email') return <Mail className="w-3 h-3" />;
                                         return <MessageSquare className="w-3 h-3" />;

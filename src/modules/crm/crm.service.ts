@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In, DataSource, IsNull } from 'typeorm';
+import { Repository, Between, In, DataSource, IsNull, Not } from 'typeorm';
 import { validate as isUuid } from 'uuid';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { Lead } from './entities/lead.entity';
@@ -34,6 +34,8 @@ import { CustomerAffiliationService } from './customer-affiliation.service';
 import { MandatoryFieldValidationService } from './mandatory-field-validation.service';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { Service } from '../clinics/entities/service.entity';
+import { Task } from '../tasks/entities/task.entity';
+import { BookingsService } from '../bookings/bookings.service';
 
 @Injectable()
 export class CrmService implements OnModuleInit {
@@ -74,6 +76,8 @@ export class CrmService implements OnModuleInit {
     private mandatoryFieldValidationService: MandatoryFieldValidationService,
     private taskAutomationService: TaskAutomationService,
     private queueService: QueueService,
+    @Inject(forwardRef(() => BookingsService))
+    private bookingsService: BookingsService,
     private configService: ConfigService,
     private dataSource: DataSource,
   ) { }
@@ -299,50 +303,86 @@ export class CrmService implements OnModuleInit {
   }
 
   async scheduleRecurringAppointment(data: any): Promise<any> {
-    const { customerId, serviceId, frequency } = data;
+    console.log('🚀 [CrmService] scheduleRecurringAppointment request received');
+    console.log('Payload Data:', JSON.stringify(data, null, 2));
+    
+    const { customerId, serviceId, frequency, clinicId, startDate, providerId } = data;
 
-    if (!customerId || !serviceId || !frequency) {
-      throw new BadRequestException('Missing required fields: customerId, serviceId, frequency');
+    // Descriptive check for required fields
+    if (!customerId || !serviceId || !frequency || !clinicId) {
+      const missing = [];
+      if (!customerId) missing.push('customerId');
+      if (!clinicId) missing.push('clinicId');
+      if (!serviceId) missing.push('serviceId');
+      if (!frequency) missing.push('frequency');
+      
+      console.error('❌ [CrmService] Validation failed. Missing:', missing.join(', '));
+      throw new BadRequestException(`Missing required fields: ${missing.join(', ')}`);
     }
 
     try {
-      // Validate customer exists
+      // 1. Validate Customer
+      console.log(`[CrmService] 1. Looking up customer: ${customerId}`);
       const customer = await this.usersRepository.findOne({ where: { id: customerId } });
       if (!customer) {
+        console.error(`❌ [CrmService] Customer not found: ${customerId}`);
         throw new NotFoundException(`Customer not found with ID: ${customerId}`);
       }
 
-      // Resolve CustomerRecord
+      // 2. Resolve CustomerRecord
+      console.log('[CrmService] 2. Resolving customer record');
       let record = await this.customerRecordsRepository.findOne({ where: { customerId } });
       if (!record) {
+        console.log('[CrmService] No record found, creating new one');
         record = await this.createCustomerRecord(customerId);
       }
 
-      // Use QueueService to schedule repetition
+      // 3. Create First Appointment
+      if (startDate) {
+        console.log(`[CrmService] 3. Creating first appointment at ${startDate} for staff ${providerId || 'unassigned'}`);
+        const start = new Date(startDate);
+        const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+        try {
+          await this.bookingsService.createAppointment({
+            clientId: customerId,
+            clinicId: clinicId,
+            serviceId: serviceId,
+            providerId: providerId || undefined,
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+            status: AppointmentStatus.CONFIRMED,
+            paymentMethod: 'cash',
+            appointmentSource: 'platform_broker',
+          });
+          console.log('[CrmService] First appointment created successfully');
+        } catch (bookingError) {
+          console.error('❌ [CrmService] BookingsService.createAppointment failed:', bookingError);
+          throw new BadRequestException(`Failed to create the first appointment: ${bookingError.message}`);
+        }
+      }
+
+      // 4. Queue Repetitions
+      console.log('[CrmService] 4. Scheduling future repetitions in background queue');
       await this.queueService.scheduleRecurringAppointments(
-        serviceId, // we treat serviceId as templateId/service description for now
+        serviceId,
         frequency,
         customerId,
+        clinicId,
+        providerId,
       );
 
+      console.log('✅ [CrmService] Recurring sequence scheduled successfully');
       return {
         success: true,
-        message: `Recurring appointment scheduled for client ${customerId} with ${frequency} frequency`,
+        message: `Recurring sequence started. First appointment created and future sessions scheduled.`,
       };
     } catch (error) {
-      console.error('Error in scheduleRecurringAppointment:', error);
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+      console.error('❌ [CrmService] CRITICAL ERROR in scheduleRecurringAppointment:', error);
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
       }
-      if (error.message && error.message.includes('Unsupported frequency')) {
-        throw new BadRequestException(error.message);
-      }
-      // Handle database UUID format errors
-      if (error.code === '22P02') { // PostgreSQL invalid text representation code
-        throw new BadRequestException(`Invalid customer ID format: ${customerId}`);
-      }
-
-      throw new BadRequestException(`Failed to schedule recurring appointment: ${error.message}`);
+      throw new BadRequestException(error.message || 'An unexpected error occurred while scheduling recurring appointments');
     }
   }
 
@@ -3723,7 +3763,7 @@ export class CrmService implements OnModuleInit {
   async getSalespersons(): Promise<any[]> {
     const users = await this.usersRepository.find({
       where: {
-        role: In([UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER]),
+        role: In([UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT]),
         isActive: true
       },
       select: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePictureUrl', 'role'],
@@ -3774,16 +3814,27 @@ export class CrmService implements OnModuleInit {
     const whereTask: any = {
       dueDate: Between(startDate, endDate),
     };
-
-    if (salespersonId) {
-      whereTask.assigneeId = salespersonId;
-    }
+    if (salespersonId) whereTask.assigneeId = salespersonId;
 
     // Fetch Tasks
-    const tasks = await this.dataSource.getRepository('Task').find({
+    const tasks = await this.dataSource.getRepository(Task).find({
       where: whereTask,
       relations: ['assignee', 'customer'],
     }) as any[];
+
+    // Fetch Appointments (Self-booked or otherwise)
+    const whereAppointment: any = {
+      startTime: Between(startDate, endDate),
+      status: Not(AppointmentStatus.CANCELLED)
+    };
+
+    const appointments = await this.appointmentsRepository.find({
+      where: salespersonId ? [
+        { ...whereAppointment, providerId: salespersonId },
+        { ...whereAppointment, bookedById: salespersonId }
+      ] : whereAppointment,
+      relations: ['client', 'service', 'service.treatment', 'provider'],
+    });
 
     // Standardize format for Diary
     const standardizedActivities = [
@@ -3810,6 +3861,17 @@ export class CrmService implements OnModuleInit {
         endTime: new Date(new Date(task.dueDate).getTime() + 30 * 60000),
         salespersonId: task.assigneeId,
         customerName: task.customer ? `${task.customer.firstName} ${task.customer.lastName}` : 'N/A',
+      })),
+      ...appointments.map(apt => ({
+        id: apt.id,
+        title: (apt as any).service?.treatment?.name || 'Appointment',
+        type: 'appointment' as const,
+        status: apt.status,
+        startTime: apt.startTime,
+        endTime: apt.endTime,
+        salespersonId: apt.providerId || apt.bookedById,
+        customerName: apt.client ? `${apt.client.firstName} ${apt.client.lastName}` : (apt.clientDetails?.fullName || 'Guest'),
+        clinicId: apt.clinicId,
       })),
     ];
 

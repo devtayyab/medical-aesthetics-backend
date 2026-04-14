@@ -506,6 +506,7 @@ export const scheduleRecurring = createAsyncThunk(
   "crm/scheduleRecurring",
   async (data: {
     customerId: string;
+    clinicId: string;
     serviceId: string;
     frequency: string;
     startDate: string;

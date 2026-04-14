@@ -313,7 +313,14 @@ export class ClinicsService {
   // New clinic management methods
   async createClinic(createClinicDto: CreateClinicProfileDto & { ownerId: string }): Promise<Clinic> {
     const clinic = this.clinicsRepository.create(createClinicDto);
-    return this.clinicsRepository.save(clinic);
+    const savedClinic = await this.clinicsRepository.save(clinic);
+    
+    // Automatically assign the owner as staff to their own clinic for better visibility
+    await this.usersRepository.update(createClinicDto.ownerId, {
+      assignedClinicId: savedClinic.id
+    });
+    
+    return savedClinic;
   }
 
   async updateClinicById(
