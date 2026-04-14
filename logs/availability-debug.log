@@ -3091,3 +3091,531 @@
 [2026-04-14T06:33:30.798Z] ✅ Clinic is open on tuesday from 09:00 to 18:00 
 [2026-04-14T06:33:30.823Z] 🔵 Checking availability for 2 providers 
 [2026-04-14T06:33:30.901Z] ✅ Found 17 slots for clinic: muneeb 
+[2026-04-14T09:00:24.305Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T09:00:24.577Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T09:00:24.595Z] 🔵 Clinic: "muneeb"
+[2026-04-14T09:00:24.605Z] 🔵 Total duration: 60
+[2026-04-14T09:00:24.606Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T09:00:24.614Z] 🔵 Day of week: "tuesday"
+[2026-04-14T09:00:24.615Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-04-14T09:00:24.617Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"18:00","isOpen":true},"tuesday":{"open":"09:00","close":"18:00","isOpen":true},"wednesday":{"open":"09:00","close":"18:00","isOpen":true},"thursday":{"open":"09:00","close":"18:00","isOpen":true},"friday":{"open":"09:00","close":"18:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T09:00:24.619Z] ✅ Clinic is open on tuesday from 09:00 to 18:00 
+[2026-04-14T09:00:24.647Z] 🔵 Checking availability for 3 providers 
+[2026-04-14T09:00:24.695Z] ✅ Found 17 slots for clinic: muneeb 
+[2026-04-14T09:00:24.709Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T09:00:24.730Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T09:00:24.756Z] 🔵 Clinic: "muneeb"
+[2026-04-14T09:00:24.764Z] 🔵 Total duration: 60
+[2026-04-14T09:00:24.764Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T09:00:24.766Z] 🔵 Day of week: "tuesday"
+[2026-04-14T09:00:24.766Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-04-14T09:00:24.767Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"18:00","isOpen":true},"tuesday":{"open":"09:00","close":"18:00","isOpen":true},"wednesday":{"open":"09:00","close":"18:00","isOpen":true},"thursday":{"open":"09:00","close":"18:00","isOpen":true},"friday":{"open":"09:00","close":"18:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T09:00:24.769Z] ✅ Clinic is open on tuesday from 09:00 to 18:00 
+[2026-04-14T09:00:24.786Z] 🔵 Checking availability for 3 providers 
+[2026-04-14T09:00:24.812Z] ✅ Found 17 slots for clinic: muneeb 
+[2026-04-14T15:42:39.793Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T15:42:39.879Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T15:42:39.983Z] 🔵 Clinic: "muneeb"
+[2026-04-14T15:42:40.016Z] 🔵 Total duration: 60
+[2026-04-14T15:42:40.032Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T15:42:40.123Z] 🔵 Day of week: "tuesday"
+[2026-04-14T15:42:40.124Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-04-14T15:42:40.126Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"18:00","isOpen":true},"tuesday":{"open":"09:00","close":"18:00","isOpen":true},"wednesday":{"open":"09:00","close":"18:00","isOpen":true},"thursday":{"open":"09:00","close":"18:00","isOpen":true},"friday":{"open":"09:00","close":"18:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T15:42:40.130Z] ✅ Clinic is open on tuesday from 09:00 to 18:00 
+[2026-04-14T15:42:40.206Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T15:42:41.039Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T15:42:41.046Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T15:42:41.173Z] 🔵 Clinic: "muneeb"
+[2026-04-14T15:42:41.186Z] 🔵 Total duration: 60
+[2026-04-14T15:42:41.188Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T15:42:41.189Z] 🔵 Day of week: "tuesday"
+[2026-04-14T15:42:41.190Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-04-14T15:42:41.190Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"18:00","isOpen":true},"tuesday":{"open":"09:00","close":"18:00","isOpen":true},"wednesday":{"open":"09:00","close":"18:00","isOpen":true},"thursday":{"open":"09:00","close":"18:00","isOpen":true},"friday":{"open":"09:00","close":"18:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T15:42:41.192Z] ✅ Clinic is open on tuesday from 09:00 to 18:00 
+[2026-04-14T15:42:41.205Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T15:42:46.142Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-15"}
+[2026-04-14T15:42:46.143Z] 🔵 Using date: "2026-04-15"
+[2026-04-14T15:42:46.184Z] 🔵 Clinic: "muneeb"
+[2026-04-14T15:42:46.203Z] 🔵 Total duration: 60
+[2026-04-14T15:42:46.205Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T15:42:46.230Z] 🔵 Day of week: "wednesday"
+[2026-04-14T15:42:46.231Z] 🔵 Business hours for wednesday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-04-14T15:42:46.245Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"18:00","isOpen":true},"tuesday":{"open":"09:00","close":"18:00","isOpen":true},"wednesday":{"open":"09:00","close":"18:00","isOpen":true},"thursday":{"open":"09:00","close":"18:00","isOpen":true},"friday":{"open":"09:00","close":"18:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T15:42:46.246Z] ✅ Clinic is open on wednesday from 09:00 to 18:00 
+[2026-04-14T15:42:46.282Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T15:42:57.964Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7f3c5ca1-1704-4f54-b909-f1532dd200b0"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T15:42:57.965Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T15:42:58.040Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T15:42:58.071Z] 🔵 Total duration: 60
+[2026-04-14T15:42:58.072Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T15:42:58.074Z] 🔵 Day of week: "tuesday"
+[2026-04-14T15:42:58.084Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T15:42:58.101Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T15:42:58.169Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T15:42:58.202Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["1f0c099e-663f-462a-bd8d-b90ad71cbb01","doctor","1f0c099e-663f-462a-bd8d-b90ad71cbb01","clinic_owner","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretariat","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T15:43:05.493Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7f3c5ca1-1704-4f54-b909-f1532dd200b0"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T15:43:05.498Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T15:43:05.514Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T15:43:05.527Z] 🔵 Total duration: 60
+[2026-04-14T15:43:05.528Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T15:43:05.530Z] 🔵 Day of week: "tuesday"
+[2026-04-14T15:43:05.533Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T15:43:05.542Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T15:43:05.549Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T15:43:05.571Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["1f0c099e-663f-462a-bd8d-b90ad71cbb01","doctor","1f0c099e-663f-462a-bd8d-b90ad71cbb01","clinic_owner","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretariat","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T15:43:14.179Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7f3c5ca1-1704-4f54-b909-f1532dd200b0"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T15:43:14.180Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T15:43:14.243Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T15:43:14.249Z] 🔵 Total duration: 60
+[2026-04-14T15:43:14.249Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T15:43:14.252Z] 🔵 Day of week: "tuesday"
+[2026-04-14T15:43:14.253Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T15:43:14.254Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T15:43:14.258Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T15:43:14.275Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["1f0c099e-663f-462a-bd8d-b90ad71cbb01","doctor","1f0c099e-663f-462a-bd8d-b90ad71cbb01","clinic_owner","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretariat","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T15:43:28.119Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7f3c5ca1-1704-4f54-b909-f1532dd200b0"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T15:43:28.120Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T15:43:28.145Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T15:43:28.151Z] 🔵 Total duration: 60
+[2026-04-14T15:43:28.152Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T15:43:28.153Z] 🔵 Day of week: "tuesday"
+[2026-04-14T15:43:28.158Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T15:43:28.161Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T15:43:28.162Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T15:43:28.175Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["1f0c099e-663f-462a-bd8d-b90ad71cbb01","doctor","1f0c099e-663f-462a-bd8d-b90ad71cbb01","clinic_owner","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretariat","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T15:47:01.632Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T15:47:01.633Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T15:47:01.644Z] 🔵 Clinic: "muneeb"
+[2026-04-14T15:47:01.661Z] 🔵 Total duration: 60
+[2026-04-14T15:47:01.664Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T15:47:01.675Z] 🔵 Day of week: "tuesday"
+[2026-04-14T15:47:01.679Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-04-14T15:47:01.680Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"18:00","isOpen":true},"tuesday":{"open":"09:00","close":"18:00","isOpen":true},"wednesday":{"open":"09:00","close":"18:00","isOpen":true},"thursday":{"open":"09:00","close":"18:00","isOpen":true},"friday":{"open":"09:00","close":"18:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T15:47:01.681Z] ✅ Clinic is open on tuesday from 09:00 to 18:00 
+[2026-04-14T15:47:01.718Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T15:48:07.552Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T15:48:07.553Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T15:48:07.585Z] 🔵 Clinic: "muneeb"
+[2026-04-14T15:48:07.605Z] 🔵 Total duration: 60
+[2026-04-14T15:48:07.607Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T15:48:07.616Z] 🔵 Day of week: "tuesday"
+[2026-04-14T15:48:07.617Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-04-14T15:48:07.618Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"18:00","isOpen":true},"tuesday":{"open":"09:00","close":"18:00","isOpen":true},"wednesday":{"open":"09:00","close":"18:00","isOpen":true},"thursday":{"open":"09:00","close":"18:00","isOpen":true},"friday":{"open":"09:00","close":"18:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T15:48:07.618Z] ✅ Clinic is open on tuesday from 09:00 to 18:00 
+[2026-04-14T15:48:07.631Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T16:05:17.937Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:05:17.946Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:05:18.002Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:05:18.012Z] 🔵 Total duration: 60
+[2026-04-14T16:05:18.013Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:05:18.015Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:05:18.016Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:05:18.016Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:05:18.018Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:05:18.029Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T16:05:18.054Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:05:18.055Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:05:18.064Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:05:18.068Z] 🔵 Total duration: 60
+[2026-04-14T16:05:18.068Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:05:18.069Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:05:18.070Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:05:18.070Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:05:18.071Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:05:18.078Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T16:05:28.284Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:05:28.286Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:05:28.294Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:05:28.303Z] 🔵 Total duration: 60
+[2026-04-14T16:05:28.304Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:05:28.316Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:05:28.317Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:05:28.318Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:05:28.318Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:05:28.332Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T16:07:11.226Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:07:11.251Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:07:11.258Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:07:11.263Z] 🔵 Total duration: 60
+[2026-04-14T16:07:11.263Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:07:11.264Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:07:11.264Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:07:11.265Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:07:11.266Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:07:11.275Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T16:07:20.012Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:07:20.013Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:07:20.023Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:07:20.027Z] 🔵 Total duration: 60
+[2026-04-14T16:07:20.027Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:07:20.028Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:07:20.028Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:07:20.029Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:07:20.029Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:07:20.036Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T16:07:44.107Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-15"}
+[2026-04-14T16:07:44.108Z] 🔵 Using date: "2026-04-15"
+[2026-04-14T16:07:44.210Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:07:44.222Z] 🔵 Total duration: 60
+[2026-04-14T16:07:44.223Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:07:44.223Z] 🔵 Day of week: "wednesday"
+[2026-04-14T16:07:44.224Z] 🔵 Business hours for wednesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:07:44.224Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:07:44.225Z] ✅ Clinic is open on wednesday from 09:00 to 23:00 
+[2026-04-14T16:07:44.241Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T16:12:42.371Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:12:42.392Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:12:42.464Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:12:42.474Z] 🔵 Total duration: 60
+[2026-04-14T16:12:42.476Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:12:42.482Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:12:42.482Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:12:42.483Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:12:42.484Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:12:42.500Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T16:12:43.197Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:12:43.198Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:12:43.207Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:12:43.211Z] 🔵 Total duration: 60
+[2026-04-14T16:12:43.212Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:12:43.213Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:12:43.213Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:12:43.214Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:12:43.215Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:12:43.218Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T16:14:02.326Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7f3c5ca1-1704-4f54-b909-f1532dd200b0"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:14:02.330Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:14:02.344Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T16:14:02.352Z] 🔵 Total duration: 60
+[2026-04-14T16:14:02.353Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:14:02.354Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:14:02.355Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T16:14:02.355Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T16:14:02.356Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T16:14:02.365Z] ❌ Error in getAvailableSlots: {"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["1f0c099e-663f-462a-bd8d-b90ad71cbb01","doctor","1f0c099e-663f-462a-bd8d-b90ad71cbb01","clinic_owner","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretariat","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}
+[2026-04-14T16:17:32.019Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7f3c5ca1-1704-4f54-b909-f1532dd200b0"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:17:32.022Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:17:32.045Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T16:17:32.058Z] 🔵 Total duration: 60
+[2026-04-14T16:17:32.059Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:17:32.065Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:17:32.066Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T16:17:32.068Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T16:17:32.070Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T16:17:32.847Z] ❌ Error in getAvailableSlots: {"message":"invalid input value for enum users_role_enum: \"secretaria\"","stack":"QueryFailedError: invalid input value for enum users_role_enum: \"secretaria\"\n    at PostgresQueryRunner.query (E:\\ebizz\\medical-aesthetics-backend\\src\\driver\\postgres\\PostgresQueryRunner.ts:325:19)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at SelectQueryBuilder.loadRawResults (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:3868:25)\n    at SelectQueryBuilder.executeEntitiesAndRawResults (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:3614:26)\n    at SelectQueryBuilder.getRawAndEntities (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:1671:29)\n    at SelectQueryBuilder.getMany (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:1761:25)\n    at ClinicsService.getClinicProviders (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\clinics\\clinics.service.ts:545:27)\n    at AvailabilityService.getAvailableSlots (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\availability.service.ts:135:11)\n    at BookingsController.getAvailability (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\bookings.controller.ts:41:22)\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\@nestjs\\core\\router\\router-execution-context.js:46:28","details":{"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["1f0c099e-663f-462a-bd8d-b90ad71cbb01","doctor","1f0c099e-663f-462a-bd8d-b90ad71cbb01","clinic_owner","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretariat","1f0c099e-663f-462a-bd8d-b90ad71cbb01","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}}
+[2026-04-14T16:18:21.726Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:18:21.729Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:18:21.750Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:18:21.758Z] 🔵 Total duration: 60
+[2026-04-14T16:18:21.758Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:18:21.760Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:18:21.761Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:18:21.761Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:18:21.762Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:18:21.773Z] ❌ Error in getAvailableSlots: {"message":"invalid input value for enum users_role_enum: \"secretaria\"","stack":"QueryFailedError: invalid input value for enum users_role_enum: \"secretaria\"\n    at PostgresQueryRunner.query (E:\\ebizz\\medical-aesthetics-backend\\src\\driver\\postgres\\PostgresQueryRunner.ts:325:19)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at SelectQueryBuilder.loadRawResults (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:3868:25)\n    at SelectQueryBuilder.executeEntitiesAndRawResults (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:3614:26)\n    at SelectQueryBuilder.getRawAndEntities (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:1671:29)\n    at SelectQueryBuilder.getMany (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:1761:25)\n    at ClinicsService.getClinicProviders (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\clinics\\clinics.service.ts:545:27)\n    at AvailabilityService.getAvailableSlots (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\availability.service.ts:135:11)\n    at BookingsController.getAvailability (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\bookings.controller.ts:41:22)\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\@nestjs\\core\\router\\router-execution-context.js:46:28","details":{"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}}
+[2026-04-14T16:18:21.803Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:18:21.809Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:18:21.860Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:18:21.867Z] 🔵 Total duration: 60
+[2026-04-14T16:18:21.868Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:18:21.873Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:18:21.874Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:18:21.875Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:18:21.876Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:18:21.896Z] ❌ Error in getAvailableSlots: {"message":"invalid input value for enum users_role_enum: \"secretaria\"","stack":"QueryFailedError: invalid input value for enum users_role_enum: \"secretaria\"\n    at PostgresQueryRunner.query (E:\\ebizz\\medical-aesthetics-backend\\src\\driver\\postgres\\PostgresQueryRunner.ts:325:19)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at SelectQueryBuilder.loadRawResults (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:3868:25)\n    at SelectQueryBuilder.executeEntitiesAndRawResults (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:3614:26)\n    at SelectQueryBuilder.getRawAndEntities (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:1671:29)\n    at SelectQueryBuilder.getMany (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:1761:25)\n    at ClinicsService.getClinicProviders (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\clinics\\clinics.service.ts:545:27)\n    at AvailabilityService.getAvailableSlots (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\availability.service.ts:135:11)\n    at BookingsController.getAvailability (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\bookings.controller.ts:41:22)\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\@nestjs\\core\\router\\router-execution-context.js:46:28","details":{"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}}
+[2026-04-14T16:18:40.026Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:18:40.027Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:18:40.073Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:18:40.078Z] 🔵 Total duration: 60
+[2026-04-14T16:18:40.079Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:18:40.080Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:18:40.080Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:18:40.081Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:18:40.113Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:18:40.157Z] ❌ Error in getAvailableSlots: {"message":"invalid input value for enum users_role_enum: \"secretaria\"","stack":"QueryFailedError: invalid input value for enum users_role_enum: \"secretaria\"\n    at PostgresQueryRunner.query (E:\\ebizz\\medical-aesthetics-backend\\src\\driver\\postgres\\PostgresQueryRunner.ts:325:19)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at SelectQueryBuilder.loadRawResults (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:3868:25)\n    at SelectQueryBuilder.executeEntitiesAndRawResults (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:3614:26)\n    at SelectQueryBuilder.getRawAndEntities (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:1671:29)\n    at SelectQueryBuilder.getMany (E:\\ebizz\\medical-aesthetics-backend\\src\\query-builder\\SelectQueryBuilder.ts:1761:25)\n    at ClinicsService.getClinicProviders (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\clinics\\clinics.service.ts:545:27)\n    at AvailabilityService.getAvailableSlots (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\availability.service.ts:135:11)\n    at BookingsController.getAvailability (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\bookings.controller.ts:41:22)\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\@nestjs\\core\\router\\router-execution-context.js:46:28","details":{"query":"SELECT \"User\".\"id\" AS \"User_id\", \"User\".\"email\" AS \"User_email\", \"User\".\"passwordHash\" AS \"User_passwordHash\", \"User\".\"role\" AS \"User_role\", \"User\".\"firstName\" AS \"User_firstName\", \"User\".\"lastName\" AS \"User_lastName\", \"User\".\"phone\" AS \"User_phone\", \"User\".\"profile\" AS \"User_profile\", \"User\".\"profilePictureUrl\" AS \"User_profilePictureUrl\", \"User\".\"lastLoginAt\" AS \"User_lastLoginAt\", \"User\".\"isActive\" AS \"User_isActive\", \"User\".\"monthlyTarget\" AS \"User_monthlyTarget\", \"User\".\"referralCode\" AS \"User_referralCode\", \"User\".\"referredById\" AS \"User_referredById\", \"User\".\"refreshToken\" AS \"User_refreshToken\", \"User\".\"createdAt\" AS \"User_createdAt\", \"User\".\"updatedAt\" AS \"User_updatedAt\", \"User\".\"assignedClinicId\" AS \"User_assignedClinicId\" FROM \"users\" \"User\" WHERE ((((\"User\".\"assignedClinicId\" = $1) AND (\"User\".\"role\" = $2))) OR (((\"User\".\"assignedClinicId\" = $3) AND (\"User\".\"role\" = $4))) OR (((\"User\".\"assignedClinicId\" = $5) AND (\"User\".\"role\" = $6))) OR (((\"User\".\"assignedClinicId\" = $7) AND (\"User\".\"role\" = $8))))","parameters":["4ca4e344-a7c6-473c-b3be-21b90c1ae067","doctor","4ca4e344-a7c6-473c-b3be-21b90c1ae067","clinic_owner","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretariat","4ca4e344-a7c6-473c-b3be-21b90c1ae067","secretaria"],"driverError":{"length":145,"name":"error","severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"},"length":145,"severity":"ERROR","code":"22P02","where":"unnamed portal parameter $8 = '...'","file":"enum.c","line":"128","routine":"enum_in"}}
+[2026-04-14T16:19:15.155Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:19:15.193Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:19:15.227Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:19:15.240Z] 🔵 Total duration: 60
+[2026-04-14T16:19:15.241Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:19:15.249Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:19:15.250Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:19:15.251Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:19:15.259Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:19:15.298Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:19:15.363Z] ✅ Found 20 slots for clinic: muneeb 
+[2026-04-14T16:23:08.472Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:23:08.473Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:23:08.510Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:23:08.517Z] 🔵 Total duration: 60
+[2026-04-14T16:23:08.518Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:23:08.520Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:23:08.521Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:23:08.522Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:23:08.523Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:23:08.554Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:23:08.587Z] ✅ Found 20 slots for clinic: muneeb 
+[2026-04-14T16:23:41.316Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:23:41.316Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:23:41.326Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:23:41.359Z] 🔵 Total duration: 60
+[2026-04-14T16:23:41.368Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:23:41.376Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:23:41.377Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:23:41.383Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:23:41.384Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:23:41.413Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:23:41.466Z] ✅ Found 20 slots for clinic: muneeb 
+[2026-04-14T16:24:31.881Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:24:31.882Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:24:31.902Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:24:31.913Z] 🔵 Total duration: 60
+[2026-04-14T16:24:31.914Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:24:31.915Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:24:31.916Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:24:31.919Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:24:31.923Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:24:31.945Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:24:32.019Z] ✅ Found 20 slots for clinic: muneeb 
+[2026-04-14T16:30:44.377Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:30:44.407Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:30:44.456Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T16:30:44.465Z] 🔵 Total duration: 60
+[2026-04-14T16:30:44.466Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:30:44.472Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:30:44.474Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T16:30:44.474Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T16:30:44.476Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T16:30:44.501Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:30:44.580Z] ✅ Found 7 slots for clinic: ehsan clinic 
+[2026-04-14T16:31:12.779Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:31:12.781Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:31:12.829Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:31:12.835Z] 🔵 Total duration: 60
+[2026-04-14T16:31:12.839Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:31:12.842Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:31:12.843Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:31:12.844Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:31:12.846Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:31:12.868Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:31:12.908Z] ✅ Found 19 slots for clinic: muneeb 
+[2026-04-14T16:33:14.017Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:33:14.018Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:33:14.038Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:33:14.053Z] 🔵 Total duration: 60
+[2026-04-14T16:33:14.057Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:33:14.058Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:33:14.060Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:33:14.061Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:33:14.061Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:33:14.095Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:33:14.138Z] ✅ Found 19 slots for clinic: muneeb 
+[2026-04-14T16:35:29.995Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:35:30.000Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:35:30.014Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:35:30.019Z] 🔵 Total duration: 60
+[2026-04-14T16:35:30.021Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:35:30.021Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:35:30.022Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:35:30.027Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:35:30.028Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:35:30.052Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:35:30.115Z] ✅ Found 19 slots for clinic: muneeb 
+[2026-04-14T16:35:58.652Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:35:58.653Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:35:58.667Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:35:58.671Z] 🔵 Total duration: 60
+[2026-04-14T16:35:58.672Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:35:58.675Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:35:58.676Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:35:58.677Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:35:58.681Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:35:58.700Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:35:58.724Z] ✅ Found 19 slots for clinic: muneeb 
+[2026-04-14T16:39:03.860Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:39:03.863Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:39:03.885Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:39:03.892Z] 🔵 Total duration: 60
+[2026-04-14T16:39:03.894Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:39:03.904Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:39:03.905Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:39:03.906Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:39:03.907Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:39:03.938Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:39:04.021Z] ❌ Error in getAvailableSlots: {"message":"In is not defined","stack":"ReferenceError: In is not defined\n    at AvailabilityService.getAvailableSlots (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\availability.service.ts:153:19)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingsController.getAvailability (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\bookings.controller.ts:41:22)\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\@nestjs\\core\\router\\router-execution-context.js:46:28\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\@nestjs\\core\\router\\router-proxy.js:9:17","details":{}}
+[2026-04-14T16:40:04.857Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:40:04.858Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:40:04.871Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:40:04.875Z] 🔵 Total duration: 60
+[2026-04-14T16:40:04.876Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:40:04.877Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:40:04.877Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:40:04.880Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:40:04.881Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:40:04.906Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:40:04.907Z] ❌ Error in getAvailableSlots: {"message":"In is not defined","stack":"ReferenceError: In is not defined\n    at AvailabilityService.getAvailableSlots (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\availability.service.ts:153:19)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingsController.getAvailability (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\bookings.controller.ts:41:22)\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\@nestjs\\core\\router\\router-execution-context.js:46:28\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\@nestjs\\core\\router\\router-proxy.js:9:17","details":{}}
+[2026-04-14T16:40:56.930Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:40:56.941Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:40:56.953Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:40:56.958Z] 🔵 Total duration: 60
+[2026-04-14T16:40:56.959Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:40:56.965Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:40:56.965Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:40:56.966Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:40:56.968Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:40:56.993Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:40:57.022Z] ✅ Found 19 slots for clinic: muneeb 
+[2026-04-14T16:41:22.133Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:41:22.134Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:41:22.160Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:41:22.169Z] 🔵 Total duration: 60
+[2026-04-14T16:41:22.170Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:41:22.171Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:41:22.172Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:41:22.172Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:41:22.173Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:41:22.204Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:41:22.251Z] ✅ Found 19 slots for clinic: muneeb 
+[2026-04-14T16:41:57.627Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:41:57.628Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:41:57.693Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:41:57.739Z] 🔵 Total duration: 60
+[2026-04-14T16:41:57.741Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:41:57.750Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:41:57.757Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:41:57.788Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:41:57.793Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:41:57.928Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:41:57.997Z] ✅ Found 19 slots for clinic: muneeb 
+[2026-04-14T16:42:11.798Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:42:11.799Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:42:11.819Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:42:11.826Z] 🔵 Total duration: 60
+[2026-04-14T16:42:11.851Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:42:11.852Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:42:11.852Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:42:11.853Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:42:11.854Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:42:11.882Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:42:11.911Z] ✅ Found 19 slots for clinic: muneeb 
+[2026-04-14T16:42:38.944Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:42:38.945Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:42:38.960Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:42:38.964Z] 🔵 Total duration: 60
+[2026-04-14T16:42:38.969Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:42:38.977Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:42:38.978Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:42:38.978Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:42:38.981Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:42:38.997Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:42:39.032Z] ✅ Found 19 slots for clinic: muneeb 
+[2026-04-14T16:44:01.992Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:44:02.003Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:44:02.021Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:44:02.026Z] 🔵 Total duration: 60
+[2026-04-14T16:44:02.027Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:44:02.027Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:44:02.028Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:44:02.029Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:44:02.030Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:44:02.048Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:44:02.094Z] ✅ Found 19 slots for clinic: muneeb 
+[2026-04-14T16:44:38.525Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:44:38.526Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:44:38.598Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:44:38.630Z] 🔵 Total duration: 60
+[2026-04-14T16:44:38.631Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:44:38.646Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:44:38.647Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:44:38.663Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:44:38.679Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:44:38.759Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:44:38.874Z] ✅ Found 17 slots for clinic: muneeb 
+[2026-04-14T16:46:56.156Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:46:56.158Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:46:56.174Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:46:56.180Z] 🔵 Total duration: 60
+[2026-04-14T16:46:56.181Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:46:56.186Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:46:56.187Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:46:56.188Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:46:56.189Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:46:56.207Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:46:56.237Z] ✅ Found 16 slots for clinic: muneeb 
+[2026-04-14T16:47:32.583Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:47:32.585Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:47:32.680Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T16:47:32.706Z] 🔵 Total duration: 60
+[2026-04-14T16:47:32.709Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:47:32.735Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:47:32.751Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T16:47:32.797Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T16:47:32.799Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T16:47:32.946Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:47:33.212Z] ✅ Found 7 slots for clinic: ehsan clinic 
+[2026-04-14T16:48:50.567Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:48:50.568Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:48:50.581Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T16:48:50.589Z] 🔵 Total duration: 60
+[2026-04-14T16:48:50.594Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:48:50.604Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:48:50.619Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T16:48:50.624Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T16:48:50.629Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T16:48:50.655Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:48:50.713Z] ✅ Found 7 slots for clinic: ehsan clinic 
+[2026-04-14T16:49:04.275Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:49:04.277Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:49:04.302Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T16:49:04.318Z] 🔵 Total duration: 60
+[2026-04-14T16:49:04.319Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:49:04.322Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:49:04.334Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T16:49:04.339Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T16:49:04.340Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T16:49:04.505Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:49:04.618Z] ✅ Found 7 slots for clinic: ehsan clinic 
+[2026-04-14T16:49:21.068Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:49:21.069Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:49:21.090Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T16:49:21.101Z] 🔵 Total duration: 60
+[2026-04-14T16:49:21.102Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:49:21.103Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:49:21.104Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T16:49:21.105Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T16:49:21.105Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T16:49:21.151Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:49:21.263Z] ✅ Found 7 slots for clinic: ehsan clinic 
+[2026-04-14T16:50:06.653Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["dfe5bfd5-1b83-4a33-804e-ce044e5c66af"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:50:06.658Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:50:06.702Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T16:50:06.716Z] 🔵 Total duration: 60
+[2026-04-14T16:50:06.720Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:50:06.721Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:50:06.732Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T16:50:06.737Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T16:50:06.745Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T16:50:06.807Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:50:06.858Z] ✅ Found 7 slots for clinic: ehsan clinic 
+[2026-04-14T16:50:31.576Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["dfe5bfd5-1b83-4a33-804e-ce044e5c66af"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:50:31.577Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:50:31.592Z] 🔵 Clinic: "ehsan clinic"
+[2026-04-14T16:50:31.601Z] 🔵 Total duration: 60
+[2026-04-14T16:50:31.602Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:50:31.618Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:50:31.631Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"17:00","isOpen":true}
+[2026-04-14T16:50:31.632Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-04-14T16:50:31.639Z] ✅ Clinic is open on tuesday from 09:00 to 17:00 
+[2026-04-14T16:50:31.664Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:50:31.690Z] ✅ Found 7 slots for clinic: ehsan clinic 
+[2026-04-14T16:50:55.964Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-04-14"}
+[2026-04-14T16:50:55.966Z] 🔵 Using date: "2026-04-14"
+[2026-04-14T16:50:55.977Z] 🔵 Clinic: "muneeb"
+[2026-04-14T16:50:55.989Z] 🔵 Total duration: 60
+[2026-04-14T16:50:55.990Z] 🔵 Using timezone: "America/New_York"
+[2026-04-14T16:50:55.992Z] 🔵 Day of week: "tuesday"
+[2026-04-14T16:50:55.996Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-04-14T16:50:55.997Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-04-14T16:50:55.998Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-04-14T16:50:56.036Z] 🔵 Checking availability for 4 providers 
+[2026-04-14T16:50:56.074Z] ✅ Found 16 slots for clinic: muneeb 

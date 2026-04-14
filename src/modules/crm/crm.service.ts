@@ -343,6 +343,11 @@ export class CrmService implements OnModuleInit {
         const start = new Date(startDate);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
 
+        if (!customer.phone) {
+             console.error('❌ [CrmService] Phone number missing for recurring sequence');
+             throw new BadRequestException('Customer must have a phone number to schedule appointments.');
+        }
+
         try {
           await this.bookingsService.createAppointment({
             clientId: customerId,
@@ -354,6 +359,11 @@ export class CrmService implements OnModuleInit {
             status: AppointmentStatus.CONFIRMED,
             paymentMethod: 'cash',
             appointmentSource: 'platform_broker',
+            clientDetails: {
+                fullName: `${customer.firstName} ${customer.lastName}`,
+                email: customer.email,
+                phone: customer.phone
+            }
           });
           console.log('[CrmService] First appointment created successfully');
         } catch (bookingError) {

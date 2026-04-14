@@ -118,7 +118,7 @@ export class BookingsService {
       hasClientDetails: !!createAppointmentDto.clientDetails,
       phoneInDetails: createAppointmentDto.clientDetails?.phone
     });
-    
+
     this.logDebug('--- BOOKING PROCESS STARTED ---', { clientId, hasDetails: !!createAppointmentDto.clientDetails });
 
     // Check if client exists as User
@@ -144,7 +144,7 @@ export class BookingsService {
     // ROBUST FALLBACK: "God Search" for the ID in all relevant CRM tables
     if (!userExists && UUID_REGEX.test(clientId) && clientId !== WALK_IN_DUMMY_ID) {
       this.logDebug('🔍 [BookingsService] Robust fallback search for clientId:', { clientId });
-      
+
       // 1. Check as CustomerRecord ID first (Often used in CRM deep links)
       const record = await this.customerRecordsRepository.findOne({ where: { id: clientId }, relations: ['customer'] });
       if (record && record.customer) {
@@ -155,17 +155,17 @@ export class BookingsService {
 
       // 2. Check as Lead Clinic Status ID
       if (!userExists) {
-          const lStatus = await this.leadsRepository.manager.getRepository('LeadClinicStatus').findOne({ 
-            where: { id: clientId }, 
-            relations: ['lead'] 
-          });
-          if (lStatus && (lStatus as any).lead) {
-              this.logDebug('✅ [BookingsService] Found as LeadClinicStatus, letting Lead logic handle conversion');
-              clientId = (lStatus as any).lead.id;
-              // Don't set userExists yet, let the lead conversion logic below run
-          }
+        const lStatus = await this.leadsRepository.manager.getRepository('LeadClinicStatus').findOne({
+          where: { id: clientId },
+          relations: ['lead']
+        });
+        if (lStatus && (lStatus as any).lead) {
+          this.logDebug('✅ [BookingsService] Found as LeadClinicStatus, letting Lead logic handle conversion');
+          clientId = (lStatus as any).lead.id;
+          // Don't set userExists yet, let the lead conversion logic below run
+        }
       }
-      
+
       // 3. If still no USER, we might have a LEAD ID. 
       // If we found nothing yet, but clientId exists, the (!userExists) block below will check if it's a Lead.
     }
@@ -357,7 +357,13 @@ export class BookingsService {
 
     let conflictQuery = this.appointmentsRepository.createQueryBuilder('apt')
       .where('apt.clinicId = :clinicId', { clinicId: createAppointmentDto.clinicId })
-      .andWhere('apt.status = :status', { status: AppointmentStatus.CONFIRMED })
+      .andWhere('apt.status IN (:...statuses)', { 
+          statuses: [
+              AppointmentStatus.CONFIRMED, 
+              AppointmentStatus.PENDING, 
+              AppointmentStatus.PENDING_PAYMENT
+          ] 
+      })
       .andWhere('apt.startTime < :newEnd', { newEnd })
       .andWhere('apt.endTime > :newStart', { newStart });
 
@@ -369,8 +375,12 @@ export class BookingsService {
     const conflictingAppointment = await conflictQuery.getOne();
 
     if (conflictingAppointment) {
-      console.log('❌ [BookingsService] Conflict detected: Time slot already booked.');
-      throw new ConflictException('Time slot is already booked');
+      this.logDebug('❌ [BookingsService] Conflict detected: Time slot already occupied.', {
+          conflictingAptId: conflictingAppointment.id,
+          status: conflictingAppointment.status,
+          requestedTime: { start: newStart, end: newEnd }
+      });
+      throw new ConflictException('Time slot is already booked or pending payment');
     }
     console.log('✅ [BookingsService] No conflicting appointments found.');
 
@@ -407,7 +417,7 @@ export class BookingsService {
     if (savedAppointment.status === AppointmentStatus.PENDING) {
       try {
         let taskOwnerId = representativeId || createAppointmentDto.bookedById;
-        
+
         // If no owner found, fallback to an Admin account to handle unassigned leads
         if (!taskOwnerId) {
           const defaultAdmin = await this.usersRepository.findOne({ where: { role: 'admin' as any } });
@@ -723,9 +733,9 @@ export class BookingsService {
           resource: 'appointments',
           resourceId: id,
           changes: { before: { status: oldStatus }, after: { status } },
-          data: { 
-            appointmentId: id, 
-            clientId: appointment.clientId, 
+          data: {
+            appointmentId: id,
+            clientId: appointment.clientId,
             clinicId: appointment.clinicId,
             clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Guest',
             therapyName: appointment.service?.treatment?.name || 'Treatment'
@@ -824,7 +834,7 @@ export class BookingsService {
         if (!user) throw new NotFoundException('User not found');
         const clinicIds = (user.ownedClinics || []).map(c => c.id);
         if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
-        
+
         if (clinicIds.length > 0) {
           queryBuilder.where('appointment.clinicId IN (:...clinicIds)', { clinicIds });
         } else {
@@ -1270,10 +1280,10 @@ export class BookingsService {
         before: { status: oldStatus, totalAmount: oldTotal, advancePaymentAmount: oldAdvance },
         after: { status: AppointmentStatus.COMPLETED, totalAmount: newTotal, advancePaymentAmount: newAdvance },
       },
-      data: { 
-        appointmentId, 
-        clientId: appointment.clientId, 
-        clinicId: appointment.clinicId, 
+      data: {
+        appointmentId,
+        clientId: appointment.clientId,
+        clinicId: appointment.clinicId,
         paymentMethod: savedAppointment.paymentMethod,
         clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Guest',
         therapyName: appointment.service?.treatment?.name || 'Treatment'
@@ -1321,9 +1331,9 @@ export class BookingsService {
       action: 'APPOINTMENT_SOFT_DELETE',
       resource: 'appointments',
       resourceId: appointmentId,
-      data: { 
-        appointmentId, 
-        previousStatus: appointment.status, 
+      data: {
+        appointmentId,
+        previousStatus: appointment.status,
         clinicId: appointment.clinicId,
         clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Guest',
         therapyName: appointment.service?.treatment?.name || 'Treatment'
@@ -1365,10 +1375,10 @@ export class BookingsService {
           totalAmount: Number(savedAppointment.totalAmount ?? 0),
         },
       },
-      data: { 
-        appointmentId, 
-        amount: paymentData.amount, 
-        method: paymentData.paymentMethod, 
+      data: {
+        appointmentId,
+        amount: paymentData.amount,
+        method: paymentData.paymentMethod,
         isAdvance: paymentData.isAdvancePayment,
         clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Guest',
         therapyName: appointment.service?.treatment?.name || 'Treatment'
@@ -1423,7 +1433,7 @@ export class BookingsService {
     query: { startDate?: string; endDate?: string; serviceId?: string; clinicId?: string },
   ): Promise<any> {
     const qb = this.appointmentsRepository.createQueryBuilder('appointment');
-    
+
     // Authorization filter
     if (userRole === 'admin' || userRole === 'SUPER_ADMIN') {
       qb.where('1=1');
@@ -1583,7 +1593,7 @@ export class BookingsService {
 
     const clients = Array.from(clientMap.values());
     const repeatClients = clients.filter(c => c.visitCount > 1);
-    
+
     // Simple math for forecast
     const repeatRate = clients.length > 0 ? (repeatClients.length / clients.length) * 100 : 0;
     const customersExpectedNextMonth = Math.ceil(repeatClients.length * 0.85); // Assume 85% return rate for repeaters

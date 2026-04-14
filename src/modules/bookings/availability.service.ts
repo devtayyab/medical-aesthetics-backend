@@ -3,7 +3,7 @@ import { Injectable, BadRequestException, NotFoundException, ForbiddenException 
 import * as fs from 'fs';
 import * as path from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThan } from 'typeorm';
+import { Repository, Between, MoreThan, In } from 'typeorm';
 import { Appointment } from './entities/appointment.entity';
 import { AppointmentHold } from './entities/appointment-hold.entity';
 import { BlockedTimeSlot } from './entities/blocked-time-slot.entity';
@@ -150,7 +150,11 @@ export class AvailabilityService {
         where: {
           clinicId,
           startTime: Between(startOfDay, endOfDay),
-          status: AppointmentStatus.CONFIRMED,
+          status: In([
+            AppointmentStatus.CONFIRMED,
+            AppointmentStatus.PENDING,
+            AppointmentStatus.PENDING_PAYMENT,
+          ]),
         },
       });
 
@@ -236,12 +240,23 @@ export class AvailabilityService {
               const chosenProvider = availableProviders[0];
 
               // Format display time according to clinic timezone
-              const startTimeDisplay = slotStart.toLocaleTimeString('en-GB', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false,
-                timeZone: timezone 
-              });
+              let startTimeDisplay: string;
+              try {
+                startTimeDisplay = slotStart.toLocaleTimeString('en-GB', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: false,
+                  timeZone: timezone 
+                });
+              } catch (e) {
+                log('⚠️ Invalid timezone for toLocaleTimeString, falling back to UTC:', timezone);
+                startTimeDisplay = slotStart.toLocaleTimeString('en-GB', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: false,
+                  timeZone: 'UTC' 
+                });
+              }
 
               slots.push({
                 startTime: slotStart.toISOString(),
@@ -295,8 +310,12 @@ export class AvailabilityService {
           currentTime: new Date().toISOString(),
         } : undefined,
       };
-    } catch (error) {
-      log('❌ Error in getAvailableSlots:', error);
+    } catch (error: any) {
+      log('❌ Error in getAvailableSlots:', {
+        message: error.message,
+        stack: error.stack,
+        details: error
+      });
       throw error;
     }
   }

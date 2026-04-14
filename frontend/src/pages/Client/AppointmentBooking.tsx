@@ -91,6 +91,7 @@ export const AppointmentBooking: React.FC = () => {
     isLoading: bookingLoading,
     selectedServices,
     selectedClinic,
+    availabilityReason,
   } = useSelector((state: RootState) => state.booking);
 
   const services = useSelector((state: RootState) => state.client.services);
@@ -270,13 +271,13 @@ export const AppointmentBooking: React.FC = () => {
                 <FaClock className="text-lime-500" />
                 <h3 className="text-xl font-black uppercase italic text-gray-900">Available Times</h3>
               </div>
-              
+
               {/* Provider Selection (Step B2) */}
               {clinic?.providers && clinic.providers.length > 0 && (
                 <div className="mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
                   <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Choose Professional (Optional)</h4>
                   <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
-                    <button 
+                    <button
                       className={`shrink-0 flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${!selectedProviderId ? 'border-lime-500 bg-white shadow-sm' : 'border-transparent'}`}
                       onClick={() => handleProviderSelect(null)}
                     >
@@ -284,7 +285,7 @@ export const AppointmentBooking: React.FC = () => {
                       <span className="text-[10px] font-black uppercase tracking-tight">Any Professional</span>
                     </button>
                     {clinic.providers.map((p: any) => (
-                      <button 
+                      <button
                         key={p.id}
                         className={`shrink-0 flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${selectedProviderId === p.id ? 'border-lime-500 bg-white shadow-sm' : 'border-transparent'}`}
                         onClick={() => handleProviderSelect(p.id)}
@@ -312,6 +313,9 @@ export const AppointmentBooking: React.FC = () => {
               ) : (
                 <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                   <p className="text-sm font-black uppercase text-gray-400">No availability for this date</p>
+                  {availabilityReason && (
+                    <p className="text-[10px] font-black uppercase text-red-500 mt-2 italic">{availabilityReason}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -436,3 +440,5 @@ export const AppointmentBooking: React.FC = () => {
     </div>
   );
 };
+
+export default AppointmentBooking;

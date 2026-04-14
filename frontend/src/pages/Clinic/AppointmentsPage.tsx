@@ -27,9 +27,11 @@ const AppointmentsPage: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Get clinicId from user context
-  const clinicId = user?.role === 'clinic_owner' 
+  const userRole = user?.role?.toLowerCase();
+  const clinicId = userRole === 'clinic_owner' 
     ? (user as any).ownedClinics?.[0]?.id 
     : (user as any).assignedClinicId;
+    
   const activeClinicId = clinicId || (appointments.length > 0 ? appointments[0]?.clinicId : null);
 
   useEffect(() => {
