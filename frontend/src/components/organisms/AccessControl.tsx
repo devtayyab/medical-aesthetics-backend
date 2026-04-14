@@ -25,7 +25,8 @@ export const AccessControl: React.FC<AccessControlProps> = ({
     email: "",
     password: "",
     phone: "",
-    role: "client",
+    role: "doctor",
+    clinicId: "",
   });
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editForm, setEditForm] = useState<{
@@ -82,7 +83,8 @@ export const AccessControl: React.FC<AccessControlProps> = ({
         email: "",
         password: "",
         phone: "",
-        role: "client",
+        role: "doctor",
+        clinicId: "",
       });
     }
   };
@@ -362,6 +364,22 @@ export const AccessControl: React.FC<AccessControlProps> = ({
                   <option value="manager">Manager</option>
                 </select>
               </div>
+
+              {clinics?.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Clinic (Optional)</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-[#CBFF38]"
+                    value={createForm.clinicId}
+                    onChange={e => setCreateForm(prev => ({ ...prev, clinicId: e.target.value }))}
+                  >
+                    <option value="">-- No Clinic / External --</option>
+                    {clinics.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="pt-4 flex justify-end gap-3 border-t">
                 <button

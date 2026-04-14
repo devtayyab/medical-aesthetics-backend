@@ -39,6 +39,11 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     const { appointments, staff: allStaff, profile, isLoading } = useSelector((state: RootState) => state.clinic);
     const { user } = useSelector((state: RootState) => state.auth);
 
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+
     const filteredAppointments = useMemo(() => {
         if (user?.role === 'doctor') {
             return appointments.filter(apt => apt.providerId === user.id);
@@ -54,21 +59,21 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
             return baseStaff.filter(s => s.id === user.id);
         }
 
-        // For others (Admin, Owner), show "Unassigned" column as well
-        const unassigned = {
-            id: 'unassigned',
-            fullName: 'Unassigned',
-            role: 'No Provider',
-            profilePictureUrl: null
-        };
+        // For others (Admin, Owner), show "Unassigned" column ONLY if there are unassigned appointments
+        const hasUnassigned = filteredAppointments.some(apt => !apt.providerId && isSameDay(new Date(apt.startTime), selectedDate));
 
-        return [unassigned, ...baseStaff];
-    }, [allStaff, user]);
+        if (hasUnassigned) {
+            const unassigned = {
+                id: 'unassigned',
+                fullName: 'Unassigned',
+                role: 'No Provider',
+                profilePictureUrl: null
+            };
+            return [unassigned, ...baseStaff];
+        }
 
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+        return baseStaff;
+    }, [allStaff, user, filteredAppointments, selectedDate]);
 
     const timeSlots = useMemo(() => {
         const slots = [];

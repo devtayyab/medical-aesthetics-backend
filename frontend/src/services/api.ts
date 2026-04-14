@@ -221,6 +221,7 @@ export const clinicsAPI = {
     api.post(`/clinics/${id}/reviews`, data),
   getPublicReviews: (id: string, params?: { limit?: number; offset?: number }) =>
     api.get(`/clinics/${id}/reviews`, { params }),
+  getProviders: (clinicId: string) => api.get(`/clinics/${clinicId}/providers`),
   getPendingReviews: (params?: { limit?: number; offset?: number }) =>
     api.get("/clinics/reviews/pending", { params }),
   moderateReview: (id: string, data: { status: 'APPROVED' | 'REJECTED'; rejectReason?: string }) =>
@@ -472,6 +473,7 @@ export const crmAPI = {
     api.patch(`/crm/tasks/${id}`, data),
   scheduleRecurring: (data: {
     customerId: string;
+    clinicId: string;
     serviceId: string;
     frequency: string;
     startDate: string;
@@ -498,7 +500,7 @@ export const adminAPI = {
   blockSlot: (data: any) => api.post(`/clinic/availability/block-time-slot`, data),
   updateBlockedSlot: (id: string, data: any) => api.put(`/clinic/availability/block-time-slot/${id}`, data),
   unblockSlot: (id: string) => api.delete(`/clinic/availability/block-time-slot/${id}`),
-  createUser: (data: any) => api.post("/auth/register", data),
+  createUser: (data: any) => api.post("/clinic/staff", data),
   getUsers: () => api.get("/admin/users"),
   updateUser: (id: string, updateData: any) =>
     api.put(`/admin/users/${id}`, updateData),
