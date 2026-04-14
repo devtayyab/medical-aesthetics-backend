@@ -3,7 +3,7 @@ import { Injectable, BadRequestException, NotFoundException, ForbiddenException 
 import * as fs from 'fs';
 import * as path from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThan } from 'typeorm';
+import { Repository, Between, MoreThan, In } from 'typeorm';
 import { Appointment } from './entities/appointment.entity';
 import { AppointmentHold } from './entities/appointment-hold.entity';
 import { BlockedTimeSlot } from './entities/blocked-time-slot.entity';
