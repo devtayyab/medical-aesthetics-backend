@@ -472,12 +472,13 @@ export class ClinicsService {
     role: string,
     staffData: any,
   ): Promise<User> {
-    let clinic;
+    let clinic = null;
     if (staffData.clinicId && (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.MANAGER)) {
       clinic = await this.findById(staffData.clinicId);
-    } else {
+    } else if (role === UserRole.CLINIC_OWNER || role === UserRole.DOCTOR || role === UserRole.SECRETARIAT) {
       clinic = await this.findByOwnerId(ownerId);
     }
+    // If Admin/SuperAdmin/Manager doesn't provide clinicId, 'clinic' stays null and we proceed without assignment
 
     // Check if user already exists
     const existingUser = await this.usersRepository.findOne({
@@ -485,12 +486,13 @@ export class ClinicsService {
     });
 
     if (existingUser) {
-      if (existingUser.assignedClinicId === clinic.id) {
+      if (clinic && existingUser.assignedClinicId === clinic.id) {
         throw new BadRequestException('User is already staff at this clinic');
       }
-      // If they exist but not in this clinic, we might want to reassign or invite?
-      // For now, let's treat as error or simple update
-      existingUser.assignedClinicId = clinic.id;
+      // If they exist, we update their assignment if clinic is provided
+      if (clinic) {
+        existingUser.assignedClinicId = clinic.id;
+      }
       existingUser.role = staffData.role || UserRole.DOCTOR;
       return this.usersRepository.save(existingUser);
     }
@@ -498,7 +500,7 @@ export class ClinicsService {
     const newUser = this.usersRepository.create({
       ...staffData,
       role: staffData.role || UserRole.DOCTOR,
-      assignedClinicId: clinic.id,
+      assignedClinicId: clinic?.id,
       passwordHash: staffData.password || 'TemporaryPassword123!',
       isActive: true,
     } as any);
@@ -508,16 +510,18 @@ export class ClinicsService {
 
   async removeStaff(ownerId: string, role: string, staffId: string): Promise<void> {
     const clinic = await this.findByOwnerId(ownerId);
+    return this.removeStaffById(staffId, clinic.id);
+  }
+
+  async removeStaffById(staffId: string, clinicId: string): Promise<void> {
     const staff = await this.usersRepository.findOne({
-      where: { id: staffId, assignedClinicId: clinic.id },
+      where: { id: staffId, assignedClinicId: clinicId },
     });
 
     if (!staff) {
-      throw new NotFoundException('Staff member not found in your clinic');
+      throw new NotFoundException('Staff member not found in this clinic');
     }
 
-    // Do NOT delete the user, just unbind from clinic and maybe deactivate?
-    // User requested "bound to specific clinic", so unbinding is enough.
     staff.assignedClinicId = null;
     await this.usersRepository.save(staff);
   }
