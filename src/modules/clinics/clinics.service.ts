@@ -486,15 +486,26 @@ export class ClinicsService {
     });
 
     if (existingUser) {
+      // If user exists, we update their assignment to the new clinic
+      if (clinic) {
+        existingUser.assignedClinicId = clinic.id;
+        // Also ensure the role is updated if provided
+        if (staffData.role) {
+          existingUser.role = staffData.role;
+        }
+        return this.usersRepository.save(existingUser);
+      } else if (role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN) {
+        // SuperAdmin might be updating a user's role without changing clinic
+        if (staffData.role) {
+          existingUser.role = staffData.role;
+        }
+        return this.usersRepository.save(existingUser);
+      }
+      
       if (clinic && existingUser.assignedClinicId === clinic.id) {
         throw new BadRequestException('User is already staff at this clinic');
       }
-      // If they exist, we update their assignment if clinic is provided
-      if (clinic) {
-        existingUser.assignedClinicId = clinic.id;
-      }
-      existingUser.role = staffData.role || UserRole.DOCTOR;
-      return this.usersRepository.save(existingUser);
+      return existingUser;
     }
 
     const newUser = this.usersRepository.create({
@@ -505,7 +516,8 @@ export class ClinicsService {
       isActive: true,
     } as any);
 
-    return this.usersRepository.save(newUser) as unknown as Promise<User>;
+    const savedUser = await this.usersRepository.save(newUser);
+    return savedUser as unknown as User;
   }
 
   async removeStaff(ownerId: string, role: string, staffId: string): Promise<void> {
@@ -534,7 +546,8 @@ export class ClinicsService {
       where: [
         { assignedClinicId: clinicId, role: UserRole.DOCTOR },
         { assignedClinicId: clinicId, role: UserRole.CLINIC_OWNER },
-        { assignedClinicId: clinicId, role: UserRole.SECRETARIAT }
+        { assignedClinicId: clinicId, role: UserRole.SECRETARIAT },
+        { assignedClinicId: clinicId, role: 'secretaria' as any }
       ]
     });
 
