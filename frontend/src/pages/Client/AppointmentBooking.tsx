@@ -91,6 +91,7 @@ export const AppointmentBooking: React.FC = () => {
     isLoading: bookingLoading,
     selectedServices,
     selectedClinic,
+    availabilityReason,
   } = useSelector((state: RootState) => state.booking);
 
   const services = useSelector((state: RootState) => state.client.services);
@@ -312,6 +313,9 @@ export const AppointmentBooking: React.FC = () => {
               ) : (
                 <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                   <p className="text-sm font-black uppercase text-gray-400">No availability for this date</p>
+                  {availabilityReason && (
+                    <p className="text-[10px] font-black uppercase text-red-500 mt-2 italic">{availabilityReason}</p>
+                  )}
                 </div>
               )}
             </div>

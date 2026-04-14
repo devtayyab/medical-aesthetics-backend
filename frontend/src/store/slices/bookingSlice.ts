@@ -9,6 +9,7 @@ export interface BookingState extends BookingFlow {
   error: string | null;
   holdId?: string;
   selectedClinic?: Clinic;
+  availabilityReason?: string | null;
 }
 
 const initialState: BookingState = {
@@ -184,6 +185,7 @@ const bookingSlice = createSlice({
         console.log('⏳ Fetching availability...');
         state.isLoading = true;
         state.error = null;
+        state.availabilityReason = null;
       })
       .addCase(fetchAvailability.fulfilled, (state, action) => {
         console.log('✅ Availability fetched:', action.payload);
@@ -191,11 +193,10 @@ const bookingSlice = createSlice({
         const slots = action.payload?.slots || action.payload || [];
         const count = action.payload?.count || slots.length || 0;
         console.log('📊 Number of slots:', count);
-        if (action.payload?.reason) {
-          console.log('⚠️ Reason:', action.payload.reason);
-        }
+        
         state.isLoading = false;
         state.availableSlots = Array.isArray(slots) ? slots : [];
+        state.availabilityReason = action.payload?.reason || null;
       })
       .addCase(fetchAvailability.rejected, (state, action) => {
         console.error('❌ Availability fetch failed:', action.error);
