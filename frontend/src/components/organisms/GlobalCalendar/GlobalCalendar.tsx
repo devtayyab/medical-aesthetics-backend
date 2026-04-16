@@ -362,87 +362,93 @@ export const GlobalCalendar: React.FC<GlobalCalendarProps> = ({ defaultWeekStart
             <div className="p-6 text-sm text-red-600">{error}</div>
           )}
           {!isLoading && !error && (
-            <div className="grid grid-cols-7 gap-px bg-slate-200 text-xs">
-              {daysOfWeek.map((day) => {
-                const dayKey = day.toDateString();
-                const items = (groupedByDay[dayKey] || []).sort(
-                  (a, b) =>
-                    new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-                );
-
-                return (
-                  <div key={dayKey} className="bg-white flex flex-col min-h-[160px]">
-                    <div className="sticky top-0 z-10 bg-slate-50 border-b px-2 py-1.5 flex justify-between items-center">
-                      <div className="font-semibold text-slate-700">
-                        {format(day, "EEE")}
-                      </div>
-                      <div className="text-[11px] font-bold text-slate-500">
-                        {format(day, "d MMM")}
-                      </div>
+            <div className="flex flex-col max-h-[calc(100vh-220px)] overflow-hidden">
+              {/* Unified Sticky Day Header - Fixed relative to the container */}
+              <div className="sticky top-0 z-30 grid grid-cols-7 gap-px bg-slate-200 border-b-2 border-slate-200 shadow-sm flex-none">
+                {daysOfWeek.map((day) => (
+                  <div key={`header-${day.toDateString()}`} className="bg-slate-50 px-2 py-3 flex flex-col items-center sm:flex-row sm:justify-between transition-colors">
+                    <div className="font-black text-slate-900 uppercase tracking-tighter text-[9px] sm:text-[10px]">
+                      {format(day, "EEEE")}
                     </div>
-                    <div className="flex-1 divide-y">
-                      {items.length === 0 && (
-                        <div className="px-2 py-3 text-[11px] text-slate-400">
-                          No appointments
-                        </div>
-                      )}
-                      {items.map((apt) => {
-                        const start = new Date(apt.startTime);
-                        const end = new Date(apt.endTime);
-                        const timeLabel =
-                          format(start, "HH:mm") + " - " + format(end, "HH:mm");
+                    <div className="text-[9px] sm:text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">
+                      {format(day, "d MMM")}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                        const baseColor = apt.isBlocked
-                          ? "bg-slate-100 border-slate-200 text-slate-500"
-                          : apt.isBeautyDoctorsClient
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                          : "bg-sky-50 border-sky-200 text-sky-800";
+              {/* Scrollable Appointment Columns Grid */}
+              <div className="grid grid-cols-7 gap-px bg-slate-200 overflow-y-auto custom-scrollbar flex-1">
+                {daysOfWeek.map((day) => {
+                  const dayKey = day.toDateString();
+                  const items = (groupedByDay[dayKey] || []).sort(
+                    (a, b) =>
+                      new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+                  );
 
-                        return (
-                          <div
-                            key={apt.id}
-                            className={`m-1 rounded-md border px-1.5 py-1.5 space-y-0.5 ${baseColor}`}
-                          >
-                            <div className="flex justify-between items-center gap-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wide">
-                                {apt.isBlocked
-                                  ? "Blocked Time"
-                                  : apt.serviceName || "Appointment"}
-                              </span>
-                              <div className="flex items-center gap-0.5">
+                  return (
+                    <div key={dayKey} className="bg-white flex flex-col min-h-full hover:bg-slate-50/20 transition-colors">
+                      <div className="flex-1 divide-y divide-slate-100 pb-10">
+                        {items.length === 0 && (
+                          <div className="px-2 py-8 text-center">
+                            <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Quiet</p>
+                          </div>
+                        )}
+                        {items.map((apt) => {
+                          const start = new Date(apt.startTime);
+                          const end = new Date(apt.endTime);
+                          const timeLabel =
+                            format(start, "HH:mm") + " - " + format(end, "HH:mm");
+
+                          const baseColor = apt.isBlocked
+                            ? "bg-slate-100/80 border-slate-200 text-slate-500"
+                            : apt.isBeautyDoctorsClient
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-800 shadow-sm"
+                            : "bg-sky-50 border-sky-200 text-sky-800 shadow-sm";
+
+                          return (
+                            <div
+                              key={apt.id}
+                              className={`m-1 rounded-lg border px-1.5 py-1.5 space-y-0.5 transition-all hover:scale-[1.02] hover:shadow-md ${baseColor}`}
+                            >
+                              <div className="flex justify-between items-start gap-1">
+                                <span className="text-[9px] font-black uppercase tracking-tight leading-tight">
+                                  {apt.isBlocked
+                                    ? "Blocked"
+                                    : apt.serviceName || "Service"}
+                                </span>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  {!apt.isBlocked && (
+                                    <AppointmentCardActions
+                                      apt={apt}
+                                      onActionDone={refetch}
+                                      onReschedule={() => setRescheduleApt(apt)}
+                                      onEdit={() => setEditApt(apt)}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                              {!apt.isBlocked && (
+                                <div className="text-[10px] font-bold truncate text-slate-700">
+                                  {apt.clientName || "Client"}
+                                </div>
+                              )}
+                              <div className="flex items-center justify-between mt-0.5">
+                                <div className="text-[8px] font-medium opacity-70">{timeLabel}</div>
                                 {apt.isBeautyDoctorsClient && !apt.isBlocked && (
-                                  <span className="text-[9px] font-black px-1.5 rounded-full bg-emerald-600 text-white">
+                                  <div className="text-[8px] font-black px-1 rounded bg-emerald-600 text-white uppercase tracking-tighter scale-90">
                                     BD
-                                  </span>
-                                )}
-                                {!apt.isBlocked && (
-                                  <AppointmentCardActions
-                                    apt={apt}
-                                    onActionDone={refetch}
-                                    onReschedule={() => setRescheduleApt(apt)}
-                                    onEdit={() => setEditApt(apt)}
-                                  />
+                                  </div>
                                 )}
                               </div>
                             </div>
-                            {!apt.isBlocked && (
-                              <div className="text-[10px] truncate">
-                                {apt.clientName || "Client"}{" "}
-                                {apt.providerName && (
-                                  <span className="text-[9px] text-slate-600">
-                                    · {apt.providerName}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            <div className="text-[9px] text-slate-600">{timeLabel}</div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
         </CardContent>

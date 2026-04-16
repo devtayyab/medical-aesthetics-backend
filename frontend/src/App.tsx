@@ -675,6 +675,16 @@ function AppContent() {
             }
           />
           <Route
+            path="/crm/diary"
+            element={
+              <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>
+                <AdminLayout>
+                  <SalesDiaryPage />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
             path="/crm/notifications"
             element={
               <ProtectedLayout allowedRoles={["salesperson", "manager", "admin", "clinic_owner", "SUPER_ADMIN"]}>

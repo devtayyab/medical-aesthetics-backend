@@ -232,6 +232,15 @@ export const Clinics: React.FC = () => {
         handleCloseModal();
     };
 
+    const handleToggleStatus = (clinic: Clinic) => {
+        if (window.confirm(`Are you sure you want to ${clinic.isActive ? 'deactivate' : 'activate'} ${clinic.name}?`)) {
+            dispatch(updateAdminClinic({ 
+                id: clinic.id, 
+                data: { isActive: !clinic.isActive } 
+            }));
+        }
+    };
+
     const filteredClinics = clinics.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.address?.city?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -316,10 +325,14 @@ export const Clinics: React.FC = () => {
                                         <div className="text-xs text-gray-500">{clinic.ownerId}</div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${clinic.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                                            }`}>
+                                        <button
+                                            onClick={() => handleToggleStatus(clinic)}
+                                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full transition-all hover:scale-105 active:scale-95 ${clinic.isActive ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200"
+                                                }`}
+                                            title="Click to toggle status"
+                                        >
                                             {clinic.isActive ? "Active" : "Inactive"}
-                                        </span>
+                                        </button>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
@@ -375,7 +388,22 @@ export const Clinics: React.FC = () => {
                             {activeTab === 'profile' && (
                                 <>
                                     <div className="space-y-4">
-                                        <h4 className="font-bold text-gray-900 border-l-4 border-[#CBFF38] pl-3">General Information</h4>
+                                        <div className="flex justify-between items-center">
+                                            <h4 className="font-bold text-gray-900 border-l-4 border-[#CBFF38] pl-3">General Information</h4>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-medium text-gray-500">Status:</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
+                                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${formData.isActive
+                                                            ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                                            : "bg-red-100 text-red-700 hover:bg-red-200"
+                                                        }`}
+                                                >
+                                                    {formData.isActive ? "Active" : "Inactive"}
+                                                </button>
+                                            </div>
+                                        </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-1">
                                                 <label className="text-sm font-medium text-gray-700">Clinic Name *</label>

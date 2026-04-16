@@ -487,8 +487,12 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
 
   return (
-    <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-      <div className="flex flex-wrap items-center justify-between gap-y-8 gap-x-6 pb-4">
+    <div className="min-h-screen bg-[#f8fafc] space-y-8 max-w-full mx-auto px-6 sm:px-8 lg:px-10 pb-20 pt-6 relative overflow-hidden">
+      {/* Decorative Background Elements */}
+      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-slate-100 to-transparent opacity-50 pointer-events-none" />
+      <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#CBFF38]/5 rounded-full blur-3xl pointer-events-none" />
+      
+      <div className="flex flex-wrap items-center justify-between gap-y-10 gap-x-8 pb-6 relative z-10">
         <div className="shrink-0 space-y-2">
           <div className="flex items-center gap-4">
             <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic">
@@ -816,7 +820,9 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
               <Select
                 placeholder="Assign Owner"
-                options={(salespersons || []).map((sp:any) => ({
+                options={(salespersons || [])
+                  .filter((sp: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(sp.role))
+                  .map((sp:any) => ({
                   value: sp.id,
                   label: `${sp.firstName} ${sp.lastName}`
                 }))}
@@ -1028,156 +1034,132 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       {/* Logic for Edit Modal */}
       {
         showModal && editingLead && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
-            <Card className="w-full max-w-lg shadow-2xl">
-              <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 pb-4">
-                <div>
-                  <CardTitle className="text-xl">Edit Lead</CardTitle>
-                  <p className="text-sm text-gray-500 mt-1">Update lead information</p>
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-500">
+            <Card className="w-full max-w-lg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] border border-slate-800 overflow-hidden rounded-[2.5rem] bg-slate-900">
+              {/* Premium Header */}
+              <CardHeader className="px-10 py-8 flex flex-row items-center justify-between bg-gradient-to-br from-slate-900 to-slate-800 border-b border-slate-800/50">
+                <div className="flex items-center gap-4">
+                   <div className="p-3 bg-[#CBFF38] rounded-2xl shadow-[0_0_20px_rgba(203,255,56,0.15)] transition-transform hover:scale-105">
+                      <Edit className="w-6 h-6 text-black" />
+                   </div>
+                   <div>
+                      <CardTitle className="text-xl font-black text-white tracking-tight">Lead Modification</CardTitle>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-0.5">Strategic Terminal ID: {editingLead.id.slice(0, 8)}</p>
+                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setShowModal(false)}><X className="w-4 h-4" /></Button>
+                <button 
+                  onClick={() => setShowModal(false)}
+                  className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all border border-slate-700/50"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Input label="First Name" value={editingLead.firstName} onChange={(e) => setEditingLead({ ...editingLead, firstName: e.target.value })} />
-                  <Input label="Last Name" value={editingLead.lastName} onChange={(e) => setEditingLead({ ...editingLead, lastName: e.target.value })} />
-                </div>
-                <Input label="Email" value={editingLead.email} onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })} />
-                <Input label="Phone" value={editingLead.phone || ''} onChange={(e) => setEditingLead({ ...editingLead, phone: e.target.value })} />
-                <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    label="Status"
-                    value={editingLead.status}
-                    onChange={(value) => setEditingLead({ ...editingLead, status: value as any })}
-                    options={[{ value: 'new', label: 'New' }, { value: 'contacted', label: 'Contacted' }, { value: 'qualified', label: 'Qualified' }, { value: 'converted', label: 'Converted' }, { value: 'lost', label: 'Lost' }]}
-                  />
-                  <Select
-                    label="Source"
-                    value={editingLead.source}
-                    onChange={(value) => setEditingLead({ ...editingLead, source: value })}
-                    options={[{ value: 'facebook_ads', label: 'Facebook Ads' }, { value: 'website', label: 'Website' }, { value: 'referral', label: 'Referral' }]}
-                  />
+
+              {/* Enhanced Body with Light Background */}
+              <CardContent className="p-10 space-y-8 bg-white overflow-y-auto max-h-[60vh] custom-scrollbar">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-2">
+                     <div className="h-1 w-8 bg-[#CBFF38] rounded-full" />
+                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Identity Matrix</h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-5">
+                    <Input label="First Name" value={editingLead.firstName} onChange={(e) => setEditingLead({ ...editingLead, firstName: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
+                    <Input label="Last Name" value={editingLead.lastName} onChange={(e) => setEditingLead({ ...editingLead, lastName: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
+                  </div>
+                  <Input label="Email Address" value={editingLead.email} onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
+                  <Input label="Direct Line" value={editingLead.phone || ''} onChange={(e) => setEditingLead({ ...editingLead, phone: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
+                  
+                  <div className="grid grid-cols-2 gap-5">
+                    <Select
+                      label="Deployment Status"
+                      value={editingLead.status}
+                      onChange={(value) => setEditingLead({ ...editingLead, status: value as any })}
+                      options={[{ value: 'new', label: 'New Recruit' }, { value: 'contacted', label: 'In Contact' }, { value: 'qualified', label: 'Qualified' }, { value: 'converted', label: 'Mission Accomplished' }, { value: 'lost', label: 'Aborted' }]}
+                      className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100"
+                    />
+                    <Select
+                      label="Acquisition Source"
+                      value={editingLead.source}
+                      onChange={(value) => setEditingLead({ ...editingLead, source: value })}
+                      options={[{ value: 'facebook_ads', label: 'Social Echo (FB)' }, { value: 'website', label: 'Direct Portal' }, { value: 'referral', label: 'Intelligence Network' }]}
+                      className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100"
+                    />
+                  </div>
                 </div>
 
-                {/* Integrated Post-Edit Actions */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
-                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200">
-                    <div className="bg-blue-600 p-1.5 rounded-lg">
-                      <Zap className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-wider">Post-Update Continuity</h3>
+                {/* Post-Update Workflow Section */}
+                <div className="p-6 bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl space-y-6">
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-[#CBFF38]/10 p-2 rounded-xl border border-[#CBFF38]/20">
+                        <Zap className="w-4 h-4 text-[#CBFF38]" />
+                      </div>
+                      <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Post-Update Continuity</h3>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-4 py-1">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
+                      <div className="flex items-center gap-3">
+                         <FilePlus className="w-5 h-5 text-blue-400" />
+                         <span className="text-xs font-bold text-slate-300">Sync Follow-up Mission</span>
+                      </div>
                       <input
                         type="checkbox"
-                        id="createTaskEdit"
                         checked={createFollowUpTask}
                         onChange={(e) => setCreateFollowUpTask(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        className="w-5 h-5 rounded-lg border-slate-600 bg-slate-700 text-[#CBFF38] focus:ring-[#CBFF38]/20"
                       />
-                      <label htmlFor="createTaskEdit" className="text-[11px] font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
-                        <FilePlus className="w-3.5 h-3.5 text-blue-500" />
-                        Add Follow-up Task
-                      </label>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
+                      <div className="flex items-center gap-3">
+                         <CalendarPlus className="w-5 h-5 text-purple-400" />
+                         <span className="text-xs font-bold text-slate-300">Book Strategic Session</span>
+                      </div>
                       <input
                         type="checkbox"
-                        id="scheduleAppEdit"
                         checked={scheduleAppointment}
                         onChange={(e) => setScheduleAppointment(e.target.checked)}
-                        className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                        className="w-5 h-5 rounded-lg border-slate-600 bg-slate-700 text-[#CBFF38] focus:ring-[#CBFF38]/20"
                       />
-                      <label htmlFor="scheduleAppEdit" className="text-[11px] font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
-                        <CalendarPlus className="w-3.5 h-3.5 text-purple-500" />
-                        Book Appointment
-                      </label>
                     </div>
                   </div>
 
-                  {/* Conditional Task Fields */}
+                  {/* Task Sub-Form */}
                   {createFollowUpTask && (
-                    <div className="p-3 bg-white rounded-xl border border-blue-100 space-y-3 animate-in slide-in-from-top-1">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Input
-                          label="Task Subject"
+                    <div className="p-5 bg-slate-800 rounded-2xl border border-blue-500/20 space-y-4 animate-in slide-in-from-top-2">
+                       <Input
+                          label="Mission Subject"
                           value={taskData.subject}
                           onChange={(e) => setTaskData({ ...taskData, subject: e.target.value })}
-                          placeholder="e.g. Call back"
-                          className="bg-white text-xs h-8"
+                          className="bg-slate-900 border-slate-700 text-white h-10 rounded-xl text-xs"
                         />
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            label="Due Date"
-                            type="date"
-                            value={taskData.dueDate}
-                            onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
-                            className="bg-white text-xs h-8"
-                          />
-                          <Select
-                            label="Priority"
-                            value={taskData.priority}
-                            onChange={(val) => setTaskData({ ...taskData, priority: val })}
-                            options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]}
-                            className="bg-white text-xs h-8"
-                          />
+                        <div className="grid grid-cols-2 gap-3">
+                           <Input type="date" label="Deadline" value={taskData.dueDate} onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })} className="bg-slate-900 border-slate-700 text-white h-10 rounded-xl text-xs" />
+                           <Select label="Priority" value={taskData.priority} onChange={(val) => setTaskData({ ...taskData, priority: val })} options={[{ value: 'low', label: 'Routine' }, { value: 'medium', label: 'Operations' }, { value: 'high', label: 'Urgent' }]} className="bg-slate-900 border-slate-700 text-white h-10 rounded-xl text-xs" />
                         </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Conditional Appointment Fields */}
-                  {scheduleAppointment && (
-                    <div className="p-3 bg-white rounded-xl border border-purple-100 space-y-3 animate-in slide-in-from-top-1">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            label="Date"
-                            type="date"
-                            value={appointmentData.date}
-                            onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
-                            className="bg-white text-xs h-8"
-                          />
-                          <Input
-                            label="Time"
-                            type="time"
-                            value={appointmentData.time}
-                            onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
-                            className="bg-white text-xs h-8"
-                          />
-                        </div>
-                        <Select
-                          label="Service"
-                          value={appointmentData.serviceId}
-                          onChange={(val) => setAppointmentData({ ...appointmentData, serviceId: val })}
-                          options={[
-                            { value: 'botox', label: 'Botox' },
-                            { value: 'fillers', label: 'Fillers' },
-                            { value: 'laser', label: 'Laser' },
-                            { value: 'consult', label: 'Consult' }
-                          ]}
-                          className="bg-white text-xs h-8"
-                        />
-                      </div>
-                      <Select
-                        label="Clinic"
-                        value={appointmentData.clinicId}
-                        onChange={(val) => setAppointmentData({ ...appointmentData, clinicId: val })}
-                        options={clinics}
-                        className="bg-white text-xs h-8"
-                      />
                     </div>
                   )}
                 </div>
               </CardContent>
-              <div className="p-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50 rounded-b-xl">
-                <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleSaveEdit}>Save Changes</Button>
+
+              {/* Action Footer */}
+              <div className="p-10 border-t border-slate-800 flex items-center gap-4 bg-slate-900">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 h-14 rounded-2xl font-black text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white transition-all uppercase text-[10px] tracking-widest"
+                >
+                  Discard
+                </Button>
+                <Button 
+                  onClick={handleSaveEdit}
+                  className="flex-[2] h-14 bg-[#CBFF38] text-black rounded-2xl font-black shadow-[0_10px_30px_rgba(203,255,56,0.2)] hover:scale-[1.03] active:scale-[0.97] transition-all uppercase text-[10px] tracking-widest"
+                >
+                  Apply Modifications
+                </Button>
               </div>
             </Card>
           </div>
@@ -1906,10 +1888,12 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   value={bulkTaskData.salespersonId}
                   onChange={(val) => setBulkTaskData({ ...bulkTaskData, salespersonId: val })}
                   placeholder="Select Lead Strategist..."
-                  options={(salespersons || []).map((sp:any) => ({
-                    value: sp.id,
-                    label: `${sp.firstName} ${sp.lastName}`
-                  }))}
+                  options={(salespersons || [])
+                    .filter((sp: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(sp.role))
+                    .map((sp: any) => ({
+                      value: sp.id,
+                      label: `${sp.firstName} ${sp.lastName}`
+                    }))}
                   className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white font-bold"
                 />
               </div>

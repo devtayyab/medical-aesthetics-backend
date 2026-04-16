@@ -312,7 +312,11 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     if (!matchesSearch) return false;
 
     // 2. Status filter
-    if (filterStatus !== 'all' && task.status !== filterStatus) return false;
+    if (filterStatus === 'overdue') {
+      if (!isOverdue(task)) return false;
+    } else if (filterStatus !== 'all' && task.status !== filterStatus) {
+      return false;
+    }
 
     // 3. Type filter
     if (filterType !== 'all' && task.actionType !== filterType) return false;
@@ -598,10 +602,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               placeholder="All Salespersons"
               options={[
                 { value: 'all', label: 'Global Team' },
-                ...(salespersons || []).map(sp => ({
-                  value: sp.id,
-                  label: `${sp.firstName} ${sp.lastName}`
-                }))
+                ...(salespersons || [])
+                  .filter(sp => sp.role === 'salesperson' || sp.role === 'SUPER_ADMIN')
+                  .map(sp => ({
+                    value: sp.id,
+                    label: `${sp.firstName} ${sp.lastName}`
+                  }))
               ]}
               value={selectedSalespersonId}
               onChange={(val) => setSelectedSalespersonId(val)}
@@ -613,6 +619,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               { value: 'all', label: 'All Statuses' },
               { value: 'pending', label: 'Pending Status' },
               { value: 'in_progress', label: 'In Progress' },
+              { value: 'overdue', label: 'Overdue Status' },
               { value: 'completed', label: 'Done' }
             ]}
             value={filterStatus}
@@ -1359,7 +1366,9 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select New Owner</label>
                 <Select
                   placeholder="Choose Salesperson..."
-                  options={(salespersons || []).map(sp => ({
+                  options={(salespersons || [])
+                    .filter((sp: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(sp.role))
+                    .map(sp => ({
                     value: sp.id,
                     label: `${sp.firstName} ${sp.lastName} (${sp.pendingTasksCount || 0} Pending)`
                   }))}

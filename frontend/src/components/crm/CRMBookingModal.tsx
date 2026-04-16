@@ -44,8 +44,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     initialAppointment
 }) => {
     // Determine initial client state
-    const propCustomerId = customer?.id || customerId || '';
-    const propCustomerName = customer?.name || customerName || '';
+    const propCustomerId = customer?.id || customerId || (customer as any)?._id || '';
+    const propCustomerName = customer?.name || customerName || (customer as any)?.fullName || '';
     const propCustomerEmail = customer?.email || customerEmail || '';
     const propCustomerPhone = customer?.phone || customerPhone || '';
 
@@ -56,8 +56,14 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     const [clientSearch, setClientSearch] = useState('');
     const [clientResults, setClientResults] = useState<any[]>([]);
 
-    // Steps: 0=Select Client, 1=Clinic, 2=Service, 3=Date/Time, 4=Confirm
+    // Step state
     const [step, setStep] = useState(propCustomerId ? 1 : 0);
+
+    useEffect(() => {
+        if (propCustomerId && step === 0) {
+            setStep(1);
+        }
+    }, [propCustomerId, step]);
     const [isLoading, setIsLoading] = useState(false);
 
     // Data

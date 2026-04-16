@@ -114,16 +114,20 @@ export const SalesWeekCalendar: React.FC = () => {
         } else if (selectedProviderId !== 'all') {
             filters.providerId = selectedProviderId;
         }
-        
-        // Also ensure date range is respected if backend supports it
-        filters.date = format(viewDate, 'yyyy-MM-dd');
+
+        if (viewMode === 'week') {
+            filters.startDate = format(startOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+            filters.endDate = format(endOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        } else {
+            filters.date = format(viewDate, 'yyyy-MM-dd');
+        }
 
         if (selectedClinicId !== 'all') {
             filters.clinicId = selectedClinicId;
             dispatch(fetchAvailability(selectedClinicId));
         }
         dispatch(fetchClinicAppointments(filters));
-    }, [dispatch, user, selectedClinicId, selectedProviderId, viewDate, isManager]);
+    }, [dispatch, user, selectedClinicId, selectedProviderId, viewDate, viewMode, isManager]);
 
     useEffect(() => {
         if (searchQuery.length > 2) {
@@ -254,18 +258,18 @@ export const SalesWeekCalendar: React.FC = () => {
 
         try {
             await bookingAPI.createAppointment({
-              clientId: clientId!,
-              clinicId: wizardClinic.id,
-              serviceId: wizardServices[0].id, // For v1, handle principal service
-              providerId: wizardProviderId || user?.id,
-              startTime: startDateTime.toISOString(),
-              endTime: endDateTime.toISOString(),
-              status: 'CONFIRMED'
+                clientId: clientId!,
+                clinicId: wizardClinic.id,
+                serviceId: wizardServices[0].id, // For v1, handle principal service
+                providerId: wizardProviderId || user?.id,
+                startTime: startDateTime.toISOString(),
+                endTime: endDateTime.toISOString(),
+                status: 'CONFIRMED'
             });
-            
+
             setIsAddWizardOpen(false);
             dispatch(fetchClinicAppointments({ providerId: user?.id }));
-            
+
             // Reset wizard
             setWizardStep(1);
             setWizardClient(null);
@@ -325,47 +329,47 @@ export const SalesWeekCalendar: React.FC = () => {
             {/* Left Sidebar: Team List - MANAGER ONLY */}
             {/* Team List Sidebar - Visible for Managers and Salespeople (to see all) */}
             <div className="w-48 bg-white border-r border-gray-100 flex flex-col hidden lg:flex">
-                    <div className="p-4 border-b border-gray-100 bg-gray-50/50">
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">MY SCHEDULE</h3>
-                        <p className="text-[9px] text-gray-500 font-bold uppercase">{(salespersons || []).length + 1} ACTIVE</p>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                        
-                        {isManager && (
-                            <>
-                                <div 
-                                    onClick={() => setSelectedProviderId('all')}
-                                    className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 ${selectedProviderId === 'all' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
-                                >
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === 'all' ? 'bg-indigo-400' : 'bg-indigo-100'}`}>
-                                        <Users className={`w-3 h-3 ${selectedProviderId === 'all' ? 'text-white' : 'text-indigo-600'}`} />
-                                    </div>
-                                    <span className="text-xs truncate">Full Roster</span>
-                                </div>
+                <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">MY SCHEDULE</h3>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase">{(salespersons || []).length + 1} ACTIVE</p>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
 
-                                {(salespersons || []).filter(s => s.id !== user?.id).map(s => (
-                                    <div 
-                                        key={s.id}
-                                        onClick={() => setSelectedProviderId(s.id)}
-                                        className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 group ${selectedProviderId === s.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
-                                    >
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === s.id ? 'bg-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>{s.firstName?.[0]}</div>
-                                        <span className="text-xs truncate">{s.firstName}</span>
-                                    </div>
-                                ))}
-                                <div className="h-px bg-gray-100 my-2 mx-2" />
-                            </>
-                        )}
-                        
-                        <div 
-                            onClick={() => setSelectedProviderId(user?.id || '')}
-                            className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 group ${selectedProviderId === user?.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
-                        >
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === user?.id ? 'bg-indigo-400' : 'bg-indigo-100'}`}>{user?.firstName?.[0]}</div>
-                            <span className="text-xs truncate">Me</span>
-                        </div>
+                    {isManager && (
+                        <>
+                            <div
+                                onClick={() => setSelectedProviderId('all')}
+                                className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 ${selectedProviderId === 'all' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
+                            >
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === 'all' ? 'bg-indigo-400' : 'bg-indigo-100'}`}>
+                                    <Users className={`w-3 h-3 ${selectedProviderId === 'all' ? 'text-white' : 'text-indigo-600'}`} />
+                                </div>
+                                <span className="text-xs truncate">Full Roster</span>
+                            </div>
+
+                            {(salespersons || []).filter(s => s.id !== user?.id).map(s => (
+                                <div
+                                    key={s.id}
+                                    onClick={() => setSelectedProviderId(s.id)}
+                                    className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 group ${selectedProviderId === s.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
+                                >
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === s.id ? 'bg-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>{s.firstName?.[0]}</div>
+                                    <span className="text-xs truncate">{s.firstName}</span>
+                                </div>
+                            ))}
+                            <div className="h-px bg-gray-100 my-2 mx-2" />
+                        </>
+                    )}
+
+                    <div
+                        onClick={() => setSelectedProviderId(user?.id || '')}
+                        className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 group ${selectedProviderId === user?.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
+                    >
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === user?.id ? 'bg-indigo-400' : 'bg-indigo-100'}`}>{user?.firstName?.[0]}</div>
+                        <span className="text-xs truncate">Me</span>
                     </div>
                 </div>
+            </div>
 
             {/* Main Calendar View */}
             <div className={`flex flex-col flex-1 transition-all duration-300 ${isAddWizardOpen || (isDetailDrawerOpen && selectedApt) ? 'mr-96 lg:mr-[400px]' : ''}`}>
@@ -619,8 +623,8 @@ export const SalesWeekCalendar: React.FC = () => {
                                             </div>
                                             <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
                                                 <div className="flex items-center justify-between px-1">
-                                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Matching Records</p>
-                                                   <span className="text-[9px] font-bold text-slate-300">{leads.length} found</span>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Matching Records</p>
+                                                    <span className="text-[9px] font-bold text-slate-300">{leads.length} found</span>
                                                 </div>
                                                 {leads.map(lead => (
                                                     <div
@@ -629,13 +633,13 @@ export const SalesWeekCalendar: React.FC = () => {
                                                         className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${wizardClient?.id === lead.id ? 'border-indigo-600 bg-white shadow-md' : 'border-transparent bg-white hover:border-slate-100'}`}
                                                     >
                                                         <div className="flex items-center gap-3">
-                                                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${wizardClient?.id === lead.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                              {lead.firstName[0]}{lead.lastName[0]}
-                                                           </div>
-                                                           <div>
-                                                              <p className="font-black text-slate-900 text-xs leading-none mb-1">{lead.firstName} {lead.lastName}</p>
-                                                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{lead.phone || lead.email || 'No contact info'}</p>
-                                                           </div>
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${wizardClient?.id === lead.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                                {lead.firstName[0]}{lead.lastName[0]}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-black text-slate-900 text-xs leading-none mb-1">{lead.firstName} {lead.lastName}</p>
+                                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{lead.phone || lead.email || 'No contact info'}</p>
+                                                            </div>
                                                         </div>
                                                         {wizardClient?.id === lead.id && <CheckCircle2 size={12} className="text-indigo-600" />}
                                                     </div>
@@ -658,8 +662,8 @@ export const SalesWeekCalendar: React.FC = () => {
                                 <div className="flex-1 p-5 space-y-4">
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between">
-                                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Service Logic</label>
-                                           <div 
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Service Logic</label>
+                                            <div
                                                 className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-black cursor-pointer flex items-center gap-1.5 transition-all"
                                                 onClick={() => setIsClinicDropdownOpen(!isClinicDropdownOpen)}
                                             >
@@ -667,7 +671,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                                 <span className="truncate max-w-[100px]">{wizardClinic?.name || 'Switch Clinic'}</span>
                                             </div>
                                         </div>
-                                        
+
                                         {isClinicDropdownOpen && (
                                             <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-2 animate-in zoom-in-95 duration-200">
                                                 <div className="relative">
@@ -854,7 +858,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                     <ArrowLeft className="w-5 h-5" />
                                 </Button>
                             )}
-                            <Button 
+                            <Button
                                 onClick={wizardStep === 1 ? () => setWizardStep(2) : handleCreateBooking}
                                 disabled={wizardStep === 1 ? (!wizardClient && !isWalkIn) || wizardServices.length === 0 : !wizardTime}
                                 className={`flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.25em] transition-all active:scale-[0.98] shadow-xl ${wizardStep === 1 ? 'bg-slate-900 text-white hover:bg-black' : 'bg-[#CBFF38] text-slate-900 hover:bg-[#A3D900] shadow-[#CBFF38]/20'}`}
@@ -916,7 +920,7 @@ export const SalesWeekCalendar: React.FC = () => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-gray-400 uppercase leading-none px-1">Date</label>
-                                    <input 
+                                    <input
                                         type="date"
                                         value={format(new Date(selectedApt.startTime), 'yyyy-MM-dd')}
                                         onChange={(e) => {
@@ -930,7 +934,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-gray-400 uppercase leading-none px-1">Time</label>
-                                    <input 
+                                    <input
                                         type="time"
                                         value={format(new Date(selectedApt.startTime), 'HH:mm')}
                                         onChange={(e) => {
@@ -946,7 +950,7 @@ export const SalesWeekCalendar: React.FC = () => {
 
                             <div className="space-y-1">
                                 <label className="text-[9px] font-black text-gray-400 uppercase leading-none px-1">Professional</label>
-                                <select 
+                                <select
                                     className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-black outline-none transition-all cursor-pointer"
                                     value={selectedApt.providerId || ''}
                                     onChange={(e) => setSelectedApt({ ...selectedApt, providerId: e.target.value })}
@@ -964,8 +968,8 @@ export const SalesWeekCalendar: React.FC = () => {
                                 </select>
                             </div>
 
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 className="w-full py-2.5 bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100 font-black text-[9px] uppercase tracking-widest rounded-xl"
                                 onClick={async () => {
                                     try {
@@ -1007,18 +1011,18 @@ export const SalesWeekCalendar: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Amount (€)</label>
-                                    <input 
-                                        type="number" 
-                                        value={paymentAmt} 
-                                        onChange={e => setPaymentAmt(e.target.value)} 
-                                        className="w-full mt-1 p-3 border border-emerald-200 rounded-xl text-emerald-900 font-black focus:bg-white outline-none shadow-inner" 
+                                    <input
+                                        type="number"
+                                        value={paymentAmt}
+                                        onChange={e => setPaymentAmt(e.target.value)}
+                                        className="w-full mt-1 p-3 border border-emerald-200 rounded-xl text-emerald-900 font-black focus:bg-white outline-none shadow-inner"
                                     />
                                 </div>
                                 <div className="flex gap-2">
                                     {(['cash', 'card'] as const).map(m => (
-                                        <button 
+                                        <button
                                             key={m}
-                                            onClick={() => setPaymentMethod(m)} 
+                                            onClick={() => setPaymentMethod(m)}
                                             className={`flex-1 py-3 text-[10px] font-black rounded-xl uppercase tracking-widest transition-all ${paymentMethod === m ? 'bg-emerald-600 text-white shadow-lg' : 'bg-white text-emerald-600 border border-emerald-100'}`}
                                         >
                                             {m}
@@ -1032,8 +1036,8 @@ export const SalesWeekCalendar: React.FC = () => {
                         )}
 
                         <div className="pt-4 border-t border-gray-100 flex flex-col gap-2">
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 className="w-full h-11 border-red-50 text-red-500 hover:bg-red-50 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2"
                                 onClick={async () => {
                                     if (window.confirm("ARE YOU SURE? This will soft-delete the appointment and VOID all related revenue records. This action is audited.")) {
@@ -1057,7 +1061,7 @@ export const SalesWeekCalendar: React.FC = () => {
             {contextMenu && contextMenu.visible && (
                 <>
                     <div className="fixed inset-0 z-[110]" onClick={() => setContextMenu(null)} />
-                    <div 
+                    <div
                         className="fixed z-[120] bg-white border border-gray-200 rounded-xl shadow-2xl p-1.5 w-64 animate-in fade-in zoom-in duration-150"
                         style={{ left: contextMenu.x, top: contextMenu.y }}
                     >
@@ -1065,7 +1069,7 @@ export const SalesWeekCalendar: React.FC = () => {
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{format(contextMenu.date, 'EEEE, MMM d')}</p>
                             <p className="text-sm font-black text-indigo-700">{contextMenu.time}</p>
                         </div>
-                        <button 
+                        <button
                             onClick={() => {
                                 handleOpenWizard(contextMenu.date, contextMenu.time);
                                 setContextMenu(null);
@@ -1075,7 +1079,7 @@ export const SalesWeekCalendar: React.FC = () => {
                             <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded-md group-hover:bg-indigo-600 group-hover:text-white transition-all"><Plus size={14} /></div>
                             Add Appointment
                         </button>
-                        <button 
+                        <button
                             onClick={() => {
                                 setViewDate(contextMenu.date);
                                 setViewMode('day');
@@ -1086,7 +1090,7 @@ export const SalesWeekCalendar: React.FC = () => {
                             <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-md group-hover:bg-emerald-600 group-hover:text-white transition-all"><Calendar size={14} /></div>
                             Go to Day View
                         </button>
-                        <button 
+                        <button
                             onClick={async () => {
                                 if (selectedClinicId === 'all') return alert("Please select a clinic first.");
                                 try {

@@ -159,7 +159,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
             <Select
               options={[
                 { label: 'All Salespeople', value: 'all' },
-                ...(salespersons || []).map(s => ({
+                ...(salespersons || [])
+                  .filter((s: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(s.role))
+                  .map(s => ({
                   label: `${s.firstName} ${s.lastName}`,
                   value: s.id
                 }))
