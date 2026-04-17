@@ -61,7 +61,7 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "CRM" },
   { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" />, group: "CRM" },
   { path: "/crm/customers", label: "Customers", icon: <Users className="w-5 h-5" />, group: "CRM" },
-  
+  { path: "/crm/diary", label: "Staff Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/calendar", label: "Sales Week Calendar", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/archive", label: "Archive", icon: <Archive className="w-5 h-5" />, group: "Operations" },

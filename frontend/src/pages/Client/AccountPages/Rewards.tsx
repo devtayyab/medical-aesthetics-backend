@@ -4,31 +4,58 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/Button/Button";
 import type { RootState } from "@/store";
 import { css } from "@emotion/css";
-import { FaChevronRight, FaTrophy, FaStar, FaLock, FaGift, FaRotate } from "react-icons/fa6";
-import { motion } from "framer-motion";
+import { ChevronRight, Trophy, Star, Lock, Gift, RotateCw, Sparkles, ArrowRight, CheckCircle, Plus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { loyaltyAPI } from "@/services/api";
 import { toast } from "react-hot-toast";
 
+// Use the ultra-premium elite aesthetic hero image
+import HeroBg from "@/assets/Elite_Aesthetic_Hero.png";
+
 const sectionStyles = css`
   min-height: 100vh;
-  background: #FDFDFD;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(203, 255, 56, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(203, 255, 56, 0.05) 0px, transparent 50%);
-  padding-bottom: 80px;
+  background: radial-gradient(circle at top right, rgba(203, 255, 56, 0.05), transparent), #FFFFFF;
 `;
 
-const premiumCard = css`
+const heroSection = css`
+  position: relative;
+  height: 520px;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 80px;
+  overflow: hidden;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.2) 50%, transparent 90%);
+    z-index: 1;
+  }
+`;
+
+const glassCard = css`
   background: white;
-  border: 1px solid rgba(241, 245, 249, 1);
-  border-radius: 32px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.02);
-  padding: 40px;
+  border-radius: 40px;
+  box-shadow: 0 50px 100px rgba(0, 0, 0, 0.04);
+  border: 1px solid #F1F5F9;
   position: relative;
   overflow: hidden;
 `;
 
+const pointCard = css`
+  background: #000000;
+  border-radius: 32px;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+  color: white;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.15);
+`;
+
 export const Rewards: React.FC = () => {
+  // ... (keep state and logic same)
   const { user } = useSelector((state: RootState) => state.auth);
   const [userPoints, setUserPoints] = useState<number>((user as any)?.points || 0);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,7 +92,7 @@ export const Rewards: React.FC = () => {
       setIsRedeeming(reward.id);
       await loyaltyAPI.redeemPoints({
         clientId: user.id,
-        clinicId: "", // Optional in backend for global, or pass a default
+        clinicId: "",
         points: reward.points,
         description: `Redeemed for ${reward.name}`
       });
@@ -83,123 +110,136 @@ export const Rewards: React.FC = () => {
   const progressPercent = Math.min((userPoints / nextTierPoints) * 100, 100);
 
   const rewards = [
-    { id: "1", name: "10% Discount", desc: "Valid on any injectable treatment", points: 100, icon: <FaGift />, color: "bg-blue-50 text-blue-600" },
-    { id: "2", name: "Free Consultation", desc: "Expert skin analysis worth €50", points: 250, icon: <FaStar />, color: "bg-amber-50 text-amber-600" },
-    { id: "3", name: "Dermal Filler Upgrade", desc: "Next tier product for same price", points: 500, icon: <FaTrophy />, color: "bg-purple-50 text-purple-600" },
-    { id: "4", name: "VIP Priority Access", desc: "First to book new treatments", points: 1000, icon: <FaLock />, color: "bg-rose-50 text-rose-600" },
+    { id: "1", name: "10% Discount", desc: "Injectable coverage", points: 100, icon: <Gift size={20} />, color: "bg-[#CBFF38]/10 text-black" },
+    { id: "2", name: "Skin Analysis", desc: "Expert assessment", points: 250, icon: <Sparkles size={20} />, color: "bg-[#CBFF38]/10 text-black" },
+    { id: "3", name: "Filler Upgrade", desc: "Next-tier product", points: 500, icon: <Trophy size={20} />, color: "bg-[#CBFF38]/10 text-black" },
+    { id: "4", name: "VIP Access", desc: "Priority booking", points: 1000, icon: <Lock size={20} />, color: "bg-[#CBFF38]/10 text-black" },
   ];
 
   return (
     <div className={sectionStyles}>
-      {/* Visual Header */}
-      <div className="bg-[#1A1A1A] text-white pt-16 pb-24 px-6 relative overflow-hidden">
-        <div className="max-w-5xl mx-auto relative z-10">
-          <div className="flex items-center gap-4 mb-4 text-[#CBFF38] text-[10px] font-black uppercase tracking-[0.2em] italic">
-            <Link to="/my-account" className="hover:opacity-80 transition-opacity">Account</Link>
-            <FaChevronRight size={10} />
-            <span>Loyalty Program</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-tight">
-            Rewards & Benefits
-          </h1>
-          <p className="text-gray-400 mt-2 font-medium max-w-lg">
-            Earn points with every visit and unlock exclusive tier benefits and complimentary treatments.
-          </p>
+      {/* Immersive Hero */}
+      <div className={heroSection}>
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={HeroBg} 
+            style={{ objectPosition: 'center 40%' }}
+            className="w-full h-full object-cover" 
+            alt="Rewards Hero" 
+          />
         </div>
-        <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#CBFF38]/10 to-transparent pointer-events-none" />
+        
+        <div className="container mx-auto px-8 relative z-10">
+          <div className="max-w-4xl">
+            <div className="flex items-center gap-3 mb-4 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] italic">
+              <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
+              <ChevronRight size={10} className="text-lime-500" />
+              <span className="text-lime-500">LOYALTY PROGRAM</span>
+            </div>
+            
+            <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
+              REWARDS & <span className="text-[#CBFF38]">BENEFITS</span>
+            </h1>
+            
+            <p className="text-gray-500 mt-4 font-bold text-base max-w-md leading-relaxed italic">
+              Experience the rewards of excellence. Earn points with every session to unlock complimentary treatments.
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 -mt-12 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-6xl mx-auto px-8 relative z-20 -mt-[170px]">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-20">
           
-          {/* Points Overview Card */}
+          {/* Points Overview Dashboard */}
           <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className={`${premiumCard} lg:col-span-1 bg-black text-white border-black flex flex-col justify-between`}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`${pointCard} lg:col-span-2 flex flex-col justify-between`}
           >
             <div>
               <div className="flex justify-between items-start mb-8">
                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] italic">Current Balance</span>
-                    <h2 className="text-6xl font-black italic mt-2">{userPoints}</h2>
-                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Reward Points</p>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] italic">Point Balance</span>
+                    <h2 className="text-5xl font-black italic mt-2 tracking-tighter leading-none">{userPoints}</h2>
+                    <p className="text-gray-400 text-[9px] font-black uppercase tracking-widest mt-2 italic opacity-60">Loyalty Excellence</p>
                  </div>
                  <button 
                   onClick={fetchBalance}
-                  className={`p-2 bg-white/5 rounded-full hover:bg-white/10 transition-all ${isLoading ? 'animate-spin' : ''}`}
+                  className={`size-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 transition-all border border-white/10 ${isLoading ? 'animate-spin text-[#CBFF38]' : 'text-white'}`}
                  >
-                   <FaRotate size={12} className="text-[#CBFF38]" />
+                   <RotateCw size={18} />
                  </button>
               </div>
 
-              <div className="space-y-6">
-                <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-[10px] font-black uppercase text-gray-400">Next Level: Silver</span>
-                    <span className="text-[10px] font-black uppercase text-[#CBFF38]">{Math.max(0, 500 - userPoints)} left</span>
+              <div className="space-y-4">
+                <div className="bg-white/5 rounded-2xl p-6 border border-white/10 relative overflow-hidden">
+                  <div className="flex justify-between items-center mb-4 relative z-10">
+                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-widest italic">Membership Tier</span>
+                    <span className="text-[9px] font-black uppercase text-[#CBFF38] tracking-widest leading-none">{Math.max(0, 500 - userPoints)} left</span>
                   </div>
-                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden relative z-10">
                     <motion.div 
                       key={userPoints}
                       initial={{ width: 0 }}
                       animate={{ width: `${progressPercent}%` }}
-                      className="h-full bg-[#CBFF38] shadow-[0_0_15px_rgba(203,255,56,0.5)]"
+                      className="h-full bg-[#CBFF38]"
                     />
                   </div>
-                  <p className="text-[10px] text-gray-500 mt-4 leading-relaxed font-bold uppercase italic">
-                    {progressPercent < 100 ? "Complete more visits to unlock silver membership status." : "Highest tier achieved!"}
-                  </p>
+                  
+                  <div className="absolute right-0 bottom-0 opacity-5 p-2">
+                     <Trophy size={60} />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <Button className="w-full bg-[#CBFF38] text-black h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-lime-400 mt-8">
-              How to Earn
-            </Button>
+            <button className="w-full bg-[#CBFF38] text-black h-12 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-lime-400 transition-all mt-8 flex items-center justify-center gap-2">
+              Earn Guide <ChevronRight size={14} />
+            </button>
           </motion.div>
 
           {/* Rewards Grid */}
-          <div className="lg:col-span-2 space-y-8">
-             <div className="flex items-center justify-between">
-                <h3 className="text-xl font-black uppercase italic text-gray-900 leading-none">Available Rewards</h3>
-                <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none">Based on {userPoints} points</span>
+          <div className="lg:col-span-3 space-y-6">
+             <div className="flex items-center justify-between px-2">
+                <h3 className="text-xl font-black uppercase italic text-gray-900 leading-none">Catalog</h3>
+                <span className="text-[9px] font-black uppercase text-gray-400 tracking-widest italic leading-none">{userPoints} pts available</span>
              </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {rewards.map((reward, idx) => {
                  const isLocked = userPoints < reward.points;
                  const redeemingThis = isRedeeming === reward.id;
                  return (
                     <motion.div 
                       key={reward.id}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className={`${premiumCard} !p-6 flex flex-col justify-between group  ${isLocked ? 'opacity-70 grayscale' : 'hover:border-lime-300'}`}
+                      className={`${glassCard} p-6 flex flex-col justify-between group h-[220px] ${isLocked ? 'opacity-60 bg-gray-50/50' : 'hover:border-[#CBFF38] shadow-sm transition-all'}`}
                     >
                       <div>
                         <div className="flex justify-between items-start mb-4">
-                          <div className={`size-12 rounded-[18px] flex items-center justify-center text-xl shadow-sm ${reward.color}`}>
+                          <div className={`size-10 rounded-xl flex items-center justify-center ${reward.color} shadow-sm group-hover:bg-[#CBFF38] transition-colors`}>
                             {reward.icon}
                           </div>
-                          {isLocked && <FaLock className="text-gray-300" size={14} />}
+                          {isLocked ? <Lock size={12} className="text-gray-300" /> : <CheckCircle size={12} className="text-[#CBFF38]" />}
                         </div>
-                        <h4 className="text-lg font-black uppercase italic text-gray-900 leading-tight mb-2">{reward.name}</h4>
-                        <p className="text-xs text-gray-400 font-bold leading-relaxed">{reward.desc}</p>
+                        <h4 className="text-lg font-black uppercase italic text-gray-900 leading-tight mb-1">{reward.name}</h4>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight italic">{reward.desc}</p>
                       </div>
 
-                      <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between">
-                         <span className="text-[10px] font-black uppercase tracking-widest text-lime-600">{reward.points} Points</span>
-                         {isLocked ? (
-                           <div className="text-[10px] font-black uppercase italic text-gray-400 font-mono tracking-tighter">LOCKED</div>
-                         ) : (
+                      <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
+                         <div className="flex flex-col">
+                            <span className="text-[8px] font-black uppercase text-lime-600">Points</span>
+                            <span className="text-xs font-black text-gray-900 italic">{reward.points}</span>
+                         </div>
+                         {!isLocked && (
                            <button 
                             disabled={!!isRedeeming}
                             onClick={() => handleRedeem(reward)}
-                            className="text-[10px] font-black uppercase italic text-black hover:text-lime-600 transition-colors flex items-center gap-1 group/btn"
+                            className="bg-black text-[#CBFF38] px-4 h-9 rounded-xl text-[9px] font-black uppercase italic tracking-widest hover:bg-gray-800 transition-all"
                            >
-                            {redeemingThis ? "REDEEMING..." : <>REDEEM <span className="group-hover/btn:translate-x-1 transition-transform">→</span></>}
+                            {redeemingThis ? "Redeeming..." : "Redeem"}
                            </button>
                          )}
                       </div>
@@ -208,9 +248,14 @@ export const Rewards: React.FC = () => {
                })}
              </div>
 
-             {/* Partner/History Placeholder */}
-              <div className="bg-gray-50 rounded-[32px] p-8 border border-gray-100 italic text-center">
-                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">More rewards coming soon from our aesthetics partners.</p>
+              <div className={`${glassCard} p-6 border-dashed border-2 border-gray-100 bg-transparent flex items-center justify-between group hover:border-[#CBFF38] transition-all`}>
+                <div className="flex items-center gap-3">
+                   <div className="size-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:text-[#CBFF38] transition-colors">
+                      <Plus size={16} />
+                   </div>
+                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic group-hover:text-gray-900 transition-colors">Partnerships Launching Soon</p>
+                </div>
+                <ArrowRight size={14} className="text-gray-200 group-hover:text-black" />
               </div>
           </div>
         </div>

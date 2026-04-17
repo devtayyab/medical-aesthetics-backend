@@ -1,6 +1,10 @@
 import React from "react";
-import { Star, MapPin, Clock } from "lucide-react";
+import { Star, MapPin, Clock, Heart, Zap, ArrowRight, Calendar } from "lucide-react";
 import type { Clinic } from "@/types";
+import { motion } from "framer-motion";
+import { css } from "@emotion/css";
+
+// Fallback high-fidelity asset
 import BotoxImg from "@/assets/Botox.jpg";
 
 export interface ClinicCardProps {
@@ -11,6 +15,42 @@ export interface ClinicCardProps {
   searchQuery?: string;
   searchDate?: string;
 }
+
+const cardStyle = css`
+  background: white;
+  border: 1px solid #F1F5F9;
+  border-radius: 40px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.03);
+
+  &:hover {
+    border-color: #CBFF38;
+    transform: translateY(-8px);
+    box-shadow: 0 50px 100px rgba(0, 0, 0, 0.07);
+  }
+`;
+
+const serviceRow = css`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #F8F9FA;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+
+  &:hover {
+    background: white;
+    border-color: #CBFF38;
+    transform: translateX(4px);
+  }
+`;
 
 export const ClinicCard: React.FC<ClinicCardProps> = ({
   clinic,
@@ -26,139 +66,133 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
 
   const imageUrl = clinic.photoUrl || clinic.images?.[index] || clinic.images?.[0] || BotoxImg;
 
-  // Filter services if there is a specific search query
   const displayServices = clinic.services?.filter(s =>
     !searchQuery || s.treatment?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 3) || [];
 
   return (
-    <div
-      className="w-full bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col md:flex-row overflow-hidden cursor-pointer group"
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={cardStyle}
       onClick={handleClick}
     >
-      {/* Clinic Image */}
-      <div className="md:w-[280px] h-[200px] md:h-auto bg-gray-100 relative shrink-0 overflow-hidden">
+      {/* Immersive Image Section */}
+      <div className="relative h-[240px] overflow-hidden">
         <img
           src={imageUrl}
           alt={clinic.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+          className="w-full h-full object-cover transition-all duration-700"
         />
-        <button className="absolute top-3 right-3 size-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors shadow-sm">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+        
+        {/* Heart Feature */}
+        <button className="absolute top-6 right-6 size-12 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center text-white hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl group/heart">
+          <Heart size={20} className="group-hover/heart:fill-current" />
         </button>
+
+        {/* Dynamic Badge */}
+        <div className="absolute bottom-6 left-6 flex items-center gap-3">
+           <div className="bg-[#CBFF38] text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest italic shadow-xl flex items-center gap-2">
+              <Zap size={12} fill="currentColor" /> ELITE_PARTNER
+           </div>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 p-5 md:p-6 flex flex-col min-w-0">
-
-        {/* Header Row */}
-        <div className="flex justify-between items-start mb-2 gap-4">
-          <div className="min-w-0">
-            <h3 className="text-xl font-black text-gray-900 truncate group-hover:text-lime-700 transition-colors">
+      {/* Content Architecture */}
+      <div className="p-8 flex flex-col flex-1">
+        {/* Header Block */}
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h3 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900 leading-none mb-2">
               {clinic.name}
             </h3>
-
-            <div className="flex items-center gap-1 mt-1 font-bold text-sm">
-              <span className="text-gray-900">
-                {(clinic.rating !== null && clinic.rating !== undefined)
-                  ? Number(clinic.rating).toFixed(1)
-                  : "4.9"}
-              </span>
-              <div className="flex text-yellow-400">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={14} fill="currentColor" stroke="none" />
-                ))}
-              </div>
-              <span className="text-gray-400 font-medium ml-1">
-                ({clinic.reviewCount || 120})
-              </span>
+            <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-[#CBFF38] italic">
+               <div className="flex items-center gap-1">
+                  <Star size={12} fill="currentColor" />
+                  <span className="text-gray-900">{(clinic.rating !== null && clinic.rating !== undefined) ? Number(clinic.rating).toFixed(1) : "4.9"}</span>
+               </div>
+               <span className="text-gray-300">({clinic.reviewCount || 120} Protocols)</span>
             </div>
           </div>
+          
+          <button 
+            onClick={(e) => { e.stopPropagation(); onShowMap?.(clinic); }}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-400 hover:bg-[#CBFF38] hover:text-black transition-all"
+          >
+            <MapPin size={12} /> Map View
+          </button>
         </div>
 
-        {/* Location Row */}
-        <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-1.5 text-sm text-gray-500 font-medium truncate">
-                <MapPin size={14} className="shrink-0" />
-                <span className="truncate">{clinic.address?.city}</span>
-                {clinic.distance !== undefined && (
-                    <>
-                    <span className="mx-1 text-gray-300">·</span>
-                    <span className="shrink-0 text-lime-600">{Number(clinic.distance).toFixed(1)}km away</span>
-                    </>
-                )}
-            </div>
-            <button 
-                onClick={(e) => { e.stopPropagation(); onShowMap?.(clinic); }}
-                className="flex items-center gap-1 text-[10px] font-black uppercase text-indigo-600 hover:text-indigo-800 transition-colors bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100"
-            >
-                <MapPin size={10} /> Show Map
-            </button>
+        {/* Location Signature */}
+        <div className="flex items-center gap-2 mb-8 text-[11px] font-bold text-gray-400 uppercase tracking-widest italic">
+            <MapPin size={14} className="text-lime-500" />
+            <span>{clinic.address?.city}, Area Protocol</span>
+            {clinic.distance !== undefined && (
+                <span className="text-lime-600 ml-auto">{Number(clinic.distance).toFixed(1)}km _Range</span>
+            )}
         </div>
 
-        {/* Services List (Treatwell style) */}
-        <div className="mt-auto space-y-3 pt-4 border-t border-gray-100 flex-1">
+        {/* Procedure List */}
+        <div className="space-y-3 flex-1">
+          <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-300 mb-4 italic">Available Procedures</h4>
           {displayServices.length > 0 ? (
             displayServices.map((service, idx) => (
               <div
                 key={idx}
                 onClick={(e) => { e.stopPropagation(); window.location.href = `/appointment/booking?clinicId=${clinic.id}&serviceIds=${service.id}`; }}
-                className="flex items-center justify-between gap-4 group/service hover:bg-lime-50 -mx-3 px-3 py-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-lime-100"
+                className={serviceRow}
               >
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-black text-gray-800 truncate group-hover/service:text-lime-700">{service.treatment?.name}</h4>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Clock size={10} className="text-gray-400" />
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tighter">{service.durationMinutes} mins</p>
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-black uppercase tracking-tight text-gray-900 leading-none mb-1">{service.treatment?.name}</span>
+                  <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400 uppercase italic">
+                    <Clock size={10} /> {service.durationMinutes} mins Protocol
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[10px] font-black text-gray-300 uppercase leading-none mb-0.5">starting from</p>
-                  <p className="text-[14px] font-black text-lime-700"><span className="font-sans">€</span>{service.price}</p>
+                <div className="text-right">
+                  <span className="block text-[8px] font-black text-gray-300 uppercase leading-none mb-1 text-right">starts</span>
+                  <span className="text-[14px] font-black text-gray-900">€{service.price}</span>
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-sm text-gray-500 italic py-2">
-              Treatments starting from <span className="font-sans">€</span>49. View clinic to see all services.
+            <div className="text-[11px] font-bold text-gray-400 italic py-4">
+              Premium services starting from €49. Examine clinic catalog for full details.
             </div>
           )}
         </div>
 
-        {/* Availability Snippet & CTA Buttons */}
-        <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-lime-50/50 p-3 rounded-2xl border border-lime-100/50">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2 text-sm">
-              <div className="size-2 bg-lime-500 rounded-full animate-pulse"></div>
-              <div className="font-black text-[11px] uppercase tracking-widest text-[#1a202c]">
-                {searchDate ? (
-                  <>Next Available: <span className="text-lime-700">Today 11:30</span></>
-                ) : (
-                  <span className="text-lime-700">Next available: Today 14:00</span>
-                )}
+        {/* Availability & Engagement */}
+        <div className="mt-8 pt-6 border-t border-gray-50">
+           <div className="bg-lime-50 p-6 rounded-[32px] border border-lime-100/50 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                 <div className="flex items-center gap-3">
+                    <div className="size-3 bg-lime-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(132,204,22,0.5)]"></div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.1em] text-lime-900 italic">Next availability: <span className="text-black">Today 14:00</span></span>
+                 </div>
+                 <Calendar size={14} className="text-lime-600" />
               </div>
-            </div>
-            <p className="text-[10px] font-bold text-gray-400 mt-1 pl-4 italic">
-              Booking highly recommended
-            </p>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button
-              className="flex-1 sm:flex-none border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-              onClick={(e) => { e.stopPropagation(); handleClick(); }}
-            >
-              Details
-            </button>
-            <button
-              className="flex-1 sm:flex-none bg-gray-900 text-white hover:bg-lime-500 hover:border-lime-500 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
-              onClick={(e) => { e.stopPropagation(); handleClick(); }}
-            >
-              Book Now
-            </button>
-          </div>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed italic">
+                 Booking is highly recommended for this elite partner.
+              </p>
+           </div>
+           
+           <div className="flex gap-3">
+              <button
+                className="flex-1 h-14 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic transition-all active:scale-95"
+                onClick={(e) => { e.stopPropagation(); handleClick(); }}
+              >
+                Examine <ArrowRight size={12} className="inline-block ml-1" />
+              </button>
+              <button
+                className="flex-1 h-14 bg-black text-[#CBFF38] hover:bg-lime-500 hover:text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2"
+                onClick={(e) => { e.stopPropagation(); handleClick(); }}
+              >
+                Book_Now <ArrowRight size={14} />
+              </button>
+           </div>
         </div>
-
       </div>
-    </div>
+    </motion.div>
   );
 };

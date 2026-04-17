@@ -91,7 +91,7 @@ export const fetchUserAppointments = createAsyncThunk(
 
 export const fetchClinicAppointments = createAsyncThunk(
   'booking/fetchClinicAppointments',
-  async (params: { clinicId?: string; date?: string; providerId?: string; status?: string }) => {
+  async (params: { clinicId?: string; date?: string; providerId?: string; status?: string; startDate?: string; endDate?: string }) => {
     const response = await bookingAPI.getClinicAppointments(params);
     return response.data;
   }

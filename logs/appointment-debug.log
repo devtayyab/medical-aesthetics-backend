@@ -112,3 +112,30 @@
 [2026-04-14T16:50:34.874Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d"}
 [2026-04-14T16:50:58.611Z] --- BOOKING PROCESS STARTED --- {"clientId":"13522ff7-881d-4730-bbf4-da2790f9f9d6","hasDetails":false}
 [2026-04-14T16:50:58.641Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"13522ff7-881d-4730-bbf4-da2790f9f9d6"}
+[2026-04-14T16:51:53.042Z] --- BOOKING PROCESS STARTED --- {"clientId":"61b900a9-0da8-40f0-80ae-1338b6f5a4ab","hasDetails":true}
+[2026-04-14T16:52:26.088Z] --- BOOKING PROCESS STARTED --- {"clientId":"281d57ea-8686-40eb-94e2-14156b0b5268","hasDetails":true}
+[2026-04-14T16:54:26.135Z] --- BOOKING PROCESS STARTED --- {"clientId":"cfcd5bd7-e46a-420a-a3bb-80969f569e04","hasDetails":true}
+[2026-04-14T16:54:57.448Z] --- BOOKING PROCESS STARTED --- {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d","hasDetails":true}
+[2026-04-14T16:55:55.536Z] --- BOOKING PROCESS STARTED --- {"clientId":"9eba50ad-ee80-4424-94b4-532bfdd265bb","hasDetails":true}
+[2026-04-14T16:56:11.430Z] --- BOOKING PROCESS STARTED --- {"clientId":"9eba50ad-ee80-4424-94b4-532bfdd265bb","hasDetails":true}
+[2026-04-14T16:57:59.263Z] --- BOOKING PROCESS STARTED --- {"clientId":"00000000-0000-0000-0000-000000000000","hasDetails":true}
+[2026-04-14T17:15:55.006Z] --- BOOKING PROCESS STARTED --- {"clientId":"ba589ff1-ddbc-4fef-9db0-987c52dd0e21","hasDetails":true}
+[2026-04-14T17:15:55.023Z] ❌ [BookingsService] Conflict detected: Time slot already occupied. {"conflictingAptId":"5e00b4fc-caa6-422e-8a01-50cbe87174c8","status":"CONFIRMED","requestedTime":{"start":"2026-04-14T20:00:00.000Z","end":"2026-04-14T21:00:00.000Z"}}
+[2026-04-14T17:16:05.459Z] --- BOOKING PROCESS STARTED --- {"clientId":"ba589ff1-ddbc-4fef-9db0-987c52dd0e21","hasDetails":true}
+[2026-04-14T17:16:05.473Z] ❌ [BookingsService] Conflict detected: Time slot already occupied. {"conflictingAptId":"5e00b4fc-caa6-422e-8a01-50cbe87174c8","status":"CONFIRMED","requestedTime":{"start":"2026-04-14T20:00:00.000Z","end":"2026-04-14T21:00:00.000Z"}}
+[2026-04-14T17:18:35.564Z] --- BOOKING PROCESS STARTED --- {"clientId":"ba589ff1-ddbc-4fef-9db0-987c52dd0e21","hasDetails":true}
+[2026-04-14T17:18:35.592Z] ❌ [BookingsService] Conflict detected: Time slot already occupied. {"conflictingAptId":"92304099-7675-4aba-b535-ca422b6fa31c","status":"CONFIRMED","requestedTime":{"start":"2026-04-14T23:30:00.000Z","end":"2026-04-15T00:30:00.000Z"}}
+[2026-04-14T17:18:51.442Z] --- BOOKING PROCESS STARTED --- {"clientId":"ba589ff1-ddbc-4fef-9db0-987c52dd0e21","hasDetails":true}
+[2026-04-14T17:18:51.465Z] ❌ [BookingsService] Conflict detected: Time slot already occupied. {"conflictingAptId":"92304099-7675-4aba-b535-ca422b6fa31c","status":"CONFIRMED","requestedTime":{"start":"2026-04-14T23:30:00.000Z","end":"2026-04-15T00:30:00.000Z"}}
+[2026-04-14T17:19:33.044Z] --- BOOKING PROCESS STARTED --- {"clientId":"ba589ff1-ddbc-4fef-9db0-987c52dd0e21","hasDetails":true}
+[2026-04-15T10:55:56.236Z] --- BOOKING PROCESS STARTED --- {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d","hasDetails":true}
+[2026-04-15T10:58:57.759Z] --- BOOKING PROCESS STARTED --- {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d","hasDetails":false}
+[2026-04-15T10:58:57.766Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d"}
+[2026-04-15T10:58:57.837Z] ❌ [BookingsService] Conflict detected: Time slot already occupied. {"conflictingAptId":"62ae1298-6860-433e-860b-0f415547de96","status":"CONFIRMED","requestedTime":{"start":"2026-04-14T19:30:00.000Z","end":"2026-04-14T20:00:00.000Z"}}
+[2026-04-15T10:59:05.096Z] --- BOOKING PROCESS STARTED --- {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d","hasDetails":false}
+[2026-04-15T10:59:05.106Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d"}
+[2026-04-15T10:59:05.142Z] ❌ [BookingsService] Conflict detected: Time slot already occupied. {"conflictingAptId":"62ae1298-6860-433e-860b-0f415547de96","status":"CONFIRMED","requestedTime":{"start":"2026-04-14T19:30:00.000Z","end":"2026-04-14T20:00:00.000Z"}}
+[2026-04-15T10:59:49.281Z] --- BOOKING PROCESS STARTED --- {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d","hasDetails":false}
+[2026-04-15T10:59:49.286Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d"}
+[2026-04-16T09:43:55.261Z] --- BOOKING PROCESS STARTED --- {"clientId":"9eba50ad-ee80-4424-94b4-532bfdd265bb","hasDetails":true}
+[2026-04-16T09:45:57.002Z] --- BOOKING PROCESS STARTED --- {"clientId":"9eba50ad-ee80-4424-94b4-532bfdd265bb","hasDetails":true}

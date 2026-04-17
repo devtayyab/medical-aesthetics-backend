@@ -368,6 +368,10 @@ export class CrmService implements OnModuleInit {
           console.log('[CrmService] First appointment created successfully');
         } catch (bookingError) {
           console.error('❌ [CrmService] BookingsService.createAppointment failed:', bookingError);
+          // Preserve the original error (like ConflictException) if it already has a status
+          if (bookingError.status && bookingError.status >= 400) {
+              throw bookingError;
+          }
           throw new BadRequestException(`Failed to create the first appointment: ${bookingError.message}`);
         }
       }
