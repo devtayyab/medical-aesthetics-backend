@@ -19,7 +19,7 @@ const navContainer = css`
   background: white;
   border-bottom: 1px solid #f1f5f9;
   position: relative;
-  z-index: 9998;
+  z-index: 30;
   overflow: hidden; /* Prevent horizontal scrolling */
 `;
 
