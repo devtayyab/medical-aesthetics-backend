@@ -344,7 +344,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="bg-[#000000] py-2 sm:py-3 relative z-[9999] border-b border-white/5 backdrop-blur-md">
+      <header className="bg-[#000000] py-2 sm:py-3 sticky top-0 z-40 border-b border-white/5 backdrop-blur-md">
         <div className={containerStyle}>
           <div className="flex items-center gap-4">
             <button
