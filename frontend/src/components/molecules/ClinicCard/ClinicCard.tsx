@@ -68,7 +68,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
 
   const displayServices = clinic.services?.filter(s =>
     !searchQuery || s.treatment?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 3) || [];
+  ) || [];
 
   return (
     <motion.div
