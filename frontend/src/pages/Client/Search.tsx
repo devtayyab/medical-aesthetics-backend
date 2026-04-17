@@ -252,7 +252,7 @@ export const Search: React.FC = () => {
       </header>
 
       {/* Meta Filters Bar - Fixed Cascade Layering */}
-      <section className="bg-white border-b border-gray-100 sticky top-[7.5rem] z-40 py-4 shadow-sm">
+      <section className="bg-white border-b border-gray-100 py-4 shadow-sm relative z-40">
         <div className="container mx-auto px-8">
            <div className="flex items-center justify-between gap-6">
               <div className="flex items-center gap-3">

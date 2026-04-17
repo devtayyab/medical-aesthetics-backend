@@ -18,8 +18,7 @@ import { IoPersonAddOutline } from "react-icons/io5";
 const navContainer = css`
   background: white;
   border-bottom: 1px solid #f1f5f9;
-  position: sticky;
-  top: 4rem; /* Below the main header */
+  position: relative;
   z-index: 9998;
   overflow: hidden; /* Prevent horizontal scrolling */
 `;
