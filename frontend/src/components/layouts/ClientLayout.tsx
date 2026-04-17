@@ -20,7 +20,7 @@ const navContainer = css`
   border-bottom: 1px solid #f1f5f9;
   position: sticky;
   top: 4rem; /* Below the main header */
-  z-index: 40;
+  z-index: 9998;
   overflow: hidden; /* Prevent horizontal scrolling */
 `;
 

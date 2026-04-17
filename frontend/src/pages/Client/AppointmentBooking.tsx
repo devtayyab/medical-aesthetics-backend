@@ -35,17 +35,27 @@ import {
 import { FaChevronLeft, FaChevronRight, FaClock, FaCheckCircle, FaCalendarAlt } from "react-icons/fa";
 
 const containerStyle = css`
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 40px 1rem;
 `;
 
 const cardStyle = css`
   background: white;
-  border-radius: 24px;
+  border-radius: 32px;
   padding: 32px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.05);
-  border: 1px solid #f0f0f0;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.02);
+  border: 1px solid rgba(0,0,0,0.02);
+`;
+
+const sidebarCardStyle = css`
+  background: #121212;
+  border-radius: 32px;
+  padding: 32px;
+  color: white;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.15);
+  position: relative;
+  overflow: hidden;
 `;
 
 const dayStyle = (isCurrentMonth: boolean, isSelected: boolean, isPast: boolean) => css`
@@ -54,30 +64,32 @@ const dayStyle = (isCurrentMonth: boolean, isSelected: boolean, isPast: boolean)
   align-items: center;
   justify-content: center;
   cursor: ${isPast ? 'not-allowed' : 'pointer'};
-  border-radius: 12px;
-  font-weight: ${isSelected ? '900' : '600'};
+  border-radius: 16px;
+  font-weight: ${isSelected ? '900' : '700'};
   font-size: 14px;
-  background: ${isSelected ? '#CBFF38' : 'transparent'};
-  color: ${isPast ? '#e2e8f0' : isCurrentMonth ? '#1a202c' : '#cbd5e0'};
-  transition: all 0.2s;
+  background: ${isSelected ? '#121212' : 'transparent'};
+  color: ${isPast ? '#e2e8f0' : isSelected ? '#CBFF38' : isCurrentMonth ? '#1a202c' : '#cbd5e0'};
+  transform: ${isSelected ? 'scale(1.05)' : 'scale(1)'};
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  ${isSelected && 'box-shadow: 0 10px 20px rgba(0,0,0,0.1);'}
   &:hover {
-    ${!isPast && !isSelected && 'background: #f7fafc; color: #CBFF38;'}
+    ${!isPast && !isSelected && 'background: #f1f5f9; color: #000; transform: scale(1.05);'}
   }
 `;
 
 const slotButton = (isSelected: boolean, isAvailable: boolean) => css`
-  padding: 14px;
+  padding: 16px 10px;
   text-align: center;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 13px;
-  transition: all 0.2s;
+  border-radius: 16px;
+  font-weight: 900;
+  font-size: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: ${isAvailable ? 'pointer' : 'not-allowed'};
-  border: 2px solid ${isSelected ? '#CBFF38' : '#f7fafc'};
-  background: ${isSelected ? '#CBFF38' : isAvailable ? 'white' : '#f7fafc'};
-  color: ${isSelected ? '#000' : isAvailable ? '#4a5568' : '#cbd5e0'};
+  border: 2px solid ${isSelected ? '#000' : '#f1f5f9'};
+  background: ${isSelected ? '#000' : isAvailable ? 'white' : '#f8fafc'};
+  color: ${isSelected ? '#CBFF38' : isAvailable ? '#000' : '#cbd5e0'};
   &:hover {
-    ${isAvailable && !isSelected && 'border-color: #CBFF38; color: #000;'}
+    ${isAvailable && !isSelected && 'border-color: #000; color: #000; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.05);'}
   }
 `;
 
@@ -225,50 +237,56 @@ export const AppointmentBooking: React.FC = () => {
   if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-400 font-black uppercase tracking-tighter animate-pulse">Establishing Connection...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F7FAFC]">
+    <div className="min-h-screen bg-[#FDFDFD]">
       <div className={containerStyle}>
-        <div className="flex items-center justify-between mb-12">
-          <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-sm font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
-            <div className="size-8 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-black transition-all">
+        <div className="flex items-center justify-between mb-8">
+          <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
+            <div className="size-8 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-[#CBFF38] group-hover:text-black transition-all shadow-sm">
               <FaChevronLeft size={10} />
             </div>
-            Back to Clinic
+            Back to Search
           </button>
+          
           <div className="flex items-center gap-4">
             <div className="flex flex-col items-center">
-              <div className="size-8 rounded-full bg-[#CBFF38] text-black flex items-center justify-center font-black text-xs">1</div>
-              <span className="text-[10px] font-black uppercase mt-1">Time</span>
+              <div className="size-8 rounded-xl bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-xs shadow-xl shadow-black/10">1</div>
+              <span className="text-[8px] font-black uppercase mt-1 tracking-widest">Time</span>
             </div>
-            <div className="w-12 h-px bg-gray-200 -mt-4" />
+            <div className="w-12 h-[2px] bg-gray-100 -mt-4" />
             <div className="flex flex-col items-center">
-              <div className="size-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center font-black text-xs">2</div>
-              <span className="text-[10px] font-black uppercase mt-1">Details</span>
+              <div className="size-8 rounded-xl bg-white border border-gray-100 text-gray-400 flex items-center justify-center font-black text-xs shadow-sm">2</div>
+              <span className="text-[8px] font-black uppercase mt-1 tracking-widest">Details</span>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Calendar Section */}
           <div className="lg:col-span-8 space-y-8">
             <div className={cardStyle}>
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-black uppercase italic text-gray-900">{format(currentMonth, "MMMM yyyy")}</h2>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                   <h4 className="text-[9px] font-black tracking-[0.2em] uppercase text-gray-400 mb-1 italic">Select the Exact Time</h4>
+                   <h2 className="text-xl font-black uppercase italic text-gray-900">{format(currentMonth, "MMMM yyyy")}</h2>
+                </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="size-10 rounded-xl border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-all"><FaChevronLeft size={12} /></button>
-                  <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="size-10 rounded-xl border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-all"><FaChevronRight size={12} /></button>
+                  <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="size-10 rounded-xl border border-gray-100 flex items-center justify-center hover:bg-[#121212] hover:text-[#CBFF38] hover:border-[#121212] transition-colors"><FaChevronLeft size={12} /></button>
+                  <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="size-10 rounded-xl border border-gray-100 flex items-center justify-center hover:bg-[#121212] hover:text-[#CBFF38] hover:border-[#121212] transition-colors"><FaChevronRight size={12} /></button>
                 </div>
               </div>
               <div className="grid grid-cols-7 gap-1 mb-4">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
-                  <div key={d} className="text-center text-[10px] font-black text-gray-300 uppercase tracking-widest py-2">{d}</div>
+                  <div key={d} className="text-center text-[9px] font-bold text-gray-300 uppercase tracking-widest py-1 italic">{d}</div>
                 ))}
               </div>
               {renderCells()}
             </div>
 
             <div className={`${cardStyle} hidden lg:block`}>
-              <div className="flex items-center gap-3 mb-8">
-                <FaClock className="text-lime-500" />
+              <div className="flex items-center gap-3 mb-6">
+                <div className="size-8 rounded-lg bg-lime-50 flex items-center justify-center">
+                   <FaClock className="text-lime-500" size={14} />
+                </div>
                 <h3 className="text-xl font-black uppercase italic text-gray-900">Available Times</h3>
               </div>
 
@@ -321,45 +339,47 @@ export const AppointmentBooking: React.FC = () => {
             </div>
           </div>
 
-          {/* Summary Sidebar */}
+          {/* High Contrast Sidebar Summary */}
           <div className="lg:col-span-4 sticky top-8">
-            <div className={cardStyle}>
-              <h3 className="text-xl font-black uppercase italic text-gray-900 mb-8 pb-4 border-b border-gray-100">Your Booking</h3>
+            <div className={sidebarCardStyle}>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#CBFF38]/5 rounded-full blur-2xl" />
+              
+              <h3 className="text-xl font-black uppercase italic text-white mb-6 pb-4 border-b border-white/10 relative z-10">Booking Details</h3>
 
-              <div className="space-y-6 mb-12">
+              <div className="space-y-6 mb-8 relative z-10">
                 <div>
-                  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Clinic</h4>
-                  <p className="text-base font-black text-gray-900 uppercase italic">{clinic?.name}</p>
+                  <h4 className="text-[9px] font-black uppercase text-gray-500 tracking-widest mb-2 italic">Clinic Selected</h4>
+                  <p className="text-base font-black text-white uppercase italic">{clinic?.name}</p>
                 </div>
 
                 <div>
-                  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Treatments</h4>
-                  <div className="space-y-3">
+                  <h4 className="text-[9px] font-black uppercase text-gray-500 tracking-widest mb-2 italic">Requested Treatments</h4>
+                  <div className="space-y-2">
                     {selectedServices.map(s => (
-                      <div key={s.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
-                        <span className="text-xs font-black uppercase italic">{s.treatment?.name || s.name || 'Treatment'}</span>
-                        <span className="text-sm font-black text-gray-900"><span className="font-sans font-medium">€</span>{Number(s.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <div key={s.id} className="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl">
+                        <span className="text-[10px] font-black uppercase italic text-white tracking-widest">{s.treatment?.name || s.name || 'Treatment'}</span>
+                        <span className="text-[12px] font-black text-[#CBFF38]"><span className="font-sans font-medium">€</span>{Number(s.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {selectedSlot && (
-                  <div className="p-4 rounded-2xl bg-lime-50 border-2 border-[#CBFF38] animate-in zoom-in-95 duration-200">
+                  <div className="p-4 rounded-2xl bg-[#CBFF38] text-black shadow-xl shadow-[#CBFF38]/10 animate-in zoom-in-95 duration-300 mt-6">
                     <div className="flex items-center gap-2 mb-2">
-                      <FaCalendarAlt className="text-lime-600" size={12} />
-                      <span className="text-[10px] font-black uppercase text-lime-600 tracking-widest">Scheduled For</span>
+                      <FaCalendarAlt className="text-black/60" size={10} />
+                      <span className="text-[9px] font-black uppercase text-black/60 tracking-[0.2em] italic">Scheduled For</span>
                     </div>
-                    <p className="text-sm font-black text-gray-900 uppercase italic">{format(selectedDateState, "EEEE, MMMM d")}</p>
-                    <p className="text-xl font-black text-gray-900 mt-1">{format(new Date(selectedSlot.startTime), "HH:mm")}</p>
+                    <p className="text-base font-black uppercase italic">{format(selectedDateState, "EEEE, MMMM d")}</p>
+                    <p className="text-2xl font-black leading-none">{format(new Date(selectedSlot.startTime), "HH:mm")}</p>
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-gray-100 pt-6 mb-8">
+              <div className="border-t border-white/10 pt-6 mb-8 relative z-10">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-black uppercase text-gray-400">Total Price</span>
-                  <span className="text-3xl font-black text-gray-900"><span className="font-sans mr-1">€</span>{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span className="text-[9px] font-black uppercase text-gray-400 tracking-[0.2em] italic">Total</span>
+                  <span className="text-2xl font-black text-white"><span className="font-sans mr-1">€</span>{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
 
@@ -367,14 +387,14 @@ export const AppointmentBooking: React.FC = () => {
                 fullWidth
                 disabled={!selectedSlot || !clinic || bookingLoading}
                 onClick={handleProceed}
-                className="bg-[#CBFF38] text-black hover:bg-lime-400 h-16 rounded-2xl font-black uppercase tracking-widest text-base shadow-lg shadow-lime-200"
+                className="bg-[#CBFF38] text-black hover:bg-lime-400 hover:text-black h-12 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg hover:scale-105 transition-all relative z-10"
               >
-                {bookingLoading ? "Establishing..." : "Continue to Checkout"}
+                {bookingLoading ? "Waiting..." : "Checkout"}
               </Button>
 
               {holdId && (
-                <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-green-600 font-black uppercase tracking-widest">
-                  <FaCheckCircle /> Slot reserved for 15m
+                <div className="mt-4 flex items-center justify-center gap-2 text-[9px] text-[#CBFF38] font-black uppercase tracking-widest relative z-10 bg-[#CBFF38]/10 py-1.5 rounded-md">
+                  <FaCheckCircle size={10}/> Slot Locked For 15m
                 </div>
               )}
             </div>

@@ -137,3 +137,5 @@
 [2026-04-15T10:59:05.142Z] ❌ [BookingsService] Conflict detected: Time slot already occupied. {"conflictingAptId":"62ae1298-6860-433e-860b-0f415547de96","status":"CONFIRMED","requestedTime":{"start":"2026-04-14T19:30:00.000Z","end":"2026-04-14T20:00:00.000Z"}}
 [2026-04-15T10:59:49.281Z] --- BOOKING PROCESS STARTED --- {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d","hasDetails":false}
 [2026-04-15T10:59:49.286Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"1920010d-0e08-4823-9ad3-0f73ec08310d"}
+[2026-04-16T09:43:55.261Z] --- BOOKING PROCESS STARTED --- {"clientId":"9eba50ad-ee80-4424-94b4-532bfdd265bb","hasDetails":true}
+[2026-04-16T09:45:57.002Z] --- BOOKING PROCESS STARTED --- {"clientId":"9eba50ad-ee80-4424-94b4-532bfdd265bb","hasDetails":true}

@@ -1,90 +1,52 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
-import { Card } from "@/components/atoms/Card/Card";
-import { Button } from "@/components/atoms/Button/Button";
 import { fetchUserAppointments } from "@/store/slices/clientSlice";
 import type { RootState, AppDispatch } from "@/store";
 import { css } from "@emotion/css";
 import { logout } from "@/store/slices/authSlice";
+import { motion } from "framer-motion";
 
-// Icons
-import { TbCalendarClock, TbSettings, TbReceipt2 } from "react-icons/tb";
-import { ImProfile } from "react-icons/im";
-import { IoPersonAddOutline } from "react-icons/io5";
-import { AiOutlineTrophy, AiOutlineHeart } from "react-icons/ai";
-import { RiWallet3Line, RiLogoutCircleRLine } from "react-icons/ri";
-import { FaBalanceScale, FaBookOpen, FaStar, FaArrowRight } from "react-icons/fa";
-import { HiOutlineGift } from "react-icons/hi2";
-import { MdOutlineSupportAgent, MdOutlineMarkUnreadChatAlt } from "react-icons/md";
+// Icons (Lucide for consistency)
+import { 
+  CalendarDays, UserCircle, Receipt, Gift, UserPlus, 
+  Trophy, Star, BookOpen, Settings, LogOut, ArrowRight, Sparkles, Heart
+} from "lucide-react";
 
-// Assets
-import LayeredBG from "@/assets/LayeredBg.svg";
+// Generated New Hero Asset
+import AccountHero from "@/assets/Account_Hero.png";
 
 const sectionStyles = css`
   min-height: 100vh;
-  background: #F8F9FA;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(203, 255, 56, 0.05) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(203, 255, 56, 0.03) 0px, transparent 50%);
-  padding-bottom: 80px;
+  background: radial-gradient(circle at top right, rgba(203, 255, 56, 0.05), transparent), #FFFFFF;
 `;
 
-const glassHeader = css`
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  position: sticky;
-  top: 0;
-  z-index: 50;
-`;
-
-const dashboardCard = css`
+const glassCard = css`
   background: white;
+  border-radius: 40px;
+  box-shadow: 0 50px 100px rgba(0, 0, 0, 0.04);
   border: 1px solid #F1F5F9;
-  border-radius: 24px;
-  padding: 32px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
   position: relative;
-
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
   &:hover {
     border-color: #CBFF38;
-    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.05);
-    transform: translateY(-4px);
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -20px;
-    right: -20px;
-    width: 60px;
-    height: 60px;
-    background: rgba(203, 255, 56, 0.1);
-    border-radius: 50%;
-    filter: blur(20px);
-    transition: all 0.3s ease;
-  }
-
-  &:hover::after {
-    background: rgba(203, 255, 56, 0.2);
-    width: 100px;
-    height: 100px;
+    transform: translateY(-5px);
+    box-shadow: 0 60px 120px rgba(0, 0, 0, 0.06);
   }
 `;
 
-const iconWrapper = (bgColor: string) => css`
-  width: 54px;
-  height: 54px;
-  border-radius: 16px;
+const iconContainer = (bg: string) => css`
+  width: 52px;
+  height: 52px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${bgColor};
+  background: ${bg};
   color: #1A1A1A;
   margin-bottom: 24px;
-  transition: all 0.3s ease;
 `;
 
 export const MyAccount: React.FC = () => {
@@ -108,169 +70,228 @@ export const MyAccount: React.FC = () => {
 
   const menuItems = [
     {
-      title: "My Appointments",
-      desc: "Track and manage your upcoming visits",
-      icon: <TbCalendarClock size={24} />,
+      title: "Appointments",
+      desc: "Timeline & visits",
+      icon: <CalendarDays size={20} />,
       link: "/appointments",
       bg: "#F0F9FF"
     },
     {
-      title: "Personal Details",
-      desc: "Update your profile and contact info",
-      icon: <ImProfile size={22} />,
+      title: "Profile",
+      desc: "Clinical identity",
+      icon: <UserCircle size={20} />,
       link: "/personal-details",
       bg: "#F5F3FF"
     },
     {
-      title: "Payments & Invoices",
-      desc: "View records and download receipts",
-      icon: <TbReceipt2 size={24} />,
+      title: "Payments",
+      desc: "History & records",
+      icon: <Receipt size={20} />,
       link: "/payments",
       bg: "#ECFDF5"
     },
     {
       title: "Gift Cards",
-      desc: "Surprise someone with a treatment",
-      icon: <HiOutlineGift size={24} />,
+      desc: "Share luxury",
+      icon: <Gift size={20} />,
       link: "/gift-card",
       bg: "#FFFBEB"
     },
     {
-      title: "Invite a Friend",
-      desc: "Share the love and earn €5 rewards",
-      icon: <IoPersonAddOutline size={24} />,
+      title: "Ambassador",
+      desc: "Invite & earn €5",
+      icon: <UserPlus size={20} />,
       link: "/invite-friend",
       bg: "#FEF2F2"
     },
     {
-      title: "Rewards & Points",
-      desc: "Unlock exclusive member benefits",
-      icon: <AiOutlineTrophy size={24} />,
+      title: "Elite Rewards",
+      desc: "Unlock privileges",
+      icon: <Trophy size={20} />,
       link: "/rewards",
       bg: "#FFF7ED"
     },
     {
-      title: "My Reviews",
-      desc: "Share your professional experience",
-      icon: <FaStar size={20} className="text-yellow-500" />,
+      title: "Reviews",
+      desc: "Shared voice",
+      icon: <Star size={20} />,
       link: "/reviews",
       bg: "#F8FAFC"
     },
     {
-      title: "Blog & Education",
-      desc: "Learn about the latest beauty trends",
-      icon: <FaBookOpen size={20} />,
+      title: "Aesthetics IQ",
+      desc: "Science & blog",
+      icon: <BookOpen size={20} />,
       link: "/blog",
       bg: "#F0FDF4"
-    },
-    {
-      title: "Account Settings",
-      desc: "Manage security and notifications",
-      icon: <TbSettings size={24} />,
-      link: "/settings",
-      bg: "#F1F5F9"
     }
   ];
 
   const userInitial = user?.firstName?.[0] || user?.email?.[0] || 'U';
 
   return (
-    <section className={sectionStyles}>
-      {/* Visual Header */}
-      <div className="bg-[#1A1A1A] text-white pt-16 pb-28 md:pt-24 md:pb-48 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-8">
-          <div className="flex items-center gap-4 md:gap-6">
-            <div className="size-14 md:size-20 rounded-2xl md:rounded-3xl bg-[#CBFF38] text-black flex items-center justify-center text-xl md:text-3xl font-black italic shadow-[0_0_40px_rgba(203,255,56,0.2)]">
-              {userInitial.toUpperCase()}
+    <div className={sectionStyles}>
+      {/* Immersive Dashboard Hero */}
+      <div className="relative pt-24 pb-48 overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={AccountHero} 
+            style={{ objectPosition: 'center 70%' }}
+            className="w-full h-full object-cover opacity-[0.35]" 
+            alt="Dashboard Hero" 
+          />
+        </div>
+
+        <div className="container mx-auto px-8 relative z-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-10">
+            <div className="max-w-4xl">
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-3 mb-8 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] italic"
+              >
+                <Link to="/" className="text-gray-900 border-b border-gray-900 pb-0.5">ELITE CLINIC</Link>
+                <span className="text-lime-500"> MEMBER_LOUNGE</span>
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-6 md:gap-8"
+              >
+                <div className="size-20 md:size-28 rounded-[38px] bg-black text-[#CBFF38] flex items-center justify-center text-4xl md:text-5xl font-black italic shadow-2xl relative overflow-hidden group">
+                  <span className="relative z-10">{userInitial.toUpperCase()}</span>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-lime-500/20 to-transparent" />
+                </div>
+                
+                <div>
+                  <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
+                    Hello, <span className="text-[#CBFF38]">{user?.firstName || 'Valued Member'}</span>
+                  </h1>
+                  <p className="text-gray-400 mt-4 font-bold text-xs uppercase tracking-[0.2em] flex items-center gap-2 italic">
+                    <span className="size-1.5 rounded-full bg-lime-500 animate-pulse" />
+                    {user?.email}
+                  </p>
+                </div>
+              </motion.div>
             </div>
-            <div>
-              <h1 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter leading-tight mb-1">
-                Hello, {user?.firstName || 'Usman'}
-              </h1>
-              <p className="text-gray-400 font-medium tracking-wide uppercase text-[10px] md:text-xs flex items-center gap-2">
-                <span className="size-1.5 rounded-full bg-[#CBFF38]" />
-                {user?.email}
-              </p>
-            </div>
+
+            <motion.button 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-8 h-14 rounded-2xl bg-black text-[#CBFF38] text-[10px] font-black uppercase tracking-widest italic group active:scale-95 transition-all shadow-2xl"
+            >
+              Secure Logout <LogOut size={16} className="group-hover:translate-x-1 transition-transform" />
+            </motion.button>
           </div>
-          <button 
-            onClick={handleLogout}
-            className="group flex items-center gap-3 px-5 py-2.5 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] md:text-sm font-black uppercase tracking-widest"
-          >
-            <RiLogoutCircleRLine className="text-[#CBFF38] group-hover:rotate-12 transition-transform" size={18} />
-            Log Out
-          </button>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 -mt-12 md:-mt-32">
-        {/* Main CTA */}
-        <div className="bg-white rounded-[24px] md:rounded-[32px] p-6 md:p-12 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] border border-white relative overflow-hidden mb-8 md:mb-12 group">
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 md:gap-8">
-            <div className="max-w-md">
-              <span className="inline-block px-3 py-1 rounded-full bg-[#CBFF38]/10 text-[#5F8B00] text-[9px] md:text-[10px] font-black uppercase tracking-widest mb-3 md:mb-4">
-                Recommended for you
-              </span>
-              <h1 className="text-2xl md:text-4xl font-black uppercase italic text-gray-900 leading-tight mb-3 md:mb-4 tracking-tighter">
-                Treat Your Self <br className="hidden md:block"/>To Excellence
-              </h1>
-              <p className="text-xs md:text-gray-500 font-medium mb-6 md:mb-8 leading-relaxed max-w-[280px] md:max-w-full">
-                Book your next treatment with the world's leading aesthetic professionals in just a few clicks.
-              </p>
-              <Link to="/search" className="w-full md:w-auto">
-                <Button className="w-full md:w-auto h-12 md:h-14 px-8 md:px-10 bg-[#1A1A1A] hover:bg-black text-[#CBFF38] text-[11px] md:text-sm font-black uppercase tracking-widest rounded-xl md:rounded-2xl flex items-center justify-center gap-3 md:gap-4 group/btn">
-                  Book Now
-                  <FaArrowRight className="group-hover/btn:translate-x-1 transition-transform" />
-                </Button>
+      <main className="max-w-7xl mx-auto px-8 relative z-20 -mt-[180px] pb-32">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+          
+          {/* Main Dashboard Actions */}
+          <div className="xl:col-span-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {menuItems.map((item, idx) => (
+                <Link to={item.link} key={idx}>
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className={glassCard}
+                  >
+                    <div className="p-8">
+                        <div className={iconContainer(item.bg)}>
+                          {item.icon}
+                        </div>
+                        <h3 className="text-xl font-black uppercase italic text-gray-900 mb-2 leading-tight tracking-tight">
+                          {item.title}
+                        </h3>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          {item.desc}
+                        </p>
+                    </div>
+                  </motion.div>
+                </Link>
+              ))}
+              
+              {/* Settings Tile */}
+              <Link to="/settings">
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className={`${glassCard} bg-gray-50/50 border-dashed`}
+                  >
+                    <div className="p-8">
+                        <div className={iconContainer("#fff")}>
+                          <Settings size={20} />
+                        </div>
+                        <h3 className="text-xl font-black uppercase italic text-gray-900 mb-2 leading-tight tracking-tight">
+                          Settings
+                        </h3>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          System & Security
+                        </p>
+                    </div>
+                  </motion.div>
               </Link>
             </div>
-            <div className="relative hidden lg:block">
-               <div className="size-64 rounded-[40px] bg-gray-100 flex items-center justify-center overflow-hidden border-8 border-white shadow-2xl rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                  <div className="text-6xl font-black text-gray-200">B&D</div>
-               </div>
-               <div className="absolute -bottom-6 -left-6 size-32 rounded-3xl bg-[#CBFF38] flex items-center justify-center shadow-xl rotate-[-6deg] group-hover:rotate-0 transition-transform duration-500">
-                  <AiOutlineHeart size={48} className="text-black" />
-               </div>
-            </div>
           </div>
-          
-          {/* Decorative Elements */}
-          <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#CBFF38]/5 to-transparent pointer-events-none" />
-        </div>
 
-        {/* Action Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {menuItems.map((item, idx) => (
-            <Link to={item.link} key={idx}>
-              <div className={dashboardCard}>
-                <div className={iconWrapper(item.bg)}>
-                  {item.icon}
+          {/* Right Column: Featured Promotion */}
+          <div className="xl:col-span-4">
+             <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-black rounded-[40px] p-8 relative overflow-hidden group shadow-2xl min-h-[400px] flex flex-col justify-between"
+             >
+                <div className="relative z-10">
+                   <Sparkles className="text-[#CBFF38] mb-6" size={24} />
+                   <h2 className="text-2xl md:text-3xl font-black uppercase italic text-white tracking-tighter leading-none mb-4">
+                     Invest in <br /> Your Essence
+                   </h2>
+                   <p className="text-[11px] font-medium text-gray-400 leading-relaxed italic max-w-xs">
+                     Ready for your next visit? Secure your exclusive time slot with our lead clinical team.
+                   </p>
                 </div>
-                <h3 className="text-lg font-black uppercase italic text-gray-900 mb-2 leading-tight tracking-tight">
-                  {item.title}
-                </h3>
-                <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide leading-relaxed">
-                  {item.desc}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
 
-        {/* Footer Links */}
-        <div className="mt-24 pt-12 border-t border-gray-200">
-          <div className="flex flex-wrap justify-center md:justify-between items-center gap-8">
-            <div className="flex items-center gap-8 flex-wrap justify-center">
-              <Link to="/support" className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-black transition-colors">Help Center</Link>
-              <Link to="/legal" className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-black transition-colors">Privacy Policy</Link>
-              <Link to="/terms" className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-black transition-colors">Terms of Use</Link>
-            </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">
-              © 2026 Beauty & Doctors
-            </p>
+                <div className="relative z-10 space-y-6">
+                  <div className="flex items-center gap-4 text-white">
+                    <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center">
+                      <Heart size={16} className="text-lime-500" />
+                    </div>
+                    <p className="text-[9px] font-black uppercase tracking-widest italic leading-tight">Elite Care Protocol <br/><span className="text-gray-500">Personalized for you</span></p>
+                  </div>
+
+                  <Link to="/search" className="block">
+                    <button className="w-full bg-[#CBFF38] text-black h-14 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95 transition-all shadow-2xl">
+                      Book Now <ArrowRight size={16} />
+                    </button>
+                  </Link>
+                </div>
+
+                <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
+                   <img src="https://images.unsplash.com/photo-1519494140221-d28b868608e6?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover grayscale" alt="Clinic Interior" />
+                </div>
+             </motion.div>
           </div>
         </div>
-      </div>
-    </section>
+
+        {/* Footer Insignia */}
+        <div className="mt-32 pt-12 border-t border-gray-50 flex flex-col md:flex-row justify-between items-center gap-8">
+             <div className="flex items-center gap-8">
+                <Link to="/support" className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-300 hover:text-black transition-colors italic">Clinical Support</Link>
+                <Link to="/legal" className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-300 hover:text-black transition-colors italic">Privacy Standards</Link>
+             </div>
+             
+             <div className="flex flex-col items-center md:items-end text-[9px] font-black uppercase tracking-[0.4em] italic text-gray-200">
+                <p>© 2026 BEAUTY & DOCTORE_ELITE</p>
+             </div>
+        </div>
+      </main>
+    </div>
   );
 };

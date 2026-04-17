@@ -1,15 +1,116 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { searchClinics } from "@/store/slices/clientSlice";
 import { RootState, AppDispatch } from "@/store";
 import { SearchBar } from "@/components/organisms/SearchBar";
 import { ClinicCard } from "@/components/molecules/ClinicCard/ClinicCard";
 import { TreatmentCard } from "@/components/molecules/TreatmentCard/TreatmentCard";
-import { Button } from "@/components/atoms/Button/Button";
-import { FaHospital, FaMap, FaList, FaStar, FaChevronDown, FaMapMarkedAlt } from "react-icons/fa";
-import { MapPin, X } from "lucide-react";
+import { 
+  MapPin, X, Filter, ChevronDown, List, Map as MapIcon, 
+  Star, Search as SearchIcon, Calendar, Info, ArrowRight,
+  Maximize2, Settings2, Sparkles, ChevronUp, Tag
+} from "lucide-react";
 import { ClinicMap } from "@/components/organisms/ClinicMap/ClinicMap";
+import { motion, AnimatePresence } from "framer-motion";
+import { css } from "@emotion/css";
+
+// Assets
+import SearchHero from "@/assets/Search_Hero.png";
+import BotoxElite from "@/assets/Treatments/botox_elite.png";
+
+const searchHeader = (isExpanded: boolean) => css`
+  background: #121212;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: ${isExpanded ? '60px 0 80px' : '20px 0'};
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-image: url(${SearchHero});
+    background-size: cover;
+    background-position: center 30%;
+    opacity: 0.15;
+  }
+`;
+
+const filterPill = (active: boolean) => css`
+  padding: 8px 18px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.2s ease;
+  background: ${active ? '#CBFF38' : 'white'};
+  color: ${active ? '#000' : '#475569'};
+  border: 1px solid ${active ? '#CBFF38' : '#F1F5F9'};
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  position: relative;
+
+  &:hover {
+    border-color: #CBFF38;
+    transform: translateY(-2px);
+  }
+`;
+
+const dropdownContent = css`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 10px;
+  background: white;
+  min-width: 220px;
+  border-radius: 24px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.12);
+  border: 1px solid #F1F5F9;
+  z-index: 999;
+  padding: 10px;
+  backdrop-filter: blur(20px);
+`;
+
+const dropdownItem = (active: boolean) => css`
+  width: 100%;
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  color: ${active ? '#000' : '#64748B'};
+  background: ${active ? '#F8FAFC' : 'transparent'};
+
+  &:hover {
+    background: #F8FAFC;
+    color: #000;
+  }
+`;
+
+const featuredResultCard = css`
+  background: #111827;
+  border-radius: 32px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  @media (min-width: 1024px) {
+    flex-direction: row;
+  }
+  box-shadow: 0 50px 100px rgba(0,0,0,0.1);
+  margin-bottom: 40px;
+  border: 1px solid rgba(255,255,255,0.05);
+`;
 
 export const Search: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -19,12 +120,14 @@ export const Search: React.FC = () => {
     (state: RootState) => state.client
   );
 
-  const [showDesktopMap, setShowDesktopMap] = useState<boolean>(false);
+  const [showDesktopMap, setShowDesktopMap] = useState<boolean>(true);
   const [showMobileMap, setShowMobileMap] = useState<boolean>(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedClinicForMap, setSelectedClinicForMap] = useState<any | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('treatments');
+  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('clinics');
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState<boolean>(false);
+  const [openDropdown, setOpenDropdown] = useState<'sort' | 'price' | 'rating' | 'brands' | null>(null);
 
   // Search states
   const [query, setQuery] = useState(searchParams.get("query") || "");
@@ -33,148 +136,21 @@ export const Search: React.FC = () => {
   const [searchDate, setSearchDate] = useState<string | null>(searchParams.get("search_date") || null);
   const [searchTimeWindow, setSearchTimeWindow] = useState<string | null>(searchParams.get("search_time_window") || null);
 
-  // Filter and Sort states
+  // Filter states
   const [sortBy, setSortBy] = useState<'recommended' | 'price-asc' | 'price-desc' | 'rating' | 'distance'>('recommended');
   const [priceFilter, setPriceFilter] = useState<'any' | 'under-50' | '50-100' | 'over-100'>('any');
   const [ratingFilter, setRatingFilter] = useState<'any' | '4.5-plus' | '4.0-plus'>('any');
 
-  const [openDropdown, setOpenDropdown] = useState<'sort' | 'price' | 'rating' | null>(null);
-  const [isSearchExpanded, setIsSearchExpanded] = useState<boolean>(false);
-
-  // Detect location on mount
+  // Geolocation
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const coords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserCoords(coords);
-          setSortBy('distance');
-        },
-        (error) => {
-          console.warn("Geolocation denied or failed:", error);
+          setUserCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
         }
       );
     }
   }, []);
-
-  // Computed lists: Flatten treatments to show individual services (Clinic - Treatment - Price)
-  const filteredTreatments = useMemo(() => {
-    const masterServices = treatments.flatMap((t: any) => {
-      const offerings = t.offerings || [];
-      return offerings
-        .filter((o: any) => o.isActive && o.clinic?.isActive)
-        .map((o: any) => ({
-          ...t,
-          id: `${t.id}|${o.id}`,
-          treatmentId: t.id,
-          offeringId: o.id,
-          clinic: o.clinic,
-          fromPrice: Number(o.price),
-          availableAt: [o.clinic.name],
-          clinicsCount: 1,
-          duration: o.durationMinutes
-        }));
-    });
-
-    const venueServices = clinics.flatMap((c: any) => {
-      const servicesFromVenue = c.services || c.offerings || [];
-      return servicesFromVenue
-        .filter((s: any) => s.isActive)
-        .map((s: any) => ({
-          ...(s.treatment || {}),
-          name: s.treatment?.name || s.name || 'Treatment',
-          category: s.treatment?.category || 'Service',
-          id: `${s.treatmentId || s.id}|${s.id}`,
-          treatmentId: s.treatmentId || s.id,
-          offeringId: s.id,
-          clinic: c,
-          fromPrice: Number(s.price),
-          availableAt: [c.name],
-          clinicsCount: 1,
-          duration: s.durationMinutes
-        }));
-    });
-
-    const groupedByTreatment = new Map();
-    [...masterServices, ...venueServices].forEach(item => {
-      const tid = item.treatmentId;
-      if (!groupedByTreatment.has(tid)) {
-        groupedByTreatment.set(tid, {
-          ...item,
-          id: tid,
-          fromPrice: Number(item.fromPrice),
-          availableAt: item.availableAt || [],
-          clinicsCount: 1,
-          offerings: [item]
-        });
-      } else {
-        const existing = groupedByTreatment.get(tid);
-        existing.fromPrice = Math.min(existing.fromPrice, Number(item.fromPrice));
-        if (item.availableAt?.[0] && !existing.availableAt.includes(item.availableAt[0])) {
-          existing.availableAt.push(item.availableAt[0]);
-          existing.clinicsCount++;
-        }
-        existing.offerings.push(item);
-      }
-    });
-
-    let result = Array.from(groupedByTreatment.values());
-
-    if (result.length === 0) {
-      result = treatments.map(t => ({
-        ...t,
-        id: t.id,
-        fromPrice: 0,
-        availableAt: [],
-        clinicsCount: 0,
-        offerings: []
-      }));
-    }
-
-    if (priceFilter !== 'any') {
-      result = result.filter(s => {
-        const price = s.fromPrice || 0;
-        if (priceFilter === 'under-50') return price < 50;
-        if (priceFilter === '50-100') return price >= 50 && price <= 100;
-        if (priceFilter === 'over-100') return price > 100;
-        return true;
-      });
-    }
-
-    if (sortBy === 'price-asc') result.sort((a, b) => (a.fromPrice || 0) - (b.fromPrice || 0));
-    if (sortBy === 'price-desc') result.sort((a, b) => (b.fromPrice || 0) - (a.fromPrice || 0));
-
-    return result;
-  }, [treatments, clinics, sortBy, priceFilter]);
-
-  const filteredClinics = useMemo(() => {
-    let result = [...clinics];
-    if (ratingFilter !== 'any') {
-      result = result.filter(c => {
-        const r = c.rating || 4.9;
-        if (ratingFilter === '4.5-plus') return r >= 4.5;
-        if (ratingFilter === '4.0-plus') return r >= 4.0;
-        return true;
-      });
-    }
-    if (sortBy === 'rating') result.sort((a, b) => (b.rating || 4.9) - (a.rating || 4.9));
-    return result;
-  }, [clinics, sortBy, ratingFilter]);
-
-  const mapCenter = useMemo(() => {
-    if (selectedClinicForMap && selectedClinicForMap.latitude && selectedClinicForMap.longitude) {
-      return [Number(selectedClinicForMap.latitude), Number(selectedClinicForMap.longitude)] as [number, number];
-    }
-    if (userCoords) return [userCoords.lat, userCoords.lng] as [number, number];
-    const clinicWithCoords = clinics.find(c => c.latitude && c.longitude);
-    if (clinicWithCoords) {
-      return [Number(clinicWithCoords.latitude), Number(clinicWithCoords.longitude)] as [number, number];
-    }
-    return [37.9838, 23.7275] as [number, number]; // Athens center fallback
-  }, [userCoords, clinics, selectedClinicForMap]);
 
   useEffect(() => {
     dispatch(
@@ -195,219 +171,255 @@ export const Search: React.FC = () => {
     if (filters.query !== undefined) setQuery(filters.query);
     if (filters.location !== undefined) setLocation(filters.location);
     if (filters.category !== undefined) setCategory(filters.category);
-    if (filters.search_date !== undefined) setSearchDate(filters.search_date);
-    if (filters.search_time_window !== undefined) setSearchTimeWindow(filters.search_time_window);
-
+    
     const params = new URLSearchParams();
     Object.keys(filters).forEach(key => {
       if (filters[key]) params.set(key === 'query' ? 'q' : key, filters[key]);
     });
     setSearchParams(params);
-    setIsSearchExpanded(false);
+    setIsHeaderExpanded(false); // Auto-collapse on search
   };
 
-  const getDisplayDate = () => {
-    if (searchDate) {
-      return new Date(searchDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-    }
-    return "Any date";
-  };
+  const mapCenter = useMemo(() => {
+    if (selectedClinicForMap?.latitude) return [Number(selectedClinicForMap.latitude), Number(selectedClinicForMap.longitude)] as [number, number];
+    if (userCoords) return [userCoords.lat, userCoords.lng] as [number, number];
+    return [37.9838, 23.7275] as [number, number];
+  }, [userCoords, selectedClinicForMap]);
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex flex-col lg:flex-row w-full min-h-screen relative">
-        <div className={`flex flex-col min-w-0 transition-all duration-300 ${showDesktopMap ? 'lg:w-[55%] xl:w-[60%]' : 'w-full'}`}>
-          <div className="bg-white border-b border-gray-200 sticky top-[64px] z-40 shadow-sm w-full transition-all duration-300">
-            <div className="px-4 py-2.5 flex items-center justify-between gap-4">
-              <div
-                className={`flex-1 flex items-center gap-2 cursor-pointer transition-all ${!isSearchExpanded ? 'bg-gray-50/80 p-1.5 rounded-2xl hover:bg-gray-100 border border-gray-100' : ''}`}
-                onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
-              >
-                {!isSearchExpanded ? (
-                  <>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-xl shadow-sm border border-gray-100">
-                      <FaHospital className="text-lime-600 size-3" />
-                      <span className="text-[10px] font-black uppercase tracking-tight text-gray-900 truncate max-w-[120px]">
-                        {query || 'All treatments'}
-                      </span>
+    <div className="min-h-screen bg-[#FDFDFD] relative">
+      {/* Dark Elite Search Header */}
+      <header className={`${searchHeader(isHeaderExpanded)} relative z-20`}>
+        <div className="container mx-auto px-8 relative z-10">
+          <div className="flex flex-col lg:flex-row items-center gap-8 justify-between">
+            <div className="w-full lg:max-w-3xl">
+              <div className="flex items-center justify-between mb-8">
+                <h1 className="text-white text-2xl md:text-4xl font-black uppercase italic tracking-tighter leading-none">
+                   REFINING <span className="text-[#CBFF38]">YOUR SEARCH</span>
+                </h1>
+                <button 
+                  onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
+                  className="lg:hidden text-[#CBFF38]"
+                >
+                  {isHeaderExpanded ? <ChevronUp /> : <SearchIcon />}
+                </button>
+              </div>
+              
+              <AnimatePresence>
+                {isHeaderExpanded && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="bg-white/5 backdrop-blur-3xl p-6 rounded-[40px] border border-white/10 shadow-2xl">
+                      <SearchBar 
+                        initialFilters={{ query, location, category, search_date: searchDate }}
+                        onSearch={handleSearch}
+                        className="!bg-transparent !p-0 !shadow-none !border-none text-white search-bar-elite"
+                      />
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-xl shadow-sm border border-gray-100">
-                      <MapPin size={10} className="text-gray-400" />
-                      <span className="text-[10px] font-black uppercase tracking-tight text-gray-900 truncate max-w-[100px]">
-                        {location || 'Any area'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-xl shadow-sm border border-gray-100">
-                      <FaChevronDown size={8} className="text-gray-400" />
-                      <span className="text-[10px] font-black uppercase tracking-tight text-gray-900 whitespace-nowrap">
-                        {getDisplayDate()}
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <h2 className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none px-2">Modify Search</h2>
+                  </motion.div>
                 )}
-              </div>
-              <button
-                onClick={() => setIsSearchExpanded(!isSearchExpanded)}
-                className="text-[10px] font-black uppercase text-indigo-600 hover:text-indigo-800 tracking-widest px-2"
-              >
-                {isSearchExpanded ? 'Hide' : 'Change'}
-              </button>
+              </AnimatePresence>
             </div>
+            
+            <div className="hidden lg:flex flex-col items-end gap-4">
+                 <div className="flex items-center gap-3 text-white/40 text-[10px] font-black uppercase tracking-[0.2em] italic">
+                    <Sparkles size={12} className="text-[#CBFF38]" />
+                    Real-time Availability
+                 </div>
+                 <div className="flex gap-3">
+                   <button 
+                    onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
+                    className="flex items-center gap-2 bg-white/10 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest italic hover:bg-white/20 transition-all border border-white/10"
+                   >
+                      {isHeaderExpanded ? <ChevronUp size={14} /> : <SearchIcon size={14} />}
+                      {isHeaderExpanded ? "Hide Filters" : "Reveal Search"}
+                   </button>
+                   <button 
+                    onClick={() => setShowDesktopMap(!showDesktopMap)}
+                    className="flex items-center gap-2 bg-[#CBFF38] text-black px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest italic hover:bg-white transition-all shadow-xl"
+                   >
+                      {showDesktopMap ? <X size={14} /> : <MapIcon size={14} />}
+                      {showDesktopMap ? "Hide Map Panel" : "Show Map Panel"}
+                   </button>
+                 </div>
+            </div>
+          </div>
+        </div>
+      </header>
 
-            {isSearchExpanded && (
-              <div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-300">
-                <div className="flex flex-col md:flex-row items-center gap-4 justify-between">
-                  <div className="w-full md:w-auto flex-1">
-                    <SearchBar
-                      initialFilters={{ query, location, category, search_date: searchDate, search_time_window: searchTimeWindow }}
-                      onSearch={handleSearch}
-                      className="!p-2 !shadow-none border border-gray-200"
-                    />
-                  </div>
-                  <div className="hidden lg:flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      className="font-bold flex items-center gap-2 rounded-xl text-gray-700 hover:text-black border-gray-200"
-                      onClick={() => {
-                        setShowDesktopMap(!showDesktopMap);
-                        if (showDesktopMap) {
-                          setSelectedClinicForMap(null);
-                        }
-                      }}
+      {/* Meta Filters Bar - Fixed Cascade Layering */}
+      <section className="bg-white border-b border-gray-100 sticky top-[7.5rem] z-40 py-4 shadow-sm">
+        <div className="container mx-auto px-8">
+           <div className="flex items-center justify-between gap-6">
+              <div className="flex items-center gap-3">
+                 {/* Sort Filter */}
+                 <div className="relative">
+                    <button 
+                      onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
+                      className={filterPill(sortBy !== 'recommended')}
                     >
-                      {showDesktopMap ? <><FaList /> Hide map</> : <><FaMapMarkedAlt /> Show map</>}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+                      <Settings2 size={12} /> Sort: {sortBy === 'recommended' ? 'Recommended' : sortBy === 'price-asc' ? 'Low Price' : sortBy === 'price-desc' ? 'High Price' : sortBy} <ChevronDown size={10} />
+                    </button>
+                    <AnimatePresence>
+                      {openDropdown === 'sort' && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className={dropdownContent}>
+                          {(['recommended', 'price-asc', 'price-desc', 'rating', 'distance'] as const).map(opt => (
+                            <button key={opt} className={dropdownItem(sortBy === opt)} onClick={() => { setSortBy(opt); setOpenDropdown(null); }}>
+                              {opt === 'recommended' ? 'Recommended' : opt === 'price-asc' ? 'Lowest Price' : opt === 'price-desc' ? 'Highest Price' : opt === 'rating' ? 'Top Rated' : 'Distance'}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                 </div>
 
-          <div className="max-w-full px-4 pt-4 flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth">
-            {['All', 'Hair Removal', 'Injectables', 'Skin Care', 'Body', 'Surgery', 'Dental'].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  const val = cat === 'All' ? undefined : cat;
-                  setCategory(val);
-                  handleSearch({ category: val, query, location, search_date: searchDate, search_time_window: searchTimeWindow });
-                }}
-                className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border-2 ${((!category && cat === 'All') || category === cat)
-                    ? 'border-black bg-black text-white shadow-md'
-                    : 'border-gray-100 bg-white text-gray-400 hover:border-gray-300 hover:text-gray-600'
-                  }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+                 {/* Brands Filter */}
+                 <button className={filterPill(false)}>
+                    <Tag size={12} /> Brands
+                 </button>
 
-          <div className="max-w-full px-4 py-3 flex flex-wrap items-center gap-3 border-b border-gray-100 relative">
-            <div className="relative">
-              <button
-                onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-full border-2 text-[10px] font-black uppercase tracking-widest transition-all ${sortBy !== 'recommended' ? 'border-lime-400 bg-lime-50 text-lime-900' : 'border-gray-100 text-gray-400 hover:border-gray-300 hover:text-gray-600'}`}
-              >
-                Sort: {sortBy === 'recommended' ? 'Recommended' : sortBy === 'distance' ? 'Closest' : sortBy === 'price-asc' ? 'Price: Low' : sortBy === 'price-desc' ? 'Price: High' : 'Rating'} <FaChevronDown size={8} />
-              </button>
-              {openDropdown === 'sort' && (
-                <div className="absolute top-10 left-0 bg-white border border-gray-100 rounded-2xl shadow-2xl w-48 py-3 z-50">
-                  {(['recommended', 'distance', 'price-asc', 'price-desc', 'rating'] as const).map(option => (
-                    <button key={option}
-                      className={`block w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 ${(sortBy === option) ? 'text-lime-700' : 'text-gray-400'}`}
-                      onClick={() => { setSortBy(option); setOpenDropdown(null); }}
+                 {/* Instant Offer Filter */}
+                 <button className={filterPill(false)}>
+                    <Sparkles size={12} /> Instant Offer
+                 </button>
+
+                 {/* Price Filter */}
+                 <div className="relative">
+                    <button 
+                      onClick={() => setOpenDropdown(openDropdown === 'price' ? null : 'price')}
+                      className={filterPill(priceFilter !== 'any')}
                     >
-                      {option === 'recommended' ? 'Recommended' : option === 'distance' ? 'Closest to you' : option === 'price-asc' ? 'Price: Low' : option === 'price-desc' ? 'Price: High' : 'Highest Rating'}
+                      Price Range {priceFilter !== 'any' && `(${priceFilter})`} <ChevronDown size={10} />
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <AnimatePresence>
+                      {openDropdown === 'price' && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className={dropdownContent}>
+                          {['any', 'under-50', '50-100', 'over-100'].map(p => (
+                            <button key={p} className={dropdownItem(priceFilter === p)} onClick={() => { setPriceFilter(p as any); setOpenDropdown(null); }}>
+                              {p === 'any' ? 'Any Price' : p === 'under-50' ? 'Under €50' : p === '50-100' ? '€50 - €100' : 'Over €100'}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                 </div>
 
-            <div className="relative">
-              <button
-                onClick={() => setOpenDropdown(openDropdown === 'price' ? null : 'price')}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-full border-2 text-[10px] font-black uppercase tracking-widest transition-all ${priceFilter !== 'any' ? 'border-lime-400 bg-lime-50 text-lime-900' : 'border-gray-100 text-gray-400 hover:border-gray-300 hover:text-gray-600'}`}
+                 {/* Rating Filter */}
+                 <div className="relative">
+                    <button 
+                      onClick={() => setOpenDropdown(openDropdown === 'rating' ? null : 'rating')}
+                      className={filterPill(ratingFilter !== 'any')}
+                    >
+                      Rating {ratingFilter !== 'any' && `(4.5+)`} <ChevronDown size={10} />
+                    </button>
+                    <AnimatePresence>
+                      {openDropdown === 'rating' && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className={dropdownContent}>
+                          {['any', '4.5-plus', '4.0-plus'].map(r => (
+                            <button key={r} className={dropdownItem(ratingFilter === r)} onClick={() => { setRatingFilter(r as any); setOpenDropdown(null); }}>
+                               {r === 'any' ? 'Any Rating' : r === '4.5-plus' ? '4.5 Stars & Up' : '4.0 Stars & Up'}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                 </div>
+              </div>
+              
+              <div className="flex items-center gap-4 border-l border-gray-100 pl-6 h-8 shrink-0">
+                  <button 
+                    onClick={() => setActiveTab('clinics')}
+                    className={`text-[10px] font-black uppercase tracking-[0.1em] italic transition-all ${activeTab === 'clinics' ? 'text-black border-b-2 border-[#CBFF38]' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    Clinical Results
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('treatments')}
+                    className={`text-[10px] font-black uppercase tracking-[0.1em] italic transition-all ${activeTab === 'treatments' ? 'text-black border-b-2 border-[#CBFF38]' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    Treatments
+                  </button>
+              </div>
+           </div>
+        </div>
+      </section>
+
+      <div className="flex w-full relative">
+        <main className={`transition-all duration-500 flex-1 p-8 relative ${showDesktopMap ? 'lg:w-[60%] xl:w-[65%]' : 'w-full'}`}>
+          <div className="max-w-6xl mx-auto">
+            {/* Featured Hero Result */}
+            {(query?.toLowerCase().includes('botox') || category?.toLowerCase() === 'injectables') && clinics.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={featuredResultCard}
               >
-                Price {priceFilter !== 'any' && `(${priceFilter})`} <FaChevronDown size={8} />
-              </button>
-              {openDropdown === 'price' && (
-                <div className="absolute top-10 left-0 bg-white border border-gray-100 rounded-2xl shadow-2xl w-40 py-3 z-50">
-                  {['any', 'under-50', '50-100', 'over-100'].map(p => (
-                    <button key={p} className={`block w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 ${priceFilter === p ? 'text-lime-700' : 'text-gray-400'}`} onClick={() => { setPriceFilter(p as any); setOpenDropdown(null); }}>
-                      {p === 'any' ? 'Any price' : p.replace('-', ' ')}
-                    </button>
-                  ))}
+                <div className="lg:w-[45%] h-[300px] lg:h-auto overflow-hidden relative">
+                   <img src={BotoxElite} className="w-full h-full object-cover transition-all duration-700" alt="Botox" />
+                   <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-transparent opacity-60"></div>
                 </div>
-              )}
-            </div>
-
-            {searchDate && (
-              <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border-2 border-lime-500 bg-lime-50 text-[10px] font-black uppercase tracking-widest text-lime-800">
-                Available on {getDisplayDate()}
-              </button>
+                <div className="lg:w-[55%] p-10 flex flex-col justify-center">
+                   <div className="flex items-center gap-2 mb-4">
+                      <div className="flex text-[#CBFF38]">
+                         {[1,2,3,4,5].map(i => <Star key={i} size={14} fill="currentColor" />)}
+                      </div>
+                      <span className="text-white/40 text-[10px] font-black uppercase tracking-widest italic">384 Patient Reviews</span>
+                   </div>
+                   <h2 className="text-white text-4xl font-black uppercase italic tracking-tighter mb-4">
+                      Botox <span className="text-[#CBFF38]">Therapy</span>
+                   </h2>
+                   <p className="text-white/70 text-sm font-bold leading-relaxed mb-8 italic">
+                      Achieve smooth, youthful skin with precision injections. Botox is ideal for reducing expression lines with results lasting up to 6 months. Restore your natural radiance today.
+                   </p>
+                   
+                   <ul className="space-y-3 mb-10">
+                      <li className="flex items-center gap-3 text-white/50 text-[10px] font-black uppercase tracking-widest italic">
+                         <div className="size-2 bg-[#CBFF38] rounded-full"></div> Eliminates facial wrinkles
+                      </li>
+                      <li className="flex items-center gap-3 text-white/50 text-[10px] font-black uppercase tracking-widest italic">
+                         <div className="size-2 bg-[#CBFF38] rounded-full"></div> Reduction of forehead lines 
+                      </li>
+                      <li className="flex items-center gap-3 text-white/50 text-[10px] font-black uppercase tracking-widest italic">
+                         <div className="size-2 bg-[#CBFF38] rounded-full"></div> Duration of action 4-6 months
+                      </li>
+                   </ul>
+                   
+                   <button className="h-16 bg-[#CBFF38] text-black px-12 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] italic hover:bg-white transition-all shadow-xl self-start">
+                      Discover Top Centers <ArrowRight size={14} className="inline-block ml-2" />
+                   </button>
+                </div>
+              </motion.div>
             )}
-          </div>
 
-          <div className="p-4 md:p-6 lg:p-8 flex-1">
-            <div className="mb-6">
-              <h1 className="text-2xl font-black text-gray-900 leading-tight">
-                {query || category ? `${query || category}${location ? ` in ${location}` : ''}` : 'Top Clinics & Treatments'}
-              </h1>
-              <p className="text-gray-500 text-sm mt-1">{total} venues found</p>
+            <div className="flex items-center justify-between mb-8">
+               <div>
+                  <h3 className="text-[20px] font-black uppercase italic tracking-tight text-gray-900 leading-none">
+                    {total} <span className="text-gray-400">Results for</span> {query || category || 'Aesthetic Venues'}
+                  </h3>
+                  {location && <p className="text-[10px] font-bold text-lime-600 uppercase tracking-[0.2em] mt-2 italic">Operating in {location}, International</p>}
+               </div>
             </div>
 
             {isLoading ? (
-              <div className="space-y-6">
-                {[1, 2, 3].map(i => <div key={i} className="h-[250px] bg-gray-50 animate-pulse rounded-2xl border border-gray-100"></div>)}
-              </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {[1, 2, 4].map(i => <div key={i} className="h-[350px] bg-gray-50 animate-pulse rounded-[32px] border border-gray-100"></div>)}
+               </div>
             ) : (
-              <div className="flex flex-col gap-6">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-0">
-                  <div className="flex gap-8">
-                    <button
-                      onClick={() => setActiveTab('treatments')}
-                      className={`pb-4 text-sm font-black uppercase tracking-widest transition-all relative ${activeTab === 'treatments' ? 'text-gray-900' : 'text-gray-400'}`}
-                    >
-                      Treatments <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full ml-1">{filteredTreatments.length}</span>
-                      {activeTab === 'treatments' && <span className="absolute bottom-0 left-0 w-full h-[3px] bg-lime-500 rounded-t-lg"></span>}
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('clinics')}
-                      className={`pb-4 text-sm font-black uppercase tracking-widest transition-all relative ${activeTab === 'clinics' ? 'text-gray-900 font-bold' : 'text-gray-400 font-medium hover:text-gray-600'}`}
-                    >
-                      Clinics <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full ml-1">{filteredClinics.length}</span>
-                      {activeTab === 'clinics' && <span className="absolute bottom-0 left-0 w-full h-[3px] bg-lime-500 rounded-t-lg"></span>}
-                    </button>
-                  </div>
-                  {activeTab === 'clinics' && sortBy === 'distance' && !userCoords && !location && (
-                    <div className="mb-4 flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-xl animate-in slide-in-from-right-4 duration-500">
-                      <MapPin size={12} className="text-indigo-600 animate-bounce" />
-                      <span className="text-[10px] font-black uppercase italic text-indigo-700 tracking-tight">Enter your area to sort by distance</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-6">
-                  {activeTab === 'treatments' ? (
-                    <div className="space-y-6">
-                      {filteredTreatments.map((t: any) => (
-                        <TreatmentCard
-                          key={t.id}
-                          treatment={t}
-                          onSelect={() => {
-                            navigate(`/treatment/${t.id}`);
-                          }}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {filteredClinics.map((c, idx) => (
-                        <ClinicCard
-                          key={c.id}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <AnimatePresence>
+                  {activeTab === 'clinics' ? (
+                     clinics.map((c, idx) => (
+                      <motion.div 
+                        key={c.id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: idx * 0.05 }}
+                      >
+                         <ClinicCard
                           clinic={c}
                           index={idx}
                           searchQuery={query}
@@ -418,54 +430,90 @@ export const Search: React.FC = () => {
                             setShowDesktopMap(true);
                           }}
                         />
-                      ))}
-                    </div>
+                      </motion.div>
+                    ))
+                  ) : (
+                    treatments.map((t: any, idx) => (
+                      <motion.div 
+                        key={t.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: idx * 0.05 }}
+                      >
+                        <TreatmentCard 
+                          treatment={t}
+                          onSelect={() => navigate(`/treatment/${t.id}`)}
+                        />
+                      </motion.div>
+                    ))
                   )}
-                </div>
+                </AnimatePresence>
               </div>
             )}
           </div>
-        </div>
+        </main>
 
+        {/* Dynamic Map Panel */}
         {showDesktopMap && (
-          <aside className="hidden lg:block lg:w-[45%] xl:w-[40%] bg-gray-100 h-[calc(100vh-112px)] sticky top-[112px] border-l border-gray-200 animate-in slide-in-from-right duration-300">
-            <div className="relative h-full">
-              <button
-                onClick={() => {
-                  setShowDesktopMap(false);
-                  setSelectedClinicForMap(null);
-                }}
-                className="absolute top-4 left-4 z-[1000] bg-white size-10 rounded-full shadow-xl flex items-center justify-center text-gray-400 hover:text-black hover:scale-110 transition-all border border-gray-100"
+          <aside className="hidden lg:block lg:w-[40%] xl:w-[35%] h-[calc(100vh-60px)] sticky top-[60px] bg-gray-100 border-l border-gray-100 animate-in slide-in-from-right duration-500 overflow-hidden">
+             <div className="relative h-full w-full">
+                <div className="absolute top-6 left-6 z-[1000] flex gap-2">
+                   <button 
+                     onClick={() => setShowDesktopMap(false)}
+                     className="bg-white/90 backdrop-blur-md size-10 rounded-2xl shadow-2xl flex items-center justify-center text-gray-900 border border-white/20 hover:scale-110 transition-transform"
+                   >
+                     <X size={18} />
+                   </button>
+                </div>
+                
+                <div className="absolute top-6 right-6 z-[1000]">
+                   <div className="bg-black/95 text-white p-4 rounded-2xl shadow-2xl backdrop-blur-md border border-white/10 flex items-center gap-4">
+                      <div className="size-10 bg-[#CBFF38] rounded-xl flex items-center justify-center text-black">
+                         <SearchIcon size={18} />
+                      </div>
+                      <div>
+                         <p className="text-[8px] font-black text-white/50 uppercase tracking-widest leading-none mb-1">Interactive</p>
+                         <p className="text-[10px] font-black uppercase italic tracking-widest">Map Radar</p>
+                      </div>
+                   </div>
+                </div>
+
+                <ClinicMap 
+                  clinics={selectedClinicForMap ? [selectedClinicForMap] : clinics}
+                  center={mapCenter}
+                  zoom={selectedClinicForMap ? 15 : 13}
+                />
+             </div>
+          </aside>
+        )}
+      </div>
+
+      {/* Mobile Map Toggle */}
+      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 lg:hidden">
+         <button 
+          onClick={() => setShowMobileMap(true)}
+          className="bg-black text-[#CBFF38] h-14 px-10 rounded-full shadow-2xl flex items-center gap-4 font-black text-[11px] uppercase tracking-widest italic"
+         >
+           <MapIcon size={18} /> View Radar Map
+         </button>
+      </div>
+
+      {showMobileMap && (
+        <div className="fixed inset-0 bg-white z-[100] flex flex-col">
+           <div className="p-6 border-b flex justify-between items-center bg-[#121212] text-white">
+              <h3 className="font-black text-sm uppercase italic tracking-widest">Search Radar</h3>
+              <button 
+                onClick={() => setShowMobileMap(false)} 
+                className="bg-white/10 size-10 rounded-xl flex items-center justify-center text-[#CBFF38]"
               >
                 <X size={20} />
               </button>
-              <ClinicMap
-                clinics={selectedClinicForMap ? [selectedClinicForMap] : clinics}
-                center={mapCenter}
-                zoom={selectedClinicForMap ? 15 : 13}
-              />
-            </div>
-          </aside>
-        )}
-
-        <div className="fixed bottom-0 left-0 w-full p-4 z-50 lg:hidden pointer-events-none flex justify-center">
-          <button onClick={() => setShowMobileMap(true)} className="pointer-events-auto bg-black text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 font-bold transform transition active:scale-95">
-            <FaMap /> Map
-          </button>
-        </div>
-
-        {showMobileMap && (
-          <div className="fixed inset-0 bg-white z-[70] flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-black text-lg">Map View</h3>
-              <button onClick={() => setShowMobileMap(false)} className="bg-gray-100 px-4 py-2 rounded-full font-bold">Close</button>
-            </div>
-            <div className="flex-1 relative">
+           </div>
+           <div className="flex-1 relative">
               <ClinicMap clinics={clinics} center={mapCenter} zoom={13} />
-            </div>
-          </div>
-        )}
-      </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

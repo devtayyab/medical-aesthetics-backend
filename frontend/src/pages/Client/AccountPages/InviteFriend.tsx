@@ -2,32 +2,48 @@ import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { css } from "@emotion/css";
-import { FaChevronRight, FaChevronDown, FaChevronUp, FaCopy, FaShareNodes, FaGift, FaUsers, FaArrowRight } from "react-icons/fa6";
+import { ChevronRight, Copy, Share2, Gift, Users, ArrowRight, Minus, Plus, Sparkles, CheckCircle } from "lucide-react";
 import type { RootState } from "@/store";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Use the ultra-premium elite aesthetic hero image
+import HeroBg from "@/assets/Elite_Aesthetic_Hero.png";
+
 const sectionStyles = css`
   min-height: 100vh;
-  background: #FDFDFD;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(203, 255, 56, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(203, 255, 56, 0.05) 0px, transparent 50%);
-  padding-bottom: 80px;
+  background: radial-gradient(circle at top right, rgba(203, 255, 56, 0.05), transparent), #FFFFFF;
 `;
 
-const premiumCard = css`
+const heroSection = css`
+  position: relative;
+  height: 520px;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 80px;
+  overflow: hidden;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.2) 50%, transparent 90%);
+    z-index: 1;
+  }
+`;
+
+const glassCard = css`
   background: white;
-  border: 1px solid rgba(241, 245, 249, 1);
-  border-radius: 32px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.02);
-  padding: 40px;
+  border-radius: 40px;
+  box-shadow: 0 50px 100px rgba(0, 0, 0, 0.04);
+  border: 1px solid #F1F5F9;
   position: relative;
   overflow: hidden;
 `;
 
 export const InviteFriend: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
-  const referralCode = (user as any)?.referralCode || "GET5NOW";
+  const referralCode = (user as any)?.referralCode || "ELITE5";
   const inviteLink = `${window.location.origin}/register?ref=${referralCode}`;
 
   const [faqOpen, setFaqOpen] = useState<number | null>(0);
@@ -60,148 +76,165 @@ export const InviteFriend: React.FC = () => {
 
   return (
     <div className={sectionStyles}>
-      {/* Visual Header */}
-      <div className="bg-[#1A1A1A] text-white pt-16 pb-24 px-6 relative overflow-hidden">
-        <div className="max-w-5xl mx-auto relative z-10 text-center md:text-left">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-            <div className="max-w-2xl">
-              <div className="flex items-center justify-center md:justify-start gap-4 mb-4 text-[#CBFF38] text-[10px] font-black uppercase tracking-[0.2em] italic">
-                <Link to="/my-account" className="hover:opacity-80 transition-opacity">Account</Link>
-                <FaChevronRight size={10} />
-                <span>Referral Program</span>
-              </div>
-              <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-[0.9] mb-4">
-                Invite Friends <br className="hidden md:block" /> <span className="text-[#CBFF38]">Earn €5</span>
-              </h1>
-              <p className="text-gray-400 font-medium text-lg max-w-lg mx-auto md:mx-0">
-                Share the beauty with your inner circle. Both of you get €5 when they book their first treatment.
-              </p>
+      {/* Immersive Hero */}
+      <div className={heroSection}>
+        <div className="absolute inset-0 z-0">
+          <img
+            src={HeroBg}
+            style={{ objectPosition: 'center 40%' }}
+            className="w-full h-full object-cover"
+            alt="Referral Hero"
+          />
+        </div>
+
+        <div className="container mx-auto px-8 relative z-10">
+          <div className="max-w-4xl">
+            <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] italic">
+              <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
+              <ChevronRight size={12} className="text-lime-500" />
+              <span className="text-lime-500">REFERRAL PROGRAM</span>
             </div>
-            
-            <div className="hidden lg:block relative">
-               <div className="size-48 rounded-[40px] bg-[#CBFF38] flex items-center justify-center rotate-12 shadow-[0_0_50px_rgba(203,255,56,0.2)]">
-                  <FaGift size={64} className="text-black" />
-               </div>
-               <div className="absolute -top-4 -right-4 size-20 rounded-2xl bg-white flex items-center justify-center rotate-[-12deg] shadow-xl">
-                  <FaUsers size={24} className="text-black" />
-               </div>
-            </div>
+
+            <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
+              INVITE FRIENDS <span className="text-[#CBFF38]">EARN €5</span>
+            </h1>
+
+            <p className="text-gray-500 mt-6 font-bold text-lg max-w-lg leading-relaxed italic">
+              Share the excellence with your inner circle. Both of you receive a €5 credit when they complete their first aesthetic treatment.
+            </p>
           </div>
         </div>
-        <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#CBFF38]/10 to-transparent pointer-events-none" />
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 -mt-10 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          
+      <div className="max-w-6xl mx-auto px-8 relative z-20 -mt-[170px]">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-20">
+
           {/* Main Action Card */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${premiumCard} lg:col-span-3 !p-10`}
+            className={`${glassCard} lg:col-span-3`}
           >
-            <div className="mb-10">
-               <h3 className="text-2xl font-black uppercase italic text-gray-900 mb-2">Your Personal Link</h3>
-               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest italic">Share this link to start earning credits</p>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <div className="h-16 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl px-6 flex items-center justify-between group hover:border-[#CBFF38] transition-colors">
-                <code className="text-sm font-black text-gray-600 truncate">{inviteLink}</code>
-                <button 
-                  onClick={copyToClipboard}
-                  className="text-gray-400 hover:text-black transition-colors"
-                >
-                  <FaCopy size={18} />
-                </button>
+            <div className="p-12 md:p-16">
+              <div className="mb-12 flex items-center justify-between">
+                <div>
+                  <h3 className="text-3xl font-black uppercase italic text-gray-900 mb-2">Personal Link</h3>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest italic leading-relaxed">Your unique gateway to shared rewards</p>
+                </div>
+                <div className="size-16 rounded-2xl bg-[#CBFF38] flex items-center justify-center text-black">
+                  <Gift size={28} />
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={copyToClipboard}
-                  className={`h-14 rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-xs tracking-widest transition-all ${copied ? 'bg-black text-[#CBFF38]' : 'bg-[#CBFF38] text-black hover:bg-lime-400'}`}
-                >
-                  <FaCopy /> {copied ? 'Copied' : 'Copy Link'}
-                </button>
-                <button 
-                  className="h-14 rounded-2xl bg-white border-2 border-gray-200 text-gray-900 hover:border-black flex items-center justify-center gap-3 font-black uppercase text-xs tracking-widest transition-all"
-                >
-                  <FaShareNodes /> Share
-                </button>
+              <div className="flex flex-col gap-6">
+                <div className="h-20 bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl px-8 flex items-center justify-between group hover:border-[#CBFF38] transition-all">
+                  <code className="text-xs font-black text-gray-600 truncate tracking-tight">{inviteLink}</code>
+                  <button
+                    onClick={copyToClipboard}
+                    className="text-gray-300 hover:text-black transition-colors"
+                  >
+                    <Copy size={20} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    onClick={copyToClipboard}
+                    className={`h-16 rounded-[20px] flex items-center justify-center gap-3 font-black uppercase text-xs tracking-[0.2em] transition-all shadow-xl active:scale-95 ${copied ? 'bg-[#CBFF38] text-black' : 'bg-black text-[#CBFF38] hover:bg-gray-900'}`}
+                  >
+                    {copied ? <CheckCircle size={18} /> : <Copy size={18} />}
+                    {copied ? 'Link Copied' : 'Copy Invitation'}
+                  </button>
+                  <button
+                    className="h-16 rounded-[20px] bg-white border-2 border-gray-100 text-gray-900 hover:border-black flex items-center justify-center gap-3 font-black uppercase text-xs tracking-[0.2em] transition-all active:scale-95"
+                  >
+                    <Share2 size={18} /> Share Dashboard
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-16 pt-12 border-t border-gray-100 grid grid-cols-3 gap-8">
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 italic">Total Invited</p>
+                  <div className="text-4xl font-black text-gray-900 italic">0</div>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 italic">Pending</p>
+                  <div className="text-4xl font-black text-gray-900 italic">0</div>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 italic">Total Earned</p>
+                  <div className="text-4xl font-black text-[#CBFF38] italic">€0</div>
+                </div>
               </div>
             </div>
 
-            <div className="mt-12 pt-10 border-t border-gray-100 grid grid-cols-3 gap-8">
-               <div className="text-center">
-                  <div className="text-2xl font-black text-gray-900 leading-none mb-1">0</div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Invited</p>
-               </div>
-               <div className="text-center">
-                  <div className="text-2xl font-black text-gray-900 leading-none mb-1">0</div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pending</p>
-               </div>
-               <div className="text-center">
-                  <div className="text-2xl font-black text-lime-600 leading-none mb-1">€0</div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Earned</p>
-               </div>
+            {/* Visual accent */}
+            <div className="absolute right-0 bottom-0 opacity-5 -mb-8 -mr-8">
+              <Users size={200} />
             </div>
           </motion.div>
 
           {/* How it Works / FAQ */}
-          <div className="lg:col-span-2 space-y-6">
-             <div className={`${premiumCard} !p-8 bg-gray-50 border-gray-100`}>
-                <h4 className="text-lg font-black uppercase italic text-gray-900 mb-6 flex items-center gap-3">
-                   <FaUsers className="text-[#CBFF38]" /> How it Works
+          <div className="lg:col-span-2 space-y-8">
+            <div className={`${glassCard} p-12 bg-gray-50 border-gray-100 relative overflow-hidden`}>
+              <div className="relative z-10">
+                <h4 className="text-xl font-black uppercase italic text-gray-900 mb-8 flex items-center gap-3">
+                  Process Excellence
                 </h4>
-                <div className="space-y-6">
-                   {[
-                     { step: "01", text: "Invite a friend using your unique link." },
-                     { step: "02", text: "They book and complete their first visit." },
-                     { step: "03", text: "You both get €5 added to your reward balance." }
-                   ].map((s, i) => (
-                     <div key={i} className="flex gap-4">
-                        <span className="text-[10px] font-black text-[#CBFF38] italic shrink-0 mt-1">{s.step}</span>
-                        <p className="text-xs font-bold text-gray-600 leading-relaxed uppercase tracking-tight italic">{s.text}</p>
-                     </div>
-                   ))}
-                </div>
-             </div>
-
-             <div className="space-y-3">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 px-2 italic">Common Questions</h4>
-                <div className="bg-white rounded-[24px] border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-                  {faqs.map((faq, idx) => (
-                    <div key={idx} className="group">
-                      <button 
-                        onClick={() => toggleFAQ(idx)}
-                        className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50/50 transition-colors"
-                      >
-                        <span className="text-[11px] font-black uppercase italic text-gray-900">{faq.q}</span>
-                        {faqOpen === idx ? <FaChevronUp size={10} /> : <FaChevronDown size={10} />}
-                      </button>
-                      <AnimatePresence>
-                        {faqOpen === idx && (
-                          <motion.div 
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="px-6 pb-4 overflow-hidden"
-                          >
-                             <p className="text-xs font-bold text-gray-400 leading-relaxed uppercase tracking-tighter italic">{faq.a}</p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                <div className="space-y-8">
+                  {[
+                    { step: "01", text: "Invite a friend with your link." },
+                    { step: "02", text: "They complete their first treatment." },
+                    { step: "03", text: "Receive €5 automatically per friend." }
+                  ].map((s, i) => (
+                    <div key={i} className="flex gap-5">
+                      <span className="text-[10px] font-black text-[#CBFF38] bg-black size-6 rounded-full flex items-center justify-center italic shrink-0">{s.step}</span>
+                      <p className="text-[11px] font-black text-gray-600 uppercase tracking-wide leading-tight mt-1 italic">{s.text}</p>
                     </div>
                   ))}
                 </div>
-             </div>
+              </div>
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <Sparkles size={32} />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 px-2 italic">Common Questions</h4>
+              <div className="bg-white rounded-[32px] border border-gray-100 divide-y divide-gray-50 overflow-hidden shadow-sm">
+                {faqs.map((faq, idx) => (
+                  <div key={idx} className="group">
+                    <button
+                      onClick={() => toggleFAQ(idx)}
+                      className="w-full flex items-center justify-between px-8 py-6 text-left hover:bg-gray-50/50 transition-colors"
+                    >
+                      <span className="text-[11px] font-black uppercase italic text-gray-900 tracking-tight">{faq.q}</span>
+                      {faqOpen === idx ? <Minus size={14} className="text-[#CBFF38]" /> : <Plus size={14} className="text-gray-300" />}
+                    </button>
+                    <AnimatePresence>
+                      {faqOpen === idx && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="px-8 pb-6 overflow-hidden"
+                        >
+                          <p className="text-xs font-bold text-gray-400 leading-relaxed uppercase tracking-tighter italic">{faq.a}</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-12 text-center">
-            <Link to="/rewards" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-colors">
-               View Reward Balances <FaArrowRight />
-            </Link>
+        <div className="pb-20 text-center">
+          <Link to="/rewards" className="inline-flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-black transition-all hover:gap-4">
+            View All Rewards <ArrowRight size={14} className="text-[#CBFF38]" />
+          </Link>
         </div>
       </div>
     </div>
