@@ -26,6 +26,8 @@ export interface ClientState {
   searchFilters: SearchFilters;
   hasMore: boolean;
   total: number;
+  totalClinics: number;
+  totalTreatments: number;
   holdId?: string; // Added to store hold ID
 }
 
@@ -44,6 +46,8 @@ const initialState: ClientState = {
   searchFilters: {},
   hasMore: true,
   total: 0,
+  totalClinics: 0,
+  totalTreatments: 0,
   holdId: undefined,
 };
 
@@ -339,6 +343,8 @@ const clientSlice = createSlice({
         state.treatments = action.payload.treatments || [];
         state.searchServices = action.payload.services || []; // Legacy compatibility
         state.total = action.payload.total || 0;
+        state.totalClinics = action.payload.totalClinics || 0;
+        state.totalTreatments = action.payload.totalTreatments || 0;
         state.hasMore = action.payload.hasMore || false;
       })
       .addCase(searchClinics.rejected, (state, action) => {

@@ -14,7 +14,7 @@ export interface AuthState {
 const initialState: AuthState = {
   user: null,
   accessToken: null,
-  refreshToken: localStorage.getItem("refreshToken") || null,
+  refreshToken: sessionStorage.getItem("refreshToken") || null,
   isAuthenticated: false, // Changed to false to avoid assuming until restoreSession succeeds
   isLoading: false,
   error: null,
@@ -29,7 +29,7 @@ export const login = createAsyncThunk(
     try {
       const response = await authAPI.login(email, password);
       console.log("Login success, response:", response.data);
-      localStorage.setItem("refreshToken", response.data.refreshToken);
+      sessionStorage.setItem("refreshToken", response.data.refreshToken);
       console.log(
         "Login: Stored refreshToken:",
         response.data.refreshToken.substring(0, 20) + "..."
@@ -57,7 +57,7 @@ export const register = createAsyncThunk(
     try {
       const response = await authAPI.register(userData);
       console.log("Register success, response:", response.data);
-      localStorage.setItem("refreshToken", response.data.refreshToken);
+      sessionStorage.setItem("refreshToken", response.data.refreshToken);
       console.log(
         "Register: Stored refreshToken:",
         response.data.refreshToken.substring(0, 20) + "..."
@@ -84,7 +84,7 @@ export const logout = createAsyncThunk(
         error.response?.data || error.message
       );
     }
-    localStorage.removeItem("refreshToken");
+    sessionStorage.removeItem("refreshToken");
     console.log("Logout: Removed refreshToken from localStorage");
     return {};
   }
@@ -147,15 +147,15 @@ export const restoreSession = createAsyncThunk(
   async (_, { getState, dispatch, rejectWithValue }) => {
     const state = getState() as { auth: AuthState };
     const refreshToken =
-      state.auth.refreshToken || localStorage.getItem("refreshToken");
+      state.auth.refreshToken || sessionStorage.getItem("refreshToken");
     console.log(
       "restoreSession: state.auth.refreshToken:",
       refreshToken ? `${refreshToken.substring(0, 20)}...` : "null"
     );
     console.log(
       "restoreSession: localStorage.refreshToken:",
-      localStorage.getItem("refreshToken")
-        ? `${localStorage.getItem("refreshToken")!.substring(0, 20)}...`
+      sessionStorage.getItem("refreshToken")
+        ? `${sessionStorage.getItem("refreshToken")!.substring(0, 20)}...`
         : "null"
     );
     console.log(
@@ -172,7 +172,7 @@ export const restoreSession = createAsyncThunk(
       const response = await authAPI.refreshToken(refreshToken);
       console.log("restoreSession success, response:", response.data);
       if (response.data.refreshToken) {
-        localStorage.setItem("refreshToken", response.data.refreshToken);
+        sessionStorage.setItem("refreshToken", response.data.refreshToken);
         console.log(
           "restoreSession: Stored new refreshToken:",
           response.data.refreshToken.substring(0, 20) + "..."
@@ -190,7 +190,7 @@ export const restoreSession = createAsyncThunk(
       );
       if (error.response?.status === 401) {
         dispatch(logout());
-        localStorage.removeItem("refreshToken");
+        sessionStorage.removeItem("refreshToken");
         console.log("restoreSession: 401 error, cleared session");
       }
       return rejectWithValue(
@@ -214,7 +214,7 @@ const authSlice = createSlice({
       state.accessToken = action.payload.accessToken;
       if (action.payload.refreshToken) {
         state.refreshToken = action.payload.refreshToken;
-        localStorage.setItem("refreshToken", action.payload.refreshToken);
+        sessionStorage.setItem("refreshToken", action.payload.refreshToken);
         console.log(
           "setTokens: Stored new refreshToken:",
           action.payload.refreshToken.substring(0, 20) + "..."
@@ -323,7 +323,7 @@ const authSlice = createSlice({
             state.accessToken = null;
             state.refreshToken = null;
             state.isAuthenticated = false;
-            localStorage.removeItem("refreshToken");
+            sessionStorage.removeItem("refreshToken");
             console.log(
               "restoreSession.rejected: 401/Invalid error, cleared session"
             );

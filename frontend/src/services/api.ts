@@ -110,7 +110,7 @@ api.interceptors.response.use(
 
       const state = store.getState();
       const refreshToken =
-        state.auth.refreshToken || localStorage.getItem("refreshToken");
+        state.auth.refreshToken || sessionStorage.getItem("refreshToken");
       if (refreshToken) {
         try {
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
