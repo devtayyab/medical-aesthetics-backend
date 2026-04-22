@@ -127,49 +127,49 @@ export class ClinicsService {
       clinicQb.orderBy('clinic.createdAt', 'DESC');
     }
 
-    const treatmentQb = this.treatmentsRepository.createQueryBuilder('treatment')
-      .leftJoinAndSelect('treatment.offerings', 'offering')
-      .leftJoinAndSelect('offering.clinic', 'clinic')
-      .where('treatment.isActive = :isActive AND treatment.status = :status', {
-        isActive: true,
-        status: TreatmentStatus.APPROVED
+    const serviceQb = this.servicesRepository.createQueryBuilder('service')
+      .leftJoinAndSelect('service.treatment', 'treatment')
+      .leftJoinAndSelect('service.clinic', 'clinic')
+      .where('service.isActive = :sActive AND clinic.isActive = :cActive', {
+        sActive: true,
+        cActive: true
       });
 
-    if (params.search_date) {
-      const searchDate = new Date(params.search_date);
-      const dayName = searchDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-      treatmentQb.andWhere(
-        `(clinic.id IS NULL OR CAST(clinic.businessHours->:dayName->>'isOpen' AS BOOLEAN) = true)`,
-        { dayName }
-      );
-    }
-
     if (params.search) {
-      treatmentQb.andWhere(
-        '(treatment.name ILIKE :search OR treatment.shortDescription ILIKE :search OR treatment.fullDescription ILIKE :search)',
+      serviceQb.andWhere(
+        '(treatment.name ILIKE :search OR treatment.shortDescription ILIKE :search OR clinic.name ILIKE :search)',
         { search: `%${params.search}%` }
       );
     }
 
     if (params.category) {
-      treatmentQb.andWhere('treatment.category = :category', { category: params.category });
+      serviceQb.andWhere('treatment.category = :category', { category: params.category });
     }
 
     if (params.location) {
-      treatmentQb.andWhere(
-        '(clinic.id IS NULL OR (clinic.address->>\'city\' ILIKE :location OR clinic.address->>\'state\' ILIKE :location))',
+      serviceQb.andWhere(
+        '(clinic.address->>\'city\' ILIKE :location OR clinic.address->>\'state\' ILIKE :location)',
         { location: `%${params.location}%` }
       );
     }
 
+    if (params.search_date) {
+      const searchDate = new Date(params.search_date);
+      const dayName = searchDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      serviceQb.andWhere(
+        `CAST(clinic.businessHours->:dayName->>'isOpen' AS BOOLEAN) = true`,
+        { dayName }
+      );
+    }
+
     if (lat && lng) {
-      treatmentQb.addSelect(
+      serviceQb.addSelect(
         `(6371 * acos(cos(radians(:lat)) * cos(radians(clinic.latitude)) * cos(radians(clinic.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(clinic.latitude))))`,
         'clinic_distance'
       );
-      treatmentQb.setParameters({ lat, lng });
-      treatmentQb.orderBy('CASE WHEN clinic.latitude IS NULL OR clinic.longitude IS NULL THEN 1 ELSE 0 END', 'ASC');
-      treatmentQb.addOrderBy('clinic_distance', 'ASC');
+      serviceQb.setParameters({ lat, lng });
+      serviceQb.orderBy('CASE WHEN clinic.latitude IS NULL OR clinic.longitude IS NULL THEN 1 ELSE 0 END', 'ASC');
+      serviceQb.addOrderBy('clinic_distance', 'ASC');
     }
 
     try {
@@ -203,26 +203,24 @@ export class ClinicsService {
         }
       });
 
-      const [treatments, totalTreatments] = await treatmentQb
+      const [services, totalTreatments] = await serviceQb
         .take(params.limit || 50)
         .skip(params.offset || 0)
         .getManyAndCount();
 
-      // Process treatments to include aggregate data
-      const processedTreatments = treatments.map(t => {
-        const activeOfferings = t.offerings.filter(o => o.isActive && o.clinic?.isActive);
-        const prices = activeOfferings.map(o => Number(o.price));
-        const fromPrice = prices.length > 0 ? Math.min(...prices) : null;
-
-        return {
-          ...t,
-          fromPrice,
-          clinicsCount: activeOfferings.length,
-          availableAt: activeOfferings.slice(0, 1).map(o => o.clinic.name), // Show at least one
-          singleClinicId: activeOfferings.length === 1 ? activeOfferings[0].clinicId : undefined,
-          singleServiceId: activeOfferings.length === 1 ? activeOfferings[0].id : undefined
-        };
-      });
+      // Transform services to look like Treatment Master records for UI compatibility
+      const processedTreatments = services.map(s => ({
+        ...s.treatment,
+        id: s.id, // Use service ID for booking
+        masterTreatmentId: s.treatment?.id,
+        fromPrice: s.price,
+        durationMinutes: s.durationMinutes,
+        clinicId: s.clinicId,
+        availableAt: [s.clinic?.name].filter(Boolean),
+        clinicsCount: 1,
+        singleClinicId: s.clinicId,
+        singleServiceId: s.id
+      }));
 
       return {
         clinics,
