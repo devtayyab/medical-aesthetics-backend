@@ -119,6 +119,8 @@ export const Search: React.FC = () => {
   const { clinics, treatments, isLoading, total } = useSelector(
     (state: RootState) => state.client
   );
+  const totalClinics = useSelector((state: RootState) => state.client.totalClinics);
+  const totalTreatments = useSelector((state: RootState) => state.client.totalTreatments);
 
   const [showDesktopMap, setShowDesktopMap] = useState<boolean>(true);
   const [showMobileMap, setShowMobileMap] = useState<boolean>(false);
@@ -335,13 +337,13 @@ export const Search: React.FC = () => {
                     onClick={() => setActiveTab('clinics')}
                     className={`text-[10px] font-black uppercase tracking-[0.1em] italic transition-all ${activeTab === 'clinics' ? 'text-black border-b-2 border-[#CBFF38]' : 'text-gray-400 hover:text-gray-600'}`}
                   >
-                    Clinical Results
+                    Clinical Results {totalClinics > 0 && `(${totalClinics})`}
                   </button>
                   <button 
                     onClick={() => setActiveTab('treatments')}
                     className={`text-[10px] font-black uppercase tracking-[0.1em] italic transition-all ${activeTab === 'treatments' ? 'text-black border-b-2 border-[#CBFF38]' : 'text-gray-400 hover:text-gray-600'}`}
                   >
-                    Treatments
+                    Treatments {totalTreatments > 0 && `(${totalTreatments})`}
                   </button>
               </div>
            </div>
@@ -409,7 +411,7 @@ export const Search: React.FC = () => {
                   {[1, 2, 4].map(i => <div key={i} className="h-[350px] bg-gray-50 animate-pulse rounded-[32px] border border-gray-100"></div>)}
                </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className={`grid grid-cols-1 gap-8 ${showDesktopMap ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3'}`}>
                 <AnimatePresence>
                   {activeTab === 'clinics' ? (
                      clinics.map((c, idx) => (

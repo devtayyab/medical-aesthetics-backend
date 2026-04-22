@@ -58,7 +58,7 @@ export class ClinicsService {
     offset?: number;
     search_date?: string;
     search_time_window?: string;
-  }): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; offset: number }> {
+  }): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; totalClinics: number; totalTreatments: number; offset: number }> {
     // 1. Search for Clinics
     const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
       .innerJoinAndSelect('clinic.services', 'services', 'services.isActive = :sActive', { sActive: true })
@@ -139,7 +139,7 @@ export class ClinicsService {
       const searchDate = new Date(params.search_date);
       const dayName = searchDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
       treatmentQb.andWhere(
-        `CAST(clinic.businessHours->:dayName->>'isOpen' AS BOOLEAN) = true`,
+        `(clinic.id IS NULL OR CAST(clinic.businessHours->:dayName->>'isOpen' AS BOOLEAN) = true)`,
         { dayName }
       );
     }
@@ -157,7 +157,7 @@ export class ClinicsService {
 
     if (params.location) {
       treatmentQb.andWhere(
-        '(clinic.address->>\'city\' ILIKE :location OR clinic.address->>\'state\' ILIKE :location)',
+        '(clinic.id IS NULL OR (clinic.address->>\'city\' ILIKE :location OR clinic.address->>\'state\' ILIKE :location))',
         { location: `%${params.location}%` }
       );
     }
@@ -175,11 +175,10 @@ export class ClinicsService {
     try {
       const totalClinics = await clinicQb.getCount();
       const { entities: clinics, raw: rawResults } = await clinicQb
-        .take(params.limit || 10)
+        .take(params.limit || 50)
         .skip(params.offset || 0)
         .getRawAndEntities();
 
-      // Map the distance from raw query results and calculate minPrice
       clinics.forEach((clinic) => {
         // Calculate minPrice from active services
         if (clinic.services && clinic.services.length > 0) {
@@ -202,16 +201,10 @@ export class ClinicsService {
             (clinic as any).distance = parseFloat(raw[distAttr]);
           }
         }
-
-        // Calculate minPrice from active services
-        if (clinic.services && clinic.services.length > 0) {
-          const prices = clinic.services.map(s => Number(s.price));
-          (clinic as any).minPrice = Math.min(...prices);
-        }
       });
 
       const [treatments, totalTreatments] = await treatmentQb
-        .take(params.limit || 10)
+        .take(params.limit || 50)
         .skip(params.offset || 0)
         .getManyAndCount();
 
@@ -235,6 +228,8 @@ export class ClinicsService {
         clinics,
         treatments: processedTreatments,
         total: totalClinics + totalTreatments,
+        totalClinics,
+        totalTreatments,
         offset: params.offset || 0,
       };
     } catch (error) {
