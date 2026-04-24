@@ -23,6 +23,10 @@ const containerStyle = css`
   @media (min-width: 768px) {
     padding: 0 2rem;
   }
+  @media (max-width: 768px) {
+    height: 3.5rem;
+    padding: 0 0.75rem;
+  }
 `;
 
 const logoStyle = css`
@@ -367,7 +371,7 @@ export const Header: React.FC = () => {
               }
               className={`flex items-center ml-2 no-underline ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""}`}
             >
-              <img src={SiteLogo} alt="Site Logo" className="w-[220px] sm:w-[320px] drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] transition-all" />
+              <img src={SiteLogo} alt="Site Logo" className="w-[180px] sm:w-[320px] drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] transition-all" />
             </Link>
           </div>
 

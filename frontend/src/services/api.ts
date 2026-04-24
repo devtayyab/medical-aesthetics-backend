@@ -571,6 +571,8 @@ export const notificationsAPI = {
   createTemplate: (data: any) => api.post("/notifications/templates", data),
   updateTemplate: (id: string, data: any) => api.patch(`/notifications/templates/${id}`, data),
   resetDefaultTemplates: () => api.post("/notifications/templates/reset-defaults"),
+  sendNotification: (data: { recipientId: string; type: string; title: string, message: string; data?: any }) =>
+    api.post("/notifications/send", data),
 };
 
 export const publicBlogsAPI = {

@@ -27,7 +27,7 @@ export class NotificationsController {
 
   @Post('send')
   @ApiOperation({ summary: 'Send notification' })
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIAT)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT)
   @UseGuards(RolesGuard)
   sendNotification(@Body() body: any) {
     return this.notificationsService.create(

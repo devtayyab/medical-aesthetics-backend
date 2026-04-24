@@ -1,7 +1,7 @@
 import React from "react";
 import { Star, MapPin, Clock, Heart, Zap, ArrowRight, Calendar } from "lucide-react";
 import type { Clinic } from "@/types";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { css } from "@emotion/css";
 
 // Fallback high-fidelity asset
@@ -23,13 +23,16 @@ const cardStyle = css`
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  @media (min-width: 1024px) {
+    flex-direction: row;
+    height: 480px;
+  }
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   box-shadow: 0 40px 80px rgba(0, 0, 0, 0.03);
 
   &:hover {
     border-color: #CBFF38;
-    transform: translateY(-8px);
     box-shadow: 0 50px 100px rgba(0, 0, 0, 0.07);
   }
 `;
@@ -38,9 +41,9 @@ const serviceRow = css`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: #F8F9FA;
-  border-radius: 20px;
+  border-radius: 16px;
   transition: all 0.2s ease;
   cursor: pointer;
   border: 1px solid transparent;
@@ -60,139 +63,169 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
   searchQuery,
   searchDate,
 }) => {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isMapExpanded, setIsMapExpanded] = React.useState(false);
+
   const handleClick = () => {
-    onSelect?.(clinic);
+    setIsExpanded(!isExpanded);
   };
 
   const imageUrl = clinic.photoUrl || clinic.images?.[index] || clinic.images?.[0] || BotoxImg;
 
   const displayServices = clinic.services?.filter(s =>
     !searchQuery || s.treatment?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  ).slice(0, 3) || [];
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className={cardStyle}
-      onClick={handleClick}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      layout
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className={`relative flex flex-col lg:flex-row overflow-hidden rounded-[40px] border border-gray-100 bg-white shadow-2xl transition-all duration-500 hover:border-[#CBFF38] mb-6 
+        ${isExpanded || isMapExpanded ? 'lg:col-span-3 h-auto' : 'col-span-1 h-[480px]'}`}
     >
-      {/* Immersive Image Section */}
-      <div className="relative h-[240px] overflow-hidden">
+      {/* Left: Image Segment (Always Visible) */}
+      <div 
+        onClick={handleClick}
+        className={`relative cursor-pointer transition-all duration-500 overflow-hidden ${isExpanded || isMapExpanded ? 'w-full lg:w-[35%] h-[300px] lg:h-[480px]' : 'w-full h-[400px] lg:h-[480px]'}`}
+      >
         <img
           src={imageUrl}
           alt={clinic.name}
-          className="w-full h-full object-cover transition-all duration-700"
+          className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
         
-        {/* Heart Feature */}
-        <button className="absolute top-6 right-6 size-12 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center text-white hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl group/heart">
-          <Heart size={20} className="group-hover/heart:fill-current" />
+        {/* Floating Badges */}
+        <div className="absolute top-6 left-6 flex flex-col gap-2">
+           <div className="bg-[#CBFF38] text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest italic shadow-xl">
+              ELITE_PARTNER
+           </div>
+        </div>
+
+        <button className="absolute top-6 right-6 size-12 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center text-white hover:bg-[#CBFF38] hover:text-black transition-all">
+          <Heart size={20} />
         </button>
 
-        {/* Dynamic Badge */}
-        <div className="absolute bottom-6 left-6 flex items-center gap-3">
-           <div className="bg-[#CBFF38] text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest italic shadow-xl flex items-center gap-2">
-              <Zap size={12} fill="currentColor" /> ELITE_PARTNER
+        {/* Clinic Name Overlay */}
+        <div className="absolute bottom-6 sm:bottom-10 left-6 sm:left-10 right-6 sm:right-10">
+           <h3 className="text-2xl sm:text-4xl font-black uppercase italic tracking-tighter text-white mb-2 leading-none">
+              {clinic.name}
+           </h3>
+           <div className="flex items-center gap-3 text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-[#CBFF38] italic">
+              <div className="flex items-center gap-1">
+                 <Star size={10} fill="currentColor" />
+                 <span className="text-white">{(clinic.rating !== null && clinic.rating !== undefined) ? Number(clinic.rating).toFixed(1) : "4.9"}</span>
+              </div>
+              <span className="text-gray-400">({clinic.reviewCount || 120} Reviews)</span>
            </div>
         </div>
       </div>
 
-      {/* Content Architecture */}
-      <div className="p-8 flex flex-col flex-1">
-        {/* Header Block */}
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h3 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900 leading-none mb-2">
-              {clinic.name}
-            </h3>
-            <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-[#CBFF38] italic">
-               <div className="flex items-center gap-1">
-                  <Star size={12} fill="currentColor" />
-                  <span className="text-gray-900">{(clinic.rating !== null && clinic.rating !== undefined) ? Number(clinic.rating).toFixed(1) : "4.9"}</span>
-               </div>
-               <span className="text-gray-300">({clinic.reviewCount || 120} Protocols)</span>
-            </div>
-          </div>
-          
-          <button 
-            onClick={(e) => { e.stopPropagation(); onShowMap?.(clinic); }}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-400 hover:bg-[#CBFF38] hover:text-black transition-all"
+      {/* Middle: Content Architecture (Collapsible) */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="flex-1 w-full lg:min-w-[350px] p-6 sm:p-10 flex flex-col bg-[#121212] text-white overflow-hidden"
           >
-            <MapPin size={12} /> Map View
-          </button>
-        </div>
+            <div className="flex justify-between items-start mb-8">
+               <div className="flex flex-col gap-1">
+                  <p className="text-[10px] font-black text-[#CBFF38] uppercase tracking-[0.3em] mb-2">Available Treatments</p>
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest italic">
+                     <MapPin size={14} className="text-[#CBFF38]" />
+                     <span>{clinic.address?.street || 'Central Street'}, {clinic.address?.city || 'Athens'}</span>
+                  </div>
+               </div>
+               
+               <button 
+                 onClick={(e) => { e.stopPropagation(); setIsMapExpanded(!isMapExpanded); }}
+                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isMapExpanded ? 'bg-[#CBFF38] text-black' : 'bg-white/5 text-gray-400 hover:text-[#CBFF38]'}`}
+               >
+                 <MapPin size={12} /> {isMapExpanded ? 'CLOSE MAP' : 'VIEW MAP'}
+               </button>
+            </div>
 
-        {/* Location Signature */}
-        <div className="flex items-center gap-2 mb-8 text-[11px] font-bold text-gray-400 uppercase tracking-widest italic">
-            <MapPin size={14} className="text-lime-500" />
-            <span>{clinic.address?.city}, Area Protocol</span>
-            {clinic.distance !== undefined && (
-                <span className="text-lime-600 ml-auto">{Number(clinic.distance).toFixed(1)}km _Range</span>
-            )}
-        </div>
-
-        {/* Procedure List */}
-        <div className="space-y-3 flex-1">
-          <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-300 mb-4 italic">Available Procedures</h4>
-          {displayServices.length > 0 ? (
-            displayServices.map((service, idx) => (
-              <div
-                key={idx}
-                onClick={(e) => { e.stopPropagation(); window.location.href = `/appointment/booking?clinicId=${clinic.id}&serviceIds=${service.id}`; }}
-                className={serviceRow}
-              >
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-black uppercase tracking-tight text-gray-900 leading-none mb-1">{service.treatment?.name}</span>
-                  <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400 uppercase italic">
-                    <Clock size={10} /> {service.durationMinutes} mins Protocol
+            <div className="space-y-4 flex-1 mb-8">
+              {displayServices.map((service, idx) => (
+                <div key={idx} className={serviceRow}>
+                  <div className="flex flex-col">
+                    <span className="text-[12px] font-black uppercase tracking-tight text-gray-900 leading-none">{service.treatment?.name}</span>
+                    <span className="text-[9px] font-bold text-gray-400 uppercase italic mt-1">premium protocol</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[16px] font-black text-gray-900 block">€{service.price}</span>
+                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest leading-none">starts from</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="block text-[8px] font-black text-gray-300 uppercase leading-none mb-1 text-right">starts</span>
-                  <span className="text-[14px] font-black text-gray-900">€{service.price}</span>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-[11px] font-bold text-gray-400 italic py-4">
-              Premium services starting from €49. Examine clinic catalog for full details.
+              ))}
             </div>
-          )}
-        </div>
 
-        {/* Availability & Engagement */}
-        <div className="mt-8 pt-6 border-t border-gray-50">
-           <div className="bg-lime-50 p-6 rounded-[32px] border border-lime-100/50 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                 <div className="flex items-center gap-3">
-                    <div className="size-3 bg-lime-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(132,204,22,0.5)]"></div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.1em] text-lime-900 italic">Next availability: <span className="text-black">Today 14:00</span></span>
-                 </div>
-                 <Calendar size={14} className="text-lime-600" />
+            <div className="flex gap-4">
+               <button
+                 className="flex-1 h-14 border border-white/10 text-white hover:bg-white hover:text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic transition-all"
+                 onClick={(e) => { e.stopPropagation(); onSelect?.(clinic); }}
+               >
+                 View Profile
+               </button>
+               <button
+                 className="flex-1 h-14 bg-[#CBFF38] text-black hover:bg-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic transition-all shadow-xl flex items-center justify-center gap-2"
+                 onClick={(e) => { e.stopPropagation(); onSelect?.(clinic); }}
+               >
+                 Book Now
+               </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Right: Map Segment (Collapsible) */}
+      <AnimatePresence>
+        {isMapExpanded && (
+          <motion.div 
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: "25%", opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            className="hidden lg:block h-auto bg-gray-900 relative border-l border-white/5 overflow-hidden"
+          >
+              <div className="absolute inset-0">
+                 {clinic.latitude && clinic.longitude ? (
+                   <iframe 
+                     width="100%" 
+                     height="100%" 
+                     frameBorder="0" 
+                     style={{ border: 0 }} 
+                     src={`https://maps.google.com/maps?q=${clinic.latitude},${clinic.longitude}&z=16&output=embed`}
+                   ></iframe>
+                 ) : (
+                   <div className="w-full h-full bg-[#121212] flex items-center justify-center">
+                      <div className="w-64 h-64 rounded-full border-4 border-[#CBFF38]/10 animate-pulse"></div>
+                   </div>
+                 )}
               </div>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed italic">
-                 Booking is highly recommended for this elite partner.
-              </p>
-           </div>
-           
-           <div className="flex gap-3">
-              <button
-                className="flex-1 h-14 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic transition-all active:scale-95"
-                onClick={(e) => { e.stopPropagation(); handleClick(); }}
-              >
-                Examine <ArrowRight size={12} className="inline-block ml-1" />
-              </button>
-              <button
-                className="flex-1 h-14 bg-black text-[#CBFF38] hover:bg-lime-500 hover:text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2"
-                onClick={(e) => { e.stopPropagation(); handleClick(); }}
-              >
-                Book_Now <ArrowRight size={14} />
-              </button>
-           </div>
-        </div>
-      </div>
+
+              {/* Floating Overlay on map */}
+              <div className="absolute inset-x-4 bottom-6 z-10 pointer-events-none">
+                 <div className="bg-[#121212]/95 backdrop-blur-xl border border-white/10 p-4 rounded-[2rem] shadow-2xl">
+                    <div className="flex items-center gap-3">
+                       <div className="size-8 bg-[#CBFF38] rounded-full flex items-center justify-center">
+                          <MapPin size={14} className="text-black" />
+                       </div>
+                       <div>
+                          <p className="text-[11px] font-black text-white uppercase tracking-tight">
+                             {(clinic as any).distance ? `${(clinic as any).distance.toFixed(1)} km away` : 'Near You'}
+                          </p>
+                          <p className="text-[7px] font-bold text-[#CBFF38] uppercase tracking-[0.3em]">LIVE_RADAR</p>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

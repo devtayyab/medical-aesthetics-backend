@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import { MapPin, ChevronRight, Info, Shield, Award, X, Sparkles, ArrowRight, Clock, Zap } from "lucide-react";
+import { MapPin, ChevronRight, Info, Heart, Sparkles, ArrowRight, X } from "lucide-react";
 import type { Treatment } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { css } from "@emotion/css";
@@ -12,24 +12,6 @@ export interface TreatmentCardProps {
     treatment: Treatment;
     onSelect?: (treatment: Treatment) => void;
 }
-
-const cardStyle = css`
-  background: white;
-  border: 1px solid #F1F5F9;
-  border-radius: 40px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.03);
-
-  &:hover {
-    border-color: #CBFF38;
-    transform: translateY(-8px);
-    box-shadow: 0 50px 100px rgba(0, 0, 0, 0.07);
-  }
-`;
 
 const explanationModalStyle = css`
   background: white;
@@ -54,178 +36,108 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
     const imageUrl = treatment.imageUrl || BotoxImg;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={cardStyle}
-            onClick={handleClick}
-        >
-            {/* Treatment Header Section (Adjusted Height to avoid cutting) */}
-            <div className="relative h-[210px] overflow-hidden">
-                <img
-                    src={imageUrl}
-                    alt={treatment.name}
-                    className="w-full h-full object-cover transition-all duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
-                
-                <div className="absolute top-4 left-4">
-                    <div className="bg-black/80 backdrop-blur-xl border border-white/20 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
-                        <Sparkles size={10} className="text-[#CBFF38]" /> {treatment.category}
-                    </div>
-                </div>
-                
-                <div className="absolute top-4 right-4">
-                   <div className="bg-[#CBFF38] text-black size-8 rounded-xl flex items-center justify-center shadow-xl">
-                      <Zap size={14} fill="currentColor" />
-                   </div>
-                </div>
-            </div>
-
-            {/* Content Architecture - More Compact */}
-            <div className="p-6 flex flex-col flex-1">
-                <div className="flex justify-between items-start mb-4 gap-4">
-                    <div className="min-w-0">
-                        <h3 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 leading-none mb-2">
+        <>
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                whileHover={{ y: -8 }}
+                className="group relative cursor-pointer overflow-hidden rounded-3xl bg-[#FDFDFD] border border-gray-100 shadow-xl transition-all duration-500 mb-8"
+                onClick={handleClick}
+            >
+                <div className="flex flex-col">
+                    {/* Text Content Top */}
+                    <div className="p-6 sm:p-8 pb-4">
+                        <div className="flex items-center gap-2 text-[10px] font-black text-[#CBFF38] uppercase tracking-[0.2em] mb-2 sm:3 italic">
+                            <Sparkles size={12} /> {treatment.category || 'Clinical Treatment'}
+                        </div>
+                        <h3 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter text-gray-900 leading-[0.9] mb-3 sm:4 group-hover:text-[#CBFF38] transition-colors">
                             {treatment.name}
                         </h3>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight italic line-clamp-1">
-                            {treatment.shortDescription}
+                        <p className="text-[11px] sm:text-[12px] font-medium text-gray-500 leading-relaxed max-w-[90%] sm:max-w-[80%] line-clamp-2">
+                            {treatment.shortDescription || 'Experience our premium clinical approach with state-of-the-art technology and expert care.'}
                         </p>
                     </div>
-                    <div className="text-right shrink-0">
-                        <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest leading-none mb-1 italic">Protocol</p>
-                        <p className="text-xl font-black text-gray-900 leading-none">€{treatment.fromPrice || '?'}</p>
-                    </div>
-                </div>
 
-                {/* Clinics & Availability Signature */}
-                <div className="mt-auto space-y-4">
-                    <div className="border-t border-gray-50 pt-4">
-                        <div className="flex flex-wrap gap-2">
-                            {treatment.availableAt && treatment.availableAt.length > 0 ? (
-                                treatment.availableAt.slice(0, 1).map((clinicName, idx) => (
-                                    <span key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg text-[9px] font-black uppercase tracking-widest text-gray-500 italic border border-gray-100/50">
-                                        <MapPin size={10} className="text-lime-500" />
-                                        {clinicName}
-                                    </span>
-                                ))
-                            ) : null}
-                            {treatment.clinicsCount && treatment.clinicsCount > 1 && (
-                                <span className="px-3 py-1.5 bg-lime-50 rounded-lg text-[9px] font-black uppercase tracking-widest text-lime-700 italic border border-lime-100">
-                                    +{treatment.clinicsCount - 1} more
-                                </span>
-                            )}
+                    {/* Primary Image */}
+                    <div className="relative h-[240px] overflow-hidden m-4 mt-0 rounded-2xl">
+                        <img
+                            src={imageUrl}
+                            alt={treatment.name}
+                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                        
+                        {/* Action Button Over Image */}
+                        <div className="absolute bottom-6 left-6 z-10">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setShowExplanation(true); }}
+                                className="flex items-center gap-2 bg-[#CBFF38]/20 backdrop-blur-xl border border-[#CBFF38]/40 text-[#CBFF38] px-5 py-2.5 rounded-full text-[10px] font-black uppercase italic tracking-[0.2em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl"
+                            >
+                               <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                               Surgical Intervention
+                            </button>
+                        </div>
+
+                        {/* Price Tag - Top Right Overlay */}
+                        <div className="absolute top-6 right-6 text-right z-10">
+                            <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
+                                <p className="text-[8px] font-black text-[#CBFF38] uppercase tracking-[0.2em] italic mb-0.5">Starts From</p>
+                                <p className="text-xl font-black text-white tracking-tighter italic leading-none">€{treatment.fromPrice || '120.00'}</p>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Action Bar - Compact */}
-                    <div className="flex gap-3">
-                        <button
-                            className="flex-1 h-11 bg-gray-50 text-gray-400 border border-gray-100 hover:bg-white hover:text-black hover:border-[#CBFF38] rounded-xl text-[9px] font-black uppercase tracking-widest italic transition-all flex items-center justify-center gap-2"
-                            onClick={(e) => { e.stopPropagation(); setShowExplanation(true); }}
-                        >
-                            <Info size={14} /> Examine
-                        </button>
-                        <button
-                            className="flex-1 h-11 bg-black text-[#CBFF38] hover:bg-lime-500 hover:text-black rounded-xl text-[9px] font-black uppercase tracking-widest italic transition-all shadow-xl flex items-center justify-center gap-2"
-                            onClick={(e) => { e.stopPropagation(); handleClick(); }}
-                        >
-                            Book <ArrowRight size={14} />
-                        </button>
+                    {/* Decorative Elements */}
+                    <div className="absolute top-8 right-8">
+                       <div className="size-10 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-[#CBFF38] group-hover:text-black transition-all">
+                          <Heart size={18} />
+                       </div>
                     </div>
                 </div>
-            </div>
+            </motion.div>
 
-            {/* Elite Explanation Modal - Portaled to Body to escape stacking context */}
-            {typeof document !== 'undefined' && createPortal(
-                <AnimatePresence>
-                    {showExplanation && (
+            {/* Elite Explanation Modal */}
+            <AnimatePresence>
+                {showExplanation && (
+                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 pb-20">
                         <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl"
-                            onClick={(e) => { e.stopPropagation(); setShowExplanation(false); }}
+                            onClick={() => setShowExplanation(false)}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 40, scale: 0.95 }}
+                            className={explanationModalStyle}
                         >
-                            <motion.div 
-                                initial={{ scale: 0.9, y: 40 }}
-                                animate={{ scale: 1, y: 0 }}
-                                exit={{ scale: 0.9, y: 40 }}
-                                className={explanationModalStyle}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div className="h-52 bg-gray-900 relative">
-                                    <img src={imageUrl} alt={treatment.name} className="w-full h-full object-cover opacity-60" />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
-                                    
-                                    <button 
-                                        onClick={() => setShowExplanation(false)}
-                                        className="absolute top-6 right-6 size-10 rounded-2xl bg-black text-white flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl z-10"
-                                    >
-                                        <X size={20} />
-                                    </button>
-                                    
-                                    <div className="absolute bottom-8 left-8 z-10">
-                                        <div className="bg-[#CBFF38] text-black px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-block mb-3 shadow-xl">
-                                            {treatment.category}
-                                        </div>
-                                        <h3 className="text-black text-2xl font-black uppercase italic tracking-tighter leading-none">
-                                            {treatment.name}
-                                        </h3>
-                                    </div>
-                                </div>
-                                
-                                <div className="p-8 pb-10 bg-white">
-                                    <div className="flex flex-col gap-8">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-6">
-                                               <div className="size-8 bg-lime-50 rounded-lg flex items-center justify-center text-lime-600">
-                                                  <Info size={16} />
-                                               </div>
-                                               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-900 italic">Scientific Explanation</h4>
-                                            </div>
-                                            
-                                            <p className="text-gray-600 text-[15px] font-bold italic leading-relaxed mb-8 pl-6 border-l-4 border-[#CBFF38]">
-                                                {treatment.fullDescription || treatment.shortDescription}
-                                            </p>
-                                            
-                                            <div className="grid grid-cols-3 gap-4">
-                                               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
-                                                  <Shield className="text-lime-500 mb-2" size={20} />
-                                                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-900 italic">Max_Safety</p>
-                                               </div>
-                                               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
-                                                  <Award className="text-lime-500 mb-2" size={20} />
-                                                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-900 italic">Top_Experts</p>
-                                               </div>
-                                               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
-                                                  <Clock className="text-lime-500 mb-2" size={20} />
-                                                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-900 italic">Fast_Protocol</p>
-                                               </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="mt-10 pt-8 border-t border-gray-50 flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                           <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest italic mb-1">Starting Protocol</span>
-                                           <span className="text-2xl font-black text-black">€{treatment.fromPrice || '?'}.00</span>
-                                        </div>
-                                        <button 
-                                            className="h-14 px-10 bg-black text-[#CBFF38] hover:bg-[#CBFF38] hover:text-black rounded-xl font-black uppercase tracking-[0.2em] text-[10px] italic transition-all shadow-2xl flex items-center gap-4"
-                                            onClick={() => { setShowExplanation(false); handleClick(); }}
-                                        >
-                                            Initiate Booking <ArrowRight size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
+                            <div className="relative h-64">
+                                <img src={imageUrl} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
+                                <button onClick={() => setShowExplanation(false)} className="absolute top-6 right-6 size-12 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center"><X size={20} /></button>
+                            </div>
+                            <div className="p-6 sm:p-10 -mt-8 sm:-mt-10 relative">
+                                <span className="bg-[#CBFF38] text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 inline-block italic">{treatment.category}</span>
+                                <h3 className="text-3xl sm:text-4xl font-black uppercase italic tracking-tighter text-gray-900 mb-4">{treatment.name}</h3>
+                                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed mb-6 sm:8">{treatment.fullDescription || treatment.shortDescription || "Our clinics offer this premium treatment using state-of-the-art methodology."}</p>
+                                <button 
+                                    className="w-full h-14 sm:h-16 bg-[#CBFF38] text-black rounded-2xl text-[12px] font-black uppercase tracking-widest italic flex items-center justify-center gap-3 hover:bg-black hover:text-[#CBFF38] transition-all"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowExplanation(false);
+                                        handleClick(); // This triggers onSelect which navigates
+                                    }}
+                                >
+                                    Find a Clinic <ArrowRight size={18}/>
+                                </button>
+                            </div>
                         </motion.div>
-                    )}
-                </AnimatePresence>,
-                document.body
-            )}
-        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </>
     );
 };

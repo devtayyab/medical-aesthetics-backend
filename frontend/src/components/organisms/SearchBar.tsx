@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/atoms/Button/Button";
-import { Search, MapPin, Calendar as CalendarIcon, Clock, ChevronDown } from "lucide-react";
+import { Search, MapPin, Calendar as CalendarIcon, Clock, ChevronDown, Check } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { css } from "@emotion/css";
 
 export interface SearchBarProps {
   onSearch: (filters: {
@@ -20,29 +21,49 @@ export interface SearchBarProps {
   };
 }
 
-// Treatment categories and items for autocomplete
-const SUGGESTIONS = {
-  categories: [
-    { id: "c1", name: "Hair Removal", count: 120 },
-    { id: "c2", name: "Injectables", count: 85 },
-    { id: "c3", name: "Skin Care", count: 210 },
-    { id: "c4", name: "Body", count: 45 },
-    { id: "c5", name: "Surgery", count: 12 },
-    { id: "c6", name: "Dental", count: 32 },
-  ],
-  treatments: [
-    { id: "t1", name: "Botox Treatment", category: "Injectables" },
-    { id: "t2", name: "Dermal Fillers", category: "Injectables" },
-    { id: "t3", name: "Laser Hair Removal", category: "Hair Removal" },
-    { id: "t4", name: "Chemical Peel", category: "Skin Care" },
-    { id: "t5", name: "HydraFacial", category: "Skin Care" },
-    { id: "t6", name: "Fat Dissolving", category: "Body" },
-  ],
-  clinics: [
-    { id: "cl1", name: "Aesthetic Excellence Clinic" },
-    { id: "cl2", name: "SkinHealth Clinic" },
-  ]
-};
+const containerStyle = css`
+  background: white;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 50px 100px rgba(0,0,0,0.15);
+  border: 1px solid rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 500px;
+`;
+
+const searchInputBlock = css`
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid #F1F5F9;
+  transition: all 0.3s ease;
+  cursor: pointer;
+
+  &:hover {
+    background: #FAFAFA;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const inputLabel = css`
+  font-size: 14px;
+  font-weight: 700;
+  color: #1E293B;
+  display: block;
+`;
+
+const inputSubLabel = css`
+  font-size: 11px;
+  font-weight: 500;
+  color: #94A3B8;
+  display: block;
+`;
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   onSearch,
@@ -57,55 +78,17 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Temporary state for the date/time popover
-  const [tempDate, setTempDate] = useState<string | null>(searchDate);
-  const [tempTime, setTempTime] = useState<string | null>(searchTimeWindow);
-
-  const [dateMode, setDateMode] = useState<'preset' | 'custom'>('preset');
-  const [timeMode, setTimeMode] = useState<'any' | 'custom'>('any');
-
-  const searchRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowAutocomplete(false);
-      }
-      if (dateRef.current && !dateRef.current.contains(e.target as Node)) {
-        setShowDatePicker(false);
-      }
+      if (dateRef.current && !dateRef.current.contains(e.target as Node)) setShowDatePicker(false);
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowAutocomplete(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-
-  const setPresetDate = (days: number) => {
-    setDateMode('preset');
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    setTempDate(d.toISOString().split("T")[0]);
-  };
-
-  const applyDateTime = () => {
-    setSearchDate(tempDate);
-    setSearchTimeWindow(timeMode === 'any' ? null : tempTime);
-    setShowDatePicker(false);
-  };
-
-  const getDisplayDateTime = () => {
-    if (!searchDate && !searchTimeWindow) return "Any date, Any time";
-    const dateStr = searchDate ? new Date(searchDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "Any date";
-
-    let timeStr = "Any time";
-    if (searchTimeWindow === "morning") timeStr = "Morning (8am - 12pm)";
-    else if (searchTimeWindow === "afternoon") timeStr = "Afternoon (12pm - 5pm)";
-    else if (searchTimeWindow === "evening") timeStr = "Evening (5pm+)";
-    else if (searchTimeWindow) timeStr = searchTimeWindow;
-
-    return `${dateStr}, ${timeStr}`;
-  };
 
   const handleSearchClick = () => {
     onSearch({
@@ -117,257 +100,93 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <div className={`bg-white rounded-[20px] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.1)] w-full max-w-[520px] z-20 border border-gray-100 ${className || ""}`}>
-      <div className="flex flex-col gap-2">
+    <div className={`${containerStyle} ${className || ""}`}>
+      {/* Date Block */}
+      <div className="relative" ref={dateRef}>
+        <div 
+          className={searchInputBlock}
+          onClick={() => setShowDatePicker(!showDatePicker)}
+        >
+          <div className="size-12 bg-[#F8FAFC] rounded-2xl flex items-center justify-center text-gray-500">
+            <CalendarIcon size={20} />
+          </div>
+          <div className="flex-1">
+            <span className={inputLabel}>
+              {searchDate ? new Date(searchDate).toLocaleDateString() : "Select Date"}
+            </span>
+            <span className={inputSubLabel}>Choose your visit date</span>
+          </div>
+        </div>
 
-        {/* S1: Treatment / Service */}
-        <div className="relative" ref={searchRef}>
-          <label className="text-[11px] font-[900] uppercase text-[#A3E635] tracking-[0.15em] mb-1 block px-1">WHAT</label>
-          <div className="border-2 border-gray-100 focus-within:border-[#A3E635] rounded-lg p-2 flex items-center transition-all bg-[#F8FAFC] group hover:bg-white">
-            <Search className="text-gray-400 w-4 h-4 mr-2 shrink-0 group-focus-within:text-[#A3E635] transition-colors" />
-            <input
-              className="w-full outline-none font-bold text-sm text-gray-900 bg-transparent placeholder:text-gray-400"
+        {/* Date Picker Popover Mockup - Simplified for Design Match */}
+        <AnimatePresence>
+          {showDatePicker && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl z-[100] p-4 border border-gray-100"
+            >
+              <input 
+                type="date" 
+                className="w-full p-3 bg-gray-50 rounded-xl outline-none font-bold"
+                value={searchDate || ""}
+                onChange={(e) => { setSearchDate(e.target.value); setShowDatePicker(false); }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Query & Location Block */}
+      <div className="relative" ref={searchRef}>
+        <div 
+          className={searchInputBlock}
+          onClick={() => setShowAutocomplete(true)}
+        >
+          <div className="size-12 bg-[#F8FAFC] rounded-2xl flex items-center justify-center text-gray-500">
+            <MapPin size={20} />
+          </div>
+          <div className="flex-1">
+            <input 
+              className="w-full bg-transparent outline-none font-bold text-gray-900 placeholder:text-gray-900"
               placeholder="Search treatments / clinics"
               value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setShowAutocomplete(true);
-              }}
+              onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setShowAutocomplete(true)}
             />
+            <span className={inputSubLabel}>
+              {location || "Enter area or city"}
+            </span>
           </div>
+        </div>
 
-          {/* Autocomplete Dropdown */}
+        <AnimatePresence>
           {showAutocomplete && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
-              <div className="p-2">
-                <div className="text-xs font-black text-gray-400 uppercase tracking-widest px-3 py-2">
-                  Browse by Category
-                </div>
-                {SUGGESTIONS.categories.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className="w-full text-left px-3 py-2.5 hover:bg-lime-50 rounded-lg text-sm font-bold text-gray-700 transition-colors flex items-center justify-between group"
-                    onClick={() => {
-                      setQuery(c.name);
-                      setShowAutocomplete(false);
-                      onSearch({ query: c.name, category: c.name });
-                    }}
-                  >
-                    <span className="group-hover:text-lime-700">{c.name}</span>
-                    <span className="text-[10px] text-gray-400 group-hover:text-lime-600 bg-gray-50 px-2 py-0.5 rounded-md">{c.count} venues</span>
-                  </button>
-                ))}
-
-                <div className="text-xs font-black text-gray-400 uppercase tracking-widest px-3 py-2 mt-2 border-t border-gray-100 pt-3">
-                  Popluar Treatments
-                </div>
-                {SUGGESTIONS.treatments.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className="w-full text-left px-3 py-2.5 hover:bg-gray-50 rounded-lg text-sm font-semibold text-gray-700 transition-colors flex items-center justify-between"
-                    onClick={() => {
-                      setQuery(t.name);
-                      setShowAutocomplete(false);
-                      onSearch({ query: t.name, location, search_date: searchDate, search_time_window: searchTimeWindow });
-                    }}
-                  >
-                    <span>{t.name}</span>
-                    <span className="text-[10px] text-gray-400">{t.category}</span>
-                  </button>
-                ))}
-
-                <div className="text-xs font-black text-gray-400 uppercase tracking-widest px-3 py-2 mt-2 border-t border-gray-100 pt-3">
-                  Clinics
-                </div>
-                {SUGGESTIONS.clinics.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className="w-full text-left px-3 py-2.5 hover:bg-gray-50 rounded-lg text-sm font-semibold text-gray-700 transition-colors"
-                    onClick={() => {
-                      setQuery(c.name);
-                      setShowAutocomplete(false);
-                      onSearch({ query: c.name, location, search_date: searchDate, search_time_window: searchTimeWindow });
-                    }}
-                  >
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* S2: Location */}
-        <div className="relative">
-          <label className="text-[11px] font-[900] uppercase text-[#A3E635] tracking-[0.15em] mb-1 block px-1">WHERE</label>
-          <div className="border-2 border-gray-100 focus-within:border-[#A3E635] rounded-lg p-2 flex items-center transition-all bg-[#F8FAFC] group hover:bg-white">
-            <MapPin className="text-gray-400 w-4 h-4 mr-2 shrink-0 group-focus-within:text-[#A3E635] transition-colors" />
-            <input
-              className="w-full outline-none font-bold text-sm text-gray-900 bg-transparent placeholder:text-gray-400"
-              placeholder="Area or Postcode"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-            {/* Use My Location Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if ("geolocation" in navigator) {
-                  navigator.geolocation.getCurrentPosition((pos) => {
-                    // Coordinates would be passed to parent search
-                    console.log("Locating...", pos.coords);
-                    setLocation("Current Location");
-                  });
-                }
-              }}
-              className="ml-2 p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-black transition-all"
-              title="Use my current location"
+            <motion.div 
+               initial={{ opacity: 0, y: 10 }}
+               animate={{ opacity: 1, y: 0 }}
+               exit={{ opacity: 0, y: 10 }}
+               className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl z-[100] p-4 border border-gray-100"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.31-7.31l-1.41 1.41M6.1 17.9l-1.41 1.41m12.62 0l1.41 1.41M6.1 6.1L4.69 7.51"/></svg>
-            </button>
-          </div>
-        </div>
-
-        {/* S3: Date & Time */}
-        <div className="relative" ref={dateRef}>
-          <label className="text-[11px] font-[900] uppercase text-[#A3E635] tracking-[0.15em] mb-1 block px-1">WHEN</label>
-          <div
-            className="border-2 border-gray-100 hover:border-[#A3E635] rounded-lg p-2 flex items-center justify-between transition-all bg-[#F8FAFC] hover:bg-white cursor-pointer group"
-            onClick={() => setShowDatePicker(!showDatePicker)}
-          >
-            <div className="flex items-center">
-              <CalendarIcon className="text-gray-400 w-4 h-4 mr-2 shrink-0 group-hover:text-[#A3E635] transition-colors" />
-              <div className={`font-bold text-sm ${searchDate || searchTimeWindow ? 'text-gray-900' : 'text-gray-400'} truncate`}>
-                {searchDate || searchTimeWindow ? getDisplayDateTime() : "Any Date, Any Time"}
-              </div>
-            </div>
-            <ChevronDown className="text-gray-400 w-5 h-5 shrink-0 group-hover:text-black transition-colors" />
-          </div>
-
-          {/* Date Picker Popover */}
-          {showDatePicker && (
-            <div className="absolute top-14 left-0 w-full md:w-[600px] mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 p-5 z-[60]">
-
-              <div className="flex flex-col md:flex-row gap-6">
-                {/* Date Section */}
-                <div className="flex-1">
-                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-3">Date</label>
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${tempDate === new Date().toISOString().split("T")[0] && dateMode === 'preset' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
-                      onClick={() => setPresetDate(0)}
-                    >
-                      Today
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${tempDate === new Date(Date.now() + 86400000).toISOString().split("T")[0] && dateMode === 'preset' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
-                      onClick={() => setPresetDate(1)}
-                    >
-                      Tomorrow
-                    </Button>
-
-                    {dateMode !== 'custom' ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="justify-start py-3 px-4 text-sm font-bold border-2 border-gray-100 text-gray-600 hover:border-gray-300 rounded-xl transition-all"
-                        onClick={() => setDateMode('custom')}
-                      >
-                        Pick date...
-                      </Button>
-                    ) : (
-                      <div className="relative border-2 border-[#CBFF38] rounded-xl p-3 flex items-center bg-lime-50/50 mt-1 animate-in fade-in slide-in-from-top-2">
-                        <CalendarIcon className="text-lime-700 w-5 h-5 mr-3 shrink-0" />
-                        <input
-                          type="date"
-                          className="w-full bg-transparent outline-none text-sm font-bold text-gray-800"
-                          value={tempDate || ''}
-                          onChange={(e) => setTempDate(e.target.value)}
-                          autoFocus
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Time Section */}
-                <div className="flex-1 md:border-l md:border-t-0 border-t border-gray-100 md:pl-6 pt-5 md:pt-0">
-                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-3">Time</label>
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={`justify-start py-3 px-4 text-sm font-bold border-2 rounded-xl transition-all ${timeMode === 'any' ? 'border-[#CBFF38] bg-lime-50 text-lime-800' : 'border-gray-100 text-gray-600 hover:border-gray-300'}`}
-                      onClick={() => { setTimeMode('any'); setTempTime(null); }}
-                    >
-                      Any time
-                    </Button>
-
-                    {timeMode !== 'custom' ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="justify-start py-3 px-4 text-sm font-bold border-2 border-gray-100 text-gray-600 hover:border-gray-300 rounded-xl transition-all"
-                        onClick={() => { setTimeMode('custom'); setTempTime("morning"); }}
-                      >
-                        Pick time...
-                      </Button>
-                    ) : (
-                      <div className="relative border-2 border-[#CBFF38] rounded-xl p-3 flex items-center bg-lime-50/50 mt-1 animate-in fade-in slide-in-from-top-2">
-                        <Clock className="text-lime-700 w-5 h-5 mr-3 shrink-0" />
-                        <select
-                          className="w-full bg-transparent outline-none text-sm font-bold text-gray-800 cursor-pointer"
-                          value={tempTime || "morning"}
-                          onChange={(e) => setTempTime(e.target.value)}
-                        >
-                          <option value="morning">Morning (8am - 12pm)</option>
-                          <option value="afternoon">Afternoon (12pm - 5pm)</option>
-                          <option value="evening">Evening (5pm on)</option>
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-6 mt-6 border-t border-gray-100 flex items-center justify-between gap-4">
-                <button
-                  type="button"
-                  className="text-xs font-black uppercase tracking-widest text-gray-400 hover:text-black"
-                  onClick={() => { setTempDate(null); setTempTime(null); setSearchDate(null); setSearchTimeWindow(null); setShowDatePicker(false); }}
-                >
-                  Reset
-                </button>
-                <Button
-                  type="button"
-                  className="flex-1 bg-black text-white hover:bg-gray-800 py-4 rounded-xl font-bold transition-all shadow-md active:scale-95"
-                  onClick={applyDateTime}
-                >
-                  Apply Selection
-                </Button>
-              </div>
-
-            </div>
+               <input 
+                 className="w-full p-3 bg-gray-50 rounded-xl outline-none font-bold mb-4"
+                 placeholder="Search city or treatment..."
+                 value={location}
+                 onChange={(e) => setLocation(e.target.value)}
+                 autoFocus
+               />
+               <button 
+                 onClick={() => { handleSearchClick(); setShowAutocomplete(false); }}
+                 className="w-full bg-[#CBFF38] text-black h-12 rounded-xl font-black uppercase text-[10px] tracking-widest italic flex items-center justify-center gap-2"
+               >
+                 Search <Search size={14} />
+               </button>
+            </motion.div>
           )}
-        </div>
-
-        {/* Action Button */}
-        <Button
-          type="button"
-          onClick={handleSearchClick}
-          className="w-full bg-[#A3E635] text-black hover:bg-white hover:border-[#A3E635] border-2 border-transparent py-2.5 rounded-xl flex items-center justify-center font-[900] uppercase tracking-widest text-sm transition-all duration-300 shadow-xl shadow-[#A3E635]/20 mt-1 active:scale-95"
-        >
-          SEARCH AVAILABILITY
-        </Button>
+        </AnimatePresence>
       </div>
     </div>
   );
 };
+
