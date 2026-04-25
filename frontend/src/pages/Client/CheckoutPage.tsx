@@ -141,22 +141,23 @@ export const CheckoutPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-[#F7FAFC]">
             <div className={containerStyle}>
-                <div className="flex items-center justify-between mb-12">
-                    <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-sm font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
-                        <div className="size-8 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-black transition-all">
-                            <FaChevronLeft size={10} />
+                <div className="flex items-center justify-between mb-8 sm:mb-12">
+                    <button onClick={() => navigate(-1)} className="group flex items-center gap-2 sm:gap-3 text-[10px] sm:text-sm font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
+                        <div className="size-6 sm:size-8 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-black transition-all">
+                            <FaChevronLeft size={8} />
                         </div>
-                        Back to Time
+                        <span className="hidden sm:inline">Back to Time</span>
+                        <span className="sm:hidden">Back</span>
                     </button>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4">
                         <div className="flex flex-col items-center">
-                            <div className="size-8 rounded-full bg-black text-white flex items-center justify-center font-black text-xs"><FaCheckCircle className="text-[#CBFF38]" /></div>
-                            <span className="text-[10px] font-black uppercase mt-1">Time</span>
+                            <div className="size-6 sm:size-8 rounded-full bg-black text-white flex items-center justify-center font-black text-[10px] sm:text-xs"><FaCheckCircle className="text-[#CBFF38]" /></div>
+                            <span className="text-[8px] sm:text-[10px] font-black uppercase mt-1">Time</span>
                         </div>
-                        <div className="w-12 h-px bg-black -mt-4" />
-                        <div className="flex flex-col items-center">
-                            <div className="size-8 rounded-full bg-[#CBFF38] text-black flex items-center justify-center font-black text-xs">2</div>
-                            <span className="text-[10px] font-black uppercase mt-1">Details</span>
+                        <div className="w-8 sm:w-12 h-px bg-black -mt-4 opacity-20" />
+                        <div className="flex flex-col items-center border-2 border-[#CBFF38] rounded-2xl p-1 bg-[#CBFF38]/5">
+                            <div className="size-6 sm:size-8 rounded-full bg-[#CBFF38] text-black flex items-center justify-center font-black text-[10px] sm:text-xs">2</div>
+                            <span className="text-[8px] sm:text-[10px] font-black uppercase mt-1">Details</span>
                         </div>
                     </div>
                 </div>

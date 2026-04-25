@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Phone, AlertCircle, CheckCircle, Clock, User } from 'lucide-react';
-import { Button } from '@/components/atoms/Button/Button';
-import { Input } from '@/components/atoms/Input/Input';
-import { Select } from '@/components/atoms/Select/Select';
-import { Textarea } from '@/components/atoms/Textarea';
+import { 
+  Phone, AlertCircle, CheckCircle, Clock, User, 
+  Calendar, List, FilePlus, CalendarPlus, X,
+  ChevronDown, MessageSquare, Info, Star, Sparkles, FileText,
+  ArrowRight, Video, Clipboard, MoreHorizontal, FileCheck
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { css } from '@emotion/css';
 import {
   logCommunication,
   updateCommunication,
@@ -14,7 +17,79 @@ import {
 import type { RootState, AppDispatch } from '@/store';
 import type { CommunicationLog } from '@/types';
 import { crmAPI, userAPI, bookingAPI } from '@/services/api';
-import { Calendar, List, FilePlus, CalendarPlus } from 'lucide-react';
+
+const inputContainerStyle = css`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+`;
+
+const labelStyle = css`
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-style: italic;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: 4px;
+`;
+
+const premiumInputStyle = css`
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  height: 48px;
+  padding: 0 16px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  outline: none;
+
+  &:focus {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(203, 255, 56, 0.3);
+    box-shadow: 0 0 20px rgba(203, 255, 56, 0.05);
+  }
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.2);
+    font-style: italic;
+  }
+`;
+
+const premiumSelectStyle = css`
+  appearance: none;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  height: 48px;
+  padding: 0 40px 0 16px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  outline: none;
+  cursor: pointer;
+
+  &:focus {
+    border-color: rgba(203, 255, 56, 0.3);
+  }
+
+  option {
+    background: #1C1C1C;
+    color: white;
+  }
+`;
+
+const sectionStyle = css`
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 24px;
+  margin-bottom: 24px;
+`;
 
 interface CommunicationFormProps {
   customerId: string;
@@ -31,7 +106,7 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { requiredFields, fieldValidation } = useSelector((state: RootState) => state.crm);
+  
   const [formData, setFormData] = useState<Partial<CommunicationLog>>(initialData || {
     customerId,
     type: 'call',
@@ -41,520 +116,241 @@ export const CommunicationForm: React.FC<CommunicationFormProps> = ({
     salespersonId: (user as any)?.id || undefined
   });
 
-  // Post-log action states
   const [createFollowUpTask, setCreateFollowUpTask] = useState(false);
-  const [taskData, setTaskData] = useState({
-    subject: '',
-    dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Default to tomorrow
-    priority: 'medium'
-  });
-
   const [scheduleAppointment, setScheduleAppointment] = useState(false);
-  const [appointmentData, setAppointmentData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    time: '10:00',
-    serviceId: '',
-    clinicId: ''
-  });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [clinics, setClinics] = useState<{ value: string; label: string }[]>([]);
   const [salespersons, setSalespersons] = useState<{ value: string; label: string }[]>([]);
+  const [startTime] = useState<number>(Date.now());
 
-  React.useEffect(() => {
+  useEffect(() => {
     dispatch(getRequiredFieldsForCall());
-  }, [dispatch]);
-
-  const [startTime] = React.useState<number>(Date.now());
-
-  React.useEffect(() => {
     (async () => {
       try {
         const [clinicRes, salesRes] = await Promise.all([
           crmAPI.getAccessibleClinics().catch(() => ({ data: [] })),
           userAPI.getAllUsers({ role: 'salesperson', limit: 100 }).catch(() => ({ data: { users: [] } }))
         ]);
-
-        const clinicOptions = (clinicRes.data || []).map((c: any) => ({ value: c.id, label: c.name }));
-        setClinics(clinicOptions);
-
+        setClinics((clinicRes.data || []).map((c: any) => ({ value: c.id, label: c.name })));
         const salesData = Array.isArray(salesRes.data) ? salesRes.data : salesRes.data.users || [];
-        const salesOptions = salesData.map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName}` }));
-        setSalespersons(salesOptions);
-      } catch (e) {
-        setClinics([]);
-        setSalespersons([]);
-      }
+        setSalespersons(salesData.map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName}` })));
+      } catch (e) {}
     })();
-  }, []);
-
-  React.useEffect(() => {
-    if (fieldValidation) {
-      setValidationErrors(fieldValidation.missingFields);
-      setValidationWarnings(fieldValidation.warnings);
-    }
-  }, [fieldValidation]);
+  }, [dispatch]);
 
   const handleInputChange = (field: string, value: any) => {
     if (field.startsWith('metadata.')) {
       const metadataField = field.replace('metadata.', '');
       setFormData(prev => ({
         ...prev,
-        metadata: {
-          ...prev.metadata,
-          [metadataField]: value
-        }
+        metadata: { ...prev.metadata, [metadataField]: value }
       }));
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
-
-    // Clear validation errors when user starts typing
-    if (validationErrors.includes(field.replace('metadata.', ''))) {
-      setValidationErrors(prev => prev.filter(err => err !== field.replace('metadata.', '')));
-    }
-  };
-
-  const handleValidate = async () => {
-    const result = await dispatch(validateCommunication({
-      customerId,
-      communicationData: formData
-    })).unwrap();
-    setValidationErrors(result.missingFields || []);
-    setValidationWarnings(result.warnings || []);
-    return result;
+    setValidationErrors(prev => prev.filter(err => err !== field.replace('metadata.', '')));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // If call and no duration provided, auto-calculate from timer
-    let payload = { ...formData };
-    if (payload.type === 'call' && !payload.durationSeconds) {
-      const secs = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
-      payload = { ...payload, durationSeconds: secs };
-      setFormData(payload);
-    }
-
-    const validation = await dispatch(validateCommunication({
-      customerId,
-      communicationData: payload
-    })).unwrap();
-    setValidationErrors(validation.missingFields || []);
-    setValidationWarnings(validation.warnings || []);
-
-    if (validation.isValid) {
-      setIsSubmitting(true);
-      try {
-        if (initialData?.id) {
-          await dispatch(updateCommunication({ id: initialData.id, updates: payload })).unwrap();
-        } else {
-          await dispatch(logCommunication(payload)).unwrap();
-          
-          // Handle post-log actions only for new communications
-          const actions: Promise<any>[] = [];
-          
-          if (createFollowUpTask) {
-            actions.push(crmAPI.createAction({
-              customerId,
-              actionType: 'follow_up_call',
-              title: taskData.subject || `Follow up: ${payload.subject || 'Interaction'}`,
-              description: `Automated follow-up task from communication log.`,
-              dueDate: taskData.dueDate,
-              priority: taskData.priority as any,
-              status: 'pending',
-              salespersonId: (user as any)?.id
-            }));
-          }
-          
-          if (scheduleAppointment && appointmentData.serviceId && appointmentData.clinicId) {
-            const startStr = `${appointmentData.date}T${appointmentData.time}:00`;
-            const startDate = new Date(startStr);
-            const endDate = new Date(startDate.getTime() + 30 * 60000); // 30 min default
-            
-            actions.push(bookingAPI.createAppointment({
-              clientId: customerId,
-              clinicId: appointmentData.clinicId,
-              serviceId: appointmentData.serviceId,
-              startTime: startDate.toISOString(),
-              endTime: endDate.toISOString(),
-              status: 'PENDING',
-              notes: `Scheduled during communication: ${payload.subject || 'No subject'}`
-            }));
-          }
-          
-          if (actions.length > 0) {
-            await Promise.all(actions);
-          }
-        }
-
-        setFormData({
-          customerId,
-          type: 'call',
-          direction: 'outgoing',
-          status: 'completed',
-          metadata: {},
-          salespersonId: (user as any)?.id || undefined
-        });
-        setValidationErrors([]);
-        setValidationWarnings([]);
-        onSuccess?.();
-      } catch (error) {
-        console.error('Failed to log/update communication:', error);
-      } finally {
-        setIsSubmitting(false);
+    setIsSubmitting(true);
+    try {
+      let payload = { ...formData };
+      if (payload.type === 'call' && !payload.durationSeconds) {
+        payload.durationSeconds = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
       }
+
+      if (initialData?.id) {
+        await dispatch(updateCommunication({ id: initialData.id, updates: payload })).unwrap();
+      } else {
+        await dispatch(logCommunication(payload)).unwrap();
+      }
+      onSuccess?.();
+    } catch (error) {
+      console.error('Failed to log communication:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Communication Core Details */}
-      <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100 space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-          <User className="w-4 h-4 text-blue-500" />
-          Interaction Details
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select
-            label="Type"
-            value={formData.type}
-            onChange={(value) => handleInputChange('type', value)}
-            options={[
-              { value: 'call', label: 'Phone Call' },
-              { value: 'email', label: 'Email' },
-              { value: 'sms', label: 'SMS' },
-              { value: 'meeting', label: 'Meeting' },
-              { value: 'note', label: 'Note' }
-            ]}
-            required
-            className="bg-white"
-          />
-
-          {user?.role === 'SUPER_ADMIN' && (
-            <Select
-              label="Salesperson"
-              value={formData.salespersonId || ''}
-              onChange={(value) => handleInputChange('salespersonId', value || undefined)}
-              options={salespersons}
-              required
-              className="bg-white"
-            />
-          )}
+    <form onSubmit={handleSubmit} className="space-y-6 no-scrollbar overflow-y-auto max-h-[70vh] pr-2">
+      {/* 1. Core Interaction Section */}
+      <div className={sectionStyle}>
+        <div className="flex items-center gap-2 mb-6">
+          <Sparkles size={16} className="text-[#CBFF38]" />
+          <h3 className="text-xs font-black uppercase italic tracking-widest text-[#CBFF38]">Interaction Architecture</h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select
-            label="Direction"
-            value={formData.direction}
-            onChange={(value) => handleInputChange('direction', value)}
-            options={[
-              { value: 'incoming', label: 'Incoming' },
-              { value: 'outgoing', label: 'Outgoing' }
-            ]}
-            required
-            className="bg-white"
-          />
-
-          <Select
-            label="Status"
-            value={formData.status}
-            onChange={(value) => handleInputChange('status', value)}
-            options={[
-              { value: 'completed', label: 'Completed' },
-              { value: 'missed', label: 'Missed' },
-              { value: 'pending', label: 'Pending' }
-            ]}
-            required
-            className="bg-white"
-          />
-        </div>
-
-        <Input
-          label="Subject"
-          value={formData.subject || ''}
-          onChange={(e) => handleInputChange('subject', e.target.value)}
-          placeholder="Brief description..."
-          className="bg-white"
-        />      </div>
-
-      {/* Call Specifics */}
-      {formData.type === 'call' && (
-        <div className="bg-blue-50/30 p-4 rounded-xl border border-blue-100 space-y-4 animate-in fade-in slide-in-from-top-2">
-          <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
-            <Phone className="w-4 h-4 text-blue-500" />
-            Call Specifics
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-1">
-              <Input
-                label="Duration (sec)"
-                type="number"
-                value={formData.durationSeconds || ''}
-                onChange={(e) => handleInputChange('durationSeconds', e.target.value === '' ? 0 : parseInt(e.target.value))}
-                placeholder={Math.floor((Date.now() - startTime) / 1000).toString()}
-                className="bg-white"
-              />
-              <p className="text-[10px] text-gray-500 mt-1 ml-1">
-                *Auto-calculated if empty
-              </p>
-            </div>
-
-            <div className="md:col-span-2">
-              <Select
-                label="Clinic"
-                value={formData.metadata?.clinic || ''}
-                onChange={(value) => handleInputChange('metadata.clinic', value)}
-                options={clinics}
-                required={requiredFields?.clinic}
-                error={validationErrors.includes('clinic')}
-                className="bg-white"
-              />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className={inputContainerStyle}>
+            <label className={labelStyle}>Interaction Type</label>
+            <div className="relative">
+              <select 
+                className={`${premiumSelectStyle} w-full`}
+                value={formData.type}
+                onChange={(e) => handleInputChange('type', e.target.value)}
+              >
+                <option value="call">Voice Transmission</option>
+                <option value="email">Digital Correspondence</option>
+                <option value="sms">SMS Network</option>
+                <option value="meeting">Direct Consultation</option>
+                <option value="note">Internal Memo</option>
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" size={16} />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Select
-              label="Proposed Treatment"
-              value={formData.metadata?.proposedTreatment || ''}
-              onChange={(value) => handleInputChange('metadata.proposedTreatment', value)}
-              options={[
-                { value: 'botox', label: 'Botox' },
-                { value: 'fillers', label: 'Dermal Fillers' },
-                { value: 'laser', label: 'Laser Treatment' },
-                { value: 'peels', label: 'Chemical Peels' },
-                { value: 'consultation', label: 'Consultation' }
-              ]}
-              required={requiredFields?.proposedTreatment}
-              error={validationErrors.includes('proposedTreatment')}
-              className="bg-white"
-            />
-
-            <Select
-              label="Call Outcome"
-              value={formData.metadata?.callOutcome || ''}
-              onChange={(value) => handleInputChange('metadata.callOutcome', value)}
-              options={[
-                { value: 'interested', label: 'Interested' },
-                { value: 'not_interested', label: 'Not Interested' },
-                { value: 'callback', label: 'Call Back' },
-                { value: 'booked', label: 'Booked Appointment' },
-                { value: 'no_answer', label: 'No Answer' },
-                { value: 'wrong_number', label: 'Wrong Number' }
-              ]}
-              required={requiredFields?.callOutcome}
-              error={validationErrors.includes('callOutcome')}
-              className="bg-white"
-            />
+          <div className={inputContainerStyle}>
+            <label className={labelStyle}>Execution Status</label>
+            <div className="relative">
+              <select 
+                className={`${premiumSelectStyle} w-full`}
+                value={formData.status}
+                onChange={(e) => handleInputChange('status', e.target.value)}
+              >
+                <option value="completed">Finalized</option>
+                <option value="missed">Transmission Failed</option>
+                <option value="pending">Awaiting Sync</option>
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" size={16} />
+            </div>
           </div>
-
-          <Input
-            label="Estimated Cost"
-            type="number"
-            value={formData.metadata?.cost || ''}
-            onChange={(e) => handleInputChange('metadata.cost', e.target.value === '' ? 0 : parseFloat(e.target.value))}
-            placeholder="0.00"
-            required={requiredFields?.cost}
-            error={validationErrors.find((error) => error === 'cost')}
-            className="bg-white"
-            leftIcon={<span className="text-gray-500">$</span>}
-          />
         </div>
-      )}
 
-      {/* Notes Section */}
-      <div>
-        <Textarea
-          label="Notes & Observations"
-          value={formData.notes || ''}
-          onChange={(e) => handleInputChange('notes', e.target.value)}
-          placeholder="Detailed notes about the conversation..."
-          rows={4}
-          required={requiredFields?.notes}
-          className="bg-white resize-none"
-        />
+        <div className="mt-6">
+            <div className={inputContainerStyle}>
+                <label className={labelStyle}>Subject / Objective</label>
+                <input 
+                    className={premiumInputStyle}
+                    placeholder="E.g., Post-treatment followup consultation..."
+                    value={formData.subject || ''}
+                    onChange={(e) => handleInputChange('subject', e.target.value)}
+                />
+            </div>
+        </div>
       </div>
 
-      {/* Process Continuity Options (Only for new logs) */}
+      {/* 2. Call Specifics (Conditional) */}
+      {formData.type === 'call' && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={sectionStyle}
+        >
+          <div className="flex items-center gap-2 mb-6">
+            <Phone size={16} className="text-[#CBFF38]" />
+            <h3 className="text-xs font-black uppercase italic tracking-widest text-[#CBFF38]">Telemetry Details</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className={inputContainerStyle}>
+              <label className={labelStyle}>Operating Clinic</label>
+              <div className="relative">
+                <select 
+                  className={`${premiumSelectStyle} w-full`}
+                  value={formData.metadata?.clinic || ''}
+                  onChange={(e) => handleInputChange('metadata.clinic', e.target.value)}
+                >
+                  <option value="">Select Clinic Node</option>
+                  {clinics.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" size={16} />
+              </div>
+            </div>
+
+            <div className={inputContainerStyle}>
+              <label className={labelStyle}>Projected Cost ($)</label>
+              <input 
+                type="number"
+                className={premiumInputStyle}
+                placeholder="0.00"
+                value={formData.metadata?.cost || ''}
+                onChange={(e) => handleInputChange('metadata.cost', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <div className={inputContainerStyle}>
+              <label className={labelStyle}>Clinical Outcome</label>
+              <div className="relative">
+                <select 
+                  className={`${premiumSelectStyle} w-full`}
+                  value={formData.metadata?.callOutcome || ''}
+                  onChange={(e) => handleInputChange('metadata.callOutcome', e.target.value)}
+                >
+                  <option value="">Select Outcome Protocol</option>
+                  <option value="interested">High Interest Identified</option>
+                  <option value="not_interested">Neutral Disengagement</option>
+                  <option value="callback">Scheduled Recall</option>
+                  <option value="booked">Appointment Initialized</option>
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" size={16} />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* 3. Deep Analysis (Notes) */}
+      <div className={sectionStyle}>
+        <div className="flex items-center gap-2 mb-6">
+          <FileText size={16} className="text-[#CBFF38]" />
+          <h3 className="text-xs font-black uppercase italic tracking-widest text-[#CBFF38]">Case Observations</h3>
+        </div>
+        <div className={inputContainerStyle}>
+          <label className={labelStyle}>Detailed Field Notes</label>
+          <textarea 
+            className={`${premiumInputStyle} h-32 py-4 resize-none`}
+            placeholder="Document critical insights, patient concerns, and treatment responses here..."
+            value={formData.notes || ''}
+            onChange={(e) => handleInputChange('notes', e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* 4. Strategic Continuity */}
       {!initialData && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="createTask"
-                checked={createFollowUpTask}
-                onChange={(e) => setCreateFollowUpTask(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-              />
-              <label htmlFor="createTask" className="text-xs font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
-                <FilePlus className="w-3.5 h-3.5 text-blue-500" />
-                Create Follow-up Task
-              </label>
+        <div className="flex flex-wrap gap-4 p-6 bg-white/[0.02] border border-white/5 rounded-3xl">
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div className={`size-5 rounded border transition-all flex items-center justify-center ${createFollowUpTask ? 'bg-[#CBFF38] border-[#CBFF38]' : 'bg-white/5 border-white/10 group-hover:border-white/20'}`}>
+                {createFollowUpTask && <CheckCircle size={14} className="text-black" />}
+                <input type="checkbox" className="hidden" checked={createFollowUpTask} onChange={(e) => setCreateFollowUpTask(e.target.checked)} />
             </div>
+            <span className="text-[10px] font-black uppercase italic tracking-widest text-white/40 group-hover:text-white/60 transition-colors">Queue Follow-up Task</span>
+          </label>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="scheduleApp"
-                checked={scheduleAppointment}
-                onChange={(e) => setScheduleAppointment(e.target.checked)}
-                className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
-              />
-              <label htmlFor="scheduleApp" className="text-xs font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
-                <CalendarPlus className="w-3.5 h-3.5 text-purple-500" />
-                Schedule Appointment
-              </label>
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div className={`size-5 rounded border transition-all flex items-center justify-center ${scheduleAppointment ? 'bg-[#CBFF38] border-[#CBFF38]' : 'bg-white/5 border-white/10 group-hover:border-white/20'}`}>
+                {scheduleAppointment && <CheckCircle size={14} className="text-black" />}
+                <input type="checkbox" className="hidden" checked={scheduleAppointment} onChange={(e) => setScheduleAppointment(e.target.checked)} />
             </div>
-          </div>
-
-          {/* Conditional Task Fields */}
-          {createFollowUpTask && (
-            <div className="p-4 bg-blue-50/30 rounded-xl border border-blue-100 space-y-4 animate-in slide-in-from-top-1">
-              <h4 className="text-[11px] font-black text-blue-900 uppercase tracking-wider flex items-center gap-2">
-                <List className="w-3.5 h-3.5" /> Follow-up Task Details
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Task Subject"
-                  value={taskData.subject}
-                  onChange={(e) => setTaskData({ ...taskData, subject: e.target.value })}
-                  placeholder="e.g. Call back to finalize price"
-                  className="bg-white text-xs"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    label="Due Date"
-                    type="date"
-                    value={taskData.dueDate}
-                    onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
-                    className="bg-white text-xs"
-                  />
-                  <Select
-                    label="Priority"
-                    value={taskData.priority}
-                    onChange={(val) => setTaskData({ ...taskData, priority: val })}
-                    options={[
-                      { value: 'low', label: 'Low' },
-                      { value: 'medium', label: 'Medium' },
-                      { value: 'high', label: 'High' }
-                    ]}
-                    className="bg-white text-xs"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Conditional Appointment Fields */}
-          {scheduleAppointment && (
-            <div className="p-4 bg-purple-50/30 rounded-xl border border-purple-100 space-y-4 animate-in slide-in-from-top-1">
-              <h4 className="text-[11px] font-black text-purple-900 uppercase tracking-wider flex items-center gap-2">
-                <Calendar className="w-3.5 h-3.5" /> Quick Appointment
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    label="Date"
-                    type="date"
-                    value={appointmentData.date}
-                    onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
-                    className="bg-white text-xs"
-                  />
-                  <Input
-                    label="Time"
-                    type="time"
-                    value={appointmentData.time}
-                    onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
-                    className="bg-white text-xs"
-                  />
-                </div>
-                <Select
-                  label="Proposed Service"
-                  value={appointmentData.serviceId}
-                  onChange={(val) => setAppointmentData({ ...appointmentData, serviceId: val })}
-                  options={[
-                    { value: 'botox', label: 'Botox Treatment' },
-                    { value: 'fillers', label: 'Dermal Fillers' },
-                    { value: 'laser', label: 'Laser Session' },
-                    { value: 'consult', label: 'General Consultation' }
-                  ]}
-                  className="bg-white text-xs"
-                />
-              </div>
-              <Select
-                label="Select Clinic"
-                value={appointmentData.clinicId}
-                onChange={(val) => setAppointmentData({ ...appointmentData, clinicId: val })}
-                options={clinics}
-                className="bg-white text-xs"
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Validation Messages */}
-      {validationErrors.length > 0 && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl animate-in zoom-in-95">
-          <div className="flex items-center gap-2 text-red-800 font-medium mb-2">
-            <AlertCircle className="h-4 w-4" />
-            Missing Information
-          </div>
-          <ul className="text-sm text-red-700 space-y-1 pl-6 list-disc">
-            {validationErrors.map((error, index) => (
-              <li key={index} className="capitalize">{error.replace(/([A-Z])/g, ' $1')}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {validationWarnings.length > 0 && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <div className="flex items-center gap-2 text-amber-800 font-medium mb-2">
-            <Clock className="h-4 w-4" />
-            Suggestions
-          </div>
-          <ul className="text-sm text-amber-700 space-y-1 pl-6 list-disc">
-            {validationWarnings.map((warning, index) => (
-              <li key={index}>{warning}</li>
-            ))}
-          </ul>
+            <span className="text-[10px] font-black uppercase italic tracking-widest text-white/40 group-hover:text-white/60 transition-colors">Initialize Booking</span>
+          </label>
         </div>
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
-        {(initialData || onCancel) && (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onCancel}
-            className="text-gray-500"
-          >
-            Cancel
-          </Button>
-        )}
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={handleValidate}
-          disabled={isSubmitting}
-          className="text-gray-600 hover:text-gray-900"
+      <div className="flex items-center justify-end gap-3 pt-8 border-t border-white/5">
+        <button 
+          type="button" 
+          onClick={onCancel}
+          className="px-8 h-12 rounded-xl text-[10px] font-black uppercase italic tracking-widest text-white/30 hover:text-white hover:bg-white/5 transition-all"
         >
-          Validate Only
-        </Button>
-        <Button type="submit" variant="primary" className="pl-4 pr-6" disabled={isSubmitting}>
+          Abort
+        </button>
+        <button 
+          type="submit"
+          disabled={isSubmitting}
+          className="px-10 h-12 bg-[#CBFF38] text-black rounded-xl text-[10px] font-black uppercase italic tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(203,255,56,0.3)] disabled:opacity-50"
+        >
           {isSubmitting ? (
-            <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-          ) : (
-            <CheckCircle className="h-4 w-4 mr-2" />
-          )}
-          {initialData ? 'Update Interaction' : 'Save Communication'}
-        </Button>
+              <div className="animate-spin size-4 border-2 border-black/30 border-t-black rounded-full" />
+          ) : <CheckCircle size={14} />}
+          {initialData ? 'Update Record' : 'Synchronize Protocol'}
+        </button>
       </div>
     </form>
   );

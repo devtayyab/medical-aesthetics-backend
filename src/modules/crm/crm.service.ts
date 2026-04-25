@@ -129,23 +129,29 @@ export class CrmService implements OnModuleInit {
       return true;
     }
 
+    if (!user) return false;
+    
+    // Explicitly allow high-level roles
+    if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER].includes(user.role)) {
+      return true;
+    }
+
     if (user.role === UserRole.SALESPERSON) {
       // First check if it's a lead
-      const lead = await this.leadsRepository.findOne({ where: { id: customerId } });
+      const lead = await this.leadsRepository.findOne({ 
+        where: { id: customerId },
+        withDeleted: true 
+      });
       if (lead) {
-        // Allow access if unassigned OR assigned to this salesperson
         return !lead.assignedSalesId || lead.assignedSalesId === userId;
       }
 
-      // If not a lead, check customer record
-      // Check both if 'customerId' is User ID or Record ID
       const record = await this.customerRecordsRepository.findOne({
         where: [
           { customerId: customerId },
           { id: customerId }
         ]
       });
-      // Allow access if unassigned OR assigned to this salesperson
       return !record?.assignedSalespersonId || record?.assignedSalespersonId === userId;
     }
 
@@ -837,16 +843,25 @@ export class CrmService implements OnModuleInit {
     if (!id || !isUuid(id)) return { type: 'unknown' };
 
     // 1. Check if it's a direct User ID
-    const user = await this.usersRepository.findOne({ where: { id } });
+    const user = await this.usersRepository.findOne({ 
+      where: { id },
+      withDeleted: true 
+    });
     if (user) return { userId: id, type: 'customer' };
 
     // 2. Check if it's a CustomerRecord ID
-    const record = await this.customerRecordsRepository.findOne({ where: { id } });
+    const record = await this.customerRecordsRepository.findOne({ 
+      where: { id },
+      withDeleted: true 
+    });
     if (record) return { userId: record.customerId, type: 'customer' };
 
     // 3. Check if it's a Lead ID
-    const lead = await this.leadsRepository.findOne({ where: { id } });
-    if (lead) return { leadId: id, type: 'lead' };
+    const lead = await this.leadsRepository.findOne({ 
+      where: { id },
+      withDeleted: true 
+    });
+    if (lead) return { leadId: id, id, type: 'lead' } as any;
 
     return { type: 'unknown' };
   }

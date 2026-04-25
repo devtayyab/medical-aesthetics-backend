@@ -58,6 +58,7 @@ export class ClinicsService {
     offset?: number;
     search_date?: string;
     search_time_window?: string;
+    sortBy?: string;
   }): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; totalClinics: number; totalTreatments: number; offset: number }> {
     // 1. Search for Clinics
     const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
@@ -115,18 +116,6 @@ export class ClinicsService {
     const lat = params.lat ? parseFloat(params.lat as any) : null;
     const lng = params.lng ? parseFloat(params.lng as any) : null;
 
-    if (lat && lng) {
-      clinicQb.addSelect(
-        `(6371 * acos(cos(radians(:lat)) * cos(radians(clinic.latitude)) * cos(radians(clinic.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(clinic.latitude))))`,
-        'clinic_distance'
-      );
-      clinicQb.setParameters({ lat, lng });
-      clinicQb.orderBy('CASE WHEN clinic.latitude IS NULL OR clinic.longitude IS NULL THEN 1 ELSE 0 END', 'ASC');
-      clinicQb.addOrderBy('clinic_distance', 'ASC');
-    } else {
-      clinicQb.orderBy('clinic.createdAt', 'DESC');
-    }
-
     const serviceQb = this.servicesRepository.createQueryBuilder('service')
       .leftJoinAndSelect('service.treatment', 'treatment')
       .leftJoinAndSelect('service.clinic', 'clinic')
@@ -162,14 +151,52 @@ export class ClinicsService {
       );
     }
 
+    if ((params as any).rating) {
+      const minRating = parseFloat((params as any).rating.replace('-plus', ''));
+      if (!isNaN(minRating)) {
+        clinicQb.andWhere('clinic.rating >= :minRating', { minRating });
+        serviceQb.andWhere('clinic.rating >= :minRating', { minRating });
+      }
+    }
+
     if (lat && lng) {
-      serviceQb.addSelect(
-        `(6371 * acos(cos(radians(:lat)) * cos(radians(clinic.latitude)) * cos(radians(clinic.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(clinic.latitude))))`,
-        'clinic_distance'
-      );
-      serviceQb.setParameters({ lat, lng });
-      serviceQb.orderBy('CASE WHEN clinic.latitude IS NULL OR clinic.longitude IS NULL THEN 1 ELSE 0 END', 'ASC');
-      serviceQb.addOrderBy('clinic_distance', 'ASC');
+      const distanceSql = `(6371 * acos(cos(radians(:lat)) * cos(radians(clinic.latitude)) * cos(radians(clinic.longitude) - radians(:lng)) + sin(radians(:lat)) * sin(radians(clinic.latitude))))`;
+      clinicQb.addSelect(distanceSql, 'clinic_distance');
+      serviceQb.addSelect(distanceSql, 'clinic_distance');
+      clinicQb.setParameter('lat', lat).setParameter('lng', lng);
+      serviceQb.setParameter('lat', lat).setParameter('lng', lng);
+    }
+
+    // --- New Filters Logic ---
+    if ((params as any).brand) {
+      clinicQb.andWhere('clinic.description ILIKE :brand', { brand: `%${(params as any).brand}%` });
+      serviceQb.andWhere('clinic.description ILIKE :brand', { brand: `%${(params as any).brand}%` });
+    }
+
+    if ((params as any).salon_type) {
+      clinicQb.andWhere('clinic.type ILIKE :salonType', { salonType: `%${(params as any).salon_type}%` });
+      serviceQb.andWhere('clinic.type ILIKE :salonType', { salonType: `%${(params as any).salon_type}%` });
+    }
+
+    if ((params as any).instant_offer) {
+      clinicQb.andWhere('clinic.hasInstantOffer = :instantOffer', { instantOffer: true });
+      serviceQb.andWhere('clinic.hasInstantOffer = :instantOffer', { instantOffer: true });
+    }
+
+    // Apply Sorting logic
+    if (params.sortBy === 'distance' && lat && lng) {
+      clinicQb.orderBy('clinic_distance', 'ASC');
+      serviceQb.orderBy('clinic_distance', 'ASC');
+    } else if (params.sortBy === 'price-asc') {
+      serviceQb.orderBy('service.price', 'ASC');
+    } else if (params.sortBy === 'price-desc') {
+      serviceQb.orderBy('service.price', 'DESC');
+    } else if (params.sortBy === 'rating') {
+      clinicQb.orderBy('clinic.rating', 'DESC');
+      serviceQb.orderBy('clinic.rating', 'DESC');
+    } else {
+      clinicQb.orderBy('clinic.createdAt', 'DESC');
+      serviceQb.orderBy('service.createdAt', 'DESC');
     }
 
     try {
@@ -211,7 +238,8 @@ export class ClinicsService {
       // Transform services to look like Treatment Master records for UI compatibility
       const processedTreatments = services.map(s => ({
         ...s.treatment,
-        id: s.id, // Use service ID for booking
+        id: s.treatment?.id || s.id, // Use master ID for linking to details page
+        serviceId: s.id, // Keep service ID for direct booking context
         masterTreatmentId: s.treatment?.id,
         fromPrice: s.price,
         durationMinutes: s.durationMinutes,

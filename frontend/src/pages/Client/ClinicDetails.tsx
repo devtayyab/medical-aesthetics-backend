@@ -129,20 +129,22 @@ export const ClinicDetails: React.FC = () => {
           alt={clinicData.name}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[1200px] px-8">
-          <div className="flex items-center gap-2 mb-2">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} size={16} className={i < Math.round(Number(clinicData.rating) || 0) ? "fill-yellow-400 text-yellow-400" : "text-gray-400"} />
-            ))}
-            <span className="text-white text-sm font-bold ml-2">
-              {(clinicData.rating !== null && clinicData.rating !== undefined)
-                ? Number(clinicData.rating).toFixed(1)
-                : "4.9"} ({clinicData.reviewCount || 0} reviews)
-            </span>
+        <div className="absolute bottom-10 left-0 w-full px-6 sm:px-8">
+          <div className="max-w-[1200px] mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={14} className={i < Math.round(Number(clinicData.rating) || 0) ? "fill-yellow-400 text-yellow-400" : "text-white/40"} />
+              ))}
+              <span className="text-white text-[11px] font-black uppercase tracking-widest ml-1 italic drop-shadow-md">
+                {(clinicData.rating !== null && clinicData.rating !== undefined)
+                  ? Number(clinicData.rating).toFixed(1)
+                  : "4.9"} ({clinicData.reviewCount || 0} Reviews)
+              </span>
+            </div>
+            <h1 className="text-white text-3xl sm:text-5xl font-black uppercase italic leading-[0.9] tracking-tighter drop-shadow-2xl">
+              {clinicData.name}
+            </h1>
           </div>
-          <h1 className="text-white text-4xl sm:text-5xl font-black uppercase italic leading-tight drop-shadow-lg">
-            {clinicData.name}
-          </h1>
         </div>
       </div>
 
@@ -362,40 +364,40 @@ export const ClinicDetails: React.FC = () => {
              initial={{ y: 100, opacity: 0 }}
              animate={{ y: 0, opacity: 1 }}
              exit={{ y: 100, opacity: 0 }}
-             className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-4xl px-8 z-[100]"
+             className="fixed bottom-4 sm:bottom-10 left-0 w-full px-4 sm:px-8 z-[100]"
           >
-             <div className="bg-black text-white p-8 rounded-[40px] shadow-[0_20px_60px_rgba(0,0,0,0.4)] flex flex-col md:flex-row items-center justify-between gap-8 border border-white/10 relative overflow-hidden">
+             <div className="max-w-4xl mx-auto bg-black text-white p-6 sm:p-8 rounded-[30px] sm:rounded-[40px] shadow-[0_20px_80px_rgba(0,0,0,0.6)] flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-8 border border-white/10 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-full bg-[#CBFF38]/5 blur-3xl rounded-full translate-x-1/2" />
                 
-                <div className="flex flex-wrap items-center gap-6 relative z-10">
-                   <div className="size-16 bg-[#CBFF38] rounded-2xl flex items-center justify-center text-black shadow-lg shadow-lime-500/10">
-                      <ShoppingBag size={24} />
+                <div className="flex flex-row items-center gap-4 sm:gap-6 relative z-10 w-full sm:w-auto">
+                   <div className="size-12 sm:size-16 bg-[#CBFF38] rounded-2xl flex items-center justify-center text-black shadow-lg">
+                      <ShoppingBag size={22} />
                    </div>
-                   <div className="space-y-1">
-                      <h4 className="text-xl font-black uppercase italic tracking-tighter leading-none">Transmission Bundle</h4>
-                      <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest italic">{selectedServices.length} PROTOCOLS STACKED</p>
+                   <div className="space-y-0.5 sm:space-y-1 flex-1">
+                      <h4 className="text-lg sm:text-xl font-black uppercase italic tracking-tighter leading-none">Transmission</h4>
+                      <p className="text-gray-400 text-[9px] font-black uppercase tracking-widest italic">{selectedServices.length} PROTOCOLS</p>
                    </div>
-                   <div className="h-10 w-px bg-white/10 hidden md:block" />
-                   <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-[#CBFF38] italic mb-1">Total Payload</p>
-                      <p className="text-3xl font-black italic tracking-tighter">
+                   <div className="h-10 w-px bg-white/10 hidden sm:block" />
+                   <div className="text-right sm:text-left">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-[#CBFF38] italic mb-0.5">Payload</p>
+                      <p className="text-xl sm:text-3xl font-black italic tracking-tighter">
                          <span className="font-sans">€</span>{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                    </div>
                 </div>
 
-                <div className="flex items-center gap-4 relative z-10">
+                <div className="flex items-center gap-2 sm:gap-4 relative z-10 w-full sm:w-auto">
                    <button 
                       onClick={() => setSelectedServices([])}
-                      className="size-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:text-red-500 transition-all group"
+                      className="size-12 sm:size-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:text-red-500 transition-all group"
                    >
-                      <X size={20} className="group-hover:rotate-90 transition-transform" />
+                      <X size={20} />
                    </button>
                    <button 
                       onClick={handleBulkBooking}
-                      className="h-14 px-10 bg-[#CBFF38] text-black font-black uppercase italic text-xs tracking-[0.2em] rounded-2xl shadow-xl shadow-lime-500/20 hover:bg-white transition-all flex items-center gap-4 group"
+                      className="flex-1 sm:flex-none h-12 sm:h-14 px-8 sm:px-10 bg-[#CBFF38] text-black font-black uppercase italic text-[11px] tracking-[0.2em] rounded-2xl shadow-xl hover:bg-white transition-all flex items-center justify-center gap-4 group"
                    >
-                      Deploy Sequence <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                      Deploy <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                    </button>
                 </div>
              </div>
