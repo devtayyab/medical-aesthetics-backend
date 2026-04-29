@@ -1745,7 +1745,12 @@ export class CrmService implements OnModuleInit {
   }
 
   async deleteAction(id: string): Promise<void> {
-    throw new ForbiddenException('Tasks cannot be deleted. They should only be rescheduled or marked as cancelled/completed.');
+    const action = await this.crmActionsRepository.findOne({ where: { id } });
+    if (!action) {
+      throw new NotFoundException(`Action with ID "${id}" not found`);
+    }
+    await this.crmActionsRepository.delete(id);
+    this.logger.log(`[deleteAction] Action ${id} permanently deleted by Super Admin`);
   }
 
   private async handleTaskRecurrence(action: CrmAction, updateData: Partial<CrmAction>) {

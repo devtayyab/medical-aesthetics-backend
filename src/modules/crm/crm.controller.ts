@@ -185,9 +185,9 @@ export class CrmController {
   }
 
   @Delete('actions/:id')
-  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Delete CRM action' })
+  @ApiOperation({ summary: 'Delete CRM action (Super Admin only)' })
   deleteAction(@Param('id') id: string) {
     return this.crmService.deleteAction(id);
   }
