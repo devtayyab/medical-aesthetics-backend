@@ -41,7 +41,8 @@ export class UsersController {
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'offset', required: false })
-  findAll(@Query() query: { role?: string; search?: string; limit?: number; offset?: number }) {
+  @ApiQuery({ name: 'salespersonId', required: false })
+  findAll(@Query() query: { role?: string; search?: string; limit?: number; offset?: number; salespersonId?: string }) {
     return this.usersService.findAll(query);
   }
 

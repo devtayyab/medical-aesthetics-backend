@@ -43,8 +43,13 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email } });
   }
 
-  async findAll(query?: { role?: string; isActive?: boolean; limit?: number; offset?: number; search?: string }): Promise<User[]> {
+  async findAll(query?: { role?: string; isActive?: boolean; limit?: number; offset?: number; search?: string; salespersonId?: string }): Promise<User[]> {
     const queryBuilder = this.usersRepository.createQueryBuilder('user');
+    
+    if (query?.salespersonId) {
+        queryBuilder.innerJoin('user.customerRecords', 'record');
+        queryBuilder.andWhere('record.assignedSalespersonId = :salespersonId', { salespersonId: query.salespersonId });
+    }
 
     if (query?.role) {
       queryBuilder.andWhere('user.role = :role', { role: query.role });

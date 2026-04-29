@@ -56,6 +56,7 @@ export const Communication: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     const { communications = [], isLoading } = useSelector((state: RootState) => state.crm || {} as any);
+    const { user } = useSelector((state: RootState) => state.auth);
     
     // UI States
     const [selectedTab, setSelectedTab] = useState('All');
@@ -78,9 +79,20 @@ export const Communication: React.FC = () => {
     const fetchContacts = async (search?: string) => {
         setIsSearching(true);
         try {
+            const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+            const isSalesperson = user?.role === 'salesperson';
+            
+            const usersParams: any = { role: 'client', search: search, limit: 20 };
+            const leadsParams: any = search ? { search } : {};
+
+            if (isSalesperson && !isSuperAdmin) {
+                usersParams.salespersonId = user?.id;
+                leadsParams.assignedSalesId = user?.id;
+            }
+
             const [usersRes, leadsRes] = await Promise.all([
-                userAPI.getAllUsers({ role: 'client', search: search, limit: 20 }),
-                crmAPI.getLeads(search ? { search } : {})
+                userAPI.getAllUsers(usersParams),
+                crmAPI.getLeads(leadsParams)
             ]);
 
             const users = (usersRes.data?.users || usersRes.data || []) as any[];
