@@ -1486,13 +1486,13 @@ export class CrmService implements OnModuleInit {
       if (recordById) {
         this.logger.log(`[createAction] customerId ${data.customerId} is already a CustomerRecord ID`);
       } else {
-        // 1.5. Check if it's a User ID mapping to an existing CustomerRecord (handles inconsistent users/soft-deleted users)
+        // 1.5. Check if it's a User ID mapping to an existing CustomerRecord
         const recordByCustomerId = await this.customerRecordsRepository.findOne({ where: { customerId: data.customerId } });
         if (recordByCustomerId) {
           data.customerId = recordByCustomerId.id;
           this.logger.log(`[createAction] Resolved User ID ${originalCustomerId} to existing CustomerRecord ID ${recordByCustomerId.id}`);
         } else {
-          // 2. Check if it's a User ID (Client) including soft-deleted ones
+          // 2. Check if it's a User ID (Client)
           const user = await this.usersRepository.findOne({ where: { id: data.customerId }, withDeleted: true });
           if (user) {
             let record = await this.customerRecordsRepository.findOne({ where: { customerId: user.id } });
@@ -1500,9 +1500,9 @@ export class CrmService implements OnModuleInit {
               record = await this.createCustomerRecord(user.id);
             }
             data.customerId = record.id;
-            this.logger.log(`[createAction] Resolved User ID ${user.id} to CustomerRecord ID ${record.id}`);
+            this.logger.log(`[createAction] Resolved User ID ${user.id} to new/existing CustomerRecord ID ${record.id}`);
           } else {
-            // 3. Check if it's a Lead ID including soft-deleted ones
+            // 3. Check if it's a Lead ID
             const lead = await this.leadsRepository.findOne({ where: { id: data.customerId }, withDeleted: true });
             if (lead) {
               data.relatedLeadId = lead.id;
@@ -1611,16 +1611,16 @@ export class CrmService implements OnModuleInit {
           this.logger.warn(`[createAction] AWS Schema fallback also failed with FK violation.`);
         }
 
-        // 2. Ultimate Safe Fallback: Nullify customerId and persist data to avoid 500 crashes + data loss
+        // Ultimate Safe Fallback: Nullify customerId and persist data to avoid 500 crashes + data loss
         if (!fallbackSucceeded) {
-          this.logger.warn(`[createAction] Proceeding with ULTIMATE safe fallback. Nullifying customerId and saving to metadata to bypass corrupt Postgres DB state.`);
+          this.logger.warn(`[createAction] Proceeding with ULTIMATE safe fallback. Nullifying customerId and saving to metadata to bypass DB state issues.`);
           const safeData = {
             ...data,
             customerId: null,
             metadata: {
               ...(data.metadata || {}),
               orphanedReferenceId: data.customerId || originalCustomerId,
-              fallbackReason: 'Database FK 23503 constraint violation'
+              fallbackReason: `Database FK 23503 violation. Original ID: ${originalCustomerId}`
             }
           };
           const safeAction = this.crmActionsRepository.create(safeData);

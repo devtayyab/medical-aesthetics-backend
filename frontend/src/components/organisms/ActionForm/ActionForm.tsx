@@ -39,9 +39,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   const { user } = useSelector((state: RootState) => state.auth);
   const [customers, setCustomers] = useState<{ value: string; label: string; type: 'customer' | 'lead'; email?: string }[]>([]);
   const [formData, setFormData] = useState<Partial<CrmAction>>({
-    customerId: propCustomerId || prefilledData?.customerId || '',
+    customerId: propCustomerId || prefilledData?.customerId || undefined,
     salespersonId: prefilledData?.salespersonId || user?.id || '',
-    relatedLeadId: prefilledData?.relatedLeadId,
+    relatedLeadId: prefilledData?.relatedLeadId || undefined,
     actionType: prefilledData?.actionType || 'call',
     title: prefilledData?.title || '',
     description: prefilledData?.description || '',
@@ -287,19 +287,22 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     if (validation.isValid) {
       try {
         const payload: Partial<CrmAction> = {
-          ...formData,
           customerId: formData.customerId || undefined,
           relatedLeadId: formData.relatedLeadId || undefined,
           salespersonId: formData.salespersonId || user?.id || '',
+          actionType: formData.actionType,
+          therapy: (formData as any).therapy,
+          title: formData.title,
+          description: formData.description,
+          status: formData.status || 'pending',
+          priority: formData.priority || 'medium',
+          dueDate: formData.dueDate,
+          reminderDate: formData.reminderDate,
+          isRecurring: formData.isRecurring || false,
+          recurrenceType: formData.recurrenceType,
+          recurrenceInterval: formData.recurrenceInterval,
+          metadata: formData.metadata || {}
         };
-
-        // Standardize dates to ISO if they exist
-        if (payload.dueDate && !isNaN(new Date(payload.dueDate).getTime())) {
-          payload.dueDate = new Date(payload.dueDate).toISOString();
-        }
-        if (payload.reminderDate && !isNaN(new Date(payload.reminderDate).getTime())) {
-          payload.reminderDate = new Date(payload.reminderDate).toISOString();
-        }
 
         Object.keys(payload).forEach(key => {
           const val = payload[key as keyof CrmAction];
@@ -315,8 +318,8 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         }
 
         setFormData({
-          customerId: propCustomerId || '',
-          actionType: 'call',
+          customerId: propCustomerId || undefined,
+          relatedLeadId: undefined,
           therapy: '',
           title: '',
           description: '',

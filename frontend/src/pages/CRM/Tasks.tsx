@@ -268,8 +268,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     setIsEditing(false);
     setSelectedTask(null);
     setTaskFormData({
-      customerId: '',
-      relatedLeadId: '',
+      customerId: undefined,
+      relatedLeadId: undefined,
       title: '',
       description: '',
       actionType: 'call',
