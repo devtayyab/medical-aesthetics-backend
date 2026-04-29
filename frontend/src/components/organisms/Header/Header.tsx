@@ -202,6 +202,29 @@ const userMenuItemStyle = css`
   }
 `;
 
+const logoutButtonStyle = css`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 8px);
+  margin: 4px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background-color: #fee2e2;
+  color: #ef4444;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover {
+    background-color: #ef4444;
+    color: white !important;
+  }
+`;
+
 const notificationBadgeStyle = css`
   position: absolute;
   top: 0;
@@ -512,7 +535,7 @@ export const Header: React.FC = () => {
                             ) : (
                               <button
                                 key={item.label}
-                                className={userMenuItemStyle}
+                                className={item.label === 'Logout' ? logoutButtonStyle : userMenuItemStyle}
                                 onClick={() => {
                                   item.action();
                                   setIsUserMenuOpen(false);
