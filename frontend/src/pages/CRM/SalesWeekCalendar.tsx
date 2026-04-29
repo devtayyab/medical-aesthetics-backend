@@ -534,11 +534,12 @@ export const SalesWeekCalendar: React.FC = () => {
                                         );
                                     })}
 
-                                    {appointments.filter(a => isSameDay(new Date(a.startTime), day)).map(apt => {
-                                        const start = new Date(apt.startTime);
-                                        const end = new Date(apt.endTime);
-                                        const top = (new Date(apt.startTime).getHours()) * 64 + (new Date(apt.startTime).getMinutes() / 60) * 64;
-                                        const height = Math.max(((new Date(apt.endTime).getTime() - new Date(apt.startTime).getTime()) / 3600000) * 64, 40);
+                                    {appointments.filter(a => isSameDay(parseISO(a.startTime), day)).map(apt => {
+                                        const start = parseISO(apt.startTime);
+                                        const end = parseISO(apt.endTime);
+                                        const top = start.getHours() * 64 + (start.getMinutes() / 60) * 64;
+                                        const durationHours = (end.getTime() - start.getTime()) / 3600000;
+                                        const height = Math.max(durationHours * 64, 45); // Minimum height for visibility
                                         const normalizedStatus = (apt.status || 'PENDING').toUpperCase();
                                         const style = statusLabels[normalizedStatus] || statusLabels.PENDING;
                                         const Icon = style.icon;
@@ -587,6 +588,17 @@ export const SalesWeekCalendar: React.FC = () => {
                                             </div>
                                         );
                                     })}
+                                    
+                                    {isToday(day) && (
+                                        <div 
+                                            className="absolute left-0 right-0 border-t-2 border-red-500 z-30 pointer-events-none"
+                                            style={{ 
+                                                top: (new Date().getHours() * 64) + (new Date().getMinutes() / 60 * 64) 
+                                            }}
+                                        >
+                                            <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500" />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -1009,7 +1021,7 @@ export const SalesWeekCalendar: React.FC = () => {
                             <select
                                 value={selectedApt.status}
                                 onChange={(e) => handleStatusUpdate(selectedApt.id, e.target.value)}
-                                disabled={selectedApt.status === 'COMPLETED'}
+                                disabled={selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED'}
                                 className="w-full p-3 bg-white border border-gray-200 rounded-xl text-sm font-bold shadow-sm focus:ring-indigo-500 outline-none"
                             >
                                 <option value="PENDING">Booked</option>
@@ -1022,10 +1034,10 @@ export const SalesWeekCalendar: React.FC = () => {
                             </select>
                         </div>
 
-                        {(selectedApt.status === 'COMPLETED' || isPaymentPrompt) && (
+                        {(selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED' || isPaymentPrompt) && (
                             <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl space-y-4 animate-in fade-in">
                                 <div className="flex items-center gap-2 text-emerald-800">
-                                    <CreditCard size={18} /> <h3 className="font-black">{selectedApt.status === 'COMPLETED' ? 'Financial Record' : 'Capture Payment'}</h3>
+                                    <CreditCard size={18} /> <h3 className="font-black">{(selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED') ? 'Financial Record' : 'Capture Payment'}</h3>
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Amount (€)</label>
@@ -1048,7 +1060,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                     ))}
                                 </div>
                                 <Button onClick={handleCompletePayment} className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg uppercase text-[10px] tracking-widest">
-                                    {selectedApt.status === 'COMPLETED' ? 'Update Amount' : 'Confirm & Collect'}
+                                    {(selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED') ? 'Update Amount' : 'Confirm & Collect'}
                                 </Button>
                             </div>
                         )}

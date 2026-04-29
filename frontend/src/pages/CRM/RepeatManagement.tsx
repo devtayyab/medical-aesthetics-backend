@@ -338,7 +338,7 @@ return (
                         {apt.clinicName || '-'}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${apt.status === 'completed' ? 'bg-green-50 text-green-700' :
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${(apt.status === 'completed' || apt.status === 'COMPLETED' || apt.status === 'EXECUTED') ? 'bg-green-50 text-green-700' :
                           apt.status === 'cancelled' ? 'bg-red-50 text-red-700' :
                             apt.status === 'no_show' ? 'bg-orange-50 text-orange-700' :
                               'bg-blue-50 text-blue-700'

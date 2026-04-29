@@ -1,11 +1,13 @@
 export enum AppointmentStatus {
   PENDING = 'PENDING',
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
   CONFIRMED = 'CONFIRMED',
   ARRIVED = 'ARRIVED',
   IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
   NO_SHOW = 'NO_SHOW',
+  EXECUTED = 'EXECUTED',
 }
 
 export interface User {
@@ -104,26 +106,35 @@ export interface Appointment {
   clientId: string;
   startTime: string;
   endTime: string;
-  status: 'PENDING' | 'CONFIRMED' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  status: 'PENDING' | 'PENDING_PAYMENT' | 'CONFIRMED' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' | 'EXECUTED';
   notes?: string;
   paymentMethod?: string;
   advancePaymentAmount?: number;
   totalAmount?: number;
+  amountPaid?: number;
   treatmentDetails?: any;
   clientDetails?: {
     fullName: string;
     email: string;
     phone: string;
   };
+  bookedByInfo?: {
+    id: string;
+    name: string;
+    role: string;
+  };
   completedAt?: string;
+  executedAt?: string;
   clinic: Clinic;
   service: Service;
   provider: User;
   client: User;
   createdAt?: string;
+  updatedAt?: string;
   displayName?: string;
   serviceName?: string;
   providerName?: string;
+  isBlocked?: boolean;
 }
 
 export interface TimeSlot {

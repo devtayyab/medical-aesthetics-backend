@@ -355,11 +355,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   });
 
 
-  const handleSaveInteraction = async () => {
-    // No mandatory fields anymore, but we need an outcome to know what to log.
-    // We'll use "none" as a fallback.
-    const effectiveOutcome = interactionOutcome || 'none';
-    const effectiveNotes = interactionNotes.trim() || 'Interaction logged';
+  const handleSaveInteraction = async (outcomeArg?: any) => {
+    // Ensure we only use the outcome if it's a string (to ignore React events from onClick)
+    const overrideOutcome = typeof outcomeArg === 'string' ? outcomeArg : undefined;
+    const effectiveOutcome = overrideOutcome || interactionOutcome || 'none';
+    const defaultNote = effectiveOutcome === 'interested' ? 'Customer expressed serious interest.' : 'Interaction logged';
+    const effectiveNotes = interactionNotes.trim() || defaultNote;
 
     // Follow-up logic
     const hasFollowUpInfo = followUpData.title || followUpData.dueDate || followUpData.therapy;
@@ -1173,9 +1174,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                     ].map((opt) => (
                       <div 
                         key={opt.value}
-                        onClick={() => {
+                        onClick={async () => {
                           setInteractionOutcome(opt.value);
-                          if (opt.value === 'appointment_booked' || opt.value === 'interested') {
+                          if (opt.value === 'interested') {
+                            // Quick complete for "Interested" as requested
+                            await handleSaveInteraction(opt.value);
+                          } else if (opt.value === 'appointment_booked') {
                             setShowBookingModal(true);
                           } else {
                             setWorkflowStep(3);
