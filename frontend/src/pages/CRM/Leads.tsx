@@ -262,8 +262,9 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       // Reset action states
       setCreateFollowUpTask(false);
       setScheduleAppointment(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create lead:', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to create lead');
     }
   };
 
