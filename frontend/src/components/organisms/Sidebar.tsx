@@ -282,9 +282,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
               const routes: Record<string, string> = {
                 'salesperson': '/crm/settings',
                 'clinic_owner': '/clinic/settings',
+                'manager': '/crm/settings',
+                'admin': '/crm/settings',
+                'super_admin': '/crm/settings',
+                'doctor': '/crm/settings',
                 'client': '/settings'
               };
               if (routes[role]) navigate(routes[role]);
+              else navigate('/crm/settings'); // Default fallback for other staff
             }}
             className="size-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center hover:bg-black hover:text-[#CBFF38] transition-all border border-gray-100 shadow-sm active:scale-95 group"
             title="Account Settings"
