@@ -275,36 +275,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-50 bg-gray-50/20">
-        <div className="flex items-center justify-between px-2">
-          <div className="flex items-center gap-2">
-            <div className="size-2 bg-gray-200 rounded-full" />
-            <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest italic">Session Active</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => {
-                const routes: Record<string, string> = {
-                  'salesperson': '/crm/settings',
-                  'clinic_owner': '/clinic/settings',
-                  'client': '/settings'
-                };
-                if (routes[role]) navigate(routes[role]);
-              }}
-              className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-all"
-              title="Settings"
-            >
-              <Settings size={14} />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-              title="Logout"
-            >
-              <LogOut size={14} />
-            </button>
-          </div>
-        </div>
+      <div className="p-6 border-t border-gray-50 bg-white">
+        <button
+          onClick={handleLogout}
+          className="w-full h-12 flex items-center justify-center gap-3 bg-red-500 text-white rounded-2xl font-black uppercase italic tracking-widest text-[10px] hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 active:scale-95 group"
+        >
+          <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
+          Sign Out
+        </button>
       </div>
     </aside>
   );
