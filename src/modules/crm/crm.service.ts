@@ -182,9 +182,16 @@ export class CrmService implements OnModuleInit {
       createLeadDto.lastName,
     );
 
-    if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-      // Update existing customer record instead of creating duplicate lead
-      return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
+    if (duplicateCheck.isDuplicate) {
+      if (duplicateCheck.existingCustomer) {
+        // Update existing customer record instead of creating duplicate lead
+        return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
+      }
+      
+      if (duplicateCheck.existingLead) {
+        // Update existing lead instead of creating duplicate
+        return this.updateExistingLead(duplicateCheck.existingLead, createLeadDto);
+      }
     }
 
     const { multiOwnerIds, clinicAffiliations, ...baseDto } = createLeadDto;
@@ -557,6 +564,36 @@ export class CrmService implements OnModuleInit {
     this.eventEmitter.emit('lead.created', savedLead);
 
     return savedLead;
+  }
+
+  private async updateExistingLead(existingLead: Lead, leadDto: CreateLeadDto): Promise<Lead> {
+    // Determine if we should reset status (e.g. from LOST to NEW)
+    const shouldResetStatus = existingLead.status === LeadStatus.LOST;
+    
+    // Update existing lead with new information
+    const updatedLead = await this.leadsRepository.save({
+      ...existingLead,
+      ...leadDto,
+      id: existingLead.id, // Ensure we are updating the correct record
+      status: shouldResetStatus ? LeadStatus.NEW : existingLead.status,
+      lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt || new Date(),
+      lastMetaFormName: leadDto.lastMetaFormName || existingLead.lastMetaFormName,
+      lastContactedAt: new Date(),
+      notes: existingLead.notes 
+        ? `${existingLead.notes}\n\n[Re-inquiry ${new Date().toLocaleDateString()}]: ${leadDto.notes || 'No new notes'}`
+        : leadDto.notes,
+      metadata: {
+        ...(existingLead.metadata || {}),
+        ...(leadDto.metadata || {}),
+        reInquiry: true,
+        lastReInquiryDate: new Date(),
+      },
+    });
+
+    // Emit event for updates
+    this.eventEmitter.emit('lead.updated', updatedLead);
+    
+    return updatedLead;
   }
 
   private async updateExistingCustomerWithFacebookLead(
