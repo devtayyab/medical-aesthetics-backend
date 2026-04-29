@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Send, Phone, Video, MoreVertical, Paperclip, Smile, ShieldCheck, Clock } from 'lucide-react';
+import { Send, Phone, MoreVertical, Paperclip, Smile, ShieldCheck, Clock } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../store';
 import { sendMessage, fetchMessages } from '../../store/slices/messagesSlice';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -76,9 +76,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId }) => {
                 <div className="flex items-center gap-4 relative z-10">
                     <button className="size-12 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all border border-white/5">
                        <Phone size={18} />
-                    </button>
-                    <button className="size-12 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all border border-white/5">
-                       <Video size={18} />
                     </button>
                 </div>
             </header>
