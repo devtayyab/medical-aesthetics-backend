@@ -37,10 +37,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
-  const [customerId, setCustomerId] = useState(propCustomerId);
   const [customers, setCustomers] = useState<{ value: string; label: string; type: 'customer' | 'lead'; email?: string }[]>([]);
   const [formData, setFormData] = useState<Partial<CrmAction>>({
-    customerId: propCustomerId,
+    customerId: propCustomerId || prefilledData?.customerId || '',
     salespersonId: prefilledData?.salespersonId || user?.id || '',
     relatedLeadId: prefilledData?.relatedLeadId,
     actionType: prefilledData?.actionType || 'call',
@@ -49,6 +48,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     status: prefilledData?.status || 'pending',
     priority: prefilledData?.priority || 'medium',
     dueDate: prefilledData?.dueDate || '',
+    reminderDate: prefilledData?.reminderDate || '',
     metadata: {
       ...(prefilledData?.metadata || {}),
       ...((prefilledData as any)?.metadata?.clinic && { clinic: (prefilledData as any).metadata.clinic }),
@@ -193,7 +193,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 
   const handleInputChange = (field: string, value: any) => {
     if (field === 'customerId') {
-      setCustomerId(value);
       setFormData(prev => ({ ...prev, customerId: value, relatedLeadId: undefined }));
     } else if (field === 'relatedLeadId') {
       setFormData(prev => ({ ...prev, relatedLeadId: value, customerId: undefined }));
@@ -228,7 +227,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   const handleValidate = async () => {
     try {
       const result = await dispatch(validateAction({
-        customerId: customerId || '',
+        customerId: formData.customerId || formData.relatedLeadId || '',
         actionData: formData
       })).unwrap();
       setValidationErrors(result.missingFields || []);
@@ -288,22 +287,19 @@ export const ActionForm: React.FC<ActionFormProps> = ({
     if (validation.isValid) {
       try {
         const payload: Partial<CrmAction> = {
-          customerId: (customerId || propCustomerId || (prefilledData as any)?.customerId) || undefined,
-          relatedLeadId: (formData.relatedLeadId || (prefilledData as any)?.relatedLeadId) || undefined,
-          salespersonId: (formData.salespersonId || prefilledData?.salespersonId || user?.id) || undefined,
-          actionType: formData.actionType,
-          therapy: formData.therapy,
-          title: formData.title,
-          description: formData.description,
-          status: formData.status || 'pending',
-          priority: formData.priority || 'medium',
-          dueDate: formData.dueDate && !isNaN(new Date(formData.dueDate).getTime()) ? new Date(formData.dueDate).toISOString() : undefined,
-          reminderDate: formData.reminderDate && !isNaN(new Date(formData.reminderDate).getTime()) ? new Date(formData.reminderDate).toISOString() : undefined,
-          isRecurring: formData.isRecurring || false,
-          recurrenceType: formData.recurrenceType,
-          recurrenceInterval: formData.recurrenceInterval,
-          metadata: formData.metadata || {}
+          ...formData,
+          customerId: formData.customerId || undefined,
+          relatedLeadId: formData.relatedLeadId || undefined,
+          salespersonId: formData.salespersonId || user?.id || '',
         };
+
+        // Standardize dates to ISO if they exist
+        if (payload.dueDate && !isNaN(new Date(payload.dueDate).getTime())) {
+          payload.dueDate = new Date(payload.dueDate).toISOString();
+        }
+        if (payload.reminderDate && !isNaN(new Date(payload.reminderDate).getTime())) {
+          payload.reminderDate = new Date(payload.reminderDate).toISOString();
+        }
 
         Object.keys(payload).forEach(key => {
           const val = payload[key as keyof CrmAction];
@@ -370,7 +366,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 block">Associated Contact</label>
             <div className="relative group">
               <Input
-                value={(propCustomerId || prefilledData?.relatedLeadId) ? (selectedCustomerLabel || searchTerm) : searchTerm}
+                value={(formData.customerId || formData.relatedLeadId) ? (selectedCustomerLabel || searchTerm) : searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setShowResults(true);
@@ -378,21 +374,20 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                 onFocus={() => {
                   if (!(propCustomerId || prefilledData?.relatedLeadId)) setShowResults(true);
                 }}
-                placeholder={(propCustomerId || prefilledData?.relatedLeadId) ? (selectedCustomerLabel || "Loading contact...") : "Search by Client ID or Name..."}
-                disabled={Boolean(propCustomerId || prefilledData?.relatedLeadId)}
+                placeholder={(formData.customerId || formData.relatedLeadId) ? (selectedCustomerLabel || "Loading contact...") : "Search by Client ID or Name..."}
+                disabled={Boolean(formData.customerId || formData.relatedLeadId)}
                 className={cn(
                   "pl-11 h-12 bg-slate-50 border-slate-200 rounded-xl focus:bg-white transition-all font-medium",
                   (Boolean(propCustomerId || prefilledData?.relatedLeadId)) && "bg-slate-50 border-slate-100 text-slate-500"
                 )}
                 leftIcon={<Search className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />}
               />
-              {!propCustomerId && !prefilledData?.relatedLeadId && searchTerm && (
+              {!formData.customerId && !formData.relatedLeadId && searchTerm && (
                 <button
                   type="button"
                   onClick={() => {
                     setSearchTerm('');
                     setShowResults(false);
-                    setCustomerId('');
                     setFormData(prev => ({ ...prev, customerId: undefined, relatedLeadId: undefined }));
                     setSelectedCustomerLabel('');
                   }}
@@ -403,7 +398,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               )}
             </div>
 
-            {showResults && !propCustomerId && searchTerm.length > 0 && (
+            {showResults && !formData.customerId && !formData.relatedLeadId && searchTerm.length > 0 && (
               <div className="absolute z-[100] left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 max-h-[300px] overflow-y-auto">
                 {isLoading && (
                   <div className="p-4 text-center text-slate-400">
@@ -741,7 +736,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               type="submit" 
               variant="primary" 
               className="flex-1"
-              disabled={!formData.reminderDate || !formData.title || !formData.actionType || !formData.dueDate || (!formData.customerId && !formData.relatedLeadId && !customerId && !propCustomerId)}
+              disabled={!formData.reminderDate || !formData.title || !formData.actionType || !formData.dueDate || (!formData.customerId && !formData.relatedLeadId)}
               title={!formData.reminderDate ? "Reminder Date & Time is mandatory" : "Please fill all required fields"}
             >
               <CheckCircle className="h-4 w-4 mr-2" />

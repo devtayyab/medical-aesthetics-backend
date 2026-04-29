@@ -290,6 +290,7 @@ export const Header: React.FC = () => {
       return [
         { to: "/admin/dashboard", label: "Dashboard" },
         { to: "/messages", label: "Messages" },
+        { to: "/crm/settings", label: "Settings" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -298,6 +299,7 @@ export const Header: React.FC = () => {
       return [
         { to: "/admin/manager-dashboard", label: "Dashboard" },
         { to: "/messages", label: "Messages" },
+        { to: "/crm/settings", label: "Settings" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -310,6 +312,7 @@ export const Header: React.FC = () => {
         { to: "/appointments", label: "My Appointments" },
         { to: "/my-account", label: "My Account" },
         { to: "/messages", label: "Messages" },
+        { to: "/settings", label: "Settings" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -317,6 +320,7 @@ export const Header: React.FC = () => {
     if (user.role === "doctor") {
       return [
         { to: "/clinic/diary", label: "My Appointments" },
+        { to: "/crm/settings", label: "Settings" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -328,6 +332,7 @@ export const Header: React.FC = () => {
         { to: "/clinic/availability-settings", label: "Availability" },
         { to: "/clinic/diary", label: "Diary" },
         { to: "/messages", label: "Messages" },
+        { to: "/crm/settings", label: "Settings" },
         { action: handleLogout, label: "Logout" },
       ];
     }
@@ -362,6 +367,7 @@ export const Header: React.FC = () => {
         { to: "/crm/calendar", label: "Sales Week Calendar" },
         { to: "/crm/tag", label: "Tags" },
         { to: "/crm/facebook-integration", label: "Facebook Integration" },
+        { to: "/crm/settings", label: "Settings" },
         { action: handleLogout, label: "Logout" },
       ];
     }
