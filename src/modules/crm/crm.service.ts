@@ -2223,7 +2223,7 @@ export class CrmService implements OnModuleInit {
     const noShowApts = await noShowQ.getCount();
 
     // Done / Completed 
-    let completedQ = aptBaseQ.clone().andWhere('apt.status = :status', { status: 'COMPLETED' });
+    let completedQ = aptBaseQ.clone().andWhere('apt.status IN (:...statuses)', { statuses: ['COMPLETED', 'EXECUTED'] });
     if (dateRange) {
       completedQ = completedQ.andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startDate AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endDate', dateRange);
     }

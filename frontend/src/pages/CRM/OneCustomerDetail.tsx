@@ -1845,7 +1845,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                             <td className="p-5 text-xs font-bold text-slate-900">{apt.serviceName}</td>
                                                             <td className="p-5 text-xs font-medium text-slate-500">{apt.clinicName}</td>
                                                             <td className="p-5 text-right">
-                                                                <Badge className={`${apt.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'} text-[9px] font-black uppercase px-2.5 py-1 rounded-lg border shadow-sm`}>
+                                                                <Badge className={`${(apt.status === 'COMPLETED' || apt.status === 'EXECUTED') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'} text-[9px] font-black uppercase px-2.5 py-1 rounded-lg border shadow-sm`}>
                                                                     {apt.status}
                                                                 </Badge>
                                                             </td>

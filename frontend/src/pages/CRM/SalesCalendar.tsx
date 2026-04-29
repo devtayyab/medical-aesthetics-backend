@@ -96,9 +96,9 @@ export const SalesCalendar: React.FC = () => {
 
     // Derived Performance Data from Redux
     const progress = {
-        sales: analytics?.customerStats?.totalRevenue || 0,
-        calls: analytics?.communicationStats?.calls || 0,
-        appointments: analytics?.completedActions || 0
+        sales: Number(analytics?.customerStats?.totalRevenue || 0),
+        calls: Number(analytics?.communicationStats?.totalCalls || 0),
+        appointments: Number(analytics?.actionStats?.completedActions || 0)
     };
 
     const daysInMonth = eachDayOfInterval({
