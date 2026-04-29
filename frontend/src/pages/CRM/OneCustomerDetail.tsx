@@ -253,7 +253,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const [emailDate, setEmailDate] = useState(new Date().toISOString().substring(0, 16));
 
     const [showDiaryModal, setShowDiaryModal] = useState(false);
-    const [editingCallId, setEditingCallId] = useState<string | null>(null);
+    const [editingLogId, setEditingLogId] = useState<string | null>(null);
 
     const [isPaymentPrompt, setIsPaymentPrompt] = useState(false);
     const [paymentAmt, setPaymentAmt] = useState("");
@@ -366,9 +366,11 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const handleSavePhoneCallNotes = async () => {
         if (!phoneCallNotes.trim()) return;
         try {
-            if (editingCallId) {
+            const isLegacyId = editingLogId?.startsWith('lead-log-');
+
+            if (editingLogId && !isLegacyId) {
                 await dispatch(updateCommunication({
-                    id: editingCallId,
+                    id: editingLogId,
                     updates: { notes: phoneCallNotes }
                 })).unwrap();
             } else {
@@ -379,7 +381,11 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     status: 'completed',
                     notes: phoneCallNotes,
                     direction: 'outgoing',
-                    metadata: { clickOnly: true }
+                    metadata: { 
+                        clickOnly: true,
+                        wasLegacyEdit: isLegacyId ? true : undefined,
+                        originalLegacyId: isLegacyId ? editingLogId : undefined
+                    }
                 })).unwrap();
 
                 // Rule: Update Last Contacted At
@@ -389,7 +395,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 })).unwrap();
             }
             setPhoneCallNotes("");
-            setEditingCallId(null);
+            setEditingLogId(null);
             setShowPhoneCallModal(false);
             dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
         } catch (error) {
@@ -401,22 +407,36 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     const handleSaveEmailLog = async () => {
         if (!emailNotes.trim()) return;
         try {
-            await dispatch(logCommunication({
-                customerId: customer.id,
-                salespersonId: user?.id,
-                type: 'email',
-                status: 'completed',
-                notes: `[Sent: ${new Date(emailDate).toLocaleString()}]\n\n${emailNotes}`,
-                direction: 'outgoing'
-            })).unwrap();
+            const isLegacyId = editingLogId?.startsWith('lead-log-');
 
-            // Rule: Update Last Contacted At
-            await dispatch(updateLead({
-                id: customer.id,
-                updates: { lastContactedAt: new Date().toISOString() }
-            })).unwrap();
+            if (editingLogId && !isLegacyId) {
+                await dispatch(updateCommunication({
+                    id: editingLogId,
+                    updates: { notes: emailNotes }
+                })).unwrap();
+            } else {
+                await dispatch(logCommunication({
+                    customerId: customer.id,
+                    salespersonId: user?.id,
+                    type: 'email',
+                    status: 'completed',
+                    notes: emailNotes,
+                    direction: 'outgoing',
+                    metadata: {
+                        wasLegacyEdit: isLegacyId ? true : undefined,
+                        originalLegacyId: isLegacyId ? editingLogId : undefined
+                    }
+                })).unwrap();
+
+                // Rule: Update Last Contacted At
+                await dispatch(updateLead({
+                    id: customer.id,
+                    updates: { lastContactedAt: new Date().toISOString() }
+                })).unwrap();
+            }
 
             setEmailNotes("");
+            setEditingLogId(null);
             setShowEmailModal(false);
             dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
         } catch (error) {
@@ -1377,13 +1397,23 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="flex flex-wrap gap-2">
-                                        {(customer as any).multiOwners?.map((owner: any) => (
+                                <div className="flex flex-wrap gap-2">
+                                        {/* Primary Assigned Salesperson */}
+                                        {customer.assignedSales && (
+                                            <Badge className="bg-[#b3d81b] text-black text-[10px] font-black border-none rounded-lg px-2.5 py-1 flex items-center gap-1.5 shadow-sm">
+                                                <User className="w-3 h-3" />
+                                                {customer.assignedSales.firstName} {customer.assignedSales.lastName} (Primary)
+                                            </Badge>
+                                        )}
+                                        
+                                        {/* Multi-owners */}
+                                        {(customer as any).multiOwners?.filter((o: any) => o.id !== customer.assignedSalesId).map((owner: any) => (
                                             <Badge key={owner.id} className="bg-blue-50 text-blue-600 text-[10px] font-bold border-blue-100/50 rounded-lg px-2.5 py-1">
                                                 {owner.firstName} {owner.lastName}
                                             </Badge>
                                         ))}
-                                        {(!(customer as any).multiOwners || (customer as any).multiOwners.length === 0) && (
+                                        
+                                        {(!customer.assignedSales && (!(customer as any).multiOwners || (customer as any).multiOwners.length === 0)) && (
                                             <div className="text-[10px] text-slate-400 italic font-medium py-2 px-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 w-full text-center">No contact owners assigned</div>
                                         )}
                                     </div>
@@ -1875,11 +1905,15 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-2 opacity-0 group-hover/comm:opacity-100 transition-opacity">
-                                                            {comm.type === 'call' && (
-                                                                <Button variant="ghost" size="sm" className="h-8 px-3 text-[10px] font-bold text-blue-600 hover:bg-blue-50" onClick={() => { setEditingCallId(comm.id); setPhoneCallNotes(comm.notes || ""); setShowPhoneCallModal(true); }}>
+                                                            {comm.type === 'call' ? (
+                                                                <Button variant="ghost" size="sm" className="h-8 px-3 text-[10px] font-bold text-blue-600 hover:bg-blue-50" onClick={() => { setEditingLogId(comm.id); setPhoneCallNotes(comm.notes || ""); setShowPhoneCallModal(true); }}>
                                                                     Edit
                                                                 </Button>
-                                                            )}
+                                                            ) : comm.type === 'email' ? (
+                                                                <Button variant="ghost" size="sm" className="h-8 px-3 text-[10px] font-bold text-blue-600 hover:bg-blue-50" onClick={() => { setEditingLogId(comm.id); setEmailNotes(comm.notes || ""); setShowEmailModal(true); }}>
+                                                                    Edit
+                                                                </Button>
+                                                            ) : null}
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
@@ -1942,9 +1976,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                <PhoneCall className="w-4 h-4 text-slate-400" /> {editingCallId ? "Edit Phone Call Notes" : "Add Phone Call Notes"}
+                                <PhoneCall className="w-4 h-4 text-slate-400" /> {editingLogId ? "Edit Phone Call Notes" : "Add Phone Call Notes"}
                             </h3>
-                            <Button variant="ghost" size="sm" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); setEditingCallId(null); }} className="h-8 w-8 p-0">
+                            <Button variant="ghost" size="sm" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); setEditingLogId(null); }} className="h-8 w-8 p-0">
                                 <X className="w-4 h-4" />
                             </Button>
                         </div>
@@ -1956,9 +1990,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                 className="min-h-[120px] resize-none"
                             />
                             <div className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); setEditingCallId(null); }}>Cancel</Button>
+                                <Button variant="outline" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); setEditingLogId(null); }}>Cancel</Button>
                                 <Button className="bg-slate-800 hover:bg-slate-900 text-white" onClick={handleSavePhoneCallNotes}>
-                                    {editingCallId ? "Update Notes" : "Save Notes"}
+                                    {editingLogId ? "Update Notes" : "Save Notes"}
                                 </Button>
                             </div>
                         </div>
@@ -1971,8 +2005,10 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-bold text-slate-800 flex items-center gap-2"><Mail className="w-4 h-4 text-slate-400" /> Log Sent Email</h3>
-                            <Button variant="ghost" size="sm" onClick={() => { setShowEmailModal(false); setEmailNotes(""); }} className="h-8 w-8 p-0">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <Mail className="w-4 h-4 text-slate-400" /> {editingLogId ? "Edit Email Log" : "Log Sent Email"}
+                            </h3>
+                            <Button variant="ghost" size="sm" onClick={() => { setShowEmailModal(false); setEmailNotes(""); setEditingLogId(null); }} className="h-8 w-8 p-0">
                                 <X className="w-4 h-4" />
                             </Button>
                         </div>

@@ -23,7 +23,7 @@ const glassCard = css`
 `;
 
 const articleBody = css`
-  font-family: 'Inter', sans-serif;
+  font-family: 'Manrope', sans-serif;
   font-size: 1.15rem;
   line-height: 2;
   color: #4B5563;

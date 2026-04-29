@@ -113,6 +113,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   });
 
   const [clinics, setClinics] = useState<{ value: string; label: string }[]>([]);
+  const [services, setServices] = useState<{ value: string; label: string }[]>([]);
+  const [providers, setProviders] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -120,11 +122,39 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         const clinicRes = await crmAPI.getAccessibleClinics();
         const clinicOptions = (clinicRes.data || []).map((c: any) => ({ value: c.id, label: c.name }));
         setClinics(clinicOptions);
+        
+        // Also fetch salespersons for provider selection if needed
+        const salesRes = await crmAPI.getSalespersons();
+        const salesOptions = (salesRes.data || []).map((s: any) => ({ 
+          value: s.id, 
+          label: `${s.firstName} ${s.lastName} (${s.role})` 
+        }));
+        setProviders(salesOptions);
       } catch (e) {
-        console.error("Failed to load clinics", e);
+        console.error("Failed to load clinics/providers", e);
       }
     })();
   }, []);
+
+  // Fetch services when clinic changes
+  useEffect(() => {
+    if (!appointmentData.clinicId) {
+      setServices([]);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await clinicsAPI.getServices(appointmentData.clinicId);
+        const options = (res.data || []).map((s: any) => ({ 
+          value: s.id, 
+          label: `${s.name || s.treatment?.name} (€${s.price})` 
+        }));
+        setServices(options);
+      } catch (e) {
+        console.error("Failed to load services", e);
+      }
+    })();
+  }, [appointmentData.clinicId]);
 
   // Initial form state
   const initialFormState = {
@@ -204,17 +234,20 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       }
 
       if (scheduleAppointment && appointmentData.serviceId && appointmentData.clinicId) {
-        const startStr = `${appointmentData.date}T${appointmentData.time}:00`;
-        const startDate = new Date(startStr);
+        const [hh, mm] = appointmentData.time.split(':').map(Number);
+        const startDate = new Date(appointmentData.date);
+        startDate.setHours(hh, mm, 0, 0);
         const endDate = new Date(startDate.getTime() + 30 * 60000); // 30 min default
         
         actions.push(bookingAPI.createAppointment({
           clientId: leadId,
           clinicId: appointmentData.clinicId,
           serviceId: appointmentData.serviceId,
+          providerId: (user as any)?.id, // Ensure it shows in calendar
+          bookedById: (user as any)?.id,
           startTime: startDate.toISOString(),
           endTime: endDate.toISOString(),
-          status: 'PENDING',
+          status: 'CONFIRMED',
           notes: `Scheduled during lead creation.`
         }));
       }
@@ -246,6 +279,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
   const handleEditLead = (lead: Lead) => {
     setEditingLead(lead);
+    setCreateFollowUpTask(false);
+    setScheduleAppointment(false);
     setShowModal(true);
   };
 
@@ -299,18 +334,20 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
   const handleSaveEdit = async () => {
     if (!editingLead) return;
+    const toastId = toast.loading("Updating lead...");
     try {
       const updates = {
-        firstName: editingLead.firstName,
-        lastName: editingLead.lastName,
-        email: editingLead.email,
-        phone: editingLead.phone,
+        firstName: editingLead.firstName?.trim(),
+        lastName: editingLead.lastName?.trim(),
+        email: editingLead.email?.trim(),
+        phone: editingLead.phone?.trim() || undefined,
         status: editingLead.status,
         source: editingLead.source,
+        assignedSalesId: editingLead.assignedSalesId,
       };
       await dispatch(updateLead({ id: editingLead.id, updates })).unwrap();
       
-      // Handle follow-up actions
+      // Handle follow-up actions (if any - though UI is removed, keep logic safe)
       const actions: Promise<any>[] = [];
       
       if (createFollowUpTask) {
@@ -327,17 +364,20 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       }
 
       if (scheduleAppointment && appointmentData.serviceId && appointmentData.clinicId) {
-        const startStr = `${appointmentData.date}T${appointmentData.time}:00`;
-        const startDate = new Date(startStr);
+        const [hh, mm] = appointmentData.time.split(':').map(Number);
+        const startDate = new Date(appointmentData.date);
+        startDate.setHours(hh, mm, 0, 0);
         const endDate = new Date(startDate.getTime() + 30 * 60000); // 30 min default
         
         actions.push(bookingAPI.createAppointment({
           clientId: editingLead.id,
           clinicId: appointmentData.clinicId,
           serviceId: appointmentData.serviceId,
+          providerId: (user as any)?.id, // Ensure it shows in calendar
+          bookedById: (user as any)?.id,
           startTime: startDate.toISOString(),
           endTime: endDate.toISOString(),
-          status: 'PENDING',
+          status: 'CONFIRMED',
           notes: `Scheduled during lead edit.`
         }));
       }
@@ -346,6 +386,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         await Promise.all(actions);
       }
 
+      toast.success("Lead updated successfully", { id: toastId });
       setShowModal(false);
       setEditingLead(null);
       
@@ -354,8 +395,12 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       setScheduleAppointment(false);
 
       dispatch(fetchLeads(leadFilters));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update failed:", error);
+      // Try to extract detailed message if available
+      const detailedError = error.response?.data?.message;
+      const errorMessage = Array.isArray(detailedError) ? detailedError.join(", ") : detailedError;
+      toast.error(errorMessage || error.message || "Failed to update lead", { id: toastId });
     }
   };
 
@@ -1081,68 +1126,78 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     <Select
                       label="Acquisition Source"
                       value={editingLead.source}
-                      onChange={(value) => setEditingLead({ ...editingLead, source: value })}
+                      onChange={(value) => setEditingLead({ ...editingLead, source: value as any })}
                       options={[{ value: 'facebook_ads', label: 'Social Echo (FB)' }, { value: 'website', label: 'Direct Portal' }, { value: 'referral', label: 'Intelligence Network' }]}
                       className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100"
+                    />
+                    <Select
+                      label="Lead Owner"
+                      value={editingLead.assignedSalesId || ''}
+                      onChange={(value) => setEditingLead({ ...editingLead, assignedSalesId: value })}
+                      options={providers}
+                      className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100 col-span-2"
                     />
                   </div>
                 </div>
 
-                {/* Post-Update Workflow Section */}
-                <div className="p-6 bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl space-y-6">
-                  <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-[#CBFF38]/10 p-2 rounded-xl border border-[#CBFF38]/20">
-                        <Zap className="w-4 h-4 text-[#CBFF38]" />
-                      </div>
-                      <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Post-Update Continuity</h3>
-                    </div>
-                  </div>
-
+                {/* Section: Optional Actions for Edit */}
+                <div className="pt-6 border-t border-slate-100 space-y-6">
                   <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
-                      <div className="flex items-center gap-3">
-                         <FilePlus className="w-5 h-5 text-blue-400" />
-                         <span className="text-xs font-bold text-slate-300">Sync Follow-up Mission</span>
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className={`w-10 h-6 rounded-full transition-all relative ${scheduleAppointment ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${scheduleAppointment ? 'left-5' : 'left-1'}`} />
+                        <input type="checkbox" className="hidden" checked={scheduleAppointment} onChange={() => setScheduleAppointment(!scheduleAppointment)} />
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={createFollowUpTask}
-                        onChange={(e) => setCreateFollowUpTask(e.target.checked)}
-                        className="w-5 h-5 rounded-lg border-slate-600 bg-slate-700 text-[#CBFF38] focus:ring-[#CBFF38]/20"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
-                      <div className="flex items-center gap-3">
-                         <CalendarPlus className="w-5 h-5 text-purple-400" />
-                         <span className="text-xs font-bold text-slate-300">Book Strategic Session</span>
+                      <div>
+                        <span className="text-sm font-bold text-slate-800">Schedule Appointment</span>
+                        <p className="text-[10px] text-slate-500 font-medium">Book a slot in the diary immediately</p>
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={scheduleAppointment}
-                        onChange={(e) => setScheduleAppointment(e.target.checked)}
-                        className="w-5 h-5 rounded-lg border-slate-600 bg-slate-700 text-[#CBFF38] focus:ring-[#CBFF38]/20"
-                      />
-                    </div>
-                  </div>
+                    </label>
 
-                  {/* Task Sub-Form */}
-                  {createFollowUpTask && (
-                    <div className="p-5 bg-slate-800 rounded-2xl border border-blue-500/20 space-y-4 animate-in slide-in-from-top-2">
-                       <Input
-                          label="Mission Subject"
-                          value={taskData.subject}
-                          onChange={(e) => setTaskData({ ...taskData, subject: e.target.value })}
-                          className="bg-slate-900 border-slate-700 text-white h-10 rounded-xl text-xs"
+                    {scheduleAppointment && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 animate-in slide-in-from-top-2 duration-200">
+                        <Select
+                          label="Select Clinic"
+                          value={appointmentData.clinicId}
+                          onChange={(val) => setAppointmentData({ ...appointmentData, clinicId: val })}
+                          options={clinics}
+                          leftIcon={<Building2 className="w-4 h-4" />}
                         />
-                        <div className="grid grid-cols-2 gap-3">
-                           <Input type="date" label="Deadline" value={taskData.dueDate} onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })} className="bg-slate-900 border-slate-700 text-white h-10 rounded-xl text-xs" />
-                           <Select label="Priority" value={taskData.priority} onChange={(val) => setTaskData({ ...taskData, priority: val })} options={[{ value: 'low', label: 'Routine' }, { value: 'medium', label: 'Operations' }, { value: 'high', label: 'Urgent' }]} className="bg-slate-900 border-slate-700 text-white h-10 rounded-xl text-xs" />
-                        </div>
-                    </div>
-                  )}
+                        <Select
+                          label="Select Treatment"
+                          value={appointmentData.serviceId}
+                          onChange={(val) => setAppointmentData({ ...appointmentData, serviceId: val })}
+                          options={services}
+                          disabled={!appointmentData.clinicId}
+                          leftIcon={<Zap className="w-4 h-4" />}
+                        />
+                        <Input
+                          label="Appointment Date"
+                          type="date"
+                          value={appointmentData.date}
+                          onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
+                          leftIcon={<Calendar className="w-4 h-4" />}
+                        />
+                        <Input
+                          label="Appointment Time"
+                          type="time"
+                          value={appointmentData.time}
+                          onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
+                          leftIcon={<Clock className="w-4 h-4" />}
+                        />
+                        <Select
+                          label="Professional (Provider)"
+                          value={appointmentData.providerId || (user?.id || '')}
+                          onChange={(val) => setAppointmentData({ ...appointmentData, providerId: val })}
+                          options={providers}
+                          leftIcon={<User className="w-4 h-4" />}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+
               </CardContent>
 
               {/* Action Footer */}
@@ -1290,132 +1345,77 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   </div>
                 </div>
 
-                {/* Section 3: Process Continuity (Integrated Actions) */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-4">
-                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200">
-                    <div className="bg-slate-900 p-2 rounded-lg">
-                      <Zap className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-tight">Post-Creation Actions</h3>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Maintain workflow continuity</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-6 py-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="createTaskNew"
-                        checked={createFollowUpTask}
-                        onChange={(e) => setCreateFollowUpTask(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                      />
-                      <label htmlFor="createTaskNew" className="text-xs font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
-                        <FilePlus className="w-3.5 h-3.5 text-blue-500" />
-                        Create Follow-up Task
-                      </label>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="scheduleAppNew"
-                        checked={scheduleAppointment}
-                        onChange={(e) => setScheduleAppointment(e.target.checked)}
-                        className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
-                      />
-                      <label htmlFor="scheduleAppNew" className="text-xs font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
-                        <CalendarPlus className="w-3.5 h-3.5 text-purple-500" />
-                        Schedule Appointment
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Conditional Task Fields */}
-                  {createFollowUpTask && (
-                    <div className="p-4 bg-white rounded-xl border border-blue-100 space-y-4 animate-in slide-in-from-top-1">
-                      <h4 className="text-[10px] font-black text-blue-900 uppercase tracking-wider flex items-center gap-2">
-                        <List className="w-3 h-3" /> Task Configuration
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          label="Task Subject"
-                          value={taskData.subject}
-                          onChange={(e) => setTaskData({ ...taskData, subject: e.target.value })}
-                          placeholder="e.g. Call back to finalize price"
-                          className="bg-white text-xs"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            label="Due Date"
-                            type="date"
-                            value={taskData.dueDate}
-                            onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
-                            className="bg-white text-xs"
-                          />
-                          <Select
-                            label="Priority"
-                            value={taskData.priority}
-                            onChange={(val) => setTaskData({ ...taskData, priority: val })}
-                            options={[
-                              { value: 'low', label: 'Low' },
-                              { value: 'medium', label: 'Medium' },
-                              { value: 'high', label: 'High' }
-                            ]}
-                            className="bg-white text-xs"
-                          />
-                        </div>
+                {/* Section 3: Optional Actions */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-6">
+                  <div className="flex flex-col gap-4">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className={`w-10 h-6 rounded-full transition-all relative ${scheduleAppointment ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${scheduleAppointment ? 'left-5' : 'left-1'}`} />
+                        <input type="checkbox" className="hidden" checked={scheduleAppointment} onChange={() => setScheduleAppointment(!scheduleAppointment)} />
                       </div>
-                    </div>
-                  )}
+                      <div>
+                        <span className="text-sm font-bold text-slate-800">Schedule Initial Appointment</span>
+                        <p className="text-[10px] text-slate-500 font-medium">Book a slot in the diary immediately</p>
+                      </div>
+                    </label>
 
-                  {/* Conditional Appointment Fields */}
-                  {scheduleAppointment && (
-                    <div className="p-4 bg-white rounded-xl border border-purple-100 space-y-4 animate-in slide-in-from-top-1">
-                      <h4 className="text-[10px] font-black text-purple-900 uppercase tracking-wider flex items-center gap-2">
-                        <Calendar className="w-3 h-3" /> Appointment Scheduling
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            label="Date"
-                            type="date"
-                            value={appointmentData.date}
-                            onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
-                            className="bg-white text-xs"
-                          />
-                          <Input
-                            label="Time"
-                            type="time"
-                            value={appointmentData.time}
-                            onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
-                            className="bg-white text-xs"
-                          />
-                        </div>
+                    {scheduleAppointment && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 animate-in slide-in-from-top-2 duration-200">
                         <Select
-                          label="Proposed Service"
+                          label="Select Clinic"
+                          value={appointmentData.clinicId}
+                          onChange={(val) => setAppointmentData({ ...appointmentData, clinicId: val })}
+                          options={clinics}
+                          leftIcon={<Building2 className="w-4 h-4" />}
+                        />
+                        <Select
+                          label="Select Treatment"
                           value={appointmentData.serviceId}
                           onChange={(val) => setAppointmentData({ ...appointmentData, serviceId: val })}
-                          options={[
-                            { value: 'botox', label: 'Botox Treatment' },
-                            { value: 'fillers', label: 'Dermal Fillers' },
-                            { value: 'laser', label: 'Laser Session' },
-                            { value: 'consult', label: 'General Consultation' }
-                          ]}
-                          className="bg-white text-xs"
+                          options={services}
+                          disabled={!appointmentData.clinicId}
+                          leftIcon={<Zap className="w-4 h-4" />}
+                        />
+                        <Input
+                          label="Appointment Date"
+                          type="date"
+                          value={appointmentData.date}
+                          onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
+                          leftIcon={<Calendar className="w-4 h-4" />}
+                        />
+                        <Input
+                          label="Appointment Time"
+                          type="time"
+                          value={appointmentData.time}
+                          onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
+                          leftIcon={<Clock className="w-4 h-4" />}
+                        />
+                        <Select
+                          label="Professional (Provider)"
+                          value={appointmentData.providerId || (user?.id || '')}
+                          onChange={(val) => setAppointmentData({ ...appointmentData, providerId: val })}
+                          options={providers}
+                          leftIcon={<User className="w-4 h-4" />}
                         />
                       </div>
-                      <Select
-                        label="Select Clinic"
-                        value={appointmentData.clinicId}
-                        onChange={(val) => setAppointmentData({ ...appointmentData, clinicId: val })}
-                        options={clinics}
-                        className="bg-white text-xs"
-                      />
-                    </div>
-                  )}
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-4">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className={`w-10 h-6 rounded-full transition-all relative ${createFollowUpTask ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${createFollowUpTask ? 'left-5' : 'left-1'}`} />
+                        <input type="checkbox" className="hidden" checked={createFollowUpTask} onChange={() => setCreateFollowUpTask(!createFollowUpTask)} />
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-slate-800">Create Follow-up Task</span>
+                        <p className="text-[10px] text-slate-500 font-medium">Add a reminder to your task list</p>
+                      </div>
+                    </label>
+                  </div>
                 </div>
+
+
               </div>
 
               {/* Footer */}

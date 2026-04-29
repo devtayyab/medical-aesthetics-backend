@@ -840,39 +840,42 @@ export class CrmService implements OnModuleInit {
    * Returns the resolved User ID (if customer) or the original ID if it's a lead.
    */
   private async resolveEntityIds(id: string): Promise<{ userId?: string; leadId?: string; type: 'customer' | 'lead' | 'unknown' }> {
-    if (!id || !isUuid(id)) return { type: 'unknown' };
+    if (!id) return { type: 'unknown' };
+
+    let cleanId = id;
+    if (id.startsWith('lead-')) {
+      cleanId = id.replace('lead-', '');
+    }
+
+    if (!isUuid(cleanId)) return { type: 'unknown' };
 
     // 1. Check if it's a direct User ID
-    const user = await this.usersRepository.findOne({ 
-      where: { id },
-      withDeleted: true 
+    const user = await this.usersRepository.findOne({
+      where: { id: cleanId },
+      withDeleted: true
     });
-    if (user) return { userId: id, type: 'customer' };
+    if (user) return { userId: cleanId, type: 'customer' };
 
     // 2. Check if it's a CustomerRecord ID
-    const record = await this.customerRecordsRepository.findOne({ 
-      where: { id },
-      withDeleted: true 
+    const record = await this.customerRecordsRepository.findOne({
+      where: { id: cleanId },
+      withDeleted: true
     });
     if (record) return { userId: record.customerId, type: 'customer' };
 
     // 3. Check if it's a Lead ID
-    const lead = await this.leadsRepository.findOne({ 
-      where: { id },
-      withDeleted: true 
+    const lead = await this.leadsRepository.findOne({
+      where: { id: cleanId },
+      withDeleted: true
     });
-    if (lead) return { leadId: id, id, type: 'lead' } as any;
+    if (lead) return { leadId: cleanId, type: 'lead' };
 
     return { type: 'unknown' };
   }
 
   // Customer Record Management
   async getCustomerRecord(customerId: string, salespersonId?: string): Promise<any> {
-    // 0. Validate UUID format to avoid DB crashes
-    if (!isUuid(customerId)) {
-      throw new NotFoundException('Invalid Customer or Lead ID format');
-    }
-
+    // 0. Resolve the true ID (stripping lead- prefix if needed)
     const resolved = await this.resolveEntityIds(customerId);
 
     if (resolved.type === 'unknown') {
@@ -950,7 +953,10 @@ export class CrmService implements OnModuleInit {
         })),
         communications: [
           ...(await this.communicationLogsRepository.find({
-            where: { customerId: In(idMatchList) },
+            where: [
+              { customerId: In(idMatchList) },
+              { relatedLeadId: In(idMatchList) }
+            ],
             relations: ['salesperson'],
             order: { createdAt: 'DESC' },
             take: 50,
@@ -1036,7 +1042,10 @@ export class CrmService implements OnModuleInit {
 
     // Get communication history - merge database logs and legacy metadata logs
     const dbLogs = await this.communicationLogsRepository.find({
-      where: { customerId: In(idMatchList) },
+      where: [
+        { customerId: In(idMatchList) },
+        { relatedLeadId: In(idMatchList) }
+      ],
       relations: ['salesperson'],
       order: { createdAt: 'DESC' },
       take: 50,
@@ -1231,36 +1240,6 @@ export class CrmService implements OnModuleInit {
       data.relatedLeadId = null;
     }
 
-    if (lead) {
-      // Append to Lead notes instead of ONLY metadata
-      const newNote = `[${data.type?.toUpperCase()} - ${new Date().toISOString()}] ${data.subject || ''}: ${data.notes || ''}`;
-      const updatedNotes = lead.notes ? `${lead.notes}\n\n${newNote}` : newNote;
-
-      // Store structured history in metadata array (legacy support)
-      const currentHistory = (lead.metadata as any)?.interactionHistory || [];
-      const newInteraction = {
-        id: `lead-log-${Date.now()}`,
-        ...data,
-        createdAt: new Date(),
-        metadata: data.metadata || {}
-      };
-      const updatedHistory = [newInteraction, ...currentHistory];
-
-      await this.leadsRepository.update(lead.id, {
-        notes: updatedNotes,
-        lastContactedAt: new Date(),
-        metadata: {
-          ...lead.metadata || {},
-          lastInteraction: data,
-          interactionHistory: updatedHistory
-        }
-      });
-
-      // Move Lead ID to relatedLeadId and clear customerId (User ID) to avoid FK issues
-      data.relatedLeadId = lead.id;
-      data.customerId = null;
-    }
-
     // Enforce mandatory field validation for call communications, except click-only logs
     if (data.type === 'call' && !(data.metadata && (data.metadata as any).clickOnly === true)) {
       await this.mandatoryFieldValidationService.enforceFieldCompletion(inputId, data);
@@ -1281,24 +1260,24 @@ export class CrmService implements OnModuleInit {
       data.subject = `${typeStr.charAt(0).toUpperCase() + typeStr.slice(1)} Log - ${new Date().toLocaleDateString()}`;
     }
 
+    // 1. Save to Database Repository (Primary Storage)
     const log = this.communicationLogsRepository.create(data);
     const savedLog = await this.communicationLogsRepository.save(log);
 
-    // Update last contact date based on specific rules
-    const CONTACT_TYPES = ['call', 'viber', 'email'];
-    const isContactAttempt = CONTACT_TYPES.includes(data.type || '') ||
-      (data.type === 'note' && (data.metadata as any)?.isContactAttempt === true);
+    // 2. Legacy/Notes updates for Leads
+    if (lead) {
+      const newNote = `[${data.type?.toUpperCase()} - ${new Date().toISOString()}] ${data.subject || ''}: ${data.notes || ''}`;
+      const updatedNotes = lead.notes ? `${lead.notes}\n\n${newNote}` : newNote;
 
-    if (isContactAttempt) {
-      if (lead) {
-        await this.leadsRepository.update(lead.id, {
-          lastContactedAt: new Date(),
-        });
-      } else {
-        await this.updateCustomerRecord(inputId, {
-          lastContactDate: new Date(),
-        });
-      }
+      await this.leadsRepository.update(lead.id, {
+        notes: updatedNotes,
+        lastContactedAt: new Date(),
+      });
+    } else {
+      // Update customer record last contact date
+      await this.updateCustomerRecord(inputId, {
+        lastContactDate: new Date(),
+      });
     }
 
     // Emit event for notifications
@@ -1386,6 +1365,9 @@ export class CrmService implements OnModuleInit {
   }
 
   async updateCommunication(id: string, updates: Partial<CommunicationLog>): Promise<CommunicationLog> {
+    if (!id || !isUuid(id)) {
+      throw new BadRequestException('Invalid communication log ID format. Legacy logs cannot be updated.');
+    }
     const log = await this.communicationLogsRepository.findOne({ where: { id } });
     if (!log) {
       throw new NotFoundException('Communication log not found');
@@ -1904,7 +1886,7 @@ export class CrmService implements OnModuleInit {
 
     const result = {
       total: stats.length,
-      pending: stats.filter(s => s.status === 'pending').length,
+      pending: stats.filter(s => s.status === 'pending' && (!s.dueDate || new Date(s.dueDate) >= now)).length,
       overdue: stats.filter(s => s.status === 'pending' && s.dueDate && new Date(s.dueDate) < now).length,
       inProgress: stats.filter(s => s.status === 'in_progress').length,
       completed: stats.filter(s => s.status === 'completed').length,

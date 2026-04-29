@@ -107,27 +107,36 @@ export const SalesWeekCalendar: React.FC = () => {
         init();
     }, [user]);
 
-    useEffect(() => {
+    const currentFilters = useMemo(() => {
         const filters: any = {};
-        if (!isManager) {
-            filters.providerId = user?.id; // Strictly force personal view for salespeople
-        } else if (selectedProviderId !== 'all') {
+        if (!isManager && user?.role !== 'salesperson') {
+            filters.providerId = user?.id;
+        } else if (isManager && selectedProviderId !== 'all') {
             filters.providerId = selectedProviderId;
         }
-
         if (viewMode === 'week') {
             filters.startDate = format(startOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
             filters.endDate = format(endOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
         } else {
             filters.date = format(viewDate, 'yyyy-MM-dd');
         }
-
         if (selectedClinicId !== 'all') {
             filters.clinicId = selectedClinicId;
-            dispatch(fetchAvailability(selectedClinicId));
         }
-        dispatch(fetchClinicAppointments(filters));
-    }, [dispatch, user, selectedClinicId, selectedProviderId, viewDate, viewMode, isManager]);
+        return filters;
+    }, [user, selectedClinicId, selectedProviderId, viewDate, viewMode, isManager]);
+
+    useEffect(() => {
+        if (selectedClinicId !== 'all') {
+            dispatch(fetchAvailability({
+                clinicId: selectedClinicId,
+                date: format(viewDate, 'yyyy-MM-dd'),
+                serviceId: 'all'
+            } as any));
+        }
+        console.log('[SalesWeekCalendar] Fetching appointments with currentFilters:', currentFilters);
+        dispatch(fetchClinicAppointments(currentFilters));
+    }, [dispatch, currentFilters]);
 
     useEffect(() => {
         if (searchQuery.length > 2) {
@@ -176,21 +185,26 @@ export const SalesWeekCalendar: React.FC = () => {
             returned: 0
         };
 
+        console.log(`[SalesWeekCalendar] Calculating stats for ${appointments.length} appointments`);
+
         appointments.forEach(apt => {
             const aptDate = new Date(apt.startTime);
+            let isInView = false;
             if (viewMode === 'week') {
                 const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
                 const weekEnd = endOfWeek(viewDate, { weekStartsOn: 1 });
-                if (aptDate < weekStart || aptDate > weekEnd) return;
+                if (aptDate >= weekStart && aptDate <= weekEnd) isInView = true;
             } else {
-                if (!isSameDay(aptDate, viewDate)) return;
+                if (isSameDay(aptDate, viewDate)) isInView = true;
             }
 
-            stats.booked++;
-            if (apt.status === 'COMPLETED') stats.done++;
-            if (apt.status === 'NO_SHOW') stats.noShow++;
-            if (apt.status === 'CANCELLED') stats.cancelled++;
-            if ((apt as any).isReturned) stats.returned++; // Assuming backend provides this or we check logic
+            if (isInView) {
+                stats.booked++;
+                if (apt.status === 'COMPLETED' || apt.status === 'EXECUTED') stats.done++;
+                if (apt.status === 'NO_SHOW') stats.noShow++;
+                if (apt.status === 'CANCELLED') stats.cancelled++;
+                if ((apt as any).isReturned) stats.returned++;
+            }
         });
 
         return stats;
@@ -268,7 +282,7 @@ export const SalesWeekCalendar: React.FC = () => {
             });
 
             setIsAddWizardOpen(false);
-            dispatch(fetchClinicAppointments({ providerId: user?.id }));
+            dispatch(fetchClinicAppointments(currentFilters));
 
             // Reset wizard
             setWizardStep(1);
@@ -288,7 +302,7 @@ export const SalesWeekCalendar: React.FC = () => {
         }
         await dispatch(updateAppointmentStatus({ id, status: st }));
         setSelectedApt({ ...selectedApt, status: st });
-        dispatch(fetchClinicAppointments({ providerId: user?.id }));
+        dispatch(fetchClinicAppointments(currentFilters));
     };
 
     const handleCompletePayment = async () => {
@@ -310,7 +324,7 @@ export const SalesWeekCalendar: React.FC = () => {
             })).unwrap();
             setIsPaymentPrompt(false);
             setIsDetailDrawerOpen(false);
-            dispatch(fetchClinicAppointments({ providerId: user?.id }));
+            dispatch(fetchClinicAppointments(currentFilters));
         } catch (err) {
             console.error(err);
             alert("Checkout incomplete. Please verify amount and connection.");
@@ -525,7 +539,8 @@ export const SalesWeekCalendar: React.FC = () => {
                                         const end = new Date(apt.endTime);
                                         const top = (new Date(apt.startTime).getHours()) * 64 + (new Date(apt.startTime).getMinutes() / 60) * 64;
                                         const height = Math.max(((new Date(apt.endTime).getTime() - new Date(apt.startTime).getTime()) / 3600000) * 64, 40);
-                                        const style = statusLabels[apt.status] || statusLabels.PENDING;
+                                        const normalizedStatus = (apt.status || 'PENDING').toUpperCase();
+                                        const style = statusLabels[normalizedStatus] || statusLabels.PENDING;
                                         const Icon = style.icon;
 
                                         return (
@@ -566,7 +581,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                                 <div className="flex flex-col gap-0.5">
                                                     <div className="text-[9px] font-bold opacity-80 truncate">{apt.service?.name}</div>
                                                     <div className="text-[8px] font-black text-indigo-600 truncate uppercase mt-0.5">
-                                                        {apt.providerId === user?.id ? (apt.clinic?.name || 'My Clinic') : `${apt.provider?.firstName || 'Staff'}`}
+                                                        {apt.clinic?.name || 'Clinic'} {apt.bookedByInfo?.name ? `| ${apt.bookedByInfo.name}` : ''}
                                                     </div>
                                                 </div>
                                             </div>
@@ -890,11 +905,14 @@ export const SalesWeekCalendar: React.FC = () => {
                             <p className="text-xs font-bold">{selectedApt.client?.phone || 'No phone'}</p>
                             <p className="text-xs font-bold opacity-80">{selectedApt.client?.email}</p>
                         </div>
-                        <div className="mt-4 flex items-center gap-2 bg-white/10 p-2 rounded-lg">
-                            <User size={14} className="text-white/70" />
+                        <div className="mt-4 grid grid-cols-2 gap-2 bg-white/10 p-3 rounded-lg border border-white/5">
                             <div className="flex flex-col">
-                                <span className="text-[9px] font-bold text-white/50 uppercase">Provider</span>
-                                <span className="text-xs font-black">{selectedApt.providerName || 'Unassigned'}</span>
+                                <span className="text-[9px] font-bold text-white/50 uppercase">Clinic</span>
+                                <span className="text-xs font-black truncate">{selectedApt.clinic?.name || 'Main Clinic'}</span>
+                            </div>
+                            <div className="flex flex-col border-l border-white/10 pl-3">
+                                <span className="text-[9px] font-bold text-white/50 uppercase">Salesperson</span>
+                                <span className="text-xs font-black truncate">{selectedApt.bookedByInfo?.name || 'System'}</span>
                             </div>
                         </div>
                     </div>
@@ -949,7 +967,7 @@ export const SalesWeekCalendar: React.FC = () => {
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-gray-400 uppercase leading-none px-1">Professional</label>
+                                <label className="text-[9px] font-black text-gray-400 uppercase leading-none px-1">Staff Assigned</label>
                                 <select
                                     className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-black outline-none transition-all cursor-pointer"
                                     value={selectedApt.providerId || ''}

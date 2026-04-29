@@ -5,9 +5,9 @@ import { logout } from "@/store/slices/authSlice";
 import { fetchConversations } from "@/store/slices/messagesSlice";
 import { useEffect } from "react";
 import { fetchUnreadCount } from "@/store/slices/notificationsSlice";
-import { 
-  LayoutDashboard, Users, BarChart2, Tag, Eye, Settings, 
-  Building2, 
+import {
+  LayoutDashboard, Users, BarChart2, Tag, Eye, Settings,
+  Building2,
   Calendar, CalendarRange, FileText, BarChart, Shield, DollarSign,
   ClipboardList, Repeat, UserCog, ListChecks, Clock,
   Phone, Search, LogOut, MessageSquare, Archive, Bell, Key
@@ -35,10 +35,10 @@ const clinicLinks: SidebarItem[] = [
   { path: "/clinic/my-notifications", label: "Notifications", icon: <Bell size={20} />, group: "Communication" },
   { path: "/messages", label: "Messages", icon: <MessageSquare size={20} />, group: "Communication" },
   { path: "/clinic/notifications", label: "Campaign Outreach", icon: <Phone size={20} />, group: "Communication" },
-  
+
   { path: "/clinic/profile", label: "Profile", icon: <UserCog size={20} />, group: "Account" },
   { path: "/clinic/staff", label: "Staff Hub", icon: <Users size={20} />, group: "Account" },
-  
+
   { path: "/clinic/diary", label: "Service Diary", icon: <FileText size={20} />, group: "Operations" },
   { path: "/clinic/availability", label: "Availability", icon: <Calendar size={20} />, group: "Operations" },
   { path: "/clinic/execution", label: "Clinical Execution", icon: <ListChecks size={20} />, group: "Operations" },
@@ -61,7 +61,6 @@ const crmLinks: SidebarItem[] = [
   { path: "/crm/tasks", label: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "CRM" },
   { path: "/crm/leads", label: "Leads", icon: <Repeat className="w-5 h-5" />, group: "CRM" },
   { path: "/crm/customers", label: "Customers", icon: <Users className="w-5 h-5" />, group: "CRM" },
-  { path: "/crm/diary", label: "Staff Diary", icon: <FileText className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/calendar", label: "Sales Week Calendar", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/repeat-management", label: "Repeat Management", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
   { path: "/crm/archive", label: "Archive", icon: <Archive className="w-5 h-5" />, group: "Operations" },
@@ -82,20 +81,20 @@ const managerLinks: SidebarItem[] = [
 
   { path: "/admin/clinics", label: "Clinics", icon: <Building2 className="w-5 h-5" />, group: "Infrastructure" },
   { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Infrastructure" },
-  
+
   { path: "/crm/analytics", label: "Sales Analytics", icon: <BarChart2 className="w-5 h-5" />, group: "Intelligence" },
   { path: "/admin/clinic-analytics", label: "Clinic Analytics", icon: <Building2 className="w-5 h-5" />, group: "Intelligence" },
-   { path: "/admin/manager-dashboard?tab=calendar-global", label: "Global Calendar", icon: <CalendarRange className="w-5 h-5" />, group: "Intelligence" },
-   { path: "/admin/manager-crm/calls", label: "Calls", icon: <Phone className="w-5 h-5" />, group: "Intelligence" },
-   
-   { path: "/admin/manager-crm/reports", label: "Reports", icon: <FileText className="w-5 h-5" />, group: "Analytics" },
-   { path: "/admin/manager-crm/advertising", label: "Advertising", icon: <BarChart className="w-5 h-5" />, group: "Analytics" },
-   { path: "/admin/broadcast", label: "Broadcast", icon: <Bell className="w-5 h-5" />, group: "Marketing" },
-   { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
-   
-   { path: "/admin/manager-crm/access", label: "Access Control", icon: <Shield className="w-5 h-5" />, group: "Management" },
-   { path: "/admin/manager-crm/benefits", label: "Client Benefits", icon: <Tag className="w-5 h-5" />, group: "Management" },
-   { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <Eye className="w-5 h-5" />, group: "Management" },
+  { path: "/admin/manager-dashboard?tab=calendar-global", label: "Global Calendar", icon: <CalendarRange className="w-5 h-5" />, group: "Intelligence" },
+  { path: "/admin/manager-crm/calls", label: "Calls", icon: <Phone className="w-5 h-5" />, group: "Intelligence" },
+
+  { path: "/admin/manager-crm/reports", label: "Reports", icon: <FileText className="w-5 h-5" />, group: "Analytics" },
+  { path: "/admin/manager-crm/advertising", label: "Advertising", icon: <BarChart className="w-5 h-5" />, group: "Analytics" },
+  { path: "/admin/broadcast", label: "Broadcast", icon: <Bell className="w-5 h-5" />, group: "Marketing" },
+  { path: "/crm/facebook-integration", label: "Facebook Integration", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
+
+  { path: "/admin/manager-crm/access", label: "Access Control", icon: <Shield className="w-5 h-5" />, group: "Management" },
+  { path: "/admin/manager-crm/benefits", label: "Client Benefits", icon: <Tag className="w-5 h-5" />, group: "Management" },
+  { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", icon: <Eye className="w-5 h-5" />, group: "Management" },
 
   { path: "/admin/payments", label: "Payments & Turnover", icon: <DollarSign className="w-5 h-5" />, group: "Finance" },
   { path: "/admin/gift-cards", label: "Gift Cards", icon: <Tag className="w-5 h-5" />, group: "Finance" },
@@ -165,13 +164,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
       ? clientLinks
       : normalizedRole === "clinic_owner" || normalizedRole === "secretariat" || normalizedRole === "doctor"
         ? clinicLinks
-      : normalizedRole === "admin" || normalizedRole === "super_admin"
-            ? getAdminLinks(role)
-      : normalizedRole === "salesperson" || normalizedRole === "sales_person"
-                ? crmLinks
-      : normalizedRole === "manager"
-                ? managerLinks
-                : [];
+        : normalizedRole === "admin" || normalizedRole === "super_admin"
+          ? getAdminLinks(role)
+          : normalizedRole === "salesperson" || normalizedRole === "sales_person"
+            ? crmLinks
+            : normalizedRole === "manager"
+              ? managerLinks
+              : [];
 
   // Group links by their group property
   const groupedLinks = links.reduce<Record<string, SidebarItem[]>>((acc, link) => {
@@ -236,13 +235,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
                     <Link
                       to={link.path}
                       onClick={(e) => {
-                         if (onNavigate) onNavigate();
-                         const restrictedPaths = ['/clinic/dashboard', '/clinic/analytics', '/clinic/staff', '/clinic/settings'];
-                         const isRestrictedRole = role === 'doctor' || role === 'secretariat';
-                         if (isRestrictedRole && restrictedPaths.includes(link.path)) {
-                           e.preventDefault();
-                           return;
-                         }
+                        if (onNavigate) onNavigate();
+                        const restrictedPaths = ['/clinic/dashboard', '/clinic/analytics', '/clinic/staff', '/clinic/settings'];
+                        const isRestrictedRole = role === 'doctor' || role === 'secretariat';
+                        if (isRestrictedRole && restrictedPaths.includes(link.path)) {
+                          e.preventDefault();
+                          return;
+                        }
                       }}
                       className={`flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all duration-300 group relative ${isActive
                         ? 'text-black bg-[#CBFF38] shadow-lg shadow-lime-500/10'

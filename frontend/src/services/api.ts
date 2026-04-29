@@ -303,6 +303,7 @@ export const userAPI = {
 };
 
 export const loyaltyAPI = {
+  getCatalog: () => api.get("/loyalty/catalog"),
   getBalance: (clientId: string, clinicId?: string) => {
     const params = clinicId ? { clinicId } : {};
     return api.get(`/loyalty/${clientId}`, { params });
