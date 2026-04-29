@@ -315,7 +315,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         }
 
         setFormData({
-          customerId: customerId || propCustomerId,
+          customerId: propCustomerId || '',
           actionType: 'call',
           therapy: '',
           title: '',
