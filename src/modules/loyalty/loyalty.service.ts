@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoyaltyLedger } from './entities/loyalty-ledger.entity';
 import { ClinicsService } from '../clinics/clinics.service';
+import { Reward } from '../admin/entities/reward.entity';
 
 @Injectable()
 export class LoyaltyService {
@@ -126,6 +127,13 @@ export class LoyaltyService {
       .orderBy('ledger.createdAt', 'DESC')
       .limit(50)
       .getMany();
+  }
+
+  async getRewardsCatalog(): Promise<Reward[]> {
+    return this.ledgerRepository.manager.getRepository(Reward).find({
+      where: { isActive: true },
+      order: { pointsCost: 'ASC' },
+    });
   }
 
   private calculateTier(points: number): string {

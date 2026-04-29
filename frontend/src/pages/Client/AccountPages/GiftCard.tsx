@@ -5,8 +5,8 @@ import { Gift, Copy, CheckCircle, ChevronRight, ArrowRight, Sparkles, CreditCard
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 
-// Use the ultra-premium elite aesthetic hero image
-import HeroBg from "@/assets/Elite_Aesthetic_Hero.png";
+// Use the user's provided green banner image for the gift card hero section
+import HeroBg from "@/assets/giftcard_bg.png";
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -25,7 +25,7 @@ const heroSection = css`
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0.7) 40%, transparent 80%);
+    background: linear-gradient(to right, rgba(255,255,255,0.7) 0%, transparent 40%);
     z-index: 1;
   }
 `;
@@ -116,10 +116,11 @@ export const GiftCard: React.FC = () => {
     <div className={sectionStyles}>
       {/* Immersive Hero */}
       <div className={heroSection}>
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 bg-white">
           <img
             src={HeroBg}
-            className="w-full h-full object-cover object-center"
+            style={{ objectPosition: 'center 40%' }}
+            className="w-full h-full object-cover opacity-70"
             alt="Voucher Hero"
           />
         </div>

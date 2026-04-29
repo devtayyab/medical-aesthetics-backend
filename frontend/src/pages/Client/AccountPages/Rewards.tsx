@@ -9,8 +9,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { loyaltyAPI } from "@/services/api";
 import { toast } from "react-hot-toast";
 
-// Use the ultra-premium elite aesthetic hero image
-import HeroBg from "@/assets/Elite_Aesthetic_Hero.png";
+// Use the user's provided 3D gift box image for the Rewards hero section
+import RewardBg from "@/assets/reward_bg.png";
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -60,6 +60,16 @@ export const Rewards: React.FC = () => {
   const [userPoints, setUserPoints] = useState<number>((user as any)?.points || 0);
   const [isLoading, setIsLoading] = useState(false);
   const [isRedeeming, setIsRedeeming] = useState<string | null>(null);
+  const [dynamicRewards, setDynamicRewards] = useState<any[]>([]);
+
+  const fetchCatalog = async () => {
+    try {
+      const res = await loyaltyAPI.getCatalog();
+      setDynamicRewards(res.data);
+    } catch (err) {
+      console.error("Failed to fetch catalog", err);
+    }
+  };
 
   const fetchBalance = async () => {
     if (!user?.id) return;
@@ -76,6 +86,7 @@ export const Rewards: React.FC = () => {
 
   useEffect(() => {
     fetchBalance();
+    fetchCatalog();
   }, [user?.id]);
 
   const handleRedeem = async (reward: any) => {
@@ -109,23 +120,27 @@ export const Rewards: React.FC = () => {
   const nextTierPoints = 500;
   const progressPercent = Math.min((userPoints / nextTierPoints) * 100, 100);
 
-  const rewards = [
-    { id: "1", name: "10% Discount", desc: "Injectable coverage", points: 100, icon: <Gift size={20} />, color: "bg-[#CBFF38]/10 text-black" },
-    { id: "2", name: "Skin Analysis", desc: "Expert assessment", points: 250, icon: <Sparkles size={20} />, color: "bg-[#CBFF38]/10 text-black" },
-    { id: "3", name: "Filler Upgrade", desc: "Next-tier product", points: 500, icon: <Trophy size={20} />, color: "bg-[#CBFF38]/10 text-black" },
-    { id: "4", name: "VIP Access", desc: "Priority booking", points: 1000, icon: <Lock size={20} />, color: "bg-[#CBFF38]/10 text-black" },
-  ];
+  const icons = [<Gift size={20} />, <Sparkles size={20} />, <Trophy size={20} />, <Lock size={20} />];
+  
+  const rewards = dynamicRewards.length > 0 ? dynamicRewards.map((r: any, idx: number) => ({
+    id: r.id,
+    name: r.name,
+    desc: r.rewardType || "Reward Item",
+    points: r.pointsCost,
+    icon: icons[idx % icons.length],
+    color: "bg-[#CBFF38]/10 text-black"
+  })) : [];
 
   return (
     <div className={sectionStyles}>
       {/* Immersive Hero */}
       <div className={heroSection}>
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 flex items-center justify-center">
           <img 
-            src={HeroBg} 
+            src={RewardBg} 
             style={{ objectPosition: 'center 40%' }}
-            className="w-full h-full object-cover" 
-            alt="Rewards Hero" 
+            className="w-full h-full object-cover opacity-90 mix-blend-multiply flex-shrink-0" 
+            alt="Rewards 3D Gift Box" 
           />
         </div>
         

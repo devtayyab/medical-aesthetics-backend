@@ -20,6 +20,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class LoyaltyController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
 
+  @Get('catalog')
+  @ApiOperation({ summary: 'Get active rewards catalog from DB' })
+  getCatalog() {
+    return this.loyaltyService.getRewardsCatalog();
+  }
+
   @Get(':clientId')
   @ApiOperation({ summary: 'Get client loyalty balance and tier' })
   getBalance(

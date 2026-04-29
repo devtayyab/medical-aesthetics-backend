@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/atoms/Button/Button';
@@ -314,6 +315,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     // 2. Status filter
     if (filterStatus === 'overdue') {
       if (!isOverdue(task)) return false;
+    } else if (filterStatus === 'pending') {
+      if (task.status !== 'pending' || isOverdue(task)) return false;
     } else if (filterStatus !== 'all' && task.status !== filterStatus) {
       return false;
     }
@@ -424,14 +427,25 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         toast.success(effectiveOutcome === 'not_interested' ? "Re-engagement task created." : "Follow-up task scheduled!");
       }
 
-      // 3. Complete the current task
+      // 3. Complete or update the current task (Reschedule if needed)
       if (interactionTask?.id) {
+        const nextStatus = (effectiveOutcome === 'call_later' || effectiveOutcome === 'no_answer') ? 'pending' : 'completed';
+        
+        const updates: any = { 
+          status: nextStatus,
+          metadata: { ...(interactionTask.metadata || {}), callOutcome: effectiveOutcome }
+        };
+
+        // If rescheduling (Call Later / No Answer), update the dates to clear "OVERDUE" status
+        if ((effectiveOutcome === 'call_later' || effectiveOutcome === 'no_answer')) {
+          const newDate = callbackDate ? new Date(callbackDate).toISOString() : new Date(Date.now() + 3600000).toISOString(); // Default 1h later if no date selected
+          updates.dueDate = newDate;
+          updates.reminderDate = newDate;
+        }
+
         await dispatch(updateAction({
           id: interactionTask.id,
-          updates: { 
-            status: 'completed',
-            metadata: { ...(interactionTask.metadata || {}), callOutcome: effectiveOutcome }
-          }
+          updates
         })).unwrap();
       }
 
@@ -686,11 +700,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                         <div className="flex justify-center">
                           <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-tight
                             ${task.status === 'completed' ? 'bg-green-100 text-green-700 border border-green-200' :
-                              task.status === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                                task.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border border-slate-200' :
-                                  'bg-blue-100 text-blue-700 border border-blue-200'}`}
+                              isOverdue(task) ? 'bg-red-100 text-red-700 border border-red-200' :
+                                task.status === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                  task.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border border-slate-200' :
+                                    'bg-blue-100 text-blue-700 border border-blue-200'}`}
                           >
-                            {task.status}
+                            {isOverdue(task) ? 'overdue' : task.status}
                           </span>
                         </div>
                       </td>
@@ -811,6 +826,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                               e.stopPropagation();
                               setSelectedTask(task);
                               setTaskFormData({
+                                id: task.id,
                                 customerId: task.customerId || '',
                                 relatedLeadId: task.relatedLeadId || '',
                                 title: task.title || '',
@@ -1017,6 +1033,30 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Task Edit Modal */}
+      {isEditing && selectedTask && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto" style={{ zIndex: 99999 }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden my-8">
+            <ActionForm 
+              customerId={selectedTask.customerId || ''}
+              prefilledData={taskFormData}
+              onSuccess={() => {
+                setIsEditing(false);
+                setSelectedTask(null);
+                const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+                dispatch(fetchActions({ salespersonId: sid }));
+                dispatch(fetchTaskKpis(sid));
+              }}
+              onCancel={() => {
+                setIsEditing(false);
+                setSelectedTask(null);
+              }}
+            />
+          </div>
+        </div>,
+        document.body
       )}
 
       {showInteractionModal && interactionTask && (
@@ -1271,23 +1311,13 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                         onChange={(e) => setFollowUpData({...followUpData, title: e.target.value})}
                         className="h-10 text-[11px] font-bold rounded-lg border-amber-200"
                       />
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2">
                         <Input type="datetime-local" value={followUpData.dueDate} onChange={(e) => setFollowUpData({...followUpData, dueDate: e.target.value})} className="h-10 text-[10px] font-bold rounded-lg border-amber-200" />
-                        <Input placeholder="Therapy" value={followUpData.therapy} onChange={(e) => setFollowUpData({...followUpData, therapy: e.target.value})} className="h-10 text-[10px] font-bold rounded-lg border-amber-200" />
                       </div>
                     </div>
                   )}
 
-                  <div className="space-y-3">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Assign to Clinic</label>
-                    <Select 
-                      value={interactionClinic} 
-                      onChange={(val) => setInteractionClinic(val)}
-                      options={(clinics || []).map(c => ({ value: c.id, label: c.name }))}
-                      placeholder="Select Clinic..."
-                      className="h-12 text-[11px] font-black rounded-xl border-slate-100 bg-white"
-                    />
-                  </div>
+
 
                   <Button
                     onClick={handleSaveInteraction}
@@ -1320,8 +1350,10 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         }
         onCallEnded={(duration) => {
           setShowDialer(false);
-          // Auto-append duration to notes?
+          // Auto-append duration to notes
           setInteractionNotes(prev => `${prev}\n[Call Duration: ${Math.floor(duration / 60)}m ${duration % 60}s]`.trim());
+          // Automatically move to results step after call ends
+          setWorkflowStep(2);
         }}
       />
 

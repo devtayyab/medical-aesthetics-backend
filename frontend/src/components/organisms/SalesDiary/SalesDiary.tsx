@@ -267,7 +267,7 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
                 <div className="flex items-center gap-3">
                     <CalendarIcon className="h-5 w-5 text-blue-600" />
                     <div>
-                        <h2 className="text-xl font-bold">Staff Diary</h2>
+                        <h2 className="text-xl font-bold">Diary</h2>
                         <p className="text-xs text-slate-500">
                             Daily activities matrix for all sales agents and managers.
                         </p>

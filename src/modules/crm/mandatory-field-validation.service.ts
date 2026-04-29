@@ -83,10 +83,7 @@ export class MandatoryFieldValidationService {
       missingFields.push('salespersonId');
     }
 
-    if (!actionData.therapy) {
-      missingFields.push('therapy');
-    }
-
+    // Therapy is now optional (relaxed per user request)
     if (!actionData.title) {
         missingFields.push('title');
     }
@@ -215,7 +212,7 @@ export class MandatoryFieldValidationService {
     return {
       salespersonId: true,
       clinic: false,
-      therapy: true,
+      therapy: false,
       title: false,
       dueDate: false,
       reminderDate: false,

@@ -11,7 +11,7 @@ import { User, Mail, Phone, Lock, CheckCircle, ChevronRight, Edit3 } from "lucid
 import toast from "react-hot-toast";
 
 // Use the user's provided hero image from assets
-import HeroBg from "@/assets/ClientPortal_Hero.jpg";
+import HeroBg from "@/assets/personal_details_bg.png";
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -161,7 +161,8 @@ export const PersonalDetails: React.FC = () => {
         <div className="absolute inset-0 z-0">
           <img
             src={HeroBg}
-            className="w-full h-full object-cover object-top"
+            style={{ objectPosition: '70% 30%' }}
+            className="w-full h-full object-cover"
             alt="Clinic Hero"
           />
         </div>

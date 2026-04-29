@@ -6,8 +6,8 @@ import { ChevronRight, Copy, Share2, Gift, Users, ArrowRight, Minus, Plus, Spark
 import type { RootState } from "@/store";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Use the ultra-premium elite aesthetic hero image
-import HeroBg from "@/assets/Elite_Aesthetic_Hero.png";
+// Use the user's provided hero image for referral page
+import HeroBg from "@/assets/invite_friend_bg.png";
 
 const sectionStyles = css`
   min-height: 100vh;

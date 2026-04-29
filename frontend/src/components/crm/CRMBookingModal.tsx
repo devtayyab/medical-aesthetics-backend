@@ -201,11 +201,23 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                 clientId: finalCustomerId,
                 clinicId: selectedClinic,
                 serviceId: selectedService,
-                startTime: selectedSlot.startTime.includes('T') ? selectedSlot.startTime : `${selectedDate}T${selectedSlot.startTime}:00Z`,
-                endTime: selectedSlot.endTime.includes('T') ? selectedSlot.endTime : `${selectedDate}T${selectedSlot.endTime}:00Z`,
+                startTime: (() => {
+                    if (selectedSlot.startTime.includes('T')) return selectedSlot.startTime;
+                    const [hh, mm] = selectedSlot.startTime.split(':').map(Number);
+                    const dt = new Date(selectedDate);
+                    dt.setHours(hh, mm, 0, 0);
+                    return dt.toISOString();
+                })(),
+                endTime: (() => {
+                    if (selectedSlot.endTime.includes('T')) return selectedSlot.endTime;
+                    const [hh, mm] = selectedSlot.endTime.split(':').map(Number);
+                    const dt = new Date(selectedDate);
+                    dt.setHours(hh, mm, 0, 0);
+                    return dt.toISOString();
+                })(),
                 notes,
                 status: initialAppointment?.status || 'CONFIRMED',
-                providerId: selectedSlot.providerId,
+                providerId: selectedSlot.providerId || (user?.role === 'salesperson' ? user.id : undefined),
                 clientDetails: {
                     fullName: finalCustomerName || 'Unknown',
                     email: finalCustomerEmail || `noemail@placeholder.com`,

@@ -7,6 +7,7 @@ import {
   Between,
   MoreThan,
   In,
+  Brackets,
 } from 'typeorm';
 import { AppointmentHold } from './entities/appointment-hold.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -813,7 +814,7 @@ export class BookingsService {
   async findClinicAppointments(
     userId: string,
     userRole: string,
-    query: { status?: string; date?: string; providerId?: string; appointmentSource?: 'clinic_own' | 'platform_broker'; clinicId?: string },
+    query: { status?: string; date?: string; startDate?: string; endDate?: string; providerId?: string; appointmentSource?: 'clinic_own' | 'platform_broker'; clinicId?: string },
   ): Promise<any[]> {
     try {
       console.log(`[BookingsService] findClinicAppointments called by user: ${userId}, role: ${userRole}`);
@@ -823,7 +824,8 @@ export class BookingsService {
         .leftJoinAndSelect('service.treatment', 'treatment')
         .leftJoinAndSelect('appointment.provider', 'provider')
         .leftJoinAndSelect('appointment.client', 'client')
-        .leftJoinAndSelect('appointment.bookedBy', 'bookedBy');
+        .leftJoinAndSelect('appointment.bookedBy', 'bookedBy')
+        .leftJoinAndSelect('appointment.representative', 'representative');
 
       const normalizedRole = userRole.toLowerCase();
       // 1. Role-based visibility
@@ -840,18 +842,18 @@ export class BookingsService {
         } else {
           queryBuilder.where('(appointment.providerId = :userId OR appointment.bookedById = :userId)', { userId });
         }
-      } else if (userRole === 'salesperson') {
-        // Sales team view (Team visibility, but masked if not owner)
-        if (query.clinicId || query.providerId) {
-          // Join leads/records to determine ownership in the mapping phase
-          queryBuilder.leftJoin('leads', 'l', 'l.phone = client.phone OR (client.email IS NOT NULL AND l.email = client.email)')
-            .leftJoin('customer_records', 'cr', 'cr.customerId = client.id');
-        } else {
-          // Default: strictly owned
-          queryBuilder.leftJoin('leads', 'l', 'l.phone = client.phone OR (client.email IS NOT NULL AND l.email = client.email)')
-            .leftJoin('customer_records', 'cr', 'cr.customerId = client.id')
-            .where('(appointment.bookedById = :userId OR appointment.providerId = :userId OR l.assignedSalesId = :userId OR cr.assignedSalespersonId = :userId)', { userId });
-        }
+      } else if (normalizedRole === 'salesperson') {
+        // Sales team view (Direct Lead ID match or via Client User phone/email)
+        queryBuilder.leftJoin('leads', 'l', 'l.id = appointment.clientId OR (client.phone IS NOT NULL AND l.phone = client.phone) OR (client.email IS NOT NULL AND l.email = client.email)')
+          .leftJoin('customer_records', 'cr', 'cr.customerId = appointment.clientId')
+          .where(new Brackets(qb => {
+            qb.where('appointment.bookedById = :userId', { userId })
+              .orWhere('appointment.providerId = :userId', { userId })
+              .orWhere('appointment.representativeId = :userId', { userId })
+              .orWhere('l.assignedSalesId = :userId', { userId })
+              .orWhere('cr.assignedSalespersonId = :userId', { userId });
+          }));
+          
         queryBuilder.leftJoinAndSelect('client.customerRecords', 'clientCustomerRecords');
       } else {
         queryBuilder.where('(appointment.providerId = :userId OR appointment.clientId = :userId OR appointment.bookedById = :userId)', { userId });
@@ -863,17 +865,29 @@ export class BookingsService {
       if (query.status) {
         queryBuilder.andWhere('appointment.status = :status', { status: query.status.toUpperCase() });
       }
-      if (query.date) {
+      if (query.startDate && query.endDate) {
+        queryBuilder.andWhere('appointment.startTime BETWEEN :start AND :end', { 
+          start: new Date(query.startDate + 'T00:00:00.000Z'), 
+          end: new Date(query.endDate + 'T23:59:59.999Z') 
+        });
+      } else if (query.date) {
         const date = new Date(query.date);
         const start = new Date(date).setHours(0, 0, 0, 0);
         const end = new Date(date).setHours(23, 59, 59, 999);
         queryBuilder.andWhere('appointment.startTime BETWEEN :start AND :end', { start: new Date(start), end: new Date(end) });
       }
       if (query.clinicId) queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
-      if (query.providerId) queryBuilder.andWhere('appointment.providerId = :providerId', { providerId: query.providerId });
+      if (query.providerId) {
+        if (normalizedRole === 'salesperson' && query.providerId === userId) {
+          queryBuilder.andWhere('(appointment.providerId = :providerId OR appointment.bookedById = :providerId)', { providerId: query.providerId });
+        } else {
+          queryBuilder.andWhere('appointment.providerId = :providerId', { providerId: query.providerId });
+        }
+      }
       if (query.appointmentSource) queryBuilder.andWhere('appointment.appointmentSource = :source', { source: query.appointmentSource });
 
       const appointments = await queryBuilder.orderBy('appointment.startTime', 'ASC').getMany();
+      console.log(`[BookingsService] Found ${appointments.length} appointments for user ${userId}`);
 
       // 3. Repeat Customer Logic
       const clientIds = [...new Set(appointments.map(a => a.clientId).filter(Boolean))];
@@ -896,15 +910,9 @@ export class BookingsService {
       return appointments.map(apt => {
         let isMasked = false;
 
-        // PRIVACY RULE: Salespeople only see details of Beauty Doctors clients OR appointments they booked
-        if (userRole === 'salesperson') {
-          const isBookedByMe = apt.bookedById === userId;
-          const isManagedByMe = apt.representativeId === userId;
-          const isOwnedByMe = (apt.client as any)?.customerRecords?.some((r: any) => r.assignedSalespersonId === userId);
-
-          if (!isBookedByMe && !isManagedByMe && !isOwnedByMe) {
-            isMasked = true;
-          }
+        // PRIVACY RULE: Salespeople see full details for anything the query returned (since the query is already filtered for them)
+        if (normalizedRole === 'salesperson') {
+          isMasked = false;
         }
 
         if (isMasked) {
@@ -927,7 +935,12 @@ export class BookingsService {
           displayName: this.formatAppointmentDisplayName(apt),
           serviceName: apt.service?.treatment?.name,
           providerName: apt.provider ? `${apt.provider.firstName} ${apt.provider.lastName}` : null,
-          bookedByInfo: apt.bookedBy ? { id: apt.bookedBy.id, name: `${apt.bookedBy.firstName} ${apt.bookedBy.lastName}`, role: apt.bookedBy.role } : null,
+          bookedByInfo: (apt.bookedBy || apt.representative) ? { 
+            id: apt.bookedBy?.id || apt.representative?.id, 
+            name: apt.bookedBy ? `${apt.bookedBy.firstName} ${apt.bookedBy.lastName}` : 
+                  apt.representative ? `${apt.representative.firstName} ${apt.representative.lastName}` : 'System',
+            role: apt.bookedBy?.role || apt.representative?.role || 'salesperson' 
+          } : null,
           isReturned: repeatClients.has(apt.clientId),
           isBeautyDoctorsClient: apt.isBeautyDoctorsClient || false, // Return flag for color-coding
         };

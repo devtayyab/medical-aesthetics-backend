@@ -206,6 +206,16 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           [metadataField]: value
         }
       }));
+    } else if (field === 'reminderDate') {
+      setFormData(prev => {
+        const newReminder = value;
+        const currentDue = prev.dueDate;
+        // Automatically sync due date if it's empty or earlier than the new reminder
+        if (!currentDue || new Date(currentDue) < new Date(newReminder)) {
+          return { ...prev, reminderDate: value, dueDate: value };
+        }
+        return { ...prev, reminderDate: value };
+      });
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
@@ -433,7 +443,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <Select
               label="Task Type (Required)"
               value={formData.actionType}
@@ -452,6 +462,19 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             />
 
             <Select
+              label="Status"
+              value={formData.status}
+              onChange={(value) => handleInputChange('status', value)}
+              options={[
+                { value: 'pending', label: 'Pending' },
+                { value: 'in_progress', label: 'In Progress' },
+                { value: 'completed', label: 'Completed' },
+                { value: 'cancelled', label: 'Cancelled' },
+                { value: 'missed', label: 'Missed' }
+              ]}
+            />
+
+            <Select
               label="Priority"
               value={formData.priority}
               onChange={(value) => handleInputChange('priority', value)}
@@ -464,7 +487,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {(user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager' || user?.role === 'clinic_owner') ? (
               <Select
                 label="Salesperson (Required)"
@@ -481,22 +504,6 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   </div>
                 </div>
             )}
-            
-            <Select
-              label="Clinic (Required)"
-              value={formData.metadata?.clinic || ''}
-              onChange={(value) => handleInputChange('metadata.clinic', value)}
-              options={clinics}
-              required
-            />
-
-            <Input
-              label="Service/Therapy (Required)"
-              value={formData.therapy || ''}
-              onChange={(e) => handleInputChange('therapy', e.target.value)}
-              placeholder="e.g. Botox Treatment"
-              required
-            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -734,7 +741,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               type="submit" 
               variant="primary" 
               className="flex-1"
-              disabled={!formData.reminderDate || !formData.title || !formData.actionType || !formData.dueDate || !formData.therapy || (!formData.customerId && !formData.relatedLeadId && !customerId && !propCustomerId)}
+              disabled={!formData.reminderDate || !formData.title || !formData.actionType || !formData.dueDate || (!formData.customerId && !formData.relatedLeadId && !customerId && !propCustomerId)}
               title={!formData.reminderDate ? "Reminder Date & Time is mandatory" : "Please fill all required fields"}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
