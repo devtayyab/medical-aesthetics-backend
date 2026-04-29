@@ -283,6 +283,21 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     });
   };
 
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
+      try {
+        await dispatch(deleteAction(id)).unwrap();
+        toast.success("Task deleted successfully");
+        const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+        dispatch(fetchActions({ salespersonId: sid }));
+        dispatch(fetchTaskKpis(sid));
+      } catch (err) {
+        toast.error("Failed to delete task");
+        console.error(err);
+      }
+    }
+  };
+
 
   const formatDate = (date?: string) =>
     date
@@ -880,20 +895,34 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                           </Button>
 
                           {user?.role === 'SUPER_ADMIN' && (
-                            <Button
-                              size="xs"
-                              variant="white"
-                              className="h-8 w-8 p-0 bg-white border-slate-200 text-amber-500 hover:text-amber-700 hover:bg-amber-50 hover:border-amber-300 transition-all shadow-sm"
-                              title="Quick Assign"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setAssigningTask(task);
-                                setNewOwnerId(task.salespersonId || "");
-                                setShowAssignModal(true);
-                              }}
-                            >
-                              <UserPlus className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1 items-center">
+                              <Button
+                                size="xs"
+                                variant="white"
+                                className="h-8 w-8 p-0 bg-white border-slate-200 text-amber-500 hover:text-amber-700 hover:bg-amber-50 hover:border-amber-300 transition-all shadow-sm"
+                                title="Quick Assign"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAssigningTask(task);
+                                  setNewOwnerId(task.salespersonId || "");
+                                  setShowAssignModal(true);
+                                }}
+                              >
+                                <UserPlus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="xs"
+                                variant="white"
+                                className="h-8 w-8 p-0 bg-white border-slate-200 text-red-500 hover:text-red-700 hover:bg-red-50 hover:border-red-300 transition-all shadow-sm"
+                                title="Delete Task"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(task.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </td>
