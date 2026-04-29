@@ -276,13 +276,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
       </nav>
 
       <div className="p-6 border-t border-gray-50 bg-white">
-        <button
-          onClick={handleLogout}
-          className="w-full h-12 flex items-center justify-center gap-3 bg-red-500 text-white rounded-2xl font-black uppercase italic tracking-widest text-[10px] hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 active:scale-95 group"
-        >
-          <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
-          Sign Out
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              const routes: Record<string, string> = {
+                'salesperson': '/crm/settings',
+                'clinic_owner': '/clinic/settings',
+                'client': '/settings'
+              };
+              if (routes[role]) navigate(routes[role]);
+            }}
+            className="size-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center hover:bg-black hover:text-[#CBFF38] transition-all border border-gray-100 shadow-sm active:scale-95 group"
+            title="Account Settings"
+          >
+            <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" />
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex-1 h-12 flex items-center justify-center gap-3 bg-red-500 text-white rounded-2xl font-black uppercase italic tracking-widest text-[10px] hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 active:scale-95 group"
+          >
+            <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
+            Sign Out
+          </button>
+        </div>
       </div>
     </aside>
   );
