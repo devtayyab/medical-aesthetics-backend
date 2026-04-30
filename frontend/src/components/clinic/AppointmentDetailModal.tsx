@@ -185,7 +185,7 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
           </div>
 
           {/* Payment & Settlement Info */}
-          {(appointment.paymentMethod || appointment.amountPaid !== undefined) && (
+          {(appointment.paymentMethod || appointment.amountPaid != null || appointment.appointmentCompletionReport?.amountPaid != null) && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Euro size={14} className="text-[#CBFF38]" />
@@ -202,7 +202,7 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Amount Paid</p>
                     <p className="font-black text-gray-900 italic">
-                      €{appointment.amountPaid !== undefined ? appointment.amountPaid : '0.00'}
+                      €{(appointment.amountPaid != null ? appointment.amountPaid : (appointment.appointmentCompletionReport?.amountPaid || 0)).toString()}
                     </p>
                   </div>
                 </div>

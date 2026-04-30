@@ -627,7 +627,7 @@ export class BookingsService {
 
     const updateData: any = { status };
 
-    if (status === AppointmentStatus.COMPLETED) {
+    if (status === AppointmentStatus.COMPLETED || status === AppointmentStatus.EXECUTED) {
       updateData.completedAt = new Date();
       if (data?.treatmentDetails) {
         updateData.treatmentDetails = data.treatmentDetails;
