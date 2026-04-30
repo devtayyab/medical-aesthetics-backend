@@ -46,7 +46,9 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
 
   const fetchClientPoints = async () => {
     try {
-      const res = await loyaltyAPI.getBalance(appointment.clientId, appointment.clinicId);
+      const clientId = appointment.clientId || (appointment.client as any)?.id;
+      if (!clientId) return;
+      const res = await loyaltyAPI.getBalance(clientId, appointment.clinicId);
       setPointsBalance(res.data?.totalPoints || 0);
     } catch (err) {
       console.error('Failed to fetch points', err);
@@ -71,8 +73,14 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
     return Math.max(0, baseAmount - pointsReduction);
   };
 
-  const handleSubmit = async (e: React.FormEvent, status: AppointmentStatus = AppointmentStatus.EXECUTED) => {
+  const handleSubmit = async (e: React.FormEvent, status: AppointmentStatus = AppointmentStatus.COMPLETED) => {
     e.preventDefault();
+    if (pointsToRedeem > pointsBalance) {
+      alert(`Insufficient points! Client only has ${pointsBalance} points.`);
+      setIsSubmitting(false);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -87,13 +95,16 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
         },
         serviceId: selectedServiceId,
         totalAmount: calculateTotal(),
+        amountPaid: calculateTotal(),
+        paymentMethod: paymentMethod,
         rewardPointsRedeemed: pointsToRedeem,
       };
 
       // 1. Redeem points if any
       if (pointsToRedeem > 0) {
+        const clientId = appointment.clientId || (appointment.client as any)?.id;
         await loyaltyAPI.redeemPoints({
-          clientId: appointment.clientId,
+          clientId: clientId,
           clinicId: appointment.clinicId,
           points: pointsToRedeem,
           description: `Loyalty Redemption for apt #${appointment.id.slice(0, 8)}`
@@ -187,21 +198,49 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <p className="text-xs text-amber-700 mb-2">Redeem points for a discount (€1 = 1pt)</p>
-                <input
-                  type="range"
-                  min="0"
-                  max={Math.min(pointsBalance, finalAmount)}
-                  value={pointsToRedeem}
-                  onChange={(e) => setPointsToRedeem(parseInt(e.target.value))}
-                  className="w-full accent-amber-600"
-                />
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <p className="text-xs text-amber-700 mb-2">Redeem points for a discount (€1 = 1pt)</p>
+                  <input
+                    type="range"
+                    min="0"
+                    max={Math.max(pointsBalance, Math.floor(finalAmount), 1)}
+                    value={pointsToRedeem}
+                    onChange={(e) => setPointsToRedeem(parseInt(e.target.value) || 0)}
+                    className="w-full accent-amber-600 h-2 bg-amber-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+                <div className="w-32">
+                  <p className="text-[10px] font-bold text-amber-600 uppercase mb-1">Points to use</p>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      value={pointsToRedeem}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        setPointsToRedeem(val);
+                      }}
+                      className={`w-full px-3 py-2 bg-white border rounded-lg font-bold text-sm outline-none transition-colors ${
+                        pointsToRedeem > pointsBalance ? 'border-red-500 text-red-600 focus:ring-red-500' : 'border-amber-200 text-amber-900 focus:ring-amber-500'
+                      }`}
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-300 uppercase">pts</div>
+                  </div>
+                </div>
               </div>
-              <div className="w-24 text-center bg-white border border-amber-200 rounded-lg p-2">
-                <p className="text-[10px] font-bold text-amber-600 uppercase">Discount</p>
-                <p className="text-lg font-bold text-amber-900">-€{pointsToRedeem}</p>
+
+              {pointsToRedeem > pointsBalance && (
+                <div className="flex items-center gap-2 text-red-600 text-[10px] font-bold uppercase animate-pulse">
+                  <AlertTriangle size={12} />
+                  <span>Insufficient balance (Only {pointsBalance} pts available)</span>
+                </div>
+              )}
+              
+              <div className="flex items-center justify-between p-3 bg-white/50 rounded-lg border border-amber-100 italic">
+                <span className="text-[10px] font-bold text-amber-700 uppercase">Redemption Impact</span>
+                <span className="text-sm font-black text-amber-900">-€{pointsToRedeem.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -289,7 +328,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
             >
               {isSubmitting ? 'Finalizing...' : (
                 <>
-                  Executed
+                  Complete & Pay
                   <RefreshCw className={`w-5 h-5 ${isSubmitting ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
                 </>
               )}

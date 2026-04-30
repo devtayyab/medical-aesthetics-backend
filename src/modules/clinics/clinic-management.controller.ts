@@ -171,16 +171,33 @@ export class ClinicManagementController {
         notes?: string;
       };
       serviceId?: string;
+      // Allow top-level fields for compatibility with some frontend components
+      amountPaid?: number;
+      paymentMethod?: string;
+      totalAmount?: number;
     },
     @Request() req,
   ) {
+    // Robustness: Map top-level fields to paymentData or completionReport if they are missing
+    const paymentData = body.paymentData || (body.paymentMethod ? {
+      paymentMethod: body.paymentMethod,
+      amount: body.amountPaid || body.totalAmount || 0,
+    } : undefined);
+
+    const completionReport = body.completionReport || (body.amountPaid !== undefined ? {
+      patientCame: true,
+      servicePerformed: '',
+      amountPaid: body.amountPaid,
+      notes: '',
+    } : undefined);
+
     return this.bookingsService.completeAppointmentWithPayment(
       id,
       req.user.id,
       req.user.role,
-      body.paymentData,
+      paymentData,
       body.treatmentDetails,
-      body.completionReport,
+      completionReport,
       body.serviceId,
     );
   }
