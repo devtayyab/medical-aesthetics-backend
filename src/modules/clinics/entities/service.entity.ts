@@ -26,6 +26,9 @@ export class Service {
   @Column('json', { nullable: true })
   metadata: any;
 
+  @Column({ name: 'imageUrl', nullable: true })
+  imageUrl: string;
+
   @Column({ default: true })
   isActive: boolean;
 

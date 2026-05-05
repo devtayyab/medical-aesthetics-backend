@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Appointment } from '../../types/clinic.types';
 import { bookingAPI } from '../../services/api';
@@ -47,6 +47,10 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ appointment, onClose,
         e.preventDefault();
         if (!selectedSlot) {
             setError('Please select an available time slot.');
+            return;
+        }
+        if (!reason.trim()) {
+            setError('Please provide a reason for rescheduling.');
             return;
         }
 
@@ -145,14 +149,15 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ appointment, onClose,
                                 )}
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Reason (Optional)</label>
+                            <div className="space-y-2 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                                <label className="block text-[10px] font-black text-amber-600 uppercase tracking-widest">Mandatory Reason for Rescheduling</label>
                                 <textarea
                                     value={reason}
                                     onChange={(e) => setReason(e.target.value)}
-                                    placeholder="Why is the appointment being rescheduled?"
-                                    rows={2}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-gray-50 text-sm"
+                                    placeholder="Please explain why this appointment is being moved..."
+                                    rows={3}
+                                    required
+                                    className="w-full px-4 py-3 border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none resize-none bg-white text-sm font-medium"
                                 />
                             </div>
                         </div>

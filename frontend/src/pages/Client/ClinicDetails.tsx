@@ -63,7 +63,7 @@ export const ClinicDetails: React.FC = () => {
   );
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
-  const [activeTab, setActiveTab] = useState<'treatments' | 'about' | 'reviews'>('treatments');
+  const [activeTab, setActiveTab] = useState<'privileges' | 'about' | 'reviews'>('privileges');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [clinicReviews, setClinicReviews] = useState<any[]>([]);
@@ -154,7 +154,7 @@ export const ClinicDetails: React.FC = () => {
           <div className="space-y-6">
             <div className={cardStyle}>
               <div className="flex gap-8 border-b border-gray-100 mb-8 overflow-x-auto no-scrollbar">
-                {['treatments', 'about', 'reviews'].map(tab => (
+                {['privileges', 'about', 'reviews'].map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab as any)}
@@ -166,7 +166,7 @@ export const ClinicDetails: React.FC = () => {
                 ))}
               </div>
 
-              {activeTab === 'treatments' && (
+              {activeTab === 'privileges' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-400">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                     <div className="flex flex-wrap gap-2">
@@ -188,7 +188,7 @@ export const ClinicDetails: React.FC = () => {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <input
                         type="text"
-                        placeholder="Search protocols here..."
+                        placeholder="Search privileges here..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full h-12 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-lime-500 transition-all font-bold placeholder:font-black placeholder:uppercase placeholder:text-gray-400"
@@ -375,7 +375,7 @@ export const ClinicDetails: React.FC = () => {
                    </div>
                    <div className="space-y-0.5 sm:space-y-1 flex-1">
                       <h4 className="text-lg sm:text-xl font-black uppercase italic tracking-tighter leading-none">Transmission</h4>
-                      <p className="text-gray-400 text-[9px] font-black uppercase tracking-widest italic">{selectedServices.length} PROTOCOLS</p>
+                      <p className="text-gray-400 text-[9px] font-black uppercase tracking-widest italic">{selectedServices.length} PRIVILEGES</p>
                    </div>
                    <div className="h-10 w-px bg-white/10 hidden sm:block" />
                    <div className="text-right sm:text-left">

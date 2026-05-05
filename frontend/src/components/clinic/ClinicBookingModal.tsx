@@ -30,6 +30,7 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
         phone: '',
         email: '',
     });
+    const [notes, setNotes] = useState('');
 
     const [services, setServices] = useState<any[]>([]);
     const [providers, setProviders] = useState<any[]>([]);
@@ -120,6 +121,7 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
                 startTime: selectedSlot.startTime,
                 endTime: selectedSlot.endTime,
                 clientDetails: clientData,
+                notes: notes,
             });
             onSuccess();
             onClose();
@@ -247,6 +249,16 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
                                             <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Appointment Notes</label>
+                                    <textarea
+                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white resize-none"
+                                        rows={3}
+                                        placeholder="Any special requests or medical considerations..."
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                    />
                                 </div>
                             </div>
                         </div>

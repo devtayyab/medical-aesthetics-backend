@@ -122,7 +122,7 @@ export class BookingsController {
   @ApiOperation({ summary: 'Reschedule appointment' })
   async reschedule(
     @Param('id') id: string,
-    @Body() body: { startTime: string; endTime: string },
+    @Body() body: { startTime: string; endTime: string; notes?: string },
     @Request() req,
   ) {
     const appointment = await this.bookingsService.findById(id);
@@ -135,6 +135,7 @@ export class BookingsController {
       id,
       new Date(body.startTime),
       new Date(body.endTime),
+      body.notes
     );
   }
 

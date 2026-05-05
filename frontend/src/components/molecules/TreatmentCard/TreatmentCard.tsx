@@ -1,12 +1,20 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import { MapPin, ChevronRight, Info, Heart, Sparkles, ArrowRight, X } from "lucide-react";
+import { MapPin, ChevronRight, Info, Heart, Sparkles, ArrowRight, X, Image as ImageIcon } from "lucide-react";
 import type { Treatment } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { css } from "@emotion/css";
 
 // Assets
 import BotoxImg from "@/assets/Botox.jpg";
+import RhinoplastyElite from "@/assets/Treatments/rhinoplasty_elite.png";
+import BotoxElite from "@/assets/Treatments/botox_elite.png";
+import HairElite from "@/assets/Treatments/hair_transplant_elite.png";
+import FillersElite from "@/assets/Treatments/fillers_elite.png";
+import EyesElite from "@/assets/Treatments/eyes_surgery_elite.png";
+import RejuvenationElite from "@/assets/Treatments/rejuvenation_elite.png";
+import PrpElite from "@/assets/Treatments/prp_therapy_elite.png";
+import BeardElite from "@/assets/Treatments/beard_transplant_elite.png";
 
 export interface TreatmentCardProps {
     treatment: Treatment;
@@ -23,17 +31,43 @@ const explanationModalStyle = css`
   border: 1px solid rgba(0,0,0,0.05);
 `;
 
+const getFallbackImage = (name: string): string => {
+    const n = name.toLowerCase();
+    if (n.includes('botox') || n.includes('wrinkle')) return BotoxElite;
+    if (n.includes('filler') || n.includes('lip')) return FillersElite;
+    if (n.includes('rhinoplasty') || n.includes('nose')) return RhinoplastyElite;
+    if (n.includes('hair') || n.includes('transplant')) return HairElite;
+    if (n.includes('eye') || n.includes('bleph')) return EyesElite;
+    if (n.includes('skin') || n.includes('rejuvenation') || n.includes('peel') || n.includes('facial')) return RejuvenationElite;
+    if (n.includes('prp')) return PrpElite;
+    if (n.includes('beard')) return BeardElite;
+    return BotoxImg;
+};
+
 export const TreatmentCard: React.FC<TreatmentCardProps> = ({
     treatment,
     onSelect,
 }) => {
     const [showExplanation, setShowExplanation] = useState(false);
+    const [imgError, setImgError] = useState(false);
 
     const handleClick = () => {
         onSelect?.(treatment);
     };
 
-    const imageUrl = treatment.imageUrl || BotoxImg;
+    // Smart image resolution
+    const resolveImageUrl = () => {
+        if (imgError) return getFallbackImage(treatment.name);
+        
+        // If it's a known placeholder or empty, use our elite fallbacks
+        if (!treatment.imageUrl || treatment.imageUrl.includes('placehold')) {
+            return getFallbackImage(treatment.name);
+        }
+        
+        return treatment.imageUrl;
+    };
+
+    const imageUrl = resolveImageUrl();
 
     return (
         <>
@@ -60,22 +94,23 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                     </div>
 
                     {/* Primary Image */}
-                    <div className="relative h-[240px] overflow-hidden m-4 mt-0 rounded-2xl">
+                    <div className="relative h-[240px] overflow-hidden m-4 mt-0 rounded-2xl bg-gray-50 flex items-center justify-center">
                         <img
                             src={imageUrl}
                             alt={treatment.name}
-                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                            onError={() => setImgError(true)}
+                            className={`w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 ${imgError ? 'opacity-50' : ''}`}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                         
                         {/* Action Button Over Image */}
                         <div className="absolute bottom-6 left-6 z-10">
                             <button 
-                                onClick={(e) => { e.stopPropagation(); setShowExplanation(true); }}
+                                onClick={(e) => { e.stopPropagation(); handleClick(); }}
                                 className="flex items-center gap-2 bg-[#CBFF38]/20 backdrop-blur-xl border border-[#CBFF38]/40 text-[#CBFF38] px-5 py-2.5 rounded-full text-[10px] font-black uppercase italic tracking-[0.2em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl"
                             >
                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                               Surgical Intervention
+                                View Protocol
                             </button>
                         </div>
 

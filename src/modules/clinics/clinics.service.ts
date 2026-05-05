@@ -75,7 +75,7 @@ export class ClinicsService {
 
     if (params.search) {
       clinicQb.andWhere(
-        '(clinic.name ILIKE :search OR clinic.description ILIKE :search OR treatment.name ILIKE :search)',
+        '(clinic.name ILIKE :search OR clinic.description ILIKE :search OR clinic.phone ILIKE :search OR clinic.email ILIKE :search OR treatment.name ILIKE :search)',
         { search: `%${params.search}%` }
       );
     }
@@ -247,7 +247,8 @@ export class ClinicsService {
         availableAt: [s.clinic?.name].filter(Boolean),
         clinicsCount: 1,
         singleClinicId: s.clinicId,
-        singleServiceId: s.id
+        singleServiceId: s.id,
+        imageUrl: s.imageUrl || s.treatment?.imageUrl
       }));
 
       return {
@@ -1368,4 +1369,17 @@ export class ClinicsService {
   }
 
 
+  async getSuggestions(query: string): Promise<string[]> {
+    if (!query || query.length < 1) return [];
+
+    const treatments = await this.treatmentsRepository
+      .createQueryBuilder('treatment')
+      .select('DISTINCT treatment.name', 'name')
+      .where('treatment.name ILIKE :query', { query: `%${query}%` })
+      .andWhere('treatment.isActive = :isActive', { isActive: true })
+      .limit(10)
+      .getRawMany();
+
+    return treatments.map(t => t.name);
+  }
 }

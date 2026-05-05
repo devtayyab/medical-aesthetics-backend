@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { register } from "@/store/slices/authSlice";
@@ -106,7 +106,10 @@ export const Register: React.FC = () => {
       setLastNameError("Last name is required");
       isValid = false;
     }
-    if (phone && !/^\+?\d{10,15}$/.test(phone)) {
+    if (!phone) {
+      setPhoneError("Phone number is required");
+      isValid = false;
+    } else if (!/^\+?\d{10,15}$/.test(phone)) {
       setPhoneError("Please enter a valid phone number");
       isValid = false;
     }
@@ -192,7 +195,7 @@ export const Register: React.FC = () => {
           <div>
             <Input
               type="tel"
-              placeholder="Phone (optional)"
+              placeholder="Phone Number"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               fullWidth

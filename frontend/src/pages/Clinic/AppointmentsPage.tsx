@@ -19,7 +19,8 @@ const AppointmentsPage: React.FC = () => {
 
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [showExecutionModal, setShowExecutionModal] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -33,13 +34,32 @@ const AppointmentsPage: React.FC = () => {
     : (user as any).assignedClinicId;
     
   const activeClinicId = clinicId || (appointments.length > 0 ? appointments[0]?.clinicId : null);
+  const isPastDate = new Date(selectedDate) < new Date(new Date().toISOString().split('T')[0]);
+
+  const refreshAppointments = () => {
+    const filters: any = {};
+    if (selectedDate) filters.date = selectedDate;
+    if (activeClinicId) filters.clinicId = activeClinicId;
+    dispatch(fetchAppointments(filters));
+  };
 
   useEffect(() => {
-    dispatch(fetchAppointments(undefined));
-  }, [dispatch]);
+    refreshAppointments();
+  }, [dispatch, selectedDate, activeClinicId]);
 
-  const filteredAppointments = appointments.filter((apt) => {
-    const matchesStatus = selectedStatus === 'all' || apt.status.toLowerCase() === selectedStatus.toLowerCase();
+  const counts = {
+    active: (appointments || []).filter(a => a?.status?.toLowerCase() !== 'completed').length,
+    completed: (appointments || []).filter(a => a?.status?.toLowerCase() === 'completed').length,
+  };
+
+  const filteredAppointments = (appointments || []).filter((apt) => {
+    const status = apt.status.toLowerCase();
+    
+    // Tab filtering
+    if (activeTab === 'active' && status === 'completed') return false;
+    if (activeTab === 'completed' && status !== 'completed') return false;
+
+    const matchesStatus = selectedStatus === 'all' || status === selectedStatus.toLowerCase();
     const matchesSearch =
       searchTerm === '' ||
       apt.client?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -104,6 +124,36 @@ const AppointmentsPage: React.FC = () => {
               </button>
             )}
           </div>
+
+          {/* Tabs Section moved here from the incorrect location */}
+          <div className="mt-12 flex items-center gap-2 p-1.5 bg-gray-50 rounded-2xl w-fit border border-gray-100">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+                activeTab === 'active' 
+                  ? 'bg-black text-white shadow-xl shadow-black/10' 
+                  : 'text-gray-400 hover:text-gray-900'
+              }`}
+            >
+              Active Appointments
+              <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeTab === 'active' ? 'bg-[#CBFF38] text-black' : 'bg-gray-100 text-gray-400'}`}>
+                {counts.active}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+                activeTab === 'completed' 
+                  ? 'bg-black text-white shadow-xl shadow-black/10' 
+                  : 'text-gray-400 hover:text-gray-900'
+              }`}
+            >
+              Completed History
+              <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeTab === 'completed' ? 'bg-[#CBFF38] text-black' : 'bg-gray-100 text-gray-400'}`}>
+                {counts.completed}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -144,7 +194,7 @@ const AppointmentsPage: React.FC = () => {
             onClick={() => {
               setSelectedStatus('all');
               setSearchTerm('');
-              setSelectedDate('');
+              setSelectedDate(new Date().toISOString().split('T')[0]);
             }}
             className="h-11 px-5 border border-gray-100 text-gray-400 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all"
           >
@@ -164,7 +214,23 @@ const AppointmentsPage: React.FC = () => {
               <Calendar size={32} />
             </div>
             <h3 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 mb-2">No Appointments</h3>
-            <p className="text-gray-400 font-medium mb-8">No appointments match your current filters.</p>
+            <p className="text-gray-400 font-medium mb-4">No appointments match your current filters.</p>
+            {activeTab === 'active' && counts.completed > 0 && (
+              <button 
+                onClick={() => setActiveTab('completed')}
+                className="px-6 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all"
+              >
+                View {counts.completed} Completed Procedures
+              </button>
+            )}
+            {activeTab === 'completed' && counts.active > 0 && (
+              <button 
+                onClick={() => setActiveTab('active')}
+                className="px-6 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all"
+              >
+                View {counts.active} Active Entries
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
@@ -202,7 +268,7 @@ const AppointmentsPage: React.FC = () => {
           onClose={() => setShowExecutionModal(false)}
           onComplete={() => {
             setShowExecutionModal(false);
-            dispatch(fetchAppointments(undefined));
+            refreshAppointments();
           }}
         />
       )}
@@ -226,7 +292,7 @@ const AppointmentsPage: React.FC = () => {
               reason
             })).unwrap();
             setShowRescheduleModal(false);
-            dispatch(fetchAppointments(undefined));
+            refreshAppointments();
           }}
         />
       )}
@@ -238,7 +304,7 @@ const AppointmentsPage: React.FC = () => {
           onClose={() => setShowBookingModal(false)}
           onSuccess={() => {
             setShowBookingModal(false);
-            dispatch(fetchAppointments(undefined));
+            refreshAppointments();
           }}
         />
       )}
@@ -253,11 +319,22 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
   const status = appointment.status.toLowerCase();
 
   return (
-    <div className={`bg-white rounded-2xl border p-5 transition-all duration-300 group relative flex flex-col md:flex-row md:items-center gap-6 ${
-      isPlatform ? 'border-[#CBFF38] shadow-sm' : 'border-gray-100 hover:border-gray-300'
-    }`}>
-      {/* Temporal Node */}
-      <div className="flex flex-col items-center justify-center size-16 bg-black rounded-xl text-[#CBFF38] shrink-0 group-hover:scale-105 transition-transform">
+    <div className={`bg-white rounded-2xl border transition-all duration-300 group relative flex flex-col md:flex-row md:items-center gap-6 overflow-hidden ${
+      status === 'confirmed' ? 'border-green-200 shadow-sm' :
+      status === 'cancelled' ? 'border-red-100 opacity-60 grayscale-[0.5]' :
+      status === 'pending' ? 'border-amber-100' : 'border-gray-100 hover:border-gray-300'
+    } ${isPlatform ? 'ring-1 ring-[#CBFF38]/30 shadow-md' : ''}`}>
+      
+      {/* Status Stripe */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+        status === 'confirmed' ? 'bg-green-500' :
+        status === 'cancelled' ? 'bg-red-500' :
+        status === 'pending' ? 'bg-amber-500' :
+        status === 'completed' ? 'bg-[#CBFF38]' : 'bg-gray-200'
+      }`} />
+
+      {/* Temporal Node - adding padding to account for stripe */}
+      <div className="flex flex-col items-center justify-center size-16 bg-black rounded-xl text-[#CBFF38] shrink-0 group-hover:scale-105 transition-transform ml-4 my-5">
         <span className="text-[7px] font-black uppercase tracking-widest opacity-60">
           {new Date(appointment.startTime).toLocaleDateString([], { month: 'short' })}
         </span>
@@ -319,7 +396,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
       </div>
 
       {/* Control Layer */}
-      <div className="flex items-center gap-2 shrink-0 md:border-l border-gray-100 md:pl-6">
+      <div className="flex items-center gap-2 shrink-0 md:border-l border-gray-100 md:pl-6 pr-5 py-5">
         {!appointment.isBlocked && (
           <>
             {status === 'pending' && hasPermission(user?.role, 'canConfirmAppointments') && (

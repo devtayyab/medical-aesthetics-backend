@@ -103,7 +103,7 @@ export const Appointments: React.FC = () => {
   const { appointments: clientAppointments } = useSelector((state: RootState) => state.client);
 
   const [reschedulingAppointment, setReschedulingAppointment] = useState<Appointment | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'confirmed' | 'completed' | 'cancelled'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'confirmed' | 'completed'>('all');
 
   useEffect(() => {
     dispatch(fetchUserAppointments());
@@ -148,8 +148,12 @@ export const Appointments: React.FC = () => {
   const allAppointments = bookingAppointments.length > 0 ? bookingAppointments : clientAppointments;
   
   const filteredAppointments = allAppointments.filter(apt => {
+    const status = apt.status.toLowerCase();
+    // Permanently exclude cancelled and no_show
+    if (status === 'cancelled' || status === 'no_show') return false;
+    
     if (activeFilter === 'all') return true;
-    return apt.status.toLowerCase() === activeFilter;
+    return status === activeFilter;
   });
 
   return (
@@ -193,7 +197,6 @@ export const Appointments: React.FC = () => {
             <button onClick={() => setActiveFilter('all')} className={filterTab(activeFilter === 'all')}>All</button>
             <button onClick={() => setActiveFilter('confirmed')} className={filterTab(activeFilter === 'confirmed')}>Scheduled</button>
             <button onClick={() => setActiveFilter('completed')} className={filterTab(activeFilter === 'completed')}>Completed</button>
-            <button onClick={() => setActiveFilter('cancelled')} className={filterTab(activeFilter === 'cancelled')}>Cancelled</button>
         </div>
 
         {filteredAppointments.length === 0 ? (

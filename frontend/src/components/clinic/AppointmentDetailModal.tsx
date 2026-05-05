@@ -158,29 +158,52 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Shield size={14} className="text-[#CBFF38]" />
-              <h3 className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Booked Service</h3>
+              <h3 className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Treatments Performed</h3>
             </div>
-            <div className="p-6 bg-black text-white rounded-[32px] flex items-center justify-between group">
-              <div className="flex items-center gap-4">
-                <div className="size-14 bg-white/10 rounded-2xl flex items-center justify-center text-[#CBFF38] border border-white/10">
-                  <FileText size={28} />
+            
+            <div className="space-y-3">
+              {/* Primary Service */}
+              <div className="p-6 bg-black text-white rounded-[32px] flex items-center justify-between group">
+                <div className="flex items-center gap-4">
+                  <div className="size-14 bg-white/10 rounded-2xl flex items-center justify-center text-[#CBFF38] border border-white/10">
+                    <FileText size={28} />
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-black uppercase italic tracking-tighter leading-none">
+                      {appointment.serviceName || appointment.service?.treatment?.name}
+                    </h4>
+                    <p className="text-xs text-gray-400 font-medium mt-1">Primary Therapy Record</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xl font-black uppercase italic tracking-tighter leading-none">
-                    {appointment.serviceName || appointment.service?.treatment?.name}
-                  </h4>
-                  <p className="text-xs text-gray-400 font-medium mt-1">Master Therapy Record Linked</p>
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Price</p>
+                  <div className="flex items-center gap-2 text-[#CBFF38]">
+                    <Euro size={20} />
+                    <span className="text-3xl font-black italic tracking-tighter">
+                      {appointment.service?.price || (appointment.totalAmount && !appointment.additionalServiceIds?.length ? appointment.totalAmount : '0.00')}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Price</p>
-                <div className="flex items-center gap-2 text-[#CBFF38]">
-                  <Euro size={20} />
-                  <span className="text-3xl font-black italic tracking-tighter">
-                    {appointment.totalAmount || appointment.service?.price}
-                  </span>
+
+              {/* Additional Services (Mapped from treatmentDetails or direct column) */}
+              {appointment.additionalServiceIds && appointment.additionalServiceIds.length > 0 && (
+                <div className="grid grid-cols-1 gap-2">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4">Additional Procedures</p>
+                  {appointment.additionalServiceIds.map((serviceId: string, idx: number) => (
+                    <div key={idx} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex justify-between items-center">
+                       <div className="flex items-center gap-3">
+                          <CheckCircle className="size-4 text-[#CBFF38]" />
+                          <span className="text-xs font-black uppercase italic tracking-tighter text-gray-900">
+                             {/* Show name from treatmentDetails if available, otherwise fallback to ID */}
+                             {appointment.treatmentDetails?.actualServiceNames?.[idx + 1] || `Additional Treatment #${idx + 1}`}
+                          </span>
+                       </div>
+                       <span className="text-[10px] font-black text-gray-400">ID: {serviceId.slice(0, 8)}</span>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           </div>
 

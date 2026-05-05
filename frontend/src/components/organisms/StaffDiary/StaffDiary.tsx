@@ -24,7 +24,9 @@ import {
     X
 } from 'lucide-react';
 import { RootState, AppDispatch } from '@/store';
-import { fetchAppointments, fetchClinicProviders } from '@/store/slices/clinicSlice';
+import { fetchAppointments, fetchClinicProviders, fetchServices, updateAppointmentStatus } from '@/store/slices/clinicSlice';
+import { AppointmentStatus } from '@/types/clinic.types';
+import AppointmentExecutionModal from '@/components/clinic/AppointmentExecutionModal';
 import { Button } from '@/components/atoms/Button/Button';
 import { Card, CardContent } from '@/components/molecules/Card/Card';
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
@@ -38,7 +40,7 @@ interface StaffDiaryProps {
 
 export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointment }) => {
     const dispatch = useDispatch<AppDispatch>();
-    const { appointments, staff: allStaff, profile, isLoading } = useSelector((state: RootState) => state.clinic);
+    const { appointments, staff: allStaff, profile, services, isLoading } = useSelector((state: RootState) => state.clinic);
     const { user } = useSelector((state: RootState) => state.auth);
 
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -46,12 +48,14 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
     const [selectedApt, setSelectedApt] = useState<any>(null);
     const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
+    const [isExecutionModalOpen, setIsExecutionModalOpen] = useState(false);
 
     const filteredAppointments = useMemo(() => {
+        let apts = appointments || [];
         if (user?.role === 'doctor') {
-            return appointments.filter(apt => apt.providerId === user.id);
+            apts = apts.filter(apt => apt.providerId === user.id);
         }
-        return appointments;
+        return apts.filter(apt => apt.status !== 'CANCELLED');
     }, [appointments, user]);
 
     const staff = useMemo(() => {
@@ -92,15 +96,16 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         return slots;
     }, []);
 
-    useEffect(() => {
-        const targetClinicId = clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.clinicId || (user as any)?.ownedClinics?.[0]?.id || (user as any)?.ownedClinics?.[0];
+    const resolvedClinicId = clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.clinicId || (user as any)?.ownedClinics?.[0]?.id || (user as any)?.ownedClinics?.[0];
 
-        if (targetClinicId) {
-            dispatch(fetchClinicProviders(targetClinicId));
+    useEffect(() => {
+        if (resolvedClinicId) {
+            dispatch(fetchClinicProviders(resolvedClinicId));
+            dispatch(fetchServices(resolvedClinicId));
         }
 
         const filters: any = {};
-        if (targetClinicId) filters.clinicId = targetClinicId;
+        if (resolvedClinicId) filters.clinicId = resolvedClinicId;
         
         if (viewMode === 'day') {
             filters.date = format(selectedDate, 'yyyy-MM-dd');
@@ -110,7 +115,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         }
         
         dispatch(fetchAppointments(filters));
-    }, [dispatch, profile?.id, clinicId, selectedDate, user, viewMode]);
+    }, [dispatch, profile?.id, clinicId, selectedDate, user, viewMode, resolvedClinicId]);
 
     const navigateDate = (direction: 'prev' | 'next') => {
         if (viewMode === 'day') setSelectedDate(prev => addDays(prev, direction === 'next' ? 1 : -1));
@@ -178,15 +183,20 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
 
                                     return (
                                         <div key={apt.id} onClick={() => openAptDetails(apt)} 
-                                            className={`absolute left-1 right-1 rounded-xl p-3 border-l-4 shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status} bg-white shadow-slate-200/50`}
+                                            className={`absolute left-1 right-1 rounded-xl p-3 border-l-4 shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status.toLowerCase()} bg-white shadow-slate-200/50`}
                                             style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
                                         >
                                             <div className="flex justify-between items-start mb-1">
                                                 <span className="text-[10px] font-black uppercase text-slate-900 truncate">{apt.clientDetails?.fullName || apt.client?.firstName || 'Patient'}</span>
                                             </div>
-                                            <div className="text-[9px] font-bold text-slate-500 truncate lowercase">{apt.serviceName || 'Treatment'}</div>
+                                            <div className="space-y-0.5">
+                                                <div className="text-[9px] font-bold text-slate-500 truncate lowercase">{apt.serviceName || 'Treatment'}</div>
+                                                <div className="text-[8px] font-medium text-slate-400 truncate">{apt.clientDetails?.phone || apt.client?.phone || 'No Phone'}</div>
+                                                <div className="text-[8px] font-medium text-slate-400 truncate lowercase opacity-60">{apt.clientDetails?.email || apt.client?.email || 'No Email'}</div>
+                                            </div>
                                             <div className="mt-auto flex justify-between items-center pt-1 border-t border-slate-50">
                                                 <span className="text-[9px] font-black text-slate-400">{format(start, 'HH:mm')}</span>
+                                                {apt.bookedByInfo && <span className="text-[7px] font-black uppercase text-blue-400 bg-blue-50 px-1 rounded">By {apt.bookedByInfo.name.split(' ')[0]}</span>}
                                             </div>
                                         </div>
                                     );
@@ -243,13 +253,17 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
 
                                         return (
                                             <div key={apt.id} onClick={() => openAptDetails(apt)} 
-                                                className={`absolute left-1 right-1 rounded-xl p-3 border-l-4 shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status} bg-white shadow-slate-200/50`}
+                                                className={`absolute left-1 right-1 rounded-xl p-3 border-l-4 shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status.toLowerCase()} bg-white shadow-slate-200/50`}
                                                 style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
                                             >
                                                 <div className="flex justify-between items-start mb-1">
                                                     <span className="text-[10px] font-black uppercase text-slate-900 truncate">{apt.clientDetails?.fullName || apt.client?.firstName || 'Patient'}</span>
                                                 </div>
-                                                <div className="text-[9px] font-bold text-slate-500 truncate lowercase">{apt.serviceName || 'Treatment'}</div>
+                                                <div className="space-y-0.5">
+                                                    <div className="text-[9px] font-bold text-slate-500 truncate lowercase">{apt.serviceName || 'Treatment'}</div>
+                                                    <div className="text-[7px] font-medium text-slate-400 truncate">{apt.clientDetails?.phone || apt.client?.phone}</div>
+                                                    {apt.bookedByInfo && <div className="text-[6px] font-black uppercase text-blue-400 mt-1 opacity-70">By {apt.bookedByInfo.name.split(' ')[0]}</div>}
+                                                </div>
                                                 <div className="mt-auto flex justify-between items-center pt-1 border-t border-slate-50">
                                                     <span className="text-[9px] font-black text-slate-400">{format(start, 'HH:mm')}</span>
                                                 </div>
@@ -306,7 +320,8 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
 
             <div className="flex flex-wrap items-center justify-center gap-8 py-4 px-6 bg-slate-50/50 flex-none border-t border-slate-100">
                 {[
-                    { label: 'Booked', color: 'bg-indigo-500' },
+                    { label: 'Pending', color: 'bg-blue-500' },
+                    { label: 'Confirmed', color: 'bg-green-500' },
                     { label: 'Completed', color: 'bg-emerald-500' },
                     { label: 'Arrived', color: 'bg-amber-500' },
                     { label: 'No Show', color: 'bg-red-500' },
@@ -354,14 +369,121 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                     <div className="space-y-1"><label className="text-[8px] font-black text-slate-400 uppercase px-1">Start Hour</label><input type="time" value={format(new Date(selectedApt.startTime), 'HH:mm')} onChange={(e) => { const [h, m] = e.target.value.split(':').map(Number); const d = new Date(selectedApt.startTime); d.setHours(h, m); setSelectedApt({ ...selectedApt, startTime: d.toISOString() }); }} className="w-full h-11 px-4 bg-slate-50 border-none rounded-2xl text-[11px] font-black outline-none focus:bg-slate-100" /></div>
                                 </div>
                                 <div className="space-y-1"><label className="text-[8px] font-black text-slate-400 uppercase px-1">Professional Lead</label><select className="w-full h-11 px-4 bg-slate-50 border-none rounded-2xl text-[11px] font-black outline-none appearance-none" value={selectedApt.providerId || ''} onChange={(e) => setSelectedApt({ ...selectedApt, providerId: e.target.value })}><option value="">Select Professional</option>{staff.map((s: any) => (<option key={s.id} value={s.id}>{s.fullName}</option>))}</select></div>
-                                <Button className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all" onClick={async () => { try { await bookingAPI.updateAppointment(selectedApt.id, { startTime: selectedApt.startTime, providerId: selectedApt.providerId }); const targetClinicId = clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.ownedClinics?.[0]?.id; const filters: any = {}; if (targetClinicId) filters.clinicId = targetClinicId; filters.date = format(selectedDate, 'yyyy-MM-dd'); dispatch(fetchAppointments(filters)); setIsDetailDrawerOpen(false); } catch (err) { alert("Matrix Sync Failed"); } }}>Update Matrix</Button>
+
+                                <div className="space-y-1">
+                                    <label className="text-[8px] font-black text-slate-400 uppercase px-1">Treatment Matrix</label>
+                                    <select 
+                                        className="w-full h-11 px-4 bg-slate-50 border-none rounded-2xl text-[11px] font-black outline-none appearance-none" 
+                                        value={selectedApt.serviceId || ''} 
+                                        onChange={(e) => {
+                                            const serviceId = e.target.value;
+                                            const service = services?.find((s: any) => s.id === serviceId);
+                                            setSelectedApt({ ...selectedApt, serviceId, serviceName: service?.name || service?.treatment?.name });
+                                        }}
+                                    >
+                                        <option value="">Select Treatment</option>
+                                        {services?.map((s: any) => (
+                                            <option key={s.id} value={s.id}>{s.name || s.treatment?.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {selectedApt.status === 'COMPLETED' && (
+                                    <div className="pt-4 space-y-4 border-t border-slate-100">
+                                        {selectedApt.treatmentDetails?.actualServiceNames?.length > 1 && (
+                                            <div className="space-y-1.5">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase px-1">Procedures Performed</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {selectedApt.treatmentDetails.actualServiceNames.map((name: string, i: number) => (
+                                                        <span key={i} className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[9px] font-black uppercase italic border border-emerald-100">{name}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {selectedApt.notes && (
+                                            <div className="space-y-1">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase px-1">Clinical Notes</p>
+                                                <div className="p-3 bg-slate-50 rounded-xl text-[10px] font-medium text-slate-600 italic border border-slate-100">{selectedApt.notes}</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <Button className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all mt-4" onClick={async () => { try { await bookingAPI.updateAppointment(selectedApt.id, { startTime: selectedApt.startTime, providerId: selectedApt.providerId, serviceId: selectedApt.serviceId }); const targetClinicId = clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.clinicId || (user as any)?.ownedClinics?.[0]?.id || (user as any)?.ownedClinics?.[0]; const filters: any = {}; if (targetClinicId) filters.clinicId = targetClinicId; filters.date = format(selectedDate, 'yyyy-MM-dd'); dispatch(fetchAppointments(filters)); setIsDetailDrawerOpen(false); } catch (err) { alert("Matrix Sync Failed"); } }}>Update Matrix</Button>
                             </div>
+
+                            {/* New Quick Actions Section */}
+                            {selectedApt.status !== 'COMPLETED' && selectedApt.status !== 'CANCELLED' && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2.5 text-slate-900"><div className="w-1.5 h-1.5 rounded-full bg-blue-500" /><span className="text-[11px] font-black uppercase tracking-widest italic">Live Operations</span></div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Button 
+                                            variant="outline" 
+                                            className="h-11 rounded-2xl border-slate-100 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-100"
+                                            onClick={() => dispatch(updateAppointmentStatus({ id: selectedApt.id, status: AppointmentStatus.ARRIVED }))}
+                                        >
+                                            Arrived
+                                        </Button>
+                                        <Button 
+                                            variant="outline" 
+                                            className="h-11 rounded-2xl border-slate-100 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-100"
+                                            onClick={() => dispatch(updateAppointmentStatus({ id: selectedApt.id, status: AppointmentStatus.NO_SHOW }))}
+                                        >
+                                            No Show
+                                        </Button>
+                                        <Button 
+                                            variant="outline" 
+                                            className="h-11 rounded-2xl border-slate-100 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100"
+                                            onClick={() => {
+                                                if (window.confirm("Cancel this appointment?")) {
+                                                    dispatch(updateAppointmentStatus({ id: selectedApt.id, status: AppointmentStatus.CANCELLED }));
+                                                    setIsDetailDrawerOpen(false);
+                                                }
+                                            }}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button 
+                                            className="h-11 rounded-2xl bg-[#CBFF38] text-black hover:bg-black hover:text-[#CBFF38] text-[10px] font-black uppercase tracking-widest border-none"
+                                            onClick={() => setIsExecutionModalOpen(true)}
+                                        >
+                                            Execute
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             )}
 
-            <CRMBookingModal isOpen={isBookingModalOpen} onClose={() => setIsBookingModalOpen(false)} />
+            <CRMBookingModal 
+                isOpen={isBookingModalOpen} 
+                onClose={() => setIsBookingModalOpen(false)} 
+                clinicId={resolvedClinicId}
+                onSuccess={() => {
+                    const filters: any = {};
+                    if (resolvedClinicId) filters.clinicId = resolvedClinicId;
+                    filters.date = format(selectedDate, 'yyyy-MM-dd');
+                    dispatch(fetchAppointments(filters));
+                }}
+            />
+
+            {isExecutionModalOpen && selectedApt && (
+                <AppointmentExecutionModal
+                    appointment={selectedApt}
+                    onClose={() => setIsExecutionModalOpen(false)}
+                    onComplete={() => {
+                        setIsExecutionModalOpen(false);
+                        setIsDetailDrawerOpen(false);
+                        const targetClinicId = resolvedClinicId;
+                        const filters: any = {};
+                        if (targetClinicId) filters.clinicId = targetClinicId;
+                        filters.date = format(selectedDate, 'yyyy-MM-dd');
+                        dispatch(fetchAppointments(filters));
+                    }}
+                />
+            )}
         </div>
     );
 };

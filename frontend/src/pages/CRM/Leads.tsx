@@ -560,7 +560,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-[#CBFF38] transition-all duration-300 z-10 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search leads, missions, or details..."
+              placeholder="Search leads, phone, or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}

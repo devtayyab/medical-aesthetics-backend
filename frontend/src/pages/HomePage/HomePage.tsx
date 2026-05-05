@@ -18,13 +18,14 @@ import {
   Sparkles,
   CalendarCheck,
   MousePointerClick,
-  Lock
+  Lock,
+  Syringe
 } from "lucide-react";
 
 
 // import { Button } from "@/components/atoms/Button/Button";
 // import { Input } from "@/components/atoms/Input/Input";
-import { fetchFeaturedClinics } from "@/store/slices/clientSlice";
+import { fetchFeaturedClinics, searchClinics } from "@/store/slices/clientSlice";
 import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 
@@ -44,6 +45,30 @@ import BodyIcon from "@/assets/Icons/TreatmentIcons/BodyIcon.svg";
 import HairIcon from "@/assets/Icons/TreatmentIcons/HairIcon.svg";
 import DentistIcon from "@/assets/Icons/TreatmentIcons/Dentisticon.svg";
 import HomeMobAppImg from "@/assets/HomeMobAppImg.svg";
+
+// Premium Assets
+import BotoxImg from "@/assets/Botox.jpg";
+import RhinoplastyElite from "@/assets/Treatments/rhinoplasty_elite.png";
+import BotoxElite from "@/assets/Treatments/botox_elite.png";
+import HairElite from "@/assets/Treatments/hair_transplant_elite.png";
+import FillersElite from "@/assets/Treatments/fillers_elite.png";
+import EyesElite from "@/assets/Treatments/eyes_surgery_elite.png";
+import RejuvenationElite from "@/assets/Treatments/rejuvenation_elite.png";
+import PrpElite from "@/assets/Treatments/prp_therapy_elite.png";
+import BeardElite from "@/assets/Treatments/beard_transplant_elite.png";
+
+const getFallbackImage = (name: string): string => {
+    const n = name.toLowerCase();
+    if (n.includes('botox') || n.includes('wrinkle')) return BotoxElite;
+    if (n.includes('filler') || n.includes('lip')) return FillersElite;
+    if (n.includes('rhinoplasty') || n.includes('nose')) return RhinoplastyElite;
+    if (n.includes('hair') || n.includes('transplant')) return HairElite;
+    if (n.includes('eye') || n.includes('bleph')) return EyesElite;
+    if (n.includes('skin') || n.includes('rejuvenation') || n.includes('peel') || n.includes('facial')) return RejuvenationElite;
+    if (n.includes('prp')) return PrpElite;
+    if (n.includes('beard')) return BeardElite;
+    return BotoxImg;
+};
 
 const treatmentSteps = [
   {
@@ -110,7 +135,7 @@ const mainCategories = [
     id: "treatments",
     name: "Treatments",
     description: "Browse treatments by category",
-    icon: <FaStethoscope className="text-3xl" />,
+    icon: <Syringe className="text-3xl" />,
     link: "/treatments"
   },
   {
@@ -135,22 +160,19 @@ export const HomePage: React.FC = () => {
 
 
 
-  const { featuredClinics, isLoading } = useSelector(
+  const { featuredClinics, isLoading, treatments, error } = useSelector(
     (state: RootState) => state.client
   );
 
 
 
-  const { isAuthenticated, isLoading: authLoading } = useSelector(
-    (state: RootState) => state.auth
-  );
+
 
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      console.log("HomePage: Dispatching fetchFeaturedClinics");
-      dispatch(fetchFeaturedClinics());
-    }
-  }, [dispatch, isAuthenticated, authLoading]);
+    dispatch(fetchFeaturedClinics());
+    // Fetch treatments for the featured section
+    dispatch(searchClinics({ limit: 6 }));
+  }, [dispatch]);
 
   const handleSearch = (filters: any) => {
     const params = new URLSearchParams();
@@ -165,8 +187,8 @@ export const HomePage: React.FC = () => {
     navigate(`/search?category=${categoryId}`);
   };
 
-  const handleClinicSelect = (clinic: Clinic) => {
-    navigate(`/clinic/${clinic.id}`);
+  const handleTreatmentSelect = (treatment: any) => {
+    navigate(`/search?q=${treatment.name}`);
   };
 
   return (
@@ -239,7 +261,7 @@ export const HomePage: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-[#33373F]">Popular Categories</h2>
-          <p className="text-gray-600 mt-1">Explore top treatments by category</p>
+          <p className="text-gray-600 mt-1">Explore top privileges by category</p>
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -264,14 +286,14 @@ export const HomePage: React.FC = () => {
     <div className="max-w-[1200px] mx-auto px-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-[#33373F]">Featured Clinics</h2>
-          <p className="text-gray-600 mt-1">Top-rated clinics recommended for you</p>
+          <h2 className="text-2xl font-bold text-[#33373F]">Featured Privileges</h2>
+          <p className="text-gray-600 mt-1">Top-rated privileges recommended for you</p>
         </div>
         <button
-          onClick={() => navigate('/search')}
+          onClick={() => navigate('/treatments')}
           className="text-lime-600 font-medium hover:text-lime-700 transition"
         >
-          See All Clinics <ArrowRight className="inline-block ml-1 h-4 w-4" />
+          See All Privileges <ArrowRight className="inline-block ml-1 h-4 w-4" />
         </button>
       </div>
 
@@ -279,53 +301,73 @@ export const HomePage: React.FC = () => {
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-500"></div>
         </div>
-      ) : featuredClinics && featuredClinics.length > 0 ? (
+      ) : treatments && treatments.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {featuredClinics.map((clinic) => (
+          {treatments.map((treatment) => (
             <div
-              key={clinic.id}
-              onClick={() => handleClinicSelect(clinic)}
+              key={treatment.id}
+              onClick={() => handleTreatmentSelect(treatment)}
               className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group border border-gray-100 flex flex-col h-full"
             >
               <div className="h-48 bg-gray-200 relative overflow-hidden">
                 <img
-                  src={clinic.images && clinic.images.length > 0 ? clinic.images[0] : "https://placehold.co/600x400?text=Clinic"}
-                  alt={clinic.name}
+                  src={(!treatment.imageUrl || treatment.imageUrl.includes('placehold')) ? getFallbackImage(treatment.name) : treatment.imageUrl}
+                  alt={treatment.name}
+                  onError={(e: any) => {
+                    e.target.src = getFallbackImage(treatment.name);
+                  }}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1">
                   <FaStar className="text-yellow-400" />
-                  <span>
-                    {(clinic.rating !== null && clinic.rating !== undefined)
-                      ? Number(clinic.rating).toFixed(1)
-                      : "New"}
-                  </span>
+                  <span>5.0</span>
                 </div>
               </div>
               <div className="p-5 flex flex-col flex-1">
-                <h3 className="text-lg font-bold text-gray-900 mb-1">{clinic.name}</h3>
-                <div className="flex items-center text-gray-500 text-sm mb-3">
-                  <FaMapMarkerAlt className="mr-1 text-gray-400" />
-                  <span>{clinic.address.city}, {clinic.address.country}</span>
-                </div>
-                <p className="text-gray-600 text-sm line-clamp-2 mb-4 flex-1">
-                  {clinic.description}
-                </p>
-                <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
-                  <span className="text-gray-400 text-xs">
-                    {clinic.reviewCount || 0} review{clinic.reviewCount !== 1 ? 's' : ''}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-lime-600 italic">
+                    {treatment.category || "Aesthetic"}
                   </span>
-                  <span className="text-lime-600 font-medium text-sm group-hover:underline">
-                    View Details
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-1 uppercase italic tracking-tight">{treatment.name}</h3>
+                <div className="flex items-center text-gray-500 text-sm mb-3">
+                  <p className="text-gray-600 text-xs line-clamp-2">
+                    {treatment.shortDescription || "Elite clinical treatment protocols for anatomical perfection."}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Price Starting From</span>
+                    <span className="text-lg font-black text-gray-900 italic tracking-tighter">€{treatment.fromPrice || "49.00"}</span>
+                  </div>
+                  <span className="text-lime-600 font-black text-[10px] uppercase tracking-widest italic group-hover:underline">
+                    Book Now
                   </span>
                 </div>
               </div>
             </div>
           ))}
         </div>
+      ) : error ? (
+        <div className="text-center py-12 text-red-500 bg-white rounded-xl border border-dashed border-red-200">
+          <p className="font-bold">Error loading treatments:</p>
+          <p className="text-sm">{error}</p>
+          <button 
+            onClick={() => dispatch(searchClinics({ limit: 6 }))}
+            className="mt-4 px-6 py-2 bg-black text-white rounded-lg text-xs font-bold uppercase tracking-widest"
+          >
+            Retry Sync
+          </button>
+        </div>
       ) : (
         <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
-          <p>No featured clinics found.</p>
+          <p>No featured treatments found.</p>
+          <button 
+            onClick={() => dispatch(searchClinics({ limit: 6 }))}
+            className="mt-4 px-6 py-2 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors"
+          >
+            Refresh Catalog
+          </button>
         </div>
       )}
     </div>
@@ -410,18 +452,21 @@ export const HomePage: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col transform transition hover:scale-[1.01] duration-300">
             <img
               src={TopRatedClinicImg}
-              alt="Find Clinics"
+              alt="Discover Treatments"
               className="w-full h-[200px] sm:h-[240px] object-cover"
             />
             <div className="p-6 sm:p-8 flex flex-col flex-1">
               <h3 className="text-xl font-bold text-gray-900 mb-3">
-                Top-Rated Clinics
+                Top-Rated Treatments
               </h3>
               <p className="text-gray-600 text-base leading-relaxed flex-1 mb-6">
-                Discover clinics recognized for excellence. Backed by real patient reviews, so you can book with confidence.
+                Discover elite aesthetic protocols recognized for excellence. Backed by clinical science and expert results.
               </p>
-              <button className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm gap-2">
-                Explore Top Clinics
+              <button 
+                onClick={() => navigate('/treatments')}
+                className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm gap-2"
+              >
+                Explore Top Treatments
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
@@ -439,9 +484,12 @@ export const HomePage: React.FC = () => {
               We'll help you grow your practice and attract more patients with
               our easy-to-use booking platform.
             </p>
-            <button className="inline-block bg-[#CBFF38] text-[#1A202C] px-8 py-4 rounded-xl font-bold hover:bg-white transition-colors transform hover:-translate-y-1">
+            <a 
+              href="mailto:info@beautydoctors.gr?subject=Clinic%20Partnership%20Inquiry"
+              className="inline-block bg-[#CBFF38] text-[#1A202C] px-8 py-4 rounded-xl font-bold hover:bg-white transition-colors transform hover:-translate-y-1 no-underline"
+            >
               Partner With Us
-            </button>
+            </a>
           </div>
           <div className="w-full flex justify-center lg:justify-end">
             <img

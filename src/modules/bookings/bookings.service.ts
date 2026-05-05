@@ -648,6 +648,12 @@ export class BookingsService {
       if (data?.paymentMethod) {
         updateData.paymentMethod = data.paymentMethod;
       }
+      if (data?.additionalServiceIds) {
+        updateData.additionalServiceIds = data.additionalServiceIds;
+      }
+      if (data?.notes) {
+        updateData.notes = data.notes;
+      }
     } else if (status === AppointmentStatus.CANCELLED) {
       updateData.cancelledAt = new Date();
       updateData.cancelledById = userId;
@@ -748,13 +754,23 @@ export class BookingsService {
     return updatedAppointment;
   }
 
-  async reschedule(id: string, newStartTime: Date, newEndTime: Date): Promise<Appointment> {
+  async reschedule(id: string, newStartTime: Date, newEndTime: Date, notes?: string): Promise<Appointment> {
+    let appointment = await this.findById(id);
+    
+    let updatedNotes = appointment.notes;
+    if (notes) {
+      const timestamp = new Date().toLocaleString();
+      const rescheduleNote = `\n[Reschedule Reason - ${timestamp}]: ${notes}`;
+      updatedNotes = updatedNotes ? `${updatedNotes}${rescheduleNote}` : rescheduleNote;
+    }
+
     await this.appointmentsRepository.update(id, {
       startTime: newStartTime,
       endTime: newEndTime,
+      notes: updatedNotes
     });
 
-    const appointment = await this.findById(id);
+    appointment = await this.findById(id);
 
     // Trigger Notification
     if (appointment.clientId) {

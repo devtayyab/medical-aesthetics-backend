@@ -114,7 +114,7 @@ export const Search: React.FC = () => {
     ${isActive ? 'bg-[#121212] text-[#CBFF38] border-black shadow-lg scale-105' : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300 hover:bg-gray-50'}
   `;
 
-  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('clinics');
+  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('treatments');
 
   // Search states
   const [query, setQuery] = useState(searchParams.get("query") || "");
@@ -126,10 +126,8 @@ export const Search: React.FC = () => {
   // Filter states
   const [sortBy, setSortBy] = useState<'recommended' | 'distance' | 'price-asc' | 'price-desc' | 'rating'>('recommended');
   const [ratingFilter, setRatingFilter] = useState<'any' | '4.5-plus' | '4.0-plus'>('any');
-  const [brandsFilter, setBrandsFilter] = useState<string | null>(null);
   const [salonsFilter, setSalonsFilter] = useState<string | null>(null);
-  const [instantOffer, setInstantOffer] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<'sort' | 'rating' | 'brands' | 'salons' | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'sort' | 'rating' | 'salons' | null>(null);
 
   // Geolocation
   useEffect(() => {
@@ -154,12 +152,10 @@ export const Search: React.FC = () => {
         lng: userCoords?.lng,
         sortBy,
         rating: ratingFilter !== 'any' ? ratingFilter : undefined,
-        brand: brandsFilter || undefined,
         salon_type: salonsFilter || undefined,
-        instant_offer: instantOffer || undefined,
       } as any)
     );
-  }, [dispatch, query, location, category, searchDate, searchTimeWindow, userCoords, sortBy, ratingFilter, brandsFilter, salonsFilter, instantOffer]);
+  }, [dispatch, query, location, category, searchDate, searchTimeWindow, userCoords, sortBy, ratingFilter, salonsFilter]);
 
   const handleSearch = (filters: any) => {
     if (filters.query !== undefined) setQuery(filters.query);
@@ -205,13 +201,13 @@ export const Search: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FDFDFD] relative">
       {/* Premium Search Header - Minimizable */}
-      {activeTab === 'clinics' && (
+      {(activeTab === 'clinics' || activeTab === 'treatments') && (
         <header className={`bg-[#121212] transition-all duration-700 relative overflow-hidden ${isScrolled ? 'py-4 sm:py-10' : 'pt-12 pb-12 sm:pt-20 sm:pb-20'}`}>
           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `url(${SearchHero})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
           <div className="container mx-auto px-4 sm:px-8 relative z-10 flex flex-col items-center justify-between gap-6 sm:gap-12">
               <div className={`w-full transition-all duration-700 ${isScrolled ? 'flex items-center justify-between gap-4' : 'text-center lg:text-left lg:w-1/2'}`}>
                  <h1 className={`text-white font-black italic tracking-tighter transition-all duration-700 mb-0 whitespace-nowrap ${isScrolled ? 'text-lg sm:text-2xl' : 'text-3xl sm:text-4xl lg:text-5xl mb-4 sm:mb-8'}`}>
-                    SEARCH <span className="text-[#CBFF38]">TREATMENTS</span>
+                    SEARCH <span className="text-[#CBFF38]">PRIVILEGES</span>
                  </h1>
                  {!isScrolled && <div className="h-1 w-20 bg-[#CBFF38] mx-auto lg:mx-0 mb-8 rounded-full hidden sm:block"></div>}
                  <div className={`w-full transition-all ${isScrolled ? 'max-w-[150px] sm:max-w-md' : 'max-w-2xl mx-auto lg:mx-0'}`}>
@@ -242,7 +238,7 @@ export const Search: React.FC = () => {
                    onClick={() => setActiveTab('treatments')}
                    className={`text-[10px] sm:text-[12px] font-black uppercase tracking-widest italic whitespace-nowrap transition-all ${activeTab === 'treatments' ? 'text-black border-b-2 sm:border-b-4 border-[#CBFF38] pb-1' : 'text-gray-400'}`}
                  >
-                   Treatments ({totalTreatments})
+                   Privileges ({totalTreatments})
                  </button>
               </div>
 
@@ -259,30 +255,8 @@ export const Search: React.FC = () => {
                     </button>
                  </div>
 
-                 {/* Brands Ref Button */}
-                 <div className="flex-shrink-0">
-                    <button 
-                      onClick={() => setOpenDropdown(openDropdown === 'brands' ? null : 'brands')}
-                      className={filterPill(!!brandsFilter)}
-                    >
-                      <Tag size={12} className="text-gray-400" /> {brandsFilter || 'Brands'}
-                      <ChevronDown size={12} />
-                    </button>
-                 </div>
                  
-                 <button 
-                   onClick={requestLocation}
-                   className={`flex-shrink-0 ${filterPill(!!userCoords)}`}
-                 >
-                   <MapPin size={12} className="text-gray-400" /> Nearby
-                 </button>
 
-                 <button 
-                   onClick={() => setInstantOffer(!instantOffer)}
-                   className={`flex-shrink-0 ${filterPill(instantOffer)}`}
-                 >
-                   <Sparkles size={12} className="text-gray-400" /> Offers
-                 </button>
               </div>
            </div>
 
@@ -320,16 +294,6 @@ export const Search: React.FC = () => {
                       </button>
                    ))}
 
-                   {openDropdown === 'brands' && ['Any', 'L\'Oreal', 'Dermalogica', 'SkinCeuticals', 'La Mer'].map(brand => (
-                      <button 
-                        key={brand}
-                        onClick={() => { setBrandsFilter(brand === 'Any' ? null : brand); setOpenDropdown(null); }}
-                        className={`w-full text-left px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic hover:bg-gray-50 flex items-center justify-between transition-colors ${brandsFilter === brand || (brand === 'Any' && !brandsFilter) ? 'text-[#CBFF38] bg-[#121212]' : 'text-gray-600'}`}
-                      >
-                        {brand}
-                        {((brand === 'Any' && !brandsFilter) || brandsFilter === brand) && <Check size={14} />}
-                      </button>
-                   ))}
 
                    {openDropdown === 'salons' && ['Any', 'Medical Clinic', 'Beauty Salon', 'Spa', 'Dermatology'].map(type => (
                       <button 

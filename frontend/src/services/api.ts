@@ -226,6 +226,7 @@ export const clinicsAPI = {
     api.get("/clinics/reviews/pending", { params }),
   moderateReview: (id: string, data: { status: 'APPROVED' | 'REJECTED'; rejectReason?: string }) =>
     api.patch(`/clinics/reviews/${id}/moderate`, data),
+  getSuggestions: (q: string) => api.get("/clinics/suggestions", { params: { q } }),
 };
 
 export const bookingAPI = {
@@ -273,8 +274,8 @@ export const bookingAPI = {
   getAppointment: (id: string) => api.get(`/appointments/${id}`),
   getClinicAppointments: (params: { clinicId?: string; date?: string; providerId?: string; status?: string }) =>
     api.get("/appointments/clinic", { params }),
-  reschedule: (id: string, startTime: string, endTime: string) =>
-    api.patch(`/appointments/${id}/reschedule`, { startTime, endTime }),
+  reschedule: (id: string, startTime: string, endTime: string, notes?: string) =>
+    api.patch(`/appointments/${id}/reschedule`, { startTime, endTime, notes }),
   cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
   complete: (id: string, data?: any) => api.patch(`/appointments/${id}/complete`, data),
   updateStatus: (id: string, status: string) =>
