@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { css } from "@emotion/css";
 import { User, ChevronRight, CreditCard, Building2, Receipt, Search, ArrowRight, Wallet, History } from "lucide-react";
-import { paymentsAPI } from "@/services/api";
+import { paymentsAPI, bookingAPI } from "@/services/api";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 
@@ -70,17 +70,54 @@ export const Payments: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchWallet = async () => {
+        const fetchUnifiedFinancials = async () => {
             try {
-                const response = await paymentsAPI.getMyWallet({ limit: 50 });
-                setPayments(response.data.items || []);
+                // Fetch both transactions and appointments
+                const [walletRes, appointmentsRes] = await Promise.all([
+                    paymentsAPI.getMyWallet({ limit: 100 }),
+                    bookingAPI.getUserAppointments()
+                ]);
+
+                const transactions = walletRes.data.items || [];
+                const allAppointments = appointmentsRes.data || [];
+                
+                // Get all completed/executed appointments
+                const completedApts = allAppointments.filter((a: any) => 
+                    ['completed', 'executed'].includes(a.status?.toLowerCase())
+                );
+
+                // Merge logic: Start with transactions, then add completed appointments 
+                // that don't have a transaction associated with them yet.
+                const unifiedList = [...transactions];
+                
+                completedApts.forEach((apt: any) => {
+                    const hasTransaction = transactions.some((t: any) => t.appointmentId === apt.id);
+                    if (!hasTransaction) {
+                        unifiedList.push({
+                            id: `apt-${apt.id}`,
+                            amount: apt.amountPaid || apt.totalAmount || 0,
+                            status: 'completed',
+                            type: 'payment',
+                            createdAt: apt.completedAt || apt.updatedAt || apt.startTime,
+                            method: apt.paymentMethod || 'manual',
+                            appointment: apt,
+                            clinic: apt.clinic,
+                            notes: 'Service Rendered'
+                        });
+                    }
+                });
+
+                // Sort by date descending
+                unifiedList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                
+                setPayments(unifiedList);
             } catch (err) {
-                console.error("Failed to fetch wallet:", err);
+                console.error("Failed to fetch financial history:", err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchWallet();
+        fetchUnifiedFinancials();
     }, []);
 
     const totalSpend = payments
@@ -209,9 +246,6 @@ export const Payments: React.FC = () => {
                             <p className="text-gray-400 max-w-sm mx-auto text-base font-bold italic leading-relaxed">
                                 Once you complete a treatment or make a deposit, your financial record will be updated here.
                             </p>
-                            <Link to="/search" className="inline-flex items-center gap-3 mt-10 bg-black text-[#CBFF38] px-10 h-16 rounded-[20px] font-black uppercase text-xs tracking-[0.2em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl">
-                                Discover Treatments <ArrowRight size={18} />
-                            </Link>
                         </div>
                     )}
                 </motion.div>

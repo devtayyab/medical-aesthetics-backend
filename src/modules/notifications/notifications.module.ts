@@ -4,6 +4,7 @@ import { BullModule } from '@nestjs/bull';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { FirebaseService } from './services/firebase.service';
+import { MailService } from './services/mail.service';
 import { NotificationProcessor } from './processors/notification.processor';
 import { NotificationsGateway } from './gateways/notifications.gateway';
 import { Notification } from './entities/notification.entity';
@@ -25,6 +26,7 @@ import { JwtModule } from '@nestjs/jwt';
     NotificationsService,
     NotificationsGateway,
     FirebaseService,
+    MailService,
     NotificationProcessor,
   ],
   exports: [NotificationsService, NotificationsGateway],

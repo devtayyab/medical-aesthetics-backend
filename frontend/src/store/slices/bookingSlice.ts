@@ -107,8 +107,8 @@ export const cancelAppointment = createAsyncThunk(
 
 export const rescheduleAppointment = createAsyncThunk(
   'booking/rescheduleAppointment',
-  async (data: { id: string; startTime: string; endTime: string }) => {
-    const response = await bookingAPI.reschedule(data.id, data.startTime, data.endTime);
+  async (data: { id: string; startTime: string; endTime: string; notes?: string }) => {
+    const response = await bookingAPI.reschedule(data.id, data.startTime, data.endTime, data.notes);
     return response.data;
   }
 );

@@ -128,6 +128,7 @@ export interface Appointment {
   appointmentSource: 'clinic_own' | 'platform_broker';
   totalAmount: number;
   notes?: string;
+  additionalServiceIds?: string[];
   treatmentDetails?: any;
   createdAt: string;
   updatedAt: string;

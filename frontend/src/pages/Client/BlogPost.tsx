@@ -13,6 +13,15 @@ const sectionStyles = css`
   background: radial-gradient(circle at top right, rgba(203, 255, 56, 0.05), transparent), #FFFFFF;
 `;
 
+const getImageUrl = (path: string) => {
+  if (!path) return '';
+  if (path.startsWith('http') || path.startsWith('data:')) return path;
+  
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const origin = baseUrl.replace(/\/api$/, '');
+  return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const glassCard = css`
   background: white;
   border-radius: 40px;
@@ -220,7 +229,7 @@ export const BlogPost: React.FC = () => {
                         >
                             <div className="aspect-[21/9] overflow-hidden">
                                 <img
-                                    src={post.imageUrl || `https://placehold.co/1200x600/1A1A1A/CBFF38?text=${encodeURIComponent(post.title)}`}
+                                    src={getImageUrl(post.imageUrl) || `https://placehold.co/1200x600/1A1A1A/CBFF38?text=${encodeURIComponent(post.title)}`}
                                     alt={post.title}
                                     className="w-full h-full object-cover"
                                 />

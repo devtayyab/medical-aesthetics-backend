@@ -14,6 +14,7 @@ import {
   Settings,
   X,
 } from "lucide-react";
+import ImageUpload from "../../components/atoms/ImageUpload";
 
 const ServicesPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -135,6 +136,15 @@ const ServicesPage: React.FC = () => {
 
 /* --- Helper Components --- */
 
+const getImageUrl = (path: string) => {
+  if (!path) return '';
+  if (path.startsWith('http') || path.startsWith('data:')) return path;
+  
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const origin = baseUrl.replace(/\/api$/, '');
+  return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const ServiceCard = ({ service, canManage, onToggle, onEdit }: any) => {
   const isActive = service.isActive;
 
@@ -143,9 +153,9 @@ const ServiceCard = ({ service, canManage, onToggle, onEdit }: any) => {
       }`}>
       {/* Visual Layer */}
       <div className="h-40 relative overflow-hidden bg-gray-50">
-        {service.treatment?.imageUrl ? (
+        {service.imageUrl || service.treatment?.imageUrl ? (
           <img
-            src={service.treatment.imageUrl}
+            src={getImageUrl(service.imageUrl || service.treatment?.imageUrl)}
             alt={service.treatment?.name}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
@@ -518,17 +528,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             </div>
           </div>
 
-          {/* Image URL */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Representation Image URL</label>
-            <input
-              type="text"
-              value={formData.imageUrl}
-              onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-100 rounded-xl focus:ring-4 focus:ring-gray-50 focus:border-gray-300 outline-none text-sm text-blue-600 underline"
-              placeholder="https://images.unsplash.com/..."
-            />
-          </div>
+          {/* Image Upload */}
+          <ImageUpload
+            label="Representation Image"
+            value={formData.imageUrl}
+            onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+          />
 
           {/* Actions */}
           <div className="flex gap-4 pt-4 border-t border-gray-100">

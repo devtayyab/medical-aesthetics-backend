@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { updateAppointmentStatus } from '../../store/slices/clinicSlice';
 import { PaymentMethod, Appointment, Service, AppointmentStatus } from '../../types/clinic.types';
-import { X, Euro, CreditCard, Banknote, Building2, Gift, RefreshCw, AlertTriangle } from 'lucide-react';
+import { X, Euro, CreditCard, Banknote, Building2, Gift, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { clinicsAPI, loyaltyAPI } from '@/services/api';
 
 interface AppointmentExecutionModalProps {
@@ -26,7 +26,9 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
 
   // New features
   const [services, setServices] = useState<Service[]>([]);
-  const [selectedServiceId, setSelectedServiceId] = useState<string>(appointment.serviceId);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
+    [appointment?.serviceId, ...(appointment?.additionalServiceIds || [])].filter(id => !!id) as string[]
+  );
   const [pointsBalance, setPointsBalance] = useState<number>(0);
   const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
 
@@ -56,19 +58,27 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
   };
 
   // Recalculate when service changes
-  const handleServiceChange = (serviceId: string) => {
-    setSelectedServiceId(serviceId);
-    const service = services.find(s => s.id === serviceId);
-    if (service) {
-      setFinalAmount(service.price);
-      setPointsToRedeem(0); // Reset points when service changes
-    }
+  const toggleService = (serviceId: string) => {
+    setSelectedServiceIds(prev => {
+        const next = prev.includes(serviceId) 
+            ? prev.filter(id => id !== serviceId) 
+            : [...prev, serviceId];
+        
+        // Ensure at least one service is selected (or the original one)
+        if (next.length === 0) return [appointment.serviceId];
+
+        // Recalculate total amount based on selected services
+        const total = services
+            .filter(s => next.includes(s.id))
+            .reduce((sum, s) => sum + Number(s.price), 0);
+        setFinalAmount(total);
+        return next;
+    });
   };
 
   // Calculate total Euro sum
   const calculateTotal = () => {
     const baseAmount = finalAmount;
-    // Assume 1 point = 1 Euro reduction for now, or just subtract directly
     const pointsReduction = pointsToRedeem;
     return Math.max(0, baseAmount - pointsReduction);
   };
@@ -88,12 +98,16 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
         notes: treatmentNotes,
         treatmentDetails: {
           originalServiceId: appointment.serviceId,
-          actualServiceId: selectedServiceId,
+          actualServiceIds: selectedServiceIds,
+          actualServiceNames: services
+            .filter(s => selectedServiceIds.includes(s.id))
+            .map(s => s.treatment?.name || 'Service'),
           pointsRedeemed: pointsToRedeem,
           notes: treatmentNotes,
           executedAt: new Date().toISOString(),
         },
-        serviceId: selectedServiceId,
+        serviceId: selectedServiceIds[0],
+        additionalServiceIds: selectedServiceIds.slice(1),
         totalAmount: calculateTotal(),
         amountPaid: calculateTotal(),
         paymentMethod: paymentMethod,
@@ -157,30 +171,43 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Appointment/Service Edit */}
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Treatment Info</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500">SERVICE PERFORMED</label>
-                <select
-                  value={selectedServiceId}
-                  onChange={(e) => handleServiceChange(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium"
-                >
-                  {services.map(s => (
-                    <option key={s.id} value={s.id}>{s.treatment?.name || 'Unknown Service'} - {'€'}{s.price}</option>
-                  ))}
-                </select>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Select Treatments Performed</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                {services.map(s => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => toggleService(s.id)}
+                    className={`flex items-center justify-between p-3 border-2 rounded-xl transition-all text-left ${
+                      selectedServiceIds.includes(s.id)
+                        ? 'border-green-600 bg-green-50'
+                        : 'border-white bg-white hover:border-gray-100'
+                    }`}
+                  >
+                    <div className="flex-1">
+                        <p className={`text-xs font-black uppercase italic ${selectedServiceIds.includes(s.id) ? 'text-green-900' : 'text-gray-900'}`}>
+                            {s.treatment?.name || 'Service'}
+                        </p>
+                        <p className="text-[10px] font-bold text-gray-400">€{s.price}</p>
+                    </div>
+                    {selectedServiceIds.includes(s.id) && <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />}
+                  </button>
+                ))}
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500">BASE PRICE (€)</label>
-                <div className="relative">
-                  <Euro className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="number"
-                    value={finalAmount}
-                    onChange={(e) => setFinalAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold"
-                  />
+              
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Base Price Adjustment</label>
+                    <div className="relative w-32">
+                        <Euro className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+                        <input
+                            type="number"
+                            value={finalAmount}
+                            onChange={(e) => setFinalAmount(parseFloat(e.target.value) || 0)}
+                            className="w-full pl-8 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none font-bold text-sm"
+                        />
+                    </div>
                 </div>
               </div>
             </div>

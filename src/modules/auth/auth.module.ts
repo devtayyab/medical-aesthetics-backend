@@ -7,6 +7,7 @@ import { UsersModule } from '../users/users.module';
 import { ClinicsModule } from '../clinics/clinics.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
@@ -16,6 +17,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     forwardRef(() => ClinicsModule),
     forwardRef(() => BookingsModule),
     LoyaltyModule,
+    NotificationsModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'medical-aesthetics-secret-key',

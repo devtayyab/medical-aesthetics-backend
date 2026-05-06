@@ -4,6 +4,15 @@ import { ChevronDown, ChevronUp, Plus, Check } from "lucide-react";
 import { Button } from "@/components/atoms/Button/Button";
 import type { Service } from "@/types";
 
+const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const origin = baseUrl.replace(/\/api$/, '');
+    return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const serviceRow = () => css`
   display: flex;
   justify-content: space-between;
@@ -39,9 +48,9 @@ export const ServiceCard: React.FC<{
             </span>
           </div>
           <div className="flex gap-4">
-            {(service.treatment?.imageUrl || service.imageUrl) && (
+            {(service.imageUrl || service.treatment?.imageUrl) && (
               <img
-                src={(service.treatment?.imageUrl || service.imageUrl) as string}
+                src={getImageUrl(service.imageUrl || service.treatment?.imageUrl)}
                 alt={service.treatment?.name || service.name}
                 className={`size-14 sm:size-16 rounded-xl object-cover border border-gray-100 shadow-sm transition-transform ${isSelected ? 'scale-110 shadow-lime-200' : ''}`}
               />

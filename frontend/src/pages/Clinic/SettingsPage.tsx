@@ -6,7 +6,17 @@ import {
   updateClinicProfile,
 } from "../../store/slices/clinicSlice";
 import { ClinicProfile } from "../../types/clinic.types";
-import { Building2, Mail, Phone, Globe, MapPin, Save, Info, ArrowRight } from "lucide-react";
+import { Building2, Mail, Phone, Globe, MapPin, Save, Info, ArrowRight, Camera } from "lucide-react";
+import ImageUpload from "../../components/atoms/ImageUpload";
+
+const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const origin = baseUrl.replace(/\/api$/, '');
+    return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 const SettingsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -27,6 +37,8 @@ const SettingsPage: React.FC = () => {
       zipCode: "",
       country: "",
     },
+    photoUrl: "",
+    images: [],
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -50,6 +62,8 @@ const SettingsPage: React.FC = () => {
           zipCode: profile.address?.zipCode || "",
           country: profile.address?.country || "",
         },
+        photoUrl: profile.photoUrl || "",
+        images: profile.images || [],
       });
     }
   }, [profile]);
@@ -186,6 +200,37 @@ const SettingsPage: React.FC = () => {
                                                 className="w-full h-14 pl-12 pr-6 bg-gray-50 border border-gray-100 rounded-xl font-bold text-sm text-gray-900 focus:bg-white focus:border-black transition-all outline-none"
                                             />
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-gray-100 flex flex-col">
+                            <div className="flex items-center gap-4 mb-10">
+                                <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
+                                    <Camera size={20} />
+                                </div>
+                                <h2 className="text-lg font-black uppercase italic tracking-tighter text-gray-900">Visual Branding</h2>
+                            </div>
+
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1 italic">Clinic Profile Photo</p>
+                                        <ImageUpload 
+                                            value={formData.photoUrl || ""} 
+                                            onChange={(url) => setFormData({ ...formData, photoUrl: url })} 
+                                        />
+                                        <p className="text-[9px] text-gray-400 font-medium italic">This image will represent your clinic in search results.</p>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1 italic">Gallery Asset (Hero Image)</p>
+                                        <ImageUpload 
+                                            value={formData.images?.[0] || ""} 
+                                            onChange={(url) => setFormData({ ...formData, images: [url] })} 
+                                        />
+                                        <p className="text-[9px] text-gray-400 font-medium italic">The primary high-fidelity visual for your profile page.</p>
                                     </div>
                                 </div>
                             </div>

@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from '../entities/notification.entity';
 import { FirebaseService } from '../services/firebase.service';
+import { MailService } from '../services/mail.service';
 import { NotificationType } from '../../../common/enums/notification-type.enum';
 
 @Processor('notifications')
@@ -15,6 +16,7 @@ export class NotificationProcessor {
     @InjectRepository(Notification)
     private notificationsRepository: Repository<Notification>,
     private firebaseService: FirebaseService,
+    private mailService: MailService,
   ) {}
 
   @Process('send-notification')
@@ -49,9 +51,12 @@ export class NotificationProcessor {
           break;
 
         case NotificationType.EMAIL:
-          // Email service would go here
-          this.logger.log(`Email notification: ${notification.message}`);
-          externalId = `email_${Date.now()}`;
+          const mailInfo = await this.mailService.sendMail(
+            notification.recipient.email,
+            notification.title,
+            notification.message
+          );
+          externalId = mailInfo?.messageId || `email_failed_${Date.now()}`;
           break;
 
         default:

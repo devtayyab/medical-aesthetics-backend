@@ -23,6 +23,11 @@ export class CrmListener {
             this.logger.log(`Lead ${lead.id} converted. Attempting to create customer account...`);
 
             try {
+                if (!lead.phone) {
+                    this.logger.warn(`Cannot convert lead ${lead.id} to customer: Phone number is missing and mandatory.`);
+                    return;
+                }
+
                 const customerData = {
                     firstName: lead.firstName,
                     lastName: lead.lastName,

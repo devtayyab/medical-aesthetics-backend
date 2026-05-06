@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { publicBlogsAPI } from "@/services/api";
 import { css } from "@emotion/css";
 import { ChevronRight, Search, ArrowRight, BookOpen, Clock, Tag, Sparkles } from "lucide-react";
@@ -12,6 +12,15 @@ const sectionStyles = css`
   min-height: 100vh;
   background: radial-gradient(circle at top right, rgba(203, 255, 56, 0.05), transparent), #FFFFFF;
 `;
+
+const getImageUrl = (path: string) => {
+  if (!path) return '';
+  if (path.startsWith('http') || path.startsWith('data:')) return path;
+  
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const origin = baseUrl.replace(/\/api$/, '');
+  return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 const heroSection = css`
   position: relative;
@@ -41,6 +50,7 @@ const glassCard = css`
 `;
 
 export const Blog: React.FC = () => {
+    const navigate = useNavigate();
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("All");
     const [searchQuery, setSearchQuery] = useState("");
     const [categories, setCategories] = useState<any[]>([]);
@@ -181,7 +191,7 @@ export const Blog: React.FC = () => {
                                         <Link to={`/blog/${post.slug}`} className={`${glassCard} group block h-full hover:border-[#CBFF38] transition-all`}>
                                             <div className="h-56 overflow-hidden relative">
                                                 <img
-                                                    src={post.imageUrl || `https://placehold.co/600x400/1A1A1A/CBFF38?text=${encodeURIComponent(post.title.charAt(0))}`}
+                                                    src={getImageUrl(post.imageUrl) || `https://placehold.co/600x400/1A1A1A/CBFF38?text=${encodeURIComponent(post.title.charAt(0))}`}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
                                                     alt={post.title}
                                                 />
@@ -220,16 +230,19 @@ export const Blog: React.FC = () => {
                     <aside className="xl:w-64 shrink-0">
                         <div className="bg-black rounded-[32px] p-8 relative overflow-hidden group shadow-2xl h-72 flex flex-col justify-between border border-white/5">
                             <div className="relative z-10">
-                                <h4 className="text-lg font-black uppercase italic text-white tracking-tight leading-none mb-3">Discover Top Clinics</h4>
-                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">Find elite aesthetics centers near you.</p>
+                                <h4 className="text-lg font-black uppercase italic text-white tracking-tight leading-none mb-3">Discover Top Treatments</h4>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">Explore elite aesthetic protocols and scientific beauty guides.</p>
                             </div>
 
-                            <button className="relative z-10 w-full bg-[#CBFF38] text-black h-12 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95 transition-all">
-                                Nearby Centers <Search size={14} />
+                            <button 
+                                onClick={() => navigate('/treatments')}
+                                className="relative z-10 w-full bg-[#CBFF38] text-black h-12 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95 transition-all"
+                            >
+                                Explore Protocols <ChevronRight size={14} />
                             </button>
 
                             <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
-                                <img src="https://images.unsplash.com/photo-1524666041070-9d87656c25bb?q=80&w=640&auto=format&fit=crop" className="w-full h-full object-cover grayscale group-hover:scale-110 transition-transform duration-[2000ms]" alt="Map" />
+                                <img src="https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?q=80&w=640&auto=format&fit=crop" className="w-full h-full object-cover grayscale group-hover:scale-110 transition-transform duration-[2000ms]" alt="Treatments" />
                             </div>
                         </div>
                     </aside>

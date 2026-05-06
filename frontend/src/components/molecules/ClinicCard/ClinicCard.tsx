@@ -4,6 +4,15 @@ import type { Clinic } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { css } from "@emotion/css";
 
+const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const origin = baseUrl.replace(/\/api$/, '');
+    return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 // Fallback high-fidelity asset
 import BotoxImg from "@/assets/Botox.jpg";
 
@@ -70,7 +79,8 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
     setIsExpanded(!isExpanded);
   };
 
-  const imageUrl = clinic.photoUrl || clinic.images?.[index] || clinic.images?.[0] || BotoxImg;
+  const rawImageUrl = clinic.photoUrl || clinic.images?.[index] || clinic.images?.[0];
+  const imageUrl = rawImageUrl ? getImageUrl(rawImageUrl) : BotoxImg;
 
   const displayServices = clinic.services?.filter(s =>
     !searchQuery || s.treatment?.name?.toLowerCase().includes(searchQuery.toLowerCase())

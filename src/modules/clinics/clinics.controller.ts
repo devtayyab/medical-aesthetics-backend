@@ -128,5 +128,9 @@ export class ClinicsController {
       body.rejectReason,
     );
   }
-
+  @Get('suggestions')
+  @ApiOperation({ summary: 'Get treatment name suggestions' })
+  getSuggestions(@Query('q') q: string) {
+    return this.clinicsService.getSuggestions(q);
+  }
 }

@@ -128,6 +128,25 @@ export const PersonalDetails: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Basic validation
+    if (!firstName.trim()) {
+      toast.error("First name is required");
+      return;
+    }
+    if (!lastName.trim()) {
+      toast.error("Last name is required");
+      return;
+    }
+    if (!phone.trim()) {
+      toast.error("Phone number is required");
+      return;
+    }
+    if (!/^\+?\d{10,15}$/.test(phone)) {
+      toast.error("Please enter a valid phone number");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -161,7 +180,7 @@ export const PersonalDetails: React.FC = () => {
         <div className="absolute inset-0 z-0">
           <img
             src={HeroBg}
-            style={{ objectPosition: '70% 30%' }}
+            style={{ objectPosition: '100% 30%' }}
             className="w-full h-full object-cover"
             alt="Clinic Hero"
           />

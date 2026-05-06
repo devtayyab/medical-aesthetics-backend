@@ -75,7 +75,7 @@ export class ClinicsService {
 
     if (params.search) {
       clinicQb.andWhere(
-        '(clinic.name ILIKE :search OR clinic.description ILIKE :search OR treatment.name ILIKE :search)',
+        '(clinic.name ILIKE :search OR clinic.description ILIKE :search OR clinic.phone ILIKE :search OR clinic.email ILIKE :search OR treatment.name ILIKE :search)',
         { search: `%${params.search}%` }
       );
     }
@@ -247,7 +247,8 @@ export class ClinicsService {
         availableAt: [s.clinic?.name].filter(Boolean),
         clinicsCount: 1,
         singleClinicId: s.clinicId,
-        singleServiceId: s.id
+        singleServiceId: s.id,
+        imageUrl: s.imageUrl || s.treatment?.imageUrl
       }));
 
       return {
@@ -739,6 +740,7 @@ export class ClinicsService {
       durationMinutes: serviceData.durationMinutes,
       clinicId: clinic.id,
       treatmentId: treatment.id,
+      imageUrl: serviceData.imageUrl,
       isActive: (serviceData as any).isActive ?? true,
       metadata: serviceData.metadata,
     });
@@ -850,6 +852,7 @@ export class ClinicsService {
     if (updateData.durationMinutes !== undefined) service.durationMinutes = updateData.durationMinutes;
     if (updateData.treatmentId !== undefined) service.treatmentId = updateData.treatmentId;
     if (updateData.isActive !== undefined) service.isActive = updateData.isActive;
+    if (updateData.imageUrl !== undefined) service.imageUrl = updateData.imageUrl;
     if (updateData.metadata !== undefined) service.metadata = updateData.metadata;
 
     if (service.treatment) {
@@ -1241,6 +1244,7 @@ export class ClinicsService {
     categoryId: string;
     shortDescription?: string;
     fullDescription?: string;
+    imageUrl?: string;
   }): Promise<Treatment> {
     const category = await this.categoryRepository.findOne({ where: { id: data.categoryId } });
     if (!category) throw new NotFoundException('Category not found');
@@ -1368,4 +1372,17 @@ export class ClinicsService {
   }
 
 
+  async getSuggestions(query: string): Promise<string[]> {
+    if (!query || query.length < 1) return [];
+
+    const treatments = await this.treatmentsRepository
+      .createQueryBuilder('treatment')
+      .select('DISTINCT treatment.name', 'name')
+      .where('treatment.name ILIKE :query', { query: `%${query}%` })
+      .andWhere('treatment.isActive = :isActive', { isActive: true })
+      .limit(10)
+      .getRawMany();
+
+    return treatments.map(t => t.name);
+  }
 }

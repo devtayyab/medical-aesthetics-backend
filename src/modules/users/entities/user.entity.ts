@@ -47,7 +47,7 @@ export class User {
   @Column()
   lastName: string;
 
-  @Column({ nullable: true })
+  @Column()
   phone: string;
 
   @Column({ type: 'json', nullable: true })

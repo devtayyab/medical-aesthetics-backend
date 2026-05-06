@@ -160,7 +160,7 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
   if (hasPermission(userRole, 'canViewServices')) {
     menuItems.push({
       id: 'services',
-      label: 'Services & Pricing',
+      label: 'Privileges & Pricing',
       path: '/clinic/services',
       icon: 'Package',
     });
@@ -236,7 +236,7 @@ export const getMenuItemsForRole = (userRole: UserRole | string) => {
       menuItems.push({ id: 'diary', label: 'Diary', path: '/clinic/diary', icon: 'BookOpen' });
     }
     if (!menuItems.find(m => m.id === 'services')) {
-      menuItems.push({ id: 'services', label: 'Services & Pricing', path: '/clinic/services', icon: 'Package' });
+      menuItems.push({ id: 'services', label: 'Privileges & Pricing', path: '/clinic/services', icon: 'Package' });
     }
   }
 

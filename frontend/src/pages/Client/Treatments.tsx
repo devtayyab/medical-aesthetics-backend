@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { css } from "@emotion/css";
 import { ChevronRight, ArrowRight, Sparkles, Wand2, Syringe, Scissors, Pill, Microscope } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Clinical visual assets
 import HeroBg from "@/assets/Blog_Hero.jpg";
@@ -15,6 +15,7 @@ import FillersImg from "@/assets/Treatments/fillers_elite.png";
 import EyesImg from "@/assets/Treatments/eyes_surgery_elite.png";
 import RejuvenationImg from "@/assets/Treatments/rejuvenation_elite.png";
 import PrpImg from "@/assets/Treatments/prp_therapy_elite.png";
+import BeardTransplantImg from "@/assets/Treatments/beard_transplant_elite.png";
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -58,6 +59,7 @@ const subTreatmentCard = css`
 
 export const Treatments: React.FC = () => {
     const navigate = useNavigate();
+    const [showConsultModal, setShowConsultModal] = React.useState(false);
 
     const categories = [
         {
@@ -68,7 +70,8 @@ export const Treatments: React.FC = () => {
             treatments: [
                 { name: "Rhinoplasty", img: RhinoplastyImg },
                 { name: "Blepharoplasty", img: EyesImg },
-                { name: "Abdominoplasty", img: "https://images.unsplash.com/photo-1519494140221-d28b868608e6?q=80&w=400&auto=format&fit=crop" }
+                { name: "Abdominoplasty", img: "https://images.unsplash.com/photo-1512678080530-7760d81faba6?auto=format&fit=crop&q=80&w=200" },
+                { name: "Facelift Elite", img: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=200" }
             ]
         },
         {
@@ -79,7 +82,8 @@ export const Treatments: React.FC = () => {
             treatments: [
                 { name: "Botox Therapy", img: BotoxImg },
                 { name: "Dermal Fillers", img: FillersImg },
-                { name: "Skin Rejuvenation", img: RejuvenationImg }
+                { name: "Skin Rejuvenation", img: RejuvenationImg },
+                { name: "Chemical Peel", img: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&q=80&w=200" }
             ]
         },
         {
@@ -89,13 +93,74 @@ export const Treatments: React.FC = () => {
             icon: <Scissors size={24} />,
             treatments: [
                 { name: "FUE Transplant", img: HairImg },
-                { name: "PRP Therapy", img: PrpImg }
+                { name: "PRP Therapy", img: PrpImg },
+                { name: "Beard Transplant", img: BeardTransplantImg },
+                { name: "Hair Mesotherapy", img: "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?auto=format&fit=crop&q=80&w=200" }
             ]
         }
     ];
 
     return (
         <div className={sectionStyles}>
+            <AnimatePresence>
+                {showConsultModal && (
+                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowConsultModal(false)}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white w-full max-w-md rounded-[2.5rem] p-10 relative z-10 shadow-2xl overflow-hidden border border-gray-100"
+                        >
+                            <div className="absolute top-0 right-0 p-6">
+                                <button onClick={() => setShowConsultModal(false)} className="text-gray-400 hover:text-black transition-colors">
+                                    <Sparkles size={24} className="text-[#CBFF38]" />
+                                </button>
+                            </div>
+
+                            <h2 className="text-3xl font-black uppercase italic tracking-tighter text-gray-900 mb-2">Connect with us</h2>
+                            <p className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-10 italic">Professional Consultation Protocols</p>
+
+                            <div className="space-y-4">
+                                <button
+                                    onClick={() => navigate('/chat')}
+                                    className="w-full group p-6 bg-gray-50 hover:bg-[#CBFF38] rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent hover:border-black/5"
+                                >
+                                    <div className="size-14 rounded-2xl bg-black flex items-center justify-center text-[#CBFF38] group-hover:scale-110 transition-transform">
+                                        <Wand2 size={24} />
+                                    </div>
+                                    <div className="text-left">
+                                        <h4 className="font-black uppercase italic text-gray-900 text-lg group-hover:text-black">Message Support</h4>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-black/60">Direct Internal Portal</p>
+                                    </div>
+                                </button>
+
+                                <a
+                                    href="mailto:info@beautydoctors.gr?subject=Professional Consultation Request"
+                                    className="w-full group p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent"
+                                >
+                                    <div className="size-14 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform shadow-sm">
+                                        <Syringe size={24} />
+                                    </div>
+                                    <div className="text-left">
+                                        <h4 className="font-black uppercase italic text-gray-900 text-lg group-hover:text-[#CBFF38]">Email Inquiry</h4>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-300">Official Correspondence</p>
+                                    </div>
+                                </a>
+                            </div>
+
+                            <p className="text-center mt-10 text-[9px] font-black uppercase tracking-widest text-gray-300">Beauty & Doctors Official Network</p>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             {/* Immersive Hero Header */}
             <div className="relative pt-24 pb-48 overflow-hidden">
                 <div className="absolute inset-0 z-0">
@@ -202,10 +267,10 @@ export const Treatments: React.FC = () => {
                                 Receive a professional clinical assessment with our lead medical practitioners.
                             </p>
                             <button
-                                onClick={() => navigate('/search')}
+                                onClick={() => setShowConsultModal(true)}
                                 className="px-12 h-16 bg-[#CBFF38] text-black rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] italic hover:bg-white transition-all shadow-xl active:scale-95"
                             >
-                                Get Professional Consult
+                                Get Professional Consultant
                             </button>
                         </div>
                         <div className="absolute inset-0 opacity-10">

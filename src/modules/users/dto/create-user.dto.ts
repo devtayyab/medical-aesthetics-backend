@@ -33,10 +33,9 @@ export class CreateUserDto {
   @IsString()
   lastName: string;
 
-  @ApiProperty({ example: '+1234567890', required: false })
-  @IsOptional()
+  @ApiProperty({ example: '+1234567890', required: true })
   @IsString()
-  phone?: string;
+  phone: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

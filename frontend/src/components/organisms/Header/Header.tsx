@@ -308,7 +308,7 @@ export const Header: React.FC = () => {
 
     if (user.role === "client") {
       return [
-        { to: "/search", label: "Treatments" },
+        { to: "/search", label: "Privileges" },
         { to: "/appointments", label: "My Appointments" },
         { to: "/my-account", label: "My Account" },
         { to: "/messages", label: "Messages" },
@@ -342,7 +342,7 @@ export const Header: React.FC = () => {
         { to: "/clinic/dashboard", label: "Dashboard" },
         { to: "/clinic/appointments", label: "Appointments" },
         { to: "/clinic/clients", label: "Clients" },
-        { to: "/clinic/services", label: "Services" },
+        { to: "/clinic/services", label: "Privileges" },
         { to: "/clinic/analytics", label: "Analytics" },
         { to: "/clinic/reviews", label: "Reviews" },
         { to: "/messages", label: "Messages" },
@@ -377,7 +377,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="bg-[#000000] py-2 sm:py-3 sticky top-0 z-40 border-b border-white/5 backdrop-blur-md">
+      <header className="bg-[#2D3748] py-2 sm:py-3 sticky top-0 z-40 border-b border-white/5 backdrop-blur-md">
         <div className={containerStyle}>
           <div className="flex items-center gap-4">
             <button
@@ -417,7 +417,18 @@ export const Header: React.FC = () => {
                           : "text-gray-400 hover:text-white"
                           }`}
                       >
-                        Treatments
+                        Categories
+                      </Link>
+                    </li>
+                    <li className="cursor-pointer">
+                      <Link
+                        to="/services"
+                        className={`text-[11px] font-black uppercase tracking-[0.15em] italic transition-all ${location.pathname.startsWith("/services")
+                          ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
+                          : "text-gray-400 hover:text-white"
+                          }`}
+                      >
+                        Privileges
                       </Link>
                     </li>
                     <li className="cursor-pointer">
@@ -429,17 +440,6 @@ export const Header: React.FC = () => {
                           }`}
                       >
                         Articles
-                      </Link>
-                    </li>
-                    <li className="cursor-pointer">
-                      <Link
-                        to="/services"
-                        className={`text-[11px] font-black uppercase tracking-[0.15em] italic transition-all ${location.pathname.startsWith("/services")
-                          ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
-                          : "text-gray-400 hover:text-white"
-                          }`}
-                      >
-                        Services
                       </Link>
                     </li>
                   </ul>
@@ -454,7 +454,11 @@ export const Header: React.FC = () => {
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Call Us</span>
-                      <span className="text-xs font-black text-white leading-none">6948880498 / 2112184564</span>
+                      <div className="text-xs font-black text-white leading-none flex gap-1">
+                        <a href="tel:6948880498" className="hover:text-[#CBFF38] transition-colors">6948880498</a>
+                        <span className="text-gray-600">/</span>
+                        <a href="tel:2112184564" className="hover:text-[#CBFF38] transition-colors">2112184564</a>
+                      </div>
                     </div>
                   </div>
 
@@ -464,7 +468,9 @@ export const Header: React.FC = () => {
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Email</span>
-                      <span className="text-xs font-black text-white leading-none">info@beautydoctors.gr</span>
+                      <a href="mailto:info@beautydoctors.gr" className="text-xs font-black text-white leading-none hover:text-[#CBFF38] transition-colors">
+                        info@beautydoctors.gr
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -638,7 +644,7 @@ export const Header: React.FC = () => {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={userMenuItemStyle}
                     >
-                      Treatments
+                      Privileges
                     </Link>
 
                     <button

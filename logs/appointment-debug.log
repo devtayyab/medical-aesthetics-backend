@@ -194,3 +194,12 @@
 [2026-04-29T07:26:19.559Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"92162dc1-4aa7-4408-b377-6f06ab4912ea"}
 [2026-04-29T07:27:11.179Z] --- BOOKING PROCESS STARTED --- {"clientId":"92162dc1-4aa7-4408-b377-6f06ab4912ea","hasDetails":false}
 [2026-04-29T07:27:11.183Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"92162dc1-4aa7-4408-b377-6f06ab4912ea"}
+[2026-05-04T04:58:16.005Z] --- BOOKING PROCESS STARTED --- {"clientId":"076a67e2-da8c-4738-8331-a72a54f70a68","hasDetails":false}
+[2026-05-04T04:58:17.872Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"076a67e2-da8c-4738-8331-a72a54f70a68"}
+[2026-05-04T04:59:11.226Z] --- BOOKING PROCESS STARTED --- {"clientId":"076a67e2-da8c-4738-8331-a72a54f70a68","hasDetails":false}
+[2026-05-04T04:59:12.323Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"076a67e2-da8c-4738-8331-a72a54f70a68"}
+[2026-05-04T04:59:17.802Z] --- BOOKING PROCESS STARTED --- {"clientId":"076a67e2-da8c-4738-8331-a72a54f70a68","hasDetails":false}
+[2026-05-04T04:59:17.807Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"076a67e2-da8c-4738-8331-a72a54f70a68"}
+[2026-05-05T05:17:12.756Z] --- BOOKING PROCESS STARTED --- {"clientId":"5292df58-8c30-4710-8741-7109cbde248a","hasDetails":true}
+[2026-05-05T05:19:45.000Z] --- BOOKING PROCESS STARTED --- {"clientId":"2f0c5980-bf31-40ed-a983-5e02910f73bc","hasDetails":false}
+[2026-05-05T05:19:45.005Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"2f0c5980-bf31-40ed-a983-5e02910f73bc"}

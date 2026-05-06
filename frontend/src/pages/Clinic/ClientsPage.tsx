@@ -32,7 +32,8 @@ const ClientsPage: React.FC = () => {
     (client) =>
       searchTerm === "" ||
       `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.phone?.includes(searchTerm)
   );
 
   const handleViewDetails = async (clientId: string) => {

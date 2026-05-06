@@ -57,13 +57,14 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     const [clientResults, setClientResults] = useState<any[]>([]);
 
     // Step state
-    const [step, setStep] = useState(propCustomerId ? 1 : 0);
+    const [step, setStep] = useState(() => {
+        if (!propCustomerId) return 0; // Search client
+        if (clinicId) return 2;        // Skip clinic selection
+        return 1;                      // Select clinic
+    });
 
-    useEffect(() => {
-        if (propCustomerId && step === 0) {
-            setStep(1);
-        }
-    }, [propCustomerId, step]);
+
+
     const [isLoading, setIsLoading] = useState(false);
 
     // Data
@@ -88,6 +89,18 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     const [notes, setNotes] = useState(initialAppointment?.notes || '');
 
     useEffect(() => {
+        if (propCustomerId && step === 0) {
+            setStep(clinicId ? 2 : 1);
+        }
+    }, [propCustomerId, step, clinicId]);
+
+    useEffect(() => {
+        if (clinicId && !selectedClinic) {
+            setSelectedClinic(clinicId);
+        }
+    }, [clinicId, selectedClinic]);
+
+    useEffect(() => {
         if (initialAppointment && isOpen) {
             setSelectedClinic(initialAppointment.clinicId);
             setSelectedService(initialAppointment.serviceId);
@@ -104,7 +117,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     }, [initialAppointment, isOpen]);
 
     // Derived client data
-    const finalCustomerId = selectedClient?.id || propCustomerId;
+    const finalCustomerId = selectedClient?.id || selectedClient?._id || propCustomerId;
     const finalCustomerName = selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : propCustomerName;
     const finalCustomerEmail = selectedClient?.email || propCustomerEmail;
     const finalCustomerPhone = selectedClient?.phone || propCustomerPhone;
@@ -163,8 +176,6 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
             }
         };
         fetchServices();
-        setSelectedService('');
-        setSelectedSlot(null);
     }, [selectedClinic, isOpen]);
 
     // Fetch Slots when service/date changes
@@ -192,7 +203,9 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
     if (!isOpen) return null;
 
     const handleConfirmBooking = async () => {
-        if (!selectedClinic || !selectedService || !selectedSlot || !finalCustomerId) return;
+        if (!selectedClinic || !selectedService || !selectedSlot || !finalCustomerId) {
+            return;
+        }
         
         const bookedByIdUUID = user?.id;
         setIsLoading(true);
@@ -276,10 +289,10 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                         <div className="space-y-2 mt-4 max-h-[300px] overflow-y-auto">
                             {clientResults.map(client => (
                                 <button
-                                    key={client.id}
+                                    key={client.id || client._id}
                                     onClick={() => {
                                         setSelectedClient(client);
-                                        setStep(1);
+                                        setStep(clinicId ? 2 : 1);
                                     }}
                                     className="w-full p-4 flex items-center gap-4 text-left border border-slate-100 rounded-2xl hover:border-blue-300 hover:bg-blue-50/30 transition-all"
                                 >
@@ -314,7 +327,14 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                             {clinics.map(c => (
                                 <button
                                     key={c.id}
-                                    onClick={() => { setSelectedClinic(c.id); setStep(2); }}
+                                    onClick={() => { 
+                                        if (selectedClinic !== c.id) {
+                                            setSelectedClinic(c.id); 
+                                            setSelectedService('');
+                                            setSelectedSlot(null);
+                                        }
+                                        setStep(2); 
+                                    }}
                                     className={`p-4 text-left border rounded-xl transition-all ${selectedClinic === c.id ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-100 hover:border-slate-300'}`}
                                 >
                                     <div className="flex items-center justify-between">
@@ -331,25 +351,29 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                 return (
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 mb-4">
-                            <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="h-8 w-8 p-0 rounded-full">
+                            <Button variant="ghost" size="sm" onClick={() => setStep(clinicId ? 0 : 1)} className="h-8 w-8 p-0 rounded-full">
                                 <ChevronLeft className="w-4 h-4" />
                             </Button>
                             <span className="text-sm font-black text-slate-800">Choose Service</span>
                         </div>
                         <div className="grid grid-cols-1 gap-2">
-                            {services.map(s => (
-                                <button
-                                    key={s.id}
-                                    onClick={() => { setSelectedService(s.id); setStep(3); }}
-                                    className={`p-4 text-left border rounded-xl transition-all ${selectedService === s.id ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-100 hover:border-slate-300'}`}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="font-black text-slate-800 text-sm uppercase tracking-tight">{s.name?.trim() || (s.treatment?.name)}</div>
-                                        <div className="text-blue-600 font-black text-xs">€{s.price}</div>
-                                    </div>
-                                    <div className="text-[10px] text-slate-500 mt-1 font-medium">{s.durationMinutes} minutes duration</div>
-                                </button>
-                            ))}
+                            {services.length === 0 ? (
+                                <div className="text-center py-10 text-slate-400 text-xs font-bold uppercase tracking-widest border border-dashed border-slate-200 rounded-2xl">No services found for this clinic</div>
+                            ) : (
+                                services.map(s => (
+                                    <button
+                                        key={s.id}
+                                        onClick={() => { setSelectedService(s.id); setStep(3); }}
+                                        className={`p-4 text-left border rounded-xl transition-all ${selectedService === s.id ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-100 hover:border-slate-300'}`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="font-black text-slate-800 text-sm uppercase tracking-tight">{s.name?.trim() || (s.treatment?.name)}</div>
+                                            <div className="text-blue-600 font-black text-xs">€{s.price}</div>
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 mt-1 font-medium">{s.durationMinutes} minutes duration</div>
+                                    </button>
+                                ))
+                            )}
                         </div>
                     </div>
                 );
@@ -430,7 +454,13 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                                 </div>
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Reservation</span>
-                                    <span className="text-[11px] font-black text-slate-800">{new Date(selectedDate).toLocaleDateString()} at {selectedSlot?.startTime}</span>
+                                    <span className="text-[11px] font-black text-slate-800">
+                                        {new Date(selectedDate).toLocaleDateString()} at {
+                                            selectedSlot?.startTime.includes('T') 
+                                                ? format(new Date(selectedSlot.startTime), 'HH:mm')
+                                                : selectedSlot?.startTime
+                                        }
+                                    </span>
                                 </div>
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Internal ID</span>
@@ -478,6 +508,8 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                         {[0, 1, 2, 3, 4].map(s => {
                             // Only show step 0 if we started from 0
                             if (s === 0 && propCustomerId) return null;
+                            // Hide step 1 if clinic is already selected
+                            if (s === 1 && clinicId) return null;
                             return (
                                 <div key={s} className="flex items-center gap-2">
                                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${step >= s ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-100 text-slate-400'}`}>
@@ -500,10 +532,13 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                         <span className="text-[10px] font-black text-emerald-500">Encrypted Transmission</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        {(step > 0 && !(step === 1 && propCustomerId)) && (
+                        {(step > 0 && !(step === 1 && propCustomerId) && !(step === 2 && clinicId && propCustomerId)) && (
                             <Button 
                                 variant="ghost"
-                                onClick={() => setStep(step - 1)} 
+                                onClick={() => {
+                                    if (step === 2 && clinicId) setStep(0);
+                                    else setStep(step - 1);
+                                }} 
                                 className="h-12 px-6 text-slate-400 hover:text-slate-800 font-black text-xs uppercase tracking-widest rounded-2xl transition-all active:scale-95"
                             >
                                 <ChevronLeft className="w-4 h-4 mr-2" /> Previous

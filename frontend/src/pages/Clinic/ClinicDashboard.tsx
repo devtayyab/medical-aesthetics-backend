@@ -42,6 +42,7 @@ const ClinicDashboard: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [queueType, setQueueType] = useState<'today' | 'pending'>('today');
 
   // Get clinicId from profile or user context
   const clinicId = user?.role === 'clinic_owner' ? (user as any).ownedClinics?.[0]?.id : (user as any).associatedClinicId;
@@ -213,16 +214,31 @@ const ClinicDashboard: React.FC = () => {
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">Live Clinical Feed</p>
                 </div>
                 <div className="flex gap-1.5 p-1 bg-gray-50 rounded-xl">
-                  <button className="px-4 py-2 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-lg shadow-sm">Today</button>
-                  <button className="px-4 py-2 text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-lg hover:text-black transition-colors">Pending</button>
+                  <button 
+                    onClick={() => setQueueType('today')}
+                    className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${queueType === 'today' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-black'}`}
+                  >
+                    Today
+                  </button>
+                  <button 
+                    onClick={() => setQueueType('pending')}
+                    className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${queueType === 'pending' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-black'}`}
+                  >
+                    Pending
+                  </button>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <AnimatePresence mode="popLayout">
                   {appointments
-                    .filter((apt) => apt.startTime.split("T")[0] === new Date().toISOString().split("T")[0])
-                    .slice(0, 6)
+                    .filter((apt) => {
+                      if (queueType === 'today') {
+                        return apt.startTime.split("T")[0] === new Date().toISOString().split("T")[0];
+                      }
+                      return apt.status === AppointmentStatus.PENDING;
+                    })
+                    .slice(0, 10)
                     .map((apt, index) => (
                       <AppointmentPremiumRow
                         key={apt.id}
@@ -232,7 +248,10 @@ const ClinicDashboard: React.FC = () => {
                       />
                     ))}
 
-                  {appointments.filter(apt => apt.startTime.split("T")[0] === new Date().toISOString().split("T")[0]).length === 0 && (
+                  {appointments.filter(apt => {
+                    if (queueType === 'today') return apt.startTime.split("T")[0] === new Date().toISOString().split("T")[0];
+                    return apt.status === AppointmentStatus.PENDING;
+                  }).length === 0 && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}

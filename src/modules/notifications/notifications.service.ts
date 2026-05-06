@@ -285,9 +285,9 @@ export class NotificationsService implements OnModuleInit {
     return this.create(
       recipientId,
       NotificationType.EMAIL,
-      'Welcome to Medical Aesthetics Platform!',
-      `Your account has been created. \nLogin ID: ${email}\nTemporary Password: ${password}\nPlease change your password after logging in.`,
-      { email, passwordType: 'temporary' },
+      'Welcome to Beauty & Doctors - Your Account is Ready',
+      `Hi there,\n\nWelcome to our platform! Your account has been created successfully.\n\nYou can now log in to the portal using the following credentials:\n\nEmail: ${email}\nPassword: ${password}\n\nPlease change your password after your first login for security.\n\nSee you inside!`,
+      { email, password, passwordType: 'temporary' },
     );
   }
 
@@ -445,7 +445,7 @@ export class NotificationsService implements OnModuleInit {
         trigger: NotificationTrigger.WELCOME_CREDENTIALS,
         type: NotificationType.EMAIL,
         subject: 'Welcome to Beauty & Doctors - Your Account is Ready',
-        content: 'Hi {{customerName}},\n\nWelcome to our platform! Your account has been created successfully.\n\nYou can now log in to the portal using your email and manage your appointments and rewards.\n\nSee you inside!',
+        content: 'Hi {{customerName}},\n\nWelcome to our platform! Your account has been created successfully.\n\nYou can now log in using these credentials:\nEmail: {{email}}\nPassword: {{password}}\n\nPlease change your password after logging in.\n\nSee you inside!',
       },
       {
         trigger: NotificationTrigger.EXECUTION_NOTIFICATION,

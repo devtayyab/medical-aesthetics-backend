@@ -9,6 +9,8 @@ import { ClinicsService } from "../clinics/clinics.service";
 import { UserRole } from "../../common/enums/user-role.enum";
 import { LoyaltyService } from "../loyalty/loyalty.service";
 import { BookingsService } from "../bookings/bookings.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { NotificationTrigger } from "../../common/enums/notification-trigger.enum";
 
 @Injectable()
 export class AuthService {
@@ -19,6 +21,7 @@ export class AuthService {
     private clinicsService: ClinicsService,
     private loyaltyService: LoyaltyService,
     private bookingsService: BookingsService,
+    private notificationsService: NotificationsService,
   ) { }
 
   async validateUser(email: string, password: string): Promise<User | null> {
@@ -155,6 +158,21 @@ export class AuthService {
         console.error("[AuthService] Failed to create appointment during registration:", error.message);
         // Continue with registration even if appointment creation fails
       }
+    }
+
+    // Send Welcome Email
+    try {
+      await this.notificationsService.sendTriggeredNotification(
+        NotificationTrigger.WELCOME_CREDENTIALS,
+        user.id,
+        {
+          customerName: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+        }
+      );
+      console.log("[AuthService] Welcome email triggered for user:", user.email);
+    } catch (error) {
+      console.error("[AuthService] Failed to trigger welcome email:", error.message);
     }
 
     // Generate tokens and return

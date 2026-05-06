@@ -182,8 +182,8 @@
 }
 
 .appointment-block.status-confirmed {
-    background: #fdf2f8;
-    border-color: #ec4899;
+    background: #f0fdf4;
+    border-color: #22c55e;
 }
 
 .appointment-block.status-completed {
