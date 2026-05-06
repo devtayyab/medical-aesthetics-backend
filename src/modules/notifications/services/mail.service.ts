@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import { SES, SendRawEmailCommand } from '@aws-sdk/client-ses';
 
 @Injectable()
 export class MailService {
@@ -9,45 +8,34 @@ export class MailService {
   private readonly logger = new Logger(MailService.name);
 
   constructor(private configService: ConfigService) {
-    const awsAccessKey = this.configService.get<string>('AWS_ACCESS_KEY_ID');
-    const awsSecretKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
-    const awsRegion = this.configService.get<string>('AWS_REGION');
+    const host = this.configService.get<string>('MAIL_HOST');
+    const port = this.configService.get<number>('MAIL_PORT');
+    const user = this.configService.get<string>('MAIL_USER');
+    const pass = this.configService.get<string>('MAIL_PASS');
 
-    if (awsAccessKey && awsSecretKey && awsRegion) {
-      this.logger.log('Initializing MailService with AWS SES');
-      const ses = new SES({
-        apiVersion: '2010-12-01',
-        region: awsRegion,
-        credentials: {
-          accessKeyId: awsAccessKey,
-          secretAccessKey: awsSecretKey,
-        },
-      });
-
-      this.transporter = nodemailer.createTransport({
-        SES: { ses, aws: { SendRawEmailCommand } },
-      } as any);
-    } else {
-      this.logger.log('Initializing MailService with SMTP');
-      const host = this.configService.get<string>('MAIL_HOST');
-      const port = this.configService.get<number>('MAIL_PORT');
-      const user = this.configService.get<string>('MAIL_USER');
-      const pass = this.configService.get<string>('MAIL_PASS');
-
+    if (host && user && pass) {
+      this.logger.log(`Initializing MailService with ${host.includes('amazon') ? 'AWS SES SMTP' : 'SMTP'}`);
       this.transporter = nodemailer.createTransport({
         host,
-        port,
+        port: port || 587,
         secure: port === 465,
         auth: {
           user,
           pass,
         },
       });
+    } else {
+      this.logger.warn('MailService initialized without configuration. Emails will not be sent.');
     }
   }
 
   async sendMail(to: string, subject: string, text: string, html?: string) {
     const from = this.configService.get<string>('MAIL_FROM');
+    
+    if (!this.transporter) {
+      this.logger.error('Cannot send email: Transporter not initialized');
+      return null;
+    }
     
     try {
       const info = await this.transporter.sendMail({
@@ -66,4 +54,5 @@ export class MailService {
     }
   }
 }
+
 
