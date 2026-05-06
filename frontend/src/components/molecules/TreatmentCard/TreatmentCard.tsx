@@ -5,6 +5,15 @@ import type { Treatment } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { css } from "@emotion/css";
 
+const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const origin = baseUrl.replace(/\/api$/, '');
+    return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 // Assets
 import BotoxImg from "@/assets/Botox.jpg";
 import RhinoplastyElite from "@/assets/Treatments/rhinoplasty_elite.png";
@@ -64,7 +73,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
             return getFallbackImage(treatment.name);
         }
         
-        return treatment.imageUrl;
+        return getImageUrl(treatment.imageUrl);
     };
 
     const imageUrl = resolveImageUrl();

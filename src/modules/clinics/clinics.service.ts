@@ -740,6 +740,7 @@ export class ClinicsService {
       durationMinutes: serviceData.durationMinutes,
       clinicId: clinic.id,
       treatmentId: treatment.id,
+      imageUrl: serviceData.imageUrl,
       isActive: (serviceData as any).isActive ?? true,
       metadata: serviceData.metadata,
     });
@@ -851,6 +852,7 @@ export class ClinicsService {
     if (updateData.durationMinutes !== undefined) service.durationMinutes = updateData.durationMinutes;
     if (updateData.treatmentId !== undefined) service.treatmentId = updateData.treatmentId;
     if (updateData.isActive !== undefined) service.isActive = updateData.isActive;
+    if (updateData.imageUrl !== undefined) service.imageUrl = updateData.imageUrl;
     if (updateData.metadata !== undefined) service.metadata = updateData.metadata;
 
     if (service.treatment) {
@@ -1242,6 +1244,7 @@ export class ClinicsService {
     categoryId: string;
     shortDescription?: string;
     fullDescription?: string;
+    imageUrl?: string;
   }): Promise<Treatment> {
     const category = await this.categoryRepository.findOne({ where: { id: data.categoryId } });
     if (!category) throw new NotFoundException('Category not found');

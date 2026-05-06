@@ -11,6 +11,16 @@ import {
     fetchUsers
 } from '@/store/slices/adminSlice';
 import type { AppDispatch, RootState } from '@/store';
+import ImageUpload from '@/components/atoms/ImageUpload';
+
+const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const origin = baseUrl.replace(/\/api$/, '');
+    return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 export const BlogManagement: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -141,15 +151,23 @@ export const BlogManagement: React.FC = () => {
                             {blogPosts?.map((post) => (
                                 <tr key={post.id} className="hover:bg-gray-50 transition-colors group">
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <div className="bg-blue-50 text-blue-600 p-2 rounded-lg mr-3">
-                                                <BookOpen className="w-5 h-5" />
+                                            <div className="size-10 rounded-lg overflow-hidden mr-3 bg-gray-50 flex-shrink-0">
+                                                {post.imageUrl ? (
+                                                    <img 
+                                                        src={getImageUrl(post.imageUrl)} 
+                                                        alt="" 
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-blue-600 bg-blue-50">
+                                                        <BookOpen className="w-5 h-5" />
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-gray-900">{post.title}</p>
                                                 <p className="text-xs text-gray-500">/{post.slug}</p>
                                             </div>
-                                        </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
@@ -293,26 +311,22 @@ export const BlogManagement: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image URL</label>
-                                <input
-                                    type="url"
-                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="https://example.com/image.jpg"
-                                    value={postImageUrl}
-                                    onChange={(e) => setPostImageUrl(e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Schedule Publication (Optional)</label>
-                                <input
-                                    type="datetime-local"
-                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                    value={postScheduledAt}
-                                    onChange={(e) => setPostScheduledAt(e.target.value)}
-                                />
-                            </div>
+                        <div className="mb-4">
+                            <ImageUpload
+                                label="Cover Image"
+                                value={postImageUrl}
+                                onChange={(url) => setPostImageUrl(url)}
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Schedule Publication (Optional)</label>
+                            <input
+                                type="datetime-local"
+                                className="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                                value={postScheduledAt}
+                                onChange={(e) => setPostScheduledAt(e.target.value)}
+                            />
                         </div>
 
                         <div className="mb-4">

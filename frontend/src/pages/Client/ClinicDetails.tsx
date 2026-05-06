@@ -16,6 +16,15 @@ import { Star, MapPin, Clock, Shield, Award, Info, Search, ShoppingBag, ArrowRig
 import BotoxImg from "@/assets/Botox.jpg";
 import { motion, AnimatePresence } from "framer-motion";
 
+const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const origin = baseUrl.replace(/\/api$/, '');
+    return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const heroSection = css`
   height: 400px;
   position: relative;
@@ -124,7 +133,7 @@ export const ClinicDetails: React.FC = () => {
     <div className="min-h-screen bg-[#F7FAFC] pb-20">
       <div className={heroSection}>
         <img
-          src={clinicData.images?.[0] || BotoxImg}
+          src={clinicData.images?.[0] ? getImageUrl(clinicData.images[0]) : (clinicData.photoUrl ? getImageUrl(clinicData.photoUrl) : BotoxImg)}
           className="w-full h-full object-cover"
           alt={clinicData.name}
         />

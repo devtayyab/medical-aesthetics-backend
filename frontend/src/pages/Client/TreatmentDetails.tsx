@@ -10,6 +10,15 @@ import { ClinicMap } from "@/components/organisms/ClinicMap/ClinicMap";
 import { SearchBar } from "@/components/organisms/SearchBar";
 import BotoxImg from "@/assets/Botox.jpg";
 
+const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const origin = baseUrl.replace(/\/api$/, '');
+    return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 // Category Icons
 import DermaIcon from "@/assets/Icons/TreatmentIcons/DermaIcon.svg";
 import CosmeticIcon from "@/assets/Icons/TreatmentIcons/CosmeticIcon.svg";
@@ -170,7 +179,7 @@ export const TreatmentDetails: React.FC = () => {
                     <div className={glassOverlay} />
                     <motion.img 
                         layout
-                        src={(imgError || !treatment.imageUrl || treatment.imageUrl.includes('placehold')) ? getFallbackImage(treatment.name) : treatment.imageUrl} 
+                        src={(imgError || !treatment.imageUrl || treatment.imageUrl.includes('placehold')) ? getFallbackImage(treatment.name) : getImageUrl(treatment.imageUrl)} 
                         className={treatmentCardImage}
                         alt={treatment.name}
                         onError={() => setImgError(true)}

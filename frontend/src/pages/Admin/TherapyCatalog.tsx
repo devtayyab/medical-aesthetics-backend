@@ -18,6 +18,16 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/atoms/Button/Button";
+import ImageUpload from "@/components/atoms/ImageUpload";
+
+const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const origin = baseUrl.replace(/\/api$/, '');
+    return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 interface masterTreatment {
     id: string;
@@ -244,8 +254,8 @@ export const TherapyCatalog: React.FC = () => {
 
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="flex items-center gap-3">
-                                        <div className="size-12 bg-gray-50 text-gray-800 rounded-2xl flex items-center justify-center border border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black transition-all">
-                                            {t.imageUrl ? <img src={t.imageUrl} className="w-full h-full object-cover rounded-2xl" /> : <ImageIcon size={20} />}
+                                        <div className="size-12 bg-gray-50 text-gray-800 rounded-2xl flex items-center justify-center border border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black transition-all overflow-hidden">
+                                            {t.imageUrl ? <img src={getImageUrl(t.imageUrl)} className="w-full h-full object-cover" /> : <ImageIcon size={20} />}
                                         </div>
                                         <div>
                                             <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{t.categoryRef?.name || t.category}</span>
@@ -316,8 +326,8 @@ export const TherapyCatalog: React.FC = () => {
                                     <div className="absolute top-0 right-0 px-6 py-2 bg-amber-100 text-amber-700 font-black uppercase text-[10px] tracking-widest rounded-bl-3xl">Pending Request</div>
 
                                     <div className="md:w-64 space-y-4">
-                                        <div className="size-24 bg-gray-50 rounded-3xl flex items-center justify-center border border-gray-100 shadow-inner">
-                                            {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover rounded-3xl" /> : <ImageIcon size={32} className="text-gray-300" />}
+                                        <div className="size-24 bg-gray-50 rounded-3xl flex items-center justify-center border border-gray-100 shadow-inner overflow-hidden">
+                                            {item.imageUrl ? <img src={getImageUrl(item.imageUrl)} className="w-full h-full object-cover" /> : <ImageIcon size={32} className="text-gray-300" />}
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Suggested Category</p>
@@ -409,12 +419,10 @@ export const TherapyCatalog: React.FC = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Photo URL (Mandatory for Publishing)</label>
-                                <input
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#CBFF38] font-medium"
-                                    placeholder="https://images.unsplash.com/..."
-                                    value={treatmentForm.imageUrl}
-                                    onChange={e => setTreatmentForm({ ...treatmentForm, imageUrl: e.target.value })}
+                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Therapy Photo</label>
+                                <ImageUpload 
+                                    value={treatmentForm.imageUrl} 
+                                    onChange={(url) => setTreatmentForm({ ...treatmentForm, imageUrl: url })}
                                 />
                             </div>
 
