@@ -59,6 +59,8 @@ services:
       REDIS_PORT: 6379
     ports:
       - "3001:3001"
+    volumes:
+      - uploads_data:/app/public/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -94,6 +96,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  uploads_data:
     driver: local
 
 networks:

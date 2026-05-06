@@ -46,8 +46,8 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Change ownership to non-root user
-RUN chown -R nestjs:nodejs /app
+# Create uploads directory and set permissions
+RUN mkdir -p public/uploads && chown -R nestjs:nodejs /app
 
 # Switch to non-root user
 USER nestjs
