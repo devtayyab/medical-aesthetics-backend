@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { FaFacebookF, FaLinkedinIn } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { Phone, Mail } from "lucide-react";
+import SiteLogo from "@/assets/SiteLogo.png";
 
 export const Footer: React.FC = () => {
   return (
@@ -14,9 +15,11 @@ export const Footer: React.FC = () => {
           <div className="mx-auto max-w-sm lg:max-w-none">
             <Link
               to="/"
-              className="text-[2rem] font-medium text-white no-underline tracking-tight flex items-center"
+              className="inline-block"
             >
-              <span className="text-[#CBFF38]">med</span>logo
+              <div className="w-[180px] sm:w-[220px] relative flex items-center justify-start">
+                <img src={SiteLogo} alt="Site Logo" className="w-full h-auto object-contain drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] pointer-events-none" />
+              </div>
             </Link>
             <p className="mt-4 text-[18px] text-center text-white lg:text-left">
               Our aesthetics platform is dedicated to providing high-quality treatments and personalized care. Explore our range of services to find the perfect solution for your beauty and wellness needs.

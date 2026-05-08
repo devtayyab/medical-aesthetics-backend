@@ -295,14 +295,14 @@ export const HomePage: React.FC = () => {
     <div className="max-w-[1200px] mx-auto px-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-[#33373F]">Featured Privileges</h2>
-          <p className="text-gray-600 mt-1">Top-rated privileges recommended for you</p>
+          <h2 className="text-2xl font-bold text-[#33373F]">Featured Treatments</h2>
+          <p className="text-gray-600 mt-1">Top-rated treatments recommended for you</p>
         </div>
         <button
           onClick={() => navigate('/treatments')}
           className="text-lime-600 font-medium hover:text-lime-700 transition"
         >
-          See All Privileges <ArrowRight className="inline-block ml-1 h-4 w-4" />
+          See All Treatments <ArrowRight className="inline-block ml-1 h-4 w-4" />
         </button>
       </div>
 

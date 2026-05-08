@@ -119,7 +119,7 @@ export const Blog: React.FC = () => {
                     <aside className="xl:w-64 shrink-0">
                         <div className={glassCard}>
                             <div className="p-6">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6 italic">Protocol</h3>
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6 italic">Treatments</h3>
 
                                 <div className="space-y-2">
                                     <button
@@ -194,6 +194,7 @@ export const Blog: React.FC = () => {
                                                     src={getImageUrl(post.imageUrl) || `https://placehold.co/600x400/1A1A1A/CBFF38?text=${encodeURIComponent(post.title.charAt(0))}`}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
                                                     alt={post.title}
+                                                    onError={(e) => { e.currentTarget.src = `https://placehold.co/600x400/1A1A1A/CBFF38?text=${encodeURIComponent(post.title.charAt(0))}` }}
                                                 />
                                                 <div className="absolute top-4 left-4 bg-black text-[#CBFF38] px-3 py-1 rounded-full text-[8.5px] font-black uppercase tracking-widest italic">
                                                     {post.category?.name || 'Aesthetics'}
@@ -231,14 +232,14 @@ export const Blog: React.FC = () => {
                         <div className="bg-black rounded-[32px] p-8 relative overflow-hidden group shadow-2xl h-72 flex flex-col justify-between border border-white/5">
                             <div className="relative z-10">
                                 <h4 className="text-lg font-black uppercase italic text-white tracking-tight leading-none mb-3">Discover Top Treatments</h4>
-                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">Explore elite aesthetic protocols and scientific beauty guides.</p>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">Explore elite aesthetic treatments and scientific beauty guides.</p>
                             </div>
 
                             <button 
                                 onClick={() => navigate('/treatments')}
                                 className="relative z-10 w-full bg-[#CBFF38] text-black h-12 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95 transition-all"
                             >
-                                Explore Protocols <ChevronRight size={14} />
+                                Explore Treatments <ChevronRight size={14} />
                             </button>
 
                             <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">

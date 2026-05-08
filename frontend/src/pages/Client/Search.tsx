@@ -117,7 +117,7 @@ export const Search: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('treatments');
 
   // Search states
-  const [query, setQuery] = useState(searchParams.get("query") || "");
+  const [query, setQuery] = useState(searchParams.get("query") || searchParams.get("q") || "");
   const [location, setLocation] = useState(searchParams.get("location") || "");
   const [category, setCategory] = useState<string | undefined>(searchParams.get("category") || undefined);
   const [searchDate, setSearchDate] = useState<string | null>(searchParams.get("search_date") || null);
@@ -203,11 +203,11 @@ export const Search: React.FC = () => {
       {/* Premium Search Header - Minimizable */}
       {(activeTab === 'clinics' || activeTab === 'treatments') && (
         <header className={`bg-[#121212] transition-all duration-700 relative overflow-hidden ${isScrolled ? 'py-4 sm:py-10' : 'pt-12 pb-12 sm:pt-20 sm:pb-20'}`}>
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `url(${SearchHero})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+          <div className="absolute inset-0 opacity-50" style={{ backgroundImage: `url(${SearchHero})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
           <div className="container mx-auto px-4 sm:px-8 relative z-10 flex flex-col items-center justify-between gap-6 sm:gap-12">
               <div className={`w-full transition-all duration-700 ${isScrolled ? 'flex items-center justify-between gap-4' : 'text-center lg:text-left lg:w-1/2'}`}>
                  <h1 className={`text-white font-black italic tracking-tighter transition-all duration-700 mb-0 whitespace-nowrap ${isScrolled ? 'text-lg sm:text-2xl' : 'text-3xl sm:text-4xl lg:text-5xl mb-4 sm:mb-8'}`}>
-                    SEARCH <span className="text-[#CBFF38]">PRIVILEGES</span>
+                    SEARCH <span className="text-[#CBFF38]">TREATMENTS</span>
                  </h1>
                  {!isScrolled && <div className="h-1 w-20 bg-[#CBFF38] mx-auto lg:mx-0 mb-8 rounded-full hidden sm:block"></div>}
                  <div className={`w-full transition-all ${isScrolled ? 'max-w-[150px] sm:max-w-md' : 'max-w-2xl mx-auto lg:mx-0'}`}>
@@ -229,16 +229,10 @@ export const Search: React.FC = () => {
               {/* Main Tabs */}
               <div className="flex items-center gap-4 sm:gap-6 sm:pr-8 sm:border-r border-gray-100 h-10 flex-shrink-0 bg-white z-10 overflow-x-auto no-scrollbar">
                  <button 
-                   onClick={() => setActiveTab('clinics')}
-                   className={`text-[10px] sm:text-[12px] font-black uppercase tracking-widest italic whitespace-nowrap transition-all ${activeTab === 'clinics' ? 'text-black border-b-2 sm:border-b-4 border-[#CBFF38] pb-1' : 'text-gray-400'}`}
-                 >
-                   Clinics ({totalClinics})
-                 </button>
-                 <button 
                    onClick={() => setActiveTab('treatments')}
                    className={`text-[10px] sm:text-[12px] font-black uppercase tracking-widest italic whitespace-nowrap transition-all ${activeTab === 'treatments' ? 'text-black border-b-2 sm:border-b-4 border-[#CBFF38] pb-1' : 'text-gray-400'}`}
                  >
-                   Privileges ({totalTreatments})
+                   Treatments ({totalTreatments})
                  </button>
               </div>
 
@@ -327,8 +321,14 @@ export const Search: React.FC = () => {
         </div>
       </section>
 
-      <main className={`transition-all duration-700 min-h-screen ${activeTab === 'treatments' ? 'bg-[#121212] bg-[url("https://www.transparenttextures.com/patterns/dark-matter.png")]' : 'bg-[#FDFDFD]'}`}>
-        <div className="container mx-auto px-8 py-6">
+      <main className="transition-all duration-700 min-h-screen relative">
+        {activeTab === 'treatments' && (
+           <div className="absolute inset-0 bg-fixed bg-cover bg-center" style={{ backgroundImage: `url(${SearchHero})` }}>
+              <div className="absolute inset-0 bg-black/85 backdrop-blur-[4px]"></div>
+           </div>
+        )}
+        <div className={`relative z-10 min-h-screen ${activeTab !== 'treatments' ? 'bg-[#FDFDFD]' : ''}`}>
+          <div className="container mx-auto px-8 py-6">
             {activeTab === 'treatments' && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -417,6 +417,7 @@ export const Search: React.FC = () => {
                   )}
                 </div>
             </div>
+        </div>
         </div>
       </main>
 

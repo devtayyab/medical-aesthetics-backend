@@ -150,6 +150,11 @@ export const createBlogPost = createAsyncThunk("admin/createBlogPost", async (da
   return response.data;
 });
 
+export const updateBlogPost = createAsyncThunk("admin/updateBlogPost", async (updateData: { id: string, data: any }) => {
+  const response = await adminAPI.updateBlogPost(updateData.id, updateData.data);
+  return response.data;
+});
+
 export const toggleBlogPostStatus = createAsyncThunk("admin/toggleBlogPostStatus", async (post: any) => {
   const response = await adminAPI.updateBlogPost(post.id, { isPublished: !post.isPublished });
   return response.data;
@@ -259,6 +264,12 @@ const adminSlice = createSlice({
       })
       .addCase(createBlogPost.fulfilled, (state, action) => {
         state.blogPosts.unshift(action.payload);
+      })
+      .addCase(updateBlogPost.fulfilled, (state, action) => {
+        const index = state.blogPosts.findIndex((p) => p.id === action.payload.id);
+        if (index !== -1) {
+          state.blogPosts[index] = action.payload;
+        }
       })
       .addCase(toggleBlogPostStatus.fulfilled, (state, action) => {
         const index = state.blogPosts.findIndex((p) => p.id === action.payload.id);
