@@ -73,17 +73,21 @@ export class ClinicsService {
       );
     }
 
+    if (params.search || params.category) {
+      clinicQb.leftJoinAndSelect('treatment.categoryRef', 'categoryRef');
+    }
+
     if (params.search) {
       const searchTerm = `%${params.search}%`;
       const searchNoSpace = `%${params.search.replace(/\s+/g, '')}%`;
       clinicQb.andWhere(
-        '(clinic.name ILIKE :searchTerm OR treatment.name ILIKE :searchTerm OR treatment.category ILIKE :searchTerm OR REPLACE(treatment.name, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(treatment.category, \' \', \'\') ILIKE :searchNoSpace)',
+        '(clinic.name ILIKE :searchTerm OR treatment.name ILIKE :searchTerm OR treatment.category ILIKE :searchTerm OR categoryRef.name ILIKE :searchTerm OR REPLACE(treatment.name, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(treatment.category, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(categoryRef.name, \' \', \'\') ILIKE :searchNoSpace)',
         { searchTerm, searchNoSpace }
       );
     }
 
     if (params.category) {
-      clinicQb.andWhere('(treatment.category ILIKE :category OR REPLACE(treatment.category, \' \', \'-\') ILIKE :category)', { category: `%${params.category}%` });
+      clinicQb.andWhere('(treatment.category ILIKE :category OR categoryRef.name ILIKE :category OR REPLACE(treatment.category, \' \', \'-\') ILIKE :category OR REPLACE(categoryRef.name, \' \', \'-\') ILIKE :category)', { category: `%${params.category}%` });
     }
 
     // --- Availability Filtering (Rule 2) ---
@@ -1382,40 +1386,40 @@ export class ClinicsService {
     const searchTerm = `%${query}%`;
 
     try {
-      // Use raw SQL to directly query treatments linked to active services
-      const rawResults = await this.servicesRepository.query(`
-        SELECT DISTINCT t.name, t.category
-        FROM services s
-        INNER JOIN treatments t ON t.id = s."treatmentId" OR t.id = s.treatmentid
-        WHERE s."isActive" = true OR s.isactive = true
-        AND (t.name ILIKE $1 OR t.category ILIKE $1)
-        LIMIT 20
-      `, [searchTerm]);
+      // 1. Search in treatments that have active services
+      const servicesWithTreatments = await this.servicesRepository
+        .createQueryBuilder('s')
+        .innerJoinAndSelect('s.treatment', 't')
+        .leftJoinAndSelect('t.categoryRef', 'c')
+        .where('s.isActive = :isActive', { isActive: true })
+        .andWhere('(t.name ILIKE :term OR t.category ILIKE :term OR c.name ILIKE :term)', { term: searchTerm })
+        .limit(20)
+        .getMany();
 
       const combined = new Set<string>();
-      
-      if (rawResults.length > 0) {
-        rawResults.forEach((r: any) => {
-          if (r.name) combined.add(r.name);
-          if (r.category) combined.add(r.category);
-        });
-      }
 
-      // Always add fallback results to ensure maximum coverage
-      const fallback = await this.treatmentsRepository.query(`
-        SELECT DISTINCT name, category
-        FROM treatments
-        WHERE (name ILIKE $1 OR category ILIKE $1)
-        LIMIT 10
-      `, [searchTerm]);
+      servicesWithTreatments.forEach((s) => {
+        if (s.treatment?.name) combined.add(s.treatment.name);
+        if (s.treatment?.category) combined.add(s.treatment.category);
+        if (s.treatment?.categoryRef?.name) combined.add(s.treatment.categoryRef.name);
+      });
 
-      fallback.forEach((r: any) => {
-        if (r.name) combined.add(r.name);
-        if (r.category) combined.add(r.category);
+      // 2. Fallback search directly in treatments
+      const directTreatments = await this.treatmentsRepository
+        .createQueryBuilder('t')
+        .leftJoinAndSelect('t.categoryRef', 'c')
+        .where('t.status = :status', { status: TreatmentStatus.APPROVED })
+        .andWhere('(t.name ILIKE :term OR t.category ILIKE :term OR c.name ILIKE :term)', { term: searchTerm })
+        .limit(10)
+        .getMany();
+
+      directTreatments.forEach((t) => {
+        if (t.name) combined.add(t.name);
+        if (t.category) combined.add(t.category);
+        if (t.categoryRef?.name) combined.add(t.categoryRef.name);
       });
 
       return Array.from(combined).slice(0, 15);
-
     } catch (error) {
       console.error('getSuggestions error:', error);
       return [];
