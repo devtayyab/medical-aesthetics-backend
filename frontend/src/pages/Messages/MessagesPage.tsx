@@ -23,7 +23,7 @@ const marbleBackground = css`
   background-image: url("https://www.transparenttextures.com/patterns/dark-matter.png");
   min-height: calc(100vh - 64px);
   color: white;
-  padding: 24px;
+  padding: 64px 24px 24px 24px;
 `;
 
 export const MessagesPage: React.FC = () => {

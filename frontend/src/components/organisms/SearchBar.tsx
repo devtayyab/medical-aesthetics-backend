@@ -143,6 +143,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             <input
               className="w-full bg-transparent outline-none font-bold text-gray-900 placeholder:text-gray-900"
               placeholder="Search Treatments"
+              autoComplete="one-time-code"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -154,7 +155,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               }}
             />
             <span className={inputSubLabel}>
-              Choose your privilege
+              Choose your treatment
             </span>
           </div>
         </div>
@@ -175,7 +176,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                   </div>
                 ) : suggestions.length > 0 ? (
                   <div className="space-y-1">
-                    <p className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400">Privileges Found</p>
+                    <p className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400">Treatments Found</p>
                     {suggestions.map((suggestion, idx) => (
                       <button
                         key={idx}
@@ -189,11 +190,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                   </div>
                 ) : query.length > 0 ? (
                   <div className="p-4 text-center text-sm text-gray-500">
-                    No matching privileges found
+                    No matching treatments found
                   </div>
                 ) : (
                   <div className="p-4 text-center text-sm text-gray-500 italic">
-                    Type to see privilege suggestions...
+                    Type to see treatment suggestions...
                   </div>
                 )}
               </div>

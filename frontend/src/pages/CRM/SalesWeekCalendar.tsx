@@ -24,6 +24,7 @@ import { fetchAvailability } from '@/store/slices/clinicSlice';
 import { fetchLeads, createLead } from '@/store/slices/crmSlice';
 import { Button } from '@/components/atoms/Button/Button';
 import { crmAPI, clinicsAPI, bookingAPI } from '@/services/api';
+import toast from 'react-hot-toast';
 
 const statusLabels: Record<string, { label: string, color: string, icon: any }> = {
     PENDING: { label: 'Booked', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: Clock },
@@ -278,7 +279,8 @@ export const SalesWeekCalendar: React.FC = () => {
                 providerId: wizardProviderId || user?.id,
                 startTime: startDateTime.toISOString(),
                 endTime: endDateTime.toISOString(),
-                status: 'CONFIRMED'
+                status: 'CONFIRMED',
+                bookedById: user?.id
             });
 
             setIsAddWizardOpen(false);
@@ -1135,10 +1137,16 @@ export const SalesWeekCalendar: React.FC = () => {
                                         reason: 'Staff Break / Admin Block'
                                     });
                                     setContextMenu(null);
+                                    toast.success("Block time created successfully!");
                                     dispatch(fetchClinicAppointments({ clinicId: selectedClinicId !== 'all' ? selectedClinicId : undefined }));
+                                    dispatch(fetchAvailability({
+                                        clinicId: selectedClinicId,
+                                        date: format(viewDate, 'yyyy-MM-dd'),
+                                        serviceId: 'all'
+                                    } as any));
                                 } catch (err) {
                                     console.error(err);
-                                    alert("Failed to block slot.");
+                                    toast.error("Failed to block slot.");
                                 }
                             }}
                             className="w-full flex items-center gap-3 p-2.5 hover:bg-orange-50 text-gray-700 hover:text-orange-700 rounded-lg text-sm font-bold transition-all group"

@@ -41,4 +41,14 @@ export class PaymentsController {
     void(@Param('id') id: string, @Body('notes') notes: string, @Req() req: any) {
         return this.paymentsService.void(id, notes, req.user.id);
     }
+
+    @Post('manual')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+    @ApiOperation({ summary: 'Create a manual payment record' })
+    createManualPayment(@Body() body: any, @Req() req: any) {
+        return this.paymentsService.createManualPayment({
+            ...body,
+            recordedById: req.user.id
+        });
+    }
 }

@@ -256,24 +256,22 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.reminderDate) {
-      toast.error("Task validation failed: Reminder Date & Time is mandatory.");
-      return;
-    }
+    if (formData.reminderDate) {
+      const reminderDateObj = new Date(formData.reminderDate);
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() + 1);
 
-    const reminderDateObj = new Date(formData.reminderDate);
-    const maxDate = new Date();
-    maxDate.setFullYear(maxDate.getFullYear() + 1);
+      if (reminderDateObj > maxDate) {
+        toast.error("Task validation failed: Reminder cannot be set more than 1 year in the future.");
+        return;
+      }
 
-    if (reminderDateObj > maxDate) {
-      toast.error("Task validation failed: Reminder cannot be set more than 1 year in the future.");
-      return;
-    }
-
-    const now = new Date();
-    if (reminderDateObj < new Date(now.getTime() - 60000)) {
-      toast.error("Task validation failed: Reminder cannot be set in the past.");
-      return;
+      const now = new Date();
+      // Only check if it's in the past if it's a new task, or if the user changed the date
+      if (reminderDateObj < new Date(now.getTime() - 60000) && formData.reminderDate !== prefilledData?.reminderDate) {
+        toast.error("Task validation failed: Reminder cannot be set in the past.");
+        return;
+      }
     }
 
     let validation;
@@ -523,11 +521,10 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 
           <div className="grid grid-cols-1 gap-4">
             <Input
-              label="Reminder Date & Time (Mandatory)"
+              label="Reminder Date & Time (Optional)"
               type="datetime-local"
               value={formData.reminderDate || ''}
               onChange={(e) => handleInputChange('reminderDate', e.target.value)}
-              required
               max={new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 16)}
             />
           </div>
@@ -739,15 +736,13 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               type="submit" 
               variant="primary" 
               className="flex-1"
-              disabled={!formData.reminderDate || !formData.title || !formData.actionType || !formData.dueDate || (!formData.customerId && !formData.relatedLeadId)}
-              title={!formData.reminderDate ? "Reminder Date & Time is mandatory" : "Please fill all required fields"}
+              disabled={!formData.title || !formData.actionType || !formData.dueDate || (!formData.customerId && !formData.relatedLeadId)}
+              title={"Please fill all required fields"}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               {prefilledData?.id ? 'Save Changes' : 'Create Task'}
             </Button>
-            <Button type="button" variant="secondary" onClick={handleValidateClick}>
-              Validate
-            </Button>
+
           </div>
         </form>
       </CardContent>

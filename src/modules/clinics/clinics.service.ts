@@ -74,14 +74,16 @@ export class ClinicsService {
     }
 
     if (params.search) {
+      const searchTerm = `%${params.search}%`;
+      const searchNoSpace = `%${params.search.replace(/\s+/g, '')}%`;
       clinicQb.andWhere(
-        '(clinic.name ILIKE :search OR clinic.description ILIKE :search OR clinic.phone ILIKE :search OR clinic.email ILIKE :search OR treatment.name ILIKE :search)',
-        { search: `%${params.search}%` }
+        '(clinic.name ILIKE :searchTerm OR treatment.name ILIKE :searchTerm OR treatment.category ILIKE :searchTerm OR REPLACE(treatment.name, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(treatment.category, \' \', \'\') ILIKE :searchNoSpace)',
+        { searchTerm, searchNoSpace }
       );
     }
 
     if (params.category) {
-      clinicQb.andWhere('treatment.category = :category', { category: params.category });
+      clinicQb.andWhere('(treatment.category ILIKE :category OR REPLACE(treatment.category, \' \', \'-\') ILIKE :category)', { category: `%${params.category}%` });
     }
 
     // --- Availability Filtering (Rule 2) ---
@@ -125,14 +127,16 @@ export class ClinicsService {
       });
 
     if (params.search) {
+      const searchTerm = `%${params.search}%`;
+      const searchNoSpace = `%${params.search.replace(/\s+/g, '')}%`;
       serviceQb.andWhere(
-        '(treatment.name ILIKE :search OR treatment.shortDescription ILIKE :search OR clinic.name ILIKE :search)',
-        { search: `%${params.search}%` }
+        '(treatment.name ILIKE :searchTerm OR treatment.category ILIKE :searchTerm OR treatment.shortDescription ILIKE :searchTerm OR REPLACE(treatment.name, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(treatment.category, \' \', \'\') ILIKE :searchNoSpace)',
+        { searchTerm, searchNoSpace }
       );
     }
 
     if (params.category) {
-      serviceQb.andWhere('treatment.category = :category', { category: params.category });
+      serviceQb.andWhere('(treatment.category ILIKE :category OR REPLACE(treatment.category, \' \', \'-\') ILIKE :category)', { category: `%${params.category}%` });
     }
 
     if (params.location) {
@@ -1375,14 +1379,46 @@ export class ClinicsService {
   async getSuggestions(query: string): Promise<string[]> {
     if (!query || query.length < 1) return [];
 
-    const treatments = await this.treatmentsRepository
-      .createQueryBuilder('treatment')
-      .select('DISTINCT treatment.name', 'name')
-      .where('treatment.name ILIKE :query', { query: `%${query}%` })
-      .andWhere('treatment.isActive = :isActive', { isActive: true })
-      .limit(10)
-      .getRawMany();
+    const searchTerm = `%${query}%`;
 
-    return treatments.map(t => t.name);
+    try {
+      // Use raw SQL to directly query treatments linked to active services
+      const rawResults = await this.servicesRepository.query(`
+        SELECT DISTINCT t.name, t.category
+        FROM services s
+        INNER JOIN treatments t ON t.id = s."treatmentId" OR t.id = s.treatmentid
+        WHERE s."isActive" = true OR s.isactive = true
+        AND (t.name ILIKE $1 OR t.category ILIKE $1)
+        LIMIT 20
+      `, [searchTerm]);
+
+      const combined = new Set<string>();
+      
+      if (rawResults.length > 0) {
+        rawResults.forEach((r: any) => {
+          if (r.name) combined.add(r.name);
+          if (r.category) combined.add(r.category);
+        });
+      }
+
+      // Always add fallback results to ensure maximum coverage
+      const fallback = await this.treatmentsRepository.query(`
+        SELECT DISTINCT name, category
+        FROM treatments
+        WHERE (name ILIKE $1 OR category ILIKE $1)
+        LIMIT 10
+      `, [searchTerm]);
+
+      fallback.forEach((r: any) => {
+        if (r.name) combined.add(r.name);
+        if (r.category) combined.add(r.category);
+      });
+
+      return Array.from(combined).slice(0, 15);
+
+    } catch (error) {
+      console.error('getSuggestions error:', error);
+      return [];
+    }
   }
 }

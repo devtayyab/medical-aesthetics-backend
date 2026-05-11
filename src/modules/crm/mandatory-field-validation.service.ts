@@ -96,9 +96,6 @@ export class MandatoryFieldValidationService {
         missingFields.push('dueDate');
     }
 
-    if (!actionData.reminderDate) {
-        missingFields.push('reminderDate');
-    }
 
     const clinic = actionData.metadata?.clinic || (actionData as any).clinic;
     // Clinic is now optional (relaxed per user request)

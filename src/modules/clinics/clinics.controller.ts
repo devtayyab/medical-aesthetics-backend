@@ -51,6 +51,12 @@ export class ClinicsController {
     return this.clinicsService.getTreatmentDetails(id);
   }
 
+  @Get('suggestions')
+  @ApiOperation({ summary: 'Get treatment name suggestions' })
+  getSuggestions(@Query('q') q: string) {
+    return this.clinicsService.getSuggestions(q);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get clinic details' })
   findOne(@Param('id') id: string) {
@@ -128,9 +134,5 @@ export class ClinicsController {
       body.rejectReason,
     );
   }
-  @Get('suggestions')
-  @ApiOperation({ summary: 'Get treatment name suggestions' })
-  getSuggestions(@Query('q') q: string) {
-    return this.clinicsService.getSuggestions(q);
-  }
+
 }

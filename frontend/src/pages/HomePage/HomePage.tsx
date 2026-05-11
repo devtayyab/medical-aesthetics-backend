@@ -120,6 +120,12 @@ const categories = [
     icon: BodyIcon,
   },
   {
+    id: "skin-care",
+    name: "Skin Care",
+    description: "Clinical skin treatments and facials",
+    icon: DermaIcon,
+  },
+  {
     id: "hair",
     name: "Hair Treatments",
     description: "Hair restoration and removal",
@@ -270,10 +276,10 @@ export const HomePage: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-[#33373F]">Popular Categories</h2>
-          <p className="text-gray-600 mt-1">Explore top privileges by category</p>
+          <p className="text-gray-600 mt-1">Explore top treatments by category</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
         {categories.map((category) => (
           <button
             key={category.id}

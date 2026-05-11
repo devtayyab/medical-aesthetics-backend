@@ -308,7 +308,7 @@ export const Header: React.FC = () => {
 
     if (user.role === "client") {
       return [
-        { to: "/search", label: "Privileges" },
+        { to: "/search", label: "Treatments" },
         { to: "/appointments", label: "My Appointments" },
         { to: "/my-account", label: "My Account" },
         { to: "/messages", label: "Messages" },
@@ -423,7 +423,7 @@ export const Header: React.FC = () => {
                           : "text-gray-400 hover:text-white"
                           }`}
                       >
-                        Privileges
+                        Treatments
                       </Link>
                     </li>
                     <li className="cursor-pointer">
@@ -641,7 +641,7 @@ export const Header: React.FC = () => {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={userMenuItemStyle}
                     >
-                      Privileges
+                      Treatments
                     </Link>
 
                     <button

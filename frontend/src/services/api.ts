@@ -524,7 +524,10 @@ export const adminAPI = {
     offset?: number;
   }) => api.get("/admin/payments/ledger", { params }),
   refundPayment: (id: string, notes: string) => api.post(`/admin/payments/${id}/refund`, { notes }),
-  voidPayment: (id: string, notes: string) => api.post(`/admin/payments/${id}/void`, { notes }),
+  voidPayment: (id: string, notes: string) =>
+    api.post(`/admin/payments/${id}/void`, { notes }),
+  createManualPayment: (data: { amount: number; method: string; type: string; notes: string; clinicId: string }) =>
+    api.post(`/admin/payments/manual`, data),
   getGiftCardsSummary: () => api.get("/admin/gift-cards/summary"),
   getGiftCards: (search?: string) => api.get("/admin/gift-cards", { params: { search } }),
   generateGiftCard: (data: { amount: number; recipientEmail?: string; message?: string; expiresAt?: string }) =>

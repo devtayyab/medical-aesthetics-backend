@@ -70,8 +70,8 @@ export class CrmAction {
   @Column({ type: 'timestamptz', nullable: true })
   dueDate?: Date;
 
-  @Column({ type: 'timestamptz', nullable: false })
-  reminderDate: Date;
+  @Column({ type: 'timestamptz', nullable: true })
+  reminderDate?: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
   completedAt?: Date;

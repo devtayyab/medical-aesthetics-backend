@@ -546,7 +546,16 @@ export class BookingsService {
     // --- AUTOMATION: Create Confirmation Call Reminder Task ---
     try {
       // Find the salesperson related to this lead/customer or the creator
-      const salespersonId = (appointmentWithRelations as any).salespersonId || createAppointmentDto.bookedById;
+      let salespersonId = (appointmentWithRelations as any).salespersonId || createAppointmentDto.bookedById;
+
+      // Fallback to provider or a default admin
+      if (!salespersonId) {
+        salespersonId = appointmentWithRelations.providerId;
+      }
+      if (!salespersonId) {
+        const defaultAdmin = await this.usersRepository.findOne({ where: { role: 'admin' as any } });
+        salespersonId = defaultAdmin?.id;
+      }
 
       if (salespersonId && appointmentWithRelations.clientId) {
         const dueDate = new Date(appointmentWithRelations.startTime);
@@ -568,6 +577,19 @@ export class BookingsService {
           priority: 'high',
           dueDate: dueDate,
           reminderDate: dueDate,
+          relatedAppointmentId: savedAppointment.id,
+        } as any);
+
+        await this.crmService.createAction({
+          customerId: (appointmentWithRelations as any).customerRecordId || appointmentWithRelations.clientId,
+          salespersonId,
+          actionType: 'appointment',
+          title: `Appointment: ${appointmentWithRelations.client?.firstName || 'Client'} - ${therapyName}`,
+          description: `Scheduled appointment at ${appointmentWithRelations.startTime.toLocaleString()}`,
+          status: 'pending',
+          priority: 'medium',
+          dueDate: new Date(appointmentWithRelations.startTime),
+          reminderDate: new Date(appointmentWithRelations.startTime),
           relatedAppointmentId: savedAppointment.id,
         } as any);
       }

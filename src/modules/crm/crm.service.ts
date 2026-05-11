@@ -319,7 +319,7 @@ export class CrmService implements OnModuleInit {
     console.log('🚀 [CrmService] scheduleRecurringAppointment request received');
     console.log('Payload Data:', JSON.stringify(data, null, 2));
     
-    const { customerId, serviceId, frequency, clinicId, startDate, providerId } = data;
+    const { customerId, serviceId, frequency, clinicId, startDate, providerId, bookedById } = data;
 
     // Descriptive check for required fields
     if (!customerId || !serviceId || !frequency || !clinicId) {
@@ -372,6 +372,7 @@ export class CrmService implements OnModuleInit {
             status: AppointmentStatus.CONFIRMED,
             paymentMethod: 'cash',
             appointmentSource: 'platform_broker',
+            bookedById: bookedById,
             clientDetails: {
                 fullName: `${customer.firstName} ${customer.lastName}`,
                 email: customer.email,
@@ -2405,7 +2406,7 @@ export class CrmService implements OnModuleInit {
           "COALESCE(u.firstName || ' ' || u.lastName, 'Unknown Agent') as agent",
           "SUM(COALESCE(apt.amountPaid, apt.totalAmount, svc.price, 0)) as amount",
         ])
-        .where('apt.status = :status', { status: 'completed' })
+        .where('apt.status = :status', { status: AppointmentStatus.COMPLETED })
         .andWhere('COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) >= :startOfPeriod AND COALESCE(apt.completedAt, apt.updatedAt, apt.startTime) <= :endOfPeriod', { startOfPeriod, endOfPeriod })
         .groupBy("u.firstName, u.lastName")
         .orderBy("amount", "DESC");
@@ -2670,10 +2671,10 @@ export class CrmService implements OnModuleInit {
       .select('rec.assignedSalespersonId', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COUNT(apt.id)', 'totalAppointments')
-      .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'completedAppointments')
-      .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShows')
-      .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancellations')
-      .addSelect('COALESCE(SUM(CASE WHEN apt.status IN (\'completed\', \'confirmed\') THEN COALESCE(apt.totalAmount, svc.price, 0) ELSE 0 END), 0)', 'totalRevenue')
+      .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.COMPLETED}' THEN 1 END)`, 'completedAppointments')
+      .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.NO_SHOW}' THEN 1 END)`, 'noShows')
+      .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.CANCELLED}' THEN 1 END)`, 'cancellations')
+      .addSelect(`COALESCE(SUM(CASE WHEN apt.status IN ('${AppointmentStatus.COMPLETED}', '${AppointmentStatus.CONFIRMED}') THEN COALESCE(apt.totalAmount, svc.price, 0) ELSE 0 END), 0)`, 'totalRevenue')
       .where('rec.assignedSalespersonId IS NOT NULL')
       .groupBy('rec.assignedSalespersonId, agent.firstName, agent.lastName');
 
@@ -2789,10 +2790,10 @@ export class CrmService implements OnModuleInit {
       .select('apt.clinicId', 'clinicId')
       .addSelect('COUNT(apt.id)', 'totalAppointments')
       .addSelect('COUNT(DISTINCT apt.clientId)', 'uniqueClients')
-      .addSelect("COUNT(CASE WHEN apt.status = 'completed' THEN 1 END)", 'completed')
-      .addSelect("COUNT(CASE WHEN apt.status = 'cancelled' THEN 1 END)", 'cancelled')
-      .addSelect("COUNT(CASE WHEN apt.status = 'no_show' THEN 1 END)", 'noShow')
-      .addSelect('COALESCE(SUM(COALESCE(apt.totalAmount, svc.price, 0)), 0)', 'totalRevenue')
+      .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.COMPLETED}' THEN 1 END)`, 'completed')
+      .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.CANCELLED}' THEN 1 END)`, 'cancelled')
+      .addSelect(`COUNT(CASE WHEN apt.status = '${AppointmentStatus.NO_SHOW}' THEN 1 END)`, 'noShow')
+      .addSelect(`COALESCE(SUM(CASE WHEN apt.status IN ('${AppointmentStatus.COMPLETED}', '${AppointmentStatus.CONFIRMED}') THEN COALESCE(apt.totalAmount, svc.price, 0) ELSE 0 END), 0)`, 'totalRevenue')
       .groupBy('apt.clinicId');
 
     if (dateRange) {

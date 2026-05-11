@@ -104,57 +104,24 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
     priority: 'medium'
   });
 
-  const [scheduleAppointment, setScheduleAppointment] = useState(false);
-  const [appointmentData, setAppointmentData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    time: '10:00',
-    serviceId: '',
-    clinicId: ''
-  });
-
-  const [clinics, setClinics] = useState<{ value: string; label: string }[]>([]);
-  const [services, setServices] = useState<{ value: string; label: string }[]>([]);
   const [providers, setProviders] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
-        const clinicRes = await crmAPI.getAccessibleClinics();
-        const clinicOptions = (clinicRes.data || []).map((c: any) => ({ value: c.id, label: c.name }));
-        setClinics(clinicOptions);
-        
-        // Also fetch salespersons for provider selection if needed
         const salesRes = await crmAPI.getSalespersons();
-        const salesOptions = (salesRes.data || []).map((s: any) => ({ 
-          value: s.id, 
-          label: `${s.firstName} ${s.lastName} (${s.role})` 
-        }));
+        const salesOptions = (salesRes.data || [])
+          .filter((s: any) => s.role === 'salesperson')
+          .map((s: any) => ({ 
+            value: s.id, 
+            label: `${s.firstName} ${s.lastName}` 
+          }));
         setProviders(salesOptions);
       } catch (e) {
-        console.error("Failed to load clinics/providers", e);
+        console.error("Failed to load providers", e);
       }
     })();
   }, []);
-
-  // Fetch services when clinic changes
-  useEffect(() => {
-    if (!appointmentData.clinicId) {
-      setServices([]);
-      return;
-    }
-    (async () => {
-      try {
-        const res = await clinicsAPI.getServices(appointmentData.clinicId);
-        const options = (res.data || []).map((s: any) => ({ 
-          value: s.id, 
-          label: `${s.name || s.treatment?.name} (€${s.price})` 
-        }));
-        setServices(options);
-      } catch (e) {
-        console.error("Failed to load services", e);
-      }
-    })();
-  }, [appointmentData.clinicId]);
 
   // Initial form state
   const initialFormState = {
@@ -233,24 +200,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         }));
       }
 
-      if (scheduleAppointment && appointmentData.serviceId && appointmentData.clinicId) {
-        const [hh, mm] = appointmentData.time.split(':').map(Number);
-        const startDate = new Date(appointmentData.date);
-        startDate.setHours(hh, mm, 0, 0);
-        const endDate = new Date(startDate.getTime() + 30 * 60000); // 30 min default
-        
-        actions.push(bookingAPI.createAppointment({
-          clientId: leadId,
-          clinicId: appointmentData.clinicId,
-          serviceId: appointmentData.serviceId,
-          providerId: (user as any)?.id, // Ensure it shows in calendar
-          bookedById: (user as any)?.id,
-          startTime: startDate.toISOString(),
-          endTime: endDate.toISOString(),
-          status: 'CONFIRMED',
-          notes: `Scheduled during lead creation.`
-        }));
-      }
+
 
       if (actions.length > 0) {
         await Promise.all(actions);
@@ -261,7 +211,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       
       // Reset action states
       setCreateFollowUpTask(false);
-      setScheduleAppointment(false);
     } catch (error: any) {
       console.error('Failed to create lead:', error);
       toast.error(error.response?.data?.message || error.message || 'Failed to create lead');
@@ -281,7 +230,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   const handleEditLead = (lead: Lead) => {
     setEditingLead(lead);
     setCreateFollowUpTask(false);
-    setScheduleAppointment(false);
     setShowModal(true);
   };
 
@@ -364,24 +312,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         }));
       }
 
-      if (scheduleAppointment && appointmentData.serviceId && appointmentData.clinicId) {
-        const [hh, mm] = appointmentData.time.split(':').map(Number);
-        const startDate = new Date(appointmentData.date);
-        startDate.setHours(hh, mm, 0, 0);
-        const endDate = new Date(startDate.getTime() + 30 * 60000); // 30 min default
-        
-        actions.push(bookingAPI.createAppointment({
-          clientId: editingLead.id,
-          clinicId: appointmentData.clinicId,
-          serviceId: appointmentData.serviceId,
-          providerId: (user as any)?.id, // Ensure it shows in calendar
-          bookedById: (user as any)?.id,
-          startTime: startDate.toISOString(),
-          endTime: endDate.toISOString(),
-          status: 'CONFIRMED',
-          notes: `Scheduled during lead edit.`
-        }));
-      }
 
       if (actions.length > 0) {
         await Promise.all(actions);
@@ -393,7 +323,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       
       // Reset action states
       setCreateFollowUpTask(false);
-      setScheduleAppointment(false);
 
       dispatch(fetchLeads(leadFilters));
     } catch (error: any) {
@@ -974,11 +903,25 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                         <div className="w-7 h-7 shrink-0 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-[10px] uppercase shadow-sm">
                           {lead.firstName[0]}{lead.lastName[0]}
                         </div>
-                        <div className="truncate max-w-[90px]">
-                          <div className="font-bold text-gray-900 text-[11px] truncate" title={`${lead.firstName} ${lead.lastName}`}>{lead.firstName} {lead.lastName}</div>
-                          <div className="text-[8px] text-gray-400 font-mono tracking-tighter uppercase">
-                            {lead.id.slice(0, 6)}
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                          <div className="truncate max-w-[90px]">
+                            <div className="font-bold text-gray-900 text-[11px] truncate" title={`${lead.firstName} ${lead.lastName}`}>{lead.firstName} {lead.lastName}</div>
+                            <div className="text-[8px] text-gray-400 font-mono tracking-tighter uppercase">
+                              {lead.id.slice(0, 6)}
+                            </div>
                           </div>
+                          <Button
+                            size="xs"
+                            variant="white"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditLead(lead);
+                            }}
+                            className="h-6 w-6 p-0 bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all shadow-sm shrink-0"
+                            title="Edit Lead"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
                     </TableCell>
@@ -1136,67 +1079,12 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                       value={editingLead.assignedSalesId || ''}
                       onChange={(value) => setEditingLead({ ...editingLead, assignedSalesId: value })}
                       options={providers}
-                      className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100 col-span-2"
+                      disabled={user?.role === 'salesperson'}
+                      className={`bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100 col-span-2 ${user?.role === 'salesperson' ? 'opacity-60' : ''}`}
                     />
                   </div>
                 </div>
 
-                {/* Section: Optional Actions for Edit */}
-                <div className="pt-6 border-t border-slate-100 space-y-6">
-                  <div className="flex flex-col gap-4">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <div className={`w-10 h-6 rounded-full transition-all relative ${scheduleAppointment ? 'bg-blue-600' : 'bg-slate-300'}`}>
-                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${scheduleAppointment ? 'left-5' : 'left-1'}`} />
-                        <input type="checkbox" className="hidden" checked={scheduleAppointment} onChange={() => setScheduleAppointment(!scheduleAppointment)} />
-                      </div>
-                      <div>
-                        <span className="text-sm font-bold text-slate-800">Schedule Appointment</span>
-                        <p className="text-[10px] text-slate-500 font-medium">Book a slot in the diary immediately</p>
-                      </div>
-                    </label>
-
-                    {scheduleAppointment && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 animate-in slide-in-from-top-2 duration-200">
-                        <Select
-                          label="Select Clinic"
-                          value={appointmentData.clinicId}
-                          onChange={(val) => setAppointmentData({ ...appointmentData, clinicId: val })}
-                          options={clinics}
-                          leftIcon={<Building2 className="w-4 h-4" />}
-                        />
-                        <Select
-                          label="Select Treatment"
-                          value={appointmentData.serviceId}
-                          onChange={(val) => setAppointmentData({ ...appointmentData, serviceId: val })}
-                          options={services}
-                          disabled={!appointmentData.clinicId}
-                          leftIcon={<Zap className="w-4 h-4" />}
-                        />
-                        <Input
-                          label="Appointment Date"
-                          type="date"
-                          value={appointmentData.date}
-                          onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
-                          leftIcon={<Calendar className="w-4 h-4" />}
-                        />
-                        <Input
-                          label="Appointment Time"
-                          type="time"
-                          value={appointmentData.time}
-                          onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
-                          leftIcon={<Clock className="w-4 h-4" />}
-                        />
-                        <Select
-                          label="Professional (Provider)"
-                          value={appointmentData.providerId || (user?.id || '')}
-                          onChange={(val) => setAppointmentData({ ...appointmentData, providerId: val })}
-                          options={providers}
-                          leftIcon={<User className="w-4 h-4" />}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
 
 
               </CardContent>
@@ -1348,61 +1236,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
                 {/* Section 3: Optional Actions */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-6">
-                  <div className="flex flex-col gap-4">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <div className={`w-10 h-6 rounded-full transition-all relative ${scheduleAppointment ? 'bg-blue-600' : 'bg-slate-300'}`}>
-                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${scheduleAppointment ? 'left-5' : 'left-1'}`} />
-                        <input type="checkbox" className="hidden" checked={scheduleAppointment} onChange={() => setScheduleAppointment(!scheduleAppointment)} />
-                      </div>
-                      <div>
-                        <span className="text-sm font-bold text-slate-800">Schedule Initial Appointment</span>
-                        <p className="text-[10px] text-slate-500 font-medium">Book a slot in the diary immediately</p>
-                      </div>
-                    </label>
-
-                    {scheduleAppointment && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 animate-in slide-in-from-top-2 duration-200">
-                        <Select
-                          label="Select Clinic"
-                          value={appointmentData.clinicId}
-                          onChange={(val) => setAppointmentData({ ...appointmentData, clinicId: val })}
-                          options={clinics}
-                          leftIcon={<Building2 className="w-4 h-4" />}
-                        />
-                        <Select
-                          label="Select Treatment"
-                          value={appointmentData.serviceId}
-                          onChange={(val) => setAppointmentData({ ...appointmentData, serviceId: val })}
-                          options={services}
-                          disabled={!appointmentData.clinicId}
-                          leftIcon={<Zap className="w-4 h-4" />}
-                        />
-                        <Input
-                          label="Appointment Date"
-                          type="date"
-                          value={appointmentData.date}
-                          onChange={(e) => setAppointmentData({ ...appointmentData, date: e.target.value })}
-                          leftIcon={<Calendar className="w-4 h-4" />}
-                        />
-                        <Input
-                          label="Appointment Time"
-                          type="time"
-                          value={appointmentData.time}
-                          onChange={(e) => setAppointmentData({ ...appointmentData, time: e.target.value })}
-                          leftIcon={<Clock className="w-4 h-4" />}
-                        />
-                        <Select
-                          label="Professional (Provider)"
-                          value={appointmentData.providerId || (user?.id || '')}
-                          onChange={(val) => setAppointmentData({ ...appointmentData, providerId: val })}
-                          options={providers}
-                          leftIcon={<User className="w-4 h-4" />}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="border-t border-slate-200 pt-4">
+                  <div>
                     <label className="flex items-center gap-3 cursor-pointer group">
                       <div className={`w-10 h-6 rounded-full transition-all relative ${createFollowUpTask ? 'bg-indigo-600' : 'bg-slate-300'}`}>
                         <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${createFollowUpTask ? 'left-5' : 'left-1'}`} />
