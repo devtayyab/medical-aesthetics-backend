@@ -43,7 +43,7 @@ const logoStyle = css`
 const searchContainerStyle = css`
   flex: 1;
   max-width: 400px;
-  margin: 0 var(--spacing-xl);
+  margin: 0 1rem;
   @media (max-width: 1024px) {
     display: none;
   }
@@ -308,7 +308,7 @@ export const Header: React.FC = () => {
 
     if (user.role === "client") {
       return [
-        { to: "/search", label: "Privileges" },
+        { to: "/search", label: "Treatments" },
         { to: "/appointments", label: "My Appointments" },
         { to: "/my-account", label: "My Account" },
         { to: "/messages", label: "Messages" },
@@ -342,8 +342,6 @@ export const Header: React.FC = () => {
         { to: "/clinic/dashboard", label: "Dashboard" },
         { to: "/clinic/appointments", label: "Appointments" },
         { to: "/clinic/clients", label: "Clients" },
-        { to: "/clinic/services", label: "Privileges" },
-        { to: "/clinic/analytics", label: "Analytics" },
         { to: "/clinic/reviews", label: "Reviews" },
         { to: "/messages", label: "Messages" },
         { to: "/clinic/notifications", label: "Notifications" },
@@ -357,16 +355,11 @@ export const Header: React.FC = () => {
         { to: "/crm", label: "CRM" },
         { to: "/crm/customers", label: "Customers" },
         { to: "/crm/tasks", label: "Tasks" },
-        { to: "/crm/actions", label: "Actions" },
         { to: "/crm/repeat-management", label: "Repeat Management" },
         { to: "/crm/leads", label: "Leads" },
         { to: "/messages", label: "Messages" },
         { to: "/crm/communication", label: "Communication" },
-        { to: "/crm/analytics", label: "Analytics" },
-        { to: "/crm/sales-analytics", label: "Sales Analytics Dashboard" },
-        { to: "/crm/calendar", label: "Sales Week Calendar" },
         { to: "/crm/tag", label: "Tags" },
-        { to: "/crm/facebook-integration", label: "Facebook Integration" },
         { to: "/crm/settings", label: "Settings" },
         { action: handleLogout, label: "Logout" },
       ];
@@ -400,7 +393,9 @@ export const Header: React.FC = () => {
               }
               className={`flex items-center ml-2 no-underline ${clinicRoles.includes(user?.role || "") ? "justify-center" : ""}`}
             >
-              <img src={SiteLogo} alt="Site Logo" className="w-[180px] sm:w-[320px] drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] transition-all" />
+              <div className="w-[140px] sm:w-[180px] h-12 relative flex items-center justify-center mr-2 lg:mr-4">
+                <img src={SiteLogo} alt="Site Logo" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180px] sm:w-[220px] max-w-none drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] transition-all pointer-events-none" />
+              </div>
             </Link>
           </div>
 
@@ -408,7 +403,7 @@ export const Header: React.FC = () => {
             <>
               {user?.role !== 'salesperson' && (
                 <div className={searchContainerStyle}>
-                  <ul className="flex justify-center items-center gap-10 text-white whitespace-nowrap">
+                  <ul className="flex justify-center items-center gap-4 lg:gap-8 text-white whitespace-nowrap">
                     <li className="cursor-pointer">
                       <Link
                         to="/treatments"
@@ -428,7 +423,7 @@ export const Header: React.FC = () => {
                           : "text-gray-400 hover:text-white"
                           }`}
                       >
-                        Privileges
+                        Treatments
                       </Link>
                     </li>
                     <li className="cursor-pointer">
@@ -447,8 +442,8 @@ export const Header: React.FC = () => {
               )}
 
               {user?.role !== 'salesperson' && (
-                <div className="hidden xl:flex items-center gap-8 mr-8">
-                  <div className="flex items-center gap-3">
+                <div className="hidden xl:flex items-center gap-4 mr-4">
+                  <div className="flex items-center gap-2">
                     <div className="size-10 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
                       <Phone className="h-4 w-4 text-white" />
                     </div>
@@ -462,7 +457,7 @@ export const Header: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <div className="size-10 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
                       <MessageCircle size={18} className="text-white" />
                     </div>
@@ -499,7 +494,7 @@ export const Header: React.FC = () => {
                 </div>
               )}
 
-              <nav className="hidden md:flex items-center gap-4">
+              <nav className="hidden md:flex items-center gap-3">
                 {isAuthenticated ? (
                   <>
                     <div className="relative">
@@ -569,8 +564,8 @@ export const Header: React.FC = () => {
                     >
                       Sign In
                     </button>
-                    <Link 
-                      to="/register" 
+                    <Link
+                      to="/register"
                       className="bg-[#A3E635] text-black px-5 py-2 rounded-lg font-black uppercase text-[12px] tracking-wider hover:bg-white hover:scale-105 transition-all shadow-[0_10px_20px_-5px_rgba(163,230,53,0.3)] whitespace-nowrap"
                     >
                       Sign Up
@@ -605,7 +600,9 @@ export const Header: React.FC = () => {
         <div className={mobileMenuStyle}>
           <div className={mobileMenuHeaderStyle}>
             <Link to="/" className={logoStyle}>
-              <img src={SiteLogo} alt="Site Logo" className="w-[250px]" />
+              <div className="w-[160px] h-10 relative flex items-center justify-center">
+                <img src={SiteLogo} alt="Site Logo" className="w-full h-[180%] object-contain pointer-events-none" />
+              </div>
             </Link>
             <button onClick={() => setIsMobileMenuOpen(false)}>
               <X size={24} className="text-black" />
@@ -644,7 +641,7 @@ export const Header: React.FC = () => {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={userMenuItemStyle}
                     >
-                      Privileges
+                      Treatments
                     </Link>
 
                     <button

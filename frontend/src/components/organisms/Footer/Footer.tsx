@@ -3,22 +3,25 @@ import { Link } from "react-router-dom";
 import { FaFacebookF, FaLinkedinIn } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { Phone, Mail } from "lucide-react";
+import SiteLogo from "@/assets/SiteLogo.png";
 
 export const Footer: React.FC = () => {
   return (
     <footer className="bg-[#2D3748]">
-      <div className="mx-auto max-w-[1200px] px-4 pt-16 pb-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1200px] px-4 pt-6 pb-4 sm:px-6 lg:px-8">
         {/* Middle Content */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-8">
           {/* Left Side */}
           <div className="mx-auto max-w-sm lg:max-w-none">
             <Link
               to="/"
-              className="text-[2rem] font-medium text-white no-underline tracking-tight flex items-center"
+              className="inline-block"
             >
-              <span className="text-[#CBFF38]">med</span>logo
+              <div className="w-[120px] sm:w-[150px] relative flex items-center justify-start">
+                <img src={SiteLogo} alt="Site Logo" className="w-full h-auto object-contain drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] pointer-events-none" />
+              </div>
             </Link>
-            <p className="mt-4 text-[18px] text-center text-white lg:text-left">
+            <p className="mt-2 text-[12px] text-center text-white lg:text-left leading-relaxed max-w-sm">
               Our aesthetics platform is dedicated to providing high-quality treatments and personalized care. Explore our range of services to find the perfect solution for your beauty and wellness needs.
             </p>
           </div>
@@ -27,10 +30,10 @@ export const Footer: React.FC = () => {
           <div className="grid grid-cols-1 gap-8 text-center lg:grid-cols-3 lg:text-left">
             {/* Overview */}
             <div>
-              <strong className="font-semibold text-[20px] text-[#CBFF38]">
+              <strong className="font-semibold text-[14px] text-[#CBFF38]">
                 Overview
               </strong>
-              <ul className="mt-6 space-y-[10px]">
+              <ul className="mt-3 space-y-[4px] text-[12px]">
                 <li>
                   <Link
                     to="/treatments"
@@ -60,10 +63,10 @@ export const Footer: React.FC = () => {
 
             {/* Company */}
             <div>
-              <strong className="font-semibold text-[20px] text-[#CBFF38]">
+              <strong className="font-semibold text-[14px] text-[#CBFF38]">
                 Company
               </strong>
-              <ul className="mt-6 space-y-[10px]">
+              <ul className="mt-3 space-y-[4px] text-[12px]">
                 <li>
                   <Link
                     to="/"
@@ -93,10 +96,10 @@ export const Footer: React.FC = () => {
 
             {/* Contact */}
             <div>
-              <strong className="font-semibold text-[20px] text-[#CBFF38]">
+              <strong className="font-semibold text-[14px] text-[#CBFF38]">
                 Contact Us
               </strong>
-              <ul className="mt-6 space-y-[10px]">
+              <ul className="mt-3 space-y-[4px] text-[12px]">
                 <li>
                   <a
                     href="tel:6948880498"
@@ -125,35 +128,35 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Bottom */}
-        <div className="mt-16 flex flex-wrap justify-center md:justify-between gap-7 items-center border-t border-[#586271] pt-8">
-          <div className="flex space-x-[10px]">
+        <div className="mt-6 flex flex-wrap justify-center md:justify-between gap-4 items-center border-t border-[#586271] pt-4">
+          <div className="flex space-x-[8px]">
             <a
               href="#"
-              className="flex h-10 w-10 items-center justify-center rounded-[7px] bg-white text-[#2D3748] transition hover:bg-blue-600 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-white text-[#2D3748] transition hover:bg-blue-600 hover:text-white"
             >
-              <FaFacebookF size={18} />
+              <FaFacebookF size={14} />
             </a>
             <a
               href="#"
-              className="flex h-10 w-10 items-center justify-center rounded-[7px] bg-white text-[#2D3748] transition hover:bg-black hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-white text-[#2D3748] transition hover:bg-black hover:text-white"
             >
-              <FaXTwitter size={18} />
+              <FaXTwitter size={14} />
             </a>
             <a
               href="#"
-              className="flex h-10 w-10 items-center justify-center rounded-[7px] bg-white text-[#2D3748] transition hover:bg-blue-700 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-white text-[#2D3748] transition hover:bg-blue-700 hover:text-white"
             >
-              <FaLinkedinIn size={18} />
+              <FaLinkedinIn size={14} />
             </a>
           </div>
           <form onSubmit={(e) => e.preventDefault()}>
-            <div className="flex justify-between items-center gap-3">
-              <label className="text-white text-xs font-bold uppercase tracking-wider" htmlFor="email">
+            <div className="flex justify-between items-center gap-2">
+              <label className="text-white text-[10px] font-bold uppercase tracking-wider" htmlFor="email">
                 Newsletter
               </label>
 
               <input
-                className="w-full rounded-[12px] border focus:outline-none border-[#8B95A5] focus:border-white bg-transparent px-5 py-3 pe-32 text-white font-medium"
+                className="w-full rounded-[8px] border focus:outline-none border-[#8B95A5] focus:border-white bg-transparent px-3 py-2 text-white text-xs font-medium"
                 id="email"
                 type="email"
                 placeholder="john@doe.com"
@@ -161,7 +164,7 @@ export const Footer: React.FC = () => {
 
               <button
                 type="submit"
-                className="rounded-[12px] bg-[#CBFF38] px-5 py-3 font-black text-xs uppercase tracking-widest text-[#2D3748] transition hover:bg-lime-400"
+                className="rounded-[8px] bg-[#CBFF38] px-4 py-2 font-black text-[10px] uppercase tracking-widest text-[#2D3748] transition hover:bg-lime-400"
               >
                 Subscribe
               </button>

@@ -22,6 +22,15 @@ export const Payments: React.FC = () => {
     });
 
     const [isActioning, setIsActioning] = useState<string | null>(null);
+    const [showManualModal, setShowManualModal] = useState(false);
+    const [manualForm, setManualForm] = useState({
+        amount: '',
+        method: 'cash',
+        type: 'payment',
+        notes: '',
+        clinicId: '',
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         dispatch(fetchAdminClinics());
@@ -37,6 +46,60 @@ export const Payments: React.FC = () => {
 
     const handleFilterChange = (name: string, value: string) => {
         setFilters(prev => ({ ...prev, [name]: value, offset: 0 }));
+    };
+
+    const handleExportCSV = () => {
+        const transactions = (paymentsLedger as any)?.items || [];
+        if (transactions.length === 0) {
+            toast.error('No transactions to export');
+            return;
+        }
+        const headers = ['Date', 'Client', 'Provider', 'Type', 'Description', 'Method', 'Status', 'Amount'];
+        const rows = transactions.map((txn: any) => [
+            format(new Date(txn.createdAt), 'yyyy-MM-dd HH:mm'),
+            txn.client ? `${txn.client.firstName} ${txn.client.lastName}` : 'Guest',
+            txn.provider ? `${txn.provider.firstName} ${txn.provider.lastName}` : 'N/A',
+            txn.type,
+            txn.appointment?.service?.treatment?.name || txn.notes || '',
+            txn.method,
+            txn.status,
+            `${txn.type === 'refund' || txn.type === 'void' ? '-' : ''}${Number(txn.amount).toFixed(2)}`
+        ]);
+        const csv = [headers, ...rows].map(r => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `payments_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success('CSV exported successfully');
+    };
+
+    const handleManualSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!manualForm.amount || !manualForm.clinicId) {
+            toast.error('Please fill in amount and clinic');
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await adminAPI.createManualPayment({
+                amount: parseFloat(manualForm.amount),
+                method: manualForm.method,
+                type: manualForm.type,
+                notes: manualForm.notes,
+                clinicId: manualForm.clinicId,
+            });
+            toast.success('Manual record created successfully');
+            setShowManualModal(false);
+            setManualForm({ amount: '', method: 'cash', type: 'payment', notes: '', clinicId: '' });
+            dispatch(fetchPaymentsLedger(filters));
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Failed to create record');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleAction = async (id: string, action: 'refund' | 'void') => {
@@ -72,14 +135,96 @@ export const Payments: React.FC = () => {
                     <p className="text-sm text-gray-500 mt-1">Audit transactions, manage refunds, and track clinic turnover</p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="flex items-center gap-2 border border-gray-200 bg-white text-gray-700 px-4 py-2.5 font-semibold rounded-xl hover:bg-gray-50 shadow-sm transition-all text-sm">
+                    <button onClick={handleExportCSV} className="flex items-center gap-2 border border-gray-200 bg-white text-gray-700 px-4 py-2.5 font-semibold rounded-xl hover:bg-gray-50 shadow-sm transition-all text-sm">
                         <Download className="w-4 h-4" /> Export CSV
                     </button>
-                    <button className="flex items-center gap-2 bg-[#405C0B] text-white px-5 py-2.5 font-semibold rounded-xl hover:bg-[#304608] shadow-md transition-all text-sm">
+                    <button onClick={() => setShowManualModal(true)} className="flex items-center gap-2 bg-[#405C0B] text-white px-5 py-2.5 font-semibold rounded-xl hover:bg-[#304608] shadow-md transition-all text-sm">
                         <Euro className="w-4 h-4" /> New Manual Record
                     </button>
                 </div>
             </div>
+
+            {/* Manual Record Modal */}
+            {showManualModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4">
+                        <h2 className="text-xl font-bold text-gray-900 mb-6">New Manual Record</h2>
+                        <form onSubmit={handleManualSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Clinic *</label>
+                                <select
+                                    value={manualForm.clinicId}
+                                    onChange={e => setManualForm(p => ({ ...p, clinicId: e.target.value }))}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
+                                    required
+                                >
+                                    <option value="">Select Clinic</option>
+                                    {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Amount (€) *</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={manualForm.amount}
+                                    onChange={e => setManualForm(p => ({ ...p, amount: e.target.value }))}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
+                                    placeholder="0.00"
+                                    required
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Type</label>
+                                    <select
+                                        value={manualForm.type}
+                                        onChange={e => setManualForm(p => ({ ...p, type: e.target.value }))}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
+                                    >
+                                        <option value="payment">Payment</option>
+                                        <option value="refund">Refund</option>
+                                        <option value="adjustment">Adjustment</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Method</label>
+                                    <select
+                                        value={manualForm.method}
+                                        onChange={e => setManualForm(p => ({ ...p, method: e.target.value }))}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
+                                    >
+                                        <option value="cash">Cash</option>
+                                        <option value="pos">POS / Card</option>
+                                        <option value="viva_wallet">Viva Wallet</option>
+                                        <option value="online_deposit">Online Deposit</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Notes / Description</label>
+                                <textarea
+                                    value={manualForm.notes}
+                                    onChange={e => setManualForm(p => ({ ...p, notes: e.target.value }))}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none resize-none"
+                                    rows={3}
+                                    placeholder="Enter description or reason..."
+                                />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={() => setShowManualModal(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                                <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 bg-[#405C0B] text-white rounded-xl text-sm font-semibold hover:bg-[#304608] disabled:opacity-60">
+                                    {isSubmitting ? 'Saving...' : 'Save Record'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
 
             {/* Filters Bar */}
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-wrap gap-4 items-end">

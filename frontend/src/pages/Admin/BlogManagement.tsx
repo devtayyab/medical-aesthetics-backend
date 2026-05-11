@@ -6,6 +6,7 @@ import {
     fetchBlogPosts,
     createBlogCategory,
     createBlogPost,
+    updateBlogPost,
     toggleBlogPostStatus,
     deleteBlogPost,
     fetchUsers
@@ -28,6 +29,7 @@ export const BlogManagement: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showPostModal, setShowPostModal] = useState(false);
+    const [editingPostId, setEditingPostId] = useState<string | null>(null);
 
     // Forms state
     const [catName, setCatName] = useState('');
@@ -71,7 +73,7 @@ export const BlogManagement: React.FC = () => {
         if (!postTitle.trim() || !postContent.trim() || !postCategory) return;
         const finalSlug = postSlug.trim() || postTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-        dispatch(createBlogPost({
+        const postData = {
             title: postTitle,
             slug: finalSlug,
             content: postContent,
@@ -80,7 +82,13 @@ export const BlogManagement: React.FC = () => {
             authorId: postAuthorId,
             scheduledAt: postScheduledAt || null,
             isPublished: false
-        }));
+        };
+
+        if (editingPostId) {
+            dispatch(updateBlogPost({ id: editingPostId, data: postData }));
+        } else {
+            dispatch(createBlogPost(postData));
+        }
 
         setPostTitle('');
         setPostSlug('');
@@ -89,7 +97,32 @@ export const BlogManagement: React.FC = () => {
         setPostImageUrl('');
         setPostAuthorId('');
         setPostScheduledAt('');
+        setEditingPostId(null);
         setShowPostModal(false);
+    };
+
+    const handleEditPost = (post: any) => {
+        setPostTitle(post.title || '');
+        setPostSlug(post.slug || '');
+        setPostContent(post.content || '');
+        setPostCategory(post.categoryId || '');
+        setPostImageUrl(post.imageUrl || '');
+        setPostAuthorId(post.authorId || '');
+        setPostScheduledAt(post.scheduledAt ? new Date(post.scheduledAt).toISOString().slice(0, 16) : '');
+        setEditingPostId(post.id);
+        setShowPostModal(true);
+    };
+
+    const handleOpenNewPostModal = () => {
+        setPostTitle('');
+        setPostSlug('');
+        setPostContent('');
+        setPostCategory('');
+        setPostImageUrl('');
+        setPostAuthorId('');
+        setPostScheduledAt('');
+        setEditingPostId(null);
+        setShowPostModal(true);
     };
 
     return (
@@ -107,7 +140,7 @@ export const BlogManagement: React.FC = () => {
                         <TagIcon className="w-5 h-5" /> New Category
                     </button>
                     <button
-                        onClick={() => setShowPostModal(true)}
+                        onClick={handleOpenNewPostModal}
                         className="flex items-center gap-2 bg-[#0B1120] text-white px-4 py-2 font-bold rounded-lg hover:bg-gray-800 transition-colors"
                     >
                         <Plus className="w-5 h-5" /> New Article
@@ -191,6 +224,13 @@ export const BlogManagement: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end gap-3 transition-opacity">
                                             <button
+                                                title="Edit Post"
+                                                onClick={() => handleEditPost(post)}
+                                                className="text-gray-400 hover:text-blue-600 transition-colors"
+                                            >
+                                                <PenTool className="w-5 h-5" />
+                                            </button>
+                                            <button
                                                 title="Toggle Visibility"
                                                 onClick={() => dispatch(toggleBlogPostStatus(post))}
                                                 className="text-gray-400 hover:text-blue-600 transition-colors"
@@ -252,7 +292,7 @@ export const BlogManagement: React.FC = () => {
             {showPostModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4">New Article</h3>
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">{editingPostId ? 'Edit Article' : 'New Article'}</h3>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -341,7 +381,7 @@ export const BlogManagement: React.FC = () => {
                         </div>
                         <div className="flex justify-end gap-3 mt-6">
                             <button onClick={() => setShowPostModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-                            <button onClick={handleSavePost} disabled={!postTitle || !postCategory || !postContent} className="px-4 py-2 bg-[#CBFF38] text-[#0B1120] font-bold rounded-lg hover:bg-[#A3D900] transition-colors disabled:opacity-50">Save as Draft</button>
+                            <button onClick={handleSavePost} disabled={!postTitle || !postCategory || !postContent} className="px-4 py-2 bg-[#CBFF38] text-[#0B1120] font-bold rounded-lg hover:bg-[#A3D900] transition-colors disabled:opacity-50">{editingPostId ? 'Save Changes' : 'Save as Draft'}</button>
                         </div>
                     </div>
                 </div>

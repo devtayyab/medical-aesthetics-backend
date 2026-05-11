@@ -13,6 +13,7 @@ import { format } from "date-fns";
 export const RepeatManagement: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { customerRecord, isLoading } = useSelector((state: RootState) => state.crm);
+  const { user } = useSelector((state: RootState) => state.auth);
   const [form, setForm] = useState({
     customerId: "",
     clinicId: "",
@@ -154,7 +155,8 @@ export const RepeatManagement: React.FC = () => {
       
       const payload = {
         ...form,
-        startDate: startDateTime
+        startDate: startDateTime,
+        bookedById: user?.id
       };
       
       console.log("🚀 [RepeatManagement] Submitting recurring payload:", payload);

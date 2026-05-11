@@ -36,4 +36,8 @@ export class PaymentsService {
     async void(id: string, notes: string, recordedById: string) {
         return this.financialService.voidPayment(id, notes, recordedById);
     }
+
+    async createManualPayment(data: any) {
+        return this.financialService.recordPayment(data);
+    }
 }

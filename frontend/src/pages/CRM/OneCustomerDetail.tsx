@@ -978,7 +978,6 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                             </div>
                             <div className="flex items-center gap-4 text-slate-400 text-xs font-medium">
                                 <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-slate-500" /> {customer.email}</span>
-                                {customer.phone && <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-slate-500" /> {customer.phone}</span>}
                                 <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-slate-500" /> ID: {customer.id.slice(0, 8).toUpperCase()}</span>
                             </div>
                         </div>

@@ -133,16 +133,17 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     <div className={`${containerStyle} ${className || ""}`}>
       {/* Query Block */}
       <div className="relative" ref={searchRef}>
-        <div 
+        <div
           className={searchInputBlock}
         >
           <div className="size-12 bg-[#F8FAFC] rounded-2xl flex items-center justify-center text-gray-500">
             <Search size={20} />
           </div>
           <div className="flex-1">
-            <input 
+            <input
               className="w-full bg-transparent outline-none font-bold text-gray-900 placeholder:text-gray-900"
-              placeholder="Search privileges, clinics or contact details"
+              placeholder="Search Treatments"
+              autoComplete="one-time-code"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -154,56 +155,56 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               }}
             />
             <span className={inputSubLabel}>
-              Choose your privilege
+              Choose your treatment
             </span>
           </div>
         </div>
 
         <AnimatePresence>
           {showAutocomplete && (
-            <motion.div 
-               initial={{ opacity: 0, y: 10 }}
-               animate={{ opacity: 1, y: 0 }}
-               exit={{ opacity: 0, y: 10 }}
-               className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl z-[100] p-2 border border-gray-100 overflow-hidden"
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl z-[100] p-2 border border-gray-100 overflow-hidden"
             >
-               {/* Suggestions List */}
-               <div className="max-h-[300px] overflow-y-auto">
-                 {isSearching ? (
-                   <div className="p-4 text-center">
-                     <div className="animate-spin size-5 border-2 border-lime-500 border-t-transparent rounded-full mx-auto"></div>
-                   </div>
-                 ) : suggestions.length > 0 ? (
-                   <div className="space-y-1">
-                     <p className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400">Privileges Found</p>
-                     {suggestions.map((suggestion, idx) => (
-                       <button
-                         key={idx}
-                         onClick={() => handleSuggestionSelect(suggestion)}
-                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#CBFF38]/10 text-left transition-colors group rounded-xl"
-                       >
-                         <Sparkles size={14} className="text-[#CBFF38] group-hover:scale-110 transition-transform" />
-                         <span className="text-sm font-bold text-gray-700">{suggestion}</span>
-                       </button>
-                     ))}
-                   </div>
-                 ) : query.length > 0 ? (
-                   <div className="p-4 text-center text-sm text-gray-500">
-                     No matching privileges found
-                   </div>
-                 ) : (
-                  <div className="p-4 text-center text-sm text-gray-500 italic">
-                    Type to see privilege suggestions...
+              {/* Suggestions List */}
+              <div className="max-h-[300px] overflow-y-auto">
+                {isSearching ? (
+                  <div className="p-4 text-center">
+                    <div className="animate-spin size-5 border-2 border-lime-500 border-t-transparent rounded-full mx-auto"></div>
                   </div>
-                 )}
-               </div>
+                ) : suggestions.length > 0 ? (
+                  <div className="space-y-1">
+                    <p className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400">Treatments Found</p>
+                    {suggestions.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSuggestionSelect(suggestion)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#CBFF38]/10 text-left transition-colors group rounded-xl"
+                      >
+                        <Sparkles size={14} className="text-[#CBFF38] group-hover:scale-110 transition-transform" />
+                        <span className="text-sm font-bold text-gray-700">{suggestion}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : query.length > 0 ? (
+                  <div className="p-4 text-center text-sm text-gray-500">
+                    No matching treatments found
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-sm text-gray-500 italic">
+                    Type to see treatment suggestions...
+                  </div>
+                )}
+              </div>
 
-               <button 
-                 onClick={() => handleSearchClick()}
-                 className="w-full bg-[#CBFF38] text-black h-12 rounded-xl font-black uppercase text-[10px] tracking-widest italic flex items-center justify-center gap-2 mt-2"
-               >
-                 Search Now <Search size={14} />
-               </button>
+              <button
+                onClick={() => handleSearchClick()}
+                className="w-full bg-[#CBFF38] text-black h-12 rounded-xl font-black uppercase text-[10px] tracking-widest italic flex items-center justify-center gap-2 mt-2"
+              >
+                Search Now <Search size={14} />
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -211,7 +212,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
       {/* Date Block */}
       <div className="relative" ref={dateRef}>
-        <div 
+        <div
           className={searchInputBlock}
           onClick={() => setShowDatePicker(!showDatePicker)}
         >
@@ -228,14 +229,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
         <AnimatePresence>
           {showDatePicker && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl z-[100] p-4 border border-gray-100"
             >
-              <input 
-                type="date" 
+              <input
+                type="date"
                 className="w-full p-3 bg-gray-50 rounded-xl outline-none font-bold"
                 value={searchDate || ""}
                 onChange={(e) => { setSearchDate(e.target.value); setShowDatePicker(false); }}

@@ -863,6 +863,20 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
+                          {task.actionType === 'appointment' && (
+                            <Button
+                              size="xs"
+                              variant="white"
+                              className="h-8 w-8 p-0 bg-white border-slate-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-all shadow-sm"
+                              title="Open Sales Plan"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate('/crm/calendar');
+                              }}
+                            >
+                              <Calendar className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             size="xs"
                             variant="white"

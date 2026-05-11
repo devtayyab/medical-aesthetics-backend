@@ -21,6 +21,7 @@ import { ClinicsService } from '../clinics/clinics.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
+import { TreatmentStatus } from '../clinics/enums/treatment-status.enum';
 
 @Injectable()
 export class AdminService {
@@ -281,7 +282,7 @@ export class AdminService {
     }
     const treatment = this.treatmentsRepository.create(finalData as DeepPartial<Treatment>);
     
-    if (treatment.status === 'approved') {
+    if (treatment.status === TreatmentStatus.APPROVED) {
        if (!treatment.categoryId && !treatment.category) throw new BadRequestException('Category is required for approved therapies');
        if (!treatment.shortDescription) throw new BadRequestException('Short description is required for approved therapies');
        if (!treatment.fullDescription) throw new BadRequestException('Full description is required for approved therapies');
@@ -310,7 +311,7 @@ export class AdminService {
     }
 
     if (Object.keys(filteredData).length > 0) {
-      if (filteredData.status === 'approved' || (filteredData.status === undefined && (await this.treatmentsRepository.findOne({where: {id}}))?.status === 'approved')) {
+      if (filteredData.status === TreatmentStatus.APPROVED || (filteredData.status === undefined && (await this.treatmentsRepository.findOne({where: {id}}))?.status === TreatmentStatus.APPROVED)) {
          const t = filteredData;
          // Check if existing record also lacks these
          const existing = await this.treatmentsRepository.findOne({where: {id}});

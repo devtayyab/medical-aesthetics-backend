@@ -230,7 +230,7 @@ export const Treatments: React.FC = () => {
                                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6 italic">Featured Procedures</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {cat.treatments.map((t, i) => (
-                                            <div key={i} className={subTreatmentCard} onClick={() => navigate('/search')}>
+                                            <div key={i} className={subTreatmentCard} onClick={() => navigate(`/search?query=${encodeURIComponent(t.name)}`)}>
                                                 <div className="size-12 rounded-xl overflow-hidden shrink-0">
                                                     <img src={t.img} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" alt={t.name} />
                                                 </div>
@@ -242,7 +242,7 @@ export const Treatments: React.FC = () => {
 
                                 <div className="mt-12 pt-8 border-t border-gray-50">
                                     <button
-                                        onClick={() => navigate(`/search?category=${cat.id}`)}
+                                        onClick={() => navigate('/search')}
                                         className="w-full h-14 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center gap-4 font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-lime-500 hover:text-black transition-all active:scale-95 shadow-2xl"
                                     >
                                         Examine Category <ChevronRight size={14} />

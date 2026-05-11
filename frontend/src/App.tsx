@@ -1062,7 +1062,7 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
-      <Toaster position="top-right" reverseOrder={false} />
+      <Toaster position="top-right" reverseOrder={false} containerStyle={{ zIndex: 999999 }} />
       <GlobalDialer />
       <Router>
         <AppContent />

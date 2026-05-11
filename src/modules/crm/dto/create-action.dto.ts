@@ -52,10 +52,11 @@ export class CreateActionDto {
   @Type(() => Date)
   dueDate?: Date;
 
-  @ApiProperty({ example: '2025-10-29T09:00:00Z', required: true })
+  @ApiProperty({ example: '2025-10-29T09:00:00Z', required: false })
+  @IsOptional()
   @IsDate()
   @Type(() => Date)
-  reminderDate: Date;
+  reminderDate?: Date;
 
   @ApiProperty({ example: '2025-10-30T12:00:00Z', required: false })
   @IsOptional()
