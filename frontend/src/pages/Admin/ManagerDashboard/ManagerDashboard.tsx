@@ -29,7 +29,7 @@ import { Analytics } from '@/pages/CRM/Analytics';
 import { fetchServices, fetchAvailability, fetchClinicProviders } from '@/store/slices/clinicSlice';
 import { RootState } from '@/store';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
-import { GlobalCalendar } from '@/components/organisms/GlobalCalendar/GlobalCalendar';
+import { SalesWeekCalendar } from '@/pages/CRM/SalesWeekCalendar';
 import { DataTable } from '../../../components/ui/DataTable';
 import { fetchAgentKpis, fetchServiceStats, fetchClinicAnalytics, ClinicAnalytics, fetchPerformanceDashboard } from '../../../services/managerAnalytics.service';
 import { Input } from '@/components/atoms/Input/Input';
@@ -204,7 +204,7 @@ export const ManagerDashboard = () => {
       alert('Please fill all required fields (Name, Email, Password)');
       return;
     }
-    
+
     if (newAgentData.password.length < 8) {
       alert('Password must be at least 8 characters long');
       return;
@@ -216,7 +216,7 @@ export const ManagerDashboard = () => {
       if (!dataToSubmit.phone || dataToSubmit.phone.trim() === '') {
         delete (dataToSubmit as any).phone;
       }
-      
+
       await userAPI.createUser(dataToSubmit);
       setShowAddAgentModal(false);
       setNewAgentData({
@@ -365,8 +365,8 @@ export const ManagerDashboard = () => {
           </TabsList>
 
           <TabsContent value="calendar" className="h-[calc(100vh-200px)]">
-            <StaffDiary 
-              clinicId={selectedClinic.clinicId} 
+            <StaffDiary
+              clinicId={selectedClinic.clinicId}
               onNewAppointment={() => {
                 alert('To create a new appointment, please select a customer from the CRM/Customers page first.');
               }}
@@ -512,7 +512,7 @@ export const ManagerDashboard = () => {
         {/* Premium Header Architecture */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/20">
           <div className="flex items-center gap-6">
-            <button 
+            <button
               onClick={() => {
                 setSelectedAgent(null);
                 dispatch(setLeadFilters({}));
@@ -546,13 +546,13 @@ export const ManagerDashboard = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="hidden lg:flex flex-col gap-1 px-4 border-l border-slate-100">
-               <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">Mission Velocity</span>
-               <div className="flex items-center gap-2">
-                  <TrendingUp size={12} className="text-[#CBFF38]" />
-                  <span className="text-xs font-black text-slate-900">{(selectedAgent.conversionRate * 100).toFixed(1)}%</span>
-               </div>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">Mission Velocity</span>
+              <div className="flex items-center gap-2">
+                <TrendingUp size={12} className="text-[#CBFF38]" />
+                <span className="text-xs font-black text-slate-900">{(selectedAgent.conversionRate * 100).toFixed(1)}%</span>
+              </div>
             </div>
           </div>
         </div>
@@ -562,20 +562,20 @@ export const ManagerDashboard = () => {
           <Tabs defaultValue="diary" className="w-full">
             <div className="flex items-center justify-center lg:justify-start mb-8">
               <TabsList className="bg-slate-100/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/50">
-                <TabsTrigger 
-                  value="diary" 
+                <TabsTrigger
+                  value="diary"
                   className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
                 >
                   Sales Diary
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="leads" 
+                <TabsTrigger
+                  value="leads"
                   className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
                 >
                   Assigned Leads
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="performance" 
+                <TabsTrigger
+                  value="performance"
                   className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
                 >
                   Analytics
@@ -685,8 +685,8 @@ export const ManagerDashboard = () => {
             Agents
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="calendar-global">
-          <GlobalCalendar />
+        <TabsContent value="calendar-global" className="h-[calc(100vh-200px)]">
+          <SalesWeekCalendar />
         </TabsContent>
 
 

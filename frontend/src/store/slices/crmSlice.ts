@@ -532,6 +532,22 @@ export const fetchSalesActivities = createAsyncThunk(
   }
 );
 
+export const reassignCustomer = createAsyncThunk(
+  "crm/reassignCustomer",
+  async (data: { customerId: string; salespersonId: string }) => {
+    const response = await crmAPI.reassignCustomer(data.customerId, data.salespersonId);
+    return response.data;
+  }
+);
+
+export const fetchSuperAdminStats = createAsyncThunk(
+  "crm/fetchSuperAdminStats",
+  async (params: { startDate?: string; endDate?: string }) => {
+    const response = await crmAPI.getSuperAdminDashboardStats(params);
+    return response.data;
+  }
+);
+
 const crmSlice = createSlice({
   name: "crm",
   initialState,
@@ -797,6 +813,16 @@ const crmSlice = createSlice({
       })
       .addCase(fetchSalespersons.fulfilled, (state, action) => {
         state.salespersons = action.payload;
+      })
+      .addCase(reassignCustomer.fulfilled, (state, action) => {
+        // Optionally update local leads if they are in the state
+        const index = state.leads.findIndex(l => l.id === action.payload.id);
+        if (index !== -1) {
+          state.leads[index] = action.payload;
+        }
+      })
+      .addCase(fetchSuperAdminStats.fulfilled, (state, action) => {
+        state.analytics = { ...state.analytics, ...action.payload };
       })
       .addCase(fetchSalesActivities.fulfilled, (state, action) => {
         state.diaryActivities = action.payload;

@@ -84,8 +84,7 @@ const managerLinks: SidebarItem[] = [
 
   { path: "/crm/analytics", label: "Sales Analytics", icon: <BarChart2 className="w-5 h-5" />, group: "Intelligence" },
   { path: "/admin/clinic-analytics", label: "Clinic Analytics", icon: <Building2 className="w-5 h-5" />, group: "Intelligence" },
-  { path: "/crm/calendar", label: "Sales Week Calendar", icon: <Calendar className="w-5 h-5" />, group: "Intelligence" },
-  { path: "/admin/manager-dashboard?tab=calendar-global", label: "Global Calendar", icon: <CalendarRange className="w-5 h-5" />, group: "Intelligence" },
+  { path: "/crm/calendar", label: "Global Calendar", icon: <Calendar className="w-5 h-5" />, group: "Intelligence" },
   { path: "/admin/manager-crm/calls", label: "Calls", icon: <Phone className="w-5 h-5" />, group: "Intelligence" },
 
   { path: "/admin/manager-crm/reports", label: "Reports", icon: <FileText className="w-5 h-5" />, group: "Analytics" },
