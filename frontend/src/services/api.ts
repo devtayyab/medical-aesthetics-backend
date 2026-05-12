@@ -460,6 +460,12 @@ export const crmAPI = {
   getCustomersDueForFollowUp: (salespersonId?: string, daysThreshold?: number) =>
     api.get("/crm/follow-up", { params: { salespersonId, daysThreshold } }),
 
+  // Reassignment & Dashboard
+  reassignCustomer: (customerId: string, salespersonId: string) =>
+    api.post(`/crm/customers/${customerId}/reassign`, { salespersonId }),
+  getSuperAdminDashboardStats: (params: { startDate?: string; endDate?: string }) =>
+    api.get("/crm/analytics/super-admin/dashboard", { params }),
+
   // Legacy methods (keeping for backward compatibility)
   logAction: (customerId: string, data: { type: string; notes: string }) =>
     api.post("/crm/actions", { customerId, ...data }),

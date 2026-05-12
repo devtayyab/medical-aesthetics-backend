@@ -711,4 +711,27 @@ export class CrmController {
   testFacebookConnection() {
     return this.crmService.testFacebookConnection();
   }
+
+  @Post('customers/:id/reassign')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Reassign customer to a different salesperson' })
+  reassignCustomer(
+    @Param('id') customerId: string,
+    @Body('salespersonId') salespersonId: string,
+  ) {
+    return this.crmService.reassignCustomer(customerId, salespersonId);
+  }
+
+  @Get('analytics/super-admin/dashboard')
+  @Roles(UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Super Admin Dashboard Stats (Turnover, Appointments, Tasks)' })
+  getSuperAdminDashboardStats(@Query() query: { startDate?: string; endDate?: string }) {
+    const filters = {
+      startDate: query.startDate ? new Date(query.startDate) : undefined,
+      endDate: query.endDate ? new Date(query.endDate) : undefined,
+    };
+    return this.crmService.getSuperAdminDashboardStats(filters);
+  }
 }

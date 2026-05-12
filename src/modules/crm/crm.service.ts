@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In, DataSource, IsNull, Not } from 'typeorm';
+import { Repository, Between, In, DataSource, IsNull, Not, LessThan } from 'typeorm';
 import { validate as isUuid } from 'uuid';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { Lead } from './entities/lead.entity';
@@ -3817,7 +3817,7 @@ export class CrmService implements OnModuleInit {
   async getSalespersons(): Promise<any[]> {
     const users = await this.usersRepository.find({
       where: {
-        role: In([UserRole.SALESPERSON, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT]),
+        role: UserRole.SALESPERSON,
         isActive: true
       },
       select: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePictureUrl', 'role'],
@@ -4336,4 +4336,90 @@ export class CrmService implements OnModuleInit {
     };
   }
 
+  async reassignCustomer(customerId: string, newSalespersonId: string): Promise<any> {
+    const salesperson = await this.usersRepository.findOne({ where: { id: newSalespersonId, role: UserRole.SALESPERSON } });
+    if (!salesperson) {
+      throw new NotFoundException(`Salesperson not found with ID: ${newSalespersonId}`);
+    }
+
+    const lead = await this.leadsRepository.findOne({ where: { id: customerId } });
+    if (lead) {
+      lead.assignedSalesId = newSalespersonId;
+      await this.leadsRepository.save(lead);
+    }
+
+    const customerRecord = await this.customerRecordsRepository.findOne({ where: { customerId: customerId } });
+    if (customerRecord) {
+      customerRecord.assignedSalespersonId = newSalespersonId;
+      await this.customerRecordsRepository.save(customerRecord);
+    }
+
+    // Update pending actions too
+    await this.crmActionsRepository.update(
+      { customerId: customerId, status: 'pending' },
+      { salespersonId: newSalespersonId }
+    );
+
+    return { success: true, message: `Customer reassigned to ${salesperson.firstName} ${salesperson.lastName}` };
+  }
+
+  async getSuperAdminDashboardStats(filters: { startDate?: Date; endDate?: Date }): Promise<any> {
+    const { startDate, endDate } = filters;
+
+    // 1. Clinic Turnover (Revenue)
+    const revenueQuery = this.dataSource.createQueryBuilder(Appointment, 'a')
+      .select('SUM(a.amountPaid)', 'total')
+      .where('a.status = :status', { status: AppointmentStatus.COMPLETED });
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      revenueQuery.andWhere('a.startTime BETWEEN :start AND :end', { start, end });
+    }
+    const { total: totalRevenue } = await revenueQuery.getRawOne();
+
+    // 2. Appointment Counts
+    const aptCounts = await this.appointmentsRepository.createQueryBuilder('a')
+      .select('a.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('a.status')
+      .getRawMany();
+
+    const totalApts = aptCounts.reduce((sum, item) => sum + parseInt(item.count), 0);
+    const completedApts = aptCounts.find(c => c.status === AppointmentStatus.COMPLETED)?.count || 0;
+
+    // 3. Overdue Tasks
+    const overdueTasks = await this.crmActionsRepository.count({
+      where: {
+        status: 'pending',
+        dueDate: LessThan(new Date())
+      }
+    });
+
+    // 4. Sales Person Task KPIs
+    const salespersons = await this.usersRepository.find({ where: { role: UserRole.SALESPERSON } });
+    const salesPerformance = await Promise.all(salespersons.map(async (sp) => {
+      const counts = await this.crmActionsRepository.createQueryBuilder('action')
+        .select('action.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .where('action.salespersonId = :sid', { sid: sp.id })
+        .groupBy('action.status')
+        .getRawMany();
+
+      return {
+        id: sp.id,
+        name: `${sp.firstName} ${sp.lastName}`,
+        stats: counts
+      };
+    }));
+
+    return {
+      turnover: { totalPaid: parseFloat(totalRevenue || 0) },
+      appointments: { total: totalApts, completed: parseInt(completedApts as any) },
+      tasks: { overdue: overdueTasks },
+      salesPerformance
+    };
+  }
 }

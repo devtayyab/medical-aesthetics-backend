@@ -904,15 +904,25 @@ export class BookingsService {
         queryBuilder.andWhere('appointment.status = :status', { status: query.status.toUpperCase() });
       }
       if (query.startDate && query.endDate) {
+        const start = new Date(query.startDate);
+        start.setDate(start.getDate() - 1);
+        const end = new Date(query.endDate);
+        end.setDate(end.getDate() + 1);
+
         queryBuilder.andWhere('appointment.startTime BETWEEN :start AND :end', { 
-          start: new Date(query.startDate + 'T00:00:00.000Z'), 
-          end: new Date(query.endDate + 'T23:59:59.999Z') 
+          start: new Date(start.setHours(0, 0, 0, 0)), 
+          end: new Date(end.setHours(23, 59, 59, 999)) 
         });
       } else if (query.date) {
         const date = new Date(query.date);
-        const start = new Date(date).setHours(0, 0, 0, 0);
-        const end = new Date(date).setHours(23, 59, 59, 999);
-        queryBuilder.andWhere('appointment.startTime BETWEEN :start AND :end', { start: new Date(start), end: new Date(end) });
+        const start = new Date(date);
+        start.setDate(start.getDate() - 1);
+        const end = new Date(date);
+        end.setDate(end.getDate() + 1);
+        queryBuilder.andWhere('appointment.startTime BETWEEN :start AND :end', { 
+          start: new Date(start.setHours(0, 0, 0, 0)), 
+          end: new Date(end.setHours(23, 59, 59, 999)) 
+        });
       }
       if (query.clinicId) queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
       if (query.providerId) {

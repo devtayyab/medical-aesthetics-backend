@@ -109,6 +109,7 @@ import { ChangePassword } from "@/pages/Account/ChangePassword";
 import { Toaster } from "react-hot-toast";
 import { MessagesPage } from "@/pages/Messages/MessagesPage";
 import { SalesWeekCalendar } from "./pages/CRM/SalesWeekCalendar";
+import { AdminSuperCalendar } from "./pages/Admin/AdminSuperCalendar";
 import { initializeFirebase } from "@/services/firebase";
 import { GlobalDialer } from "./components/crm/GlobalDialer";
 
@@ -794,6 +795,16 @@ function AppContent() {
               <ProtectedLayout allowedRoles={["admin", "SUPER_ADMIN", "manager"]}>
                 <AdminLayout>
                   <AdminTherapyCatalog />
+                </AdminLayout>
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/admin/super-calendar"
+            element={
+              <ProtectedLayout allowedRoles={["SUPER_ADMIN", "manager"]}>
+                <AdminLayout>
+                  <AdminSuperCalendar />
                 </AdminLayout>
               </ProtectedLayout>
             }
