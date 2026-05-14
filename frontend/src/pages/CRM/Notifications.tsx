@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, CheckCircle, Clock, CheckCheck } from "lucide-react";
+import { Bell, CheckCircle, Clock, CheckCheck, Users } from "lucide-react";
 import { fetchNotifications, markAsRead, markAllAsRead } from "@/store/slices/notificationsSlice";
 import type { RootState, AppDispatch } from "@/store";
 import { Card, CardContent } from "@/components/molecules/Card/Card";
@@ -18,20 +18,20 @@ export const Notifications: React.FC = () => {
     }, [dispatch]);
 
 
-    const getIcon = (type: string) => {
-        switch (type) {
-            case 'appointment': return <Clock className="w-5 h-5 text-blue-600" />;
-            case 'task': return <CheckCircle className="w-5 h-5 text-amber-600" />;
-            default: return <Bell className="w-5 h-5 text-gray-600" />;
-        }
+    const getIcon = (notif: any) => {
+        const type = notif.data?.type || notif.type;
+        if (type?.includes('appointment')) return <Clock className="w-5 h-5 text-blue-600" />;
+        if (type?.includes('task')) return <CheckCircle className="w-5 h-5 text-amber-600" />;
+        if (type?.includes('lead')) return <Users className="w-5 h-5 text-emerald-600" />;
+        return <Bell className="w-5 h-5 text-gray-600" />;
     };
-
-    const getBgColor = (type: string) => {
-        switch (type) {
-            case 'appointment': return 'bg-blue-50';
-            case 'task': return 'bg-amber-50';
-            default: return 'bg-gray-50';
-        }
+    
+    const getBgColor = (notif: any) => {
+        const type = notif.data?.type || notif.type;
+        if (type?.includes('appointment')) return 'bg-blue-50';
+        if (type?.includes('task')) return 'bg-amber-50';
+        if (type?.includes('lead')) return 'bg-emerald-50';
+        return 'bg-gray-50';
     };
 
     return (
@@ -107,7 +107,7 @@ export const Notifications: React.FC = () => {
                                     <div className={`size-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
                                         !notif.isRead ? 'bg-black text-[#CBFF38]' : 'bg-gray-50 text-gray-400 group-hover:bg-black group-hover:text-[#CBFF38]'
                                     }`}>
-                                        {getIcon(notif.type || 'general')}
+                                        {getIcon(notif)}
                                     </div>
                                     
                                     <div className="flex-1 min-w-0">

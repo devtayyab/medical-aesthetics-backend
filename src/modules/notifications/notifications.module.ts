@@ -9,12 +9,13 @@ import { NotificationProcessor } from './processors/notification.processor';
 import { NotificationsGateway } from './gateways/notifications.gateway';
 import { Notification } from './entities/notification.entity';
 import { NotificationTemplate } from './entities/notification-template.entity';
+import { Clinic } from '../clinics/entities/clinic.entity';
 import { UsersModule } from '../users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification, NotificationTemplate]),
+    TypeOrmModule.forFeature([Notification, NotificationTemplate, Clinic]),
     BullModule.registerQueue({
       name: 'notifications',
     }),

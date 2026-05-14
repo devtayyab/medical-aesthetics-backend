@@ -10,6 +10,7 @@ import { UserRole } from '../../common/enums/user-role.enum';
 import { NotificationsGateway } from './gateways/notifications.gateway';
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 import { NotificationTemplate } from './entities/notification-template.entity';
+import { Clinic } from '../clinics/entities/clinic.entity';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
@@ -20,6 +21,8 @@ export class NotificationsService implements OnModuleInit {
     private notificationsRepository: Repository<Notification>,
     @InjectRepository(NotificationTemplate)
     private templateRepository: Repository<NotificationTemplate>,
+    @InjectRepository(Clinic)
+    private clinicRepository: Repository<Clinic>,
     @InjectQueue('notifications')
     private notificationsQueue: Queue,
     private usersService: UsersService,
@@ -255,14 +258,20 @@ export class NotificationsService implements OnModuleInit {
     message: string,
     data?: any,
   ): Promise<{ sentTo: number }> {
-    // Find all users related to this clinic (Owners, Secretariat, Doctors)
+    // Find the clinic to get the owner
+    const clinic = await this.clinicRepository.findOne({ where: { id: clinicId } });
+    
+    // Find all users related to this clinic (Secretariat, Doctors)
     const users = await this.usersService.findAll({ isActive: true });
     const clinicStaff = users.filter(u => 
       u.assignedClinicId === clinicId || 
       [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(u.role as UserRole)
     );
 
-    const recipientIds = clinicStaff.map(u => u.id);
+    const recipientIds = [...new Set([
+        ...clinicStaff.map(u => u.id),
+        ...(clinic?.ownerId ? [clinic.ownerId] : [])
+    ])];
 
     if (recipientIds.length === 0) return { sentTo: 0 };
 

@@ -50,6 +50,18 @@ export class EventHandlersService {
       lead.id,
       followUpDue,
     );
+
+    // Notify associated clinics if any
+    if (lead.clinics && Array.isArray(lead.clinics)) {
+      for (const clinic of lead.clinics) {
+        await this.notificationsService.notifyClinicStaff(
+          clinic.id,
+          'New Lead Interest',
+          `A new lead ${lead.fullName} is interested in your clinic (Source: ${lead.source}).`,
+          { leadId: lead.id }
+        );
+      }
+    }
   }
 
   @OnEvent('appointment.created')
@@ -222,6 +234,38 @@ export class EventHandlersService {
         `Congratulations! You've been upgraded to ${balance.tier.toUpperCase()} tier`,
         { tier: balance.tier },
       );
+    }
+  }
+
+  @OnEvent('task.created')
+  async handleTaskCreated(task: any) {
+    this.logger.log(`Handling task created event for task ${task.id}`);
+    
+    if (task.assigneeId) {
+      await this.notificationsService.create(
+        task.assigneeId,
+        NotificationType.PUSH,
+        'New Task Assigned',
+        `You have a new task: ${task.title}. Due on ${new Date(task.dueDate).toLocaleDateString()}`,
+        { taskId: task.id }
+      );
+    }
+  }
+
+  @OnEvent('task.status.changed')
+  async handleTaskStatusChanged(eventData: any) {
+    const { task, oldStatus, newStatus } = eventData;
+    this.logger.log(`Task ${task.id} status changed from ${oldStatus} to ${newStatus}`);
+
+    if (newStatus === 'completed' && task.creatorId && task.creatorId !== task.assigneeId) {
+        // Notify creator if someone else completed the task
+        await this.notificationsService.create(
+            task.creatorId,
+            NotificationType.PUSH,
+            'Task Completed',
+            `The task "${task.title}" you assigned has been marked as completed.`,
+            { taskId: task.id }
+        );
     }
   }
 
