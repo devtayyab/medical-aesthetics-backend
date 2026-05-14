@@ -19,7 +19,7 @@ const dropdownStyle = css`
   border: 1px solid #f0f0f0;
   z-index: 1001;
   overflow: hidden;
-  max-height: 600px;
+  max-height: min(600px, calc(100vh - 100px));
   display: flex;
   flex-direction: column;
   animation: slide-in 0.2s ease-out;

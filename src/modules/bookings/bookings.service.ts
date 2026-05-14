@@ -796,13 +796,17 @@ export class BookingsService {
 
     // Trigger Notification
     if (appointment.clientId) {
-      await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_RESCHEDULED, appointment.clientId, {
-        customerName: `${appointment.client?.firstName || 'Customer'}`,
-        serviceName: appointment.service?.treatment?.name || 'Treatment',
-        appointmentDate: appointment.startTime.toLocaleDateString(),
-        appointmentTime: appointment.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        clinicName: appointment.clinic?.name,
-      });
+      try {
+        await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_RESCHEDULED, appointment.clientId, {
+          customerName: `${appointment.client?.firstName || 'Customer'}`,
+          serviceName: appointment.service?.treatment?.name || 'Treatment',
+          appointmentDate: appointment.startTime.toLocaleDateString(),
+          appointmentTime: appointment.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          clinicName: appointment.clinic?.name,
+        });
+      } catch (error) {
+        console.error('Failed to send reschedule notification:', error);
+      }
     }
 
     // Notify Staff

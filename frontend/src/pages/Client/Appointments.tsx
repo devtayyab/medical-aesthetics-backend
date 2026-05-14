@@ -109,18 +109,8 @@ export const Appointments: React.FC = () => {
     dispatch(fetchUserAppointments());
   }, [dispatch]);
 
-  const isPastCutoff = (startTime: string) => {
-    const aptTime = new Date(startTime).getTime();
-    const now = new Date().getTime();
-    const _24Hours = 24 * 60 * 60 * 1000;
-    return (aptTime - now) < _24Hours;
-  };
 
   const handleCancelClick = async (apt: Appointment) => {
-    if (isPastCutoff(apt.startTime)) {
-      window.alert("Cancellations are not allowed within 24 hours of the appointment.");
-      return;
-    }
     if (window.confirm("Are you sure you want to cancel this reservation?")) {
       await dispatch(cancelAppointment(apt.id));
       dispatch(fetchUserAppointments());
@@ -128,10 +118,6 @@ export const Appointments: React.FC = () => {
   };
 
   const handleRescheduleClick = (apt: Appointment) => {
-    if (isPastCutoff(apt.startTime)) {
-      window.alert("Rescheduling is not allowed within 24 hours.");
-      return;
-    }
     setReschedulingAppointment(apt);
   };
 

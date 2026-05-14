@@ -134,10 +134,14 @@ export const SalesWeekCalendar: React.FC = () => {
                 date: format(viewDate, 'yyyy-MM-dd'),
                 serviceId: 'all'
             } as any));
+        } else if (availableClinics.length > 0) {
+            // For 'all' clinics, we might want to fetch availability for each or a combined view
+            // For now, let's at least fetch for the first one or skip if too complex
         }
+        
         console.log('[SalesWeekCalendar] Fetching appointments with currentFilters:', currentFilters);
         dispatch(fetchClinicAppointments(currentFilters));
-    }, [dispatch, currentFilters]);
+    }, [dispatch, currentFilters, availableClinics, selectedClinicId, viewDate]);
 
     useEffect(() => {
         if (searchQuery.length > 2) {
@@ -499,17 +503,10 @@ export const SalesWeekCalendar: React.FC = () => {
                                             }
                                         }
 
-                                        // Check if this hour is blocked
-                                        const isBlocked = availability?.blockedTimeSlots?.some(slot => {
-                                            const slotStart = new Date(slot.startTime);
-                                            if (!isSameDay(slotStart, day)) return false;
-                                            return slotStart.getHours() === hour;
-                                        });
-
                                         return (
                                             <div
                                                 key={hour}
-                                                className={`h-16 border-b border-gray-50/50 w-full hover:bg-indigo-50/10 cursor-alias relative ${isClosed ? 'bg-gray-100/50 pattern-diagonal-lines' : ''} ${isBlocked ? 'bg-orange-50/30' : ''}`}
+                                                className={`h-16 border-b border-gray-50/50 w-full hover:bg-indigo-50/10 cursor-alias relative ${isClosed ? 'bg-gray-100/50 pattern-diagonal-lines' : ''}`}
                                                 onClick={(e) => {
                                                     if (isClosed) return;
                                                     const rect = e.currentTarget.getBoundingClientRect();
@@ -525,11 +522,6 @@ export const SalesWeekCalendar: React.FC = () => {
                                                 {isClosed && hour === 12 && (
                                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                                         <span className="text-[10px] font-bold text-gray-400 rotate-[-15deg] uppercase tracking-widest">Closed</span>
-                                                    </div>
-                                                )}
-                                                {isBlocked && (
-                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                        <span className="text-[8px] font-bold text-orange-400/60 uppercase tracking-tighter">Blocked</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -591,6 +583,29 @@ export const SalesWeekCalendar: React.FC = () => {
                                         );
                                     })}
                                     
+                                    {/* Blocked Time Slots */}
+                                    {availability?.blockedTimeSlots?.filter(slot => isSameDay(parseISO(slot.startTime), day)).map(slot => {
+                                        const start = parseISO(slot.startTime);
+                                        const end = parseISO(slot.endTime);
+                                        const top = start.getHours() * 64 + (start.getMinutes() / 60) * 64;
+                                        const durationHours = (end.getTime() - start.getTime()) / 3600000;
+                                        const height = Math.max(durationHours * 64, 32);
+
+                                        return (
+                                            <div
+                                                key={slot.id}
+                                                className="absolute left-1 right-1 rounded-md border-2 border-dashed border-orange-200 bg-orange-50/40 z-10 flex items-center justify-center overflow-hidden"
+                                                style={{ top, height }}
+                                                title={`Blocked: ${slot.reason || 'No reason'}`}
+                                            >
+                                                <div className="flex flex-col items-center justify-center p-1 text-center">
+                                                    <span className="text-[8px] font-black text-orange-600 uppercase tracking-tighter leading-none">BLOCKED</span>
+                                                    {height > 40 && <span className="text-[7px] font-bold text-orange-500/70 truncate w-full px-1">{slot.reason || 'Unavailable'}</span>}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
                                     {isToday(day) && (
                                         <div 
                                             className="absolute left-0 right-0 border-t-2 border-red-500 z-30 pointer-events-none"

@@ -47,6 +47,15 @@ export class FinancialService {
             `A payment of ${savedPayment.amount} has been recorded via ${savedPayment.method}.`,
             { paymentId: savedPayment.id }
           );
+
+          if (savedPayment.clinicId) {
+            this.notificationsService.notifyClinicStaff(
+              savedPayment.clinicId,
+              'Clinic Payment Received',
+              `Payment of ${savedPayment.amount} recorded for your clinic.`,
+              { paymentId: savedPayment.id, amount: savedPayment.amount }
+            );
+          }
         }
 
         // Update appointment if linked

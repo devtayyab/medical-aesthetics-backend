@@ -1,9 +1,10 @@
-﻿import React from "react";
+import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { css } from "@emotion/css";
 import { FaChevronRight, FaArrowRight } from "react-icons/fa6";
 import { FaGift, FaWallet, FaHeadset, FaGlobe, FaShieldAlt, FaStar } from "react-icons/fa";
 import LayeredBG from "@/assets/LayeredBg.svg";
+import HeroBg from "@/assets/explore_services_bg.png";
 import { motion } from "framer-motion";
 
 const containerStyle = css`
@@ -64,23 +65,32 @@ export const Services: React.FC = () => {
     return (
         <div className="min-h-screen bg-[#FDFDFD] pb-24">
             {/* Hero Header */}
-            <div className="bg-[#1A1A1A] text-white pt-16 pb-28 px-6 relative overflow-hidden">
-                <div className="max-w-6xl mx-auto relative z-10 text-center">
-                    <div className="flex items-center justify-center gap-4 mb-4 text-[#CBFF38] text-[10px] font-black uppercase tracking-[0.2em] italic">
+            <div className="bg-[#1A1A1A] text-white pt-16 pb-28 px-6 relative overflow-hidden h-[500px] flex items-center">
+                {/* Background Image with Overlay */}
+                <div className="absolute inset-0 z-0">
+                    <img 
+                        src={HeroBg} 
+                        className="w-full h-full object-cover opacity-40"
+                        alt="Services Background"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-[#FDFDFD]" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/60" />
+                </div>
+
+                <div className="max-w-6xl mx-auto relative z-10 text-center w-full">
+                    <div className="flex items-center justify-center gap-4 mb-6 text-[#CBFF38] text-[10px] font-black uppercase tracking-[0.2em] italic">
                         <Link to="/" className="hover:opacity-80 transition-opacity">Home</Link>
                         <FaChevronRight size={10} />
                         <span>Other Services</span>
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-tight mb-4">
+                    <h1 className="text-6xl md:text-8xl font-black uppercase italic tracking-tighter leading-tight mb-6">
                         Explore<br/>
                         <span className="text-[#CBFF38]">Services</span>
                     </h1>
-                    <p className="text-gray-400 font-medium max-w-2xl mx-auto text-lg italic">
+                    <p className="text-gray-200 font-bold max-w-2xl mx-auto text-xl italic leading-relaxed">
                         Beyond world-class treatments, we offer full-spectrum services to enhance your aesthetics journey and reward your loyalty.
                     </p>
                 </div>
-                <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#CBFF38]/10 to-transparent pointer-events-none" />
-                <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style={{ backgroundImage: `url(${LayeredBG})`, backgroundSize: 'cover' }} />
             </div>
 
             <div className={containerStyle + " -mt-16 relative z-20"}>
