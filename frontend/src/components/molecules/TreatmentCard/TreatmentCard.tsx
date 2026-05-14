@@ -119,7 +119,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                                 className="flex items-center gap-2 bg-[#CBFF38]/20 backdrop-blur-xl border border-[#CBFF38]/40 text-[#CBFF38] px-5 py-2.5 rounded-full text-[10px] font-black uppercase italic tracking-[0.2em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl"
                             >
                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                View Protocol
+                                View Treatment
                             </button>
                         </div>
 
