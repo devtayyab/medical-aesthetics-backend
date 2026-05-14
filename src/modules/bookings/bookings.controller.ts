@@ -9,6 +9,7 @@ import {
   UseGuards,
   Request,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
@@ -126,17 +127,39 @@ export class BookingsController {
     @Request() req,
   ) {
     const appointment = await this.bookingsService.findById(id);
-    const timeDiff = new Date(appointment.startTime).getTime() - Date.now();
-    if (timeDiff < 24 * 60 * 60 * 1000 && req.user.role === 'client') {
-      throw new BadRequestException('Cannot reschedule within 24 hours of appointment');
+    
+    console.log('[Reschedule Debug]', {
+      userId: req.user.id,
+      userRole: req.user.role,
+      appointmentClientId: appointment.clientId,
+      appointmentId: id
+    });
+
+    // Security check: Ensure clients can only reschedule their own appointments
+    const isClient = req.user.role?.toLowerCase() === 'client';
+    if (isClient && String(appointment.clientId) !== String(req.user.id)) {
+      console.warn(`[Reschedule Forbidden] User ${req.user.id} tried to reschedule appointment ${id} belonging to client ${appointment.clientId}`);
+      throw new ForbiddenException('You can only reschedule your own appointments');
     }
 
-    return this.bookingsService.reschedule(
-      id,
-      new Date(body.startTime),
-      new Date(body.endTime),
-      body.notes
-    );
+    const start = new Date(body.startTime);
+    const end = new Date(body.endTime);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid date provided');
+    }
+
+    try {
+      return await this.bookingsService.reschedule(
+        id,
+        start,
+        end,
+        body.notes
+      );
+    } catch (error) {
+      console.error('[Reschedule error in controller]:', error);
+      throw error;
+    }
   }
 
   @Patch('appointments/:id/update')
@@ -160,11 +183,6 @@ export class BookingsController {
   @Patch('appointments/:id/cancel')
   @ApiOperation({ summary: 'Cancel appointment' })
   async cancel(@Param('id') id: string, @Request() req) {
-    const appointment = await this.bookingsService.findById(id);
-    const timeDiff = new Date(appointment.startTime).getTime() - Date.now();
-    if (timeDiff < 24 * 60 * 60 * 1000 && req.user.role === 'client') {
-      throw new BadRequestException('Cannot cancel within 24 hours of appointment');
-    }
     return this.bookingsService.updateStatus(id, AppointmentStatus.CANCELLED, undefined, req.user?.id);
   }
 
