@@ -212,6 +212,9 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     reminderDate: '',
     priority: 'medium'
   });
+  // Interested remarks
+  const [showInterestedRemarks, setShowInterestedRemarks] = useState(false);
+  const [interestedRemarks, setInterestedRemarks] = useState('');
 
 
   const [taskFormData, setTaskFormData] = useState<any>({
@@ -449,7 +452,11 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         
         const updates: any = { 
           status: nextStatus,
-          metadata: { ...(interactionTask.metadata || {}), callOutcome: effectiveOutcome }
+          metadata: { 
+            ...(interactionTask.metadata || {}), 
+            callOutcome: effectiveOutcome,
+            ...(effectiveOutcome === 'interested' && interestedRemarks.trim() ? { completionReason: interestedRemarks.trim() } : {})
+          }
         };
 
         // If rescheduling (Call Later / No Answer), update the dates to clear "OVERDUE" status
@@ -474,6 +481,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       setSelectedTags([]);
       setCallbackDate("");
       setFollowUpData({ title: '', therapy: '', dueDate: '', reminderDate: '', priority: 'medium' });
+      setShowInterestedRemarks(false);
+      setInterestedRemarks('');
 
       const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
       dispatch(fetchActions({ salespersonId: sid }));
@@ -1069,6 +1078,17 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                   </span>
                 </div>
               )}
+
+              {/* Completion Reason — shown when task was completed due to 'interested' */}
+              {viewingTask.status === 'completed' && (viewingTask.metadata as any)?.completionReason && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <span className="flex items-center gap-1.5 text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    Completion Reason (Interested)
+                  </span>
+                  <p className="text-sm text-amber-900 font-medium whitespace-pre-wrap">{(viewingTask.metadata as any).completionReason}</p>
+                </div>
+              )}
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
               <Button variant="outline" onClick={() => setViewingTask(null)} className="h-9 px-6 font-bold text-xs bg-white text-slate-700 shadow-sm hover:bg-slate-50">
@@ -1220,8 +1240,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                         onClick={async () => {
                           setInteractionOutcome(opt.value);
                           if (opt.value === 'interested') {
-                            // Quick complete for "Interested" as requested
-                            await handleSaveInteraction(opt.value);
+                            // Show remarks step before completing
+                            setShowInterestedRemarks(true);
                           } else if (opt.value === 'appointment_booked') {
                             setShowBookingModal(true);
                           } else {
@@ -1249,6 +1269,39 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                           onChange={(e) => setCallbackDate(e.target.value)}
                           className="h-10 text-[11px] font-black rounded-lg border-blue-200 bg-white"
                         />
+                    </div>
+                  )}
+
+                  {/* Interested Remarks Step */}
+                  {showInterestedRemarks && interactionOutcome === 'interested' && (
+                    <div className="bg-amber-50 p-5 rounded-xl border border-amber-200 animate-in slide-in-from-top-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                        <p className="text-[9px] font-black text-amber-800 uppercase tracking-widest">Interested — Add Remarks</p>
+                      </div>
+                      <p className="text-[10px] text-amber-700 font-medium">Yeh remarks task detail mein save ho jayenge — kyun customer interested tha.</p>
+                      <textarea
+                        value={interestedRemarks}
+                        onChange={(e) => setInterestedRemarks(e.target.value)}
+                        placeholder="e.g. Customer ne Botox mein serious interest dikhaya, budget confirm tha, next week call karna hai..."
+                        rows={3}
+                        className="w-full text-xs font-medium rounded-lg border border-amber-200 bg-white px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 placeholder:text-amber-300"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setShowInterestedRemarks(false); setInterestedRemarks(''); }}
+                          className="flex-1 h-9 rounded-lg border border-amber-200 text-[10px] font-black uppercase tracking-widest text-amber-700 hover:bg-amber-100 transition-all"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleSaveInteraction('interested')}
+                          className="flex-1 h-9 rounded-lg bg-black text-[#CBFF38] text-[10px] font-black uppercase tracking-widest hover:bg-gray-900 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Confirm & Complete
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
