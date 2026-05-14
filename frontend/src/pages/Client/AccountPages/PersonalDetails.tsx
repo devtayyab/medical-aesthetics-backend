@@ -30,14 +30,14 @@ const heroSection = css`
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 30%, transparent 60%);
+    background: linear-gradient(to right, #FFFFFF 40%, rgba(255,255,255,0.4) 60%, transparent 100%);
     z-index: 1;
   }
 
   @media (max-width: 768px) {
     height: 350px;
     &::after {
-        background: linear-gradient(to top, rgba(255,255,255,1) 0%, transparent 100%);
+        background: linear-gradient(to top, #FFFFFF 20%, transparent 100%);
     }
   }
 `;
@@ -177,10 +177,10 @@ export const PersonalDetails: React.FC = () => {
     <div className={sectionStyles}>
       {/* Immersive Hero */}
       <div className={heroSection}>
-        <div className="absolute inset-0 z-0">
+        <div className="absolute top-0 right-0 bottom-0 w-2/3 lg:w-1/2 z-0">
           <img
             src={HeroBg}
-            style={{ objectPosition: '100% 30%' }}
+            style={{ objectPosition: 'center center' }}
             className="w-full h-full object-cover"
             alt="Clinic Hero"
           />
