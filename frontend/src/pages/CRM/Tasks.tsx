@@ -832,15 +832,9 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                             className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md" 
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (onViewTask) {
-                                onViewTask(task);
-                              } else {
-                                const id = task.customerId || task.relatedLeadId;
-                                if (id) navigate(`/crm/customer/${id}`);
-                                else setViewingTask(task);
-                              }
+                              setViewingTask(task);
                             }}
-                            title="View Detail"
+                            title="View Task Detail"
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
@@ -1013,85 +1007,191 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               </Button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-4 text-sm">
-              <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Title</span>
-                <span className="font-bold text-slate-800">{viewingTask.title}</span>
-              </div>
 
-              <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Description</span>
-                <p className="text-slate-700 whitespace-pre-wrap">{viewingTask.description || 'No description provided.'}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</span>
-                  <span className="font-bold text-slate-800 uppercase text-[10px] tracking-tight">{viewingTask.status}</span>
+              {/* Status Banner */}
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${
+                viewingTask.status === 'completed' ? 'bg-green-50 border-green-200' :
+                viewingTask.status === 'in_progress' ? 'bg-blue-50 border-blue-200' :
+                isOverdue(viewingTask) ? 'bg-red-50 border-red-200' :
+                'bg-amber-50 border-amber-200'
+              }`}>
+                <div className={`w-2.5 h-2.5 rounded-full ${
+                  viewingTask.status === 'completed' ? 'bg-green-500' :
+                  viewingTask.status === 'in_progress' ? 'bg-blue-500' :
+                  isOverdue(viewingTask) ? 'bg-red-500' : 'bg-amber-500'
+                }`} />
+                <div className="flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Task Status</p>
+                  <p className={`text-sm font-black uppercase ${
+                    viewingTask.status === 'completed' ? 'text-green-700' :
+                    viewingTask.status === 'in_progress' ? 'text-blue-700' :
+                    isOverdue(viewingTask) ? 'text-red-700' : 'text-amber-700'
+                  }`}>{isOverdue(viewingTask) ? 'Overdue' : viewingTask.status.replace('_', ' ')}</p>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Priority</span>
-                  <span className="font-bold text-slate-800 uppercase text-[10px] tracking-tight">{viewingTask.priority}</span>
-                </div>
+                <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md ${
+                  viewingTask.priority === 'urgent' ? 'bg-red-500 text-white' :
+                  viewingTask.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                  viewingTask.priority === 'medium' ? 'bg-blue-100 text-blue-700' :
+                  'bg-slate-100 text-slate-500'
+                }`}>{viewingTask.priority} priority</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              {/* Title & Description */}
+              <div className="space-y-1">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Task Title</span>
+                <p className="font-black text-slate-900 text-base leading-tight">{viewingTask.title}</p>
+              </div>
+
+              {viewingTask.description && (
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Description / Notes</span>
+                  <p className="text-slate-700 whitespace-pre-wrap text-xs leading-relaxed">{viewingTask.description}</p>
+                </div>
+              )}
+
+              {/* Type & Therapy */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Action Type</span>
+                  <span className="text-xs font-black text-slate-800 uppercase">{viewingTask.actionType.replace(/_/g, ' ')}</span>
+                </div>
+                {viewingTask.therapy && (
+                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Therapy</span>
+                    <span className="text-xs font-black text-slate-800">{viewingTask.therapy}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                   <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Due Date</span>
-                  <span className="font-bold text-slate-700">{formatDate(viewingTask.dueDate)}</span>
+                  <span className={`text-xs font-bold ${isOverdue(viewingTask) ? 'text-red-600' : 'text-slate-700'}`}>{formatDate(viewingTask.dueDate)}</span>
                 </div>
-                <div>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                   <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Reminder</span>
-                  <span className="font-bold text-slate-700">{formatDate(viewingTask.reminderDate)}</span>
+                  <span className="text-xs font-bold text-slate-700">{formatDate(viewingTask.reminderDate)}</span>
                 </div>
               </div>
 
+              {/* Associated Contact */}
               {(viewingTask.customer || viewingTask.relatedLead) && (
                 <div>
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Associated Contact</span>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Associated Contact</span>
                   {viewingTask.customerId ? (
                     <Link
-                      to={`/crm/customers/${viewingTask.customerId}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-700 font-bold transition-all"
+                      to={`/crm/customer/${viewingTask.customerId}`}
+                      onClick={() => setViewingTask(null)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-xl text-blue-700 font-bold transition-all border border-blue-100"
                     >
                       <Users className="h-4 w-4" />
                       {viewingTask.customer?.customer
                         ? `${viewingTask.customer.customer.firstName} ${viewingTask.customer.customer.lastName}`
-                        : 'Customer Record'}
+                        : 'View Customer Profile'}
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   ) : (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-lg text-orange-700 font-bold">
+                    <Link
+                      to={`/crm/customer/${viewingTask.relatedLeadId}`}
+                      onClick={() => setViewingTask(null)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 rounded-xl text-orange-700 font-bold transition-all border border-orange-100"
+                    >
                       <Users className="h-4 w-4" />
                       {viewingTask.relatedLead
                         ? `${viewingTask.relatedLead.firstName} ${viewingTask.relatedLead.lastName}`
-                        : 'Lead'}
-                    </div>
+                        : 'View Lead Profile'}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
                   )}
                 </div>
               )}
 
-              {viewingTask.isRecurring && (
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Recurrence</span>
-                  <span className="flex items-center gap-1.5 font-bold text-slate-700 capitalize">
-                    <Repeat className="h-3.5 w-3.5 text-blue-500" />
-                    {viewingTask.recurrenceType} (Every {viewingTask.recurrenceInterval})
+              {/* Salesperson */}
+              {(() => {
+                const sp = salespersons?.find(s => s.id === viewingTask.salespersonId);
+                return sp ? (
+                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Assigned To</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-[9px] font-black text-white uppercase">
+                        {sp.firstName?.charAt(0)}
+                      </div>
+                      <span className="text-xs font-bold text-slate-800">{sp.firstName} {sp.lastName}</span>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Call Outcome */}
+              {(viewingTask.metadata as any)?.callOutcome && (
+                <div className={`rounded-xl p-4 border ${
+                  (viewingTask.metadata as any).callOutcome === 'interested' ? 'bg-amber-50 border-amber-200' :
+                  (viewingTask.metadata as any).callOutcome === 'not_interested' ? 'bg-red-50 border-red-200' :
+                  (viewingTask.metadata as any).callOutcome === 'appointment_booked' ? 'bg-green-50 border-green-200' :
+                  'bg-slate-50 border-slate-200'
+                }`}>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Last Interaction Outcome</span>
+                  <span className={`text-sm font-black uppercase ${
+                    (viewingTask.metadata as any).callOutcome === 'interested' ? 'text-amber-700' :
+                    (viewingTask.metadata as any).callOutcome === 'not_interested' ? 'text-red-700' :
+                    (viewingTask.metadata as any).callOutcome === 'appointment_booked' ? 'text-green-700' :
+                    'text-slate-700'
+                  }`}>
+                    {(viewingTask.metadata as any).callOutcome.replace(/_/g, ' ')}
                   </span>
                 </div>
               )}
 
-              {/* Completion Reason — shown when task was completed due to 'interested' */}
+              {/* Completion Reason (Interested remarks) */}
               {viewingTask.status === 'completed' && (viewingTask.metadata as any)?.completionReason && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                   <span className="flex items-center gap-1.5 text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2">
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    Completion Reason (Interested)
+                    Why Task Was Completed
                   </span>
-                  <p className="text-sm text-amber-900 font-medium whitespace-pre-wrap">{(viewingTask.metadata as any).completionReason}</p>
+                  <p className="text-sm text-amber-900 font-medium whitespace-pre-wrap leading-relaxed">{(viewingTask.metadata as any).completionReason}</p>
+                </div>
+              )}
+
+              {/* Recurrence */}
+              {viewingTask.isRecurring && (
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Recurrence</span>
+                  <span className="flex items-center gap-1.5 font-bold text-slate-700 capitalize text-xs">
+                    <Repeat className="h-3.5 w-3.5 text-blue-500" />
+                    {viewingTask.recurrenceType} · Every {viewingTask.recurrenceInterval}
+                  </span>
+                </div>
+              )}
+
+              {/* Source Task */}
+              {(viewingTask.metadata as any)?.sourceTaskId && (
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+                  <span className="block text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Created From Task</span>
+                  <span className="text-xs font-bold text-indigo-700">Follow-up from previous interaction</span>
+                </div>
+              )}
+
+              {/* Created At */}
+              {(viewingTask as any).createdAt && (
+                <div className="pt-2 border-t border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Created: {formatDate((viewingTask as any).createdAt)}</span>
                 </div>
               )}
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-              <Button variant="outline" onClick={() => setViewingTask(null)} className="h-9 px-6 font-bold text-xs bg-white text-slate-700 shadow-sm hover:bg-slate-50">
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center gap-3">
+              {(viewingTask.customerId || viewingTask.relatedLeadId) && (
+                <Link
+                  to={`/crm/customer/${viewingTask.customerId || viewingTask.relatedLeadId}`}
+                  onClick={() => setViewingTask(null)}
+                  className="h-9 px-4 rounded-xl bg-black text-[#CBFF38] text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-gray-900 transition-all"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Full Profile
+                </Link>
+              )}
+              <Button variant="outline" onClick={() => setViewingTask(null)} className="h-9 px-6 font-bold text-xs bg-white text-slate-700 shadow-sm hover:bg-slate-50 ml-auto">
                 Close
               </Button>
             </div>
