@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { format } from "date-fns";
 import { X, Calendar, Clock } from "lucide-react";
 import { AppDispatch, RootState } from "@/store";
-import { fetchAvailability, rescheduleAppointment } from "@/store/slices/bookingSlice";
+import { fetchAvailability, rescheduleAppointment, fetchUserAppointments } from "@/store/slices/bookingSlice";
 import { Button } from "@/components/atoms/Button/Button";
 import { Appointment } from "@/types";
 
