@@ -77,44 +77,14 @@ const ClinicLayout: React.FC = () => {
 
   return (
     <div className="flex h-[calc(100vh-56px)] lg:h-[calc(100vh-64px)] bg-[#F8FAFC] overflow-hidden font-sans">
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-20 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all"
-          >
-            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="size-2 rounded-full bg-[#CBFF38] animate-pulse" />
-            <h1 className="text-sm font-black uppercase tracking-tighter text-gray-900 truncate max-w-[150px] italic">
-              {profile?.name || 'Clinic Portal'}
-            </h1>
-          </div>
-        </div>
-        <div className="size-9 bg-black text-[#CBFF38] rounded-full flex items-center justify-center font-black text-xs italic shadow-lg shadow-lime-500/10">
-          {user?.firstName?.[0]}{user?.lastName?.[0]}
-        </div>
-      </div>
-
-      {/* Overlay for mobile */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden transition-opacity duration-300"
-          onClick={closeSidebar}
-        />
-      )}
-
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-72 bg-white flex flex-col transition-all duration-500 ease-in-out border-r border-gray-100
-          top-[56px] lg:top-[64px]
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-72 bg-white flex flex-col transition-all duration-500 ease-in-out border-r border-gray-100
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
         {/* Branding */}
-        <div className="p-8 pt-10 pb-6">
+        <div className="p-8 pb-6">
           <div className="flex items-center gap-3 mb-1">
             <div className="size-8 bg-black rounded-lg flex items-center justify-center text-[#CBFF38]">
               <LayoutDashboard size={18} />
@@ -189,9 +159,9 @@ const ClinicLayout: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-72 flex flex-col min-w-0 overflow-hidden relative">
-        <div className="flex-1 overflow-y-auto no-scrollbar pt-[40px] lg:pt-10">
-          <div className="max-w-[1600px] mx-auto min-h-full">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        <div className="flex-1 overflow-y-auto no-scrollbar pt-6 lg:pt-10">
+          <div className="max-w-[1600px] mx-auto px-6">
             <Outlet />
           </div>
         </div>
