@@ -5,7 +5,6 @@ import { RootState, AppDispatch } from "@/store";
 import {
     Users,
     UserPlus,
-    Trash2,
     Mail,
     Phone,
     Shield,
@@ -299,12 +298,7 @@ const StaffCard = ({ member, onRemove, onViewSchedule }: any) => {
     return (
         <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:border-black transition-all duration-300 group relative">
             <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                    onClick={onRemove}
-                    className="size-8 bg-white border border-gray-100 text-gray-400 rounded-lg flex items-center justify-center hover:bg-black hover:text-white transition-all shadow-sm"
-                >
-                    <Trash2 size={14} />
-                </button>
+                {/* Remove staff button disabled as requested */}
             </div>
 
             <div className="flex flex-col h-full">
