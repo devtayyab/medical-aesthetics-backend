@@ -76,7 +76,7 @@ const ClinicLayout: React.FC = () => {
   const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans">
+    <div className="flex h-[calc(100vh-56px)] lg:h-[calc(100vh-64px)] bg-[#F8FAFC] overflow-hidden font-sans">
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-20 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
@@ -97,7 +97,7 @@ const ClinicLayout: React.FC = () => {
           {user?.firstName?.[0]}{user?.lastName?.[0]}
         </div>
       </div>
- 
+
       {/* Overlay for mobile */}
       {isSidebarOpen && (
         <div
@@ -105,15 +105,16 @@ const ClinicLayout: React.FC = () => {
           onClick={closeSidebar}
         />
       )}
- 
+
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-72 bg-white flex flex-col transition-all duration-500 ease-in-out border-r border-gray-100
+        className={`fixed inset-y-0 left-0 z-40 w-72 bg-white flex flex-col transition-all duration-500 ease-in-out border-r border-gray-100
+          top-[56px] lg:top-[64px]
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
         {/* Branding */}
-        <div className="p-8 pb-6">
+        <div className="p-8 pt-10 pb-6">
           <div className="flex items-center gap-3 mb-1">
             <div className="size-8 bg-black rounded-lg flex items-center justify-center text-[#CBFF38]">
               <LayoutDashboard size={18} />
@@ -123,11 +124,11 @@ const ClinicLayout: React.FC = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2 mt-4 px-1">
-             <div className="size-1.5 rounded-full bg-green-500" />
-             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">System Online</span>
+            <div className="size-1.5 rounded-full bg-green-500" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">System Online</span>
           </div>
         </div>
- 
+
         {/* Navigation */}
         <nav className="flex-1 px-4 py-4 overflow-y-auto no-scrollbar">
           <div className="space-y-1">
@@ -144,24 +145,24 @@ const ClinicLayout: React.FC = () => {
                 }
               >
                 <div className="transition-transform duration-300 group-hover:scale-105">
-                   {iconMap[item.icon]}
+                  {iconMap[item.icon]}
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest italic">{item.label}</span>
                 {item.id === 'appointments' && (
-                   <div className="ml-auto size-4 rounded-full bg-[#CBFF38] text-black text-[8px] font-black flex items-center justify-center shadow-sm">
-                      !
-                   </div>
+                  <div className="ml-auto size-4 rounded-full bg-[#CBFF38] text-black text-[8px] font-black flex items-center justify-center shadow-sm">
+                    !
+                  </div>
                 )}
                 {item.id === 'my-notifications' && unreadCount > 0 && (
-                   <div className="ml-auto bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                   </div>
+                  <div className="ml-auto bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </div>
                 )}
               </NavLink>
             ))}
           </div>
         </nav>
- 
+
         {/* User Profile & Logout */}
         <div className="p-5 m-4 bg-gray-50 rounded-2xl border border-gray-100">
           <div className="flex items-center gap-3 mb-4">
@@ -186,13 +187,13 @@ const ClinicLayout: React.FC = () => {
           </button>
         </div>
       </aside>
- 
+
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <div className="flex-1 overflow-y-auto no-scrollbar pt-[60px] lg:pt-0">
-           <div className="max-w-[1600px] mx-auto min-h-full">
-             <Outlet />
-           </div>
+      <main className="flex-1 lg:ml-72 flex flex-col min-w-0 overflow-hidden relative">
+        <div className="flex-1 overflow-y-auto no-scrollbar pt-[40px] lg:pt-10">
+          <div className="max-w-[1600px] mx-auto min-h-full">
+            <Outlet />
+          </div>
         </div>
       </main>
     </div>
