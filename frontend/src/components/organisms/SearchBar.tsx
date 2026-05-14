@@ -235,12 +235,32 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               exit={{ opacity: 0, y: 10 }}
               className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl z-[100] p-4 border border-gray-100"
             >
-              <input
-                type="date"
-                className="w-full p-3 bg-gray-50 rounded-xl outline-none font-bold"
-                value={searchDate || ""}
-                onChange={(e) => { setSearchDate(e.target.value); setShowDatePicker(false); }}
-              />
+              <div className="mb-4">
+                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Select Visit Date</p>
+                 <input
+                    type="date"
+                    className="w-full p-4 bg-[#F8FAFC] border border-[#F1F5F9] rounded-xl outline-none font-bold text-gray-900 focus:border-[#CBFF38] transition-colors"
+                    value={searchDate || ""}
+                    onChange={(e) => { 
+                      setSearchDate(e.target.value); 
+                      // Don't close immediately so they can see the selection
+                    }}
+                 />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                 <button 
+                    onClick={() => { setSearchDate(null); setShowDatePicker(false); }}
+                    className="h-10 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors"
+                 >
+                    Clear
+                 </button>
+                 <button 
+                    onClick={() => setShowDatePicker(false)}
+                    className="h-10 bg-black text-[#CBFF38] rounded-xl text-[10px] font-black uppercase tracking-widest italic"
+                 >
+                    Apply
+                 </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
