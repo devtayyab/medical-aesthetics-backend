@@ -79,7 +79,7 @@ const ClinicLayout: React.FC = () => {
     <div className="flex h-[calc(100vh-56px)] lg:h-[calc(100vh-64px)] bg-[#F8FAFC] overflow-hidden font-sans">
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-72 bg-white flex flex-col transition-all duration-500 ease-in-out border-r border-gray-100
+        className={`fixed lg:static top-[56px] lg:top-0 bottom-0 left-0 z-30 w-72 bg-white flex flex-col transition-all duration-500 ease-in-out border-r border-gray-100
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
