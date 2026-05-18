@@ -423,7 +423,7 @@ export const Header: React.FC = () => {
                           : "text-gray-400 hover:text-white"
                           }`}
                       >
-                        Treatments
+                        Privileges
                       </Link>
                     </li>
                     <li className="cursor-pointer">

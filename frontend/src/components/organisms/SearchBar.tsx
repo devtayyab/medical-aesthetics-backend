@@ -25,7 +25,6 @@ export interface SearchBarProps {
 const containerStyle = css`
   background: white;
   border-radius: 24px;
-  overflow: hidden;
   box-shadow: 0 50px 100px rgba(0,0,0,0.15);
   border: 1px solid rgba(0,0,0,0.05);
   display: flex;
@@ -135,6 +134,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       <div className="relative" ref={searchRef}>
         <div
           className={searchInputBlock}
+          style={{ borderTopLeftRadius: '24px', borderTopRightRadius: '24px' }}
         >
           <div className="size-12 bg-[#F8FAFC] rounded-2xl flex items-center justify-center text-gray-500">
             <Search size={20} />
@@ -215,6 +215,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         <div
           className={searchInputBlock}
           onClick={() => setShowDatePicker(!showDatePicker)}
+          style={{ borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' }}
         >
           <div className="size-12 bg-[#F8FAFC] rounded-2xl flex items-center justify-center text-gray-500">
             <CalendarIcon size={20} />
@@ -249,13 +250,28 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-2">
                  <button 
-                    onClick={() => { setSearchDate(null); setShowDatePicker(false); }}
+                    onClick={() => { 
+                      setSearchDate(null); 
+                      setShowDatePicker(false); 
+                      onSearch({
+                        query: query,
+                        search_date: null,
+                        search_time_window: searchTimeWindow
+                      });
+                    }}
                     className="h-10 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors"
                  >
                     Clear
                  </button>
                  <button 
-                    onClick={() => setShowDatePicker(false)}
+                    onClick={() => {
+                      setShowDatePicker(false);
+                      onSearch({
+                        query: query,
+                        search_date: searchDate,
+                        search_time_window: searchTimeWindow
+                      });
+                    }}
                     className="h-10 bg-black text-[#CBFF38] rounded-xl text-[10px] font-black uppercase tracking-widest italic"
                  >
                     Apply

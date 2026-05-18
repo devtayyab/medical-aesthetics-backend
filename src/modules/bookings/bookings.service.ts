@@ -10,6 +10,7 @@ import {
   Brackets,
 } from 'typeorm';
 import { AppointmentHold } from './entities/appointment-hold.entity';
+import { BlockedTimeSlot } from './entities/blocked-time-slot.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { HoldSlotDto } from './dto/hold-slot.dto';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
@@ -50,6 +51,8 @@ export class BookingsService {
     private appointmentsRepository: Repository<Appointment>,
     @InjectRepository(AppointmentHold)
     private holdsRepository: Repository<AppointmentHold>,
+    @InjectRepository(BlockedTimeSlot)
+    private blockedTimeSlotsRepository: Repository<BlockedTimeSlot>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(Service)
@@ -959,7 +962,7 @@ export class BookingsService {
       }
 
       // 4. Transform & Mask
-      return appointments.map(apt => {
+      const mappedAppointments = appointments.map(apt => {
         let isMasked = false;
 
         // PRIVACY RULE: Salespeople see full details for anything the query returned (since the query is already filtered for them)
@@ -997,6 +1000,73 @@ export class BookingsService {
           isBeautyDoctorsClient: apt.isBeautyDoctorsClient || false, // Return flag for color-coding
         };
       });
+
+      // --- Fetch Blocked Slots ---
+      const blockedQb = this.blockedTimeSlotsRepository
+        .createQueryBuilder('blocked')
+        .leftJoinAndSelect('blocked.provider', 'provider')
+        .leftJoinAndSelect('blocked.clinic', 'clinic');
+
+      if (query.startDate && query.endDate) {
+        const start = new Date(query.startDate);
+        start.setDate(start.getDate() - 1);
+        const end = new Date(query.endDate);
+        end.setDate(end.getDate() + 1);
+
+        blockedQb.andWhere('blocked.startTime BETWEEN :start AND :end', { 
+          start: new Date(start.setHours(0, 0, 0, 0)), 
+          end: new Date(end.setHours(23, 59, 59, 999)) 
+        });
+      } else if (query.date) {
+        const date = new Date(query.date);
+        const start = new Date(date);
+        start.setDate(start.getDate() - 1);
+        const end = new Date(date);
+        end.setDate(end.getDate() + 1);
+        blockedQb.andWhere('blocked.startTime BETWEEN :start AND :end', { 
+          start: new Date(start.setHours(0, 0, 0, 0)), 
+          end: new Date(end.setHours(23, 59, 59, 999)) 
+        });
+      }
+
+      if (query.clinicId) blockedQb.andWhere('blocked.clinicId = :clinicId', { clinicId: query.clinicId });
+      
+      if (query.providerId) {
+        blockedQb.andWhere('blocked.providerId = :providerId', { providerId: query.providerId });
+      }
+
+      if (normalizedRole === 'clinic_owner' || normalizedRole === 'secretariat' || normalizedRole === 'doctor') {
+        const user = await this.usersRepository.findOne({ where: { id: userId }, relations: ['ownedClinics'] });
+        if (user) {
+          const clinicIds = (user.ownedClinics || []).map(c => c.id);
+          if (user.assignedClinicId) clinicIds.push(user.assignedClinicId);
+
+          if (clinicIds.length > 0) {
+            blockedQb.andWhere('blocked.clinicId IN (:...clinicIds)', { clinicIds });
+          }
+        }
+      }
+
+      const blockedSlots = await blockedQb.orderBy('blocked.startTime', 'ASC').getMany();
+
+      const mappedBlockedSlots = blockedSlots.map((slot) => {
+        return {
+          id: slot.id,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          status: 'BLOCKED',
+          clinicId: slot.clinicId,
+          isBlocked: true,
+          displayName: slot.reason || 'Blocked Time',
+          serviceName: slot.reason || 'Blocked',
+          isBeautyDoctorsClient: false,
+          providerName: slot.provider ? `${slot.provider.firstName} ${slot.provider.lastName}` : null,
+          bookedByInfo: null,
+          isReturned: false,
+        };
+      });
+
+      return [...mappedAppointments, ...mappedBlockedSlots];
     } catch (err) {
       console.error('[BookingsService] findClinicAppointments 500:', err);
       this.logDebug('findClinicAppointments 500 ERROR', { message: err.message, stack: err.stack });
@@ -1928,7 +1998,41 @@ export class BookingsService {
 
     const appointments = await qb.orderBy('appointment.startTime', 'ASC').getMany();
 
-    return appointments.map((apt) => {
+    const blockedQb = this.blockedTimeSlotsRepository
+      .createQueryBuilder('blocked')
+      .leftJoinAndSelect('blocked.provider', 'provider')
+      .leftJoinAndSelect('blocked.clinic', 'clinic')
+      .where('blocked.startTime BETWEEN :start AND :end', { start: startDate, end: endDate });
+
+    if (query.clinicId) {
+      blockedQb.andWhere('blocked.clinicId = :clinicId', { clinicId: query.clinicId });
+    }
+
+    if (query.providerId) {
+      blockedQb.andWhere('blocked.providerId = :providerId', { providerId: query.providerId });
+    }
+
+    if (userRole === UserRole.CLINIC_OWNER || userRole === UserRole.SECRETARIAT || userRole === UserRole.DOCTOR) {
+      const user = await this.usersRepository.findOne({
+        where: { id: userId },
+        relations: ['ownedClinics'],
+      });
+
+      if (user) {
+        const clinicIds = (user.ownedClinics || []).map(c => c.id);
+        if ((user as any).assignedClinicId) {
+          clinicIds.push((user as any).assignedClinicId);
+        }
+
+        if (clinicIds.length > 0) {
+          blockedQb.andWhere('blocked.clinicId IN (:...clinicIds)', { clinicIds });
+        }
+      }
+    }
+
+    const blockedSlots = await blockedQb.orderBy('blocked.startTime', 'ASC').getMany();
+
+    const mappedAppointments = appointments.map((apt) => {
       const serviceName = apt.service?.treatment?.name || 'Appointment';
       const providerName = apt.provider
         ? `${apt.provider.firstName} ${apt.provider.lastName}`
@@ -1983,5 +2087,28 @@ export class BookingsService {
           : apt.clientDetails?.fullName || 'Client',
       };
     });
+
+    const mappedBlockedSlots = blockedSlots.map((slot) => {
+      const providerName = slot.provider
+        ? `${slot.provider.firstName} ${slot.provider.lastName}`
+        : 'Professional';
+
+      return {
+        id: slot.id,
+        clinicId: slot.clinicId,
+        providerId: slot.providerId,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        status: 'blocked',
+        isBlocked: true,
+        isBeautyDoctorsClient: false,
+        displayName: slot.reason || 'Blocked Time',
+        serviceName: slot.reason || 'Blocked',
+        providerName,
+        clientName: '',
+      };
+    });
+
+    return [...mappedAppointments, ...mappedBlockedSlots];
   }
 }
