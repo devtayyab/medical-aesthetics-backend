@@ -538,6 +538,22 @@ export const SalesWeekCalendar: React.FC = () => {
                                         const style = statusLabels[normalizedStatus] || statusLabels.PENDING;
                                         const Icon = style.icon;
 
+                                        if (apt.isBlocked) {
+                                            return (
+                                                <div
+                                                    key={apt.id}
+                                                    className="absolute left-1 right-1 rounded-md border-2 border-dashed border-orange-200 bg-orange-50/40 z-10 flex items-center justify-center overflow-hidden"
+                                                    style={{ top, height }}
+                                                    title={`Blocked: ${apt.displayName || apt.serviceName || 'No reason'}`}
+                                                >
+                                                    <div className="flex flex-col items-center justify-center p-1 text-center">
+                                                        <span className="text-[8px] font-black text-orange-600 uppercase tracking-tighter leading-none">BLOCKED</span>
+                                                        {height > 40 && <span className="text-[7px] font-bold text-orange-500/70 truncate w-full px-1">{apt.displayName || apt.serviceName || 'Unavailable'}</span>}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
                                         return (
                                             <div
                                                 key={apt.id}
@@ -583,28 +599,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                         );
                                     })}
                                     
-                                    {/* Blocked Time Slots */}
-                                    {availability?.blockedTimeSlots?.filter(slot => isSameDay(parseISO(slot.startTime), day)).map(slot => {
-                                        const start = parseISO(slot.startTime);
-                                        const end = parseISO(slot.endTime);
-                                        const top = start.getHours() * 64 + (start.getMinutes() / 60) * 64;
-                                        const durationHours = (end.getTime() - start.getTime()) / 3600000;
-                                        const height = Math.max(durationHours * 64, 32);
 
-                                        return (
-                                            <div
-                                                key={slot.id}
-                                                className="absolute left-1 right-1 rounded-md border-2 border-dashed border-orange-200 bg-orange-50/40 z-10 flex items-center justify-center overflow-hidden"
-                                                style={{ top, height }}
-                                                title={`Blocked: ${slot.reason || 'No reason'}`}
-                                            >
-                                                <div className="flex flex-col items-center justify-center p-1 text-center">
-                                                    <span className="text-[8px] font-black text-orange-600 uppercase tracking-tighter leading-none">BLOCKED</span>
-                                                    {height > 40 && <span className="text-[7px] font-bold text-orange-500/70 truncate w-full px-1">{slot.reason || 'Unavailable'}</span>}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
 
                                     {isToday(day) && (
                                         <div 

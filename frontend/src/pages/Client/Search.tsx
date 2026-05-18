@@ -161,6 +161,8 @@ export const Search: React.FC = () => {
     if (filters.query !== undefined) setQuery(filters.query);
     if (filters.location !== undefined) setLocation(filters.location);
     if (filters.category !== undefined) setCategory(filters.category);
+    if (filters.search_date !== undefined) setSearchDate(filters.search_date);
+    if (filters.search_time_window !== undefined) setSearchTimeWindow(filters.search_time_window);
     
     const params = new URLSearchParams();
     Object.keys(filters).forEach(key => {
@@ -202,7 +204,7 @@ export const Search: React.FC = () => {
     <div className="min-h-screen bg-[#FDFDFD] relative">
       {/* Premium Search Header - Minimizable */}
       {(activeTab === 'clinics' || activeTab === 'treatments') && (
-        <header className={`bg-[#121212] transition-all duration-700 relative overflow-hidden ${isScrolled ? 'py-4 sm:py-10' : 'pt-12 pb-12 sm:pt-20 sm:pb-20'}`}>
+        <header className={`bg-[#121212] transition-all duration-700 relative z-[70] ${isScrolled ? 'py-4 sm:py-10' : 'pt-12 pb-12 sm:pt-20 sm:pb-20'}`}>
           <div className="absolute inset-0 opacity-50" style={{ backgroundImage: `url(${SearchHero})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
           <div className="container mx-auto px-4 sm:px-8 relative z-10 flex flex-col items-center justify-between gap-6 sm:gap-12">
               <div className={`w-full transition-all duration-700 ${isScrolled ? 'flex items-center justify-between gap-4' : 'text-center lg:text-left lg:w-1/2'}`}>

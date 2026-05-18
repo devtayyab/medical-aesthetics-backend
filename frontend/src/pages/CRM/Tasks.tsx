@@ -179,7 +179,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
-  const [filterDateRange, setFilterDateRange] = useState<string>('all');
+  const [filterDateRange, setFilterDateRange] = useState<string>('today');
   const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>(user?.role === 'SUPER_ADMIN' ? 'all' : (user?.id || 'all'));
   const [selectedTask, setSelectedTask] = useState<CrmAction | null>(null);
   const [viewingTask, setViewingTask] = useState<CrmAction | null>(null);
