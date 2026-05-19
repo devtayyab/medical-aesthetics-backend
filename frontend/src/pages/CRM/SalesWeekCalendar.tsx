@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     ChevronLeft, ChevronRight, Plus, Clock, User, Users, Scissors, CheckCircle2,
-    XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone, ArrowLeft
+    XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone, ArrowLeft, Trash2
 } from 'lucide-react';
 import {
     format, startOfWeek, endOfWeek, addDays, eachDayOfInterval, isSameDay,
@@ -23,7 +23,7 @@ import {
 import { fetchAvailability } from '@/store/slices/clinicSlice';
 import { fetchLeads, createLead } from '@/store/slices/crmSlice';
 import { Button } from '@/components/atoms/Button/Button';
-import { crmAPI, clinicsAPI, bookingAPI } from '@/services/api';
+import { crmAPI, clinicsAPI, bookingAPI, adminAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 
 const statusLabels: Record<string, { label: string, color: string, icon: any }> = {
@@ -344,6 +344,27 @@ export const SalesWeekCalendar: React.FC = () => {
         setIsDetailDrawerOpen(true);
     };
 
+    const handleUnblockSlot = async (slotId: string) => {
+        if (!window.confirm("Are you sure you want to remove this blocked time?")) return;
+        try {
+            await adminAPI.unblockSlot(slotId);
+            toast.success("Time slot unblocked successfully!");
+            // Refresh appointments
+            dispatch(fetchClinicAppointments(currentFilters));
+            // Refresh availability if a clinic is selected
+            if (selectedClinicId !== 'all') {
+                dispatch(fetchAvailability({
+                    clinicId: selectedClinicId,
+                    date: format(viewDate, 'yyyy-MM-dd'),
+                    serviceId: 'all'
+                } as any));
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to unblock slot");
+            console.error("Failed to unblock slot", err);
+        }
+    };
+
     return (
         <div className="flex h-full w-full bg-gray-50 relative overflow-hidden rounded-xl border border-gray-200 shadow-sm">
             {/* Left Sidebar: Team List - MANAGER ONLY */}
@@ -542,14 +563,25 @@ export const SalesWeekCalendar: React.FC = () => {
                                             return (
                                                 <div
                                                     key={apt.id}
-                                                    className="absolute left-1 right-1 rounded-md border-2 border-dashed border-orange-200 bg-orange-50/40 z-10 flex items-center justify-center overflow-hidden"
+                                                    onClick={(e) => { e.stopPropagation(); handleUnblockSlot(apt.id); }}
+                                                    className="absolute left-1 right-1 rounded-md border-2 border-dashed border-orange-200 bg-orange-50/40 z-10 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-orange-100/50 hover:border-orange-300 transition-all group"
                                                     style={{ top, height }}
-                                                    title={`Blocked: ${apt.displayName || apt.serviceName || 'No reason'}`}
+                                                    title={`Blocked: ${apt.displayName || apt.serviceName || 'No reason'}. Click to unblock.`}
                                                 >
                                                     <div className="flex flex-col items-center justify-center p-1 text-center">
                                                         <span className="text-[8px] font-black text-orange-600 uppercase tracking-tighter leading-none">BLOCKED</span>
                                                         {height > 40 && <span className="text-[7px] font-bold text-orange-500/70 truncate w-full px-1">{apt.displayName || apt.serviceName || 'Unavailable'}</span>}
                                                     </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUnblockSlot(apt.id);
+                                                        }}
+                                                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-md text-orange-600 hover:text-red-600 hover:bg-orange-100/80 transition-all z-20 opacity-70 group-hover:opacity-100"
+                                                        title="Delete blocked time"
+                                                    >
+                                                        <Trash2 size={12} className="stroke-[2.5]" />
+                                                    </button>
                                                 </div>
                                             );
                                         }
