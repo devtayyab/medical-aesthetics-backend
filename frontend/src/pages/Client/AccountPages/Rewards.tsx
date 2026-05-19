@@ -209,9 +209,7 @@ export const Rewards: React.FC = () => {
               </div>
             </div>
 
-            <button className="w-full bg-[#CBFF38] text-black h-12 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-lime-400 transition-all mt-8 flex items-center justify-center gap-2">
-              Earn Guide <ChevronRight size={14} />
-            </button>
+            {/* Earn Guide button removed */}
           </motion.div>
 
           {/* Rewards Grid */}
@@ -262,16 +260,6 @@ export const Rewards: React.FC = () => {
                  );
                })}
              </div>
-
-              <div className={`${glassCard} p-6 border-dashed border-2 border-gray-100 bg-transparent flex items-center justify-between group hover:border-[#CBFF38] transition-all`}>
-                <div className="flex items-center gap-3">
-                   <div className="size-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:text-[#CBFF38] transition-colors">
-                      <Plus size={16} />
-                   </div>
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic group-hover:text-gray-900 transition-colors">Partnerships Launching Soon</p>
-                </div>
-                <ArrowRight size={14} className="text-gray-200 group-hover:text-black" />
-              </div>
           </div>
         </div>
       </div>

@@ -457,7 +457,10 @@ export const HomePage: React.FC = () => {
                 Give the gift of expert medical beauty treatments — from
                 dermatology to aesthetic enhancements.
               </p>
-              <button className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm gap-2">
+              <button 
+                onClick={() => navigate('/gift-card')}
+                className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm gap-2"
+              >
                 Send a Gift Card
                 <ArrowRight className="h-4 w-4" />
               </button>

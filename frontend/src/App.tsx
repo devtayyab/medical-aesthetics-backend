@@ -404,10 +404,10 @@ function AppContent() {
             path="/support"
             element={<ClientLayout><SupportCenter /></ClientLayout>}
           />
-          <Route
+          {/* <Route
             path="/chat"
             element={<ClientLayout><ChatSupport /></ClientLayout>}
-          />
+          /> */}
           <Route
             path="/checkout"
             element={
