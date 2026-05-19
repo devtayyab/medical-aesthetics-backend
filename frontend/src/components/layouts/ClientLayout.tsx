@@ -3,11 +3,11 @@ import { NavLink } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
 import { css } from '@emotion/css';
-import { 
-  TbCalendarClock, 
-  TbSettings, 
-  TbReceipt2, 
-  TbHome 
+import {
+  TbCalendarClock,
+  TbSettings,
+  TbReceipt2,
+  TbHome
 } from "react-icons/tb";
 import { ImProfile } from "react-icons/im";
 import { AiOutlineTrophy } from "react-icons/ai";

@@ -137,18 +137,13 @@ export const InviteFriend: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <button
                     onClick={copyToClipboard}
                     className={`h-16 rounded-[20px] flex items-center justify-center gap-3 font-black uppercase text-xs tracking-[0.2em] transition-all shadow-xl active:scale-95 ${copied ? 'bg-[#CBFF38] text-black' : 'bg-black text-[#CBFF38] hover:bg-gray-900'}`}
                   >
                     {copied ? <CheckCircle size={18} /> : <Copy size={18} />}
                     {copied ? 'Link Copied' : 'Copy Invitation'}
-                  </button>
-                  <button
-                    className="h-16 rounded-[20px] bg-white border-2 border-gray-100 text-gray-900 hover:border-black flex items-center justify-center gap-3 font-black uppercase text-xs tracking-[0.2em] transition-all active:scale-95"
-                  >
-                    <Share2 size={18} /> Share Dashboard
                   </button>
                 </div>
               </div>

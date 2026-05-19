@@ -128,18 +128,7 @@ export const Treatments: React.FC = () => {
                             <p className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-10 italic">Professional Consultation Protocols</p>
 
                             <div className="space-y-4">
-                                <button
-                                    onClick={() => navigate('/chat')}
-                                    className="w-full group p-6 bg-gray-50 hover:bg-[#CBFF38] rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent hover:border-black/5"
-                                >
-                                    <div className="size-14 rounded-2xl bg-black flex items-center justify-center text-[#CBFF38] group-hover:scale-110 transition-transform">
-                                        <Wand2 size={24} />
-                                    </div>
-                                    <div className="text-left">
-                                        <h4 className="font-black uppercase italic text-gray-900 text-lg group-hover:text-black">Message Support</h4>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-black/60">Direct Internal Portal</p>
-                                    </div>
-                                </button>
+
 
                                 <a
                                     href="mailto:info@beautydoctors.gr?subject=Professional Consultation Request"
@@ -242,7 +231,7 @@ export const Treatments: React.FC = () => {
 
                                 <div className="mt-12 pt-8 border-t border-gray-50">
                                     <button
-                                        onClick={() => navigate('/search')}
+                                        onClick={() => navigate(`/search?category=${encodeURIComponent(cat.name)}`)}
                                         className="w-full h-14 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center gap-4 font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-lime-500 hover:text-black transition-all active:scale-95 shadow-2xl"
                                     >
                                         Examine Category <ChevronRight size={14} />
