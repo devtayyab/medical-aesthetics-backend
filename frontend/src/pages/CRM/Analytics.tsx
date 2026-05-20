@@ -136,7 +136,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
         <div className="flex items-center gap-3">
           {lastUpdated && (
             <span className="text-[9px] font-medium text-gray-400">
-              Last Synced: {new Date(lastUpdated).toLocaleTimeString()}
+              Last Synced: {new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
             </span>
           )}
           <Button

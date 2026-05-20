@@ -310,6 +310,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
       })
       : '-';
 
@@ -710,7 +711,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                     <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Associated Contact</th>
                     <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Type & Therapy</th>
                     <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Due/Reminder</th>
-                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Priority</th>
+                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Latest Outcome</th>
                     <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Owner</th>
                     <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Actions</th>
                   </tr>
@@ -800,14 +801,23 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                         </div>
                       </td>
                       <td className="p-2.5">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider
-                          ${task.priority === 'urgent' ? 'bg-red-500 text-white shadow-sm shadow-red-200' :
-                            task.priority === 'high' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
-                              task.priority === 'medium' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                                'bg-slate-100 text-slate-600 border border-slate-200'}`}
-                        >
-                          {task.priority}
-                        </span>
+                        {(() => {
+                          const outcome = task.metadata?.callOutcome || task.metadata?.outcome || (task as any).outcome;
+                          if (!outcome) {
+                            return <span className="text-slate-400 text-[10px] font-medium italic">-</span>;
+                          }
+                          return (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-tight
+                              ${outcome === 'interested' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                                outcome === 'not_interested' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                                  outcome === 'no_answer' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                    outcome === 'call_later' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                                      'bg-slate-100 text-slate-700 border border-slate-200'}`}
+                            >
+                              {outcome.replace(/_/g, ' ')}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="p-2.5">
                         {(() => {

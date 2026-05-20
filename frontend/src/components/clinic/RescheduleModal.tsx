@@ -120,10 +120,10 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ appointment, onClose,
                                     <div className="grid grid-cols-3 gap-2">
                                         {availableSlots.map((slot, index) => {
                                             const isSelected = selectedSlot?.startTime === slot.startTime;
-                                            const timeStr = new Date(slot.startTime).toLocaleTimeString('en-US', {
+                                            const timeStr = new Date(slot.startTime).toLocaleTimeString([], {
                                                 hour: '2-digit',
                                                 minute: '2-digit',
-                                                hour12: true
+                                                hour12: false
                                             });
 
                                             return (

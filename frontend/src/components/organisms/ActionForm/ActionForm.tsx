@@ -82,6 +82,48 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const timeOptions = React.useMemo(() => {
+    return Array.from({ length: 48 }, (_, i) => {
+      const hour = String(Math.floor(i / 2)).padStart(2, '0');
+      const min = i % 2 === 0 ? '00' : '30';
+      return { value: `${hour}:${min}`, label: `${hour}:${min}` };
+    });
+  }, []);
+
+  const getSplitDateTime = (dateTimeStr?: string) => {
+    if (!dateTimeStr) return { date: '', time: '12:00' };
+    const tIndex = dateTimeStr.indexOf('T');
+    if (tIndex !== -1) {
+      const datePart = dateTimeStr.substring(0, tIndex);
+      const timePart = dateTimeStr.substring(tIndex + 1, tIndex + 6);
+      return { date: datePart, time: timePart };
+    }
+    const dateObj = new Date(dateTimeStr);
+    if (isNaN(dateObj.getTime())) {
+      return { date: '', time: '12:00' };
+    }
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const hours = String(dateObj.getHours()).padStart(2, '0');
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    return { date: `${year}-${month}-${day}`, time: `${hours}:${minutes}` };
+  };
+
+  const handleDatePartChange = (field: 'dueDate' | 'reminderDate', newDate: string, currentTime: string) => {
+    if (!newDate) {
+      handleInputChange(field, '');
+      return;
+    }
+    const combined = `${newDate}T${currentTime || '12:00'}`;
+    handleInputChange(field, combined);
+  };
+
+  const handleTimePartChange = (field: 'dueDate' | 'reminderDate', currentDate: string, newTime: string) => {
+    const combined = `${currentDate || new Date().toISOString().split('T')[0]}T${newTime || '12:00'}`;
+    handleInputChange(field, combined);
+  };
+
   useEffect(() => {
     const searchContacts = async () => {
       if (!searchTerm.trim() || propCustomerId) return;
@@ -510,22 +552,38 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               placeholder="e.g. Call client for confirmation"
               required
             />
-            <Input
-              label="Due Date & Time (Required)"
-              type="datetime-local"
-              value={formData.dueDate || ''}
-              onChange={(e) => handleInputChange('dueDate', e.target.value)}
-              required
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                label="Due Date (Required)"
+                type="date"
+                value={getSplitDateTime(formData.dueDate).date}
+                onChange={(e) => handleDatePartChange('dueDate', e.target.value, getSplitDateTime(formData.dueDate).time)}
+                required
+              />
+              <Select
+                label="Due Time (Required)"
+                value={getSplitDateTime(formData.dueDate).time}
+                onChange={(val) => handleTimePartChange('dueDate', getSplitDateTime(formData.dueDate).date, val)}
+                options={timeOptions}
+                required
+                placeholder=""
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Reminder Date & Time (Optional)"
-              type="datetime-local"
-              value={formData.reminderDate || ''}
-              onChange={(e) => handleInputChange('reminderDate', e.target.value)}
-              max={new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 16)}
+              label="Reminder Date (Optional)"
+              type="date"
+              value={getSplitDateTime(formData.reminderDate).date}
+              onChange={(e) => handleDatePartChange('reminderDate', e.target.value, getSplitDateTime(formData.reminderDate).time)}
+            />
+            <Select
+              label="Reminder Time (Optional)"
+              value={getSplitDateTime(formData.reminderDate).time}
+              onChange={(val) => handleTimePartChange('reminderDate', getSplitDateTime(formData.reminderDate).date, val)}
+              options={timeOptions}
+              placeholder=""
             />
           </div>
 

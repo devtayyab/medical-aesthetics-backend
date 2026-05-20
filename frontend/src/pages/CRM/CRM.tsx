@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Users,
-  Phone,
   Calendar,
   Plus,
   Search,
@@ -154,16 +153,6 @@ export const CRM: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-50 rounded-lg group-hover:scale-110 transition-transform"><Plus className="h-4 w-4 text-blue-600" /></div>
                         <span className="text-sm font-bold text-gray-700">Add New Lead</span>
-                      </div>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 transition-all" />
-                    </button>
-                    <button
-                      onClick={() => { setActiveTab('leads'); setShowQuickActions(false); }}
-                      className="w-full text-left px-4 py-3 hover:bg-green-50/50 rounded-xl flex items-center justify-between group transition-all"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-50 rounded-lg group-hover:scale-110 transition-transform"><Phone className="h-4 w-4 text-green-600" /></div>
-                        <span className="text-sm font-bold text-gray-700">Log Call / Dialer</span>
                       </div>
                       <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 transition-all" />
                     </button>

@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { format, addDays, subDays } from "date-fns";
 import { Appointment } from "@/types";
 
@@ -52,7 +52,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           .map((appointment) => (
             <div key={appointment.id} className="p-2 border-b">
               <p>{appointment.service.name}</p>
-              <p>{new Date(appointment.startTime).toLocaleTimeString()}</p>
+              <p>{new Date(appointment.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
             </div>
           ))}
       </div>
