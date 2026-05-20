@@ -100,10 +100,94 @@ export const ManagerDashboard = () => {
   const [revenueData, setRevenueData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPeriod] = useState('30');
+  const [selectedPeriod, setSelectedPeriod] = useState('30');
+  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
+
+  const getPeriodDates = (period: string) => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - parseInt(period, 10));
+    
+    const formatDateString = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    return {
+      startDate: formatDateString(startDate),
+      endDate: formatDateString(endDate)
+    };
+  };
+
+  const handleExportReport = () => {
+    let headers: string[] = [];
+    let rows: any[] = [];
+    let filename = 'report';
+
+    if (activeTab === 'agents') {
+      filename = `agents_performance_last_${selectedPeriod}_days`;
+      headers = ['Agent ID', 'Agent Name', 'Total Appointments', 'Completed Appointments', 'No Shows', 'Cancellations', 'Conversion Rate (%)', 'Total Revenue (€)', 'Calls Made'];
+      rows = agentKpis.map(a => [
+        a.agentId,
+        a.agentName,
+        a.totalAppointments,
+        a.completedAppointments,
+        a.noShows,
+        a.cancellations,
+        a.conversionRate.toFixed(1),
+        a.totalRevenue,
+        a.callsMade
+      ]);
+    } else if (activeTab === 'clinics') {
+      filename = `clinics_performance_last_${selectedPeriod}_days`;
+      headers = ['Clinic ID', 'Clinic Name', 'Total Appointments', 'Completed Appointments', 'Cancellations', 'No Shows', 'Total Revenue (€)'];
+      rows = clinicStats.map(c => [
+        c.clinicId,
+        c.clinicName,
+        c.totalAppointments,
+        c.completed,
+        c.cancelled,
+        c.noShow,
+        c.totalRevenue
+      ]);
+    } else {
+      filename = `dashboard_summary_last_${selectedPeriod}_days`;
+      headers = ['Metric', 'Value'];
+      rows = [
+        ['Total Revenue', formatCurrency(totalRevenue)],
+        ['Total Appointments', totalAppointments],
+        ['Completed Appointments', completedAppointments],
+        ['Average Conversion Rate', `${(avgConversionRate * 100).toFixed(1)}%`],
+        ['Active Agents Count', agentKpis.length],
+      ];
+    }
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map((val: any) => {
+        const str = String(val);
+        if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      }).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Sync activeTab when URL tab param changes (e.g. sidebar link)
   useEffect(() => {
@@ -134,11 +218,12 @@ export const ManagerDashboard = () => {
     const loadData = async () => {
       try {
         setIsLoading(true);
+        const { startDate, endDate } = getPeriodDates(selectedPeriod);
         const [agents, services, clinics, performance] = await Promise.all([
-          fetchAgentKpis(),
-          fetchServiceStats(),
-          fetchClinicAnalytics(),
-          fetchPerformanceDashboard()
+          fetchAgentKpis(startDate, endDate),
+          fetchServiceStats(startDate, endDate),
+          fetchClinicAnalytics(startDate, endDate),
+          fetchPerformanceDashboard(startDate, endDate)
         ]);
         setAgentKpis(agents);
         setServiceStats(services);
@@ -622,12 +707,45 @@ export const ManagerDashboard = () => {
             <p className="text-muted-foreground font-medium mt-1">Real-time performance analytics across your clinic network</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="gap-2 bg-white hover:bg-gray-50 border-gray-200 shadow-sm h-10 px-4">
-            <Calendar className="h-4 w-4 text-[#CBFF38]" />
-            <span className="font-semibold">Last {selectedPeriod} days</span>
-          </Button>
-          <Button variant="outline" size="sm" className="bg-white hover:bg-gray-50 border-gray-200 shadow-sm h-10 px-4">
+        <div className="flex items-center gap-3 relative">
+          <div className="relative">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
+              className="gap-2 bg-white hover:bg-gray-50 border-gray-200 shadow-sm h-10 px-4"
+            >
+              <Calendar className="h-4 w-4 text-[#CBFF38]" />
+              <span className="font-semibold">Last {selectedPeriod} days</span>
+            </Button>
+            {showPeriodDropdown && (
+              <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+                {[
+                  { value: '7', label: 'Last 7 days' },
+                  { value: '30', label: 'Last 30 days' },
+                  { value: '90', label: 'Last 90 days' },
+                  { value: '365', label: 'Last year' },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setSelectedPeriod(option.value);
+                      setShowPeriodDropdown(false);
+                    }}
+                    className={`w-full px-4 py-2.5 text-left text-xs font-bold hover:bg-gray-50 transition-colors ${selectedPeriod === option.value ? 'text-blue-600 bg-blue-50/50' : 'text-gray-700'}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExportReport}
+            className="bg-white hover:bg-gray-50 border-gray-200 shadow-sm h-10 px-4"
+          >
             Export Report
           </Button>
         </div>

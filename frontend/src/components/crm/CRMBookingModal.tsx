@@ -411,7 +411,21 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                                                 onClick={() => setSelectedSlot(slot)}
                                                 className={`p-2.5 text-center text-[11px] font-black border rounded-lg transition-all ${selectedSlot === slot ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white text-slate-700 border-slate-100 hover:border-slate-300'}`}
                                             >
-                                                {slot.startTimeDisplay || slot.startTime.split('T')[1].substring(0, 5)}
+                                                {(() => {
+                                                    const display = slot.startTimeDisplay || (slot.startTime.includes('T') ? slot.startTime.split('T')[1].substring(0, 5) : slot.startTime);
+                                                    if (/am|pm/i.test(display)) {
+                                                        const match = display.match(/(\d+):(\d+)\s*(am|pm)/i);
+                                                        if (match) {
+                                                            let hours = parseInt(match[1], 10);
+                                                            const minutes = match[2];
+                                                            const ampm = match[3].toLowerCase();
+                                                            if (ampm === 'pm' && hours < 12) hours += 12;
+                                                            if (ampm === 'am' && hours === 12) hours = 0;
+                                                            return `${hours.toString().padStart(2, '0')}:${minutes}`;
+                                                        }
+                                                    }
+                                                    return display;
+                                                })()}
                                             </button>
                                         ))
                                     )}

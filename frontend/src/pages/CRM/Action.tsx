@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Eye, Plus, Trash2
@@ -76,7 +76,7 @@ export const Actions: React.FC<ActionsPageProps> = ({ salespersonId, onViewActio
   const formatDate = (date?: string) =>
     date ? new Date(date).toLocaleString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
+      hour: '2-digit', minute: '2-digit', hour12: false
     }) : '-';
 
   return (

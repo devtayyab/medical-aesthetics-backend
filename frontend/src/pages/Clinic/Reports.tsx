@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchReviewStatistics } from "@/store/slices/clinicSlice";
 import { RootState, AppDispatch } from "@/store";
@@ -142,7 +142,7 @@ export const Reports: React.FC = () => {
                 <div className="h-px w-20 bg-black/10 md:h-20 md:w-px group-hover:bg-white/10" />
                 <div className="text-center md:text-right">
                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">Last Sync Trace</p>
-                   <p className="text-xs font-black italic">T-{new Date().toLocaleTimeString()}</p>
+                   <p className="text-xs font-black italic">T-{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</p>
                 </div>
              </div>
           </div>

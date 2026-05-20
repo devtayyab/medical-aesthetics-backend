@@ -1562,7 +1562,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                     iconBg = 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20';
                                                     title = `Appointment: ${a.status?.toUpperCase()}`;
                                                     content = `${a.serviceName || 'Treatment'} at ${a.clinicName || 'Clinic'}`;
-                                                    meta = `Scheduled: ${new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                                                    meta = `Scheduled: ${new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`;
                                                 } else if (item.type === 'form') {
                                                     icon = <FileText className="w-3.5 h-3.5" />;
                                                     iconBg = 'bg-amber-500 text-white shadow-lg shadow-amber-500/20';
@@ -1779,11 +1779,11 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
                                                             <td className="p-5">
                                                                 <div className="flex flex-col gap-1">
                                                                     <div className={`text-[10px] font-black flex items-center gap-1.5 ${new Date(task.dueDate!) < new Date() && task.status !== 'completed' ? 'text-red-500' : 'text-slate-700'}`}>
-                                                                        <Clock className="w-3.5 h-3.5" /> Due {new Date(task.dueDate!).toLocaleDateString()} {new Date(task.dueDate!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                        <Clock className="w-3.5 h-3.5" /> Due {new Date(task.dueDate!).toLocaleDateString()} {new Date(task.dueDate!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
                                                                     </div>
                                                                     {task.reminderDate && (
                                                                         <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tight flex items-center gap-1">
-                                                                            <Bell className="w-2.5 h-2.5" /> Rem: {new Date(task.reminderDate).toLocaleDateString()} {new Date(task.reminderDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                            <Bell className="w-2.5 h-2.5" /> Rem: {new Date(task.reminderDate).toLocaleDateString()} {new Date(task.reminderDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
                                                                         </div>
                                                                     )}
                                                                 </div>

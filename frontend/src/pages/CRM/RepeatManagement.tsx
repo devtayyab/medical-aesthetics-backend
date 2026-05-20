@@ -330,7 +330,7 @@ return (
                       <td className="px-4 py-3 text-gray-900">
                         {new Date(apt.startTime).toLocaleDateString()}
                         <span className="text-gray-400 text-xs ml-2">
-                          {new Date(apt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(apt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-700 font-medium">

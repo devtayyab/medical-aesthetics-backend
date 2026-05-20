@@ -256,7 +256,7 @@ export const Appointments: React.FC = () => {
                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">Session Time</span>
                        <div className="flex items-center gap-2 text-gray-900 font-black text-[11px] uppercase italic">
                           <Clock size={14} className="text-lime-500" />
-                          {new Date(apt.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(apt.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
                        </div>
                     </div>
                   </div>
