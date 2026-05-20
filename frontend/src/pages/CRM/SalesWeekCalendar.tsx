@@ -1118,7 +1118,8 @@ export const SalesWeekCalendar: React.FC = () => {
                                         try {
                                             await bookingAPI.deleteAppointment(selectedApt.id);
                                             setIsDetailDrawerOpen(false);
-                                            dispatch(fetchClinicAppointments({ providerId: user?.id }));
+                                            setSelectedApt(null);
+                                            dispatch(fetchClinicAppointments(currentFilters));
                                         } catch (err) { alert("Delete failed."); }
                                     }
                                 }}
