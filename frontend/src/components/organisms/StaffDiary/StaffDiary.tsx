@@ -24,7 +24,7 @@ import {
     X
 } from 'lucide-react';
 import { RootState, AppDispatch } from '@/store';
-import { fetchAppointments, fetchClinicProviders, fetchServices, updateAppointmentStatus } from '@/store/slices/clinicSlice';
+import { fetchAppointments, fetchClinicProviders, fetchServices, fetchClinicProfile, updateAppointmentStatus } from '@/store/slices/clinicSlice';
 import { AppointmentStatus } from '@/types/clinic.types';
 import AppointmentExecutionModal from '@/components/clinic/AppointmentExecutionModal';
 import { Button } from '@/components/atoms/Button/Button';
@@ -88,7 +88,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     const timeSlots = useMemo(() => {
         const slots = [];
         let current = setMinutes(setHours(new Date(), 8), 0);
-        const end = setMinutes(setHours(new Date(), 22), 0);
+        const end = setMinutes(setHours(new Date(), 23), 30);
         while (current <= end) {
             slots.push(format(current, 'HH:mm'));
             current = addMinutes(current, 30);
@@ -96,7 +96,14 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         return slots;
     }, []);
 
-    const resolvedClinicId = clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.clinicId || (user as any)?.ownedClinics?.[0]?.id || (user as any)?.ownedClinics?.[0];
+    const resolvedClinicId = clinicId || profile?.id || (user as any)?.assignedClinics?.[0]?.id || (user as any)?.associatedClinicId || (user as any)?.clinicId || (user as any)?.ownedClinics?.[0]?.id || (user as any)?.ownedClinics?.[0];
+
+    // Auto-fetch clinic profile if not yet loaded (needed to resolve clinicId)
+    useEffect(() => {
+        if (!profile) {
+            dispatch(fetchClinicProfile());
+        }
+    }, [dispatch, profile]);
 
     useEffect(() => {
         if (resolvedClinicId) {
@@ -138,76 +145,84 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         setIsDetailDrawerOpen(true);
     };
 
-    const renderDayView = () => (
-        <div className="flex-1 overflow-auto custom-scrollbar relative">
-            <div className="min-w-max flex flex-col relative h-full">
-                <div className="sticky top-0 z-[100] flex border-b border-slate-100 bg-white/95 backdrop-blur-sm">
-                    <div className="w-[70px] bg-slate-50 border-r border-slate-100 flex-none flex items-center justify-center sticky left-0 z-[110]">
-                        <Clock className="w-4 h-4 text-slate-400" />
-                    </div>
-                    {staff.map(member => (
-                        <div key={`header-${member.id}`} className="w-[180px] p-4 flex-none border-r border-slate-100">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
-                                    {member.profilePictureUrl ? <img src={member.profilePictureUrl} className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 text-slate-400" />}
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className="text-[10px] font-black uppercase text-slate-900 truncate leading-none mb-1">{member.fullName}</h3>
-                                    <p className="text-[8px] font-bold text-slate-400 tracking-widest uppercase">{member.role || 'Staff'}</p>
-                                </div>
+    const renderDayView = () => {
+        const dayApts = filteredAppointments.filter(apt =>
+            isSameDay(new Date(apt.startTime), selectedDate)
+        );
+
+        return (
+            <div className="flex-1 overflow-auto custom-scrollbar relative">
+                <div className="flex flex-col relative h-full">
+                    {/* Single header: Clinic name */}
+                    <div className="sticky top-0 z-[50] flex border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+                        <div className="w-[70px] bg-slate-50 border-r border-slate-100 flex-none flex items-center justify-center">
+                            <Clock className="w-4 h-4 text-slate-400" />
+                        </div>
+                        <div className="flex-1 p-4 flex items-center gap-3">
+                            <div className="p-2 bg-slate-900 rounded-xl">
+                                <CalendarIcon className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="text-[11px] font-black uppercase text-slate-900 leading-none">{profile?.name || 'Clinic'}</h3>
+                                <p className="text-[9px] font-bold text-slate-400 tracking-widest uppercase mt-0.5">{dayApts.length} appointment{dayApts.length !== 1 ? 's' : ''} today</p>
                             </div>
                         </div>
-                    ))}
-                </div>
-
-                <div className="flex flex-1">
-                    <div className="w-[70px] flex-none bg-white border-r border-slate-100 sticky left-0 z-40">
-                        {timeSlots.map(time => (
-                            <div key={time} className="h-[80px] flex items-start justify-center pt-2 text-[10px] font-black text-slate-400 tabular-nums">
-                                {time}
-                            </div>
-                        ))}
                     </div>
-                    <div className="flex-1 flex relative">
-                        {staff.map(member => (
-                            <div key={member.id} className="w-[180px] flex-none border-r border-slate-100 relative bg-white/20">
-                                {timeSlots.map(time => (
-                                    <div key={time} className="h-[80px] border-b border-slate-100/50 hover:bg-slate-50 transition-colors" />
-                                ))}
 
-                                {getAppointmentsForProvider(member.id, selectedDate).map(apt => {
-                                    const start = new Date(apt.startTime);
-                                    const end = new Date(apt.endTime);
-                                    const top = ((start.getHours() * 60 + start.getMinutes() - 480) / 30) * 80;
-                                    const height = Math.max(((end.getTime() - start.getTime()) / 60000 / 30) * 80, 50);
+                    <div className="flex flex-1">
+                        {/* Time column */}
+                        <div className="w-[70px] flex-none bg-white border-r border-slate-100 sticky left-0 z-40">
+                            {timeSlots.map(time => (
+                                <div key={time} className="h-[80px] flex items-start justify-center pt-2 text-[10px] font-black text-slate-400 tabular-nums">
+                                    {time}
+                                </div>
+                            ))}
+                        </div>
 
-                                    return (
-                                        <div key={apt.id} onClick={() => openAptDetails(apt)} 
-                                            className={`absolute left-1 right-1 rounded-xl p-3 border-l-4 shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status.toLowerCase()} bg-white shadow-slate-200/50`}
-                                            style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
-                                        >
-                                            <div className="flex justify-between items-start mb-1">
-                                                <span className="text-[10px] font-black uppercase text-slate-900 truncate">{apt.clientDetails?.fullName || apt.client?.firstName || 'Patient'}</span>
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <div className="text-[9px] font-bold text-slate-500 truncate lowercase">{apt.serviceName || 'Treatment'}</div>
-                                                <div className="text-[8px] font-medium text-slate-400 truncate">{apt.clientDetails?.phone || apt.client?.phone || 'No Phone'}</div>
-                                                <div className="text-[8px] font-medium text-slate-400 truncate lowercase opacity-60">{apt.clientDetails?.email || apt.client?.email || 'No Email'}</div>
-                                            </div>
-                                            <div className="mt-auto flex justify-between items-center pt-1 border-t border-slate-50">
-                                                <span className="text-[9px] font-black text-slate-400">{format(start, 'HH:mm')}</span>
-                                                {apt.bookedByInfo && <span className="text-[7px] font-black uppercase text-blue-400 bg-blue-50 px-1 rounded">By {apt.bookedByInfo.name.split(' ')[0]}</span>}
-                                            </div>
+                        {/* Single appointments column */}
+                        <div className="flex-1 relative bg-white/20">
+                            {timeSlots.map(time => (
+                                <div key={time} className="h-[80px] border-b border-slate-100/50 hover:bg-slate-50 transition-colors" />
+                            ))}
+
+                            {dayApts.map(apt => {
+                                const start = new Date(apt.startTime);
+                                const end = new Date(apt.endTime);
+                                const top = ((start.getHours() * 60 + start.getMinutes() - 480) / 30) * 80;
+                                const height = Math.max(((end.getTime() - start.getTime()) / 60000 / 30) * 80, 50);
+                                const provider = staff.find(s => s.id === apt.providerId);
+
+                                return (
+                                    <div key={apt.id} onClick={() => openAptDetails(apt)}
+                                        className={`absolute left-2 right-2 rounded-xl p-3 border-l-4 shadow-sm transition-all hover:scale-[1.01] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status.toLowerCase()} bg-white shadow-slate-200/50`}
+                                        style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
+                                    >
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="text-[10px] font-black uppercase text-slate-900 truncate">{apt.clientDetails?.fullName || apt.client?.firstName || 'Patient'}</span>
+                                            {provider && (
+                                                <span className="text-[8px] font-black uppercase text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md ml-1 whitespace-nowrap border border-indigo-100">
+                                                    {provider.fullName?.split(' ')[0]}
+                                                </span>
+                                            )}
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        ))}
+                                        <div className="space-y-0.5">
+                                            <div className="text-[9px] font-bold text-slate-500 truncate lowercase">{apt.serviceName || 'Treatment'}</div>
+                                            <div className="text-[8px] font-medium text-slate-400 truncate">{apt.clientDetails?.phone || apt.client?.phone || 'No Phone'}</div>
+                                        </div>
+                                        <div className="mt-auto flex justify-between items-center pt-1 border-t border-slate-50">
+                                            <span className="text-[9px] font-black text-slate-400">{format(start, 'HH:mm')} – {format(end, 'HH:mm')}</span>
+                                            {apt.bookedByInfo && <span className="text-[7px] font-black uppercase text-blue-400 bg-blue-50 px-1 rounded">By {apt.bookedByInfo.name.split(' ')[0]}</span>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
+
 
     const renderWeekView = () => {
         const weekDays = eachDayOfInterval({
@@ -223,9 +238,12 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                             <CalendarIcon className="w-4 h-4 text-slate-400" />
                         </div>
                         {weekDays.map(day => (
-                            <div key={day.toISOString()} className="w-[140px] p-4 flex-none border-r border-slate-100 text-center">
+                            <div key={day.toISOString()} className="w-[160px] p-4 flex-none border-r border-slate-100 text-center">
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{format(day, 'EEE')}</span>
                                 <h3 className={`text-xl font-black mt-1 ${isToday(day) ? 'text-blue-600' : 'text-slate-900'}`}>{format(day, 'd')}</h3>
+                                <p className="text-[8px] font-bold text-slate-300 mt-0.5">
+                                    {filteredAppointments.filter(a => isSameDay(new Date(a.startTime), day)).length} apts
+                                </p>
                             </div>
                         ))}
                     </div>
@@ -240,7 +258,7 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                         </div>
                         <div className="flex-1 flex relative">
                             {weekDays.map(day => (
-                                <div key={day.toISOString()} className="w-[140px] flex-none border-r border-slate-100 relative bg-white/20">
+                                <div key={day.toISOString()} className={`w-[160px] flex-none border-r border-slate-100 relative ${isToday(day) ? 'bg-blue-50/20' : 'bg-white/20'}`}>
                                     {timeSlots.map(time => (
                                         <div key={time} className="h-[80px] border-b border-slate-100/50 hover:bg-slate-50 transition-colors" />
                                     ))}
@@ -249,23 +267,28 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                         const start = new Date(apt.startTime);
                                         const end = new Date(apt.endTime);
                                         const top = ((start.getHours() * 60 + start.getMinutes() - 480) / 30) * 80;
-                                        const height = Math.max(((end.getTime() - start.getTime()) / 60000 / 30) * 80, 50);
+                                        const height = Math.max(((end.getTime() - start.getTime()) / 60000 / 30) * 80, 45);
+                                        const provider = staff.find(s => s.id === apt.providerId);
+                                        const clientName = apt.clientDetails?.fullName 
+                                            || `${apt.client?.firstName || ''} ${apt.client?.lastName || ''}`.trim() 
+                                            || 'Patient';
 
                                         return (
-                                            <div key={apt.id} onClick={() => openAptDetails(apt)} 
-                                                className={`absolute left-1 right-1 rounded-xl p-3 border-l-4 shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status.toLowerCase()} bg-white shadow-slate-200/50`}
+                                            <div key={apt.id} onClick={() => openAptDetails(apt)}
+                                                className={`absolute left-1 right-1 rounded-xl p-2 border-l-4 shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status.toLowerCase()} bg-white shadow-slate-200/50`}
                                                 style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
                                             >
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <span className="text-[10px] font-black uppercase text-slate-900 truncate">{apt.clientDetails?.fullName || apt.client?.firstName || 'Patient'}</span>
+                                                <div className="flex justify-between items-start gap-1">
+                                                    <span className="text-[10px] font-black uppercase text-slate-900 truncate leading-none">{clientName}</span>
                                                 </div>
-                                                <div className="space-y-0.5">
-                                                    <div className="text-[9px] font-bold text-slate-500 truncate lowercase">{apt.serviceName || 'Treatment'}</div>
-                                                    <div className="text-[7px] font-medium text-slate-400 truncate">{apt.clientDetails?.phone || apt.client?.phone}</div>
-                                                    {apt.bookedByInfo && <div className="text-[6px] font-black uppercase text-blue-400 mt-1 opacity-70">By {apt.bookedByInfo.name.split(' ')[0]}</div>}
+                                                <div className="space-y-0.5 mt-0.5">
+                                                    <div className="text-[9px] font-bold text-slate-500 truncate lowercase">{apt.serviceName || apt.service?.name || 'Treatment'}</div>
+                                                    {provider && (
+                                                        <div className="text-[8px] font-black text-indigo-500 truncate">{provider.fullName?.split(' ')[0]}</div>
+                                                    )}
                                                 </div>
-                                                <div className="mt-auto flex justify-between items-center pt-1 border-t border-slate-50">
-                                                    <span className="text-[9px] font-black text-slate-400">{format(start, 'HH:mm')}</span>
+                                                <div className="mt-auto pt-1 border-t border-slate-50">
+                                                    <span className="text-[8px] font-black text-slate-400">{format(start, 'HH:mm')}–{format(end, 'HH:mm')}</span>
                                                 </div>
                                             </div>
                                         );
@@ -279,9 +302,10 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         );
     };
 
+
     return (
         <div className="h-full flex flex-col overflow-hidden relative isolation-auto bg-white">
-            <div className="flex flex-wrap items-center justify-between gap-4 flex-none px-6 py-4 border-b border-slate-100 bg-white z-10">
+        <div className="flex flex-wrap items-center justify-between gap-4 flex-none px-6 py-4 border-b border-slate-100 bg-white z-[200] relative sticky top-0">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-slate-900 rounded-xl">
                         <CalendarIcon className="h-5 w-5 text-white" />
