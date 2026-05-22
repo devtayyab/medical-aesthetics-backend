@@ -4,7 +4,9 @@ import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaymentRecord, PaymentMethod, PaymentType, PaymentStatus } from './entities/payment-record.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
+import { GiftCard } from '../clinics/entities/gift-card.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class FinancialService {
@@ -13,6 +15,8 @@ export class FinancialService {
         private paymentRecordsRepository: Repository<PaymentRecord>,
         @InjectRepository(Appointment)
         private appointmentsRepository: Repository<Appointment>,
+        @InjectRepository(GiftCard)
+        private giftCardRepository: Repository<GiftCard>,
         private eventEmitter: EventEmitter2,
         private notificationsService: NotificationsService,
     ) {}
@@ -218,5 +222,44 @@ export class FinancialService {
         });
 
         return voidRecord;
+    }
+
+    async getMyGiftCards(userId: string): Promise<GiftCard[]> {
+        return this.giftCardRepository.find({
+            where: { userId },
+            order: { createdAt: 'DESC' },
+        });
+    }
+
+    async purchaseGiftCard(userId: string, data: { amount: number; recipientEmail?: string; message?: string }): Promise<GiftCard> {
+        const code = 'BD-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        
+        // Expiration date: 1 year from now
+        const expiresAt = new Date();
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+        const giftCard = this.giftCardRepository.create({
+            code,
+            amount: data.amount,
+            balance: data.amount,
+            isActive: true,
+            recipientEmail: data.recipientEmail,
+            message: data.message,
+            expiresAt,
+            userId,
+        });
+
+        const savedCard = await this.giftCardRepository.save(giftCard);
+
+        this.eventEmitter.emit('audit.log', {
+            userId,
+            action: 'GIFT_CARD_PURCHASE',
+            resource: 'gift_cards',
+            resourceId: savedCard.id,
+            changes: { after: { code, amount: data.amount, userId } },
+            data: { code, amount: data.amount, recipientEmail: data.recipientEmail },
+        });
+
+        return savedCard;
     }
 }

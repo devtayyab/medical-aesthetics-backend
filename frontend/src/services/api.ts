@@ -301,6 +301,7 @@ export const userAPI = {
     api.get("/users", { params }),
   createUser: (userData: any) => api.post("/users", userData),
   changePassword: (data: any) => api.post("/users/me/change-password", data),
+  getReferralStats: () => api.get("/users/me/referral-stats"),
 };
 
 export const loyaltyAPI = {
@@ -323,6 +324,8 @@ export const loyaltyAPI = {
 
 export const paymentsAPI = {
   getMyWallet: (params?: { limit?: number; offset?: number }) => api.get("/payments/my-wallet", { params }),
+  getMyGiftCards: () => api.get("/payments/gift-cards"),
+  purchaseGiftCard: (data: { amount: number; recipientEmail?: string; message?: string }) => api.post("/payments/gift-cards", data),
 };
 
 

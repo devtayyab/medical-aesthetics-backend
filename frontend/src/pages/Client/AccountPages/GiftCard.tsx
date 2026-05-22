@@ -4,6 +4,7 @@ import { css } from "@emotion/css";
 import { Gift, Copy, CheckCircle, ChevronRight, ArrowRight, Sparkles, CreditCard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import { paymentsAPI } from "@/services/api";
 
 // Use the user's provided green banner image for the gift card hero section
 import HeroBg from "@/assets/giftcard_bg.png";
@@ -95,12 +96,16 @@ export const GiftCard: React.FC = () => {
     if (amount <= 0) return;
     setIsPaying(true);
 
-    setTimeout(() => {
-      const generatedCode = `BD-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-      setGiftCardCode(generatedCode);
-      setIsPaying(false);
+    try {
+      const res = await paymentsAPI.purchaseGiftCard({ amount });
+      setGiftCardCode(res.data.code);
       toast.success("Voucher generated successfully!");
-    }, 1500);
+    } catch (err: any) {
+      console.error("Failed to purchase gift card:", err);
+      toast.error(err.response?.data?.message || "Purchase failed. Please try again.");
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const copyToClipboard = () => {

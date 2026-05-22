@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { css } from "@emotion/css";
 import { ChevronRight, Copy, Share2, Gift, Users, ArrowRight, Minus, Plus, Sparkles, CheckCircle } from "lucide-react";
 import type { RootState } from "@/store";
 import { motion, AnimatePresence } from "framer-motion";
+import { userAPI } from "@/services/api";
 
 // Use the user's provided hero image for referral page
 import HeroBg from "@/assets/invite_friend_bg.png";
@@ -43,7 +44,25 @@ const glassCard = css`
 
 export const InviteFriend: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
-  const referralCode = (user as any)?.referralCode || "ELITE5";
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const res = await userAPI.getReferralStats();
+        setStats(res.data);
+      } catch (err) {
+        console.error("Failed to fetch referral stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const referralCode = stats?.referralCode || (user as any)?.referralCode || "ELITE5";
   const inviteLink = `${window.location.origin}/register?ref=${referralCode}`;
 
   const [faqOpen, setFaqOpen] = useState<number | null>(0);
@@ -170,15 +189,21 @@ export const InviteFriend: React.FC = () => {
               <div className="mt-16 pt-12 border-t border-gray-100 grid grid-cols-3 gap-8">
                 <div className="text-center">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 italic">Total Invited</p>
-                  <div className="text-4xl font-black text-gray-900 italic">0</div>
+                  <div className="text-4xl font-black text-gray-900 italic">
+                    {loading ? "..." : stats?.totalInvited ?? 0}
+                  </div>
                 </div>
                 <div className="text-center">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 italic">Pending</p>
-                  <div className="text-4xl font-black text-gray-900 italic">0</div>
+                  <div className="text-4xl font-black text-gray-900 italic">
+                    {loading ? "..." : stats?.pending ?? 0}
+                  </div>
                 </div>
                 <div className="text-center">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 italic">Total Earned</p>
-                  <div className="text-4xl font-black text-[#CBFF38] italic">€0</div>
+                  <div className="text-4xl font-black text-[#CBFF38] italic">
+                    €{loading ? "..." : (stats?.totalEarnedCash ?? 0).toFixed(2)}
+                  </div>
                 </div>
               </div>
             </div>

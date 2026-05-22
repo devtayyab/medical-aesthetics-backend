@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { FinancialService } from './financial.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -22,5 +22,19 @@ export class PaymentsController {
             limit: limit || 50,
             offset: offset || 0,
         });
+    }
+
+    @Get('gift-cards')
+    @Roles(UserRole.CLIENT)
+    @ApiOperation({ summary: 'Get gift cards for the current client' })
+    async getMyGiftCards(@Req() req: any) {
+        return this.financialService.getMyGiftCards(req.user.id);
+    }
+
+    @Post('gift-cards')
+    @Roles(UserRole.CLIENT)
+    @ApiOperation({ summary: 'Purchase a new gift card' })
+    async purchaseGiftCard(@Req() req: any, @Body() body: { amount: number; recipientEmail?: string; message?: string }) {
+        return this.financialService.purchaseGiftCard(req.user.id, body);
     }
 }
