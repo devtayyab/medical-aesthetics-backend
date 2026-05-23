@@ -603,8 +603,11 @@ export class CrmController {
   @ApiOperation({ summary: 'Get sales activities for diary view' })
   @Roles(UserRole.ADMIN, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  getSalesActivities(@Query('date') date: string, @Request() req) {
-    const salespersonId = req.user.role === UserRole.SALESPERSON ? req.user.id : undefined;
+  getSalesActivities(@Query('date') date: string, @Query('salespersonId') querySalespersonId: string, @Request() req) {
+    // Salespersons are always restricted to their own data
+    const salespersonId = req.user.role === UserRole.SALESPERSON
+      ? req.user.id
+      : querySalespersonId || undefined;
     return this.crmService.getSalesActivities(date ? new Date(date) : undefined, salespersonId);
   }
 

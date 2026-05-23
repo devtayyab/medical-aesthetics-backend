@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, CreditCard, Calendar, MessageSquare, Save, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { adminSettingsAPI } from '@/services/api';
 import { toast } from 'react-hot-toast';
@@ -263,9 +263,33 @@ export const Integrations: React.FC = () => {
                   <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex gap-4">
                      <Info className="w-5 h-5 text-blue-600 shrink-0" />
                      <p className="text-xs text-blue-800 leading-relaxed">
-                       Meta leads are automatically ingested when a user submits a form on Facebook or Instagram. Ensure your App ID and Access Token are correctly configured in the system environment or below.
+                       Meta leads are automatically ingested when a user submits a form on Facebook or Instagram. Ensure your App ID, App Secret, and Access Token are correctly configured below.
                      </p>
                   </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Meta App ID</label>
+                      <input 
+                        type="text"
+                        value={settings.facebook_app_id || ''}
+                        onChange={(e) => handleInputChange('facebook_app_id', e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBFF38] text-xs font-semibold"
+                        placeholder="Enter Facebook App ID..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Meta App Secret</label>
+                      <input 
+                        type="password"
+                        value={settings.facebook_app_secret || ''}
+                        onChange={(e) => handleInputChange('facebook_app_secret', e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBFF38] text-xs font-semibold"
+                        placeholder="Enter Facebook App Secret..."
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase">Meta Access Token</label>
                     <textarea 

@@ -73,8 +73,8 @@ export const SalesDiary: React.FC<SalesDiaryProps> = ({ salespersonId }) => {
 
     useEffect(() => {
         dispatch(fetchSalespersons());
-        dispatch(fetchSalesActivities(selectedDate.toISOString()));
-    }, [dispatch, selectedDate]);
+        dispatch(fetchSalesActivities({ date: selectedDate.toISOString(), salespersonId }));
+    }, [dispatch, selectedDate, salespersonId]);
 
     const navigateDate = (direction: 'prev' | 'next') => {
         if (viewMode === 'day') {

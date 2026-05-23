@@ -29,6 +29,9 @@ export const Payments: React.FC = () => {
         type: 'payment',
         notes: '',
         clinicId: '',
+        clientId: '',
+        providerId: '',
+        salespersonId: '',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,6 +46,7 @@ export const Payments: React.FC = () => {
 
     const doctors = users.filter(u => u.role === 'doctor');
     const salespeople = users.filter(u => u.role === 'salesperson');
+    const clients = users.filter(u => u.role === 'client');
 
     const handleFilterChange = (name: string, value: string) => {
         setFilters(prev => ({ ...prev, [name]: value, offset: 0 }));
@@ -78,8 +82,8 @@ export const Payments: React.FC = () => {
 
     const handleManualSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!manualForm.amount || !manualForm.clinicId) {
-            toast.error('Please fill in amount and clinic');
+        if (!manualForm.amount || !manualForm.clinicId || !manualForm.clientId) {
+            toast.error('Please fill in client, amount, and clinic');
             return;
         }
         setIsSubmitting(true);
@@ -90,10 +94,13 @@ export const Payments: React.FC = () => {
                 type: manualForm.type,
                 notes: manualForm.notes,
                 clinicId: manualForm.clinicId,
+                clientId: manualForm.clientId,
+                providerId: manualForm.providerId || undefined,
+                salespersonId: manualForm.salespersonId || undefined,
             });
             toast.success('Manual record created successfully');
             setShowManualModal(false);
-            setManualForm({ amount: '', method: 'cash', type: 'payment', notes: '', clinicId: '' });
+            setManualForm({ amount: '', method: 'cash', type: 'payment', notes: '', clinicId: '', clientId: '', providerId: '', salespersonId: '' });
             dispatch(fetchPaymentsLedger(filters));
         } catch (err: any) {
             toast.error(err.response?.data?.message || 'Failed to create record');
@@ -151,6 +158,20 @@ export const Payments: React.FC = () => {
                         <h2 className="text-xl font-bold text-gray-900 mb-6">New Manual Record</h2>
                         <form onSubmit={handleManualSubmit} className="space-y-4">
                             <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Client *</label>
+                                <select
+                                    value={manualForm.clientId}
+                                    onChange={e => setManualForm(p => ({ ...p, clientId: e.target.value }))}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
+                                    required
+                                >
+                                    <option value="">Select Client</option>
+                                    {clients.map(u => (
+                                        <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email || u.phone || 'No Contact'})</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Clinic *</label>
                                 <select
                                     value={manualForm.clinicId}
@@ -199,6 +220,30 @@ export const Payments: React.FC = () => {
                                         <option value="pos">POS / Card</option>
                                         <option value="viva_wallet">Viva Wallet</option>
                                         <option value="online_deposit">Online Deposit</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Doctor / Provider</label>
+                                    <select
+                                        value={manualForm.providerId}
+                                        onChange={e => setManualForm(p => ({ ...p, providerId: e.target.value }))}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
+                                    >
+                                        <option value="">None</option>
+                                        {doctors.map(d => <option key={d.id} value={d.id}>{d.firstName} {d.lastName}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Salesperson</label>
+                                    <select
+                                        value={manualForm.salespersonId}
+                                        onChange={e => setManualForm(p => ({ ...p, salespersonId: e.target.value }))}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
+                                    >
+                                        <option value="">None</option>
+                                        {salespeople.map(s => <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>)}
                                     </select>
                                 </div>
                             </div>
