@@ -5,7 +5,7 @@ import { ChevronRight, Bell, ShieldOff, Trash2, CheckCircle2, Sliders, Smartphon
 import { motion, AnimatePresence } from "framer-motion";
 
 // Use the same clinical hero visual for consistency
-import HeroBg from "@/assets/Blog_Hero.jpg";
+import HeroBg from "@/assets/Settings_Hero_New.png";
 
 const sectionStyles = css`
   min-height: 100vh;

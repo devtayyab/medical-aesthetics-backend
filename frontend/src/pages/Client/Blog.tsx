@@ -6,7 +6,7 @@ import { ChevronRight, Search, ArrowRight, BookOpen, Clock, Tag, Sparkles } from
 import { motion, AnimatePresence } from "framer-motion";
 
 // Use the custom hero image for blog
-import HeroBg from "@/assets/Blog_Hero.jpg";
+import HeroBg from "@/assets/Blog_Hero_New.png";
 
 const sectionStyles = css`
   min-height: 100vh;
