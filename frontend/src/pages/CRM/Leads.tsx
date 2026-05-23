@@ -179,8 +179,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   }, [searchTerm]);
 
   const handleCreateLead = async () => {
-    if (!formData.firstName || !formData.lastName) {
-      toast.error("First Name and Last Name are required");
+    if (!formData.firstName || !formData.lastName || !formData.phone) {
+      toast.error("First Name, Last Name, and Phone Number are required");
       return;
     }
     try {
