@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import clinicApi from '../../services/api/clinicApi';
-import { TrendingUp, DollarSign, Calendar, Users, Award, Repeat, ArrowUpRight, BarChart3, Filter } from 'lucide-react';
+import { TrendingUp, DollarSign, Calendar, Award, ArrowUpRight, BarChart3, Filter } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AnalyticsPage: React.FC = () => {
@@ -12,7 +12,6 @@ const AnalyticsPage: React.FC = () => {
   const [appointmentAnalytics, setAppointmentAnalytics] = useState<any>(null);
   const [revenueAnalytics, setRevenueAnalytics] = useState<any>(null);
   const [loyaltyAnalytics, setLoyaltyAnalytics] = useState<any>(null);
-  const [repeatForecast, setRepeatForecast] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -22,17 +21,15 @@ const AnalyticsPage: React.FC = () => {
   const fetchAnalytics = async () => {
     setIsLoading(true);
     try {
-      const [appointments, revenue, loyalty, repeat] = await Promise.all([
+      const [appointments, revenue, loyalty] = await Promise.all([
         clinicApi.analytics.getAppointmentAnalytics(dateRange),
         clinicApi.analytics.getRevenueAnalytics(dateRange),
         clinicApi.analytics.getLoyaltyAnalytics(dateRange),
-        clinicApi.analytics.getRepeatForecast(dateRange),
       ]);
 
       setAppointmentAnalytics(appointments);
       setRevenueAnalytics(revenue);
       setLoyaltyAnalytics(loyalty);
-      setRepeatForecast(repeat);
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
     } finally {
@@ -188,48 +185,7 @@ const AnalyticsPage: React.FC = () => {
               </div>
            </div>
 
-           {/* Repeat Forecast */}
-           <div className="lg:col-span-12 bg-[#0D0D0D] rounded-[40px] p-10 border border-white/5 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-[-50px] right-[-50px] size-[300px] bg-[#CBFF38]/5 blur-[80px] rounded-full" />
-              
-              <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-10">
-                  <div className="size-12 bg-[#CBFF38] rounded-[20px] flex items-center justify-center text-black">
-                    <Repeat size={22} />
-                  </div>
-                  <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">Retention Velocity Forecast</h2>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
-                   <ForecastStat label="Predicted Traffic" value={repeatForecast?.customersExpectedNextMonth || 0} unit="Patients" />
-                   <ForecastStat label="Revenue Projection" value={`€${(repeatForecast?.estimatedRevenue || 0).toLocaleString()}`} unit="Projected" />
-                   <ForecastStat label="Retention Rate" value={`${(repeatForecast?.repeatRate || 0).toFixed(1)}%`} unit="System Static" />
-                </div>
-
-                <div className="bg-white/5 rounded-[32px] border border-white/10 p-8">
-                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#CBFF38] mb-6 italic">Priority Retention Nodes (Next 30 Days)</h3>
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {repeatForecast?.customers?.slice(0, 6).map((customer: any) => (
-                         <div key={customer.id} className="flex items-center justify-between p-5 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/5 hover:border-[#CBFF38]/30 group">
-                            <div className="flex items-center gap-4">
-                               <div className="size-10 rounded-xl bg-[#CBFF38] text-black flex items-center justify-center font-black italic scale-90 group-hover:scale-100 transition-transform">
-                                  {customer.name[0]}
-                               </div>
-                               <div>
-                                  <p className="text-[11px] font-black uppercase italic text-white leading-none mb-1">{customer.name}</p>
-                                  <p className="text-[8px] font-black uppercase text-gray-500">Last: {new Date(customer.lastVisit).toLocaleDateString()}</p>
-                               </div>
-                            </div>
-                            <div className="text-right">
-                               <div className="text-[9px] font-black text-[#CBFF38] italic">{new Date(customer.expectedNextVisit).toLocaleDateString()}</div>
-                               <p className="text-[7px] font-black uppercase text-gray-600">Expected Vector</p>
-                            </div>
-                         </div>
-                      ))}
-                   </div>
-                </div>
-              </div>
-           </div>
         </div>
       </div>
     </div>
@@ -253,15 +209,6 @@ const PremiumStatCard = ({ title, value, subValue, icon, highlight }: any) => (
     </div>
 );
 
-const ForecastStat = ({ label, value, unit }: any) => (
-   <div className="relative group">
-      <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-1 h-12 bg-[#CBFF38] rounded-full scale-y-0 group-hover:scale-y-100 transition-transform duration-500" />
-      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2 italic">{label}</p>
-      <div className="flex items-baseline gap-2">
-         <span className="text-4xl font-black italic tracking-tighter text-white leading-none">{value}</span>
-         <span className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] italic">{unit}</span>
-      </div>
-   </div>
-);
+
 
 export default AnalyticsPage;

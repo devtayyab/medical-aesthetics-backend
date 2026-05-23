@@ -526,8 +526,10 @@ export const fetchSalespersons = createAsyncThunk(
 
 export const fetchSalesActivities = createAsyncThunk(
   "crm/fetchSalesActivities",
-  async (date?: string) => {
-    const response = await crmAPI.getSalesActivities(date);
+  async (params?: { date?: string; salespersonId?: string } | string) => {
+    const date = typeof params === 'string' ? params : params?.date;
+    const salespersonId = typeof params === 'string' ? undefined : params?.salespersonId;
+    const response = await crmAPI.getSalesActivities(date, salespersonId);
     return response.data;
   }
 );

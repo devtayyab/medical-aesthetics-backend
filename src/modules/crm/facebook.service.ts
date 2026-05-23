@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EntityManager } from 'typeorm';
 import axios, { AxiosInstance } from 'axios';
 import * as crypto from 'crypto';
 
@@ -32,22 +33,53 @@ export interface ParsedFacebookLead {
 @Injectable()
 export class FacebookService {
   private readonly axiosInstance: AxiosInstance;
-  private readonly accessToken: string;
-  private readonly appSecret: string;
   private readonly apiVersion: string = 'v18.0';
   private readonly logger = new Logger(FacebookService.name);
 
-  constructor(private configService: ConfigService) {
-    this.accessToken = this.configService.get<string>('FACEBOOK_ACCESS_TOKEN');
-    this.appSecret = this.configService.get<string>('FACEBOOK_APP_SECRET');
+  constructor(
+    private configService: ConfigService,
+    private entityManager: EntityManager,
+  ) {
     this.axiosInstance = axios.create({
       baseURL: `https://graph.facebook.com/${this.apiVersion}`,
       timeout: 10000,
     });
   }
 
-  validateSignature(signature: string, payload: any): boolean {
-    if (!this.appSecret) {
+  private async getFacebookCredentials(): Promise<{ accessToken: string; appSecret: string; appId?: string }> {
+    let accessToken = this.configService.get<string>('FACEBOOK_ACCESS_TOKEN');
+    let appSecret = this.configService.get<string>('FACEBOOK_APP_SECRET');
+    let appId = this.configService.get<string>('FACEBOOK_APP_ID');
+
+    try {
+      const dbSettings = await this.entityManager.query(
+        `SELECT key, value FROM platform_settings WHERE key IN ('facebook_access_token', 'facebook_app_secret', 'facebook_app_id')`
+      );
+      
+      const settingsMap: Record<string, any> = {};
+      for (const row of dbSettings) {
+        settingsMap[row.key] = row.value;
+      }
+
+      if (settingsMap['facebook_access_token']) {
+        accessToken = settingsMap['facebook_access_token'];
+      }
+      if (settingsMap['facebook_app_secret']) {
+        appSecret = settingsMap['facebook_app_secret'];
+      }
+      if (settingsMap['facebook_app_id']) {
+        appId = settingsMap['facebook_app_id'];
+      }
+    } catch (err) {
+      this.logger.error('Failed to load facebook settings from DB, falling back to env', err.stack);
+    }
+
+    return { accessToken, appSecret, appId };
+  }
+
+  async validateSignature(signature: string, payload: any): Promise<boolean> {
+    const creds = await this.getFacebookCredentials();
+    if (!creds.appSecret) {
       this.logger.warn('FACEBOOK_APP_SECRET not configured. Skipping signature validation.');
       // Return true to allow testing without secret, but this is insecure for production
       return true;
@@ -62,19 +94,15 @@ export class FacebookService {
       return false;
     }
 
-    // Note: In a real scenario, payload should be the raw body buffer.
-    // Re-stringifying JSON might result in different white-spacing/ordering than the original request,
-    // causing verification to fail. 
-    // Ideally, we should use a RawBody middleware. 
-    // For this 'lite' implementation, we attempt to stringify, but known limitations exist.
-    const hmac = crypto.createHmac(algorithm, this.appSecret);
+    const hmac = crypto.createHmac(algorithm, creds.appSecret);
     const digest = hmac.update(JSON.stringify(payload)).digest('hex');
 
     return signatureHash === digest;
   }
 
   async getLead(leadId: string): Promise<FacebookLeadData> {
-    if (leadId.startsWith('mock_') || this.accessToken === 'MOCK_TOKEN') {
+    const creds = await this.getFacebookCredentials();
+    if (leadId.startsWith('mock_') || creds.accessToken === 'MOCK_TOKEN') {
       return {
         id: leadId,
         created_time: new Date().toISOString(),
@@ -88,7 +116,7 @@ export class FacebookService {
     try {
       const response = await this.axiosInstance.get(`/${leadId}`, {
         params: {
-          access_token: this.accessToken,
+          access_token: creds.accessToken,
           fields: 'id,field_data,created_time,ad_id,adset_id,campaign_id,form_id',
         },
       });
@@ -105,7 +133,8 @@ export class FacebookService {
   }
 
   async getLeadsByForm(formId: string, limit: number = 50): Promise<FacebookLeadData[]> {
-    if (this.accessToken === 'MOCK_TOKEN' || this.accessToken === 'your-facebook-access-token') {
+    const creds = await this.getFacebookCredentials();
+    if (creds.accessToken === 'MOCK_TOKEN' || creds.accessToken === 'your-facebook-access-token') {
       return Array(limit).fill(null).map((_, i) => ({
         id: `mock_lead_${i + 1}`,
         created_time: new Date().toISOString(),
@@ -121,7 +150,7 @@ export class FacebookService {
     try {
       const response = await this.axiosInstance.get(`/leads`, {
         params: {
-          access_token: this.accessToken,
+          access_token: creds.accessToken,
           fields: 'id,field_data,created_time,ad_id,adset_id,campaign_id,form_id',
           limit,
         },
@@ -161,8 +190,9 @@ export class FacebookService {
   }
 
   async testFacebookConnection(): Promise<{ success: boolean; message: string }> {
+    const creds = await this.getFacebookCredentials();
     try {
-      if (this.accessToken === 'MOCK_TOKEN' || this.accessToken === 'your-facebook-access-token') {
+      if (creds.accessToken === 'MOCK_TOKEN' || creds.accessToken === 'your-facebook-access-token') {
         return {
           success: true,
           message: 'Facebook API connection successful (MOCK MODE). Connected as: Mock User',
@@ -172,7 +202,7 @@ export class FacebookService {
       // Test the connection by making a simple API call to verify the access token
       const response = await this.axiosInstance.get('/me', {
         params: {
-          access_token: this.accessToken,
+          access_token: creds.accessToken,
           fields: 'id,name',
         },
       });
@@ -202,8 +232,10 @@ export class FacebookService {
       };
     }
   }
+
   async getForms(pageId?: string): Promise<any[]> {
-    if (!this.accessToken || this.accessToken === 'MOCK_TOKEN' || this.accessToken === 'your-facebook-access-token') {
+    const creds = await this.getFacebookCredentials();
+    if (!creds.accessToken || creds.accessToken === 'MOCK_TOKEN' || creds.accessToken === 'your-facebook-access-token') {
       return [
         { id: '12', name: 'Newsletter Signup', status: 'ACTIVE' },
         { id: '13', name: 'Spring Promo', status: 'ACTIVE' },
@@ -215,7 +247,7 @@ export class FacebookService {
       const targetId = pageId || 'me'; // Use 'me' to get forms for the connected user/page
       const response = await this.axiosInstance.get(`/${targetId}/leadgen_forms`, {
         params: {
-          access_token: this.accessToken,
+          access_token: creds.accessToken,
           fields: 'id,name,status,leads_count',
         },
       });

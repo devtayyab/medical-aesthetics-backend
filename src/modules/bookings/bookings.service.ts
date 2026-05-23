@@ -679,6 +679,39 @@ export class BookingsService {
       if (data?.notes) {
         updateData.notes = data.notes;
       }
+
+      // Record payment in financial ledger if amountPaid > 0
+      const amountToRecord = updateData.amountPaid !== undefined ? Number(updateData.amountPaid) : Number(appointment.amountPaid || 0);
+      if (amountToRecord > 0) {
+        try {
+          const existingPayment = await this.financialService['paymentRecordsRepository']?.findOne({
+            where: { appointmentId: appointment.id, type: PaymentType.PAYMENT }
+          });
+          
+          if (!existingPayment) {
+            await this.financialService.recordPayment({
+              appointmentId: appointment.id,
+              clinicId: appointment.clinicId,
+              clientId: appointment.clientId,
+              providerId: appointment.providerId,
+              amount: amountToRecord,
+              method: (data?.paymentMethod || appointment.paymentMethod || 'cash') as any,
+              type: PaymentType.PAYMENT,
+              notes: data?.notes || `Payment recorded for completed appointment ${appointment.id}`,
+              recordedById: userId,
+            });
+          } else {
+            // Update existing payment if amount or method changed
+            await this.financialService['paymentRecordsRepository']?.update(existingPayment.id, {
+              amount: amountToRecord,
+              method: (data?.paymentMethod || existingPayment.method || 'cash') as any,
+              recordedById: userId,
+            });
+          }
+        } catch (payErr) {
+          console.error('[BookingsService] Failed to auto-record payment on status update to COMPLETED:', payErr.message);
+        }
+      }
     } else if (status === AppointmentStatus.CANCELLED) {
       updateData.cancelledAt = new Date();
       updateData.cancelledById = userId;
@@ -1445,7 +1478,7 @@ export class BookingsService {
 
     // Void revenue if payment was recorded
     try {
-      await this.financialService['paymentRecordRepository']?.update?.(
+      await this.financialService['paymentRecordsRepository']?.update?.(
         { appointmentId },
         { notes: `VOIDED: Appointment soft-deleted by userId=${userId} at ${new Date().toISOString()}` }
       );

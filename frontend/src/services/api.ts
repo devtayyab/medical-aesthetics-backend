@@ -493,7 +493,7 @@ export const crmAPI = {
   // Clinic Access
   getAccessibleClinics: () => api.get("/crm/accessible-clinics"),
   getSalespersons: () => api.get("/crm/salespersons"),
-  getSalesActivities: (date?: string) => api.get("/crm/activities/diary", { params: { date } }),
+  getSalesActivities: (date?: string, salespersonId?: string) => api.get("/crm/activities/diary", { params: { date, salespersonId } }),
 };
 
 export const adminAPI = {
@@ -536,7 +536,16 @@ export const adminAPI = {
   refundPayment: (id: string, notes: string) => api.post(`/admin/payments/${id}/refund`, { notes }),
   voidPayment: (id: string, notes: string) =>
     api.post(`/admin/payments/${id}/void`, { notes }),
-  createManualPayment: (data: { amount: number; method: string; type: string; notes: string; clinicId: string }) =>
+  createManualPayment: (data: {
+    amount: number;
+    method: string;
+    type: string;
+    notes: string;
+    clinicId: string;
+    clientId: string;
+    providerId?: string;
+    salespersonId?: string;
+  }) =>
     api.post(`/admin/payments/manual`, data),
   getGiftCardsSummary: () => api.get("/admin/gift-cards/summary"),
   getGiftCards: (search?: string) => api.get("/admin/gift-cards", { params: { search } }),

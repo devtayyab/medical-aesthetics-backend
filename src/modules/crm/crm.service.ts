@@ -432,7 +432,7 @@ export class CrmService implements OnModuleInit {
     throw new ForbiddenException('Invalid verify token');
   }
 
-  validateFacebookSignature(signature: string, payload: any): boolean {
+  async validateFacebookSignature(signature: string, payload: any): Promise<boolean> {
     return this.facebookService.validateSignature(signature, payload);
   }
 
@@ -3337,7 +3337,7 @@ export class CrmService implements OnModuleInit {
   async getAgentAppointmentStats(dateRange?: { startDate: Date; endDate: Date }) {
     let query = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .leftJoin('users', 'agent', 'agent.id = apt.bookedById')
+      .leftJoin('apt.bookedBy', 'agent')
       .select('apt.bookedById', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COUNT(apt.id)', 'booked')
@@ -3368,11 +3368,11 @@ export class CrmService implements OnModuleInit {
   async getAgentCashflow(dateRange?: { startDate: Date; endDate: Date }) {
     let query = this.appointmentsRepository
       .createQueryBuilder('apt')
-      .leftJoin('users', 'agent', 'agent.id = apt.bookedById')
+      .leftJoin('apt.bookedBy', 'agent')
       .select('apt.bookedById', 'agentId')
       .addSelect("CONCAT(agent.firstName, ' ', agent.lastName)", 'agentName')
       .addSelect('COALESCE(SUM(apt.totalAmount), 0)', 'revenue')
-      .addSelect('COALESCE(SUM(CASE WHEN apt.status = \'cancelled\' AND apt.totalAmount > 0 THEN apt.totalAmount ELSE 0 END), 0)', 'refunds')
+      .addSelect("COALESCE(SUM(CASE WHEN apt.status = 'CANCELLED' AND apt.totalAmount > 0 THEN apt.totalAmount ELSE 0 END), 0)", 'refunds')
       .where('apt.bookedById IS NOT NULL');
 
     if (dateRange) {

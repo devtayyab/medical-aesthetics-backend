@@ -471,7 +471,7 @@ export const Customers: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {leads.map((lead) => (
-                  <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0 h-14">
+                  <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0 h-10">
                     <TableCell className="py-2 px-3 text-xs">
                       <input
                         type="checkbox"
