@@ -174,6 +174,10 @@ export class CrmService implements OnModuleInit {
   }
 
   async create(createLeadDto: CreateLeadDto): Promise<Lead> {
+    if (createLeadDto.email && createLeadDto.email.trim() === '') {
+      createLeadDto.email = undefined;
+    }
+
     // Use enhanced duplicate detection
     const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
       createLeadDto.email,

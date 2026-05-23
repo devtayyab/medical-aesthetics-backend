@@ -184,7 +184,11 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       return;
     }
     try {
-      const result = await dispatch(createLead(formData)).unwrap();
+      const payload = { ...formData };
+      if (!payload.email || payload.email.trim() === "") {
+        delete (payload as any).email;
+      }
+      const result = await dispatch(createLead(payload)).unwrap();
       const leadId = result.id;
 
       // Handle follow-up actions

@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsObject,
   IsDateString,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { LeadStatus } from '../../../common/enums/lead-status.enum';
@@ -26,6 +27,7 @@ export class CreateLeadDto {
 
   @ApiProperty({ example: 'jane.smith@email.com', required: false })
   @IsOptional()
+  @ValidateIf(o => o.email && o.email.trim() !== '')
   @IsEmail()
   email?: string;
 
