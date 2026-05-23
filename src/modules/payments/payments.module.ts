@@ -6,11 +6,12 @@ import { VivaWalletController } from './viva-wallet.controller';
 import { PaymentsController } from './payments.controller';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { PaymentRecord } from './entities/payment-record.entity';
+import { GiftCard } from '../clinics/entities/gift-card.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Appointment, PaymentRecord]),
+        TypeOrmModule.forFeature([Appointment, PaymentRecord, GiftCard]),
         NotificationsModule
     ],
     controllers: [VivaWalletController, PaymentsController],

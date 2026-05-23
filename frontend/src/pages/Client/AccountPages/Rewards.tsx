@@ -58,6 +58,7 @@ export const Rewards: React.FC = () => {
   // ... (keep state and logic same)
   const { user } = useSelector((state: RootState) => state.auth);
   const [userPoints, setUserPoints] = useState<number>((user as any)?.points || 0);
+  const [userTier, setUserTier] = useState<string>("bronze");
   const [isLoading, setIsLoading] = useState(false);
   const [isRedeeming, setIsRedeeming] = useState<string | null>(null);
   const [dynamicRewards, setDynamicRewards] = useState<any[]>([]);
@@ -77,6 +78,7 @@ export const Rewards: React.FC = () => {
       setIsLoading(true);
       const res = await loyaltyAPI.getBalance(user.id);
       setUserPoints(res.data.totalPoints || 0);
+      setUserTier(res.data.tier || "bronze");
     } catch (err) {
       console.error("Failed to fetch loyalty balance", err);
     } finally {
@@ -117,8 +119,21 @@ export const Rewards: React.FC = () => {
     }
   };
 
-  const nextTierPoints = 500;
-  const progressPercent = Math.min((userPoints / nextTierPoints) * 100, 100);
+  const getTierThresholds = (tierName: string) => {
+    switch (tierName.toLowerCase()) {
+      case "bronze": return { currentMin: 0, nextMax: 200, nextTierName: "Silver" };
+      case "silver": return { currentMin: 200, nextMax: 500, nextTierName: "Gold" };
+      case "gold": return { currentMin: 500, nextMax: 1000, nextTierName: "Platinum" };
+      default: return { currentMin: 1000, nextMax: 1000, nextTierName: "Max" };
+    }
+  };
+
+  const thresholds = getTierThresholds(userTier);
+  const nextTierPoints = thresholds.nextMax;
+  const progressPercent = nextTierPoints > thresholds.currentMin 
+    ? Math.min(((userPoints - thresholds.currentMin) / (nextTierPoints - thresholds.currentMin)) * 100, 100) 
+    : 100;
+  const pointsToNextTier = nextTierPoints - userPoints;
 
   const icons = [<Gift size={20} />, <Sparkles size={20} />, <Trophy size={20} />, <Lock size={20} />];
   
@@ -190,8 +205,10 @@ export const Rewards: React.FC = () => {
               <div className="space-y-4">
                 <div className="bg-white/5 rounded-2xl p-6 border border-white/10 relative overflow-hidden">
                   <div className="flex justify-between items-center mb-4 relative z-10">
-                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-widest italic">Membership Tier</span>
-                    <span className="text-[9px] font-black uppercase text-[#CBFF38] tracking-widest leading-none">{Math.max(0, 500 - userPoints)} left</span>
+                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-widest italic">Membership Tier: {userTier}</span>
+                    <span className="text-[9px] font-black uppercase text-[#CBFF38] tracking-widest leading-none">
+                      {pointsToNextTier > 0 ? `${pointsToNextTier} left for ${thresholds.nextTierName}` : "Max Tier"}
+                    </span>
                   </div>
                   <div className="h-1.5 bg-white/5 rounded-full overflow-hidden relative z-10">
                     <motion.div 

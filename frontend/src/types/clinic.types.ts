@@ -189,6 +189,9 @@ export enum PaymentMethod {
   POS = 'pos',
   CARD = 'card',
   BANK_TRANSFER = 'bank_transfer',
+  VIVA_WALLET = 'viva_wallet',
+  ONLINE_DEPOSIT = 'online_deposit',
+  GIFT_CARD = 'gift_card',
 }
 
 export interface Payment {

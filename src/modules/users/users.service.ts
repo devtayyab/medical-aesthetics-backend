@@ -8,6 +8,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserRole } from '../../common/enums/user-role.enum';
 import * as bcrypt from 'bcrypt';
+import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
+import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 @Injectable()
 export class UsersService {
@@ -182,5 +184,42 @@ export class UsersService {
 
     // Delete consent records
     await this.consentRepository.delete({ userId });
+  }
+
+  async getReferralStats(userId: string): Promise<any> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const referredUsers = await this.usersRepository.find({
+      where: { referredById: userId },
+      relations: ['clientAppointments'],
+    });
+
+    const totalInvited = referredUsers.length;
+    const pending = referredUsers.filter(u => 
+      !u.clientAppointments || !u.clientAppointments.some(a => a.status === AppointmentStatus.COMPLETED)
+    ).length;
+    const completed = totalInvited - pending;
+
+    const ledgerRepository = this.usersRepository.manager.getRepository(LoyaltyLedger);
+    const ledgerResult = await ledgerRepository.createQueryBuilder('ledger')
+      .select('SUM(ledger.points)', 'earned')
+      .where('ledger.clientId = :userId', { userId })
+      .andWhere('ledger.description ILIKE :refDesc', { refDesc: '%referral%' })
+      .getRawOne();
+    
+    const totalPointsEarned = parseInt(ledgerResult.earned) || 0;
+    const totalEarnedCash = totalPointsEarned / 10; // 50 points = €5.00
+
+    return {
+      referralCode: user.referralCode || 'ELITE5',
+      totalInvited,
+      pending,
+      completed,
+      totalPointsEarned,
+      totalEarnedCash,
+    };
   }
 }

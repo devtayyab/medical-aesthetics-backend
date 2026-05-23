@@ -1,5 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Search,
@@ -93,7 +94,10 @@ export const Customers: React.FC = () => {
   }, [searchTerm]);
 
   const handleCreateCustomer = async () => {
-    if (!formData.firstName || !formData.lastName || !formData.email) return;
+    if (!formData.firstName || !formData.lastName || !formData.phone) {
+      toast.error("First Name, Last Name, and Phone Number are required");
+      return;
+    }
     try {
       await dispatch(createLead(formData)).unwrap();
       setShowCreateForm(false);
@@ -415,14 +419,14 @@ export const Customers: React.FC = () => {
             <span className="text-xs font-medium text-slate-300">Records ready for batch processing</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              onClick={() => setSelectedLeads([])} 
+            <Button
+              variant="ghost"
+              onClick={() => setSelectedLeads([])}
               className="text-white hover:bg-white/10 h-9 font-bold text-[10px]"
             >
               Deselect All
             </Button>
-            <Button 
+            <Button
               onClick={handleBulkDelete}
               className="bg-red-500 hover:bg-red-600 text-white h-9 px-6 rounded-xl font-bold text-[10px] flex items-center gap-2 shadow-lg shadow-red-500/20"
             >
@@ -516,7 +520,7 @@ export const Customers: React.FC = () => {
                           View Details <ArrowRight className="w-3 h-3 ml-1" />
                         </Button>
                         {isAdmin && (
-                          <button 
+                          <button
                             onClick={() => handleDeleteCustomer(lead.id, `${lead.firstName} ${lead.lastName}`)}
                             className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                             title="Delete Customer"
@@ -571,8 +575,8 @@ export const Customers: React.FC = () => {
                 <Input label="First Name" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required />
                 <Input label="Last Name" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required />
               </div>
-              <Input label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
-              <Input label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+              <Input label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+              <Input label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} required />
             </div>
             <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
               <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>

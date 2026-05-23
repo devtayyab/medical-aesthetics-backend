@@ -103,7 +103,7 @@ export const Appointments: React.FC = () => {
   const { appointments: clientAppointments } = useSelector((state: RootState) => state.client);
 
   const [reschedulingAppointment, setReschedulingAppointment] = useState<Appointment | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'confirmed' | 'completed'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'confirmed' | 'completed'>('confirmed');
 
   useEffect(() => {
     dispatch(fetchUserAppointments());

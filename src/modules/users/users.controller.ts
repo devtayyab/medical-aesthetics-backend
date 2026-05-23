@@ -32,6 +32,14 @@ export class UsersController {
     return req.user;
   }
 
+  @Get('me/referral-stats')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user referral statistics' })
+  getReferralStats(@Request() req) {
+    return this.usersService.getReferralStats(req.user.id);
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT, UserRole.SUPER_ADMIN)

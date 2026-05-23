@@ -82,7 +82,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   const [importLoading, setImportLoading] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; errors: { row: number; message: string }[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Facebook Form Schedule State
   const [showFormScheduleModal, setShowFormScheduleModal] = useState(false);
   const [facebookForms, setFacebookForms] = useState<any[]>([]);
@@ -112,9 +112,9 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         const salesRes = await crmAPI.getSalespersons();
         const salesOptions = (salesRes.data || [])
           .filter((s: any) => s.role === 'salesperson')
-          .map((s: any) => ({ 
-            value: s.id, 
-            label: `${s.firstName} ${s.lastName}` 
+          .map((s: any) => ({
+            value: s.id,
+            label: `${s.firstName} ${s.lastName}`
           }));
         setProviders(salesOptions);
       } catch (e) {
@@ -179,14 +179,21 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   }, [searchTerm]);
 
   const handleCreateLead = async () => {
-    if (!formData.firstName || !formData.lastName || !formData.email) return;
+    if (!formData.firstName || !formData.lastName || !formData.phone) {
+      toast.error("First Name, Last Name, and Phone Number are required");
+      return;
+    }
     try {
-      const result = await dispatch(createLead(formData)).unwrap();
+      const payload = { ...formData };
+      if (!payload.email || payload.email.trim() === "") {
+        delete (payload as any).email;
+      }
+      const result = await dispatch(createLead(payload)).unwrap();
       const leadId = result.id;
 
       // Handle follow-up actions
       const actions: Promise<any>[] = [];
-      
+
       if (createFollowUpTask) {
         actions.push(crmAPI.createAction({
           customerId: leadId,
@@ -208,7 +215,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
       setShowCreateForm(false);
       setFormData(initialFormState);
-      
+
       // Reset action states
       setCreateFollowUpTask(false);
     } catch (error: any) {
@@ -235,10 +242,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
   const handleBulkAction = async (action: string, value?: string) => {
     if (selectedLeads.length === 0) return;
-    
+
     const count = selectedLeads.length;
     const toastId = toast.loading(`Performing bulk ${action}...`);
-    
+
     try {
       if (action === 'delete') {
         for (const leadId of selectedLeads) await dispatch(deleteLead(leadId)).unwrap();
@@ -247,7 +254,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       } else if (action === 'assign' && value) {
         for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { assignedSalesId: value } })).unwrap();
       }
-      
+
       toast.success(`Successfully updated ${count} leads`, { id: toastId });
       setSelectedLeads([]);
       // Refresh list to be sure
@@ -295,10 +302,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
         assignedSalesId: editingLead.assignedSalesId,
       };
       await dispatch(updateLead({ id: editingLead.id, updates })).unwrap();
-      
+
       // Handle follow-up actions (if any - though UI is removed, keep logic safe)
       const actions: Promise<any>[] = [];
-      
+
       if (createFollowUpTask) {
         actions.push(crmAPI.createAction({
           customerId: editingLead.id,
@@ -320,7 +327,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       toast.success("Lead updated successfully", { id: toastId });
       setShowModal(false);
       setEditingLead(null);
-      
+
       // Reset action states
       setCreateFollowUpTask(false);
 
@@ -373,7 +380,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       }));
       const res = await crmAPI.bulkCreateLeads(payload);
       const data = res.data;
-      
+
       const succeeded = data.created ?? 0;
       const errors: { row: number; message: string }[] = (data.results || [])
         .map((r: any, i: number) => r.status === 'error' ? { row: i + 2, message: r.message } : null)
@@ -466,7 +473,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
       {/* Decorative Background Elements */}
       <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-slate-100 to-transparent opacity-50 pointer-events-none" />
       <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#CBFF38]/5 rounded-full blur-3xl pointer-events-none" />
-      
+
       <div className="flex flex-wrap items-center justify-between gap-y-10 gap-x-8 pb-6 relative z-10">
         <div className="shrink-0 space-y-2">
           <div className="flex items-center gap-4">
@@ -474,8 +481,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               Registry
             </h1>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-[#CBFF38] text-black rounded-xl shadow-xl shadow-[#CBFF38]/20">
-               <Users size={14} strokeWidth={3} />
-               <span className="text-[11px] font-black uppercase tracking-widest">{leads.length} Leads</span>
+              <Users size={14} strokeWidth={3} />
+              <span className="text-[11px] font-black uppercase tracking-widest">{leads.length} Leads</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -508,7 +515,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               <Filter size={14} className="mr-2" />
               {showFilters ? 'Applied' : 'Filters'}
             </Button>
-            
+
             {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
               <div className="hidden sm:flex items-center gap-1 border-l border-slate-200 ml-1.5 pl-1.5">
                 <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white" onClick={() => setShowBulkImport(true)}>
@@ -521,8 +528,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             )}
           </div>
 
-          <Button 
-            onClick={() => setShowCreateForm(true)} 
+          <Button
+            onClick={() => setShowCreateForm(true)}
             className="h-14 px-8 bg-[#CBFF38] text-slate-900 border-none rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.15em] shadow-2xl shadow-[#CBFF38]/30 transition-all hover:scale-[1.05] active:scale-[0.95] hover:bg-[#b3d81b] flex items-center gap-3"
           >
             <Plus size={18} strokeWidth={4} />
@@ -556,8 +563,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                 className="pl-2 pr-1 py-1 h-7 flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-100 font-medium text-[10px] rounded-lg"
               >
                 <span className="opacity-60">{label}:</span> {displayValue}
-                <button 
-                  onClick={() => handleFilterChange(key, '')} 
+                <button
+                  onClick={() => handleFilterChange(key, '')}
                   className="ml-1 hover:bg-blue-100 rounded-full p-0.5 transition-colors"
                 >
                   <X className="w-3 h-3" />
@@ -565,9 +572,9 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               </Badge>
             )
           })}
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => {
               dispatch(setLeadFilters({}));
               setSearchTerm('');
@@ -749,8 +756,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   Apply Filters
                 </Button>
                 {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     onClick={async () => {
                       try {
                         const currentForm = Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] : leadFilters.formNames;
@@ -764,10 +771,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                       } catch (e) {
                         setShowFormScheduleModal(true);
                       }
-                    }} 
+                    }}
                     className="h-8 px-4 text-[10px] font-bold bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm border-none transition-all flex items-center gap-1.5"
                   >
-                    <CalendarPlus className="w-3.5 h-3.5" /> 
+                    <CalendarPlus className="w-3.5 h-3.5" />
                     Schedule This Filter
                   </Button>
                 )}
@@ -790,46 +797,46 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Bulk Action Mode Active</p>
             </div>
           </div>
-          
+
           <div className="flex gap-2.5 items-center">
             {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
               <Select
                 placeholder="Assign Owner"
                 options={(salespersons || [])
                   .filter((sp: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(sp.role))
-                  .map((sp:any) => ({
-                  value: sp.id,
-                  label: `${sp.firstName} ${sp.lastName}`
-                }))}
+                  .map((sp: any) => ({
+                    value: sp.id,
+                    label: `${sp.firstName} ${sp.lastName}`
+                  }))}
                 onChange={(val) => handleBulkAction('assign', val)}
                 className="w-44 text-xs h-9 bg-slate-800 border-slate-700 text-white font-bold rounded-xl"
               />
             )}
-            
+
             {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
-              <Button 
-                 onClick={() => {
-                   setBulkTaskData(prev => ({ ...prev, salespersonId: '' }));
-                   setShowBulkTaskModal(true);
-                 }} 
-                 className="h-9 px-4 bg-[#CBFF38] text-black hover:bg-[#b3d81b] border-none font-black text-[10px] uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02]"
+              <Button
+                onClick={() => {
+                  setBulkTaskData(prev => ({ ...prev, salespersonId: '' }));
+                  setShowBulkTaskModal(true);
+                }}
+                className="h-9 px-4 bg-[#CBFF38] text-black hover:bg-[#b3d81b] border-none font-black text-[10px] uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02]"
               >
                 <CalendarPlus className="w-3.5 h-3.5 mr-2" /> Create Task Plan
               </Button>
             )}
 
-            <Button 
-              variant="outline" 
-              onClick={() => handleBulkAction('mark_contacted')} 
+            <Button
+              variant="outline"
+              onClick={() => handleBulkAction('mark_contacted')}
               className="h-9 px-4 border-slate-700 text-slate-300 hover:bg-slate-800 font-bold text-[10px] uppercase tracking-widest rounded-xl"
             >
               Contacted
             </Button>
 
             {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
-              <Button 
-                variant="outline" 
-                onClick={() => handleBulkAction('delete')} 
+              <Button
+                variant="outline"
+                onClick={() => handleBulkAction('delete')}
                 className="h-9 px-4 border-red-900/40 text-red-500 hover:bg-red-950/30 font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5 mr-2" /> Wipe
@@ -837,10 +844,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             )}
 
             <div className="h-6 w-[1px] bg-slate-800 mx-1" />
-            
-            <Button 
-              variant="ghost" 
-              onClick={() => setSelectedLeads([])} 
+
+            <Button
+              variant="ghost"
+              onClick={() => setSelectedLeads([])}
               className="h-8 w-8 p-0 text-slate-500 hover:text-white transition-colors"
             >
               <X className="w-5 h-5" />
@@ -1028,15 +1035,15 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               {/* Premium Header */}
               <CardHeader className="px-10 py-8 flex flex-row items-center justify-between bg-gradient-to-br from-slate-900 to-slate-800 border-b border-slate-800/50">
                 <div className="flex items-center gap-4">
-                   <div className="p-3 bg-[#CBFF38] rounded-2xl shadow-[0_0_20px_rgba(203,255,56,0.15)] transition-transform hover:scale-105">
-                      <Edit className="w-6 h-6 text-black" />
-                   </div>
-                   <div>
-                      <CardTitle className="text-xl font-black text-white tracking-tight">Lead Modification</CardTitle>
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-0.5">Strategic Terminal ID: {editingLead.id.slice(0, 8)}</p>
-                   </div>
+                  <div className="p-3 bg-[#CBFF38] rounded-2xl shadow-[0_0_20px_rgba(203,255,56,0.15)] transition-transform hover:scale-105">
+                    <Edit className="w-6 h-6 text-black" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-black text-white tracking-tight">Lead Modification</CardTitle>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-0.5">Strategic Terminal ID: {editingLead.id.slice(0, 8)}</p>
+                  </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setShowModal(false)}
                   className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all border border-slate-700/50"
                 >
@@ -1048,17 +1055,17 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               <CardContent className="p-10 space-y-8 bg-white overflow-y-auto max-h-[60vh] custom-scrollbar">
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 mb-2">
-                     <div className="h-1 w-8 bg-[#CBFF38] rounded-full" />
-                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Identity Matrix</h4>
+                    <div className="h-1 w-8 bg-[#CBFF38] rounded-full" />
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Identity Matrix</h4>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-5">
                     <Input label="First Name" value={editingLead.firstName} onChange={(e) => setEditingLead({ ...editingLead, firstName: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
                     <Input label="Last Name" value={editingLead.lastName} onChange={(e) => setEditingLead({ ...editingLead, lastName: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
                   </div>
                   <Input label="Email Address" value={editingLead.email} onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
                   <Input label="Direct Line" value={editingLead.phone || ''} onChange={(e) => setEditingLead({ ...editingLead, phone: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
-                  
+
                   <div className="grid grid-cols-2 gap-5">
                     <Select
                       label="Deployment Status"
@@ -1091,14 +1098,14 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
               {/* Action Footer */}
               <div className="p-10 border-t border-slate-800 flex items-center gap-4 bg-slate-900">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setShowModal(false)}
                   className="flex-1 h-14 rounded-2xl font-black text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white transition-all uppercase text-[10px] tracking-widest"
                 >
                   Discard
                 </Button>
-                <Button 
+                <Button
                   onClick={handleSaveEdit}
                   className="flex-[2] h-14 bg-[#CBFF38] text-black rounded-2xl font-black shadow-[0_10px_30px_rgba(203,255,56,0.2)] hover:scale-[1.03] active:scale-[0.97] transition-all uppercase text-[10px] tracking-widest"
                 >
@@ -1169,7 +1176,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                         placeholder="sarah@example.com"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        required
                         leftIcon={<Mail className="w-4 h-4" />}
                       />
                       <Input
@@ -1177,6 +1183,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                         placeholder="+1 (555) 000-0000"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        required
                         leftIcon={<Phone className="w-4 h-4" />}
                       />
                     </div>
@@ -1369,11 +1376,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   {/* Drop Zone */}
                   {csvRows.length === 0 && (
                     <div
-                      className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${
-                        isDragging
+                      className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${isDragging
                           ? 'border-violet-400 bg-violet-50'
                           : 'border-gray-200 bg-gray-50 hover:border-violet-300 hover:bg-violet-50/50'
-                      }`}
+                        }`}
                       onClick={() => fileInputRef.current?.click()}
                       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                       onDragLeave={() => setIsDragging(false)}
@@ -1385,8 +1391,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                       }}
                     >
                       <div className="flex flex-col items-center gap-3">
-                        <div className={`p-4 rounded-2xl transition-colors ${ isDragging ? 'bg-violet-200' : 'bg-gray-200' }`}>
-                          <Upload className={`w-8 h-8 transition-colors ${ isDragging ? 'text-violet-700' : 'text-gray-400' }`} />
+                        <div className={`p-4 rounded-2xl transition-colors ${isDragging ? 'bg-violet-200' : 'bg-gray-200'}`}>
+                          <Upload className={`w-8 h-8 transition-colors ${isDragging ? 'text-violet-700' : 'text-gray-400'}`} />
                         </div>
                         <div>
                           <p className="text-sm font-bold text-gray-700">Drop your CSV file here</p>
@@ -1511,8 +1517,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                 {csvRows.length > 0 && !importResult
                   ? `${csvRows.filter(r => r.firstName && r.lastName && r.email).length} of ${csvRows.length} rows will be imported`
                   : importResult
-                  ? 'Import complete'
-                  : 'Upload a CSV file to get started'}
+                    ? 'Import complete'
+                    : 'Upload a CSV file to get started'}
               </span>
               <div className="flex items-center gap-3">
                 <button
@@ -1579,15 +1585,15 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     className="h-12 bg-gray-50 border-gray-100 focus:ring-blue-500 rounded-xl font-bold"
                   />
                   <div className="flex flex-col gap-1">
-                     <button onClick={() => {
-                       const d = new Date();
-                       setScheduleDate(d.toISOString().split('T')[0]);
-                     }} className="text-[9px] font-bold text-blue-600 hover:underline">Today</button>
-                     <button onClick={() => {
-                        const d = new Date();
-                        d.setDate(d.getDate() + 1);
-                        setScheduleDate(d.toISOString().split('T')[0]);
-                     }} className="text-[9px] font-bold text-gray-400 hover:underline">Tomorrow</button>
+                    <button onClick={() => {
+                      const d = new Date();
+                      setScheduleDate(d.toISOString().split('T')[0]);
+                    }} className="text-[9px] font-bold text-blue-600 hover:underline">Today</button>
+                    <button onClick={() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 1);
+                      setScheduleDate(d.toISOString().split('T')[0]);
+                    }} className="text-[9px] font-bold text-gray-400 hover:underline">Tomorrow</button>
                   </div>
                 </div>
               </div>
@@ -1596,14 +1602,14 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Forms ({selectedForms.length})</label>
-                  <button 
+                  <button
                     onClick={() => setSelectedForms(facebookForms.length === selectedForms.length ? [] : facebookForms.map(f => f.name))}
                     className="text-[10px] font-bold text-blue-600"
                   >
                     {facebookForms.length === selectedForms.length ? 'Deselect All' : 'Select All'}
                   </button>
                 </div>
-                
+
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                   {facebookForms.length === 0 ? (
                     <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-100">
@@ -1611,25 +1617,23 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     </div>
                   ) : (
                     facebookForms.map((form) => (
-                      <div 
-                        key={form.id} 
+                      <div
+                        key={form.id}
                         onClick={() => {
-                          setSelectedForms(prev => 
-                            prev.includes(form.name) 
-                              ? prev.filter(n => n !== form.name) 
+                          setSelectedForms(prev =>
+                            prev.includes(form.name)
+                              ? prev.filter(n => n !== form.name)
                               : [...prev, form.name]
                           );
                         }}
-                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer group flex items-center justify-between ${
-                          selectedForms.includes(form.name) 
-                          ? 'border-blue-500 bg-blue-50/50 shadow-sm' 
-                          : 'border-gray-50 bg-white hover:border-gray-200'
-                        }`}
+                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer group flex items-center justify-between ${selectedForms.includes(form.name)
+                            ? 'border-blue-500 bg-blue-50/50 shadow-sm'
+                            : 'border-gray-50 bg-white hover:border-gray-200'
+                          }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                            selectedForms.includes(form.name) ? 'bg-blue-600 border-blue-600' : 'border-gray-200 group-hover:border-blue-300'
-                          }`}>
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selectedForms.includes(form.name) ? 'bg-blue-600 border-blue-600' : 'border-gray-200 group-hover:border-blue-300'
+                            }`}>
                             {selectedForms.includes(form.name) && <CheckCircle2 className="w-3 h-3 text-white" />}
                           </div>
                           <div>
@@ -1640,9 +1644,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                             </div>
                           </div>
                         </div>
-                        <Badge className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg border ${
-                          form.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-50 text-gray-400 border-gray-100'
-                        }`}>
+                        <Badge className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg border ${form.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-50 text-gray-400 border-gray-100'
+                          }`}>
                           {form.status || 'READY'}
                         </Badge>
                       </div>
@@ -1653,14 +1656,14 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             </div>
 
             <div className="p-8 bg-gray-50 border-t border-gray-100 flex gap-4 flex-none">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowFormScheduleModal(false)}
                 className="flex-1 h-12 rounded-2xl font-bold text-gray-500"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleAssignForms}
                 disabled={isAssigning || selectedForms.length === 0}
                 className="flex-[3] h-12 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
@@ -1685,8 +1688,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.15em] mt-0.5">Planning {selectedLeads.length} Assignments</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setShowBulkTaskModal(false)} 
+              <button
+                onClick={() => setShowBulkTaskModal(false)}
                 className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all"
               >
                 <X className="w-5 h-5" />
@@ -1699,21 +1702,21 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Task Title</label>
                   <span className="text-[9px] font-black text-[#CBFF38] uppercase bg-[#CBFF38]/10 px-2 py-0.5 rounded-full">Required</span>
                 </div>
-                <Input 
-                   value={bulkTaskData.title} 
-                   onChange={(e) => setBulkTaskData({ ...bulkTaskData, title: e.target.value })}
-                   className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white focus:bg-slate-800 focus:border-[#CBFF38]/30 transition-all font-bold text-sm px-5"
-                   placeholder="e.g., Immediate Follow-up"
+                <Input
+                  value={bulkTaskData.title}
+                  onChange={(e) => setBulkTaskData({ ...bulkTaskData, title: e.target.value })}
+                  className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white focus:bg-slate-800 focus:border-[#CBFF38]/30 transition-all font-bold text-sm px-5"
+                  placeholder="e.g., Immediate Follow-up"
                 />
               </div>
 
               <div className="space-y-2.5">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Deliverable Due Date</label>
-                <Input 
-                   type="date" 
-                   value={bulkTaskData.dueDate} 
-                   onChange={(e) => setBulkTaskData({ ...bulkTaskData, dueDate: e.target.value })}
-                   className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white focus:bg-slate-800 focus:border-[#CBFF38]/30 transition-all font-bold text-sm px-5"
+                <Input
+                  type="date"
+                  value={bulkTaskData.dueDate}
+                  onChange={(e) => setBulkTaskData({ ...bulkTaskData, dueDate: e.target.value })}
+                  className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white focus:bg-slate-800 focus:border-[#CBFF38]/30 transition-all font-bold text-sm px-5"
                 />
               </div>
 
@@ -1735,14 +1738,14 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             </CardContent>
 
             <div className="p-10 bg-slate-900 border-t border-slate-800 flex gap-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowBulkTaskModal(false)} 
+              <Button
+                variant="outline"
+                onClick={() => setShowBulkTaskModal(false)}
                 className="flex-1 h-14 rounded-2xl font-black text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white transition-all text-xs uppercase tracking-widest"
               >
                 Discard
               </Button>
-              <Button 
+              <Button
                 onClick={handleBulkCreateTasks}
                 disabled={!bulkTaskData.salespersonId}
                 className="flex-[2] h-14 bg-[#CBFF38] text-black rounded-2xl font-black shadow-[0_10px_30px_rgba(203,255,56,0.2)] hover:bg-[#b3d81b] hover:scale-[1.03] active:scale-[0.97] disabled:opacity-30 disabled:hover:scale-100 transition-all text-xs uppercase tracking-widest"

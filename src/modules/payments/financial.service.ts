@@ -4,7 +4,10 @@ import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaymentRecord, PaymentMethod, PaymentType, PaymentStatus } from './entities/payment-record.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
+import { GiftCard } from '../clinics/entities/gift-card.entity';
+import { Clinic } from '../clinics/entities/clinic.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class FinancialService {
@@ -13,6 +16,8 @@ export class FinancialService {
         private paymentRecordsRepository: Repository<PaymentRecord>,
         @InjectRepository(Appointment)
         private appointmentsRepository: Repository<Appointment>,
+        @InjectRepository(GiftCard)
+        private giftCardRepository: Repository<GiftCard>,
         private eventEmitter: EventEmitter2,
         private notificationsService: NotificationsService,
     ) {}
@@ -218,5 +223,102 @@ export class FinancialService {
         });
 
         return voidRecord;
+    }
+
+    async getMyGiftCards(userId: string): Promise<GiftCard[]> {
+        return this.giftCardRepository.find({
+            where: { userId },
+            order: { createdAt: 'DESC' },
+        });
+    }
+
+    async purchaseGiftCard(userId: string, data: { amount: number; recipientEmail?: string; message?: string }): Promise<GiftCard> {
+        const code = 'BD-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        
+        // Expiration date: 1 year from now
+        const expiresAt = new Date();
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+        const giftCard = this.giftCardRepository.create({
+            code,
+            amount: data.amount,
+            balance: data.amount,
+            isActive: true,
+            recipientEmail: data.recipientEmail,
+            message: data.message,
+            expiresAt,
+            userId,
+        });
+
+        const savedCard = await this.giftCardRepository.save(giftCard);
+
+        this.eventEmitter.emit('audit.log', {
+            userId,
+            action: 'GIFT_CARD_PURCHASE',
+            resource: 'gift_cards',
+            resourceId: savedCard.id,
+            changes: { after: { code, amount: data.amount, userId } },
+            data: { code, amount: data.amount, recipientEmail: data.recipientEmail },
+        });
+
+        return savedCard;
+    }
+
+    async redeemGiftCard(userId: string, code: string): Promise<{ success: boolean; redeemedAmount: number; code: string }> {
+        const giftCard = await this.giftCardRepository.findOne({
+            where: { code, isActive: true },
+        });
+
+        if (!giftCard) {
+            throw new NotFoundException('Gift card not found, inactive, or invalid code');
+        }
+
+        if (giftCard.expiresAt && giftCard.expiresAt < new Date()) {
+            giftCard.isActive = false;
+            await this.giftCardRepository.save(giftCard);
+            throw new NotFoundException('Gift card has expired');
+        }
+
+        const redeemAmount = Number(giftCard.balance);
+        if (redeemAmount <= 0) {
+            throw new NotFoundException('Gift card has zero balance');
+        }
+
+        // Fetch any clinic to satisfy the non-null foreign key constraint in payment_records
+        const clinicRepo = this.paymentRecordsRepository.manager.getRepository(Clinic);
+        const clinic = await clinicRepo.findOne({ select: ['id'] });
+        const clinicId = clinic?.id || '00000000-0000-0000-0000-000000000000';
+
+        // Deduct the balance
+        giftCard.balance = 0;
+        giftCard.isActive = false;
+        await this.giftCardRepository.save(giftCard);
+
+        // Record a PaymentRecord of type DEPOSIT
+        await this.recordPayment({
+            clinicId,
+            clientId: userId,
+            amount: redeemAmount,
+            method: PaymentMethod.GIFT_CARD,
+            type: PaymentType.DEPOSIT,
+            status: PaymentStatus.COMPLETED,
+            notes: `Gift Card Redeemed: Code ${giftCard.code}`,
+            metadata: { giftCardCode: giftCard.code },
+        });
+
+        this.eventEmitter.emit('audit.log', {
+            userId,
+            action: 'GIFT_CARD_REDEEM_CLIENT',
+            resource: 'gift_cards',
+            resourceId: giftCard.id,
+            changes: { before: { balance: redeemAmount }, after: { balance: 0 } },
+            data: { code: giftCard.code, redeemAmount },
+        });
+
+        return {
+            success: true,
+            redeemedAmount: redeemAmount,
+            code: giftCard.code,
+        };
     }
 }

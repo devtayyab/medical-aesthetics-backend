@@ -160,10 +160,8 @@ const ClinicLayout: React.FC = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <div className="flex-1 overflow-y-auto no-scrollbar pt-6 lg:pt-10">
-          <div className="max-w-[1600px] mx-auto px-6">
-            <Outlet />
-          </div>
+        <div className="flex-1 overflow-y-auto no-scrollbar">
+          <Outlet />
         </div>
       </main>
     </div>

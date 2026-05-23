@@ -10,6 +10,8 @@ import { createAppointment, clearBooking } from "@/store/slices/bookingSlice";
 import type { RootState, AppDispatch } from "@/store";
 import { Input } from "@/components/atoms/Input/Input";
 import { format } from "date-fns";
+import { paymentsAPI } from "@/services/api";
+import { FaGift } from "react-icons/fa";
 
 const containerStyle = css`
   max-width: 1200px;
@@ -45,7 +47,8 @@ export const CheckoutPage: React.FC = () => {
     const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, holdId } = useSelector((state: RootState) => state.booking);
     const { user } = useSelector((state: RootState) => state.auth);
 
-    const [paymentMethod, setPaymentMethod] = useState<'card' | 'venue' | 'paypal'>('card');
+    const [paymentMethod, setPaymentMethod] = useState<'card' | 'venue' | 'paypal' | 'gift_card'>('card');
+    const [giftCardCode, setGiftCardCode] = useState('');
     const [formData, setFormData] = useState({
         fullName: crmState.customerName || crmState.name || '',
         email: crmState.customerEmail || crmState.email || '',
@@ -96,8 +99,26 @@ export const CheckoutPage: React.FC = () => {
         try {
             if (!formData.fullName || !formData.email) {
                 alert('Please provide your full name and email address.');
+                setIsSubmitting(false);
                 return;
             }
+
+            if (paymentMethod === 'gift_card') {
+                if (!giftCardCode.trim()) {
+                    alert('Please enter a valid Gift Card code.');
+                    setIsSubmitting(false);
+                    return;
+                }
+                try {
+                    await paymentsAPI.redeemGiftCard(giftCardCode.trim());
+                } catch (err: any) {
+                    console.error("Gift card redemption failed:", err);
+                    alert(err?.response?.data?.message || err?.message || "Invalid or inactive Gift Card code. Please check and try again.");
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
             const appointmentData = {
                 clinicId: selectedClinic.id,
                 serviceId: selectedServices[0].id,
@@ -247,6 +268,40 @@ export const CheckoutPage: React.FC = () => {
                                     </div>
                                     <span className="text-[10px] font-black uppercase text-lime-600 bg-lime-100 px-3 py-1 rounded-full">Earn Points</span>
                                 </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setPaymentMethod('gift_card')}
+                                    className={`w-full flex items-center justify-between p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'gift_card' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`size-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'gift_card' ? 'border-black bg-black' : 'border-gray-300'}`}>
+                                            {paymentMethod === 'gift_card' && <div className="size-2 rounded-full bg-[#CBFF38]" />}
+                                        </div>
+                                        <span className="font-black uppercase text-sm tracking-tight flex items-center gap-2">
+                                            <FaGift className="text-lime-500" /> Gift Card / Voucher
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase text-lime-600 bg-lime-100 px-3 py-1 rounded-full">Redeem Instantly</span>
+                                </button>
+
+                                {paymentMethod === 'gift_card' && (
+                                    <div className="p-5 bg-lime-50 rounded-2xl border border-lime-100 space-y-3">
+                                        <p className="text-[10px] font-bold text-lime-700 uppercase tracking-tight leading-relaxed">
+                                            ENTER YOUR VOUCHER CODE BELOW. THE BALANCE WILL BE APPLIED AS CREDIT TOWARDS YOUR APPOINTMENT PAYMENT.
+                                        </p>
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-1">Gift Card Code</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. BD-XXXXXX"
+                                                value={giftCardCode}
+                                                onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
+                                                className="w-full h-12 px-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] focus:border-[#CBFF38] outline-none font-bold text-sm tracking-wider placeholder-gray-300 bg-white"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
