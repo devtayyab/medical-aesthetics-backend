@@ -1180,14 +1180,17 @@ export class CrmService implements OnModuleInit {
 
   async createCustomer(data: any, salespersonId?: string): Promise<{ user: User; password: string }> {
     // Check if user already exists
-    const whereConditions: any[] = [{ email: data.email }];
+    const whereConditions: any[] = [];
+    if (data.email && data.email.trim() !== '') {
+      whereConditions.push({ email: data.email });
+    }
     if (data.phone) {
       whereConditions.push({ phone: data.phone });
     }
 
-    const existingUser = await this.usersRepository.findOne({
-      where: whereConditions,
-    });
+    const existingUser = whereConditions.length > 0 
+      ? await this.usersRepository.findOne({ where: whereConditions })
+      : null;
 
     if (existingUser) {
       throw new BadRequestException('Customer with this email or phone already exists');

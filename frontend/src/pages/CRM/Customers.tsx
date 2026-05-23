@@ -99,7 +99,11 @@ export const Customers: React.FC = () => {
       return;
     }
     try {
-      await dispatch(createLead(formData)).unwrap();
+      const payload = { ...formData };
+      if (!payload.email || payload.email.trim() === "") {
+        delete (payload as any).email;
+      }
+      await dispatch(createLead(payload)).unwrap();
       setShowCreateForm(false);
       setFormData(initialFormState);
     } catch (error) {
