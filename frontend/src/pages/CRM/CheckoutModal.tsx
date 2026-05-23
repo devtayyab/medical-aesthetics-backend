@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store';
 import { completeAppointment } from '@/store/slices/bookingSlice';
-import { X, Euro, CreditCard, Banknote } from 'lucide-react';
+import { X, Euro, CreditCard, Banknote, Gift } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import type { Appointment } from '@/types';
+import { adminAPI } from '@/services/api';
 
 interface CheckoutModalProps {
     appointment: Appointment | null;
@@ -16,7 +17,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
     const dispatch = useDispatch<AppDispatch>();
     const { isLoading } = useSelector((state: RootState) => state.booking);
 
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('card');
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'gift_card'>('card');
+    const [giftCardCode, setGiftCardCode] = useState('');
     const [amountPaid, setAmountPaid] = useState<number>(appointment?.service?.price || 0);
 
     // Update amount if appointment changes
@@ -30,6 +32,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
 
     const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (paymentMethod === 'gift_card') {
+            if (!giftCardCode.trim()) {
+                alert('Please enter a Gift Card code.');
+                return;
+            }
+            try {
+                await adminAPI.redeemGiftCard({
+                    code: giftCardCode.trim(),
+                    amount: amountPaid
+                });
+            } catch (err: any) {
+                console.error("Gift card redemption failed:", err);
+                alert(err?.response?.data?.message || err?.message || 'Invalid or inactive Gift Card code.');
+                return;
+            }
+        }
 
         try {
             await dispatch(completeAppointment({
@@ -89,24 +108,45 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
                     </div>
 
                     {/* Payment Method */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         <label className="text-sm font-semibold text-gray-700">Payment Method</label>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-2">
                             <button
                                 type="button"
                                 onClick={() => setPaymentMethod('card')}
-                                className={`flex items-center justify-center gap-2 h-10 border rounded-lg font-bold text-sm transition-all ${paymentMethod === 'card' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                className={`flex items-center justify-center gap-1.5 h-10 border rounded-lg font-bold text-xs transition-all ${paymentMethod === 'card' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                             >
-                                <CreditCard className="w-4 h-4" /> Card
+                                <CreditCard className="w-3.5 h-3.5" /> Card
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setPaymentMethod('cash')}
-                                className={`flex items-center justify-center gap-2 h-10 border rounded-lg font-bold text-sm transition-all ${paymentMethod === 'cash' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                className={`flex items-center justify-center gap-1.5 h-10 border rounded-lg font-bold text-xs transition-all ${paymentMethod === 'cash' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                             >
-                                <Banknote className="w-4 h-4" /> Cash
+                                <Banknote className="w-3.5 h-3.5" /> Cash
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPaymentMethod('gift_card')}
+                                className={`flex items-center justify-center gap-1.5 h-10 border rounded-lg font-bold text-xs transition-all ${paymentMethod === 'gift_card' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                            >
+                                <Gift className="w-3.5 h-3.5" /> Gift Card
                             </button>
                         </div>
+
+                        {paymentMethod === 'gift_card' && (
+                            <div className="space-y-1.5 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Gift Card Code</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Voucher Code (BD-XXXXXX)"
+                                    value={giftCardCode}
+                                    onChange={e => setGiftCardCode(e.target.value.toUpperCase())}
+                                    className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-sm tracking-wider bg-gray-50 uppercase placeholder-gray-300"
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Actions */}

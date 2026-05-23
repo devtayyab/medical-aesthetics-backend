@@ -37,4 +37,11 @@ export class PaymentsController {
     async purchaseGiftCard(@Req() req: any, @Body() body: { amount: number; recipientEmail?: string; message?: string }) {
         return this.financialService.purchaseGiftCard(req.user.id, body);
     }
+
+    @Post('gift-cards/redeem')
+    @Roles(UserRole.CLIENT)
+    @ApiOperation({ summary: 'Redeem a gift card to ledger balance' })
+    async redeemGiftCard(@Req() req: any, @Body() body: { code: string }) {
+        return this.financialService.redeemGiftCard(req.user.id, body.code);
+    }
 }

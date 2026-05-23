@@ -4,7 +4,7 @@ import { AppDispatch } from '../../store';
 import { updateAppointmentStatus } from '../../store/slices/clinicSlice';
 import { PaymentMethod, Appointment, Service, AppointmentStatus } from '../../types/clinic.types';
 import { X, Euro, CreditCard, Banknote, Building2, Gift, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
-import { clinicsAPI, loyaltyAPI } from '@/services/api';
+import { clinicsAPI, loyaltyAPI, adminAPI } from '@/services/api';
 
 interface AppointmentExecutionModalProps {
   appointment: Appointment;
@@ -20,6 +20,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
   const dispatch = useDispatch<AppDispatch>();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
+  const [giftCardCode, setGiftCardCode] = useState('');
   const [finalAmount, setFinalAmount] = useState<number>(appointment.totalAmount || 0);
   const [treatmentNotes, setTreatmentNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,6 +95,24 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      if (paymentMethod === PaymentMethod.GIFT_CARD) {
+        if (!giftCardCode.trim()) {
+          alert('Please enter a valid Gift Card code.');
+          setIsSubmitting(false);
+          return;
+        }
+        try {
+          await adminAPI.redeemGiftCard({
+            code: giftCardCode.trim(),
+            amount: calculateTotal(),
+          });
+        } catch (err: any) {
+          console.error('Gift card redemption failed:', err);
+          alert(err?.response?.data?.message || err?.message || 'Invalid or inactive Gift Card code. Please verify and try again.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
       const updateData: any = {
         notes: treatmentNotes,
         treatmentDetails: {
@@ -148,6 +167,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
     { value: PaymentMethod.POS, label: 'POS', icon: <CreditCard className="w-5 h-5" /> },
     { value: PaymentMethod.CARD, label: 'Card', icon: <CreditCard className="w-5 h-5" /> },
     { value: PaymentMethod.BANK_TRANSFER, label: 'Bank Transfer', icon: <Building2 className="w-5 h-5" /> },
+    { value: PaymentMethod.GIFT_CARD, label: 'Gift Card', icon: <Gift className="w-5 h-5" /> },
   ];
 
   return (
@@ -298,6 +318,22 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
                   </button>
                 ))}
               </div>
+
+              {paymentMethod === PaymentMethod.GIFT_CARD && (
+                <div className="pt-2">
+                  <label className="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1.5">
+                    Gift Card / Voucher Code
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. BD-XXXXXX"
+                    value={giftCardCode}
+                    onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none font-bold text-sm bg-gray-50"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Total Recalculation */}

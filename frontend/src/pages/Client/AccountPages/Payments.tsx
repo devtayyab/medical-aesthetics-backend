@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { css } from "@emotion/css";
-import { User, ChevronRight, CreditCard, Building2, Receipt, Search, ArrowRight, Wallet, History } from "lucide-react";
+import { User, ChevronRight, CreditCard, Building2, Receipt, Search, ArrowRight, Wallet, History, Gift, X } from "lucide-react";
 import { paymentsAPI, bookingAPI } from "@/services/api";
 import { format } from "date-fns";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 
 // Use the ultra-premium elite aesthetic hero image
 import HeroBg from "@/assets/Elite_Aesthetic_Hero.png";
@@ -68,57 +69,82 @@ const statItem = css`
 export const Payments: React.FC = () => {
     const [payments, setPayments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showRedeemModal, setShowRedeemModal] = useState(false);
+    const [giftCode, setGiftCode] = useState("");
+    const [redeeming, setRedeeming] = useState(false);
+
+    const fetchUnifiedFinancials = async () => {
+        try {
+            // Fetch both transactions and appointments
+            const [walletRes, appointmentsRes] = await Promise.all([
+                paymentsAPI.getMyWallet({ limit: 100 }),
+                bookingAPI.getUserAppointments()
+            ]);
+
+            const transactions = walletRes.data.items || [];
+            const allAppointments = appointmentsRes.data || [];
+            
+            // Get all completed/executed appointments
+            const completedApts = allAppointments.filter((a: any) => 
+                ['completed', 'executed'].includes(a.status?.toLowerCase())
+            );
+
+            // Merge logic: Start with transactions, then add completed appointments 
+            // that don't have a transaction associated with them yet.
+            const unifiedList = [...transactions];
+            
+            completedApts.forEach((apt: any) => {
+                const hasTransaction = transactions.some((t: any) => t.appointmentId === apt.id);
+                if (!hasTransaction) {
+                    unifiedList.push({
+                        id: `apt-${apt.id}`,
+                        amount: apt.amountPaid || apt.totalAmount || 0,
+                        status: 'completed',
+                        type: 'payment',
+                        createdAt: apt.completedAt || apt.updatedAt || apt.startTime,
+                        method: apt.paymentMethod || 'manual',
+                        appointment: apt,
+                        clinic: apt.clinic,
+                        notes: 'Service Rendered'
+                    });
+                }
+            });
+
+            // Sort by date descending
+            unifiedList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            
+            setPayments(unifiedList);
+        } catch (err) {
+            console.error("Failed to fetch financial history:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchUnifiedFinancials = async () => {
-            try {
-                // Fetch both transactions and appointments
-                const [walletRes, appointmentsRes] = await Promise.all([
-                    paymentsAPI.getMyWallet({ limit: 100 }),
-                    bookingAPI.getUserAppointments()
-                ]);
-
-                const transactions = walletRes.data.items || [];
-                const allAppointments = appointmentsRes.data || [];
-                
-                // Get all completed/executed appointments
-                const completedApts = allAppointments.filter((a: any) => 
-                    ['completed', 'executed'].includes(a.status?.toLowerCase())
-                );
-
-                // Merge logic: Start with transactions, then add completed appointments 
-                // that don't have a transaction associated with them yet.
-                const unifiedList = [...transactions];
-                
-                completedApts.forEach((apt: any) => {
-                    const hasTransaction = transactions.some((t: any) => t.appointmentId === apt.id);
-                    if (!hasTransaction) {
-                        unifiedList.push({
-                            id: `apt-${apt.id}`,
-                            amount: apt.amountPaid || apt.totalAmount || 0,
-                            status: 'completed',
-                            type: 'payment',
-                            createdAt: apt.completedAt || apt.updatedAt || apt.startTime,
-                            method: apt.paymentMethod || 'manual',
-                            appointment: apt,
-                            clinic: apt.clinic,
-                            notes: 'Service Rendered'
-                        });
-                    }
-                });
-
-                // Sort by date descending
-                unifiedList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                
-                setPayments(unifiedList);
-            } catch (err) {
-                console.error("Failed to fetch financial history:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchUnifiedFinancials();
     }, []);
+
+    const handleRedeemGiftCard = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!giftCode.trim()) {
+            toast.error("Please enter a gift card code");
+            return;
+        }
+        setRedeeming(true);
+        try {
+            const res = await paymentsAPI.redeemGiftCard(giftCode.trim());
+            toast.success(`Successfully redeemed gift card for €${res.data?.redeemedAmount || 0}!`);
+            setShowRedeemModal(false);
+            setGiftCode("");
+            fetchUnifiedFinancials();
+        } catch (err: any) {
+            console.error("Failed to redeem gift card", err);
+            toast.error(err?.response?.data?.message || err?.message || "Failed to redeem gift card. Check your code.");
+        } finally {
+            setRedeeming(false);
+        }
+    };
 
     const totalSpend = payments
         .filter(p => p.type !== 'refund')
@@ -177,7 +203,7 @@ export const Payments: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className={glassCard}
                 >
-                    <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-gray-50/30">
+                    <div className="p-10 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gray-50/30">
                         <div className="flex items-center gap-6">
                             <div className="size-16 rounded-[20px] bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl">
                                 <History size={24} />
@@ -187,7 +213,16 @@ export const Payments: React.FC = () => {
                                 <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Transaction History & Verification</p>
                             </div>
                         </div>
-                        <Receipt className="text-gray-200" size={40} />
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => setShowRedeemModal(true)}
+                                className="bg-[#CBFF38] text-black hover:bg-black hover:text-[#CBFF38] px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg flex items-center gap-2 group duration-300 border border-[#CBFF38]"
+                            >
+                                <Gift size={16} className="group-hover:scale-125 transition-transform" />
+                                Redeem Gift Card
+                            </button>
+                            <Receipt className="text-gray-200 hidden sm:block" size={40} />
+                        </div>
                     </div>
 
                     {loading ? (
@@ -208,7 +243,7 @@ export const Payments: React.FC = () => {
                                 >
                                     <div className="flex items-center gap-8">
                                         <div className={`size-16 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 duration-300 ${payment.type === 'refund' ? 'bg-orange-50 text-orange-500' : 'bg-[#CBFF38]/20 text-black'}`}>
-                                            {payment.method === "cash" ? <Wallet size={24} /> : <CreditCard size={24} />}
+                                            {payment.method === "gift_card" ? <Gift size={24} /> : payment.method === "cash" ? <Wallet size={24} /> : <CreditCard size={24} />}
                                         </div>
                                         <div>
                                             <p className="font-black text-xl text-gray-900 tracking-tight leading-none italic uppercase">
@@ -250,6 +285,80 @@ export const Payments: React.FC = () => {
                     )}
                 </motion.div>
             </div>
+
+            <AnimatePresence>
+                {showRedeemModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 20 }}
+                            className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100"
+                        >
+                            <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 rounded-xl bg-[#CBFF38]/20 flex items-center justify-center text-black">
+                                        <Gift size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-black uppercase italic text-gray-900 tracking-tight">Redeem Gift Card</h3>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Load credit to your ledger</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowRedeemModal(false)}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors bg-gray-50 hover:bg-gray-100 rounded-full p-2 border border-gray-100"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleRedeemGiftCard} className="p-8 space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Voucher Code</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. BD-XXXXXX"
+                                        value={giftCode}
+                                        onChange={(e) => setGiftCode(e.target.value.toUpperCase())}
+                                        className="w-full h-14 px-5 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#CBFF38] focus:border-[#CBFF38] outline-none font-bold text-gray-900 tracking-wider placeholder-gray-300 bg-gray-50"
+                                    />
+                                </div>
+
+                                <div className="bg-lime-50/50 border border-lime-100 p-4 rounded-2xl">
+                                    <p className="text-[10px] font-bold text-lime-700 uppercase tracking-tight leading-relaxed italic">
+                                        Note: Once redeemed, the gift card balance will be fully loaded onto your client ledger account as a deposit and cannot be re-used.
+                                    </p>
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowRedeemModal(false)}
+                                        className="flex-1 h-14 bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-200 transition-all font-black text-xs uppercase tracking-widest"
+                                        disabled={redeeming}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 h-14 bg-black text-[#CBFF38] rounded-2xl hover:bg-lime-400 hover:text-black transition-all font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2"
+                                        disabled={redeeming}
+                                    >
+                                        {redeeming ? "Verifying..." : "Redeem Now"}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

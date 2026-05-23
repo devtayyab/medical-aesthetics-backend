@@ -326,6 +326,7 @@ export const paymentsAPI = {
   getMyWallet: (params?: { limit?: number; offset?: number }) => api.get("/payments/my-wallet", { params }),
   getMyGiftCards: () => api.get("/payments/gift-cards"),
   purchaseGiftCard: (data: { amount: number; recipientEmail?: string; message?: string }) => api.post("/payments/gift-cards", data),
+  redeemGiftCard: (code: string) => api.post("/payments/gift-cards/redeem", { code }),
 };
 
 
