@@ -24,9 +24,10 @@ export class CreateLeadDto {
   @IsString()
   lastName: string;
 
-  @ApiProperty({ example: 'jane.smith@email.com' })
+  @ApiProperty({ example: 'jane.smith@email.com', required: false })
+  @IsOptional()
   @IsEmail()
-  email: string;
+  email?: string;
 
   @ApiProperty({ example: '+1234567890', required: false })
   @IsOptional()

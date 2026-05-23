@@ -33,7 +33,7 @@ export class Lead {
   @Column()
   lastName: string;
 
-  @Column({ unique: true })
+  @Column({ unique: true, nullable: true })
   email: string;
 
   @Column({ nullable: true })

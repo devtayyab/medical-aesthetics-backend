@@ -1,5 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Search,
@@ -93,7 +94,10 @@ export const Customers: React.FC = () => {
   }, [searchTerm]);
 
   const handleCreateCustomer = async () => {
-    if (!formData.firstName || !formData.lastName || !formData.email) return;
+    if (!formData.firstName || !formData.lastName) {
+      toast.error("First Name and Last Name are required");
+      return;
+    }
     try {
       await dispatch(createLead(formData)).unwrap();
       setShowCreateForm(false);
@@ -571,7 +575,7 @@ export const Customers: React.FC = () => {
                 <Input label="First Name" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required />
                 <Input label="Last Name" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required />
               </div>
-              <Input label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
+              <Input label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
               <Input label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
             </div>
             <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
