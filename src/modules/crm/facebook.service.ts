@@ -148,7 +148,7 @@ export class FacebookService {
     }
 
     try {
-      const response = await this.axiosInstance.get(`/leads`, {
+      const response = await this.axiosInstance.get(`/${formId}/leads`, {
         params: {
           access_token: creds.accessToken,
           fields: 'id,field_data,created_time,ad_id,adset_id,campaign_id,form_id',
