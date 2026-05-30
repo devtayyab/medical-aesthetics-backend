@@ -46,6 +46,13 @@ export class Treatment {
     @Column({ nullable: true })
     imageUrl: string;
 
+    // Manually curated by super admin to surface in the public "Top Treatments" section.
+    @Column({ default: false })
+    isFeatured: boolean;
+
+    @Column({ default: 0 })
+    sortOrder: number;
+
     @Column({ default: true })
     isActive: boolean;
 

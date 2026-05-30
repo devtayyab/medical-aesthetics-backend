@@ -227,6 +227,10 @@ export const clinicsAPI = {
   moderateReview: (id: string, data: { status: 'APPROVED' | 'REJECTED'; rejectReason?: string }) =>
     api.patch(`/clinics/reviews/${id}/moderate`, data),
   getSuggestions: (q: string) => api.get("/clinics/suggestions", { params: { q } }),
+  // Public, super-admin-managed category tree + featured treatments
+  getCategoryTree: (withTreatments?: boolean) => api.get("/clinics/categories", { params: withTreatments ? { withTreatments: true } : undefined }),
+  getCategoryTreatments: (id: string) => api.get(`/clinics/categories/${id}/treatments`),
+  getTopTreatments: (limit?: number) => api.get("/clinics/top-treatments", { params: { limit } }),
 };
 
 export const bookingAPI = {
@@ -563,6 +567,7 @@ export const adminAPI = {
 
   // Master Catalog (Therapies/Treatments)
   getMasterCategories: (params?: { search?: string; status?: string }) => api.get("/clinic/master/categories", { params }),
+  getMasterCategoryTree: () => api.get("/clinic/master/categories/tree"),
   createMasterCategory: (data: any) => api.post("/clinic/master/categories", data),
   updateMasterCategory: (id: string, data: any) => api.put(`/clinic/master/categories/${id}`, data),
   deleteMasterCategory: (id: string) => api.delete(`/clinic/master/categories/${id}`),

@@ -25,6 +25,26 @@ export class ClinicsController {
     return this.clinicsService.getFeatured();
   }
 
+  // Public category tree (top-level categories with their subcategories nested)
+  @Get('categories')
+  @ApiOperation({ summary: 'Get the public category tree (categories + subcategories)' })
+  getCategoryTree(@Query('withTreatments') withTreatments?: string) {
+    return this.clinicsService.getCategoryTree(false, withTreatments === 'true');
+  }
+
+  @Get('categories/:id/treatments')
+  @ApiOperation({ summary: 'Get approved treatments for a category or subcategory' })
+  getCategoryTreatments(@Param('id') id: string) {
+    return this.clinicsService.getPublicTreatmentsByCategory(id);
+  }
+
+  @Get('top-treatments')
+  @ApiOperation({ summary: 'Get super-admin-curated featured (top) treatments' })
+  getTopTreatments(@Query('limit') limit?: string) {
+    const parsed = limit ? parseInt(limit, 10) : NaN;
+    return this.clinicsService.getFeaturedTreatments(Number.isFinite(parsed) ? parsed : undefined);
+  }
+
   // Admin Treatment Approval
   @Get('treatments/pending')
   @UseGuards(JwtAuthGuard, RolesGuard)
