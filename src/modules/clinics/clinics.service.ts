@@ -15,7 +15,7 @@ import { TreatmentCategory } from './entities/treatment-category.entity';
 import { Review } from './entities/review.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { TreatmentStatus } from './enums/treatment-status.enum';
-import { Repository, DeepPartial } from 'typeorm';
+import { Repository, DeepPartial, In, IsNull } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { Appointment } from '../bookings/entities/appointment.entity';
@@ -75,6 +75,7 @@ export class ClinicsService {
 
     if (params.search || params.category) {
       clinicQb.leftJoinAndSelect('treatment.categoryRef', 'categoryRef');
+      clinicQb.leftJoin('categoryRef.parent', 'categoryParent');
     }
 
     if (params.search) {
@@ -87,7 +88,9 @@ export class ClinicsService {
     }
 
     if (params.category) {
-      clinicQb.andWhere('(treatment.category ILIKE :category OR categoryRef.name ILIKE :category OR REPLACE(treatment.category, \' \', \'-\') ILIKE :category OR REPLACE(categoryRef.name, \' \', \'-\') ILIKE :category)', { category: `%${params.category}%` });
+      // Match the treatment's own category/subcategory name, or its parent
+      // category name so a top-level category surfaces its subcategories' treatments.
+      clinicQb.andWhere('(treatment.category ILIKE :category OR categoryRef.name ILIKE :category OR categoryParent.name ILIKE :category OR REPLACE(treatment.category, \' \', \'-\') ILIKE :category OR REPLACE(categoryRef.name, \' \', \'-\') ILIKE :category OR REPLACE(categoryParent.name, \' \', \'-\') ILIKE :category)', { category: `%${params.category}%` });
     }
 
     // --- Availability Filtering (Rule 2) ---
@@ -124,6 +127,8 @@ export class ClinicsService {
 
     const serviceQb = this.servicesRepository.createQueryBuilder('service')
       .leftJoinAndSelect('service.treatment', 'treatment')
+      .leftJoinAndSelect('treatment.categoryRef', 'categoryRef')
+      .leftJoin('categoryRef.parent', 'categoryParent')
       .leftJoinAndSelect('service.clinic', 'clinic')
       .where('service.isActive = :sActive AND clinic.isActive = :cActive', {
         sActive: true,
@@ -134,13 +139,14 @@ export class ClinicsService {
       const searchTerm = `%${params.search}%`;
       const searchNoSpace = `%${params.search.replace(/\s+/g, '')}%`;
       serviceQb.andWhere(
-        '(treatment.name ILIKE :searchTerm OR treatment.category ILIKE :searchTerm OR treatment.shortDescription ILIKE :searchTerm OR REPLACE(treatment.name, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(treatment.category, \' \', \'\') ILIKE :searchNoSpace)',
+        '(treatment.name ILIKE :searchTerm OR treatment.category ILIKE :searchTerm OR categoryRef.name ILIKE :searchTerm OR treatment.shortDescription ILIKE :searchTerm OR REPLACE(treatment.name, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(treatment.category, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(categoryRef.name, \' \', \'\') ILIKE :searchNoSpace)',
         { searchTerm, searchNoSpace }
       );
     }
 
     if (params.category) {
-      serviceQb.andWhere('(treatment.category ILIKE :category OR REPLACE(treatment.category, \' \', \'-\') ILIKE :category)', { category: `%${params.category}%` });
+      // Also match the parent category name so a top-level category surfaces its subcategories' treatments.
+      serviceQb.andWhere('(treatment.category ILIKE :category OR categoryRef.name ILIKE :category OR categoryParent.name ILIKE :category OR REPLACE(treatment.category, \' \', \'-\') ILIKE :category OR REPLACE(categoryRef.name, \' \', \'-\') ILIKE :category OR REPLACE(categoryParent.name, \' \', \'-\') ILIKE :category)', { category: `%${params.category}%` });
     }
 
     if (params.location) {
@@ -1247,6 +1253,82 @@ export class ClinicsService {
     });
   }
 
+  /**
+   * Public, two-level category tree. Returns top-level (parentId IS NULL)
+   * approved+active categories, each with its approved+active `children`
+   * (subcategories) nested under it. When `includeInactive` is true (admin),
+   * status/active filters are dropped so the catalog can manage everything.
+   * When `withTreatments` is true, each node also gets a `treatments` array of
+   * its own approved+active treatments (one extra query, no per-node fetch).
+   */
+  async getCategoryTree(includeInactive = false, withTreatments = false): Promise<TreatmentCategory[]> {
+    const where: any = {};
+    if (!includeInactive) {
+      where.isActive = true;
+      where.status = TreatmentStatus.APPROVED;
+    }
+    const all = await this.categoryRepository.find({
+      where,
+      order: { sortOrder: 'ASC', name: 'ASC' },
+    });
+
+    const byId = new Map<string, TreatmentCategory & { children: TreatmentCategory[] }>();
+    all.forEach((c) => byId.set(c.id, Object.assign(c, { children: [], treatments: [] })));
+
+    if (withTreatments) {
+      const tWhere: any = {};
+      if (!includeInactive) {
+        tWhere.isActive = true;
+        tWhere.status = TreatmentStatus.APPROVED;
+      }
+      const treatments = await this.treatmentsRepository.find({
+        where: tWhere,
+        order: { sortOrder: 'ASC', name: 'ASC' },
+      });
+      treatments.forEach((t) => {
+        if (t.categoryId && byId.has(t.categoryId)) {
+          byId.get(t.categoryId)!.treatments.push(t);
+        }
+      });
+    }
+
+    const roots: TreatmentCategory[] = [];
+    for (const cat of byId.values()) {
+      if (cat.parentId) {
+        // Only nest under a visible parent; drop orphans (parent hidden) rather
+        // than promoting them to top-level and leaking a hidden subcategory.
+        if (byId.has(cat.parentId)) byId.get(cat.parentId)!.children.push(cat);
+      } else {
+        roots.push(cat);
+      }
+    }
+    return roots;
+  }
+
+  /**
+   * Public: approved + active treatments for a category/subcategory node.
+   * For a top-level category this also includes treatments that live in its
+   * subcategories, so the parent surfaces everything beneath it.
+   */
+  async getPublicTreatmentsByCategory(categoryId: string): Promise<Treatment[]> {
+    const children = await this.categoryRepository.find({ where: { parentId: categoryId }, select: ['id'] });
+    const categoryIds = [categoryId, ...children.map((c) => c.id)];
+    return this.treatmentsRepository.find({
+      where: { categoryId: In(categoryIds), isActive: true, status: TreatmentStatus.APPROVED },
+      order: { sortOrder: 'ASC', name: 'ASC' },
+    });
+  }
+
+  /** Public: super-admin-curated "Top Treatments". */
+  async getFeaturedTreatments(limit = 12): Promise<Treatment[]> {
+    return this.treatmentsRepository.find({
+      where: { isFeatured: true, isActive: true, status: TreatmentStatus.APPROVED },
+      relations: ['categoryRef'],
+      order: { sortOrder: 'ASC', name: 'ASC' },
+      take: limit,
+    });
+  }
+
   async createManualTreatment(data: {
     name: string;
     categoryId: string;
@@ -1302,22 +1384,81 @@ export class ClinicsService {
     return qb.getMany();
   }
 
+  /**
+   * Validates a candidate parentId for a category. Enforces a strict two-level
+   * tree: the parent must exist, must itself be top-level (no parentId), and a
+   * category may not be its own parent. Returns the normalised parentId (null
+   * clears it, making the category top-level).
+   */
+  private async resolveParentId(categoryId: string | null, parentId?: string | null): Promise<string | null> {
+    if (parentId === undefined) return undefined as any; // caller didn't touch it
+    if (!parentId) return null; // explicit clear -> top-level
+    if (parentId === categoryId) {
+      throw new BadRequestException('A category cannot be its own parent');
+    }
+    const parent = await this.categoryRepository.findOne({ where: { id: parentId } });
+    if (!parent) throw new NotFoundException('Parent category not found');
+    if (parent.parentId) {
+      throw new BadRequestException('Categories can only be nested one level deep (a subcategory cannot have subcategories)');
+    }
+    return parentId;
+  }
+
   async updateCategory(id: string, data: any): Promise<TreatmentCategory> {
     const category = await this.categoryRepository.findOne({ where: { id } });
     if (!category) throw new NotFoundException('Category not found');
-    Object.assign(category, data);
-    return this.categoryRepository.save(category);
-  }
 
-  async deleteCategory(id: string): Promise<void> {
-    const treatmentsCount = await this.treatmentsRepository.count({ where: { categoryId: id } });
-    if (treatmentsCount > 0) {
-      throw new BadRequestException('Cannot delete category with associated treatments');
+    if ('parentId' in data) {
+      const resolved = await this.resolveParentId(id, data.parentId);
+      // If this category already has children, it cannot become a subcategory.
+      if (resolved) {
+        const childCount = await this.categoryRepository.count({ where: { parentId: id } });
+        if (childCount > 0) {
+          throw new BadRequestException('This category has subcategories and cannot be moved under another category');
+        }
+      }
+      data.parentId = resolved;
     }
-    await this.categoryRepository.delete(id);
+
+    const renamedFrom = data.name && data.name !== category.name ? category.name : null;
+
+    Object.assign(category, data);
+    const saved = await this.categoryRepository.save(category);
+
+    // Keep the denormalised legacy `treatment.category` string in sync on rename,
+    // otherwise treatments stay searchable only under the old name.
+    if (renamedFrom) {
+      await this.treatmentsRepository.update({ categoryId: id }, { category: saved.name });
+    }
+
+    return saved;
   }
 
-  async getAllTreatmentsMaster(query?: { search?: string; status?: TreatmentStatus; categoryId?: string }): Promise<Treatment[]> {
+  async deleteCategory(id: string): Promise<{ deleted: boolean; unmappedTreatments: number }> {
+    const category = await this.categoryRepository.findOne({ where: { id } });
+    if (!category) throw new NotFoundException('Category not found');
+
+    // Deleting a top-level category also removes its subcategories. Across the
+    // whole subtree we detach connected treatments instead of blocking deletion:
+    // they become uncategorised (FK `categoryId` and legacy `category` string
+    // both cleared) so an admin can re-map them to another category afterwards.
+    const children = await this.categoryRepository.find({ where: { parentId: id }, select: ['id'] });
+    const subtreeIds = [id, ...children.map((c) => c.id)];
+
+    return this.categoryRepository.manager.transaction(async (manager) => {
+      const result = await manager.update(
+        Treatment,
+        { categoryId: In(subtreeIds) },
+        { categoryId: null as any, category: null as any },
+      );
+      // Deleting the parent cascades to children via FK ON DELETE CASCADE, but we
+      // delete the explicit list to keep the count deterministic regardless of order.
+      await manager.delete(TreatmentCategory, In(subtreeIds));
+      return { deleted: true, unmappedTreatments: result.affected || 0 };
+    });
+  }
+
+  async getAllTreatmentsMaster(query?: { search?: string; status?: TreatmentStatus; categoryId?: string; isFeatured?: boolean }): Promise<Treatment[]> {
     const qb = this.treatmentsRepository.createQueryBuilder('treatment')
       .leftJoinAndSelect('treatment.categoryRef', 'category');
 
@@ -1330,8 +1471,11 @@ export class ClinicsService {
     if (query?.categoryId) {
       qb.andWhere('treatment.categoryId = :categoryId', { categoryId: query.categoryId });
     }
+    if (query?.isFeatured !== undefined) {
+      qb.andWhere('treatment.isFeatured = :isFeatured', { isFeatured: query.isFeatured });
+    }
 
-    qb.orderBy('treatment.name', 'ASC');
+    qb.orderBy('treatment.sortOrder', 'ASC').addOrderBy('treatment.name', 'ASC');
     return qb.getMany();
   }
 
@@ -1371,8 +1515,10 @@ export class ClinicsService {
   }
 
   async createMasterCategory(data: DeepPartial<TreatmentCategory>): Promise<TreatmentCategory> {
+    const parentId = await this.resolveParentId(null, (data as any).parentId);
     const category = this.categoryRepository.create({
       ...data,
+      parentId: parentId ?? null,
       status: TreatmentStatus.APPROVED,
       isActive: true,
     } as DeepPartial<TreatmentCategory>) as unknown as TreatmentCategory;

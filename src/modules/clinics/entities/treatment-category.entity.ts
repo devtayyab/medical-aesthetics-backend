@@ -5,6 +5,8 @@ import {
     CreateDateColumn,
     UpdateDateColumn,
     OneToMany,
+    ManyToOne,
+    JoinColumn,
 } from 'typeorm';
 import { TreatmentStatus } from '../enums/treatment-status.enum';
 import { Treatment } from './treatment.entity';
@@ -22,6 +24,22 @@ export class TreatmentCategory {
 
     @Column({ nullable: true })
     icon: string;
+
+    // Self-reference: a null parentId means this is a top-level category;
+    // a set parentId means this row is a subcategory of `parent`. Limited to
+    // two levels (a subcategory cannot itself have children) — enforced in the service.
+    @Column({ nullable: true })
+    parentId: string;
+
+    @ManyToOne(() => TreatmentCategory, (cat) => cat.children, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'parentId' })
+    parent: TreatmentCategory;
+
+    @OneToMany(() => TreatmentCategory, (cat) => cat.parent)
+    children: TreatmentCategory[];
+
+    @Column({ default: 0 })
+    sortOrder: number;
 
     @Column({
         type: 'enum',
