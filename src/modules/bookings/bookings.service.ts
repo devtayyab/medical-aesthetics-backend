@@ -31,6 +31,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { VivaWalletService } from '../payments/viva-wallet.service';
 import { FinancialService } from '../payments/financial.service';
+import { formatDateInTz, formatTimeInTz, formatDateTimeInTz } from '../../common/utils/timezone.util';
 import { PaymentMethod as RecordPaymentMethod, PaymentType } from '../payments/entities/payment-record.entity';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -462,8 +463,8 @@ export class BookingsService {
       await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_BOOKED, appointmentWithRelations.clientId, {
         customerName: `${appointmentWithRelations.client?.firstName || 'Customer'}`,
         serviceName: appointmentWithRelations.service?.treatment?.name || 'Treatment',
-        appointmentDate: appointmentWithRelations.startTime.toLocaleDateString(),
-        appointmentTime: appointmentWithRelations.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        appointmentDate: formatDateInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
+        appointmentTime: formatTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone),
         clinicName: appointmentWithRelations.clinic?.name,
       });
     }
@@ -471,7 +472,7 @@ export class BookingsService {
     // Notify Staff
     await this.notificationsService.notifyAllStaff(
       'New Appointment Booked',
-      `Client ${appointmentWithRelations.client?.firstName || 'Guest'} booked ${appointmentWithRelations.service?.treatment?.name || 'Treatment'} for ${appointmentWithRelations.startTime.toLocaleString()}`,
+      `Client ${appointmentWithRelations.client?.firstName || 'Guest'} booked ${appointmentWithRelations.service?.treatment?.name || 'Treatment'} for ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
       { appointmentId: savedAppointment.id }
     );
 
@@ -479,7 +480,7 @@ export class BookingsService {
       await this.notificationsService.notifyClinicStaff(
         appointmentWithRelations.clinicId,
         'New Clinic Appointment',
-        `A new appointment has been scheduled for your clinic on ${appointmentWithRelations.startTime.toLocaleString()}`,
+        `A new appointment has been scheduled for your clinic on ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
         { appointmentId: savedAppointment.id }
       );
     }
@@ -575,7 +576,7 @@ export class BookingsService {
           salespersonId,
           actionType: 'confirmation_call_reminder',
           title: `Confirmation Call: ${appointmentWithRelations.client?.firstName || 'Client'} - ${therapyName}`,
-          description: `Confirm attendance for appointment at ${appointmentWithRelations.startTime.toLocaleString()}`,
+          description: `Confirm attendance for appointment at ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
           status: 'pending',
           priority: 'high',
           dueDate: dueDate,
@@ -588,7 +589,7 @@ export class BookingsService {
           salespersonId,
           actionType: 'appointment',
           title: `Appointment: ${appointmentWithRelations.client?.firstName || 'Client'} - ${therapyName}`,
-          description: `Scheduled appointment at ${appointmentWithRelations.startTime.toLocaleString()}`,
+          description: `Scheduled appointment at ${formatDateTimeInTz(appointmentWithRelations.startTime, appointmentWithRelations.clinic?.timezone)}`,
           status: 'pending',
           priority: 'medium',
           dueDate: new Date(appointmentWithRelations.startTime),
@@ -761,8 +762,8 @@ export class BookingsService {
         await this.notificationsService.sendTriggeredNotification(trigger, updatedAppointment.clientId, {
           customerName: `${updatedAppointment.client?.firstName || 'Customer'}`,
           serviceName: updatedAppointment.service?.treatment?.name || 'Treatment',
-          appointmentDate: updatedAppointment.startTime.toLocaleDateString(),
-          appointmentTime: updatedAppointment.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          appointmentDate: formatDateInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone),
+          appointmentTime: formatTimeInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone),
           clinicName: updatedAppointment.clinic?.name,
         });
       }
@@ -778,7 +779,7 @@ export class BookingsService {
         await this.notificationsService.notifyClinicStaff(
           updatedAppointment.clinicId,
           `Appointment Status: ${status}`,
-          `Appointment on ${updatedAppointment.startTime.toLocaleString()} is now ${status.toLowerCase()}.`,
+          `Appointment on ${formatDateTimeInTz(updatedAppointment.startTime, updatedAppointment.clinic?.timezone)} is now ${status.toLowerCase()}.`,
           { appointmentId: id, status }
         );
       }
@@ -836,8 +837,8 @@ export class BookingsService {
         await this.notificationsService.sendTriggeredNotification(NotificationTrigger.APPOINTMENT_RESCHEDULED, appointment.clientId, {
           customerName: `${appointment.client?.firstName || 'Customer'}`,
           serviceName: appointment.service?.treatment?.name || 'Treatment',
-          appointmentDate: appointment.startTime.toLocaleDateString(),
-          appointmentTime: appointment.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          appointmentDate: formatDateInTz(appointment.startTime, appointment.clinic?.timezone),
+          appointmentTime: formatTimeInTz(appointment.startTime, appointment.clinic?.timezone),
           clinicName: appointment.clinic?.name,
         });
       } catch (error) {
@@ -848,7 +849,7 @@ export class BookingsService {
     // Notify Staff
     await this.notificationsService.notifyAllStaff(
       'Appointment Rescheduled',
-      `Appointment for ${appointment.client?.firstName || 'Guest'} moved to ${appointment.startTime.toLocaleString()}.`,
+      `Appointment for ${appointment.client?.firstName || 'Guest'} moved to ${formatDateTimeInTz(appointment.startTime, appointment.clinic?.timezone)}.`,
       { appointmentId: id }
     );
 
@@ -1282,8 +1283,8 @@ export class BookingsService {
       await this.notificationsService.sendTriggeredNotification(trigger, updated.clientId, {
         customerName: `${updated.client?.firstName || 'Customer'}`,
         serviceName: updated.service?.treatment?.name || 'Treatment',
-        appointmentDate: updated.startTime.toLocaleDateString(),
-        appointmentTime: updated.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        appointmentDate: formatDateInTz(updated.startTime, updated.clinic?.timezone),
+        appointmentTime: formatTimeInTz(updated.startTime, updated.clinic?.timezone),
         clinicName: updated.clinic?.name,
       });
     }

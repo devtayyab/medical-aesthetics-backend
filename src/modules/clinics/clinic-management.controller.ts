@@ -702,6 +702,13 @@ export class ClinicManagementController {
     return this.clinicsService.getAllCategories(query);
   }
 
+  @Get('master/categories/tree')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get the full category tree incl. inactive (Admin)' })
+  async getCategoryTreeAdmin() {
+    return this.clinicsService.getCategoryTree(true);
+  }
+
   @Post('master/categories')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create master category' })
