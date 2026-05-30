@@ -79,6 +79,7 @@ export const TherapyCatalog: React.FC = () => {
         fullDescription: "",
         imageUrl: "",
         isFeatured: false,
+        sortOrder: 0,
         isActive: true
     });
 
@@ -87,6 +88,7 @@ export const TherapyCatalog: React.FC = () => {
         description: "",
         icon: "",
         parentId: "",
+        sortOrder: 0,
         isActive: true
     });
 
@@ -188,6 +190,7 @@ export const TherapyCatalog: React.FC = () => {
                 fullDescription: item.fullDescription || "",
                 imageUrl: item.imageUrl || "",
                 isFeatured: !!item.isFeatured,
+                sortOrder: item.sortOrder ?? 0,
                 isActive: item.isActive
             });
         } else {
@@ -199,6 +202,7 @@ export const TherapyCatalog: React.FC = () => {
                 fullDescription: "",
                 imageUrl: "",
                 isFeatured: false,
+                sortOrder: 0,
                 isActive: true
             });
         }
@@ -242,7 +246,7 @@ export const TherapyCatalog: React.FC = () => {
                         <Plus size={16} /> New Therapy
                     </button>
                     <button
-                        onClick={() => { setEditingItem(null); setCategoryForm({ name: "", description: "", icon: "", parentId: "", isActive: true }); setIsCategoryModalOpen(true); }}
+                        onClick={() => { setEditingItem(null); setCategoryForm({ name: "", description: "", icon: "", parentId: "", sortOrder: 0, isActive: true }); setIsCategoryModalOpen(true); }}
                         className="flex items-center gap-2 px-6 py-3 bg-[#0B1120] text-white font-black rounded-2xl hover:bg-gray-800 transition-all shadow-lg shadow-gray-200 uppercase text-xs tracking-widest"
                     >
                         <Plus size={16} /> New Category
@@ -347,7 +351,7 @@ export const TherapyCatalog: React.FC = () => {
                 <div className="space-y-6">
                     {topLevelCategories.map(cat => {
                         const subs = subcategoriesOf(cat.id);
-                        const editCat = (c: masterCategory) => { setEditingItem(c); setCategoryForm({ name: c.name, description: c.description || "", icon: c.icon || "", parentId: c.parentId || "", isActive: c.isActive }); setIsCategoryModalOpen(true); };
+                        const editCat = (c: masterCategory) => { setEditingItem(c); setCategoryForm({ name: c.name, description: c.description || "", icon: c.icon || "", parentId: c.parentId || "", sortOrder: c.sortOrder ?? 0, isActive: c.isActive }); setIsCategoryModalOpen(true); };
                         return (
                             <div key={cat.id} className="bg-white rounded-[28px] p-6 border border-gray-100 shadow-sm">
                                 <div className="flex justify-between items-start mb-2">
@@ -499,17 +503,28 @@ export const TherapyCatalog: React.FC = () => {
                                 </div>
                             </div>
 
-                            <label className="flex items-center gap-3 px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="size-5 accent-[#CBFF38]"
-                                    checked={treatmentForm.isFeatured}
-                                    onChange={e => setTreatmentForm({ ...treatmentForm, isFeatured: e.target.checked })}
-                                />
-                                <span className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-700">
-                                    <Star size={14} className="text-amber-500" fill="currentColor" /> Feature in "Top Treatments"
-                                </span>
-                            </label>
+                            <div className="grid grid-cols-2 gap-6 items-center">
+                                <label className="flex items-center gap-3 px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="size-5 accent-[#CBFF38]"
+                                        checked={treatmentForm.isFeatured}
+                                        onChange={e => setTreatmentForm({ ...treatmentForm, isFeatured: e.target.checked })}
+                                    />
+                                    <span className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-700">
+                                        <Star size={14} className="text-amber-500" fill="currentColor" /> Feature in "Top Treatments"
+                                    </span>
+                                </label>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Sort Order</label>
+                                    <input
+                                        type="number"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#CBFF38] font-bold"
+                                        value={treatmentForm.sortOrder}
+                                        onChange={e => setTreatmentForm({ ...treatmentForm, sortOrder: Number(e.target.value) || 0 })}
+                                    />
+                                </div>
+                            </div>
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Therapy Photo</label>
@@ -581,14 +596,25 @@ export const TherapyCatalog: React.FC = () => {
                                 </select>
                                 <p className="text-[10px] text-gray-400 italic ml-1">Pick a parent to make this a subcategory. Leave as top-level otherwise.</p>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Category Icon</label>
-                                <input
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#CBFF38] font-bold text-center text-2xl"
-                                    placeholder="Icon identifier..."
-                                    value={categoryForm.icon}
-                                    onChange={e => setCategoryForm({ ...categoryForm, icon: e.target.value })}
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Category Icon</label>
+                                    <input
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#CBFF38] font-bold text-center text-2xl"
+                                        placeholder="Icon..."
+                                        value={categoryForm.icon}
+                                        onChange={e => setCategoryForm({ ...categoryForm, icon: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Sort Order</label>
+                                    <input
+                                        type="number"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#CBFF38] font-bold"
+                                        value={categoryForm.sortOrder}
+                                        onChange={e => setCategoryForm({ ...categoryForm, sortOrder: Number(e.target.value) || 0 })}
+                                    />
+                                </div>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Description</label>
