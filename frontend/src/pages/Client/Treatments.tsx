@@ -1,13 +1,44 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { css } from "@emotion/css";
-import { ChevronRight, ArrowRight, Sparkles, Syringe, Microscope } from "lucide-react";
+import { ChevronRight, ArrowRight, Sparkles, Wand2, Syringe, Scissors, Pill, Microscope, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCategoryTree, PublicCategory, PublicTreatment } from "@/hooks/useCategoryTree";
 import { getImageUrl } from "@/utils/imageUrl";
 
 // Clinical visual assets
 import HeroBg from "@/assets/Blog_Hero.jpg";
+
+// Fallback Treatment Assets
+import RhinoplastyImg from "@/assets/Treatments/rhinoplasty_elite.png";
+import BotoxImg from "@/assets/Treatments/botox_elite.png";
+import HairImg from "@/assets/Treatments/hair_transplant_elite.png";
+import FillersImg from "@/assets/Treatments/fillers_elite.png";
+import EyesImg from "@/assets/Treatments/eyes_surgery_elite.png";
+import RejuvenationImg from "@/assets/Treatments/rejuvenation_elite.png";
+import PrpImg from "@/assets/Treatments/prp_therapy_elite.png";
+import BeardTransplantImg from "@/assets/Treatments/beard_transplant_elite.png";
+
+const getFallbackImg = (name: string): string => {
+    const n = (name || '').toLowerCase();
+    if (n.includes('botox') || n.includes('wrinkle')) return BotoxImg;
+    if (n.includes('filler') || n.includes('lip')) return FillersImg;
+    if (n.includes('rhinoplasty') || n.includes('nose')) return RhinoplastyImg;
+    if (n.includes('hair') || n.includes('transplant') || n.includes('fue')) return HairImg;
+    if (n.includes('eye') || n.includes('bleph')) return EyesImg;
+    if (n.includes('skin') || n.includes('rejuvenation') || n.includes('peel') || n.includes('facial')) return RejuvenationImg;
+    if (n.includes('prp')) return PrpImg;
+    if (n.includes('beard')) return BeardTransplantImg;
+    return BotoxImg;
+};
+
+const getCategoryIcon = (name: string) => {
+    const n = (name || '').toLowerCase();
+    if (n.includes('hair')) return <Scissors size={24} />;
+    if (n.includes('derm') || n.includes('skin')) return <Microscope size={24} />;
+    if (n.includes('plastic') || n.includes('cosmet') || n.includes('surgical')) return <Wand2 size={24} />;
+    return <Syringe size={24} />;
+};
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -76,7 +107,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
                 <div className="flex items-center justify-between mb-10">
                     <div className="flex items-center gap-6">
                         <div className="size-16 rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl text-2xl font-black">
-                            {category.icon ? <span>{category.icon}</span> : <Microscope size={24} />}
+                            {category.icon ? <span>{category.icon}</span> : getCategoryIcon(category.name)}
                         </div>
                         <div>
                             <h3 className="text-2xl font-black uppercase italic tracking-tight text-gray-900">{category.name}</h3>
@@ -116,9 +147,12 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
                             {treatments.map((t) => (
                                 <div key={t.id} className={subTreatmentCard} onClick={() => navigate(`/search?query=${encodeURIComponent(t.name)}`)}>
                                     <div className="size-12 rounded-xl overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center">
-                                        {t.imageUrl
-                                            ? <img src={getImageUrl(t.imageUrl)} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" alt={t.name} />
-                                            : <Syringe size={18} className="text-gray-400" />}
+                                        <img
+                                            src={t.imageUrl ? getImageUrl(t.imageUrl) : getFallbackImg(t.name)}
+                                            onError={(e: any) => { e.target.src = getFallbackImg(t.name); }}
+                                            className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500"
+                                            alt={t.name}
+                                        />
                                     </div>
                                     <span className="text-[10px] font-black uppercase italic tracking-widest text-gray-900">{t.name}</span>
                                 </div>
@@ -172,8 +206,6 @@ export const Treatments: React.FC = () => {
                             <p className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-10 italic">Professional Consultation Protocols</p>
 
                             <div className="space-y-4">
-
-
                                 <a
                                     href="mailto:info@beautydoctors.gr?subject=Professional Consultation Request"
                                     className="w-full group p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent"
@@ -230,8 +262,9 @@ export const Treatments: React.FC = () => {
             <main className="max-w-7xl mx-auto px-8 relative z-20 -mt-[180px] pb-32">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                     {loading && (
-                        <div className="md:col-span-2 flex justify-center py-12">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-500"></div>
+                        <div className="md:col-span-2 flex flex-col items-center justify-center py-32 gap-4">
+                            <Loader2 size={48} className="animate-spin text-[#CBFF38]" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 italic">Loading Catalog...</p>
                         </div>
                     )}
                     {!loading && categories.length === 0 && (
@@ -239,7 +272,7 @@ export const Treatments: React.FC = () => {
                             No treatment categories available yet.
                         </div>
                     )}
-                    {categories.map((cat, idx) => (
+                    {!loading && categories.map((cat, idx) => (
                         <CategoryCard key={cat.id} category={cat} idx={idx} />
                     ))}
 

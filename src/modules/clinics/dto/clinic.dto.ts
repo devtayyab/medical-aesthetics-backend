@@ -378,6 +378,12 @@ export class CreateTreatmentDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  clinicIds?: string[];
 }
 
 export class UpdateTreatmentDto {
@@ -420,6 +426,12 @@ export class UpdateTreatmentDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  clinicIds?: string[];
 }
 
 export class CreateCategoryDto {

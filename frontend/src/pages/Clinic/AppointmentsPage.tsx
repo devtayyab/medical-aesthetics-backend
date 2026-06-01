@@ -317,7 +317,67 @@ const AppointmentsPage: React.FC = () => {
 const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, onReschedule, onNoShow, onOverview }: any) => {
   const isPlatform = appointment.appointmentSource === 'platform_broker';
   const status = appointment.status.toLowerCase();
+  const isBlocked = !!appointment.isBlocked;
 
+  // ── Blocked Time Card ────────────────────────────────────────────────────
+  if (isBlocked) {
+    const startTime = new Date(appointment.startTime);
+    const endTime = new Date(appointment.endTime || appointment.startTime);
+    const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-2xl flex flex-col md:flex-row md:items-center gap-6 overflow-hidden relative">
+        {/* Red left stripe */}
+        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-500" />
+
+        {/* Time node */}
+        <div className="flex flex-col items-center justify-center size-16 bg-red-500 rounded-xl text-white shrink-0 ml-4 my-5">
+          <span className="text-[7px] font-black uppercase tracking-widest opacity-70">
+            {startTime.toLocaleDateString([], { month: 'short' })}
+          </span>
+          <span className="text-xl font-black italic tracking-tighter leading-none my-0.5">
+            {startTime.getDate()}
+          </span>
+          <span className="text-[7px] font-black italic">{fmt(startTime)}</span>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 py-5">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest italic border bg-red-500 text-white border-red-500">
+              Blocked
+            </span>
+            <span className="text-[8px] font-black text-red-300 uppercase tracking-widest">
+              #{appointment.id.slice(0, 8)}
+            </span>
+          </div>
+
+          <h4 className="text-base font-black uppercase italic tracking-tighter text-red-700 mb-1">
+            🚫 Blocked Time
+          </h4>
+
+          <p className="text-xs text-red-500 font-semibold">
+            {fmt(startTime)} — {fmt(endTime)}
+            {appointment.reason || appointment.notes
+              ? <span className="ml-2 text-red-400 italic">· {appointment.reason || appointment.notes}</span>
+              : null}
+          </p>
+        </div>
+
+        {/* No action buttons — just overview */}
+        <div className="shrink-0 md:border-l border-red-200 md:pl-6 pr-5 py-5">
+          <button
+            onClick={onOverview}
+            className="h-9 px-4 bg-red-100 text-red-600 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all italic"
+          >
+            Details
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Normal Appointment Card ──────────────────────────────────────────────
   return (
     <div className={`bg-white rounded-2xl border transition-all duration-300 group relative flex flex-col md:flex-row md:items-center gap-6 overflow-hidden ${
       status === 'confirmed' ? 'border-green-200 shadow-sm' :
@@ -333,7 +393,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
         status === 'completed' ? 'bg-[#CBFF38]' : 'bg-gray-200'
       }`} />
 
-      {/* Temporal Node - adding padding to account for stripe */}
+      {/* Temporal Node */}
       <div className="flex flex-col items-center justify-center size-16 bg-black rounded-xl text-[#CBFF38] shrink-0 group-hover:scale-105 transition-transform ml-4 my-5">
         <span className="text-[7px] font-black uppercase tracking-widest opacity-60">
           {new Date(appointment.startTime).toLocaleDateString([], { month: 'short' })}
@@ -369,7 +429,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
           <div className="space-y-0.5">
             <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">Client</p>
             <h4 className="text-sm font-black uppercase italic tracking-tighter text-gray-900 truncate">
-              {appointment.isBlocked ? 'Blocked Time' : `${appointment.client?.firstName} ${appointment.client?.lastName}`}
+              {`${appointment.client?.firstName} ${appointment.client?.lastName}`}
             </h4>
           </div>
 
@@ -397,7 +457,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
 
       {/* Control Layer */}
       <div className="flex items-center gap-2 shrink-0 md:border-l border-gray-100 md:pl-6 pr-5 py-5">
-        {!appointment.isBlocked && (
+        {!isBlocked && (
           <>
             {status === 'pending' && hasPermission(user?.role, 'canConfirmAppointments') && (
               <button onClick={onConfirm} className="h-9 px-4 bg-black text-[#CBFF38] rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all">
@@ -430,3 +490,4 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
 };
 
 export default AppointmentsPage;
+

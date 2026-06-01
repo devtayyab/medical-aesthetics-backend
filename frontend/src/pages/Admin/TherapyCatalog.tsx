@@ -44,6 +44,12 @@ interface masterTreatment {
     isActive: boolean;
     createdAt: string;
     categoryRef?: { name: string };
+    offerings?: Array<{ id: string; clinicId: string; isActive: boolean }>;
+}
+
+interface Clinic {
+    id: string;
+    name: string;
 }
 
 interface masterCategory {
@@ -65,21 +71,31 @@ export const TherapyCatalog: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [clinics, setClinics] = useState<Clinic[]>([]);
 
     // Modal state
     const [isTreatmentModalOpen, setIsTreatmentModalOpen] = useState(false);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
 
-    // Form state
-    const [treatmentForm, setTreatmentForm] = useState({
+    const [treatmentForm, setTreatmentForm] = useState<{
+        name: string;
+        categoryId: string;
+        shortDescription: string;
+        fullDescription: string;
+        imageUrl: string;
+        isFeatured: boolean;
+        isActive: boolean;
+        clinicIds: string[];
+    }>({
         name: "",
         categoryId: "",
         shortDescription: "",
         fullDescription: "",
         imageUrl: "",
         isFeatured: false,
-        isActive: true
+        isActive: true,
+        clinicIds: []
     });
 
     const [categoryForm, setCategoryForm] = useState({
@@ -93,14 +109,16 @@ export const TherapyCatalog: React.FC = () => {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [treatmentsRes, categoriesRes, pendingRes] = await Promise.all([
+            const [treatmentsRes, categoriesRes, pendingRes, clinicsRes] = await Promise.all([
                 adminAPI.getMasterTreatments({ status: 'approved' }),
                 adminAPI.getMasterCategories(),
-                adminAPI.getPendingTreatments()
+                adminAPI.getPendingTreatments(),
+                adminAPI.getClinics()
             ]);
             setTreatments(treatmentsRes.data || []);
             setCategories(categoriesRes.data || []);
             setPendingItems(pendingRes.data || []);
+            setClinics(clinicsRes.data?.clinics || []);
         } catch (err: any) {
             setError("Failed to load catalog data");
         } finally {
@@ -146,7 +164,7 @@ export const TherapyCatalog: React.FC = () => {
     };
 
     const handleDeleteTreatment = async (id: string) => {
-        if (!confirm("Are you sure? This will fail if any clinic is offering this therapy.")) return;
+        if (!confirm("Are you sure you want to delete this therapy? If it has historical booking records, it will be safely archived (deactivated) instead of hard-deleted to preserve history.")) return;
         try {
             await adminAPI.deleteMasterTreatment(id);
             fetchData();
@@ -181,6 +199,9 @@ export const TherapyCatalog: React.FC = () => {
     const openTreatmentModal = (item?: masterTreatment) => {
         if (item) {
             setEditingItem(item);
+            const linkedClinicIds = item.offerings
+                ? item.offerings.filter((o: any) => o.isActive).map((o: any) => o.clinicId)
+                : [];
             setTreatmentForm({
                 name: item.name,
                 categoryId: item.categoryId,
@@ -188,7 +209,8 @@ export const TherapyCatalog: React.FC = () => {
                 fullDescription: item.fullDescription || "",
                 imageUrl: item.imageUrl || "",
                 isFeatured: !!item.isFeatured,
-                isActive: item.isActive
+                isActive: item.isActive,
+                clinicIds: linkedClinicIds
             });
         } else {
             setEditingItem(null);
@@ -199,16 +221,19 @@ export const TherapyCatalog: React.FC = () => {
                 fullDescription: "",
                 imageUrl: "",
                 isFeatured: false,
-                isActive: true
+                isActive: true,
+                clinicIds: []
             });
         }
         setIsTreatmentModalOpen(true);
     };
 
-    const filteredTreatments = treatments.filter(t =>
-        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.categoryRef?.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredTreatments = treatments
+        .filter(t => t.isActive)
+        .filter(t =>
+            t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.categoryRef?.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
 
     // Category tree helpers (two levels: top-level categories + their subcategories)
     const topLevelCategories = categories.filter(c => !c.parentId);
@@ -483,7 +508,7 @@ export const TherapyCatalog: React.FC = () => {
                                     <select
                                         required
                                         className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#CBFF38] font-black uppercase text-xs tracking-widest"
-                                        value={treatmentForm.categoryId}
+                                        value={treatmentForm.categoryId || ""}
                                         onChange={e => setTreatmentForm({ ...treatmentForm, categoryId: e.target.value })}
                                     >
                                         <option value="">-- Select --</option>
@@ -517,6 +542,39 @@ export const TherapyCatalog: React.FC = () => {
                                     value={treatmentForm.imageUrl} 
                                     onChange={(url) => setTreatmentForm({ ...treatmentForm, imageUrl: url })}
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Link Clinics (Select one or more)</label>
+                                <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                    {clinics.map(clinic => {
+                                        const isSelected = treatmentForm.clinicIds.includes(clinic.id);
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={clinic.id}
+                                                onClick={() => {
+                                                    const updatedIds = isSelected
+                                                        ? treatmentForm.clinicIds.filter(id => id !== clinic.id)
+                                                        : [...treatmentForm.clinicIds, clinic.id];
+                                                    setTreatmentForm({ ...treatmentForm, clinicIds: updatedIds });
+                                                }}
+                                                className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                                                    isSelected
+                                                        ? "bg-[#CBFF38]/10 border-[#CBFF38] text-gray-900 font-bold"
+                                                        : "bg-white border-gray-100 text-gray-500 hover:border-gray-200"
+                                                }`}
+                                            >
+                                                <div className={`size-4 rounded flex items-center justify-center border transition-all ${
+                                                    isSelected ? "bg-[#CBFF38] border-[#CBFF38] text-black" : "border-gray-300 bg-white"
+                                                }`}>
+                                                    {isSelected && <Check size={10} strokeWidth={4} />}
+                                                </div>
+                                                <span className="text-[11px] uppercase tracking-wide truncate">{clinic.name}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
                             <div className="space-y-2">
@@ -571,7 +629,7 @@ export const TherapyCatalog: React.FC = () => {
                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Parent Category</label>
                                 <select
                                     className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#CBFF38] font-black uppercase text-xs tracking-widest"
-                                    value={categoryForm.parentId}
+                                    value={categoryForm.parentId || ""}
                                     onChange={e => setCategoryForm({ ...categoryForm, parentId: e.target.value })}
                                 >
                                     <option value="">— None (top-level) —</option>

@@ -69,6 +69,7 @@ export interface Treatment {
   fromPrice?: number;
   clinicsCount?: number;
   availableAt?: string[];
+  serviceId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -128,6 +129,7 @@ export interface Appointment {
   appointmentSource: 'clinic_own' | 'platform_broker';
   totalAmount: number;
   notes?: string;
+  reason?: string;
   additionalServiceIds?: string[];
   treatmentDetails?: any;
   createdAt: string;

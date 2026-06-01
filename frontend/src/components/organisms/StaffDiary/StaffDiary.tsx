@@ -192,6 +192,30 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                 const height = Math.max(((end.getTime() - start.getTime()) / 60000 / 30) * 80, 50);
                                 const provider = staff.find(s => s.id === apt.providerId);
 
+                                // ── Blocked Time Slot ──────────────────────
+                                if (apt.isBlocked) {
+                                    return (
+                                        <div key={apt.id} onClick={() => openAptDetails(apt)}
+                                            className="absolute left-2 right-2 rounded-xl p-3 border-l-4 border-red-500 shadow-sm cursor-pointer flex flex-col justify-between bg-red-50 hover:bg-red-100 transition-all hover:scale-[1.01] hover:z-50"
+                                            style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
+                                        >
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-[10px] font-black uppercase text-red-700 truncate">🚫 Blocked Time</span>
+                                                <span className="text-[8px] font-black uppercase text-white bg-red-500 px-1.5 py-0.5 rounded-md ml-1 whitespace-nowrap">Blocked</span>
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <div className="text-[9px] font-bold text-red-400 truncate italic">
+                                                    {apt.reason || apt.notes || 'No reason provided'}
+                                                </div>
+                                            </div>
+                                            <div className="mt-auto flex justify-between items-center pt-1 border-t border-red-100">
+                                                <span className="text-[9px] font-black text-red-400">{format(start, 'HH:mm')} – {format(end, 'HH:mm')}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
+                                // ── Normal Appointment ──────────────────────
                                 return (
                                     <div key={apt.id} onClick={() => openAptDetails(apt)}
                                         className={`absolute left-2 right-2 rounded-xl p-3 border-l-4 shadow-sm transition-all hover:scale-[1.01] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status.toLowerCase()} bg-white shadow-slate-200/50`}
@@ -273,6 +297,27 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                             || `${apt.client?.firstName || ''} ${apt.client?.lastName || ''}`.trim() 
                                             || 'Patient';
 
+                                        // ── Blocked Time Slot ──────────────
+                                        if (apt.isBlocked) {
+                                            return (
+                                                <div key={apt.id} onClick={() => openAptDetails(apt)}
+                                                    className="absolute left-1 right-1 rounded-xl p-2 border-l-4 border-red-500 shadow-sm cursor-pointer flex flex-col justify-between bg-red-50 hover:bg-red-100 transition-all hover:scale-[1.02] hover:z-50"
+                                                    style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
+                                                >
+                                                    <span className="text-[9px] font-black uppercase text-red-700 truncate leading-none">🚫 Blocked</span>
+                                                    <div className="space-y-0.5 mt-0.5">
+                                                        <div className="text-[8px] font-bold text-red-400 truncate italic">
+                                                            {apt.reason || apt.notes || ''}
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-auto pt-1 border-t border-red-100">
+                                                        <span className="text-[8px] font-black text-red-400">{format(start, 'HH:mm')}–{format(end, 'HH:mm')}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        // ── Normal Appointment ──────────────
                                         return (
                                             <div key={apt.id} onClick={() => openAptDetails(apt)}
                                                 className={`absolute left-1 right-1 rounded-xl p-2 border-l-4 shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status.toLowerCase()} bg-white shadow-slate-200/50`}

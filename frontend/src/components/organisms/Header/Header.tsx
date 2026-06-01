@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { css } from "@emotion/css";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, User, Bell, Menu, X, MessageCircle, ChevronLeft, ChevronRight, Phone, ChevronDown } from "lucide-react";
@@ -9,6 +9,7 @@ import { Input } from "@/components/atoms/Input/Input";
 import type { RootState, AppDispatch } from "@/store";
 import { logout } from "@/store/slices/authSlice";
 import { fetchUnreadCount } from "@/store/slices/notificationsSlice";
+import { publicCatalogAPI } from "@/services/api";
 
 import SiteLogo from "@/assets/SiteLogo.png";
 import { NotificationDropdown } from "@/components/molecules/NotificationDropdown";
@@ -373,7 +374,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="bg-[#2D3748] py-2 sm:py-3 sticky top-0 z-40 border-b border-white/5 backdrop-blur-md">
+      <header className="bg-[#2D3748] py-2 sm:py-3 sticky top-0 z-[999] border-b border-white/5 backdrop-blur-md">
         <div className={containerStyle}>
           <div className="flex items-center gap-4">
             <button
@@ -624,11 +625,25 @@ export const Header: React.FC = () => {
         {!isAuthenticated && (
           <div className="hidden md:flex items-center gap-2 justify-center mt-5 relative z-10 flex-wrap px-4">
             <Link to="/" className={`${navItemStyle} ${location.pathname === '/' ? activeNavItemStyle : ''}`}>Home</Link>
-            <Link to="/search?category=hair-removal" className={navItemStyle}>Hair Removal</Link>
-            <Link to="/search?category=facial-aesthetics" className={navItemStyle}>Facial Aesthetics</Link>
-            <Link to="/search?category=body-aesthetics" className={navItemStyle}>Body Aesthetics</Link>
-            <Link to="/search?q=Clinical Dermatology" className={navItemStyle}>Clinical Dermatology</Link>
-            <Link to="/search?q=Plastic Surgery" className={navItemStyle}>Plastic Surgery</Link>
+            {navCategories.length > 0 ? (
+              navCategories.map((cat) => (
+                <Link
+                  key={cat.id}
+                  to={`/search?category=${encodeURIComponent(cat.name)}`}
+                  className={navItemStyle}
+                >
+                  {cat.name}
+                </Link>
+              ))
+            ) : (
+              // Fallback static links while loading
+              <>
+                <Link to="/search?category=hair-removal" className={navItemStyle}>Hair Removal</Link>
+                <Link to="/search?category=facial-aesthetics" className={navItemStyle}>Facial Aesthetics</Link>
+                <Link to="/search?category=body-aesthetics" className={navItemStyle}>Body Aesthetics</Link>
+                <Link to="/search?q=Plastic Surgery" className={navItemStyle}>Plastic Surgery</Link>
+              </>
+            )}
           </div>
         )}
       </header>

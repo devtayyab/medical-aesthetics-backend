@@ -79,6 +79,7 @@ export interface Treatment {
   availableAt?: string[];
   singleClinicId?: string;
   singleServiceId?: string;
+  serviceId?: string;
   offerings?: any[];
 }
 

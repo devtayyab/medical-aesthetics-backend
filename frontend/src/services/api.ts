@@ -657,6 +657,15 @@ export const adminSystemListsAPI = {
   updateTreatment: (id: string, data: any) => api.put(`/admin/treatments/${id}`, data),
 };
 
+// Public catalog API — no authentication required
+export const publicCatalogAPI = {
+  getCategories: () => api.get('/clinics/categories'),
+  getTreatmentsByCategory: (catId: string) =>
+    api.get(`/clinics/categories/${catId}/treatments`),
+  getAllMasterTreatments: () =>
+    api.get('/clinic/master/treatments', { params: { status: 'approved' } }),
+};
+
 export const uploadAPI = {
   uploadImage: (file: File) => {
     const formData = new FormData();

@@ -1446,21 +1446,29 @@ export class ClinicsService {
     const subtreeIds = [id, ...children.map((c) => c.id)];
 
     return this.categoryRepository.manager.transaction(async (manager) => {
-      const result = await manager.update(
-        Treatment,
-        { categoryId: In(subtreeIds) },
-        { categoryId: null as any, category: null as any },
-      );
+      const result = await manager.createQueryBuilder()
+        .update(Treatment)
+        .set({ categoryId: null, category: null })
+        .where('categoryId IN (:...subtreeIds)', { subtreeIds })
+        .execute();
+
       // Deleting the parent cascades to children via FK ON DELETE CASCADE, but we
       // delete the explicit list to keep the count deterministic regardless of order.
-      await manager.delete(TreatmentCategory, In(subtreeIds));
+      await manager.createQueryBuilder()
+        .delete()
+        .from(TreatmentCategory)
+        .where('id IN (:...subtreeIds)', { subtreeIds })
+        .execute();
+
       return { deleted: true, unmappedTreatments: result.affected || 0 };
     });
   }
 
   async getAllTreatmentsMaster(query?: { search?: string; status?: TreatmentStatus; categoryId?: string; isFeatured?: boolean }): Promise<Treatment[]> {
     const qb = this.treatmentsRepository.createQueryBuilder('treatment')
-      .leftJoinAndSelect('treatment.categoryRef', 'category');
+      .leftJoinAndSelect('treatment.categoryRef', 'category')
+      .leftJoinAndSelect('treatment.offerings', 'offerings')
+      .leftJoinAndSelect('offerings.clinic', 'clinic');
 
     if (query?.search) {
       qb.andWhere('(treatment.name ILIKE :search OR treatment.shortDescription ILIKE :search)', { search: `%${query.search}%` });
@@ -1483,35 +1491,115 @@ export class ClinicsService {
     const treatment = await this.treatmentsRepository.findOne({ where: { id } });
     if (!treatment) throw new NotFoundException('Treatment not found');
 
-    if (data.categoryId) {
-      const category = await this.categoryRepository.findOne({ where: { id: data.categoryId } });
+    const { clinicIds, ...treatmentData } = data;
+
+    if (treatmentData.categoryId) {
+      const category = await this.categoryRepository.findOne({ where: { id: treatmentData.categoryId } });
       if (!category) throw new NotFoundException('Category not found');
       treatment.category = category.name;
     }
 
-    Object.assign(treatment, data);
-    return this.treatmentsRepository.save(treatment);
+    Object.assign(treatment, treatmentData);
+    const savedTreatment = await this.treatmentsRepository.save(treatment);
+
+    if (clinicIds !== undefined) {
+      const existingServices = await this.servicesRepository.find({
+        where: { treatmentId: id },
+      });
+
+      // 1. Create or reactivate services for new clinicIds
+      for (const clinicId of clinicIds) {
+        const existing = existingServices.find(s => s.clinicId === clinicId);
+        if (!existing) {
+          const newService = this.servicesRepository.create({
+            clinicId,
+            treatmentId: id,
+            price: 0,
+            durationMinutes: 30,
+            isActive: true,
+          });
+          await this.servicesRepository.save(newService);
+        } else if (!existing.isActive) {
+          existing.isActive = true;
+          await this.servicesRepository.save(existing);
+        }
+      }
+
+      // 2. Remove or deactivate services not in the new list
+      for (const existingService of existingServices) {
+        if (!clinicIds.includes(existingService.clinicId)) {
+          const appointmentCount = await this.appointmentsRepository.count({
+            where: { serviceId: existingService.id },
+          });
+
+          if (appointmentCount > 0) {
+            existingService.isActive = false;
+            await this.servicesRepository.save(existingService);
+          } else {
+            await this.servicesRepository.remove(existingService);
+          }
+        }
+      }
+    }
+
+    return savedTreatment;
   }
 
   async deleteTreatment(id: string): Promise<void> {
-    const offeringsCount = await this.servicesRepository.count({ where: { treatmentId: id } });
-    if (offeringsCount > 0) {
-      throw new BadRequestException('Cannot delete treatment with associated clinic offerings. Disable it instead.');
+    const offerings = await this.servicesRepository.find({ where: { treatmentId: id } });
+    
+    if (offerings.length > 0) {
+      const serviceIds = offerings.map(o => o.id);
+      const appointmentCount = await this.appointmentsRepository.count({
+        where: { serviceId: In(serviceIds) }
+      });
+      
+      if (appointmentCount > 0) {
+        // Safe archiving/soft-deletion to preserve medical/financial historical data
+        await this.treatmentsRepository.update(id, { isActive: false });
+        for (const offering of offerings) {
+          offering.isActive = false;
+          await this.servicesRepository.save(offering);
+        }
+        return;
+      }
+      
+      // Safely delete associated offerings since they have no bookings
+      await this.servicesRepository.remove(offerings);
     }
+    
     await this.treatmentsRepository.delete(id);
   }
 
-  async createMasterTreatment(data: DeepPartial<Treatment>): Promise<Treatment> {
+  async createMasterTreatment(data: any): Promise<Treatment> {
     const category = await this.categoryRepository.findOne({ where: { id: data.categoryId as any } });
     if (!category) throw new NotFoundException('Category not found');
 
+    const { clinicIds, ...treatmentData } = data;
+
     const treatment = this.treatmentsRepository.create({
-      ...data,
+      ...treatmentData,
       status: TreatmentStatus.APPROVED,
       category: category.name,
       isActive: true,
     } as DeepPartial<Treatment>) as unknown as Treatment;
-    return await this.treatmentsRepository.save(treatment);
+    
+    const savedTreatment = await this.treatmentsRepository.save(treatment);
+
+    if (clinicIds && clinicIds.length > 0) {
+      for (const clinicId of clinicIds) {
+        const service = this.servicesRepository.create({
+          clinicId,
+          treatmentId: savedTreatment.id,
+          price: 0,
+          durationMinutes: 30,
+          isActive: true,
+        });
+        await this.servicesRepository.save(service);
+      }
+    }
+
+    return savedTreatment;
   }
 
   async createMasterCategory(data: DeepPartial<TreatmentCategory>): Promise<TreatmentCategory> {
