@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { css } from "@emotion/css";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, User, Bell, Menu, X, MessageCircle, ChevronLeft, ChevronRight, Phone } from "lucide-react";
+import { Search, User, Bell, Menu, X, MessageCircle, ChevronLeft, ChevronRight, Phone, ChevronDown } from "lucide-react";
+import { useCategoryTree } from "@/hooks/useCategoryTree";
 import { useSelector, useDispatch } from "react-redux";
 import { Button } from "@/components/atoms/Button/Button";
 import { Input } from "@/components/atoms/Input/Input";
 import type { RootState, AppDispatch } from "@/store";
 import { logout } from "@/store/slices/authSlice";
 import { fetchUnreadCount } from "@/store/slices/notificationsSlice";
+import { publicCatalogAPI } from "@/services/api";
 
 import SiteLogo from "@/assets/SiteLogo.png";
 import { NotificationDropdown } from "@/components/molecules/NotificationDropdown";
@@ -248,6 +250,8 @@ export const Header: React.FC = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+  const { categories: navCategories } = useCategoryTree();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { isAuthenticated, user } = useSelector(
@@ -370,7 +374,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="bg-[#2D3748] py-2 sm:py-3 sticky top-0 z-40 border-b border-white/5 backdrop-blur-md">
+      <header className="bg-[#2D3748] py-2 sm:py-3 sticky top-0 z-[999] border-b border-white/5 backdrop-blur-md">
         <div className={containerStyle}>
           <div className="flex items-center gap-4">
             <button
@@ -404,16 +408,50 @@ export const Header: React.FC = () => {
               {user?.role !== 'salesperson' && (
                 <div className={searchContainerStyle}>
                   <ul className="flex justify-center items-center gap-4 lg:gap-8 text-white whitespace-nowrap">
-                    <li className="cursor-pointer">
+                    <li
+                      className="cursor-pointer relative"
+                      onMouseEnter={() => setIsCategoriesOpen(true)}
+                      onMouseLeave={() => setIsCategoriesOpen(false)}
+                    >
                       <Link
                         to="/treatments"
-                        className={`text-[11px] font-black uppercase tracking-[0.15em] italic transition-all ${location.pathname.startsWith("/treatments")
+                        className={`flex items-center gap-1 text-[11px] font-black uppercase tracking-[0.15em] italic transition-all ${location.pathname.startsWith("/treatments")
                           ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
                           : "text-gray-400 hover:text-white"
                           }`}
                       >
-                        Categories
+                        Categories <ChevronDown size={12} className={`transition-transform ${isCategoriesOpen ? 'rotate-180' : ''}`} />
                       </Link>
+
+                      {isCategoriesOpen && navCategories.length > 0 && (
+                        <div className="absolute left-0 top-full pt-3 z-50">
+                          <div className="bg-[#0B1120] border border-white/10 rounded-2xl shadow-2xl p-4 min-w-[260px] max-h-[70vh] overflow-y-auto grid gap-1">
+                            {navCategories.map((cat) => (
+                              <div key={cat.id}>
+                                <button
+                                  onClick={() => { setIsCategoriesOpen(false); navigate(`/search?category=${encodeURIComponent(cat.name)}`); }}
+                                  className="w-full text-left px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest italic text-white hover:bg-[#CBFF38] hover:text-black transition-all flex items-center gap-2"
+                                >
+                                  {cat.icon ? <span className="not-italic">{cat.icon}</span> : null}{cat.name}
+                                </button>
+                                {(cat.children || []).length > 0 && (
+                                  <div className="pl-4 mt-0.5 mb-1 flex flex-col">
+                                    {(cat.children || []).map((sub) => (
+                                      <button
+                                        key={sub.id}
+                                        onClick={() => { setIsCategoriesOpen(false); navigate(`/search?category=${encodeURIComponent(sub.name)}`); }}
+                                        className="text-left px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-[#CBFF38] transition-all"
+                                      >
+                                        ↳ {sub.name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </li>
                     <li className="cursor-pointer">
                       <Link
@@ -587,11 +625,25 @@ export const Header: React.FC = () => {
         {!isAuthenticated && (
           <div className="hidden md:flex items-center gap-2 justify-center mt-5 relative z-10 flex-wrap px-4">
             <Link to="/" className={`${navItemStyle} ${location.pathname === '/' ? activeNavItemStyle : ''}`}>Home</Link>
-            <Link to="/search?category=hair-removal" className={navItemStyle}>Hair Removal</Link>
-            <Link to="/search?category=facial-aesthetics" className={navItemStyle}>Facial Aesthetics</Link>
-            <Link to="/search?category=body-aesthetics" className={navItemStyle}>Body Aesthetics</Link>
-            <Link to="/search?q=Clinical Dermatology" className={navItemStyle}>Clinical Dermatology</Link>
-            <Link to="/search?q=Plastic Surgery" className={navItemStyle}>Plastic Surgery</Link>
+            {navCategories.length > 0 ? (
+              navCategories.map((cat) => (
+                <Link
+                  key={cat.id}
+                  to={`/search?category=${encodeURIComponent(cat.name)}`}
+                  className={navItemStyle}
+                >
+                  {cat.name}
+                </Link>
+              ))
+            ) : (
+              // Fallback static links while loading
+              <>
+                <Link to="/search?category=hair-removal" className={navItemStyle}>Hair Removal</Link>
+                <Link to="/search?category=facial-aesthetics" className={navItemStyle}>Facial Aesthetics</Link>
+                <Link to="/search?category=body-aesthetics" className={navItemStyle}>Body Aesthetics</Link>
+                <Link to="/search?q=Plastic Surgery" className={navItemStyle}>Plastic Surgery</Link>
+              </>
+            )}
           </div>
         )}
       </header>

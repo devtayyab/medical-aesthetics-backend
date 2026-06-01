@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { publicCatalogAPI } from "@/services/api";
 import {
   FaStethoscope,
   FaApple,
@@ -22,14 +23,6 @@ import {
   Syringe
 } from "lucide-react";
 
-const getImageUrl = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('http') || path.startsWith('data:')) return path;
-    
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-    const origin = baseUrl.replace(/\/api$/, '');
-    return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
-};
 
 
 // import { Button } from "@/components/atoms/Button/Button";
@@ -47,12 +40,10 @@ import TickIcon from "@/assets/Icons/TickIcon.svg";
 import GiftConfidenceImg from "@/assets/GiftConfidenceImg.svg";
 import TopRatedClinicImg from "@/assets/TopRatedClinicImg.svg";
 import OnlineClinicHome from "@/assets/OnlineClinicHome.svg";
-// Treatment Icons
+// Fallback category icon (used when a category has no custom icon)
 import DermaIcon from "@/assets/Icons/TreatmentIcons/DermaIcon.svg";
-import CosmeticIcon from "@/assets/Icons/TreatmentIcons/CosmeticIcon.svg";
-import BodyIcon from "@/assets/Icons/TreatmentIcons/BodyIcon.svg";
-import HairIcon from "@/assets/Icons/TreatmentIcons/HairIcon.svg";
-import DentistIcon from "@/assets/Icons/TreatmentIcons/Dentisticon.svg";
+import { useCategoryTree, useTopTreatments } from "@/hooks/useCategoryTree";
+import { getImageUrl } from "@/utils/imageUrl";
 import HomeMobAppImg from "@/assets/HomeMobAppImg.svg";
 
 // Premium Assets
@@ -100,50 +91,6 @@ const treatmentSteps = [
   },
 ];
 
-const categories = [
-  {
-    id: "dermatology",
-    name: "Dermatology",
-    description: "Skin health and medical treatments",
-    icon: DermaIcon,
-  },
-  {
-    id: "plastic-surgery",
-    name: "Plastic Surgery",
-    description: "Cosmetic and reconstructive procedures",
-    icon: CosmeticIcon,
-  },
-  {
-    id: "aesthetics",
-    name: "Aesthetics",
-    description: "Non-surgical beauty treatments",
-    icon: BodyIcon,
-  },
-  {
-    id: "skin-care",
-    name: "Skin Care",
-    description: "Clinical skin treatments and facials",
-    icon: DermaIcon,
-  },
-  {
-    id: "hair",
-    name: "Hair Treatments",
-    description: "Hair restoration and removal",
-    icon: HairIcon,
-  },
-  {
-    id: "dentistry",
-    name: "Dentistry",
-    description: "Dental aesthetics and health",
-    icon: DentistIcon,
-  },
-  {
-    id: "wellness",
-    name: "Wellness",
-    description: "Holistic health and wellness",
-    icon: BodyIcon,
-  },
-];
 
 const mainCategories = [
   {
@@ -173,19 +120,18 @@ export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
-
-
   const { featuredClinics, isLoading, treatments, error } = useSelector(
     (state: RootState) => state.client
   );
 
-
-
-
+  // Super-admin-managed categories + top treatments (replaces hardcoded lists)
+  const { categories: dynamicCategories, loading: categoriesLoading } = useCategoryTree();
+  const { treatments: topTreatments, loading: topLoading } = useTopTreatments(8);
+  // Prefer the curated "Top Treatments"; fall back to live search results when none are featured.
+  const displayTreatments: any[] = topTreatments.length > 0 ? topTreatments : (treatments || []);
 
   useEffect(() => {
     dispatch(fetchFeaturedClinics());
-    // Fetch treatments for the featured section
     dispatch(searchClinics({ limit: 6 }));
   }, [dispatch]);
 
@@ -198,8 +144,8 @@ export const HomePage: React.FC = () => {
     navigate(`/search?${params.toString()}`);
   };
 
-  const handleCategoryClick = (categoryId: string) => {
-    navigate(`/search?category=${categoryId}`);
+  const handleCategoryClick = (categoryName: string) => {
+    navigate(`/search?category=${encodeURIComponent(categoryName)}`);
   };
 
   const handleTreatmentSelect = (treatment: any) => {
@@ -270,7 +216,7 @@ export const HomePage: React.FC = () => {
     </div>
   </section>
 
-  {/* Popular Categories Section */ }
+  {/* Popular Categories Section — Dynamic */ }
   <section className="py-12 bg-white">
     <div className="max-w-[1200px] mx-auto px-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
@@ -278,21 +224,44 @@ export const HomePage: React.FC = () => {
           <h2 className="text-2xl font-bold text-[#33373F]">Popular Categories</h2>
           <p className="text-gray-600 mt-1">Explore top treatments by category</p>
         </div>
+        <button
+          onClick={() => navigate('/treatments')}
+          className="text-lime-600 font-medium hover:text-lime-700 transition text-sm"
+        >
+          View All <ArrowRight className="inline-block ml-1 h-4 w-4" />
+        </button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
-        {categories.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => handleCategoryClick(category.id)}
-            className="flex flex-col items-center p-6 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-[#CBFF38] transition-all group"
-          >
-            <div className="size-16 bg-[#F7FAFC] rounded-full flex items-center justify-center mb-4 group-hover:bg-[#CBFF38] transition-colors">
-              <img src={category.icon} alt={category.name} className="size-8" />
+      {categoriesLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center p-6 bg-gray-100 border border-gray-100 rounded-2xl animate-pulse">
+              <div className="size-16 bg-gray-200 rounded-full mb-4" />
+              <div className="h-3 bg-gray-200 rounded w-16" />
             </div>
-            <span className="font-semibold text-[#33373F] text-sm">{category.name}</span>
-          </button>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : dynamicCategories.length === 0 ? (
+        <p className="text-gray-400 text-sm italic">No categories available yet.</p>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+          {dynamicCategories.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => handleCategoryClick(category.name)}
+              className="flex flex-col items-center p-6 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-[#CBFF38] transition-all group"
+            >
+              <div className="size-16 bg-[#F7FAFC] rounded-full flex items-center justify-center mb-4 group-hover:bg-[#CBFF38] transition-colors text-2xl font-black text-[#33373F]">
+                {category.icon
+                  ? (category.icon.startsWith('http') || category.icon.startsWith('/')
+                      ? <img src={category.icon} alt={category.name} className="size-8" />
+                      : <span>{category.icon}</span>)
+                  : <img src={DermaIcon} alt={category.name} className="size-8" />}
+              </div>
+              <span className="font-semibold text-[#33373F] text-sm text-center leading-tight">{category.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   </section>
 
@@ -312,15 +281,15 @@ export const HomePage: React.FC = () => {
         </button>
       </div>
 
-      {isLoading ? (
+      {(isLoading || topLoading) && displayTreatments.length === 0 ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-500"></div>
         </div>
-      ) : treatments && treatments.length > 0 ? (
+      ) : displayTreatments.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {treatments.map((treatment) => (
+          {displayTreatments.map((treatment) => (
             <div
-              key={treatment.id}
+              key={treatment.serviceId || treatment.id}
               onClick={() => handleTreatmentSelect(treatment)}
               className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group border border-gray-100 flex flex-col h-full"
             >
@@ -333,15 +302,17 @@ export const HomePage: React.FC = () => {
                   }}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1">
-                  <FaStar className="text-yellow-400" />
-                  <span>5.0</span>
-                </div>
+                {treatment.rating ? (
+                  <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1">
+                    <FaStar className="text-yellow-400" />
+                    <span>{Number(treatment.rating).toFixed(1)}</span>
+                  </div>
+                ) : null}
               </div>
               <div className="p-5 flex flex-col flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[10px] font-black uppercase tracking-widest text-lime-600 italic">
-                    {treatment.category || "Aesthetic"}
+                    {treatment.category || treatment.categoryRef?.name || "Aesthetic"}
                   </span>
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-1 uppercase italic tracking-tight">{treatment.name}</h3>
@@ -352,8 +323,14 @@ export const HomePage: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
                   <div className="flex flex-col">
-                    <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Price Starting From</span>
-                    <span className="text-lg font-black text-gray-900 italic tracking-tighter">€{treatment.fromPrice || "49.00"}</span>
+                    {treatment.fromPrice ? (
+                      <>
+                        <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Price Starting From</span>
+                        <span className="text-lg font-black text-gray-900 italic tracking-tighter">€{treatment.fromPrice}</span>
+                      </>
+                    ) : (
+                      <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest italic">View Details</span>
+                    )}
                   </div>
                   <span className="text-lime-600 font-black text-[10px] uppercase tracking-widest italic group-hover:underline">
                     Book Now
@@ -529,34 +506,54 @@ export const HomePage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-              {categories.map((category, idx) => (
-                <div key={idx} className="space-y-3">
-                  <div
-                    className="flex items-center gap-3 border-b border-gray-200 pb-2 cursor-pointer group"
-                    onClick={() => handleCategoryClick(category.id)}
-                  >
-                    <div className="size-[56px] bg-[#CBFF38] rounded-sm flex items-center justify-center group-hover:scale-105 transition-transform">
-                      <img src={category.icon} alt={category.name} className="p-1" />
+              {categoriesLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="space-y-3 animate-pulse">
+                    <div className="flex items-center gap-3 border-b border-gray-200 pb-2">
+                      <div className="size-[56px] bg-gray-200 rounded-sm" />
+                      <div className="h-4 bg-gray-200 rounded w-32" />
                     </div>
-                    <h3 className="text-gray-800 font-semibold group-hover:text-lime-600 transition-colors">
-                      {category.name}
-                    </h3>
-                  </div>
-                  <ul className="space-y-1 text-gray-700">
-                    {[
-                      "Athens",
-                      "Thessaloniki",
-                      "Patras",
-                      "Heraklion",
-                      "Larissa",
-                      "Volos",
-                      "Ioannina",
-                    ].map((city, i) => (
-                      <li key={i} className="hover:text-lime-600 cursor-pointer" onClick={() => navigate(`/search?category=${category.id}&location=${city}`)}>{city}</li>
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <div key={j} className="h-3 bg-gray-100 rounded w-24" />
                     ))}
-                  </ul>
-                </div>
-              ))}
+                  </div>
+                ))
+              ) : dynamicCategories.length === 0 ? (
+                <p className="col-span-3 text-center text-gray-400">No categories found.</p>
+              ) : (
+                dynamicCategories.slice(0, 6).map((category) => {
+                  const subs = category.children || [];
+                  const cities = ["Athens", "Thessaloniki", "Patras", "Heraklion", "Larissa", "Volos", "Ioannina"];
+                  return (
+                    <div key={category.id} className="space-y-3">
+                      <div
+                        className="flex items-center gap-3 border-b border-gray-200 pb-2 cursor-pointer group"
+                        onClick={() => handleCategoryClick(category.name)}
+                      >
+                        <div className="size-[56px] bg-[#CBFF38] rounded-sm flex items-center justify-center group-hover:scale-105 transition-transform text-2xl font-black text-[#0B1120]">
+                          {category.icon
+                            ? (category.icon.startsWith('http') || category.icon.startsWith('/')
+                                ? <img src={category.icon} alt={category.name} className="p-1" />
+                                : <span>{category.icon}</span>)
+                            : <img src={DermaIcon} alt={category.name} className="p-1" />}
+                        </div>
+                        <h3 className="text-gray-800 font-semibold group-hover:text-lime-600 transition-colors">
+                          {category.name}
+                        </h3>
+                      </div>
+                      <ul className="space-y-1 text-gray-700">
+                        {subs.length > 0
+                          ? subs.map((sub) => (
+                              <li key={sub.id} className="hover:text-lime-600 cursor-pointer" onClick={() => handleCategoryClick(sub.name)}>{sub.name}</li>
+                            ))
+                          : cities.map((city, i) => (
+                              <li key={i} className="hover:text-lime-600 cursor-pointer" onClick={() => navigate(`/search?category=${encodeURIComponent(category.name)}&location=${city}`)}>{city}</li>
+                            ))}
+                      </ul>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             <div className="text-center mt-12">

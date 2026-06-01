@@ -406,7 +406,7 @@ export const Search: React.FC = () => {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                {items.map((t: any) => (
                                  <TreatmentCard 
-                                    key={t.id} 
+                                    key={t.serviceId || t.id} 
                                     treatment={t} 
                                     onSelect={(treatment) => navigate(`/treatment/${treatment.id}`)} 
                                  />

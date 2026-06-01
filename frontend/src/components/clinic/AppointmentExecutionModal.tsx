@@ -171,7 +171,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[2000] p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-t-8 border-green-600">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">

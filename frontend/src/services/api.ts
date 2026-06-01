@@ -227,6 +227,10 @@ export const clinicsAPI = {
   moderateReview: (id: string, data: { status: 'APPROVED' | 'REJECTED'; rejectReason?: string }) =>
     api.patch(`/clinics/reviews/${id}/moderate`, data),
   getSuggestions: (q: string) => api.get("/clinics/suggestions", { params: { q } }),
+  // Public, super-admin-managed category tree + featured treatments
+  getCategoryTree: (withTreatments?: boolean) => api.get("/clinics/categories", { params: withTreatments ? { withTreatments: true } : undefined }),
+  getCategoryTreatments: (id: string) => api.get(`/clinics/categories/${id}/treatments`),
+  getTopTreatments: (limit?: number) => api.get("/clinics/top-treatments", { params: { limit } }),
 };
 
 export const bookingAPI = {
@@ -362,7 +366,7 @@ export const crmAPI = {
   handleFacebookWebhook: (data: any) => api.post("/crm/facebook/webhook", data),
   importFacebookLeads: (formId: string, limit?: number) =>
     api.post(`/crm/facebook/import/${formId}`, {}, { params: { limit } }),
-  getFacebookForms: () => api.get("/crm/facebook/forms"),
+  getFacebookForms: (pageId?: string) => api.get("/crm/facebook/forms", { params: pageId ? { pageId } : undefined }),
   testFacebookConnection: () => api.get("/crm/facebook/test"),
   assignFormsToDay: (data: { formNames: string[]; scheduledAt: string }) => api.post('/crm/facebook/forms/assign', data),
   bulkCreateTasks: (data: { leadIds: string[]; salespersonId: string; dueDate: string; title: string }) => api.post('/crm/actions/bulk', data),
@@ -563,6 +567,7 @@ export const adminAPI = {
 
   // Master Catalog (Therapies/Treatments)
   getMasterCategories: (params?: { search?: string; status?: string }) => api.get("/clinic/master/categories", { params }),
+  getMasterCategoryTree: () => api.get("/clinic/master/categories/tree"),
   createMasterCategory: (data: any) => api.post("/clinic/master/categories", data),
   updateMasterCategory: (id: string, data: any) => api.put(`/clinic/master/categories/${id}`, data),
   deleteMasterCategory: (id: string) => api.delete(`/clinic/master/categories/${id}`),
@@ -650,6 +655,15 @@ export const adminSystemListsAPI = {
   getTreatments: (params?: any) => api.get("/admin/treatments", { params }),
   createTreatment: (data: any) => api.post("/admin/treatments", data),
   updateTreatment: (id: string, data: any) => api.put(`/admin/treatments/${id}`, data),
+};
+
+// Public catalog API — no authentication required
+export const publicCatalogAPI = {
+  getCategories: () => api.get('/clinics/categories'),
+  getTreatmentsByCategory: (catId: string) =>
+    api.get(`/clinics/categories/${catId}/treatments`),
+  getAllMasterTreatments: () =>
+    api.get('/clinic/master/treatments', { params: { status: 'approved' } }),
 };
 
 export const uploadAPI = {

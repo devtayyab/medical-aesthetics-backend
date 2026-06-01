@@ -435,6 +435,17 @@ export class CrmController {
   }
 
   // Facebook Integration
+  @Get('facebook/webhook')
+  @Public()
+  @ApiOperation({ summary: 'Verify Messenger/Lead Ads Webhook' })
+  verifyFacebookWebhook(
+    @Query('hub.mode') mode: string,
+    @Query('hub.verify_token') verifyToken: string,
+    @Query('hub.challenge') challenge: string,
+  ) {
+    return this.crmService.verifyWebhook(mode, verifyToken, challenge);
+  }
+
   @Post('facebook/webhook')
   @Public()
   @ApiOperation({ summary: 'Messenger/Lead Ads Webhook' })
@@ -453,8 +464,8 @@ export class CrmController {
   @Get('facebook/forms')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)
-  getFacebookForms() {
-    return this.crmService.getFacebookForms();
+  getFacebookForms(@Query('pageId') pageId?: string) {
+    return this.crmService.getFacebookForms(pageId);
   }
 
   @Post('actions/bulk')

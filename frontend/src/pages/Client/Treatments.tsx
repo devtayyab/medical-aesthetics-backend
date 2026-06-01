@@ -1,13 +1,15 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { css } from "@emotion/css";
-import { ChevronRight, ArrowRight, Sparkles, Wand2, Syringe, Scissors, Pill, Microscope } from "lucide-react";
+import { ChevronRight, ArrowRight, Sparkles, Wand2, Syringe, Scissors, Pill, Microscope, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useCategoryTree, PublicCategory, PublicTreatment } from "@/hooks/useCategoryTree";
+import { getImageUrl } from "@/utils/imageUrl";
 
 // Clinical visual assets
 import HeroBg from "@/assets/Blog_Hero.jpg";
 
-// Generated Treatment Assets
+// Fallback Treatment Assets
 import RhinoplastyImg from "@/assets/Treatments/rhinoplasty_elite.png";
 import BotoxImg from "@/assets/Treatments/botox_elite.png";
 import HairImg from "@/assets/Treatments/hair_transplant_elite.png";
@@ -16,6 +18,27 @@ import EyesImg from "@/assets/Treatments/eyes_surgery_elite.png";
 import RejuvenationImg from "@/assets/Treatments/rejuvenation_elite.png";
 import PrpImg from "@/assets/Treatments/prp_therapy_elite.png";
 import BeardTransplantImg from "@/assets/Treatments/beard_transplant_elite.png";
+
+const getFallbackImg = (name: string): string => {
+    const n = (name || '').toLowerCase();
+    if (n.includes('botox') || n.includes('wrinkle')) return BotoxImg;
+    if (n.includes('filler') || n.includes('lip')) return FillersImg;
+    if (n.includes('rhinoplasty') || n.includes('nose')) return RhinoplastyImg;
+    if (n.includes('hair') || n.includes('transplant') || n.includes('fue')) return HairImg;
+    if (n.includes('eye') || n.includes('bleph')) return EyesImg;
+    if (n.includes('skin') || n.includes('rejuvenation') || n.includes('peel') || n.includes('facial')) return RejuvenationImg;
+    if (n.includes('prp')) return PrpImg;
+    if (n.includes('beard')) return BeardTransplantImg;
+    return BotoxImg;
+};
+
+const getCategoryIcon = (name: string) => {
+    const n = (name || '').toLowerCase();
+    if (n.includes('hair')) return <Scissors size={24} />;
+    if (n.includes('derm') || n.includes('skin')) return <Microscope size={24} />;
+    if (n.includes('plastic') || n.includes('cosmet') || n.includes('surgical')) return <Wand2 size={24} />;
+    return <Syringe size={24} />;
+};
 
 const sectionStyles = css`
   min-height: 100vh;
@@ -57,48 +80,103 @@ const subTreatmentCard = css`
   }
 `;
 
-export const Treatments: React.FC = () => {
+// A single top-level category card: shows its subcategories and every treatment
+// beneath it (its own + its subcategories'), all read from the pre-fetched tree.
+const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ category, idx }) => {
     const navigate = useNavigate();
-    const [showConsultModal, setShowConsultModal] = React.useState(false);
-
-    const categories = [
-        {
-            id: "plastic-surgery",
-            name: "Plastic Surgery",
-            description: "Precision surgical procedures for anatomical perfection.",
-            icon: <Wand2 size={24} />,
-            treatments: [
-                { name: "Rhinoplasty", img: RhinoplastyImg },
-                { name: "Blepharoplasty", img: EyesImg },
-                { name: "Abdominoplasty", img: "https://images.unsplash.com/photo-1512678080530-7760d81faba6?auto=format&fit=crop&q=80&w=200" },
-                { name: "Facelift Elite", img: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=200" }
-            ]
-        },
-        {
-            id: "dermatology",
-            name: "Medical Dermatology",
-            description: "Clinical skin solutions by board-certified practitioners.",
-            icon: <Microscope size={24} />,
-            treatments: [
-                { name: "Botox Therapy", img: BotoxImg },
-                { name: "Dermal Fillers", img: FillersImg },
-                { name: "Skin Rejuvenation", img: RejuvenationImg },
-                { name: "Chemical Peel", img: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&q=80&w=200" }
-            ]
-        },
-        {
-            id: "hair",
-            name: "Hair Restoration",
-            description: "Advanced transplantation and follicular science.",
-            icon: <Scissors size={24} />,
-            treatments: [
-                { name: "FUE Transplant", img: HairImg },
-                { name: "PRP Therapy", img: PrpImg },
-                { name: "Beard Transplant", img: BeardTransplantImg },
-                { name: "Hair Mesotherapy", img: "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?auto=format&fit=crop&q=80&w=200" }
-            ]
+    const subs = category.children || [];
+    // Aggregate the category's own treatments with those of its subcategories,
+    // de-duplicated by id. No extra request — the tree was fetched withTreatments.
+    const treatments: PublicTreatment[] = React.useMemo(() => {
+        const seen = new Set<string>();
+        const out: PublicTreatment[] = [];
+        for (const t of [...(category.treatments || []), ...(category.children || []).flatMap((s) => s.treatments || [])]) {
+            if (!seen.has(t.id)) { seen.add(t.id); out.push(t); }
         }
-    ];
+        return out;
+    }, [category]);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.1 }}
+            className={glassCard}
+        >
+            <div className="p-10 md:p-12">
+                <div className="flex items-center justify-between mb-10">
+                    <div className="flex items-center gap-6">
+                        <div className="size-16 rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl text-2xl font-black">
+                            {category.icon ? <span>{category.icon}</span> : getCategoryIcon(category.name)}
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-black uppercase italic tracking-tight text-gray-900">{category.name}</h3>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 italic">Elite Clinical Specialty</p>
+                        </div>
+                    </div>
+                    <ArrowRight size={20} className="text-gray-200 group-hover:text-lime-500 transition-colors" />
+                </div>
+
+                {category.description && (
+                    <p className="text-[13px] font-medium text-gray-500 mb-10 italic leading-relaxed">{category.description}</p>
+                )}
+
+                {/* Subcategories */}
+                {subs.length > 0 && (
+                    <div className="mb-8">
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 italic">Subcategories</h4>
+                        <div className="flex flex-wrap gap-2">
+                            {subs.map((sub) => (
+                                <button
+                                    key={sub.id}
+                                    onClick={() => navigate(`/search?category=${encodeURIComponent(sub.name)}`)}
+                                    className="px-4 py-2 bg-gray-50 hover:bg-[#CBFF38] border border-gray-100 rounded-full text-[10px] font-black uppercase italic tracking-widest text-gray-800 transition-all"
+                                >
+                                    {sub.icon ? `${sub.icon} ` : ''}{sub.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Treatments inside this category */}
+                {treatments.length > 0 && (
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6 italic">Featured Procedures</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {treatments.map((t) => (
+                                <div key={t.id} className={subTreatmentCard} onClick={() => navigate(`/search?query=${encodeURIComponent(t.name)}`)}>
+                                    <div className="size-12 rounded-xl overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center">
+                                        <img
+                                            src={t.imageUrl ? getImageUrl(t.imageUrl) : getFallbackImg(t.name)}
+                                            onError={(e: any) => { e.target.src = getFallbackImg(t.name); }}
+                                            className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500"
+                                            alt={t.name}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase italic tracking-widest text-gray-900">{t.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="mt-12 pt-8 border-t border-gray-50">
+                    <button
+                        onClick={() => navigate(`/search?category=${encodeURIComponent(category.name)}`)}
+                        className="w-full h-14 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center gap-4 font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-lime-500 hover:text-black transition-all active:scale-95 shadow-2xl"
+                    >
+                        Examine Category <ChevronRight size={14} />
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+export const Treatments: React.FC = () => {
+    const [showConsultModal, setShowConsultModal] = React.useState(false);
+    const { categories, loading } = useCategoryTree({ withTreatments: true });
 
     return (
         <div className={sectionStyles}>
@@ -128,8 +206,6 @@ export const Treatments: React.FC = () => {
                             <p className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-10 italic">Professional Consultation Protocols</p>
 
                             <div className="space-y-4">
-
-
                                 <a
                                     href="mailto:info@beautydoctors.gr?subject=Professional Consultation Request"
                                     className="w-full group p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent"
@@ -185,60 +261,19 @@ export const Treatments: React.FC = () => {
 
             <main className="max-w-7xl mx-auto px-8 relative z-20 -mt-[180px] pb-32">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    {categories.map((cat, idx) => (
-                        <motion.div
-                            key={cat.id}
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.1 }}
-                            className={glassCard}
-                        >
-                            <div className="p-10 md:p-12">
-                                <div className="flex items-center justify-between mb-10">
-                                    <div className="flex items-center gap-6">
-                                        <div className="size-16 rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl">
-                                            {cat.icon}
-                                        </div>
-                                        <div>
-                                            <h3 className="text-2xl font-black uppercase italic tracking-tight text-gray-900">
-                                                {cat.name}
-                                            </h3>
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 italic">
-                                                Elite Clinical Specialty
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <ArrowRight size={20} className="text-gray-200 group-hover:text-lime-500 transition-colors" />
-                                </div>
-
-                                <p className="text-[13px] font-medium text-gray-500 mb-10 italic leading-relaxed">
-                                    {cat.description}
-                                </p>
-
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6 italic">Featured Procedures</h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {cat.treatments.map((t, i) => (
-                                            <div key={i} className={subTreatmentCard} onClick={() => navigate(`/search?query=${encodeURIComponent(t.name)}`)}>
-                                                <div className="size-12 rounded-xl overflow-hidden shrink-0">
-                                                    <img src={t.img} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" alt={t.name} />
-                                                </div>
-                                                <span className="text-[10px] font-black uppercase italic tracking-widest text-gray-900">{t.name}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="mt-12 pt-8 border-t border-gray-50">
-                                    <button
-                                        onClick={() => navigate(`/search?category=${encodeURIComponent(cat.name)}`)}
-                                        className="w-full h-14 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center gap-4 font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-lime-500 hover:text-black transition-all active:scale-95 shadow-2xl"
-                                    >
-                                        Examine Category <ChevronRight size={14} />
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
+                    {loading && (
+                        <div className="md:col-span-2 flex flex-col items-center justify-center py-32 gap-4">
+                            <Loader2 size={48} className="animate-spin text-[#CBFF38]" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 italic">Loading Catalog...</p>
+                        </div>
+                    )}
+                    {!loading && categories.length === 0 && (
+                        <div className="md:col-span-2 text-center py-12 text-gray-400 italic font-bold uppercase tracking-widest text-xs">
+                            No treatment categories available yet.
+                        </div>
+                    )}
+                    {!loading && categories.map((cat, idx) => (
+                        <CategoryCard key={cat.id} category={cat} idx={idx} />
                     ))}
 
                     {/* Inquiry Card */}

@@ -4470,3 +4470,79 @@
 [2026-05-22T15:42:15.210Z] ✅ Clinic is open on friday from 09:00 to 23:00 
 [2026-05-22T15:42:15.234Z] 🔵 Checking availability for 4 providers 
 [2026-05-22T15:42:15.298Z] ✅ Found 21 slots for clinic: muneeb 
+[2026-05-23T05:29:34.297Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-05-23"}
+[2026-05-23T05:29:34.322Z] 🔵 Using date: "2026-05-23"
+[2026-05-23T05:29:34.348Z] 🔵 Clinic: "muneeb"
+[2026-05-23T05:29:34.353Z] 🔵 Total duration: 60
+[2026-05-23T05:29:34.354Z] 🔵 Using timezone: "America/New_York"
+[2026-05-23T05:29:34.364Z] 🔵 Day of week: "saturday"
+[2026-05-23T05:29:34.365Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":false}
+[2026-05-23T05:29:34.365Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-05-23T05:30:00.203Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["dfe5bfd5-1b83-4a33-804e-ce044e5c66af"],"providerId":null,"date":"2026-05-23"}
+[2026-05-23T05:30:00.204Z] 🔵 Using date: "2026-05-23"
+[2026-05-23T05:30:00.234Z] 🔵 Clinic: "ehsan clinic"
+[2026-05-23T05:30:00.247Z] 🔵 Total duration: 60
+[2026-05-23T05:30:00.248Z] 🔵 Using timezone: "America/New_York"
+[2026-05-23T05:30:00.249Z] 🔵 Day of week: "saturday"
+[2026-05-23T05:30:00.249Z] 🔵 Business hours for saturday: {"open":"10:00","close":"15:00","isOpen":true}
+[2026-05-23T05:30:00.250Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-05-23T05:30:00.250Z] ✅ Clinic is open on saturday from 10:00 to 15:00 
+[2026-05-23T05:30:00.299Z] 🔵 Checking availability for 6 providers 
+[2026-05-23T05:30:00.339Z] ✅ Found 9 slots for clinic: ehsan clinic 
+[2026-05-23T05:30:00.344Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["dfe5bfd5-1b83-4a33-804e-ce044e5c66af"],"providerId":null,"date":"2026-05-23"}
+[2026-05-23T05:30:00.345Z] 🔵 Using date: "2026-05-23"
+[2026-05-23T05:30:00.356Z] 🔵 Clinic: "ehsan clinic"
+[2026-05-23T05:30:00.362Z] 🔵 Total duration: 60
+[2026-05-23T05:30:00.362Z] 🔵 Using timezone: "America/New_York"
+[2026-05-23T05:30:00.363Z] 🔵 Day of week: "saturday"
+[2026-05-23T05:30:00.364Z] 🔵 Business hours for saturday: {"open":"10:00","close":"15:00","isOpen":true}
+[2026-05-23T05:30:00.364Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"17:00","isOpen":true},"tuesday":{"open":"09:00","close":"17:00","isOpen":true},"wednesday":{"open":"09:00","close":"17:00","isOpen":true},"thursday":{"open":"09:00","close":"17:00","isOpen":true},"friday":{"open":"09:00","close":"17:00","isOpen":true},"saturday":{"open":"10:00","close":"15:00","isOpen":true},"sunday":{"open":"10:00","close":"15:00","isOpen":false}}
+[2026-05-23T05:30:00.365Z] ✅ Clinic is open on saturday from 10:00 to 15:00 
+[2026-05-23T05:30:00.383Z] 🔵 Checking availability for 6 providers 
+[2026-05-23T05:30:00.407Z] ✅ Found 9 slots for clinic: ehsan clinic 
+[2026-05-23T06:32:39.487Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-05-23"}
+[2026-05-23T06:32:39.506Z] 🔵 Using date: "2026-05-23"
+[2026-05-23T06:32:39.521Z] 🔵 Clinic: "muneeb"
+[2026-05-23T06:32:39.527Z] 🔵 Total duration: 60
+[2026-05-23T06:32:39.528Z] 🔵 Using timezone: "America/New_York"
+[2026-05-23T06:32:39.549Z] 🔵 Day of week: "saturday"
+[2026-05-23T06:32:39.552Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":false}
+[2026-05-23T06:32:39.556Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-05-23T06:32:46.488Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-05-24"}
+[2026-05-23T06:32:46.489Z] 🔵 Using date: "2026-05-24"
+[2026-05-23T06:32:46.543Z] 🔵 Clinic: "muneeb"
+[2026-05-23T06:32:46.570Z] 🔵 Total duration: 60
+[2026-05-23T06:32:46.571Z] 🔵 Using timezone: "America/New_York"
+[2026-05-23T06:32:46.576Z] 🔵 Day of week: "sunday"
+[2026-05-23T06:32:46.586Z] 🔵 Business hours for sunday: {"open":"09:00","close":"18:00","isOpen":false}
+[2026-05-23T06:32:46.586Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-05-23T06:32:50.969Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-05-25"}
+[2026-05-23T06:32:50.976Z] 🔵 Using date: "2026-05-25"
+[2026-05-23T06:32:50.993Z] 🔵 Clinic: "muneeb"
+[2026-05-23T06:32:50.998Z] 🔵 Total duration: 60
+[2026-05-23T06:32:50.999Z] 🔵 Using timezone: "America/New_York"
+[2026-05-23T06:32:51.001Z] 🔵 Day of week: "monday"
+[2026-05-23T06:32:51.002Z] 🔵 Business hours for monday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-05-23T06:32:51.003Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-05-23T06:32:51.003Z] ✅ Clinic is open on monday from 09:00 to 23:00 
+[2026-05-23T06:32:51.045Z] 🔵 Checking availability for 4 providers 
+[2026-05-23T06:32:51.115Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-05-30T10:10:04.917Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-05-30"}
+[2026-05-30T10:10:04.944Z] 🔵 Using date: "2026-05-30"
+[2026-05-30T10:10:04.959Z] 🔵 Clinic: "muneeb"
+[2026-05-30T10:10:04.964Z] 🔵 Total duration: 60
+[2026-05-30T10:10:04.966Z] 🔵 Using timezone: "America/New_York"
+[2026-05-30T10:10:04.987Z] 🔵 Day of week: "saturday"
+[2026-05-30T10:10:04.987Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":false}
+[2026-05-30T10:10:04.992Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":false},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-05-30T10:10:26.318Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-05-30"}
+[2026-05-30T10:10:26.319Z] 🔵 Using date: "2026-05-30"
+[2026-05-30T10:10:26.331Z] 🔵 Clinic: "muneeb"
+[2026-05-30T10:10:26.336Z] 🔵 Total duration: 60
+[2026-05-30T10:10:26.337Z] 🔵 Using timezone: "America/New_York"
+[2026-05-30T10:10:26.339Z] 🔵 Day of week: "saturday"
+[2026-05-30T10:10:26.341Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-05-30T10:10:26.342Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-05-30T10:10:26.344Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
+[2026-05-30T10:10:26.365Z] 🔵 Checking availability for 4 providers 
+[2026-05-30T10:10:26.397Z] ✅ Found 15 slots for clinic: muneeb 

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules/Card/Card";
 import { Button } from "@/components/atoms/Button/Button";
@@ -15,7 +15,10 @@ export const FacebookIntegration: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { isLoading } = useSelector((state: RootState) => state.crm);
   const [connectionStatus, setConnectionStatus] = useState<string>("");
+  const [connectionError, setConnectionError] = useState<string>("");
   const [facebookForms, setFacebookForms] = useState<any[]>([]);
+  const [pageId, setPageId] = useState("");
+  const [formsError, setFormsError] = useState("");
   const [importData, setImportData] = useState({
     formId: "",
     limit: 10
@@ -33,24 +36,34 @@ export const FacebookIntegration: React.FC = () => {
   });
 
   const handleTestConnection = async () => {
+    setConnectionStatus("");
+    setConnectionError("");
     try {
       const result = await dispatch(testFacebookConnection()).unwrap();
-      setConnectionStatus("Connection successful!");
+      setConnectionStatus(result?.message || "Connection successful!");
       console.log("Facebook connection test result:", result);
-    } catch (error) {
-      setConnectionStatus("Connection failed!");
+    } catch (error: any) {
+      setConnectionError(error?.message || "Connection failed!");
       console.error("Facebook connection test failed:", error);
     }
   };
 
   const handleGetForms = async () => {
+    setFormsError("");
+    if (!pageId.trim()) {
+      setFormsError("Please enter your Facebook Page ID to fetch forms.");
+      return;
+    }
     try {
-      const result = await dispatch(getFacebookForms()).unwrap();
-      setFacebookForms(result);
+      const result = await dispatch(getFacebookForms(pageId.trim())).unwrap();
+      setFacebookForms(result || []);
+      if (!result || result.length === 0) {
+        setFormsError("No forms found for this Page ID. Make sure the Page ID is correct and the token has leadgen permissions.");
+      }
       console.log("Facebook forms:", result);
-    } catch (error) {
+    } catch (error: any) {
+      setFormsError(error?.message || "Failed to fetch Facebook forms");
       console.error("Failed to fetch Facebook forms:", error);
-      alert("Failed to fetch Facebook forms");
     }
   };
 
@@ -125,11 +138,13 @@ export const FacebookIntegration: React.FC = () => {
               Test Facebook Connection
             </Button>
             {connectionStatus && (
-              <div className={`p-3 rounded ${connectionStatus.includes("successful") ?
-                  "bg-green-100 text-green-800" :
-                  "bg-red-100 text-red-800"
-                }`}>
-                {connectionStatus}
+              <div className="p-3 rounded bg-green-100 text-green-800 text-sm">
+                ✅ {connectionStatus}
+              </div>
+            )}
+            {connectionError && (
+              <div className="p-3 rounded bg-red-100 text-red-800 text-sm">
+                ❌ {connectionError}
               </div>
             )}
           </CardContent>
@@ -140,20 +155,56 @@ export const FacebookIntegration: React.FC = () => {
             <CardTitle>Facebook Forms</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Facebook Page ID <span className="text-red-500">*</span>
+              </label>
+              <Input
+                placeholder="e.g. 123456789012345"
+                value={pageId}
+                onChange={(e) => setPageId(e.target.value)}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Find it at: facebook.com/&lt;YourPage&gt; → About → Page ID
+              </p>
+            </div>
             <Button
               onClick={handleGetForms}
               disabled={isLoading}
               className="w-full"
             >
-              Fetch Facebook Forms
+              {isLoading ? "Fetching..." : "Fetch Facebook Forms"}
             </Button>
+            {formsError && (
+              <div className="p-3 rounded bg-red-100 text-red-800 text-sm">
+                ⚠️ {formsError}
+              </div>
+            )}
             {facebookForms.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-semibold">Available Forms:</h4>
+                <h4 className="font-semibold">Available Forms ({facebookForms.length}):</h4>
                 {facebookForms.map((form: any) => (
-                  <div key={form.id} className="border rounded p-2 text-sm">
-                    <div className="font-medium">{form.name}</div>
-                    <div className="text-gray-600">ID: {form.id}</div>
+                  <div key={form.id} className="border rounded p-2 text-sm flex justify-between items-center">
+                    <div>
+                      <div className="font-medium">{form.name}</div>
+                      <div className="text-gray-500 text-xs">ID: {form.id}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {form.leads_count !== undefined && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                          {form.leads_count} leads
+                        </span>
+                      )}
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${form.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {form.status}
+                      </span>
+                      <button
+                        className="text-xs text-blue-600 hover:underline"
+                        onClick={() => setImportData(prev => ({ ...prev, formId: form.id }))}
+                      >
+                        Use
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -169,7 +220,7 @@ export const FacebookIntegration: React.FC = () => {
             <div>
               <label className="block text-sm font-medium mb-2">Form ID</label>
               <Input
-                placeholder="Enter Facebook Form ID"
+                placeholder="Enter Facebook Form ID (or click Use above)"
                 value={importData.formId}
                 onChange={(e) => setImportData(prev => ({ ...prev, formId: e.target.value }))}
               />

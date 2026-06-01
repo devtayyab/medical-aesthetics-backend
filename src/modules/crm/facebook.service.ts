@@ -148,7 +148,7 @@ export class FacebookService {
     }
 
     try {
-      const response = await this.axiosInstance.get(`/leads`, {
+      const response = await this.axiosInstance.get(`/${formId}/leads`, {
         params: {
           access_token: creds.accessToken,
           fields: 'id,field_data,created_time,ad_id,adset_id,campaign_id,form_id',
@@ -243,9 +243,34 @@ export class FacebookService {
       ];
     }
 
+    // Load page ID from DB settings if not provided
+    let targetPageId = pageId;
+    if (!targetPageId) {
+      try {
+        const dbSettings = await this.entityManager.query(
+          `SELECT key, value FROM platform_settings WHERE key IN ('facebook_page_id', 'facebook_page_access_token')`
+        );
+        const settingsMap: Record<string, any> = {};
+        for (const row of dbSettings) {
+          settingsMap[row.key] = row.value;
+        }
+        targetPageId = settingsMap['facebook_page_id'];
+        // If a page-specific access token exists, use it (page tokens have leadgen permissions)
+        if (settingsMap['facebook_page_access_token']) {
+          creds.accessToken = settingsMap['facebook_page_access_token'];
+        }
+      } catch (err) {
+        this.logger.warn('Could not load facebook_page_id from DB settings');
+      }
+    }
+
+    if (!targetPageId) {
+      this.logger.error('No Facebook Page ID configured. Set facebook_page_id in platform_settings or pass pageId explicitly.');
+      return [];
+    }
+
     try {
-      const targetId = pageId || 'me'; // Use 'me' to get forms for the connected user/page
-      const response = await this.axiosInstance.get(`/${targetId}/leadgen_forms`, {
+      const response = await this.axiosInstance.get(`/${targetPageId}/leadgen_forms`, {
         params: {
           access_token: creds.accessToken,
           fields: 'id,name,status,leads_count',
@@ -255,6 +280,9 @@ export class FacebookService {
       return response.data.data || [];
     } catch (error) {
       this.logger.error(`Failed to fetch Facebook forms: ${error.message}`);
+      if (axios.isAxiosError(error)) {
+        this.logger.error(`FB API error detail: ${JSON.stringify(error.response?.data)}`);
+      }
       return [];
     }
   }
