@@ -366,7 +366,7 @@ export const crmAPI = {
   handleFacebookWebhook: (data: any) => api.post("/crm/facebook/webhook", data),
   importFacebookLeads: (formId: string, limit?: number) =>
     api.post(`/crm/facebook/import/${formId}`, {}, { params: { limit } }),
-  getFacebookForms: () => api.get("/crm/facebook/forms"),
+  getFacebookForms: (pageId?: string) => api.get("/crm/facebook/forms", { params: pageId ? { pageId } : undefined }),
   testFacebookConnection: () => api.get("/crm/facebook/test"),
   assignFormsToDay: (data: { formNames: string[]; scheduledAt: string }) => api.post('/crm/facebook/forms/assign', data),
   bulkCreateTasks: (data: { leadIds: string[]; salespersonId: string; dueDate: string; title: string }) => api.post('/crm/actions/bulk', data),

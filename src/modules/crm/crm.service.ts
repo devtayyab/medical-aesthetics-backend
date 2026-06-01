@@ -2491,10 +2491,10 @@ export class CrmService implements OnModuleInit {
     return this.facebookService.testFacebookConnection();
   }
 
-  async getFacebookForms() {
+  async getFacebookForms(pageId?: string) {
     let fbForms = [];
     try {
-      fbForms = await this.facebookService.getForms();
+      fbForms = await this.facebookService.getForms(pageId);
     } catch (e) {
       this.logger.warn('Failed to fetch forms from Facebook API, using DB fallback only');
     }

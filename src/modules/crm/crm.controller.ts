@@ -464,8 +464,8 @@ export class CrmController {
   @Get('facebook/forms')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)
-  getFacebookForms() {
-    return this.crmService.getFacebookForms();
+  getFacebookForms(@Query('pageId') pageId?: string) {
+    return this.crmService.getFacebookForms(pageId);
   }
 
   @Post('actions/bulk')

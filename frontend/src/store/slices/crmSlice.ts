@@ -462,8 +462,8 @@ export const testFacebookConnection = createAsyncThunk(
 
 export const getFacebookForms = createAsyncThunk(
   "crm/getFacebookForms",
-  async () => {
-    const response = await crmAPI.getFacebookForms();
+  async (pageId?: string) => {
+    const response = await crmAPI.getFacebookForms(pageId);
     return response.data;
   }
 );
