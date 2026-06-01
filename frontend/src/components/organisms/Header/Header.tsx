@@ -623,18 +623,42 @@ export const Header: React.FC = () => {
         </div>
 
         {!isAuthenticated && (
-          <div className="hidden md:flex items-center gap-2 justify-center mt-5 relative z-10 flex-wrap px-4">
+          <div className="hidden md:flex items-center gap-2 justify-center mt-5 relative z-20 flex-wrap px-4">
             <Link to="/" className={`${navItemStyle} ${location.pathname === '/' ? activeNavItemStyle : ''}`}>Home</Link>
             {navCategories.length > 0 ? (
-              navCategories.map((cat) => (
-                <Link
-                  key={cat.id}
-                  to={`/search?category=${encodeURIComponent(cat.name)}`}
-                  className={navItemStyle}
-                >
-                  {cat.name}
-                </Link>
-              ))
+              navCategories.map((cat) => {
+                const hasChildren = cat.children && cat.children.length > 0;
+                return (
+                  <div key={cat.id} className="relative group">
+                    <Link
+                      to={`/search?category=${encodeURIComponent(cat.name)}`}
+                      className={`${navItemStyle} flex items-center gap-1.5`}
+                    >
+                      {cat.name}
+                      {hasChildren && (
+                        <ChevronDown size={12} className="opacity-60 transition-transform duration-200 group-hover:rotate-180" />
+                      )}
+                    </Link>
+
+                    {/* Subcategories Dropdown */}
+                    {hasChildren && (
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200">
+                        <div className="bg-[#0B1120] border border-white/10 rounded-xl shadow-2xl p-2 min-w-[200px] flex flex-col gap-0.5">
+                          {cat.children!.map((sub) => (
+                            <Link
+                              key={sub.id}
+                              to={`/search?category=${encodeURIComponent(sub.name)}`}
+                              className="text-left px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-300 hover:text-black hover:bg-[#CBFF38] transition-all"
+                            >
+                              {sub.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             ) : (
               // Fallback static links while loading
               <>
