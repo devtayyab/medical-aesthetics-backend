@@ -132,10 +132,11 @@ export class FacebookService {
     }
   }
 
-  async getLeadsByForm(formId: string, limit: number = 50): Promise<FacebookLeadData[]> {
+  async getLeadsByForm(formId: string, limit: number = 10000): Promise<FacebookLeadData[]> {
     const creds = await this.getFacebookCredentials();
     if (creds.accessToken === 'MOCK_TOKEN' || creds.accessToken === 'your-facebook-access-token') {
-      return Array(limit).fill(null).map((_, i) => ({
+      const mockCount = Math.min(limit, 50);
+      return Array(mockCount).fill(null).map((_, i) => ({
         id: `mock_lead_${i + 1}`,
         created_time: new Date().toISOString(),
         field_data: [
@@ -148,15 +149,28 @@ export class FacebookService {
     }
 
     try {
-      const response = await this.axiosInstance.get(`/${formId}/leads`, {
-        params: {
-          access_token: creds.accessToken,
-          fields: 'id,field_data,created_time,ad_id,adset_id,campaign_id,form_id',
-          limit,
-        },
-      });
+      let allLeads: FacebookLeadData[] = [];
+      let nextPageUrl: string | null = `/${formId}/leads`;
+      let params: any = {
+        access_token: creds.accessToken,
+        fields: 'id,field_data,created_time,ad_id,adset_id,campaign_id,form_id',
+        limit: 100,
+      };
 
-      return response.data.data || [];
+      while (nextPageUrl) {
+        const response = await this.axiosInstance.get(nextPageUrl, { params });
+        const data = response.data.data || [];
+        allLeads = [...allLeads, ...data];
+
+        if (response.data.paging && response.data.paging.next && allLeads.length < limit) {
+          nextPageUrl = response.data.paging.next;
+          params = {}; // Clear params since absolute URL contains query params
+        } else {
+          nextPageUrl = null;
+        }
+      }
+
+      return allLeads;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new BadRequestException(

@@ -599,10 +599,22 @@ const crmSlice = createSlice({
     // Lead Management
     builder
       .addCase(createLead.fulfilled, (state, action) => {
-        state.leads.unshift(action.payload);
+        const index = state.leads.findIndex((l) => l.id === action.payload.id);
+        if (index !== -1) {
+          state.leads[index] = action.payload;
+        } else {
+          state.leads.unshift(action.payload);
+        }
       })
       .addCase(fetchLeads.fulfilled, (state, action) => {
-        state.leads = action.payload;
+        const fetchedLeads = action.payload || [];
+        const uniqueLeadsMap = new Map();
+        fetchedLeads.forEach((l: any) => {
+          if (l && l.id) {
+            uniqueLeadsMap.set(l.id, l);
+          }
+        });
+        state.leads = Array.from(uniqueLeadsMap.values());
       })
       .addCase(fetchCustomer.fulfilled, (state, action) => {
         state.customer = action.payload;
@@ -673,7 +685,16 @@ const crmSlice = createSlice({
         // Handle webhook response if needed
       })
       .addCase(importFacebookLeads.fulfilled, (state, action) => {
-        state.leads.unshift(...action.payload);
+        if (Array.isArray(action.payload)) {
+          action.payload.forEach((importedLead) => {
+            const index = state.leads.findIndex((l) => l.id === importedLead.id);
+            if (index !== -1) {
+              state.leads[index] = importedLead;
+            } else {
+              state.leads.unshift(importedLead);
+            }
+          });
+        }
       })
       .addCase(testFacebookConnection.fulfilled, (_state, _action) => {
         // Store connection status if needed

@@ -20,8 +20,7 @@ export const FacebookIntegration: React.FC = () => {
   const [pageId, setPageId] = useState("");
   const [formsError, setFormsError] = useState("");
   const [importData, setImportData] = useState({
-    formId: "",
-    limit: 10
+    formId: ""
   });
   const [webhookData, setWebhookData] = useState({
     leadId: "",
@@ -75,8 +74,7 @@ export const FacebookIntegration: React.FC = () => {
 
     try {
       const result = await dispatch(importFacebookLeads({
-        formId: importData.formId,
-        limit: importData.limit
+        formId: importData.formId
       })).unwrap();
       console.log("Imported leads:", result);
       alert(`Successfully imported ${result.length || 0} leads`);
@@ -200,7 +198,7 @@ export const FacebookIntegration: React.FC = () => {
                       </span>
                       <button
                         className="text-xs text-blue-600 hover:underline"
-                        onClick={() => setImportData(prev => ({ ...prev, formId: form.id }))}
+                        onClick={() => setImportData({ formId: form.id })}
                       >
                         Use
                       </button>
@@ -222,16 +220,7 @@ export const FacebookIntegration: React.FC = () => {
               <Input
                 placeholder="Enter Facebook Form ID (or click Use above)"
                 value={importData.formId}
-                onChange={(e) => setImportData(prev => ({ ...prev, formId: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Limit (Optional)</label>
-              <Input
-                type="number"
-                placeholder="Number of leads to import"
-                value={importData.limit}
-                onChange={(e) => setImportData(prev => ({ ...prev, limit: parseInt(e.target.value) || 10 }))}
+                onChange={(e) => setImportData({ formId: e.target.value })}
               />
             </div>
             <Button
