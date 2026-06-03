@@ -146,8 +146,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   }, [forceShowCreateForm, onFormShown]);
 
   useEffect(() => {
-    // Reset status filter for Leads page (exclude lost)
-    dispatch(setLeadFilters({ ...leadFilters, status: undefined }));
+    // Set default status filter to 'new' for Leads page
+    dispatch(setLeadFilters({ ...leadFilters, status: 'new' }));
     dispatch(fetchSalespersons());
   }, [dispatch]);
 
@@ -507,6 +507,21 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
         <div className="flex items-center gap-3 order-2 xl:order-none ml-auto xl:ml-0">
           <div className="flex items-center bg-slate-100/50 p-1.5 rounded-[1.5rem] border border-slate-100 shadow-sm">
+            <select
+              value={leadFilters.status || ''}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+              className="h-10 px-4 bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-slate-700 focus:outline-none cursor-pointer rounded-2xl hover:bg-white/80 transition-all appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.65rem_auto] bg-[right_0.75rem_center] bg-no-repeat"
+            >
+              <option value="">All Statuses</option>
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="qualified">Qualified</option>
+              <option value="converted">Converted</option>
+              <option value="lost">Lost</option>
+            </select>
+
+            <div className="h-6 w-[1px] bg-slate-200 mx-1.5" />
+
             <Button
               variant="ghost"
               onClick={() => setShowFilters(!showFilters)}
@@ -576,7 +591,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             variant="ghost"
             size="sm"
             onClick={() => {
-              dispatch(setLeadFilters({}));
+              dispatch(setLeadFilters({ status: 'new' }));
               setSearchTerm('');
             }}
             className="h-7 px-2 text-[10px] font-bold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
@@ -742,7 +757,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => dispatch(setLeadFilters({}))}
+                  onClick={() => dispatch(setLeadFilters({ status: 'new' }))}
                   className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   Clear All Filters

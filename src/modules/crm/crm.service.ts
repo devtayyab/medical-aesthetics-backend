@@ -475,7 +475,7 @@ export class CrmService implements OnModuleInit {
     }
   }
 
-  async importFacebookLeads(formId: string, limit: number = 50): Promise<Lead[]> {
+  async importFacebookLeads(formId: string, limit: number = 10000): Promise<Lead[]> {
     const leadsData = await this.facebookService.getLeadsByForm(formId, limit);
     const createdLeads: Lead[] = [];
 
