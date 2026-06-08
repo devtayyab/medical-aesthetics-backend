@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Edit2, Save, X } from "lucide-react";
+import { Edit2, Save, X, Search } from "lucide-react";
 import type { User, Clinic } from "@/types";
 
 interface AccessControlProps {
@@ -18,6 +18,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
   onCreateUser,
 }) => {
   const [activeTab, setActiveTab] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [createForm, setCreateForm] = useState({
     firstName: "",
@@ -119,9 +120,13 @@ export const AccessControl: React.FC<AccessControlProps> = ({
   ];
 
   const filteredUsers = Array.isArray(users) ? users.filter(user => {
-    if (activeTab === "All") return true;
     const tabObj = tabs.find(t => t.name === activeTab);
-    return tabObj && tabObj.roles.includes(user.role);
+    const matchesTab = activeTab === "All" || (tabObj && tabObj.roles.includes(user.role));
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q ||
+      `${user.firstName} ${user.lastName}`.toLowerCase().includes(q) ||
+      user.email.toLowerCase().includes(q);
+    return matchesTab && matchesSearch;
   }) : [];
 
   return (
@@ -151,6 +156,27 @@ export const AccessControl: React.FC<AccessControlProps> = ({
           </button>
         )}
       </div>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by name or email..."
+          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CBFF38] focus:border-transparent shadow-sm transition-all"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
