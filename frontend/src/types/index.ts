@@ -139,6 +139,7 @@ export interface Appointment {
   serviceName?: string;
   providerName?: string;
   isBlocked?: boolean;
+  additionalServiceIds?: string[];
 }
 
 export interface TimeSlot {

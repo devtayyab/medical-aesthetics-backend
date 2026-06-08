@@ -126,10 +126,9 @@ export const SalesWeekCalendar: React.FC = () => {
         }
     }, [isDetailDrawerOpen, selectedApt?.clinicId]);
 
-    // Editing State for Service Details
     const [isEditingService, setIsEditingService] = useState(false);
     const [editPrice, setEditPrice] = useState<string>('');
-    const [editAdditionalServices, setEditAdditionalServices] = useState<any[]>([]);
+    const [editServices, setEditServices] = useState<any[]>([]);
     const [allAvailableServices, setAllAvailableServices] = useState<any[]>([]);
 
     useEffect(() => {
@@ -664,8 +663,8 @@ export const SalesWeekCalendar: React.FC = () => {
                                                             <Phone size={10} className="text-gray-400" /> {apt.client?.phone || 'No phone'}
                                                         </p>
                                                         <div className="flex justify-between items-center text-[10px] text-gray-700 font-bold bg-gray-50 p-2 rounded-lg border border-gray-100">
-                                                            <span className="truncate w-2/3">{apt.service?.name}</span>
-                                                            <span className="text-emerald-700 font-black">€{apt.service?.price}</span>
+                                                            <span className="truncate w-2/3">{apt.additionalServiceIds?.length > 0 ? `${apt.service?.treatment?.name || apt.service?.name} + ${apt.additionalServiceIds.length}` : (apt.service?.treatment?.name || apt.service?.name)}</span>
+                                                            <span className="text-emerald-700 font-black">€{apt.totalAmount ?? apt.service?.price}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1036,10 +1035,11 @@ export const SalesWeekCalendar: React.FC = () => {
                                 <button onClick={() => {
                                     if (!isEditingService) {
                                         setEditPrice((selectedApt.totalAmount ?? selectedApt.service?.price ?? 0).toString());
+                                        const mainSrv = allAvailableServices.find(s => s.id === selectedApt.serviceId) || drawerServices.find(s => s.id === selectedApt.serviceId) || selectedApt.service;
                                         const initialExtra = selectedApt.additionalServiceIds?.map((id: string) => 
                                             allAvailableServices.find(s => s.id === id) || drawerServices.find(s => s.id === id) || { id, name: 'Loading...' }
                                         ) || [];
-                                        setEditAdditionalServices(initialExtra);
+                                        setEditServices([mainSrv, ...initialExtra].filter(Boolean));
                                     }
                                     setIsEditingService(!isEditingService);
                                 }} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase tracking-widest bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition-colors">
@@ -1049,37 +1049,36 @@ export const SalesWeekCalendar: React.FC = () => {
                             
                             {isEditingService ? (
                                 <div className="bg-white p-4 rounded-xl border-2 border-indigo-200 shadow-sm space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                                    <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                        <div>
-                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Primary Service</p>
-                                            <p className="font-bold text-gray-900 leading-tight mt-1">
-                                                {selectedApt.serviceName || selectedApt.service?.treatment?.name || selectedApt.service?.name || 'Service'}
-                                            </p>
-                                        </div>
-                                    </div>
-
                                     <div>
-                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Additional Services (Any Clinic)</p>
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Selected Services</p>
                                         <div className="space-y-2 mb-3">
-                                            {editAdditionalServices.map((srv, idx) => (
+                                            {editServices.map((srv, idx) => (
                                                 <div key={idx} className="flex justify-between items-center bg-gray-50 p-2.5 border border-gray-100 rounded-lg">
                                                     <span className="text-xs font-bold text-gray-700 leading-none">
                                                         {srv.treatment?.name || srv.name} 
                                                         <span className="text-[9px] text-gray-400 ml-1">({srv.clinicName || 'Unknown'})</span>
+                                                        {idx === 0 && <span className="ml-2 text-[8px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-black uppercase tracking-widest">Primary</span>}
                                                     </span>
-                                                    <button onClick={() => setEditAdditionalServices(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 p-1 bg-white rounded shadow-sm border border-gray-100"><X size={12} /></button>
+                                                    <button onClick={() => {
+                                                        setEditServices(prev => prev.filter((_, i) => i !== idx));
+                                                        const currentTotal = parseFloat(editPrice) || 0;
+                                                        const newTotal = Math.max(0, currentTotal - (parseFloat(srv.price) || 0));
+                                                        setEditPrice(newTotal.toFixed(2));
+                                                    }} className="text-red-400 hover:text-red-600 p-1 bg-white rounded shadow-sm border border-gray-100"><X size={12} /></button>
                                                 </div>
                                             ))}
-                                            {editAdditionalServices.length === 0 && (
-                                                <p className="text-[10px] text-gray-400 font-medium italic">No additional services added.</p>
+                                            {editServices.length === 0 && (
+                                                <p className="text-[10px] text-red-500 font-bold italic">You must have at least one service.</p>
                                             )}
                                         </div>
                                         <select
                                             className="w-full text-xs p-2.5 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white shadow-sm focus:border-indigo-500 outline-none"
                                             onChange={(e) => {
                                                 const srv = allAvailableServices.find(s => s.id === e.target.value);
-                                                if (srv && !editAdditionalServices.some(es => es.id === srv.id)) {
-                                                    setEditAdditionalServices([...editAdditionalServices, srv]);
+                                                if (srv && !editServices.some(es => es.id === srv.id)) {
+                                                    setEditServices([...editServices, srv]);
+                                                    const currentTotal = parseFloat(editPrice) || 0;
+                                                    setEditPrice((currentTotal + (parseFloat(srv.price) || 0)).toFixed(2));
                                                 }
                                                 e.target.value = "";
                                             }}
@@ -1103,18 +1102,26 @@ export const SalesWeekCalendar: React.FC = () => {
                                     </div>
 
                                     <button 
+                                        disabled={editServices.length === 0}
                                         onClick={async () => {
+                                            if (editServices.length === 0) return;
                                             try {
                                                 const amt = parseFloat(editPrice) || 0;
-                                                const aids = editAdditionalServices.map(s => s.id);
+                                                const mainServiceId = editServices[0].id;
+                                                const aids = editServices.slice(1).map(s => s.id);
+                                                
                                                 await bookingAPI.updateAppointment(selectedApt.id, {
+                                                    serviceId: mainServiceId,
                                                     totalAmount: amt,
                                                     additionalServiceIds: aids
                                                 });
+                                                
                                                 setIsEditingService(false);
                                                 dispatch(fetchClinicAppointments(currentFilters));
                                                 setSelectedApt({
                                                     ...selectedApt, 
+                                                    serviceId: mainServiceId,
+                                                    service: editServices[0],
                                                     totalAmount: amt,
                                                     additionalServiceIds: aids
                                                 });
@@ -1123,7 +1130,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                                 alert("Failed to update services & price.");
                                             }
                                         }}
-                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-[10px] py-3 rounded-xl transition-all shadow-md mt-2"
+                                        className={`w-full font-black uppercase tracking-widest text-[10px] py-3 rounded-xl transition-all shadow-md mt-2 ${editServices.length === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
                                     >
                                         Save Service Details
                                     </button>
