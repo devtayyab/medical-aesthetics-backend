@@ -291,7 +291,7 @@ export const bookingAPI = {
     endTime: string;
     reason?: string;
   }) => api.post("/blocked-slots", data),
-  updateAppointment: (id: string, data: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string }) =>
+  updateAppointment: (id: string, data: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string; totalAmount?: number; additionalServiceIds?: string[] }) =>
     api.patch(`/appointments/${id}/update`, data),
   deleteAppointment: (id: string) => api.patch(`/appointments/${id}/delete`),
 };
