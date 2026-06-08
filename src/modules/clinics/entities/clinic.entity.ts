@@ -7,6 +7,8 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Service } from './service.entity';
@@ -86,6 +88,14 @@ export class Clinic {
   @ManyToOne(() => User, (user) => user.ownedClinics)
   @JoinColumn({ name: 'ownerId' })
   owner: User;
+
+  @ManyToMany(() => User)
+  @JoinTable({
+    name: 'clinic_ownership',
+    joinColumn: { name: 'clinicId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'ownerUserId', referencedColumnName: 'id' },
+  })
+  owners: User[];
 
   @OneToMany(() => Service, (service) => service.clinic)
   services: Service[];

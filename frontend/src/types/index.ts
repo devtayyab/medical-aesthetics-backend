@@ -53,6 +53,9 @@ export interface Clinic {
   timezone?: string;
   isActive: boolean;
   ownerId: string;
+  owner?: User;
+  owners?: User[];
+  ownerIds?: string[];
   images?: string[];
   photoUrl?: string;
   latitude?: number;
@@ -140,6 +143,7 @@ export interface Appointment {
 
 export interface TimeSlot {
   startTime: string;
+  startTimeDisplay?: string;
   endTime: string;
   available?: boolean;
   price?: number;

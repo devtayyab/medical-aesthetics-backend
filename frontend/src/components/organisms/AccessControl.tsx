@@ -7,7 +7,7 @@ interface AccessControlProps {
   clinics: Clinic[];
   onUpdateUser: (id: string, data: { role?: string; monthlyTarget?: number; assignedClinicIds?: string[] }) => void;
   onToggleStatus: (id: string) => void;
-  onCreateUser?: (data: any) => void;
+  onCreateUser?: (data: any) => Promise<any> | void;
 }
 
 export const AccessControl: React.FC<AccessControlProps> = ({
@@ -27,6 +27,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
     phone: "",
     role: "doctor",
     clinicId: "",
+    assignedClinicIds: [] as string[],
   });
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editForm, setEditForm] = useState<{
@@ -72,20 +73,39 @@ export const AccessControl: React.FC<AccessControlProps> = ({
     }));
   };
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (onCreateUser) {
-      onCreateUser(createForm);
-      setIsCreating(false);
-      setCreateForm({
-        firstName: "",
-        lastName: "",
-        email: "",
-        password: "",
-        phone: "",
-        role: "doctor",
-        clinicId: "",
-      });
+      setIsSubmitting(true);
+      try {
+        const submitData: any = { ...createForm };
+        // For clinic_owner: send assignedClinicIds instead of clinicId
+        if (createForm.role === 'clinic_owner') {
+          submitData.assignedClinicIds = createForm.assignedClinicIds;
+          delete submitData.clinicId;
+        } else {
+          delete submitData.assignedClinicIds;
+        }
+        await onCreateUser(submitData);
+        setIsCreating(false);
+        setCreateForm({
+          firstName: "",
+          lastName: "",
+          email: "",
+          password: "",
+          phone: "",
+          role: "doctor",
+          clinicId: "",
+          assignedClinicIds: [],
+        });
+      } catch (err) {
+        // Keep modal open so the user can fix the details (e.g. duplicate email)
+        console.error("Failed to create user:", err);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -199,7 +219,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
 
       {/* Edit Modal */}
       {editingUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[10000]">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-bold">Edit User Permissions</h3>
@@ -282,7 +302,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
 
       {/* Create Modal */}
       {isCreating && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[10000]">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-bold">Create New User</h3>
@@ -365,19 +385,46 @@ export const AccessControl: React.FC<AccessControlProps> = ({
                 </select>
               </div>
 
-              {clinics?.length > 0 && (
+              {/* Clinic selection: depends on role */}
+              {clinics?.length > 0 && createForm.role !== 'client' && createForm.role !== 'SUPER_ADMIN' && createForm.role !== 'admin' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Clinic (Optional)</label>
-                  <select
-                    className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-[#CBFF38]"
-                    value={createForm.clinicId}
-                    onChange={e => setCreateForm(prev => ({ ...prev, clinicId: e.target.value }))}
-                  >
-                    <option value="">-- No Clinic / External --</option>
-                    {clinics.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                  {createForm.role === 'clinic_owner' ? (
+                    <>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Assign Clinics (Owner of)</label>
+                      <div className="space-y-2 border border-gray-200 rounded-lg p-3 max-h-40 overflow-y-auto bg-gray-50">
+                        {clinics.map(c => (
+                          <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="rounded text-blue-500 focus:ring-blue-500"
+                              checked={createForm.assignedClinicIds.includes(c.id)}
+                              onChange={() => setCreateForm(prev => ({
+                                ...prev,
+                                assignedClinicIds: prev.assignedClinicIds.includes(c.id)
+                                  ? prev.assignedClinicIds.filter(id => id !== c.id)
+                                  : [...prev.assignedClinicIds, c.id]
+                              }))}
+                            />
+                            {c.name}
+                          </label>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Clinic (Optional)</label>
+                      <select
+                        className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-[#CBFF38]"
+                        value={createForm.clinicId}
+                        onChange={e => setCreateForm(prev => ({ ...prev, clinicId: e.target.value }))}
+                      >
+                        <option value="">-- No Clinic / External --</option>
+                        {clinics.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -389,11 +436,12 @@ export const AccessControl: React.FC<AccessControlProps> = ({
                 >
                   Cancel
                 </button>
-                <button
+                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-4 py-2 bg-[#CBFF38] text-[#0B1120] font-bold rounded-lg hover:bg-[#b0f020] transition-colors"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#CBFF38] text-[#0B1120] font-bold rounded-lg hover:bg-[#b0f020] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create User
+                  {isSubmitting ? "Creating..." : "Create User"}
                 </button>
               </div>
             </form>

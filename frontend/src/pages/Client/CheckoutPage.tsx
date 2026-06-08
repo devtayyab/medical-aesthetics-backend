@@ -142,6 +142,11 @@ export const CheckoutPage: React.FC = () => {
                     return;
                 }
 
+                // Append missing details for the confirmation page
+                payload.serviceName = payload.service?.name || payload.serviceName || selectedServices[0]?.treatment?.name || selectedServices[0]?.name;
+                payload.clinic = payload.clinic || selectedClinic;
+                payload.startTimeDisplay = selectedTimeSlot.startTimeDisplay;
+
                 dispatch(clearBooking());
                 navigate('/booking-confirmation', { state: { appointment: payload } });
             } else {

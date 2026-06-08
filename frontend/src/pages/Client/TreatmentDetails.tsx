@@ -190,7 +190,7 @@ export const TreatmentDetails: React.FC = () => {
                                 <span className="text-[9px] font-black text-[#CBFF38] uppercase tracking-[0.4em] italic mb-2 block opacity-70">
                                    {treatment.category || 'Aesthetic Protocol'}
                                 </span>
-                                <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-white leading-[0.85]">
+                                <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-white leading-[0.85]">
                                     {treatment.name}
                                 </h1>
                             </motion.div>
@@ -298,7 +298,7 @@ export const TreatmentDetails: React.FC = () => {
                             >
                                 <div className="flex justify-between items-start mb-8">
                                     <div className="max-w-[70%]">
-                                        <h4 className="text-xl font-black uppercase italic tracking-tight text-gray-900 group-hover:text-[#CBFF38] transition-colors leading-none mb-2">
+                                        <h4 className="text-xl font-black italic tracking-tight text-gray-900 group-hover:text-[#CBFF38] transition-colors leading-none mb-2">
                                             {offering.clinicName}
                                         </h4>
                                         <div className="flex items-center gap-2 text-[8px] font-bold text-gray-400 uppercase tracking-widest italic">

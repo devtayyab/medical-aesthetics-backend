@@ -110,7 +110,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
                             {category.icon ? <span>{category.icon}</span> : getCategoryIcon(category.name)}
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black uppercase italic tracking-tight text-gray-900">{category.name}</h3>
+                            <h3 className="text-2xl font-black italic tracking-tight text-gray-900">{category.name}</h3>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 italic">Elite Clinical Specialty</p>
                         </div>
                     </div>
@@ -130,7 +130,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
                                 <button
                                     key={sub.id}
                                     onClick={() => navigate(`/search?category=${encodeURIComponent(sub.name)}`)}
-                                    className="px-4 py-2 bg-gray-50 hover:bg-[#CBFF38] border border-gray-100 rounded-full text-[10px] font-black uppercase italic tracking-widest text-gray-800 transition-all"
+                                    className="px-4 py-2 bg-gray-50 hover:bg-[#CBFF38] border border-gray-100 rounded-full text-[10px] font-black italic tracking-widest text-gray-800 transition-all"
                                 >
                                     {sub.icon ? `${sub.icon} ` : ''}{sub.name}
                                 </button>
@@ -154,7 +154,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
                                             alt={t.name}
                                         />
                                     </div>
-                                    <span className="text-[10px] font-black uppercase italic tracking-widest text-gray-900">{t.name}</span>
+                                    <span className="text-[10px] font-black italic tracking-widest text-gray-900">{t.name}</span>
                                 </div>
                             ))}
                         </div>

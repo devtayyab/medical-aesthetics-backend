@@ -120,7 +120,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
 
         {/* Clinic Name Overlay */}
         <div className="absolute bottom-6 sm:bottom-10 left-6 sm:left-10 right-6 sm:right-10">
-           <h3 className="text-2xl sm:text-4xl font-black uppercase italic tracking-tighter text-white mb-2 leading-none">
+           <h3 className="text-2xl sm:text-4xl font-black italic tracking-tighter text-white mb-2 leading-none">
               {clinic.name}
            </h3>
            <div className="flex items-center gap-3 text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-[#CBFF38] italic">
@@ -163,7 +163,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
               {displayServices.map((service, idx) => (
                 <div key={idx} className={serviceRow}>
                   <div className="flex flex-col">
-                    <span className="text-[12px] font-black uppercase tracking-tight text-gray-900 leading-none">{service.treatment?.name}</span>
+                    <span className="text-[12px] font-black tracking-tight text-gray-900 leading-none">{service.treatment?.name}</span>
                     <span className="text-[9px] font-bold text-gray-400 uppercase italic mt-1">premium protocol</span>
                   </div>
                   <div className="text-right">

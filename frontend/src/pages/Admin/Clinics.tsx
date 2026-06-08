@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
     Building2, Edit2, Plus, Search, MapPin,
@@ -8,6 +8,16 @@ import { fetchAdminClinics, createAdminClinic, updateAdminClinic, fetchUsers } f
 import { adminAPI } from "@/services/api";
 import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
+import ImageUpload from "@/components/atoms/ImageUpload";
+
+const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const origin = baseUrl.replace(/\/api$/, '');
+    return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 export const Clinics: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -37,6 +47,9 @@ export const Clinics: React.FC = () => {
         reason: ""
     });
 
+    const [ownerSearch, setOwnerSearch] = useState("");
+    const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
+
     // Form State
     const [formData, setFormData] = useState<Partial<Clinic>>({
         name: "",
@@ -55,7 +68,20 @@ export const Clinics: React.FC = () => {
         longitude: 0,
         isActive: true,
         ownerId: "",
+        ownerIds: [],
     });
+
+    const ownerSearchRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (ownerSearchRef.current && !ownerSearchRef.current.contains(e.target as Node)) {
+                setShowOwnerDropdown(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => {
         dispatch(fetchAdminClinics());
@@ -179,6 +205,7 @@ export const Clinics: React.FC = () => {
             setActiveTab("profile");
             setFormData({
                 ...clinic,
+                ownerIds: clinic.owners?.map(o => o.id) || (clinic.ownerId ? [clinic.ownerId] : []),
                 businessHours: clinic.businessHours || {
                     monday: { open: "09:00", close: "18:00", isOpen: true },
                     tuesday: { open: "09:00", close: "18:00", isOpen: true },
@@ -195,6 +222,8 @@ export const Clinics: React.FC = () => {
             setFormData({
                 name: "",
                 description: "",
+                photoUrl: "",
+                images: [],
                 address: { street: "", city: "", state: "", zipCode: "", country: "" },
                 phone: "",
                 email: "",
@@ -203,6 +232,7 @@ export const Clinics: React.FC = () => {
                 longitude: 0,
                 isActive: true,
                 ownerId: "",
+                ownerIds: [],
                 businessHours: {
                     monday: { open: "09:00", close: "18:00", isOpen: true },
                     tuesday: { open: "09:00", close: "18:00", isOpen: true },
@@ -224,10 +254,22 @@ export const Clinics: React.FC = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        const currentOwnerIds = formData.ownerIds && formData.ownerIds.length > 0
+            ? formData.ownerIds
+            : (formData.ownerId ? [formData.ownerId] : []);
+        if (currentOwnerIds.length === 0) {
+            alert("Please select at least one clinic owner before saving.");
+            return;
+        }
+        const submissionData = {
+            ...formData,
+            ownerIds: currentOwnerIds,
+            ownerId: currentOwnerIds[0] || formData.ownerId || "",
+        };
         if (editingClinic) {
-            dispatch(updateAdminClinic({ id: editingClinic.id, data: formData }));
+            dispatch(updateAdminClinic({ id: editingClinic.id, data: submissionData }));
         } else {
-            dispatch(createAdminClinic(formData));
+            dispatch(createAdminClinic(submissionData));
         }
         handleCloseModal();
     };
@@ -321,8 +363,25 @@ export const Clinics: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900">{clinic.owner?.firstName} {clinic.owner?.lastName}</div>
-                                        <div className="text-xs text-gray-500">{clinic.ownerId}</div>
+                                        {clinic.owners && clinic.owners.length > 0 ? (
+                                            <div className="space-y-1">
+                                                {clinic.owners.map(owner => (
+                                                    <div key={owner.id} className="text-sm font-medium text-gray-900">
+                                                        {owner.firstName} {owner.lastName}
+                                                    </div>
+                                                ))}
+                                                {clinic.owners.length > 1 && (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#CBFF38]/20 text-[#0B1120]">
+                                                        {clinic.owners.length} Owners
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="text-sm text-gray-900">{clinic.owner?.firstName} {clinic.owner?.lastName}</div>
+                                                <div className="text-xs text-gray-500">{clinic.ownerId}</div>
+                                            </>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <button
@@ -351,7 +410,7 @@ export const Clinics: React.FC = () => {
 
             {/* Modal for Create/Edit */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-0 max-h-[90vh] overflow-hidden flex flex-col">
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                             <div>
@@ -404,24 +463,71 @@ export const Clinics: React.FC = () => {
                                                 </button>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-sm font-medium text-gray-700">Clinic Name *</label>
-                                                <input
-                                                    type="text" required
-                                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none"
-                                                    value={formData.name}
-                                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                                />
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="space-y-4 md:col-span-1">
+                                                <div className="space-y-1">
+                                                    <label className="text-sm font-medium text-gray-700">Clinic Name *</label>
+                                                    <input
+                                                        type="text" required
+                                                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none"
+                                                        value={formData.name}
+                                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-700">Clinic Logo / Main Photo</label>
+                                                    <ImageUpload
+                                                        value={formData.photoUrl || ""}
+                                                        onChange={url => setFormData({ ...formData, photoUrl: url })}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="space-y-1">
-                                                <label className="text-sm font-medium text-gray-700">Gallery Images (Comma separated URLs)</label>
-                                                <textarea
-                                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none h-20 resize-none"
-                                                    value={formData.images ? formData.images.join(", ") : ""}
-                                                    onChange={e => setFormData({ ...formData, images: e.target.value.split(",").map(i => i.trim()).filter(i => i) })}
-                                                    placeholder="https://image1.jpg, https://image2.jpg"
-                                                />
+                                            <div className="space-y-4 md:col-span-2">
+                                                <label className="text-sm font-medium text-gray-700 block">Gallery Images</label>
+                                                
+                                                <div>
+                                                    <ImageUpload
+                                                        label="Upload to Gallery"
+                                                        onChange={url => {
+                                                            if (url) {
+                                                                const currentImages = formData.images || [];
+                                                                setFormData({ ...formData, images: [...currentImages, url] });
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Gallery Preview ({formData.images?.length || 0})</label>
+                                                    {formData.images && formData.images.length > 0 ? (
+                                                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 p-3 bg-gray-50 border border-gray-200 rounded-2xl max-h-48 overflow-y-auto">
+                                                            {formData.images.map((imgUrl, idx) => (
+                                                                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group bg-white">
+                                                                    <img 
+                                                                        src={getImageUrl(imgUrl)} 
+                                                                        alt="" 
+                                                                        className="w-full h-full object-cover" 
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const currentImages = formData.images || [];
+                                                                            setFormData({ ...formData, images: currentImages.filter((_, i) => i !== idx) });
+                                                                        }}
+                                                                        className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-500 rounded-full text-white transition-colors opacity-0 group-hover:opacity-100"
+                                                                        title="Remove image"
+                                                                    >
+                                                                        <X className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-6 text-center text-xs text-gray-400 border border-dashed border-gray-200 rounded-2xl uppercase font-bold tracking-wider">
+                                                            No images in gallery yet
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -437,24 +543,133 @@ export const Clinics: React.FC = () => {
                                             </button>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-sm font-medium text-gray-700">Select Owner *</label>
-                                                <select
-                                                    required
-                                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none bg-white"
-                                                    value={formData.ownerId || ""}
-                                                    onChange={e => setFormData({ ...formData, ownerId: e.target.value })}
-                                                >
-                                                    <option value="">-- Choose Owner --</option>
-                                                    {users
-                                                        .filter(u => u.role === 'clinic_owner')
-                                                        .map(owner => (
-                                                            <option key={owner.id} value={owner.id}>
-                                                                {owner.firstName} {owner.lastName} ({owner.email})
-                                                            </option>
-                                                        ))
-                                                    }
-                                                </select>
+                                            <div className="space-y-2 col-span-1 md:col-span-2">
+                                                <label className="text-sm font-medium text-gray-700 block">Clinic Owners *</label>
+                                                
+                                                {/* Selected Owners Tags/Chips */}
+                                                <div className="flex flex-wrap gap-2 mb-2">
+                                                    {((formData.ownerIds && formData.ownerIds.length > 0)
+                                                        ? formData.ownerIds
+                                                        : (formData.ownerId ? [formData.ownerId] : [])
+                                                    ).map(ownerId => {
+                                                        const owner = users.find(u => u.id === ownerId);
+                                                        if (!owner) return null;
+                                                        return (
+                                                            <div 
+                                                                key={owner.id} 
+                                                                className="flex items-center gap-2 bg-[#0B1120] text-white px-3 py-1.5 rounded-xl text-sm font-semibold shadow-md animate-in zoom-in-95 duration-200"
+                                                            >
+                                                                <span className="w-5 h-5 rounded-full bg-[#CBFF38] text-[#0B1120] flex items-center justify-center text-[10px] font-bold">
+                                                                    {owner.firstName?.[0]?.toUpperCase()}{owner.lastName?.[0]?.toUpperCase()}
+                                                                </span>
+                                                                <span>{owner.firstName} {owner.lastName}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const currentOwnerIds = formData.ownerIds && formData.ownerIds.length > 0
+                                                                            ? formData.ownerIds
+                                                                            : (formData.ownerId ? [formData.ownerId] : []);
+                                                                        const updatedOwnerIds = currentOwnerIds.filter(id => id !== owner.id);
+                                                                        setFormData({ 
+                                                                            ...formData, 
+                                                                            ownerIds: updatedOwnerIds,
+                                                                            ownerId: updatedOwnerIds[0] || ""
+                                                                        });
+                                                                    }}
+                                                                    className="text-gray-400 hover:text-[#CBFF38] transition-colors ml-1"
+                                                                >
+                                                                    <X className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {(!formData.ownerIds || formData.ownerIds.length === 0) && !formData.ownerId && (
+                                                        <span className="text-xs text-gray-400 font-bold uppercase tracking-wider py-1.5">No owners selected yet. Please search and add below.</span>
+                                                    )}
+                                                </div>
+
+                                                {/* Search & Add Owners Input */}
+                                                <div ref={ownerSearchRef} className="relative">
+                                                    <div className="relative">
+                                                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search clinic owners by name or email..."
+                                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none bg-white text-sm"
+                                                            value={ownerSearch}
+                                                            onChange={e => {
+                                                                setOwnerSearch(e.target.value);
+                                                                setShowOwnerDropdown(true);
+                                                            }}
+                                                            onFocus={() => {
+                                                                dispatch(fetchUsers());
+                                                                setShowOwnerDropdown(true);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    
+                                                    {showOwnerDropdown && (
+                                                        <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto z-40">
+                                                                {users
+                                                                    .filter(u => u.role === 'clinic_owner')
+                                                                    .filter(u => {
+                                                                        const currentIds = formData.ownerIds && formData.ownerIds.length > 0
+                                                                            ? formData.ownerIds
+                                                                            : (formData.ownerId ? [formData.ownerId] : []);
+                                                                        return !currentIds.includes(u.id);
+                                                                    })
+                                                                    .filter(u => {
+                                                                        const fullName = `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase();
+                                                                        return fullName.includes(ownerSearch.toLowerCase());
+                                                                    })
+                                                                    .map(owner => (
+                                                                        <button
+                                                                            key={owner.id}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const currentIds = formData.ownerIds && formData.ownerIds.length > 0
+                                                                                    ? formData.ownerIds
+                                                                                    : (formData.ownerId ? [formData.ownerId] : []);
+                                                                                const newIds = [...currentIds, owner.id];
+                                                                                setFormData({
+                                                                                    ...formData,
+                                                                                    ownerIds: newIds,
+                                                                                    ownerId: newIds[0] || ""
+                                                                                });
+                                                                                setOwnerSearch("");
+                                                                                setShowOwnerDropdown(false);
+                                                                            }}
+                                                                            className="w-full text-left px-4 py-2.5 hover:bg-[#CBFF38]/10 flex items-center justify-between transition-colors border-b last:border-0 border-gray-100"
+                                                                        >
+                                                                            <div>
+                                                                                <div className="text-sm font-bold text-gray-900">{owner.firstName} {owner.lastName}</div>
+                                                                                <div className="text-xs text-gray-500">{owner.email}</div>
+                                                                            </div>
+                                                                            <Plus className="w-4 h-4 text-gray-400" />
+                                                                        </button>
+                                                                    ))
+                                                                }
+                                                                {users
+                                                                    .filter(u => u.role === 'clinic_owner')
+                                                                    .filter(u => {
+                                                                        const currentIds = formData.ownerIds && formData.ownerIds.length > 0
+                                                                            ? formData.ownerIds
+                                                                            : (formData.ownerId ? [formData.ownerId] : []);
+                                                                        return !currentIds.includes(u.id);
+                                                                    })
+                                                                    .filter(u => {
+                                                                        const fullName = `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase();
+                                                                        return fullName.includes(ownerSearch.toLowerCase());
+                                                                    }).length === 0 && (
+                                                                        <div className="p-4 text-center text-xs text-gray-400 uppercase font-bold tracking-wider">
+                                                                            No matching owners found
+                                                                        </div>
+                                                                    )
+                                                                }
+                                                            </div>
+                                                    )}
+                                                </div>
+                                                
                                                 {users.filter(u => u.role === 'clinic_owner').length === 0 && (
                                                     <p className="text-[10px] text-red-500 font-bold mt-1">
                                                         No users with "Clinic Owner" role found. Please create one first.
@@ -497,12 +712,48 @@ export const Clinics: React.FC = () => {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-1">
+                                                <label className="text-sm font-medium text-gray-700">Street</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none"
+                                                    value={formData.address?.street || ""}
+                                                    onChange={e => setFormData({ ...formData, address: { ...(formData.address || { street: "", city: "", state: "", zipCode: "", country: "" }), street: e.target.value } })}
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
                                                 <label className="text-sm font-medium text-gray-700">City</label>
                                                 <input
                                                     type="text"
                                                     className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none"
                                                     value={formData.address?.city || ""}
                                                     onChange={e => setFormData({ ...formData, address: { ...(formData.address || { street: "", city: "", state: "", zipCode: "", country: "" }), city: e.target.value } })}
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-sm font-medium text-gray-700">State</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none"
+                                                    value={formData.address?.state || ""}
+                                                    onChange={e => setFormData({ ...formData, address: { ...(formData.address || { street: "", city: "", state: "", zipCode: "", country: "" }), state: e.target.value } })}
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-sm font-medium text-gray-700">Zip Code</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none"
+                                                    value={formData.address?.zipCode || ""}
+                                                    onChange={e => setFormData({ ...formData, address: { ...(formData.address || { street: "", city: "", state: "", zipCode: "", country: "" }), zipCode: e.target.value } })}
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-sm font-medium text-gray-700">Country</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none"
+                                                    value={formData.address?.country || ""}
+                                                    onChange={e => setFormData({ ...formData, address: { ...(formData.address || { street: "", city: "", state: "", zipCode: "", country: "" }), country: e.target.value } })}
                                                 />
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
@@ -741,25 +992,6 @@ export const Clinics: React.FC = () => {
                                                             }}
                                                         >
                                                             <Eye className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                            title="Delete Service"
-                                                            onClick={async () => {
-                                                                if (window.confirm("Are you sure you want to delete this service? This action cannot be undone unless the service has appointment history (in which case it will be blocked).")) {
-                                                                    try {
-                                                                        await adminAPI.deleteClinicService(service.id, editingClinic!.id);
-                                                                        fetchClinicServices(editingClinic!.id);
-                                                                    } catch (err: any) {
-                                                                        const errMsg = err.response?.data?.message || "Failed to delete service";
-                                                                        alert(errMsg);
-                                                                        console.error("Delete failed", err);
-                                                                    }
-                                                                }
-                                                            }}
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
                                                         </button>
                                                     </div>
                                                 </div>

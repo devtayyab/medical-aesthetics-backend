@@ -911,7 +911,7 @@ export const ManagerDashboard = () => {
 
       {/* Add Agent Modal */}
       {showAddAgentModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[10000] p-4 animate-in fade-in">
           <Card className="w-full max-w-lg shadow-2xl">
             <CardHeader>
               <CardTitle>Add New Agent</CardTitle>

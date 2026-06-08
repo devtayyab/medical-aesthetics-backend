@@ -2,7 +2,7 @@ import { Injectable, NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, DeepPartial } from 'typeorm';
+import { Repository, Between, DeepPartial, In } from 'typeorm';
 import { Tag } from './entities/tag.entity';
 import { Offer } from './entities/offer.entity';
 import { Reward } from './entities/reward.entity';
@@ -12,6 +12,7 @@ import { Clinic } from '../clinics/entities/clinic.entity';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { LoyaltyLedger } from '../loyalty/entities/loyalty-ledger.entity';
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
+import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { PaymentRecord, PaymentStatus, PaymentType } from '../payments/entities/payment-record.entity';
 import { Lead } from '../crm/entities/lead.entity';
 import { Treatment } from '../clinics/entities/treatment.entity';
@@ -46,6 +47,8 @@ export class AdminService {
     private loyaltyRepository: Repository<LoyaltyLedger>,
     @InjectRepository(AgentClinicAccess)
     private agentClinicAccessRepository: Repository<AgentClinicAccess>,
+    @InjectRepository(ClinicOwnership)
+    private clinicOwnershipRepository: Repository<ClinicOwnership>,
     @InjectRepository(Lead)
     private leadsRepository: Repository<Lead>,
     @InjectRepository(Treatment)
@@ -205,11 +208,20 @@ export class AdminService {
     // Load clinic accesses for users where applicable
     for (const u of users) {
       if (u.role === 'clinic_owner') {
-        const owned = await this.usersRepository.findOne({
-          where: { id: u.id },
-          relations: ['ownedClinics']
-        });
-        (u as any).assignedClinics = owned?.ownedClinics || [];
+        // Load from clinic_ownership table (supports multiple clinics per owner)
+        const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: u.id } });
+        if (ownerships.length > 0) {
+          const clinicIds = ownerships.map(o => o.clinicId);
+          const ownedClinics = await this.clinicsRepository.find({ where: { id: In(clinicIds) } });
+          (u as any).assignedClinics = ownedClinics;
+        } else {
+          // Fallback: check ownedClinics relation (primary owner)
+          const owned = await this.usersRepository.findOne({
+            where: { id: u.id },
+            relations: ['ownedClinics']
+          });
+          (u as any).assignedClinics = owned?.ownedClinics || [];
+        }
       } else {
         const accesses = await this.agentClinicAccessRepository.find({ where: { agentUserId: u.id }, relations: ['clinic'] });
         (u as any).assignedClinics = accesses.map(a => a.clinic);
@@ -222,7 +234,7 @@ export class AdminService {
   async getUserById(id: string): Promise<User> {
     const user = await this.usersRepository.findOne({
       where: { id },
-      relations: ['ownedClinics', 'clientAppointments'],
+      relations: ['clientAppointments'],
     });
 
     if (!user) {
@@ -230,7 +242,17 @@ export class AdminService {
     }
 
     if (user.role === 'clinic_owner') {
-      (user as any).assignedClinics = user.ownedClinics || [];
+      // Load from clinic_ownership table (supports multiple clinics per owner)
+      const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: id } });
+      if (ownerships.length > 0) {
+        const clinicIds = ownerships.map(o => o.clinicId);
+        const ownedClinics = await this.clinicsRepository.find({ where: { id: In(clinicIds) } });
+        (user as any).assignedClinics = ownedClinics;
+      } else {
+        // Fallback: primary owner column
+        const withClinics = await this.usersRepository.findOne({ where: { id }, relations: ['ownedClinics'] });
+        (user as any).assignedClinics = withClinics?.ownedClinics || [];
+      }
     } else {
       const accesses = await this.agentClinicAccessRepository.find({ where: { agentUserId: user.id }, relations: ['clinic'] });
       (user as any).assignedClinics = accesses.map(a => a.clinic);
@@ -337,14 +359,30 @@ export class AdminService {
     await this.usersRepository.update(id, dataToUpdate);
 
     if (assignedClinicIds !== undefined) {
-      // Clear all existing accesses
-      await this.agentClinicAccessRepository.delete({ agentUserId: id });
+      // After update, re-fetch to get potentially updated role
+      const user = await this.usersRepository.findOne({ where: { id } });
+      const effectiveRole = (dataToUpdate as any).role || user?.role;
 
-      // Save new ones
-      for (const clinicId of assignedClinicIds) {
-        await this.agentClinicAccessRepository.save(
-          this.agentClinicAccessRepository.create({ agentUserId: id, clinicId })
-        );
+      if (effectiveRole === 'clinic_owner') {
+        // Update clinic_ownership mapping table for owner
+        await this.clinicOwnershipRepository.delete({ ownerUserId: id });
+        for (const clinicId of assignedClinicIds) {
+          await this.clinicOwnershipRepository.save(
+            this.clinicOwnershipRepository.create({ clinicId, ownerUserId: id, visibilityScope: 'shared' })
+          );
+        }
+        // Also update the primary ownerId on the first clinic if provided
+        if (assignedClinicIds.length > 0) {
+          await this.clinicsRepository.update(assignedClinicIds[0], { ownerId: id });
+        }
+      } else {
+        // For non-owners: update agent_clinic_access table
+        await this.agentClinicAccessRepository.delete({ agentUserId: id });
+        for (const clinicId of assignedClinicIds) {
+          await this.agentClinicAccessRepository.save(
+            this.agentClinicAccessRepository.create({ agentUserId: id, clinicId })
+          );
+        }
       }
     }
 
@@ -366,6 +404,7 @@ export class AdminService {
   async getAllClinics(query?: { isActive?: boolean; search?: string; limit?: number; offset?: number }): Promise<any> {
     const queryBuilder = this.clinicsRepository.createQueryBuilder('clinic')
       .leftJoinAndSelect('clinic.owner', 'owner')
+      .leftJoinAndSelect('clinic.owners', 'owners')
       .leftJoinAndSelect('clinic.services', 'services');
 
     if (query?.isActive !== undefined) {
@@ -399,7 +438,7 @@ export class AdminService {
   async getClinicById(id: string): Promise<Clinic> {
     const clinic = await this.clinicsRepository.findOne({
       where: { id },
-      relations: ['owner', 'services', 'appointments'],
+      relations: ['owner', 'owners', 'services', 'appointments'],
     });
 
     if (!clinic) {

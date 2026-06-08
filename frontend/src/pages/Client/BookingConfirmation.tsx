@@ -39,6 +39,7 @@ interface Appointment {
   startTime: string;
   endTime: string;
   status: string;
+  startTimeDisplay?: string;
   serviceName?: string;
   clinic?: {
     name: string;
@@ -134,7 +135,7 @@ const BookingConfirmation: React.FC = () => {
               <div>
                 <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Time</p>
                 <p className="font-black text-black uppercase italic">
-                  {format(new Date(appointment.startTime), "HH:mm")}
+                  {appointment.startTimeDisplay || format(new Date(appointment.startTime), "HH:mm")}
                 </p>
               </div>
             </div>
@@ -175,7 +176,7 @@ const BookingConfirmation: React.FC = () => {
               className="bg-[#121212] text-[#CBFF38] hover:bg-black h-12 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] transition-all"
               onClick={() => navigate('/appointments')}
             >
-              Manage Booking
+              Appointment Booked
             </Button>
             <div className="flex gap-3 flex-1">
               <Button variant="outline" className="flex-1 h-12 rounded-xl border-gray-200 hover:border-black hover:text-black transition-all">

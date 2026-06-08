@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { ConsentRecord } from './entities/consent-record.entity';
+import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -18,6 +19,8 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(ConsentRecord)
     private consentRepository: Repository<ConsentRecord>,
+    @InjectRepository(ClinicOwnership)
+    private clinicOwnershipRepository: Repository<ClinicOwnership>,
   ) { }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -32,13 +35,27 @@ export class UsersService {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(createUserDto.password, salt);
 
+    const { assignedClinicIds, ...userData } = createUserDto as any;
+
     const user = this.usersRepository.create({
-      ...createUserDto,
+      ...userData,
       passwordHash,
       role: createUserDto.role || UserRole.CLIENT,
     });
 
-    return this.usersRepository.save(user);
+    const savedUser = await this.usersRepository.save(user) as unknown as User;
+
+    // If creating a clinic_owner with multiple clinic assignments, create ownership records
+    if ((createUserDto.role === UserRole.CLINIC_OWNER || createUserDto.role === 'clinic_owner' as any)
+      && assignedClinicIds && assignedClinicIds.length > 0) {
+      for (const clinicId of assignedClinicIds) {
+        await this.clinicOwnershipRepository.save(
+          this.clinicOwnershipRepository.create({ clinicId, ownerUserId: savedUser.id, visibilityScope: 'shared' })
+        );
+      }
+    }
+
+    return savedUser;
   }
 
   async findByEmail(email: string): Promise<User | null> {

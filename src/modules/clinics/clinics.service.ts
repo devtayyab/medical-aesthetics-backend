@@ -78,19 +78,43 @@ export class ClinicsService {
       clinicQb.leftJoin('categoryRef.parent', 'categoryParent');
     }
 
+    const normalizeGreek = (str: string) => {
+      if (!str) return '';
+      return str.toLowerCase()
+        .replace(/ά/g, 'α')
+        .replace(/έ/g, 'ε')
+        .replace(/ή/g, 'η')
+        .replace(/ί/g, 'ι')
+        .replace(/ό/g, 'ο')
+        .replace(/ύ/g, 'υ')
+        .replace(/ώ/g, 'ω')
+        .replace(/ϊ/g, 'ι')
+        .replace(/ϋ/g, 'υ')
+        .replace(/ΐ/g, 'ι')
+        .replace(/ΰ/g, 'υ');
+    };
+
+    const sqlTranslate = (field: string) => 
+      `TRANSLATE(LOWER(${field}), 'άέήίόύώϊϋΐΰ', 'αεηιουωιυιυ')`;
+
     if (params.search) {
-      const searchTerm = `%${params.search}%`;
-      const searchNoSpace = `%${params.search.replace(/\s+/g, '')}%`;
+      const normalizedSearch = normalizeGreek(params.search);
+      const searchTerm = `%${normalizedSearch}%`;
+      const searchNoSpace = `%${normalizedSearch.replace(/\s+/g, '')}%`;
       clinicQb.andWhere(
-        '(clinic.name ILIKE :searchTerm OR treatment.name ILIKE :searchTerm OR treatment.category ILIKE :searchTerm OR categoryRef.name ILIKE :searchTerm OR REPLACE(treatment.name, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(treatment.category, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(categoryRef.name, \' \', \'\') ILIKE :searchNoSpace)',
+        `(${sqlTranslate('clinic.name')} ILIKE :searchTerm OR ${sqlTranslate('treatment.name')} ILIKE :searchTerm OR ${sqlTranslate('treatment.category')} ILIKE :searchTerm OR ${sqlTranslate('categoryRef.name')} ILIKE :searchTerm OR REPLACE(${sqlTranslate('treatment.name')}, ' ', '') ILIKE :searchNoSpace OR REPLACE(${sqlTranslate('treatment.category')}, ' ', '') ILIKE :searchNoSpace OR REPLACE(${sqlTranslate('categoryRef.name')}, ' ', '') ILIKE :searchNoSpace)`,
         { searchTerm, searchNoSpace }
       );
     }
 
     if (params.category) {
-      // Match the treatment's own category/subcategory name, or its parent
-      // category name so a top-level category surfaces its subcategories' treatments.
-      clinicQb.andWhere('(treatment.category ILIKE :category OR categoryRef.name ILIKE :category OR categoryParent.name ILIKE :category OR REPLACE(treatment.category, \' \', \'-\') ILIKE :category OR REPLACE(categoryRef.name, \' \', \'-\') ILIKE :category OR REPLACE(categoryParent.name, \' \', \'-\') ILIKE :category)', { category: `%${params.category}%` });
+      const normalizedCategory = normalizeGreek(params.category);
+      const categoryParam = `%${normalizedCategory}%`;
+      const categoryParamDash = `%${normalizedCategory.replace(/\s+/g, '-')}%`;
+      clinicQb.andWhere(
+        `(${sqlTranslate('treatment.category')} ILIKE :categoryParam OR ${sqlTranslate('categoryRef.name')} ILIKE :categoryParam OR ${sqlTranslate('categoryParent.name')} ILIKE :categoryParam OR REPLACE(${sqlTranslate('treatment.category')}, ' ', '-') ILIKE :categoryParamDash OR REPLACE(${sqlTranslate('categoryRef.name')}, ' ', '-') ILIKE :categoryParamDash OR REPLACE(${sqlTranslate('categoryParent.name')}, ' ', '-') ILIKE :categoryParamDash)`,
+        { categoryParam, categoryParamDash }
+      );
     }
 
     // --- Availability Filtering (Rule 2) ---
@@ -136,17 +160,23 @@ export class ClinicsService {
       });
 
     if (params.search) {
-      const searchTerm = `%${params.search}%`;
-      const searchNoSpace = `%${params.search.replace(/\s+/g, '')}%`;
+      const normalizedSearch = normalizeGreek(params.search);
+      const searchTerm = `%${normalizedSearch}%`;
+      const searchNoSpace = `%${normalizedSearch.replace(/\s+/g, '')}%`;
       serviceQb.andWhere(
-        '(treatment.name ILIKE :searchTerm OR treatment.category ILIKE :searchTerm OR categoryRef.name ILIKE :searchTerm OR treatment.shortDescription ILIKE :searchTerm OR REPLACE(treatment.name, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(treatment.category, \' \', \'\') ILIKE :searchNoSpace OR REPLACE(categoryRef.name, \' \', \'\') ILIKE :searchNoSpace)',
+        `(${sqlTranslate('treatment.name')} ILIKE :searchTerm OR ${sqlTranslate('treatment.category')} ILIKE :searchTerm OR ${sqlTranslate('categoryRef.name')} ILIKE :searchTerm OR ${sqlTranslate('treatment.shortDescription')} ILIKE :searchTerm OR REPLACE(${sqlTranslate('treatment.name')}, ' ', '') ILIKE :searchNoSpace OR REPLACE(${sqlTranslate('treatment.category')}, ' ', '') ILIKE :searchNoSpace OR REPLACE(${sqlTranslate('categoryRef.name')}, ' ', '') ILIKE :searchNoSpace)`,
         { searchTerm, searchNoSpace }
       );
     }
 
     if (params.category) {
-      // Also match the parent category name so a top-level category surfaces its subcategories' treatments.
-      serviceQb.andWhere('(treatment.category ILIKE :category OR categoryRef.name ILIKE :category OR categoryParent.name ILIKE :category OR REPLACE(treatment.category, \' \', \'-\') ILIKE :category OR REPLACE(categoryRef.name, \' \', \'-\') ILIKE :category OR REPLACE(categoryParent.name, \' \', \'-\') ILIKE :category)', { category: `%${params.category}%` });
+      const normalizedCategory = normalizeGreek(params.category);
+      const categoryParam = `%${normalizedCategory}%`;
+      const categoryParamDash = `%${normalizedCategory.replace(/\s+/g, '-')}%`;
+      serviceQb.andWhere(
+        `(${sqlTranslate('treatment.category')} ILIKE :categoryParam OR ${sqlTranslate('categoryRef.name')} ILIKE :categoryParam OR ${sqlTranslate('categoryParent.name')} ILIKE :categoryParam OR REPLACE(${sqlTranslate('treatment.category')}, ' ', '-') ILIKE :categoryParamDash OR REPLACE(${sqlTranslate('categoryRef.name')}, ' ', '-') ILIKE :categoryParamDash OR REPLACE(${sqlTranslate('categoryParent.name')}, ' ', '-') ILIKE :categoryParamDash)`,
+        { categoryParam, categoryParamDash }
+      );
     }
 
     if (params.location) {
@@ -249,28 +279,54 @@ export class ClinicsService {
         .skip(params.offset || 0)
         .getManyAndCount();
 
-      // Transform services to look like Treatment Master records for UI compatibility
-      const processedTreatments = services.map(s => ({
-        ...s.treatment,
-        id: s.treatment?.id || s.id, // Use master ID for linking to details page
-        serviceId: s.id, // Keep service ID for direct booking context
-        masterTreatmentId: s.treatment?.id,
-        fromPrice: s.price,
-        durationMinutes: s.durationMinutes,
-        clinicId: s.clinicId,
-        availableAt: [s.clinic?.name].filter(Boolean),
-        clinicsCount: 1,
-        singleClinicId: s.clinicId,
-        singleServiceId: s.id,
-        imageUrl: s.imageUrl || s.treatment?.imageUrl
-      }));
+      // Transform services to Treatment Master records and DEDUPLICATE by master treatment ID.
+      // Each unique treatment appears once, showing the lowest price across all clinics.
+      const treatmentMap = new Map<string, any>();
+      for (const s of services) {
+        const masterId = s.treatment?.id || s.id;
+        const existing = treatmentMap.get(masterId);
+        const thisPrice = Number(s.price) || 0;
 
+        if (!existing) {
+          treatmentMap.set(masterId, {
+            ...s.treatment,
+            id: masterId,
+            serviceId: s.id,
+            masterTreatmentId: masterId,
+            fromPrice: thisPrice,
+            durationMinutes: s.durationMinutes,
+            clinicId: s.clinicId,
+            availableAt: [s.clinic?.name].filter(Boolean),
+            clinicsCount: 1,
+            singleClinicId: s.clinicId,
+            singleServiceId: s.id,
+            imageUrl: s.imageUrl || s.treatment?.imageUrl,
+          });
+        } else {
+          // Merge: keep lowest price, accumulate clinic names & count
+          if (thisPrice > 0 && (existing.fromPrice === 0 || thisPrice < existing.fromPrice)) {
+            existing.fromPrice = thisPrice;
+            existing.durationMinutes = s.durationMinutes;
+            existing.clinicId = s.clinicId;
+            existing.singleClinicId = s.clinicId;
+            existing.singleServiceId = s.id;
+          }
+          const clinicName = s.clinic?.name;
+          if (clinicName && !existing.availableAt.includes(clinicName)) {
+            existing.availableAt.push(clinicName);
+          }
+          existing.clinicsCount = (existing.clinicsCount || 1) + 1;
+        }
+      }
+      const processedTreatments = Array.from(treatmentMap.values());
+
+      const deduplicatedCount = processedTreatments.length;
       return {
         clinics,
         treatments: processedTreatments,
-        total: totalClinics + totalTreatments,
+        total: totalClinics + deduplicatedCount,
         totalClinics,
-        totalTreatments,
+        totalTreatments: deduplicatedCount,
         offset: params.offset || 0,
       };
     } catch (error) {
@@ -301,9 +357,14 @@ export class ClinicsService {
         id: o.id,
         clinicId: o.clinic.id,
         clinicName: o.clinic.name,
-        location: `${o.clinic.address.city}, ${o.clinic.address.state}`,
+        location: o.clinic.address
+          ? `${o.clinic.address.city || ''}, ${o.clinic.address.state || ''}`.replace(/^,\s*|,\s*$/, '')
+          : 'Location not specified',
         price: o.price,
         durationMinutes: o.durationMinutes,
+        latitude: o.clinic.latitude,
+        longitude: o.clinic.longitude,
+        rating: o.clinic.rating,
       }));
 
     return {
@@ -324,7 +385,7 @@ export class ClinicsService {
   async findById(id: string): Promise<Clinic> {
     const clinic = await this.clinicsRepository.findOne({
       where: { id, isActive: true },
-      relations: ['services'],
+      relations: ['services', 'owner', 'owners'],
     });
     if (!clinic) {
       throw new NotFoundException('Clinic not found');
@@ -347,34 +408,124 @@ export class ClinicsService {
   }
 
   // New clinic management methods
-  async createClinic(createClinicDto: CreateClinicProfileDto & { ownerId: string }): Promise<Clinic> {
-    const clinic = this.clinicsRepository.create(createClinicDto);
+  async createClinic(createClinicDto: CreateClinicProfileDto & { ownerId?: string; ownerIds?: string[] }): Promise<Clinic> {
+    const { ownerIds, ...baseData } = createClinicDto;
+    
+    // Determine the primary owner
+    const allOwnerIds = ownerIds || [];
+    const primaryOwnerId = createClinicDto.ownerId || allOwnerIds[0];
+    
+    if (!primaryOwnerId) {
+      throw new BadRequestException('At least one owner is required');
+    }
+
+    const clinic = this.clinicsRepository.create({
+      ...baseData,
+      ownerId: primaryOwnerId,
+    });
     const savedClinic = await this.clinicsRepository.save(clinic);
     
     // Automatically assign the owner as staff to their own clinic for better visibility
-    await this.usersRepository.update(createClinicDto.ownerId, {
+    await this.usersRepository.update(primaryOwnerId, {
       assignedClinicId: savedClinic.id
     });
+
+    // Populate all owners in clinic_ownership mapping table
+    const uniqueOwnerIds = Array.from(new Set([primaryOwnerId, ...allOwnerIds]));
+    for (const oId of uniqueOwnerIds) {
+      await this.clinicOwnershipRepository.save(
+        this.clinicOwnershipRepository.create({
+          clinicId: savedClinic.id,
+          ownerUserId: oId,
+          visibilityScope: 'shared',
+        })
+      );
+    }
     
-    return savedClinic;
+    const finalClinic = await this.clinicsRepository.findOne({
+      where: { id: savedClinic.id },
+      relations: ['services', 'owner', 'owners'],
+    });
+    return finalClinic;
   }
 
   async updateClinicById(
     clinicId: string,
-    updateClinicDto: UpdateClinicProfileDto,
+    updateClinicDto: UpdateClinicProfileDto & { ownerIds?: string[] },
   ): Promise<Clinic> {
     const clinic = await this.clinicsRepository.findOne({ where: { id: clinicId } });
     if (!clinic) throw new NotFoundException('Clinic not found');
 
-    Object.assign(clinic, updateClinicDto);
-    return this.clinicsRepository.save(clinic);
+    const { ownerIds, ...baseData } = updateClinicDto;
+
+    if (ownerIds !== undefined) {
+      if (ownerIds.length === 0) {
+        throw new BadRequestException('At least one owner is required');
+      }
+      const primaryOwnerId = ownerIds[0];
+      clinic.ownerId = primaryOwnerId;
+
+      // Update mapping table
+      await this.clinicOwnershipRepository.delete({ clinicId });
+      for (const oId of ownerIds) {
+        await this.clinicOwnershipRepository.save(
+          this.clinicOwnershipRepository.create({
+            clinicId,
+            ownerUserId: oId,
+            visibilityScope: 'shared',
+          })
+        );
+      }
+
+      // Automatically assign the primary owner as staff
+      await this.usersRepository.update(primaryOwnerId, {
+        assignedClinicId: clinicId
+      });
+    }
+
+    // Strip relation fields so TypeORM save() does NOT overwrite
+    // the clinic_ownership join table with stale frontend data
+    const {
+      owners,
+      owner,
+      services,
+      appointments,
+      staff,
+      ...safeData
+    } = baseData as any;
+
+    Object.assign(clinic, safeData);
+    // Ensure owners relation is NOT set on the entity before save
+    // (prevents TypeORM @ManyToMany sync from reverting our inserts)
+    delete (clinic as any).owners;
+
+    const saved = await this.clinicsRepository.save(clinic);
+
+    const finalClinic = await this.clinicsRepository.findOne({
+      where: { id: saved.id },
+      relations: ['services', 'owner', 'owners'],
+    });
+    return finalClinic;
+  }
+
+  async updateClinicOwnershipForOwner(ownerUserId: string, clinicIds: string[]): Promise<void> {
+    await this.clinicOwnershipRepository.delete({ ownerUserId });
+    for (const clinicId of clinicIds) {
+      await this.clinicOwnershipRepository.save(
+        this.clinicOwnershipRepository.create({
+          clinicId,
+          ownerUserId,
+          visibilityScope: 'shared',
+        })
+      );
+    }
   }
 
   async findByOwnerId(ownerId: string): Promise<Clinic> {
     // 1. Check if user owns a clinic
     const clinic = await this.clinicsRepository.findOne({
       where: { ownerId, isActive: true },
-      relations: ['services'],
+      relations: ['services', 'owner', 'owners'],
     });
 
     if (clinic) {

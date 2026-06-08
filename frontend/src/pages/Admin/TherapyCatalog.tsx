@@ -479,7 +479,7 @@ export const TherapyCatalog: React.FC = () => {
 
             {/* Treatment Modal */}
             {isTreatmentModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]">
                     <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl p-10 relative max-h-[90vh] overflow-y-auto">
                         <button onClick={() => setIsTreatmentModalOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-gray-900 p-2 hover:bg-gray-100 rounded-full transition-all">
                             <X size={24} />
@@ -607,7 +607,7 @@ export const TherapyCatalog: React.FC = () => {
 
             {/* Category Modal */}
             {isCategoryModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]">
                     <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md p-10 relative">
                         <button onClick={() => setIsCategoryModalOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-gray-900"><X size={20} /></button>
 

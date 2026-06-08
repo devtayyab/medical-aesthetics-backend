@@ -106,7 +106,7 @@ export const Services: React.FC = () => {
                             <div className="size-16 bg-black text-[#CBFF38] rounded-full flex items-center justify-center mb-8 group-hover:scale-105 transition-transform">
                                 {service.icon}
                             </div>
-                            <h3 className="text-2xl font-black uppercase italic tracking-tight text-gray-900 mb-4 group-hover:text-black">
+                            <h3 className="text-2xl font-black italic tracking-tight text-gray-900 mb-4 group-hover:text-black">
                                 {service.name}
                             </h3>
                             <p className="text-gray-500 font-medium text-base mb-8 flex-1 italic leading-relaxed">

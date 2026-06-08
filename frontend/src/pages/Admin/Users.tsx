@@ -1,7 +1,8 @@
-﻿import React, { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AccessControl } from "@/components/organisms/AccessControl";
 import { fetchUsers, updateUserDetails, toggleUserStatus, createNewUser } from "@/store/slices/adminSlice";
+import toast from "react-hot-toast";
 import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 import { adminAPI } from "@/services/api";
@@ -32,8 +33,14 @@ export const Users: React.FC = () => {
     dispatch(toggleUserStatus(id));
   };
 
-  const handleCreateUser = (data: any) => {
-    dispatch(createNewUser(data));
+  const handleCreateUser = async (data: any) => {
+    try {
+      await dispatch(createNewUser(data)).unwrap();
+      toast.success("User created successfully!");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to create user. Email might already exist.");
+      throw err;
+    }
   };
   return (
     <div className="space-y-6">
