@@ -315,7 +315,7 @@ export const HomePage: React.FC = () => {
                     {treatment.category || treatment.categoryRef?.name || "Aesthetic"}
                   </span>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1 uppercase italic tracking-tight">{treatment.name}</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-1 italic tracking-tight">{treatment.name}</h3>
                 <div className="flex items-center text-gray-500 text-sm mb-3">
                   <p className="text-gray-600 text-xs line-clamp-2">
                     {treatment.shortDescription || "Elite clinical treatment protocols for anatomical perfection."}

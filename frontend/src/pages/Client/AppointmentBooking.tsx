@@ -309,7 +309,7 @@ export const AppointmentBooking: React.FC = () => {
                         onClick={() => handleProviderSelect(p.id)}
                       >
                         <img src={p.photoUrl || `https://ui-avatars.com/api/?name=${p.firstName}+${p.lastName}&background=random`} className="size-12 rounded-full object-cover" alt={p.firstName} />
-                        <span className="text-[10px] font-black uppercase tracking-tight">{p.firstName}</span>
+                        <span className="text-[10px] font-black tracking-tight">{p.firstName}</span>
                       </button>
                     ))}
                   </div>
@@ -349,7 +349,7 @@ export const AppointmentBooking: React.FC = () => {
               <div className="space-y-6 mb-8 relative z-10">
                 <div>
                   <h4 className="text-[9px] font-black uppercase text-gray-500 tracking-widest mb-2 italic">Clinic Selected</h4>
-                  <p className="text-base font-black text-white uppercase italic">{clinic?.name}</p>
+                  <p className="text-base font-black text-white italic">{clinic?.name}</p>
                 </div>
 
                 <div>
@@ -357,7 +357,7 @@ export const AppointmentBooking: React.FC = () => {
                   <div className="space-y-2">
                     {selectedServices.map(s => (
                       <div key={s.id} className="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl">
-                        <span className="text-[10px] font-black uppercase italic text-white tracking-widest">{s.treatment?.name || s.name || 'Treatment'}</span>
+                        <span className="text-[10px] font-black italic text-white tracking-widest">{s.treatment?.name || s.name || 'Treatment'}</span>
                         <span className="text-[12px] font-black text-[#CBFF38]"><span className="font-sans font-medium">€</span>{Number(s.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                     ))}

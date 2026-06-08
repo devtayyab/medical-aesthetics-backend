@@ -67,6 +67,12 @@ export class CreateClinicProfileDto {
   @IsOptional()
   @IsString()
   photoUrl?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  ownerIds?: string[];
 }
 
 export class UpdateClinicProfileDto {
@@ -141,6 +147,12 @@ export class UpdateClinicProfileDto {
   @IsOptional()
   @IsString()
   photoUrl?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  ownerIds?: string[];
 }
 
 export class UpdateAppointmentStatusDto {

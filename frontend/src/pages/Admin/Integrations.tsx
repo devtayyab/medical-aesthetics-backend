@@ -198,7 +198,7 @@ export const Integrations: React.FC = () => {
 
       {/* Configuration Modal */}
       {activeConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden">
             <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-[#0B1120] text-white">
               <div>

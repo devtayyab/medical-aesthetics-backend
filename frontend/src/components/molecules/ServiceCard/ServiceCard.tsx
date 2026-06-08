@@ -56,7 +56,7 @@ export const ServiceCard: React.FC<{
               />
             )}
             <div className="flex-1 min-w-0">
-              <h4 className={`text-base sm:text-lg font-black uppercase tracking-tight mb-1 truncate transition-colors ${isSelected ? 'text-lime-600' : 'text-gray-900 group-hover:text-lime-600'}`}>
+              <h4 className={`text-base sm:text-lg font-black tracking-tight mb-1 truncate transition-colors ${isSelected ? 'text-lime-600' : 'text-gray-900 group-hover:text-lime-600'}`}>
                 {service.treatment?.name || service.name || 'Treatment'}
               </h4>
               <p className="text-[11px] text-gray-500 mb-2 line-clamp-2">

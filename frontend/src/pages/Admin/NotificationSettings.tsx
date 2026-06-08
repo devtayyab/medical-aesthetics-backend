@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { notificationsAPI } from "@/services/api";
 import { Bell, Mail, Smartphone, Edit2, RefreshCcw, Save, X, Plus, Info } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -188,7 +188,7 @@ export const NotificationSettings: React.FC = () => {
       </div>
 
       {editingTemplate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[10000] backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-900">Edit Template: {getTriggerLabel(editingTemplate.trigger)}</h2>
@@ -277,7 +277,7 @@ export const NotificationSettings: React.FC = () => {
       )}
 
       {isCreating && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[10000] backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">

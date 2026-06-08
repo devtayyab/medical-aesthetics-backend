@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import { MapPin, ChevronRight, Info, Heart, Sparkles, ArrowRight, X, Image as ImageIcon } from "lucide-react";
+import { MapPin, ChevronRight, Info, Heart, Sparkles, ArrowRight, X, Image as ImageIcon, Building2 } from "lucide-react";
 import type { Treatment } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { css } from "@emotion/css";
@@ -94,7 +94,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                         <div className="flex items-center gap-2 text-[10px] font-black text-[#CBFF38] uppercase tracking-[0.2em] mb-2 sm:3 italic">
                             <Sparkles size={12} /> {treatment.category || 'Clinical Treatment'}
                         </div>
-                        <h3 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter text-gray-900 leading-[0.9] mb-3 sm:4 group-hover:text-[#CBFF38] transition-colors">
+                        <h3 className="text-2xl sm:text-3xl font-black italic tracking-tighter text-gray-900 leading-[0.9] mb-3 sm:4 group-hover:text-[#CBFF38] transition-colors">
                             {treatment.name}
                         </h3>
                         <p className="text-[11px] sm:text-[12px] font-medium text-gray-500 leading-relaxed max-w-[90%] sm:max-w-[80%] line-clamp-2">
@@ -112,22 +112,34 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                         
-                        {/* Action Button Over Image */}
-                        <div className="absolute bottom-6 left-6 z-10">
+                        {/* Action Button + Clinics Badge Over Image */}
+                        <div className="absolute bottom-6 left-6 z-10 flex items-center gap-2">
                             <button 
                                 onClick={(e) => { e.stopPropagation(); handleClick(); }}
                                 className="flex items-center gap-2 bg-[#CBFF38]/20 backdrop-blur-xl border border-[#CBFF38]/40 text-[#CBFF38] px-5 py-2.5 rounded-full text-[10px] font-black uppercase italic tracking-[0.2em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl"
                             >
                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                View Treatment
+                                {(treatment as any).clinicsCount > 1 ? 'Compare Clinics' : 'View Treatment'}
                             </button>
                         </div>
+
+                        {/* Clinics Count Badge - Bottom Right */}
+                        {(treatment as any).clinicsCount > 1 && (
+                            <div className="absolute bottom-6 right-6 z-10">
+                                <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+                                    <Building2 size={11} className="text-white" />
+                                    <span className="text-[9px] font-black text-white uppercase tracking-wider italic">
+                                        {(treatment as any).clinicsCount} Clinics
+                                    </span>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Price Tag - Top Right Overlay */}
                         <div className="absolute top-6 right-6 text-right z-10">
                             <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
                                 <p className="text-[8px] font-black text-[#CBFF38] uppercase tracking-[0.2em] italic mb-0.5">Starts From</p>
-                                <p className="text-xl font-black text-white tracking-tighter italic leading-none">€{treatment.fromPrice || '120.00'}</p>
+                                <p className="text-xl font-black text-white tracking-tighter italic leading-none">€{(treatment as any).fromPrice || '120.00'}</p>
                             </div>
                         </div>
                     </div>
@@ -165,7 +177,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
                             </div>
                             <div className="p-6 sm:p-10 -mt-8 sm:-mt-10 relative">
                                 <span className="bg-[#CBFF38] text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 inline-block italic">{treatment.category}</span>
-                                <h3 className="text-3xl sm:text-4xl font-black uppercase italic tracking-tighter text-gray-900 mb-4">{treatment.name}</h3>
+                                <h3 className="text-3xl sm:text-4xl font-black italic tracking-tighter text-gray-900 mb-4">{treatment.name}</h3>
                                 <p className="text-xs sm:text-sm text-gray-500 leading-relaxed mb-6 sm:8">{treatment.fullDescription || treatment.shortDescription || "Our clinics offer this premium treatment using state-of-the-art methodology."}</p>
                                 <button 
                                     className="w-full h-14 sm:h-16 bg-[#CBFF38] text-black rounded-2xl text-[12px] font-black uppercase tracking-widest italic flex items-center justify-center gap-3 hover:bg-black hover:text-[#CBFF38] transition-all"

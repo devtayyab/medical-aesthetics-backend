@@ -401,7 +401,7 @@ export const Search: React.FC = () => {
                                <div className="size-10 bg-[#CBFF38]/10 rounded-xl flex items-center justify-center text-[#CBFF38] border border-[#CBFF38]/20">
                                   <Sparkles size={16} />
                                </div>
-                               <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">{category}</h2>
+                               <h2 className="text-2xl font-black text-white italic tracking-tighter">{category}</h2>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                {items.map((t: any) => (

@@ -150,7 +150,7 @@ export const ClinicDetails: React.FC = () => {
                   : "4.9"} ({clinicData.reviewCount || 0} Reviews)
               </span>
             </div>
-            <h1 className="text-white text-3xl sm:text-5xl font-black uppercase italic leading-[0.9] tracking-tighter drop-shadow-2xl">
+            <h1 className="text-white text-3xl sm:text-5xl font-black italic leading-[0.9] tracking-tighter drop-shadow-2xl">
               {clinicData.name}
             </h1>
           </div>
@@ -221,7 +221,7 @@ export const ClinicDetails: React.FC = () => {
 
                       return (
                         <div key={category} className="space-y-6">
-                          <h3 className="text-xl font-black text-gray-900 uppercase italic flex items-center gap-3">
+                          <h3 className="text-xl font-black text-gray-900 italic flex items-center gap-3">
                             <span className="w-1.5 h-6 bg-lime-500 rounded-full" />
                             {category}
                           </h3>

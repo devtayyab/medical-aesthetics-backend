@@ -34,6 +34,7 @@ import { TreatmentCategory } from '../clinics/entities/treatment-category.entity
 
 import { BlogCategory, BlogPost } from '../clinics/entities/blog.entity';
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
+import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import { CrmModule } from '../crm/crm.module';
 import { Lead } from '../crm/entities/lead.entity';
@@ -55,6 +56,7 @@ import { AuditModule } from '../audit/audit.module';
       BlogCategory,
       BlogPost,
       AgentClinicAccess,
+      ClinicOwnership,
       Lead,
       Treatment,
       TreatmentCategory,

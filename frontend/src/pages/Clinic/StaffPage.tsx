@@ -316,7 +316,7 @@ const StaffCard = ({ member, onRemove, onViewSchedule }: any) => {
                                 <div className="size-1.5 bg-green-500 rounded-full" />
                             )}
                         </div>
-                        <h3 className="text-xl font-black uppercase italic tracking-tighter text-gray-900 leading-none truncate">
+                        <h3 className="text-xl font-black italic tracking-tighter text-gray-900 leading-none truncate">
                             {member.firstName} {member.lastName}
                         </h3>
                     </div>

@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsOptional,
   MinLength,
+  IsArray,
   IsPhoneNumber,
   IsObject,
 } from 'class-validator';
@@ -50,4 +51,9 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   assignedClinicId?: string;
+
+  @ApiProperty({ type: [String], example: ['uuid-clinic-1', 'uuid-clinic-2'], required: false })
+  @IsOptional()
+  @IsArray()
+  assignedClinicIds?: string[];
 }

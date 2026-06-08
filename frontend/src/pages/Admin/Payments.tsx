@@ -153,7 +153,7 @@ export const Payments: React.FC = () => {
 
             {/* Manual Record Modal */}
             {showManualModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
                     <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4">
                         <h2 className="text-xl font-bold text-gray-900 mb-6">New Manual Record</h2>
                         <form onSubmit={handleManualSubmit} className="space-y-4">
