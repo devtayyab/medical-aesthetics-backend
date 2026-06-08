@@ -126,6 +126,22 @@ export const SalesWeekCalendar: React.FC = () => {
         }
     }, [isDetailDrawerOpen, selectedApt?.clinicId]);
 
+    // Editing State for Service Details
+    const [isEditingService, setIsEditingService] = useState(false);
+    const [editPrice, setEditPrice] = useState<string>('');
+    const [editAdditionalServices, setEditAdditionalServices] = useState<any[]>([]);
+    const [allAvailableServices, setAllAvailableServices] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (availableClinics.length > 0 && allAvailableServices.length === 0) {
+            Promise.all(availableClinics.map(c => 
+                clinicsAPI.getServices(c.id).then(res => res.data.map((s: any) => ({ ...s, clinicName: c.name })))
+            )).then(results => {
+                setAllAvailableServices(results.flat());
+            }).catch(console.error);
+        }
+    }, [availableClinics]);
+
     // Fetch Base Clinic on Load
     useEffect(() => {
         const init = async () => {
@@ -1015,37 +1031,135 @@ export const SalesWeekCalendar: React.FC = () => {
 
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Service Details</p>
-                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex justify-between items-start gap-4">
-                                <div className="flex-1">
-                                    <p className="font-bold text-gray-900 leading-tight">
-                                        {selectedApt.serviceName || selectedApt.service?.treatment?.name || selectedApt.service?.name || 'Service'}
-                                        <span className="text-xs text-gray-500 block font-medium mt-0.5">{selectedApt.service?.durationMinutes || selectedApt.service?.duration || '–'} mins</span>
-                                    </p>
-                                    
-                                    {selectedApt.additionalServiceIds?.length > 0 && (
-                                        <div className="mt-2.5 pt-2 border-t border-gray-200/50 space-y-1.5">
-                                            {selectedApt.additionalServiceIds.map((id: string) => {
-                                                const srv = drawerServices.find(s => s.id === id);
-                                                return (
-                                                    <div key={id} className="flex justify-between items-center">
-                                                        <p className="font-bold text-gray-600 text-[11px] leading-tight flex-1">
-                                                            <span className="text-indigo-400 mr-1">+</span> {srv?.treatment?.name || srv?.name || 'Additional Service'}
-                                                            <span className="text-gray-400 font-medium ml-1">({srv?.durationMinutes || srv?.duration || '–'}m)</span>
-                                                        </p>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-lg font-black text-gray-900 leading-none">€{selectedApt.totalAmount ?? selectedApt.service?.price ?? '–'}</span>
-                                    {selectedApt.additionalServiceIds?.length > 0 && (
-                                        <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mt-1 bg-indigo-50 px-1.5 py-0.5 rounded">Total</span>
-                                    )}
-                                </div>
+                            <div className="flex justify-between items-center mb-2">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Service Details</p>
+                                <button onClick={() => {
+                                    if (!isEditingService) {
+                                        setEditPrice((selectedApt.totalAmount ?? selectedApt.service?.price ?? 0).toString());
+                                        const initialExtra = selectedApt.additionalServiceIds?.map((id: string) => 
+                                            allAvailableServices.find(s => s.id === id) || drawerServices.find(s => s.id === id) || { id, name: 'Loading...' }
+                                        ) || [];
+                                        setEditAdditionalServices(initialExtra);
+                                    }
+                                    setIsEditingService(!isEditingService);
+                                }} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase tracking-widest bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition-colors">
+                                    {isEditingService ? 'Cancel Edit' : 'Edit Services'}
+                                </button>
                             </div>
+                            
+                            {isEditingService ? (
+                                <div className="bg-white p-4 rounded-xl border-2 border-indigo-200 shadow-sm space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                                        <div>
+                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Primary Service</p>
+                                            <p className="font-bold text-gray-900 leading-tight mt-1">
+                                                {selectedApt.serviceName || selectedApt.service?.treatment?.name || selectedApt.service?.name || 'Service'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Additional Services (Any Clinic)</p>
+                                        <div className="space-y-2 mb-3">
+                                            {editAdditionalServices.map((srv, idx) => (
+                                                <div key={idx} className="flex justify-between items-center bg-gray-50 p-2.5 border border-gray-100 rounded-lg">
+                                                    <span className="text-xs font-bold text-gray-700 leading-none">
+                                                        {srv.treatment?.name || srv.name} 
+                                                        <span className="text-[9px] text-gray-400 ml-1">({srv.clinicName || 'Unknown'})</span>
+                                                    </span>
+                                                    <button onClick={() => setEditAdditionalServices(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 p-1 bg-white rounded shadow-sm border border-gray-100"><X size={12} /></button>
+                                                </div>
+                                            ))}
+                                            {editAdditionalServices.length === 0 && (
+                                                <p className="text-[10px] text-gray-400 font-medium italic">No additional services added.</p>
+                                            )}
+                                        </div>
+                                        <select
+                                            className="w-full text-xs p-2.5 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white shadow-sm focus:border-indigo-500 outline-none"
+                                            onChange={(e) => {
+                                                const srv = allAvailableServices.find(s => s.id === e.target.value);
+                                                if (srv && !editAdditionalServices.some(es => es.id === srv.id)) {
+                                                    setEditAdditionalServices([...editAdditionalServices, srv]);
+                                                }
+                                                e.target.value = "";
+                                            }}
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>+ Add Service from any clinic...</option>
+                                            {allAvailableServices.map(srv => (
+                                                <option key={srv.id} value={srv.id}>{srv.treatment?.name || srv.name} - €{srv.price} ({srv.clinicName})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-gray-100">
+                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1.5">Total Price Override (€)</label>
+                                        <input 
+                                            type="number" 
+                                            value={editPrice}
+                                            onChange={(e) => setEditPrice(e.target.value)}
+                                            className="w-full font-black text-lg p-2.5 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                                        />
+                                    </div>
+
+                                    <button 
+                                        onClick={async () => {
+                                            try {
+                                                const amt = parseFloat(editPrice) || 0;
+                                                const aids = editAdditionalServices.map(s => s.id);
+                                                await bookingAPI.updateAppointment(selectedApt.id, {
+                                                    totalAmount: amt,
+                                                    additionalServiceIds: aids
+                                                });
+                                                setIsEditingService(false);
+                                                dispatch(fetchClinicAppointments(currentFilters));
+                                                setSelectedApt({
+                                                    ...selectedApt, 
+                                                    totalAmount: amt,
+                                                    additionalServiceIds: aids
+                                                });
+                                            } catch (e) {
+                                                console.error(e);
+                                                alert("Failed to update services & price.");
+                                            }
+                                        }}
+                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-[10px] py-3 rounded-xl transition-all shadow-md mt-2"
+                                    >
+                                        Save Service Details
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex justify-between items-start gap-4">
+                                    <div className="flex-1">
+                                        <p className="font-bold text-gray-900 leading-tight">
+                                            {selectedApt.serviceName || selectedApt.service?.treatment?.name || selectedApt.service?.name || 'Service'}
+                                            <span className="text-xs text-gray-500 block font-medium mt-0.5">{selectedApt.service?.durationMinutes || selectedApt.service?.duration || '–'} mins</span>
+                                        </p>
+                                        
+                                        {selectedApt.additionalServiceIds?.length > 0 && (
+                                            <div className="mt-2.5 pt-2 border-t border-gray-200/50 space-y-1.5">
+                                                {selectedApt.additionalServiceIds.map((id: string) => {
+                                                    const srv = drawerServices.find(s => s.id === id) || allAvailableServices.find(s => s.id === id);
+                                                    return (
+                                                        <div key={id} className="flex justify-between items-center">
+                                                            <p className="font-bold text-gray-600 text-[11px] leading-tight flex-1">
+                                                                <span className="text-indigo-400 mr-1">+</span> {srv?.treatment?.name || srv?.name || 'Additional Service'}
+                                                                <span className="text-gray-400 font-medium ml-1">({srv?.durationMinutes || srv?.duration || '–'}m)</span>
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-lg font-black text-gray-900 leading-none">€{selectedApt.totalAmount ?? selectedApt.service?.price ?? '–'}</span>
+                                        {selectedApt.additionalServiceIds?.length > 0 && (
+                                            <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mt-1 bg-indigo-50 px-1.5 py-0.5 rounded">Total</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Rescheduling & Reassignment (Requirement 12c) */}
