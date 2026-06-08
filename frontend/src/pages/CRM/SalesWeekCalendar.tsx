@@ -36,6 +36,31 @@ const statusLabels: Record<string, { label: string, color: string, icon: any }> 
     COMPLETED: { label: 'Done', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: CheckCircle2 },
 };
 
+// Helper to reliably extract hour and minute in a specific timezone
+const getClinicLocalTime = (dateStr: string, timezone?: string) => {
+    const d = new Date(dateStr);
+    try {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone || 'Europe/Athens',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: false
+        });
+        const parts = formatter.formatToParts(d);
+        const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+        const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+        return { hour: hour === 24 ? 0 : hour, minute };
+    } catch (e) {
+        // Fallback to browser local if timezone is invalid
+        return { hour: d.getHours(), minute: d.getMinutes() };
+    }
+};
+
+const formatClinicTime = (dateStr: string, timezone?: string) => {
+    const { hour, minute } = getClinicLocalTime(dateStr, timezone);
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+};
+
 export const SalesWeekCalendar: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
@@ -550,9 +575,12 @@ export const SalesWeekCalendar: React.FC = () => {
                                     })}
 
                                     {appointments.filter(a => isSameDay(parseISO(a.startTime), day)).map(apt => {
+                                        const clinicTz = apt.clinic?.timezone || 'Europe/Athens';
+                                        const { hour: startHour, minute: startMinute } = getClinicLocalTime(apt.startTime, clinicTz);
+                                        const top = startHour * 64 + (startMinute / 60) * 64;
+                                        
                                         const start = parseISO(apt.startTime);
                                         const end = parseISO(apt.endTime);
-                                        const top = start.getHours() * 64 + (start.getMinutes() / 60) * 64;
                                         const durationHours = (end.getTime() - start.getTime()) / 3600000;
                                         const height = Math.max(durationHours * 64, 45); // Minimum height for visibility
                                         const normalizedStatus = (apt.status || 'PENDING').toUpperCase();
@@ -598,7 +626,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                                     <div className="flex justify-between items-start border-b border-gray-100 pb-2 mb-2">
                                                         <div className="flex items-center gap-1.5 text-indigo-600">
                                                             <Clock size={12} strokeWidth={3} />
-                                                            <span className="text-[10px] font-black">{format(start, 'HH:mm')} – {format(end, 'HH:mm')}</span>
+                                                            <span className="text-[10px] font-black">{formatClinicTime(apt.startTime, apt.clinic?.timezone)} – {formatClinicTime(apt.endTime, apt.clinic?.timezone)}</span>
                                                         </div>
                                                         <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${style.color.split(' ')[0]} ${style.color.split(' ')[1]}`}>{style.label}</span>
                                                     </div>
@@ -652,7 +680,7 @@ export const SalesWeekCalendar: React.FC = () => {
 
             {/* Appointment Creation Wizard Drawer - Minimal & Compact */}
             {isAddWizardOpen && (
-                <div className="fixed top-0 right-0 w-full sm:w-[450px] h-screen bg-white border-l border-slate-200 shadow-[-10px_0_50px_rgba(0,0,0,0.1)] flex flex-col z-[100] animate-in slide-in-from-right transition-all duration-300">
+                <div className="fixed top-0 right-0 w-full sm:w-[450px] h-screen bg-white border-l border-slate-200 shadow-[-10px_0_50px_rgba(0,0,0,0.1)] flex flex-col z-[1000] animate-in slide-in-from-right transition-all duration-300">
                     <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
                         <div className="flex flex-col">
                             <h2 className="text-lg font-black text-gray-900 leading-none">New Booking</h2>
@@ -944,7 +972,7 @@ export const SalesWeekCalendar: React.FC = () => {
 
             {/* Appointment Detail Drawer */}
             {isDetailDrawerOpen && selectedApt && (
-                <div className="fixed top-0 right-0 w-[400px] h-screen bg-white border-l border-gray-200 shadow-2xl flex flex-col z-[100] animate-in slide-in-from-right">
+                <div className="fixed top-0 right-0 w-[400px] h-screen bg-white border-l border-gray-200 shadow-2xl flex flex-col z-[1000] animate-in slide-in-from-right">
                     <div className="p-6 text-white bg-gradient-to-br from-slate-800 to-indigo-900">
                         <div className="flex justify-between items-start mb-4">
                             <h2 className="text-xl font-black text-white">{selectedApt.client?.firstName} {selectedApt.client?.lastName}</h2>
@@ -954,7 +982,7 @@ export const SalesWeekCalendar: React.FC = () => {
                             <Clock size={14} /> {format(new Date(selectedApt.startTime), 'EEEE, MMM do, yyyy')}
                         </div>
                         <div className="flex items-center gap-2 text-sm font-medium text-white/90 mt-1">
-                            <MapPin size={14} /> {format(new Date(selectedApt.startTime), 'HH:mm')} - {format(new Date(selectedApt.endTime), 'HH:mm')}
+                            <MapPin size={14} /> {formatClinicTime(selectedApt.startTime, selectedApt.clinic?.timezone)} - {formatClinicTime(selectedApt.endTime, selectedApt.clinic?.timezone)}
                         </div>
                         <div className="flex flex-col gap-1 mt-4 pt-4 border-t border-white/10">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Client Contact</p>
