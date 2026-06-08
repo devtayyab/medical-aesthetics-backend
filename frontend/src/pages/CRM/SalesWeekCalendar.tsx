@@ -115,6 +115,17 @@ export const SalesWeekCalendar: React.FC = () => {
     const [isWalkIn, setIsWalkIn] = useState(false);
     const [walkInForm, setWalkInForm] = useState({ firstName: '', lastName: '', phone: '' });
 
+    // Drawer Services
+    const [drawerServices, setDrawerServices] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (isDetailDrawerOpen && selectedApt?.clinicId) {
+            clinicsAPI.getServices(selectedApt.clinicId).then(res => {
+                setDrawerServices(res.data);
+            }).catch(console.error);
+        }
+    }, [isDetailDrawerOpen, selectedApt?.clinicId]);
+
     // Fetch Base Clinic on Load
     useEffect(() => {
         const init = async () => {
@@ -304,7 +315,8 @@ export const SalesWeekCalendar: React.FC = () => {
             await bookingAPI.createAppointment({
                 clientId: clientId!,
                 clinicId: wizardClinic.id,
-                serviceId: wizardServices[0].id, // For v1, handle principal service
+                serviceId: wizardServices[0].id,
+                additionalServiceIds: wizardServices.length > 1 ? wizardServices.slice(1).map(s => s.id) : undefined,
                 providerId: wizardProviderId || user?.id,
                 startTime: startDateTime.toISOString(),
                 endTime: endDateTime.toISOString(),
@@ -1004,12 +1016,35 @@ export const SalesWeekCalendar: React.FC = () => {
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Service Details</p>
-                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex justify-between items-center">
-                                <div>
-                                    <p className="font-bold text-gray-900">{selectedApt.serviceName || selectedApt.service?.treatment?.name || selectedApt.service?.name || 'Service'}</p>
-                                    <p className="text-xs text-gray-500">{selectedApt.service?.durationMinutes || selectedApt.service?.duration || '–'} mins</p>
+                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex justify-between items-start gap-4">
+                                <div className="flex-1">
+                                    <p className="font-bold text-gray-900 leading-tight">
+                                        {selectedApt.serviceName || selectedApt.service?.treatment?.name || selectedApt.service?.name || 'Service'}
+                                        <span className="text-xs text-gray-500 block font-medium mt-0.5">{selectedApt.service?.durationMinutes || selectedApt.service?.duration || '–'} mins</span>
+                                    </p>
+                                    
+                                    {selectedApt.additionalServiceIds?.length > 0 && (
+                                        <div className="mt-2.5 pt-2 border-t border-gray-200/50 space-y-1.5">
+                                            {selectedApt.additionalServiceIds.map((id: string) => {
+                                                const srv = drawerServices.find(s => s.id === id);
+                                                return (
+                                                    <div key={id} className="flex justify-between items-center">
+                                                        <p className="font-bold text-gray-600 text-[11px] leading-tight flex-1">
+                                                            <span className="text-indigo-400 mr-1">+</span> {srv?.treatment?.name || srv?.name || 'Additional Service'}
+                                                            <span className="text-gray-400 font-medium ml-1">({srv?.durationMinutes || srv?.duration || '–'}m)</span>
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
-                                <span className="text-lg font-black text-gray-900">€{selectedApt.service?.price ?? selectedApt.totalAmount ?? '–'}</span>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-lg font-black text-gray-900 leading-none">€{selectedApt.totalAmount ?? selectedApt.service?.price ?? '–'}</span>
+                                    {selectedApt.additionalServiceIds?.length > 0 && (
+                                        <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mt-1 bg-indigo-50 px-1.5 py-0.5 rounded">Total</span>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
