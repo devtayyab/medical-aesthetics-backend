@@ -84,7 +84,7 @@ export const ClinicMap: React.FC<ClinicMapProps> = ({
                 marker.bindPopup(`
           <div style="padding: 4px; min-width: 120px;">
             <h4 style="margin: 0 0 4px 0; font-weight: 800; font-size: 14px;">${clinic.name}</h4>
-            <p style="margin: 0 0 8px 0; font-size: 11px; color: #666;">${clinic.address.city}</p>
+            <p style="margin: 0 0 8px 0; font-size: 11px; color: #666;">${clinic.address?.city || ''}</p>
             <button id="popup-btn-${clinic.id}" style="width: 100%; padding: 6px; background: black; color: white; border-radius: 6px; font-weight: bold; font-size: 10px; cursor: pointer; border: none;">
               View Clinic
             </button>
