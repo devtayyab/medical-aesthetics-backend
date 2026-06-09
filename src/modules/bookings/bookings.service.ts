@@ -1439,20 +1439,17 @@ export class BookingsService {
     const newTotal = Number(savedAppointment.totalAmount ?? 0);
     const newAdvance = Number(savedAppointment.advancePaymentAmount ?? 0);
 
-    // Audit log: appointment completed + payment amount
     this.eventEmitter.emit('audit.log', {
       userId,
-      action: 'APPOINTMENT_COMPLETE_WITH_PAYMENT',
+      action: 'APPOINTMENT_COMPLETED',
       resource: 'appointments',
-      resourceId: appointmentId,
+      resourceId: savedAppointment.id,
       changes: {
         before: { status: oldStatus, totalAmount: oldTotal, advancePaymentAmount: oldAdvance },
-        after: { status: AppointmentStatus.COMPLETED, totalAmount: newTotal, advancePaymentAmount: newAdvance },
+        after: { status: savedAppointment.status, totalAmount: newTotal, advancePaymentAmount: newAdvance },
       },
       data: {
         appointmentId,
-        clientId: appointment.clientId,
-        clinicId: appointment.clinicId,
         paymentMethod: savedAppointment.paymentMethod,
         clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Guest',
         therapyName: appointment.service?.treatment?.name || 'Treatment'
@@ -1467,6 +1464,37 @@ export class BookingsService {
     });
 
     return savedAppointment;
+  }
+
+  async recordAppointmentPayment(
+    appointmentId: string,
+    amount: number,
+    method: string,
+    notes: string,
+    userId: string,
+  ): Promise<any> {
+    const appointment = await this.findById(appointmentId);
+    if (!appointment) throw new NotFoundException('Appointment not found');
+
+    // Normalize method to lowercase to match PaymentMethod enum (cash, card, pos, etc.)
+    const normalizedMethod = method?.toLowerCase() as any;
+
+    // Update totalAmount on appointment if paying in advance
+    await this.appointmentsRepository.update(appointmentId, {
+      paymentMethod: normalizedMethod,
+    });
+
+    return this.financialService.recordPayment({
+      appointmentId: appointment.id,
+      clinicId: appointment.clinicId,
+      clientId: appointment.clientId,
+      providerId: appointment.providerId,
+      amount: amount,
+      method: normalizedMethod,
+      notes: notes,
+      recordedById: userId,
+      type: PaymentType.PAYMENT
+    });
   }
 
   // RULE 7: Soft-delete an appointment (sets status = DELETED, voids revenue)

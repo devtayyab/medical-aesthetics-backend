@@ -200,6 +200,24 @@ export class BookingsController {
     return this.bookingsService.updateStatus(id, AppointmentStatus.COMPLETED, data, req.user?.id);
   }
 
+  @Post('appointments/:id/payment')
+  @ApiOperation({ summary: 'Record payment for an appointment without completing it' })
+  recordPayment(
+    @Param('id') id: string,
+    @Body() body: { amount: number; method: string; notes?: string },
+    @Request() req,
+  ) {
+    return this.bookingsService.recordAppointmentPayment(id, body.amount, body.method, body.notes || '', req.user.id);
+  }
+
+  @Post('appointments/:id/payment-url')
+  @ApiOperation({ summary: 'Generate Viva Wallet payment URL for an existing appointment (card payment)' })
+  async generatePaymentUrl(@Param('id') id: string) {
+    const appointment = await this.bookingsService.findById(id);
+    const redirectUrl = await this.bookingsService.generateVivaPaymentUrl(appointment);
+    return { redirectUrl };
+  }
+
   @Patch('appointments/:id/status')
   @ApiOperation({ summary: 'Update appointment status' })
   updateStatus(
