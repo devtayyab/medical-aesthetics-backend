@@ -19,6 +19,7 @@ import {
     setSelectedTimeSlot,
     addService,
     clearBooking,
+    recordAppointmentPayment,
 } from '@/store/slices/bookingSlice';
 import { fetchAvailability } from '@/store/slices/clinicSlice';
 import { fetchLeads, createLead } from '@/store/slices/crmSlice';
@@ -363,36 +364,99 @@ export const SalesWeekCalendar: React.FC = () => {
         dispatch(fetchClinicAppointments(currentFilters));
     };
 
+    const handleRecordPayment = async () => {
+        if (!selectedApt) return;
+        try {
+            const amountValue = parseFloat(paymentAmt) || calculateAptTotal(selectedApt);
+            await dispatch(recordAppointmentPayment({
+                id: selectedApt.id,
+                data: {
+                    amount: amountValue,
+                    method: 'cash',  // 'venue' is not a DB enum — use cash as proxy for pay-at-venue
+                    notes: 'Pay at Venue — client will pay on arrival'
+                }
+            })).unwrap();
+            setIsPaymentPrompt(false);
+            setIsDetailDrawerOpen(false);
+            dispatch(fetchClinicAppointments(currentFilters));
+            toast.success("Confirmed — client will pay at venue!");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to record. Please verify connection.");
+        }
+    };
+
+    const handleCardPayment = async () => {
+        if (!selectedApt) return;
+        try {
+            const loadingToast = toast.loading('Generating secure payment link...');
+            const res = await bookingAPI.generatePaymentUrl(selectedApt.id);
+            toast.dismiss(loadingToast);
+            if (res.data?.redirectUrl) {
+                window.open(res.data.redirectUrl, '_blank');
+            } else {
+                toast.error('Payment link not available. Please check Viva Wallet credentials in backend .env');
+            }
+        } catch (err: any) {
+            toast.dismiss();
+            const isCredsMissing = err?.response?.status === 500;
+            if (isCredsMissing) {
+                toast.error(
+                    'Card payment unavailable — Viva Wallet is not configured. Use "Pay at Venue" or "Cash" instead.',
+                    { duration: 6000 }
+                );
+            } else {
+                toast.error('Failed to generate payment link. Please try again.');
+            }
+            console.error(err);
+        }
+    };
+
     const handleCompletePayment = async () => {
         if (!selectedApt) return;
         try {
-            const amountValue = parseFloat(paymentAmt) || 0;
+            const amountValue = parseFloat(paymentAmt) || calculateAptTotal(selectedApt);
             await dispatch(completeAppointment({
                 id: selectedApt.id,
                 data: {
                     amountPaid: amountValue,
                     totalAmount: amountValue,
-                    paymentMethod: paymentMethod.toUpperCase(),
+                    paymentMethod: 'cash',  // Cash collected in person — always lowercase for DB enum
                     serviceExecuted: true,
                     treatmentDetails: {
                         patientCame: true,
-                        notes: 'Checkout confirmed via Sales Calendar'
+                        notes: 'Cash collected via Sales Calendar'
                     }
                 }
             })).unwrap();
             setIsPaymentPrompt(false);
             setIsDetailDrawerOpen(false);
             dispatch(fetchClinicAppointments(currentFilters));
+            toast.success("Cash collected — appointment completed!");
         } catch (err) {
             console.error(err);
-            alert("Checkout incomplete. Please verify amount and connection.");
+            toast.error("Checkout incomplete. Please verify amount and connection.");
         }
+    };
+
+    const calculateAptTotal = (apt: any) => {
+        if (apt.totalAmount != null && !isNaN(parseFloat(apt.totalAmount)) && parseFloat(apt.totalAmount) > 0) {
+            return parseFloat(apt.totalAmount);
+        }
+        let total = parseFloat(apt.service?.price) || 0;
+        if (apt.additionalServiceIds?.length > 0) {
+            apt.additionalServiceIds.forEach((id: string) => {
+                const srv = allAvailableServices.find(s => s.id === id) || drawerServices.find(s => s.id === id);
+                if (srv) total += parseFloat(srv.price) || 0;
+            });
+        }
+        return total;
     };
 
     const openAptDetails = (apt: any) => {
         setSelectedApt(apt);
         setIsPaymentPrompt(false);
-        setPaymentAmt(apt.service?.price?.toString() || '');
+        setPaymentAmt(calculateAptTotal(apt).toString() || '');
         setIsDetailDrawerOpen(true);
     };
 
@@ -1034,7 +1098,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Service Details</p>
                                 <button onClick={() => {
                                     if (!isEditingService) {
-                                        setEditPrice((selectedApt.totalAmount ?? selectedApt.service?.price ?? 0).toString());
+                                        setEditPrice(calculateAptTotal(selectedApt).toFixed(2));
                                         const mainSrv = allAvailableServices.find(s => s.id === selectedApt.serviceId) || drawerServices.find(s => s.id === selectedApt.serviceId) || selectedApt.service;
                                         const initialExtra = selectedApt.additionalServiceIds?.map((id: string) => 
                                             allAvailableServices.find(s => s.id === id) || drawerServices.find(s => s.id === id) || { id, name: 'Loading...' }
@@ -1074,11 +1138,11 @@ export const SalesWeekCalendar: React.FC = () => {
                                         <select
                                             className="w-full text-xs p-2.5 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white shadow-sm focus:border-indigo-500 outline-none"
                                             onChange={(e) => {
-                                                const srv = allAvailableServices.find(s => s.id === e.target.value);
-                                                if (srv && !editServices.some(es => es.id === srv.id)) {
-                                                    setEditServices([...editServices, srv]);
-                                                    const currentTotal = parseFloat(editPrice) || 0;
-                                                    setEditPrice((currentTotal + (parseFloat(srv.price) || 0)).toFixed(2));
+                                                const srv = allAvailableServices.find(s => s.id === e.target.value) || drawerServices.find(s => s.id === e.target.value);
+                                                if (srv) {
+                                                    const updatedServices = [...editServices, srv];
+                                                    setEditServices(updatedServices);
+                                                    setEditPrice(updatedServices.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0).toFixed(2));
                                                 }
                                                 e.target.value = "";
                                             }}
@@ -1160,7 +1224,7 @@ export const SalesWeekCalendar: React.FC = () => {
                                         )}
                                     </div>
                                     <div className="flex flex-col items-end">
-                                        <span className="text-lg font-black text-gray-900 leading-none">€{selectedApt.totalAmount ?? selectedApt.service?.price ?? '–'}</span>
+                                        <span className="text-lg font-black text-gray-900 leading-none">€{calculateAptTotal(selectedApt).toFixed(2)}</span>
                                         {selectedApt.additionalServiceIds?.length > 0 && (
                                             <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mt-1 bg-indigo-50 px-1.5 py-0.5 rounded">Total</span>
                                         )}
@@ -1262,34 +1326,53 @@ export const SalesWeekCalendar: React.FC = () => {
                             </select>
                         </div>
 
-                        {(selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED' || isPaymentPrompt) && (
+                        {['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(selectedApt.status) && (
                             <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl space-y-4 animate-in fade-in">
                                 <div className="flex items-center gap-2 text-emerald-800">
-                                    <CreditCard size={18} /> <h3 className="font-black">{(selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED') ? 'Financial Record' : 'Capture Payment'}</h3>
+                                    <CreditCard size={18} /> <h3 className="font-black">Collect Payment</h3>
                                 </div>
+
+                                {/* Amount */}
                                 <div>
                                     <label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Amount (€)</label>
                                     <input
                                         type="number"
-                                        value={paymentAmt}
+                                        value={paymentAmt || calculateAptTotal(selectedApt).toFixed(2)}
                                         onChange={e => setPaymentAmt(e.target.value)}
                                         className="w-full mt-1 p-3 border border-emerald-200 rounded-xl text-emerald-900 font-black focus:bg-white outline-none shadow-inner"
                                     />
                                 </div>
-                                <div className="flex gap-2">
-                                    {(['cash', 'card'] as const).map(m => (
-                                        <button
-                                            key={m}
-                                            onClick={() => setPaymentMethod(m)}
-                                            className={`flex-1 py-3 text-[10px] font-black rounded-xl uppercase tracking-widest transition-all ${paymentMethod === m ? 'bg-emerald-600 text-white shadow-lg' : 'bg-white text-emerald-600 border border-emerald-100'}`}
-                                        >
-                                            {m}
-                                        </button>
-                                    ))}
+
+                                {/* Two big payment option buttons */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    {/* Card → Viva Wallet */}
+                                    <button
+                                        onClick={handleCardPayment}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-indigo-200 bg-white hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
+                                    >
+                                        <CreditCard size={22} className="text-indigo-500 group-hover:text-indigo-700" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Card</span>
+                                        <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Redirect to Viva Wallet</span>
+                                    </button>
+
+                                    {/* Pay at Venue */}
+                                    <button
+                                        onClick={handleRecordPayment}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-200 bg-white hover:border-emerald-500 hover:bg-emerald-50 transition-all group"
+                                    >
+                                        <MapPin size={22} className="text-emerald-500 group-hover:text-emerald-700" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Pay at Venue</span>
+                                        <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Confirm & stay pending</span>
+                                    </button>
                                 </div>
-                                <Button onClick={handleCompletePayment} className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg uppercase text-[10px] tracking-widest">
-                                    {(selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED') ? 'Update Amount' : 'Confirm & Collect'}
-                                </Button>
+
+                                {/* Complete + collect cash */}
+                                <button
+                                    onClick={handleCompletePayment}
+                                    className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest shadow-md transition-all"
+                                >
+                                    Cash — Collect & Complete
+                                </button>
                             </div>
                         )}
 

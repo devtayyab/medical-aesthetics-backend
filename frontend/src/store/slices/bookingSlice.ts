@@ -121,6 +121,14 @@ export const completeAppointment = createAsyncThunk(
   }
 );
 
+export const recordAppointmentPayment = createAsyncThunk(
+  'booking/recordPayment',
+  async (params: { id: string; data: { amount: number; method: string; notes?: string } }) => {
+    const response = await bookingAPI.recordPayment(params.id, params.data);
+    return response.data;
+  }
+);
+
 export const updateAppointmentStatus = createAsyncThunk(
   'booking/updateStatus',
   async (data: { id: string; status: string }) => {

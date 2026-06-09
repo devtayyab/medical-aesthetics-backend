@@ -278,6 +278,10 @@ export const bookingAPI = {
   getAppointment: (id: string) => api.get(`/appointments/${id}`),
   getClinicAppointments: (params: { clinicId?: string; date?: string; providerId?: string; status?: string }) =>
     api.get("/appointments/clinic", { params }),
+  recordPayment: (id: string, data: { amount: number; method: string; notes?: string }) =>
+    api.post(`/appointments/${id}/payment`, data),
+  generatePaymentUrl: (id: string) =>
+    api.post(`/appointments/${id}/payment-url`),
   reschedule: (id: string, startTime: string, endTime: string, notes?: string) =>
     api.patch(`/appointments/${id}/reschedule`, { startTime, endTime, notes }),
   cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
