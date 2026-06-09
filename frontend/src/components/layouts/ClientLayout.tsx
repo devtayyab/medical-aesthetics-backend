@@ -19,8 +19,11 @@ const navContainer = css`
   background: white;
   border-bottom: 1px solid #f1f5f9;
   position: sticky;
-  top: 0;
-  z-index: 1000;
+  top: 72px;
+  @media (min-width: 768px) {
+    top: 88px;
+  }
+  z-index: 990;
   overflow: hidden; /* Prevent horizontal scrolling */
 `;
 

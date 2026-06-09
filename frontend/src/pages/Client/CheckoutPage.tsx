@@ -127,7 +127,7 @@ export const CheckoutPage: React.FC = () => {
                 providerId: selectedTimeSlot?.providerId || undefined,
                 startTime: selectedTimeSlot.startTime,
                 endTime: selectedTimeSlot.endTime,
-                status: 'confirmed',
+                status: 'PENDING',
                 paymentMethod,
                 clientDetails: formData,
                 holdId
@@ -135,7 +135,7 @@ export const CheckoutPage: React.FC = () => {
 
             const result = await dispatch(createAppointment(appointmentData));
             if (result.meta.requestStatus === 'fulfilled') {
-                const payload = result.payload as any;
+                const payload = { ...(result.payload as any) };
 
                 if (payload.redirectUrl) {
                     window.location.href = payload.redirectUrl;
