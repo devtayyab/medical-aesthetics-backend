@@ -335,7 +335,7 @@ export const SalesWeekCalendar: React.FC = () => {
                 providerId: wizardProviderId || user?.id,
                 startTime: startDateTime.toISOString(),
                 endTime: endDateTime.toISOString(),
-                status: 'CONFIRMED',
+                status: 'PENDING',
                 bookedById: user?.id
             });
 

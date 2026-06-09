@@ -127,7 +127,7 @@ export const CheckoutPage: React.FC = () => {
                 providerId: selectedTimeSlot?.providerId || undefined,
                 startTime: selectedTimeSlot.startTime,
                 endTime: selectedTimeSlot.endTime,
-                status: 'confirmed',
+                status: 'PENDING',
                 paymentMethod,
                 clientDetails: formData,
                 holdId

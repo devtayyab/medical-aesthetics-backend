@@ -229,7 +229,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
                     return dt.toISOString();
                 })(),
                 notes,
-                status: initialAppointment?.status || 'CONFIRMED',
+                status: initialAppointment?.status || 'PENDING',
                 providerId: selectedSlot.providerId || (user?.role === 'salesperson' ? user.id : undefined),
                 clientDetails: {
                     fullName: finalCustomerName || 'Unknown',
