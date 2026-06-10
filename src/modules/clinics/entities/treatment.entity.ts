@@ -32,7 +32,7 @@ export class Treatment {
     @Column({ nullable: true })
     categoryId: string;
 
-    @ManyToOne(() => TreatmentCategory, (cat) => cat.treatments)
+    @ManyToOne(() => TreatmentCategory, (cat) => cat.treatments, { onDelete: 'SET NULL', nullable: true })
     @JoinColumn({ name: 'categoryId' })
     categoryRef: TreatmentCategory;
 
