@@ -1,144 +1,59 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
+/**
+ * SAFE migration: only fixes treatments.categoryId FK to ON DELETE SET NULL.
+ * Uses IF EXISTS to avoid failure if constraint names differ between environments.
+ */
 export class FixTreatmentCategoryFkSetNull1781089608736 implements MigrationInterface {
     name = 'FixTreatmentCategoryFkSetNull1781089608736'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "crm_actions" DROP CONSTRAINT "FK_crm_actions_customerId_customer_records"`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" DROP CONSTRAINT "FK_93709c58c059deb44c944a304a5"`);
-        await queryRunner.query(`ALTER TABLE "treatment_categories" DROP CONSTRAINT "FK_treatment_categories_parent"`);
-        await queryRunner.query(`ALTER TABLE "treatments" DROP CONSTRAINT "FK_3aafcf1717078787eebc1da8654"`);
-        await queryRunner.query(`ALTER TABLE "appointments" DROP CONSTRAINT "FK_appointments_representativeId"`);
-        await queryRunner.query(`ALTER TABLE "appointments" DROP CONSTRAINT "FK_appointments_executedById"`);
-        await queryRunner.query(`ALTER TABLE "appointments" DROP CONSTRAINT "FK_appointments_bookedById"`);
-        await queryRunner.query(`ALTER TABLE "appointments" DROP CONSTRAINT "FK_appointments_noShowMarkedById"`);
-        await queryRunner.query(`ALTER TABLE "appointments" DROP CONSTRAINT "FK_appointments_cancelledById"`);
-        await queryRunner.query(`ALTER TABLE "reviews" DROP CONSTRAINT "FK_reviews_approvedBy"`);
-        await queryRunner.query(`ALTER TABLE "audit_logs" DROP CONSTRAINT "FK_audit_logs_user"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_clinic_ownership_clinicId"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_clinic_ownership_ownerUserId"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_clinic_ownership"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP COLUMN "id"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP COLUMN "visibilityScope"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD "id" uuid NOT NULL DEFAULT uuid_generate_v4()`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_41f06efcca2c710484cbaf9a3fa" PRIMARY KEY ("id")`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD "visibilityScope" character varying(20) NOT NULL DEFAULT 'private'`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_41f06efcca2c710484cbaf9a3fa"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_e26a76e79f9466eec50d901647f" PRIMARY KEY ("clinicId", "ownerUserId")`);
-        await queryRunner.query(`ALTER TYPE "public"."communication_logs_type_enum" RENAME TO "communication_logs_type_enum_old"`);
-        await queryRunner.query(`CREATE TYPE "public"."communication_logs_type_enum" AS ENUM('call', 'email', 'sms', 'whatsapp', 'meeting', 'note')`);
-        await queryRunner.query(`ALTER TABLE "communication_logs" ALTER COLUMN "type" TYPE "public"."communication_logs_type_enum" USING "type"::"text"::"public"."communication_logs_type_enum"`);
-        await queryRunner.query(`DROP TYPE "public"."communication_logs_type_enum_old"`);
-        await queryRunner.query(`ALTER TYPE "public"."communication_logs_direction_enum" RENAME TO "communication_logs_direction_enum_old"`);
-        await queryRunner.query(`CREATE TYPE "public"."communication_logs_direction_enum" AS ENUM('outgoing', 'incoming', 'missed')`);
-        await queryRunner.query(`ALTER TABLE "communication_logs" ALTER COLUMN "direction" TYPE "public"."communication_logs_direction_enum" USING "direction"::"text"::"public"."communication_logs_direction_enum"`);
-        await queryRunner.query(`DROP TYPE "public"."communication_logs_direction_enum_old"`);
-        await queryRunner.query(`ALTER TYPE "public"."communication_logs_status_enum" RENAME TO "communication_logs_status_enum_old"`);
-        await queryRunner.query(`CREATE TYPE "public"."communication_logs_status_enum" AS ENUM('completed', 'missed', 'no_answer', 'voicemail', 'scheduled', 'cancelled')`);
-        await queryRunner.query(`ALTER TABLE "communication_logs" ALTER COLUMN "status" DROP DEFAULT`);
-        await queryRunner.query(`ALTER TABLE "communication_logs" ALTER COLUMN "status" TYPE "public"."communication_logs_status_enum" USING "status"::"text"::"public"."communication_logs_status_enum"`);
-        await queryRunner.query(`ALTER TABLE "communication_logs" ALTER COLUMN "status" SET DEFAULT 'completed'`);
-        await queryRunner.query(`DROP TYPE "public"."communication_logs_status_enum_old"`);
-        await queryRunner.query(`ALTER TYPE "public"."crm_actions_actiontype_enum" RENAME TO "crm_actions_actiontype_enum_old"`);
-        await queryRunner.query(`CREATE TYPE "public"."crm_actions_actiontype_enum" AS ENUM('call', 'mobile_message', 'follow_up_call', 'email', 'appointment', 'confirmation_call_reminder', 'satisfaction_check', 'complaint')`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" ALTER COLUMN "actionType" TYPE "public"."crm_actions_actiontype_enum" USING "actionType"::"text"::"public"."crm_actions_actiontype_enum"`);
-        await queryRunner.query(`DROP TYPE "public"."crm_actions_actiontype_enum_old"`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" DROP COLUMN "callOutcome"`);
-        await queryRunner.query(`DROP TYPE "public"."crm_actions_calloutcome_enum"`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" ADD "callOutcome" text`);
-        await queryRunner.query(`COMMENT ON COLUMN "appointments"."additionalServiceIds" IS NULL`);
-        await queryRunner.query(`ALTER TABLE "appointments" ALTER COLUMN "status" SET DEFAULT 'PENDING'`);
-        await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "phone" SET NOT NULL`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_0c0b6c57cd2c744c0b92225ee45"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_caf8d48efdd644e5384d982b63f" PRIMARY KEY ("ownerUserId", "id")`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_caf8d48efdd644e5384d982b63f"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_41f06efcca2c710484cbaf9a3fa" PRIMARY KEY ("id")`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_41f06efcca2c710484cbaf9a3fa"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_80f61b508fa9ebbf61be25504ee" PRIMARY KEY ("id", "clinicId")`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_80f61b508fa9ebbf61be25504ee"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_0c0b6c57cd2c744c0b92225ee45" PRIMARY KEY ("clinicId", "id", "ownerUserId")`);
-        await queryRunner.query(`CREATE INDEX "IDX_b0d8682af476e6bd824ba3543b" ON "clinic_ownership" ("clinicId") `);
-        await queryRunner.query(`CREATE INDEX "IDX_996abffc3834d442d1f4f3580f" ON "clinic_ownership" ("ownerUserId") `);
-        await queryRunner.query(`ALTER TABLE "crm_actions" ADD CONSTRAINT "FK_0d50d9c8f5727b366a284104b71" FOREIGN KEY ("customerId") REFERENCES "customer_records"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" ADD CONSTRAINT "FK_93709c58c059deb44c944a304a5" FOREIGN KEY ("relatedLeadId") REFERENCES "leads"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "treatment_categories" ADD CONSTRAINT "FK_38fea7b4ec32856b3afc4860284" FOREIGN KEY ("parentId") REFERENCES "treatment_categories"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "treatments" ADD CONSTRAINT "FK_3aafcf1717078787eebc1da8654" FOREIGN KEY ("categoryId") REFERENCES "treatment_categories"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "appointments" ADD CONSTRAINT "FK_d03b8b3c36dd9407fd2604870a2" FOREIGN KEY ("cancelledById") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "appointments" ADD CONSTRAINT "FK_16a710470cfd4e2b6b52bc1f69b" FOREIGN KEY ("noShowMarkedById") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "appointments" ADD CONSTRAINT "FK_1d998628664189c343977d0fac4" FOREIGN KEY ("executedById") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "appointments" ADD CONSTRAINT "FK_8265aff007bfc11e76f0a092e64" FOREIGN KEY ("representativeId") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "audit_logs" ADD CONSTRAINT "FK_cfa83f61e4d27a87fcae1e025ab" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "FK_b0d8682af476e6bd824ba3543ba" FOREIGN KEY ("clinicId") REFERENCES "clinics"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "FK_996abffc3834d442d1f4f3580f3" FOREIGN KEY ("ownerUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
+        // Drop ALL existing FKs on treatments.categoryId regardless of their auto-generated name
+        await queryRunner.query(`
+            DO $$
+            DECLARE
+                r RECORD;
+            BEGIN
+                FOR r IN
+                    SELECT tc.constraint_name
+                    FROM information_schema.table_constraints AS tc
+                    JOIN information_schema.key_column_usage AS kcu
+                        ON tc.constraint_name = kcu.constraint_name
+                        AND tc.table_schema = kcu.table_schema
+                    WHERE tc.table_schema = 'public'
+                      AND tc.table_name = 'treatments'
+                      AND tc.constraint_type = 'FOREIGN KEY'
+                      AND kcu.column_name = 'categoryId'
+                LOOP
+                    EXECUTE 'ALTER TABLE treatments DROP CONSTRAINT ' || quote_ident(r.constraint_name);
+                END LOOP;
+            END
+            $$;
+        `);
+
+        // Re-add the FK with ON DELETE SET NULL
+        await queryRunner.query(`
+            ALTER TABLE "treatments"
+            ADD CONSTRAINT "FK_treatments_categoryId_set_null"
+            FOREIGN KEY ("categoryId")
+            REFERENCES "treatment_categories"("id")
+            ON DELETE SET NULL
+            ON UPDATE NO ACTION;
+        `);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "FK_996abffc3834d442d1f4f3580f3"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "FK_b0d8682af476e6bd824ba3543ba"`);
-        await queryRunner.query(`ALTER TABLE "audit_logs" DROP CONSTRAINT "FK_cfa83f61e4d27a87fcae1e025ab"`);
-        await queryRunner.query(`ALTER TABLE "appointments" DROP CONSTRAINT "FK_8265aff007bfc11e76f0a092e64"`);
-        await queryRunner.query(`ALTER TABLE "appointments" DROP CONSTRAINT "FK_1d998628664189c343977d0fac4"`);
-        await queryRunner.query(`ALTER TABLE "appointments" DROP CONSTRAINT "FK_16a710470cfd4e2b6b52bc1f69b"`);
-        await queryRunner.query(`ALTER TABLE "appointments" DROP CONSTRAINT "FK_d03b8b3c36dd9407fd2604870a2"`);
-        await queryRunner.query(`ALTER TABLE "treatments" DROP CONSTRAINT "FK_3aafcf1717078787eebc1da8654"`);
-        await queryRunner.query(`ALTER TABLE "treatment_categories" DROP CONSTRAINT "FK_38fea7b4ec32856b3afc4860284"`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" DROP CONSTRAINT "FK_93709c58c059deb44c944a304a5"`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" DROP CONSTRAINT "FK_0d50d9c8f5727b366a284104b71"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_996abffc3834d442d1f4f3580f"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_b0d8682af476e6bd824ba3543b"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_0c0b6c57cd2c744c0b92225ee45"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_80f61b508fa9ebbf61be25504ee" PRIMARY KEY ("clinicId", "id")`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_80f61b508fa9ebbf61be25504ee"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_41f06efcca2c710484cbaf9a3fa" PRIMARY KEY ("id")`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_41f06efcca2c710484cbaf9a3fa"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_caf8d48efdd644e5384d982b63f" PRIMARY KEY ("ownerUserId", "id")`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_caf8d48efdd644e5384d982b63f"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_0c0b6c57cd2c744c0b92225ee45" PRIMARY KEY ("clinicId", "ownerUserId", "id")`);
-        await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "phone" DROP NOT NULL`);
-        await queryRunner.query(`ALTER TABLE "appointments" ALTER COLUMN "status" SET DEFAULT 'pending'`);
-        await queryRunner.query(`COMMENT ON COLUMN "appointments"."additionalServiceIds" IS 'List of extra services included in this appointment'`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" DROP COLUMN "callOutcome"`);
-        await queryRunner.query(`CREATE TYPE "public"."crm_actions_calloutcome_enum" AS ENUM('failed', 'pending', 'successful')`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" ADD "callOutcome" "public"."crm_actions_calloutcome_enum"`);
-        await queryRunner.query(`CREATE TYPE "public"."crm_actions_actiontype_enum_old" AS ENUM('appointment', 'call', 'confirmation_call_reminder', 'email', 'follow_up', 'follow_up_call', 'mobile_message', 'phone_call')`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" ALTER COLUMN "actionType" TYPE "public"."crm_actions_actiontype_enum_old" USING "actionType"::"text"::"public"."crm_actions_actiontype_enum_old"`);
-        await queryRunner.query(`DROP TYPE "public"."crm_actions_actiontype_enum"`);
-        await queryRunner.query(`ALTER TYPE "public"."crm_actions_actiontype_enum_old" RENAME TO "crm_actions_actiontype_enum"`);
-        await queryRunner.query(`CREATE TYPE "public"."communication_logs_status_enum_old" AS ENUM('cancelled', 'completed', 'missed', 'no_answer', 'scheduled', 'voicemail')`);
-        await queryRunner.query(`ALTER TABLE "communication_logs" ALTER COLUMN "status" DROP DEFAULT`);
-        await queryRunner.query(`ALTER TABLE "communication_logs" ALTER COLUMN "status" TYPE "public"."communication_logs_status_enum_old" USING "status"::"text"::"public"."communication_logs_status_enum_old"`);
-        await queryRunner.query(`ALTER TABLE "communication_logs" ALTER COLUMN "status" SET DEFAULT 'completed'`);
-        await queryRunner.query(`DROP TYPE "public"."communication_logs_status_enum"`);
-        await queryRunner.query(`ALTER TYPE "public"."communication_logs_status_enum_old" RENAME TO "communication_logs_status_enum"`);
-        await queryRunner.query(`CREATE TYPE "public"."communication_logs_direction_enum_old" AS ENUM('incoming', 'missed', 'outgoing')`);
-        await queryRunner.query(`ALTER TABLE "communication_logs" ALTER COLUMN "direction" TYPE "public"."communication_logs_direction_enum_old" USING "direction"::"text"::"public"."communication_logs_direction_enum_old"`);
-        await queryRunner.query(`DROP TYPE "public"."communication_logs_direction_enum"`);
-        await queryRunner.query(`ALTER TYPE "public"."communication_logs_direction_enum_old" RENAME TO "communication_logs_direction_enum"`);
-        await queryRunner.query(`CREATE TYPE "public"."communication_logs_type_enum_old" AS ENUM('call', 'email', 'meeting', 'note', 'sms', 'whatsapp')`);
-        await queryRunner.query(`ALTER TABLE "communication_logs" ALTER COLUMN "type" TYPE "public"."communication_logs_type_enum_old" USING "type"::"text"::"public"."communication_logs_type_enum_old"`);
-        await queryRunner.query(`DROP TYPE "public"."communication_logs_type_enum"`);
-        await queryRunner.query(`ALTER TYPE "public"."communication_logs_type_enum_old" RENAME TO "communication_logs_type_enum"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_e26a76e79f9466eec50d901647f"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_41f06efcca2c710484cbaf9a3fa" PRIMARY KEY ("id")`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP COLUMN "visibilityScope"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP CONSTRAINT "PK_41f06efcca2c710484cbaf9a3fa"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" DROP COLUMN "id"`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD "visibilityScope" character varying(20) NOT NULL DEFAULT 'private'`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD "id" uuid NOT NULL DEFAULT uuid_generate_v4()`);
-        await queryRunner.query(`ALTER TABLE "clinic_ownership" ADD CONSTRAINT "PK_clinic_ownership" PRIMARY KEY ("id")`);
-        await queryRunner.query(`CREATE INDEX "IDX_clinic_ownership_ownerUserId" ON "clinic_ownership" ("ownerUserId") `);
-        await queryRunner.query(`CREATE INDEX "IDX_clinic_ownership_clinicId" ON "clinic_ownership" ("clinicId") `);
-        await queryRunner.query(`ALTER TABLE "audit_logs" ADD CONSTRAINT "FK_audit_logs_user" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "reviews" ADD CONSTRAINT "FK_reviews_approvedBy" FOREIGN KEY ("approvedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "appointments" ADD CONSTRAINT "FK_appointments_cancelledById" FOREIGN KEY ("cancelledById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "appointments" ADD CONSTRAINT "FK_appointments_noShowMarkedById" FOREIGN KEY ("noShowMarkedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "appointments" ADD CONSTRAINT "FK_appointments_bookedById" FOREIGN KEY ("bookedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "appointments" ADD CONSTRAINT "FK_appointments_executedById" FOREIGN KEY ("executedById") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "appointments" ADD CONSTRAINT "FK_appointments_representativeId" FOREIGN KEY ("representativeId") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "treatments" ADD CONSTRAINT "FK_3aafcf1717078787eebc1da8654" FOREIGN KEY ("categoryId") REFERENCES "treatment_categories"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "treatment_categories" ADD CONSTRAINT "FK_treatment_categories_parent" FOREIGN KEY ("parentId") REFERENCES "treatment_categories"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" ADD CONSTRAINT "FK_93709c58c059deb44c944a304a5" FOREIGN KEY ("relatedLeadId") REFERENCES "leads"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "crm_actions" ADD CONSTRAINT "FK_crm_actions_customerId_customer_records" FOREIGN KEY ("customerId") REFERENCES "customer_records"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-    }
+        await queryRunner.query(`
+            ALTER TABLE "treatments" DROP CONSTRAINT IF EXISTS "FK_treatments_categoryId_set_null";
+        `);
 
+        await queryRunner.query(`
+            ALTER TABLE "treatments"
+            ADD CONSTRAINT "FK_treatments_categoryId_set_null"
+            FOREIGN KEY ("categoryId")
+            REFERENCES "treatment_categories"("id")
+            ON DELETE NO ACTION
+            ON UPDATE NO ACTION;
+        `);
+    }
 }
