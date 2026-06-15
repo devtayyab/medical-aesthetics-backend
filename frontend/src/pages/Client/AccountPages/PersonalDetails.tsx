@@ -47,7 +47,10 @@ const glassCard = css`
   border-radius: 40px;
   box-shadow: 0 20px 80px rgba(0, 0, 0, 0.05);
   border: 1px solid #F1F5F9;
-  padding: 48px;
+  padding: 32px;
+  @media (min-width: 640px) {
+    padding: 48px;
+  }
   width: 100%;
   max-width: 1000px;
   margin: -120px auto 40px;
@@ -186,7 +189,7 @@ export const PersonalDetails: React.FC = () => {
           />
         </div>
 
-        <div className="container mx-auto px-8 relative z-10">
+        <div className="container mx-auto px-4 sm:px-8 relative z-10">
           <div className="max-w-2xl">
             <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] italic">
               <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
@@ -194,7 +197,7 @@ export const PersonalDetails: React.FC = () => {
               <span className="text-lime-500">PROFILE MANAGEMENT</span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-tight text-gray-900">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-tight text-gray-900">
               PERSONAL <span className="text-[#CBFF38]">DETAILS</span>
             </h1>
 
@@ -206,7 +209,7 @@ export const PersonalDetails: React.FC = () => {
       </div>
 
       {/* Details Card */}
-      <div className="px-8">
+      <div className="px-4 sm:px-8">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -215,11 +218,11 @@ export const PersonalDetails: React.FC = () => {
           <form onSubmit={handleSave}>
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12 pb-8 border-b border-gray-100/80">
               <div className="flex items-center gap-6">
-                <div className="size-20 rounded-[24px] bg-lime-500/10 flex items-center justify-center text-lime-600 shadow-inner">
+                <div className="size-16 sm:size-20 rounded-[24px] bg-lime-500/10 flex items-center justify-center text-lime-600 shadow-inner">
                   <User size={32} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black uppercase italic text-gray-900 tracking-tight">Information</h3>
+                  <h3 className="text-xl sm:text-2xl font-black uppercase italic text-gray-900 tracking-tight">Information</h3>
                   <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Profile Identity Settings</p>
                 </div>
               </div>

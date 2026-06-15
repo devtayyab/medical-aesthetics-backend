@@ -330,7 +330,7 @@ export const Search: React.FC = () => {
            </div>
         )}
         <div className={`relative z-10 min-h-screen ${activeTab !== 'treatments' ? 'bg-[#FDFDFD]' : ''}`}>
-          <div className="container mx-auto px-8 py-6">
+          <div className="container mx-auto px-4 sm:px-8 py-4 sm:py-6">
             {activeTab === 'treatments' && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -348,7 +348,7 @@ export const Search: React.FC = () => {
               </motion.div>
             )}
 
-            <div className={`max-w-7xl mx-auto transition-all ${activeTab === 'treatments' ? 'bg-black/40 backdrop-blur-3xl p-8 rounded-[3rem] border border-white/5' : ''}`}>
+            <div className={`max-w-7xl mx-auto transition-all ${activeTab === 'treatments' ? 'bg-black/40 backdrop-blur-3xl p-5 sm:p-8 rounded-[2rem] sm:rounded-[3rem] border border-white/5' : ''}`}>
                 {/* Results Header for Clinics */}
                 {activeTab === 'clinics' && (
                   <div className="mb-8">
@@ -425,7 +425,7 @@ export const Search: React.FC = () => {
 
       {/* Floating Map Toggle for Mobile */}
       <div className="fixed bottom-10 left-1/2 -translate-x-1/2 lg:hidden z-[100]">
-         <button onClick={() => setShowMobileMap(true)} className="bg-black text-[#CBFF38] h-14 px-8 rounded-full shadow-2xl font-black uppercase italic tracking-widest text-[10px] flex items-center gap-3">
+         <button onClick={() => setShowMobileMap(true)} className="bg-black text-[#CBFF38] h-14 px-6 sm:px-8 rounded-full shadow-2xl font-black uppercase italic tracking-widest text-[10px] flex items-center gap-2 sm:gap-3">
             <MapIcon size={18} /> View radar map
          </button>
       </div>

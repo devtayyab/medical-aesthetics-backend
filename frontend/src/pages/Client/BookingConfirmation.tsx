@@ -8,13 +8,19 @@ import { format } from "date-fns";
 const containerStyle = css`
   max-width: 650px;
   margin: 0 auto;
-  padding: 40px 1rem;
+  padding: 24px 1rem;
+  @media (min-width: 640px) {
+    padding: 40px 1rem;
+  }
 `;
 
 const successCard = css`
   background: white;
   border-radius: 24px;
-  padding: 32px;
+  padding: 24px;
+  @media (min-width: 640px) {
+    padding: 32px;
+  }
   text-align: center;
   box-shadow: 0 10px 40px rgba(0,0,0,0.03);
   border: 1px solid #f0f0f0;

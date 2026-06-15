@@ -47,7 +47,10 @@ const glassCard = css`
 const pointCard = css`
   background: #000000;
   border-radius: 32px;
-  padding: 32px;
+  padding: 24px;
+  @media (min-width: 640px) {
+    padding: 32px;
+  }
   position: relative;
   overflow: hidden;
   color: white;
@@ -159,7 +162,7 @@ export const Rewards: React.FC = () => {
           />
         </div>
         
-        <div className="container mx-auto px-8 relative z-10">
+        <div className="container mx-auto px-4 sm:px-8 relative z-10">
           <div className="max-w-4xl">
             <div className="flex items-center gap-3 mb-4 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] italic">
               <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
@@ -167,7 +170,7 @@ export const Rewards: React.FC = () => {
               <span className="text-lime-500">LOYALTY PROGRAM</span>
             </div>
             
-            <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
               REWARDS & <span className="text-[#CBFF38]">BENEFITS</span>
             </h1>
             
@@ -178,7 +181,7 @@ export const Rewards: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-8 relative z-20 -mt-[170px]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 relative z-20 -mt-[170px]">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-20">
           
           {/* Points Overview Dashboard */}
@@ -203,7 +206,7 @@ export const Rewards: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <div className="bg-white/5 rounded-2xl p-6 border border-white/10 relative overflow-hidden">
+                <div className="bg-white/5 rounded-2xl p-4 sm:p-6 border border-white/10 relative overflow-hidden">
                   <div className="flex justify-between items-center mb-4 relative z-10">
                     <span className="text-[9px] font-black uppercase text-gray-400 tracking-widest italic">Membership Tier: {userTier}</span>
                     <span className="text-[9px] font-black uppercase text-[#CBFF38] tracking-widest leading-none">
@@ -245,7 +248,7 @@ export const Rewards: React.FC = () => {
                       key={reward.id}
                       initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`${glassCard} p-6 flex flex-col justify-between group h-[220px] ${isLocked ? 'opacity-60 bg-gray-50/50' : 'hover:border-[#CBFF38] shadow-sm transition-all'}`}
+                      className={`${glassCard} p-4 sm:p-6 flex flex-col justify-between group h-[220px] ${isLocked ? 'opacity-60 bg-gray-50/50' : 'hover:border-[#CBFF38] shadow-sm transition-all'}`}
                     >
                       <div>
                         <div className="flex justify-between items-start mb-4">

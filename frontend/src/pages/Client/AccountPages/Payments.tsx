@@ -166,7 +166,7 @@ export const Payments: React.FC = () => {
                     />
                 </div>
 
-                <div className="container mx-auto px-8 relative z-10">
+                <div className="container mx-auto px-4 sm:px-8 relative z-10">
                     <div className="max-w-4xl">
                         <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] italic">
                             <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
@@ -174,7 +174,7 @@ export const Payments: React.FC = () => {
                             <span className="text-lime-500">BILLING & FINANCE</span>
                         </div>
 
-                        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black uppercase italic tracking-tighter leading-none text-gray-900 whitespace-nowrap">
+                        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase italic tracking-tighter leading-none text-gray-900 sm:whitespace-nowrap">
                             PAYMENTS & <span className="text-[#CBFF38]">INVOICES</span>
                         </h1>
 
@@ -197,13 +197,13 @@ export const Payments: React.FC = () => {
                 </div>
             </div>
 
-            <div className="px-8">
+            <div className="px-4 sm:px-8">
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={glassCard}
                 >
-                    <div className="p-10 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gray-50/30">
+                    <div className="p-6 sm:p-10 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gray-50/30">
                         <div className="flex items-center gap-6">
                             <div className="size-16 rounded-[20px] bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl">
                                 <History size={24} />
@@ -239,10 +239,10 @@ export const Payments: React.FC = () => {
                                     whileInView={{ opacity: 1, x: 0 }}
                                     viewport={{ once: true }}
                                     transition={{ delay: i * 0.05 }}
-                                    className="flex items-center justify-between px-10 py-8 hover:bg-gray-50/80 transition-all group"
+                                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 sm:px-10 py-6 sm:py-8 gap-4 sm:gap-0 hover:bg-gray-50/80 transition-all group"
                                 >
-                                    <div className="flex items-center gap-8">
-                                        <div className={`size-16 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 duration-300 ${payment.type === 'refund' ? 'bg-orange-50 text-orange-500' : 'bg-[#CBFF38]/20 text-black'}`}>
+                                    <div className="flex items-center gap-4 sm:gap-8">
+                                        <div className={`size-12 sm:size-16 rounded-2xl flex items-center justify-center text-xl sm:text-2xl transition-transform group-hover:scale-110 duration-300 ${payment.type === 'refund' ? 'bg-orange-50 text-orange-500' : 'bg-[#CBFF38]/20 text-black'}`}>
                                             {payment.method === "gift_card" ? <Gift size={24} /> : payment.method === "cash" ? <Wallet size={24} /> : <CreditCard size={24} />}
                                         </div>
                                         <div>
@@ -260,7 +260,7 @@ export const Payments: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right self-end sm:self-auto">
                                         <p className={`font-black text-2xl tabular-nums tracking-tighter ${payment.type === 'refund' ? 'text-orange-500' : 'text-gray-900'}`}>
                                             {payment.type === 'refund' ? '-' : ''}€{Number(payment.amount).toFixed(2)}
                                         </p>

@@ -142,7 +142,7 @@ export const MyAccount: React.FC = () => {
           />
         </div>
 
-        <div className="container mx-auto px-8 relative z-10">
+        <div className="container mx-auto px-4 sm:px-8 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-10">
             <div className="max-w-4xl">
               <motion.div
@@ -159,7 +159,7 @@ export const MyAccount: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center gap-6 md:gap-8"
               >
-                <div className="size-20 md:size-28 rounded-[38px] bg-black text-[#CBFF38] flex items-center justify-center text-4xl md:text-5xl font-black italic shadow-2xl relative overflow-hidden group">
+                <div className="size-20 md:size-28 rounded-[2rem] sm:rounded-[38px] bg-black text-[#CBFF38] flex items-center justify-center text-4xl md:text-5xl font-black italic shadow-2xl relative overflow-hidden group">
                   <span className="relative z-10">{userInitial.toUpperCase()}</span>
                   <div className="absolute inset-0 bg-gradient-to-tr from-lime-500/20 to-transparent" />
                 </div>
@@ -188,7 +188,7 @@ export const MyAccount: React.FC = () => {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-8 relative z-20 -mt-[180px] pb-32">
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 relative z-20 -mt-[180px] pb-32">
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
 
           {/* Main Dashboard Actions */}
@@ -202,7 +202,7 @@ export const MyAccount: React.FC = () => {
                     transition={{ delay: idx * 0.05 }}
                     className={glassCard}
                   >
-                    <div className="p-8">
+                    <div className="p-6 sm:p-8">
                       <div className={iconContainer(item.bg)}>
                         {item.icon}
                       </div>
@@ -225,7 +225,7 @@ export const MyAccount: React.FC = () => {
                   transition={{ delay: 0.4 }}
                   className={`${glassCard} bg-gray-50/50 border-dashed`}
                 >
-                  <div className="p-8">
+                  <div className="p-6 sm:p-8">
                     <div className={iconContainer("#fff")}>
                       <Settings size={20} />
                     </div>
@@ -246,7 +246,7 @@ export const MyAccount: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-black rounded-[40px] p-8 relative overflow-hidden group shadow-2xl min-h-[400px] flex flex-col justify-between"
+              className="bg-black rounded-[2rem] sm:rounded-[40px] p-6 sm:p-8 relative overflow-hidden group shadow-2xl min-h-[300px] sm:min-h-[400px] flex flex-col justify-between"
             >
               <div className="relative z-10">
                 <Sparkles className="text-[#CBFF38] mb-6" size={24} />

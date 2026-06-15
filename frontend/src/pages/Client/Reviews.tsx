@@ -111,7 +111,7 @@ export const Reviews: React.FC = () => {
                     />
                 </div>
 
-                <div className="container mx-auto px-8 relative z-10">
+                <div className="container mx-auto px-4 sm:px-8 relative z-10">
                     <div className="max-w-4xl">
                         <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] italic">
                             <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
@@ -130,7 +130,7 @@ export const Reviews: React.FC = () => {
                 </div>
             </div>
 
-            <div className="max-w-6xl mx-auto px-8 relative z-20">
+            <div className="max-w-6xl mx-auto px-4 sm:px-8 relative z-20">
                 {/* Success Banner */}
                 <AnimatePresence>
                     {successMessage && (
@@ -138,7 +138,7 @@ export const Reviews: React.FC = () => {
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="mb-8 bg-black text-[#CBFF38] px-8 py-6 rounded-3xl flex items-center justify-between shadow-2xl relative overflow-hidden"
+                            className="mb-8 bg-black text-[#CBFF38] px-6 sm:px-8 py-6 rounded-[2rem] sm:rounded-3xl flex items-center justify-between shadow-2xl relative overflow-hidden"
                         >
                             <div className="flex items-center gap-4 relative z-10">
                                 <CheckCircle size={24} />
@@ -161,7 +161,7 @@ export const Reviews: React.FC = () => {
                             className={glassCard}
                         >
                             <div className="flex flex-col lg:flex-row">
-                                <div className="w-full lg:w-[400px] bg-gray-50 p-12 lg:p-16 border-r border-gray-100">
+                                <div className="w-full lg:w-[400px] bg-gray-50 p-6 sm:p-12 lg:p-16 border-r border-gray-100">
                                     <button
                                         onClick={() => setSelectedAppointment(null)}
                                         className="mb-12 flex items-center gap-2 text-gray-400 hover:text-black transition-colors text-[10px] font-black uppercase tracking-widest"
@@ -186,7 +186,7 @@ export const Reviews: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex-1 p-12 lg:p-20 bg-white">
+                                <div className="flex-1 p-6 sm:p-12 lg:p-20 bg-white">
                                     <ReviewForm onSubmit={handleSubmitReview} />
                                 </div>
                             </div>
@@ -205,7 +205,7 @@ export const Reviews: React.FC = () => {
                                     <p className="text-gray-400 font-black text-[11px] uppercase tracking-[0.2em] italic">Accessing review portal...</p>
                                 </div>
                             ) : completedAppointments.length === 0 ? (
-                                <div className={`${glassCard} text-center py-32 px-12`}>
+                                <div className={`${glassCard} text-center py-20 sm:py-32 px-6 sm:px-12`}>
                                     <div className="size-20 bg-gray-50 rounded-[28px] flex items-center justify-center mx-auto mb-8 text-gray-200">
                                         <MessageSquare size={40} />
                                     </div>

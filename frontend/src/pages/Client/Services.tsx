@@ -11,7 +11,10 @@ const containerStyle = css`
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 16px;
+  @media (min-width: 640px) {
+    padding: 0 32px;
+  }
 `;
 
 const extraServices = [
@@ -83,7 +86,7 @@ export const Services: React.FC = () => {
                         <FaChevronRight size={10} />
                         <span>Other Services</span>
                     </div>
-                    <h1 className="text-6xl md:text-8xl font-black uppercase italic tracking-tighter leading-tight mb-6">
+                    <h1 className="text-4xl sm:text-6xl md:text-8xl font-black uppercase italic tracking-tighter leading-tight mb-6">
                         Explore<br/>
                         <span className="text-[#CBFF38]">Services</span>
                     </h1>
@@ -101,7 +104,7 @@ export const Services: React.FC = () => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.1 }}
-                            className="bg-white rounded-[40px] p-10 border border-gray-100 shadow-xl hover:shadow-2xl hover:border-[#CBFF38] transition-all group flex flex-col h-full"
+                            className="bg-white rounded-[2rem] sm:rounded-[40px] p-6 sm:p-10 border border-gray-100 shadow-xl hover:shadow-2xl hover:border-[#CBFF38] transition-all group flex flex-col h-full"
                         >
                             <div className="size-16 bg-black text-[#CBFF38] rounded-full flex items-center justify-center mb-8 group-hover:scale-105 transition-transform">
                                 {service.icon}
@@ -125,7 +128,7 @@ export const Services: React.FC = () => {
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     whileInView={{ opacity: 1, scale: 1 }}
-                    className="mt-16 bg-[#1A1A1A] text-[#FDFDFD] rounded-[48px] p-12 md:p-20 text-center shadow-2xl relative overflow-hidden"
+                    className="mt-16 bg-[#1A1A1A] text-[#FDFDFD] rounded-[2rem] sm:rounded-[48px] p-8 sm:p-12 md:p-20 text-center shadow-2xl relative overflow-hidden"
                 >
                     <div className="relative z-10">
                         <div className="flex items-center justify-center gap-2 mb-4 text-[#CBFF38] text-2xl font-black uppercase tracking-tight italic">
@@ -137,7 +140,7 @@ export const Services: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <h2 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter mb-8 leading-tight">
+                        <h2 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase italic tracking-tighter mb-8 leading-tight">
                             Committed to <br className="hidden md:block"/> <span className="text-[#CBFF38]">Your Satisfaction.</span>
                         </h2>
                         <button 

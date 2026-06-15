@@ -66,11 +66,18 @@ const articleBody = css`
   blockquote {
     border-left: 6px solid #CBFF38;
     background: #F9FAF9;
-    margin: 3rem 0;
-    padding: 2.5rem 3rem;
+    margin: 2rem 0;
+    padding: 1.5rem 2rem;
+    @media (min-width: 640px) {
+      margin: 3rem 0;
+      padding: 2.5rem 3rem;
+    }
     border-radius: 0 32px 32px 0;
     font-style: italic;
-    font-size: 1.4rem;
+    font-size: 1.2rem;
+    @media (min-width: 640px) {
+      font-size: 1.4rem;
+    }
     font-weight: 700;
     color: #111827;
     line-height: 1.6;
@@ -172,7 +179,7 @@ export const BlogPost: React.FC = () => {
                     />
                 </div>
 
-                <div className="container mx-auto px-8 relative z-10">
+                <div className="container mx-auto px-4 sm:px-8 relative z-10">
                     <div className="max-w-4xl">
                         <motion.div 
                             initial={{ opacity: 0, x: -20 }}
@@ -194,7 +201,7 @@ export const BlogPost: React.FC = () => {
                                 </div>
                             )}
                             
-                            <h1 className="text-5xl md:text-8xl font-black uppercase italic tracking-tighter leading-[0.9] text-gray-900">
+                            <h1 className="text-4xl sm:text-5xl md:text-8xl font-black uppercase italic tracking-tighter leading-[0.9] text-gray-900">
                                 {post.title}
                             </h1>
                             
@@ -218,7 +225,7 @@ export const BlogPost: React.FC = () => {
             </div>
 
             {/* Article Content Section */}
-            <main className="container mx-auto px-8 relative z-20 -mt-20 pb-32">
+            <main className="container mx-auto px-4 sm:px-8 relative z-20 -mt-20 pb-32">
                 <div className="flex flex-col xl:flex-row gap-12">
                     {/* Main Content Body */}
                     <div className="flex-1">
@@ -235,7 +242,7 @@ export const BlogPost: React.FC = () => {
                                 />
                             </div>
                             
-                            <div className="p-8 md:p-20">
+                            <div className="p-6 sm:p-10 md:p-20">
                                 <div 
                                     className={articleBody}
                                     dangerouslySetInnerHTML={{ __html: post.content }}
@@ -265,7 +272,7 @@ export const BlogPost: React.FC = () => {
                         {/* Author Glass Card */}
                         {post.author && (
                             <div className={glassCard}>
-                                <div className="p-8">
+                                <div className="p-6 sm:p-8">
                                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-8 italic text-center">Authored By</h4>
                                     <div className="flex flex-col items-center text-center">
                                         <div className="size-20 rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] font-black text-3xl uppercase mb-6 shadow-2xl">
@@ -282,7 +289,7 @@ export const BlogPost: React.FC = () => {
                         )}
 
                         {/* Quick CTA */}
-                        <div className="bg-black rounded-[40px] p-10 relative overflow-hidden group shadow-2xl min-h-[400px] flex flex-col justify-between">
+                        <div className="bg-black rounded-[2rem] sm:rounded-[40px] p-6 sm:p-10 relative overflow-hidden group shadow-2xl min-h-[400px] flex flex-col justify-between">
                             <div className="relative z-10">
                                 <Sparkles className="text-[#CBFF38] mb-6" size={32} />
                                 <h4 className="text-3xl font-black uppercase italic text-white tracking-tighter leading-none mb-6">Experience <br /> The Difference</h4>

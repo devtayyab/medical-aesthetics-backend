@@ -130,7 +130,7 @@ export const GiftCard: React.FC = () => {
           />
         </div>
 
-        <div className="container mx-auto px-8 relative z-10">
+        <div className="container mx-auto px-4 sm:px-8 relative z-10">
           <div className="max-w-4xl">
             <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] italic">
               <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
@@ -138,7 +138,7 @@ export const GiftCard: React.FC = () => {
               <span className="text-lime-500">GIFT VOUCHERS</span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
               BEAUTY GIFT <span className="text-[#CBFF38]">CARDS</span>
             </h1>
 
@@ -149,7 +149,7 @@ export const GiftCard: React.FC = () => {
         </div>
       </div>
 
-      <div className="px-8">
+      <div className="px-4 sm:px-8">
         <AnimatePresence mode="wait">
           {!giftCardCode ? (
             <motion.div
@@ -166,7 +166,7 @@ export const GiftCard: React.FC = () => {
               </div>
 
               <div className="flex flex-col lg:flex-row">
-                <div className="flex-1 p-10 lg:p-16">
+                <div className="flex-1 p-6 sm:p-10 lg:p-16">
                   <h3 className="text-2xl font-black uppercase italic text-gray-900 tracking-tight leading-none mb-12">Purchase Gift Card</h3>
 
                   <div className="space-y-8">
@@ -184,7 +184,7 @@ export const GiftCard: React.FC = () => {
                       <span className="text-2xl font-black text-[#CBFF38] opacity-60">€ {amount}</span>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {[25, 100, 50, 150].map(val => (
                         <button
                           key={val}
@@ -198,7 +198,7 @@ export const GiftCard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="w-full lg:w-[420px] p-8">
+                <div className="w-full lg:w-[420px] p-4 sm:p-8">
                   <div className="bg-[#CBFF38] rounded-[32px] p-10 h-full flex flex-col justify-between shadow-2xl relative overflow-hidden group">
                     <div>
                       <div className="size-14 rounded-2xl bg-black flex items-center justify-center text-[#CBFF38] mb-8">
@@ -252,10 +252,10 @@ export const GiftCard: React.FC = () => {
                 <div className="border-2 border-dashed border-white/10 pt-10 pb-10 text-center bg-white/5 rounded-3xl relative z-10">
                   <p className="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-6 italic">Secure Voucher Code</p>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-6 px-10">
-                    <span className="text-5xl font-black tracking-[0.25em] text-white tabular-nums">{giftCardCode}</span>
+                    <span className="text-3xl sm:text-5xl font-black tracking-[0.25em] text-white tabular-nums text-center">{giftCardCode}</span>
                     <button
                       onClick={copyToClipboard}
-                      className={`h-16 px-8 rounded-2xl flex items-center justify-center gap-3 transition-all font-black uppercase text-[10px] tracking-widest ${copied ? 'bg-[#CBFF38] text-black shadow-xl shadow-lime-500/20' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                      className={`w-full sm:w-auto h-16 px-8 rounded-2xl flex items-center justify-center gap-3 transition-all font-black uppercase text-[10px] tracking-widest ${copied ? 'bg-[#CBFF38] text-black shadow-xl shadow-lime-500/20' : 'bg-white/10 hover:bg-white/20 text-white'}`}
                     >
                       {copied ? <CheckCircle size={18} /> : <Copy size={18} />}
                       {copied ? "COPIED" : "COPY CODE"}

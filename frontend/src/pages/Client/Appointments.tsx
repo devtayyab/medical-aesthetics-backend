@@ -29,7 +29,10 @@ const glassCard = css`
   border-radius: 32px;
   box-shadow: 0 40px 80px rgba(0, 0, 0, 0.03);
   border: 1px solid #F1F5F9;
-  padding: 30px;
+  padding: 20px;
+  @media (min-width: 640px) {
+    padding: 30px;
+  }
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -155,7 +158,7 @@ export const Appointments: React.FC = () => {
           />
         </div>
 
-        <div className="container mx-auto px-8 relative z-10">
+        <div className="container mx-auto px-4 sm:px-8 relative z-10">
           <div className="max-w-4xl">
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
@@ -166,7 +169,7 @@ export const Appointments: React.FC = () => {
               <span className="text-lime-500"> MY_RESERVATIONS</span>
             </motion.div>
             
-            <h1 className="text-4xl md:text-7xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
                  MY <span className="text-[#CBFF38]">APPOINTMENTS</span>
             </h1>
             
@@ -177,7 +180,7 @@ export const Appointments: React.FC = () => {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-8 relative z-20 -mt-[180px]">
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 relative z-20 -mt-[180px]">
         {/* Filters Grid */}
         <div className="flex items-center gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
             <button onClick={() => setActiveFilter('all')} className={filterTab(activeFilter === 'all')}>All</button>
@@ -189,7 +192,7 @@ export const Appointments: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-white rounded-[40px] p-24 text-center border border-gray-100 shadow-2xl"
+            className="bg-white rounded-[2rem] sm:rounded-[40px] p-10 sm:p-24 text-center border border-gray-100 shadow-2xl"
           >
              <div className="size-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-10">
                 <CalendarDays className="text-gray-200" size={40} />
@@ -244,7 +247,7 @@ export const Appointments: React.FC = () => {
                   </div>
 
                   {/* Date & Time Grid */}
-                  <div className="grid grid-cols-2 gap-4 mb-10 bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 bg-gray-50/50 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100">
                     <div className="flex flex-col gap-2">
                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">Date</span>
                        <div className="flex items-center gap-2 text-gray-900 font-black text-[11px] uppercase italic">
@@ -306,7 +309,7 @@ export const Appointments: React.FC = () => {
         <motion.div 
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="fixed bottom-10 right-10 z-[100]"
+          className="fixed bottom-4 sm:bottom-10 right-4 sm:right-10 z-[100]"
         >
            <button 
              onClick={() => navigate('/search')}
@@ -326,7 +329,7 @@ export const Appointments: React.FC = () => {
       )}
 
       {/* Footer Branding */}
-      <footer className="container mx-auto px-8 py-20 mt-20 border-t border-gray-50 flex flex-col md:flex-row justify-between items-center gap-8">
+      <footer className="container mx-auto px-4 sm:px-8 py-10 sm:py-20 mt-10 sm:mt-20 border-t border-gray-50 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8">
            <div className="flex items-center gap-10">
               <Link to="/support" className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-300 hover:text-black transition-colors italic">Patient Concierge</Link>
               <Link to="/legal" className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-300 hover:text-black transition-colors italic">Privacy Compliance</Link>
