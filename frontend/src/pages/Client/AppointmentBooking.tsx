@@ -37,13 +37,19 @@ import { FaChevronLeft, FaChevronRight, FaClock, FaCheckCircle, FaCalendarAlt } 
 const containerStyle = css`
   max-width: 1100px;
   margin: 0 auto;
-  padding: 40px 1rem;
+  padding: 24px 1rem;
+  @media (min-width: 640px) {
+    padding: 40px 1rem;
+  }
 `;
 
 const cardStyle = css`
   background: white;
   border-radius: 32px;
-  padding: 32px;
+  padding: 24px;
+  @media (min-width: 640px) {
+    padding: 32px;
+  }
   box-shadow: 0 20px 40px rgba(0,0,0,0.02);
   border: 1px solid rgba(0,0,0,0.02);
 `;
@@ -51,7 +57,10 @@ const cardStyle = css`
 const sidebarCardStyle = css`
   background: #121212;
   border-radius: 32px;
-  padding: 32px;
+  padding: 24px;
+  @media (min-width: 640px) {
+    padding: 32px;
+  }
   color: white;
   box-shadow: 0 40px 80px rgba(0,0,0,0.15);
   position: relative;
@@ -247,7 +256,7 @@ export const AppointmentBooking: React.FC = () => {
             Back to Search
           </button>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="flex flex-col items-center">
               <div className="size-8 rounded-xl bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-xs shadow-xl shadow-black/10">1</div>
               <span className="text-[8px] font-black uppercase mt-1 tracking-widest">Time</span>

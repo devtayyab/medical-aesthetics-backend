@@ -27,13 +27,13 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Right Side */}
-          <div className="grid grid-cols-1 gap-8 text-center lg:grid-cols-3 lg:text-left">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 lg:gap-8 text-left w-full max-w-[100vw] overflow-hidden">
             {/* Overview */}
             <div>
-              <strong className="font-semibold text-[14px] text-[#CBFF38]">
+              <strong className="font-semibold text-[12px] sm:text-[14px] text-[#CBFF38]">
                 Overview
               </strong>
-              <ul className="mt-3 space-y-[4px] text-[12px]">
+              <ul className="mt-3 space-y-[4px] text-[10px] sm:text-[12px]">
                 <li>
                   <Link
                     to="/treatments"
@@ -63,10 +63,10 @@ export const Footer: React.FC = () => {
 
             {/* Company */}
             <div>
-              <strong className="font-semibold text-[14px] text-[#CBFF38]">
+              <strong className="font-semibold text-[12px] sm:text-[14px] text-[#CBFF38]">
                 Company
               </strong>
-              <ul className="mt-3 space-y-[4px] text-[12px]">
+              <ul className="mt-3 space-y-[4px] text-[10px] sm:text-[12px]">
                 <li>
                   <Link
                     to="/"
@@ -95,19 +95,20 @@ export const Footer: React.FC = () => {
             </div>
 
             {/* Contact */}
-            <div>
-              <strong className="font-semibold text-[14px] text-[#CBFF38]">
+            <div className="break-all">
+              <strong className="font-semibold text-[12px] sm:text-[14px] text-[#CBFF38]">
                 Contact Us
               </strong>
-              <ul className="mt-3 space-y-[4px] text-[12px]">
+              <ul className="mt-3 space-y-[4px] text-[10px] sm:text-[12px]">
                 <li>
                   <a
                     href="tel:6948880498"
                     className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
                     style={{ textDecoration: 'none' }}
                   >
-                    <span className="flex items-center gap-2">
-                       <Phone size={14} className="text-[#CBFF38]" /> 6948880498
+                    <span className="flex items-center justify-start gap-1 sm:gap-2">
+                       <Phone size={12} className="text-[#CBFF38] shrink-0" /> 
+                       <span>6948880498</span>
                     </span>
                   </a>
                 </li>
@@ -117,8 +118,9 @@ export const Footer: React.FC = () => {
                     className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
                     style={{ textDecoration: 'none' }}
                   >
-                    <span className="flex items-center gap-2">
-                       <Mail size={14} className="text-[#CBFF38]" /> info@beautydoctors.gr
+                    <span className="flex items-center justify-start gap-1 sm:gap-2">
+                       <Mail size={12} className="text-[#CBFF38] shrink-0" /> 
+                       <span>info@beautydoctors.gr</span>
                     </span>
                   </a>
                 </li>
@@ -128,7 +130,7 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Bottom */}
-        <div className="mt-6 flex flex-wrap justify-center md:justify-between gap-4 items-center border-t border-[#586271] pt-4">
+        <div className="mt-6 flex flex-col md:flex-row justify-center md:justify-between gap-4 items-center border-t border-[#586271] pt-4 w-full">
           <div className="flex space-x-[8px]">
             <a
               href="#"
@@ -149,25 +151,27 @@ export const Footer: React.FC = () => {
               <FaLinkedinIn size={14} />
             </a>
           </div>
-          <form onSubmit={(e) => e.preventDefault()}>
-            <div className="flex justify-between items-center gap-2">
-              <label className="text-white text-[10px] font-bold uppercase tracking-wider" htmlFor="email">
+          <form onSubmit={(e) => e.preventDefault()} className="w-full sm:w-auto mt-2 sm:mt-0">
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-2 w-full">
+              <label className="text-white text-[10px] font-bold uppercase tracking-wider mb-1 sm:mb-0" htmlFor="email">
                 Newsletter
               </label>
 
-              <input
-                className="w-full rounded-[8px] border focus:outline-none border-[#8B95A5] focus:border-white bg-transparent px-3 py-2 text-white text-xs font-medium"
-                id="email"
-                type="email"
-                placeholder="john@doe.com"
-              />
+              <div className="flex w-full sm:w-auto gap-2">
+                <input
+                  className="w-full flex-1 sm:w-auto rounded-[8px] border focus:outline-none border-[#8B95A5] focus:border-white bg-transparent px-3 py-2 text-white text-xs font-medium"
+                  id="email"
+                  type="email"
+                  placeholder="john@doe.com"
+                />
 
-              <button
-                type="submit"
-                className="rounded-[8px] bg-[#CBFF38] px-4 py-2 font-black text-[10px] uppercase tracking-widest text-[#2D3748] transition hover:bg-lime-400"
-              >
-                Subscribe
-              </button>
+                <button
+                  type="submit"
+                  className="whitespace-nowrap rounded-[8px] bg-[#CBFF38] px-4 py-2 font-black text-[10px] uppercase tracking-widest text-[#2D3748] transition hover:bg-lime-400"
+                >
+                  Subscribe
+                </button>
+              </div>
             </div>
           </form>
         </div>

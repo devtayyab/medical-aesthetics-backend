@@ -89,7 +89,7 @@ export const Settings: React.FC = () => {
             />
         </div>
 
-        <div className="container mx-auto px-8 relative z-10">
+        <div className="container mx-auto px-4 sm:px-8 relative z-10">
             <div className="max-w-4xl">
                 <div className="flex items-center gap-3 mb-8 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] italic">
                     <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
@@ -108,7 +108,7 @@ export const Settings: React.FC = () => {
         </div>
       </div>
 
-      <main className="max-w-4xl mx-auto px-8 relative z-20 -mt-[180px] pb-32">
+      <main className="max-w-4xl mx-auto px-4 sm:px-8 relative z-20 -mt-[180px] pb-32">
         <div className="space-y-8">
           
           <AnimatePresence>
@@ -131,7 +131,7 @@ export const Settings: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className={glassCard}
           >
-            <div className="p-8 md:p-12">
+            <div className="p-6 sm:p-8 md:p-12">
                 <div className="flex items-center gap-6 mb-12">
                    <div className="size-16 rounded-3xl bg-[#CBFF38]/10 flex items-center justify-center text-black border border-[#CBFF38]/20 shadow-sm">
                      <Bell size={24} />
@@ -148,7 +148,7 @@ export const Settings: React.FC = () => {
                      { section: 'inspirationOffers', key: 'sms', label: 'Priority SMS', d: 'Get flash alerts for last-minute appointment availability.', icon: <Smartphone size={16} /> },
                      { section: 'inspirationOffers', key: 'push', label: 'Application Alerts', d: 'Receive instant notifications regarding your bookings.', icon: <Sliders size={16} /> },
                    ].map((item, i) => (
-                      <div key={i} className="flex items-center justify-between group">
+                      <div key={i} className="flex flex-row items-start sm:items-center justify-between gap-4 group">
                          <div className="max-w-md">
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-lime-500">{item.icon}</span>
@@ -173,7 +173,7 @@ export const Settings: React.FC = () => {
             transition={{ delay: 0.1 }}
             className={glassCard}
           >
-            <div className="p-8 md:p-12 text-gray-900">
+            <div className="p-6 sm:p-8 md:p-12 text-gray-900">
                 <div className="flex items-center gap-6 mb-12">
                    <div className="size-16 rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl">
                      <ShieldOff size={24} />
@@ -184,7 +184,7 @@ export const Settings: React.FC = () => {
                    </div>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-row items-start sm:items-center justify-between gap-4">
                    <div className="max-w-md">
                       <p className="font-black uppercase italic text-gray-900 mb-2 tracking-tight">Anonymous Protocols</p>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic leading-relaxed">Allow us to analyze treatment results anonymously for clinical research.</p>
@@ -202,7 +202,7 @@ export const Settings: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-[40px] border-2 border-red-50 p-10 shadow-sm overflow-hidden relative group"
+            className="bg-white rounded-[2rem] sm:rounded-[40px] border-2 border-red-50 p-6 sm:p-10 shadow-sm overflow-hidden relative group"
           >
              <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
                 <div className="flex items-center gap-6">

@@ -103,18 +103,18 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
             transition={{ delay: idx * 0.1 }}
             className={glassCard}
         >
-            <div className="p-10 md:p-12">
-                <div className="flex items-center justify-between mb-10">
-                    <div className="flex items-center gap-6">
-                        <div className="size-16 rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl text-2xl font-black">
+            <div className="p-6 sm:p-10 md:p-12">
+                <div className="flex items-center justify-between mb-6 sm:mb-10">
+                    <div className="flex items-center gap-4 sm:gap-6 w-[80%] sm:w-auto">
+                        <div className="size-12 sm:size-16 shrink-0 rounded-2xl sm:rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl text-xl sm:text-2xl font-black">
                             {category.icon ? <span>{category.icon}</span> : getCategoryIcon(category.name)}
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black italic tracking-tight text-gray-900">{category.name}</h3>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 italic">Elite Clinical Specialty</p>
+                            <h3 className="text-xl sm:text-2xl font-black italic tracking-tight text-gray-900 leading-tight">{category.name}</h3>
+                            <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 italic">Elite Clinical Specialty</p>
                         </div>
                     </div>
-                    <ArrowRight size={20} className="text-gray-200 group-hover:text-lime-500 transition-colors" />
+                    <ArrowRight size={20} className="text-gray-200 group-hover:text-lime-500 transition-colors shrink-0" />
                 </div>
 
                 {category.description && (
@@ -194,7 +194,7 @@ export const Treatments: React.FC = () => {
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            className="bg-white w-full max-w-md rounded-[2.5rem] p-10 relative z-10 shadow-2xl overflow-hidden border border-gray-100"
+                            className="bg-white w-[90%] sm:w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 relative z-10 shadow-2xl overflow-hidden border border-gray-100"
                         >
                             <div className="absolute top-0 right-0 p-6">
                                 <button onClick={() => setShowConsultModal(false)} className="text-gray-400 hover:text-black transition-colors">
@@ -237,19 +237,19 @@ export const Treatments: React.FC = () => {
                     />
                 </div>
 
-                <div className="container mx-auto px-8 relative z-10">
+                <div className="container mx-auto px-4 sm:px-8 relative z-10">
                     <div className="max-w-4xl">
                         <motion.div
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="flex items-center gap-3 mb-8 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] italic"
+                            className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8 text-gray-400 text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em] italic"
                         >
                             <Link to="/" className="text-gray-900 border-b border-gray-900 pb-0.5">ELITE CLINIC</Link>
                             <span className="text-lime-500"> CLINICAL_TREATMENTS</span>
                         </motion.div>
 
-                        <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
-                            PROTOCOL <span className="text-[#CBFF38]">EXPERIENCE</span>
+                        <h1 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
+                            PROTOCOL <span className="text-[#CBFF38] block sm:inline">EXPERIENCE</span>
                         </h1>
 
                         <p className="text-gray-500 mt-8 font-bold text-lg max-w-2xl leading-relaxed italic">
@@ -259,7 +259,7 @@ export const Treatments: React.FC = () => {
                 </div>
             </div>
 
-            <main className="max-w-7xl mx-auto px-8 relative z-20 -mt-[180px] pb-32">
+            <main className="max-w-7xl mx-auto px-4 sm:px-8 relative z-20 -mt-[180px] pb-32">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                     {loading && (
                         <div className="md:col-span-2 flex flex-col items-center justify-center py-32 gap-4">
@@ -280,7 +280,7 @@ export const Treatments: React.FC = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="bg-black rounded-[40px] p-12 text-center shadow-2xl relative overflow-hidden flex flex-col justify-center min-h-[400px]"
+                        className="bg-black rounded-[2rem] sm:rounded-[40px] p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden flex flex-col justify-center min-h-[300px] sm:min-h-[400px]"
                     >
                         <div className="relative z-10">
                             <Sparkles className="text-[#CBFF38] mx-auto mb-8" size={40} />

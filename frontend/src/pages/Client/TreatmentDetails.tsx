@@ -184,7 +184,7 @@ export const TreatmentDetails: React.FC = () => {
                         alt={treatment.name}
                         onError={() => setImgError(true)}
                     />
-                    <div className="p-8 md:p-12 flex flex-col justify-center flex-1 relative z-10">
+                    <div className="p-5 sm:p-8 md:p-12 flex flex-col justify-center flex-1 relative z-10">
                         <div className="flex items-center justify-between mb-4">
                             <motion.div layout>
                                 <span className="text-[9px] font-black text-[#CBFF38] uppercase tracking-[0.4em] italic mb-2 block opacity-70">
@@ -278,7 +278,7 @@ export const TreatmentDetails: React.FC = () => {
 
             {/* Clinic List - Practitioners First */}
             <section id="clinics-list" className="py-16 bg-white">
-                <div className="container mx-auto px-8">
+                <div className="container mx-auto px-4 sm:px-8">
                     <div className="mb-12">
                         <span className="text-[9px] font-black text-[#CBFF38] uppercase tracking-[0.3em] italic mb-2 block">Premium Selection</span>
                         <h2 className="text-3xl md:text-4xl font-black uppercase italic tracking-tighter text-gray-900 leading-none">
@@ -294,19 +294,19 @@ export const TreatmentDetails: React.FC = () => {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: idx * 0.1 }}
-                                className="bg-white p-8 rounded-[2.5rem] border border-gray-100 hover:border-[#CBFF38] transition-all hover:-translate-y-1 group shadow-sm"
+                                className="bg-white p-5 sm:p-8 rounded-[2rem] border border-gray-100 hover:border-[#CBFF38] transition-all hover:-translate-y-1 group shadow-sm flex flex-col"
                             >
-                                <div className="flex justify-between items-start mb-8">
-                                    <div className="max-w-[70%]">
-                                        <h4 className="text-xl font-black italic tracking-tight text-gray-900 group-hover:text-[#CBFF38] transition-colors leading-none mb-2">
+                                <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-3 sm:gap-0">
+                                    <div className="w-full sm:max-w-[60%]">
+                                        <h4 className="text-lg sm:text-xl font-black italic tracking-tight text-gray-900 group-hover:text-[#CBFF38] transition-colors leading-tight mb-2">
                                             {offering.clinicName}
                                         </h4>
                                         <div className="flex items-center gap-2 text-[8px] font-bold text-gray-400 uppercase tracking-widest italic">
-                                            <MapPin size={10} className="text-[#CBFF38]" /> {offering.location}
+                                            <MapPin size={10} className="text-[#CBFF38] shrink-0" /> <span className="truncate">{offering.location}</span>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="flex items-center justify-end text-2xl font-black text-gray-900 italic leading-none mb-1">
+                                    <div className="text-left sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0">
+                                        <div className="flex items-center justify-end text-xl sm:text-2xl font-black text-gray-900 italic leading-none mb-0 sm:mb-1">
                                             <Euro size={16} className="text-[#CBFF38]" /> {offering.price}
                                         </div>
                                         <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{offering.durationMinutes}m</span>
@@ -327,13 +327,13 @@ export const TreatmentDetails: React.FC = () => {
 
             {/* In-depth Description - Moved Down */}
             <section className="py-12 bg-[#FAFAFA] border-b border-gray-100">
-                <div className="container mx-auto px-8 max-w-4xl">
+                <div className="container mx-auto px-4 sm:px-8 max-w-4xl">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="h-px bg-gray-200 flex-1"></div>
                         <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-[#CBFF38] bg-black px-3 py-1 rounded-md italic shrink-0">In-depth Protocol</h3>
                         <div className="h-px bg-gray-200 flex-1"></div>
                     </div>
-                    <p className="text-lg md:text-xl font-medium text-gray-800 leading-relaxed italic text-center">
+                    <p className="text-base sm:text-lg md:text-xl font-medium text-gray-800 leading-relaxed italic text-left">
                         {treatment.fullDescription}
                     </p>
                 </div>

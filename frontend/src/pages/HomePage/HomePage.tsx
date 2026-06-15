@@ -32,7 +32,7 @@ import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 
 // Images
-import HeaderBanner from "@/assets/HeroBanner_Premium.png";
+import HeaderBanner from "@/assets/NewHeroBanner.jpeg";
 import LayeredBG from "@/assets/LayeredBg.svg";
 import PlusIcon from "@/assets/Icons/PlusIcon.svg";
 import CalendarIcon from "@/assets/Icons/CalendarIcon.svg";
@@ -160,7 +160,7 @@ export const HomePage: React.FC = () => {
         style={{ 
           backgroundImage: `url(${HeaderBanner})`,
           backgroundSize: 'cover',
-          backgroundPosition: 'right center',
+          backgroundPosition: 'center top',
           backgroundRepeat: 'no-repeat',
           height: '70vh',
           minHeight: '520px'

@@ -58,7 +58,10 @@ const mainGrid = css`
 const cardStyle = css`
   background: white;
   border-radius: 24px;
-  padding: 32px;
+  padding: 24px;
+  @media (min-width: 640px) {
+    padding: 32px;
+  }
   box-shadow: 0 10px 40px rgba(0,0,0,0.05);
   border: 1px solid #f0f0f0;
 `;
@@ -225,7 +228,7 @@ export const ClinicDetails: React.FC = () => {
                             <span className="w-1.5 h-6 bg-lime-500 rounded-full" />
                             {category}
                           </h3>
-                          <div className="divide-y divide-gray-100 bg-gray-50/30 rounded-[40px] px-8 py-2">
+                          <div className="divide-y divide-gray-100 bg-gray-50/30 rounded-[2rem] sm:rounded-[40px] px-4 sm:px-8 py-2">
                             {categoryServices.map((service: Service) => (
                               <ServiceCard
                                 key={service.id}
@@ -255,7 +258,7 @@ export const ClinicDetails: React.FC = () => {
                   ) : (
                     <div className="space-y-6">
                       {clinicReviews.map((review: any) => (
-                        <div key={review.id} className="p-10 bg-white rounded-[40px] shadow-sm border border-gray-50 hover:shadow-2xl hover:-translate-y-1 transition-all group">
+                        <div key={review.id} className="p-6 sm:p-10 bg-white rounded-[2rem] sm:rounded-[40px] shadow-sm border border-gray-50 hover:shadow-2xl hover:-translate-y-1 transition-all group">
                           <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-4">
                                <div className="size-14 rounded-2xl bg-black text-[#CBFF38] flex items-center justify-center font-black italic text-xl">
@@ -288,7 +291,7 @@ export const ClinicDetails: React.FC = () => {
 
               {activeTab === 'about' && (
                 <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <div className="p-10 bg-gray-50 rounded-[40px] border border-gray-100 relative overflow-hidden">
+                  <div className="p-6 sm:p-10 bg-gray-50 rounded-[2rem] sm:rounded-[40px] border border-gray-100 relative overflow-hidden">
                      <div className="absolute top-0 right-0 w-32 h-full bg-[#CBFF38]/10 blur-3xl rounded-full translate-x-1/2" />
                      <p className="text-gray-600 leading-relaxed text-xl font-medium relative z-10 italic">{clinicData.description}</p>
                   </div>
@@ -352,7 +355,7 @@ export const ClinicDetails: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-black text-white rounded-[32px] p-8 shadow-2xl relative overflow-hidden group">
+            <div className="bg-black text-white rounded-[2rem] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl relative overflow-hidden group">
               <div className="absolute -right-8 -bottom-8 size-32 bg-[#CBFF38]/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
               <div className="flex items-center gap-4 text-[#CBFF38] mb-4">
                 <Info size={20} />

@@ -125,7 +125,7 @@ export const InviteFriend: React.FC = () => {
           />
         </div>
 
-        <div className="container mx-auto px-8 relative z-10">
+        <div className="container mx-auto px-4 sm:px-8 relative z-10">
           <div className="max-w-4xl">
             <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] italic">
               <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
@@ -133,7 +133,7 @@ export const InviteFriend: React.FC = () => {
               <span className="text-lime-500">REFERRAL PROGRAM</span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none text-gray-900">
               INVITE FRIENDS <span className="text-[#CBFF38]">EARN €5</span>
             </h1>
 
@@ -144,7 +144,7 @@ export const InviteFriend: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-8 relative z-20 -mt-[170px]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 relative z-20 -mt-[170px]">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-20">
 
           {/* Main Action Card */}
@@ -153,7 +153,7 @@ export const InviteFriend: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className={`${glassCard} lg:col-span-3`}
           >
-            <div className="p-12 md:p-16">
+            <div className="p-6 sm:p-10 md:p-16">
               <div className="mb-12 flex items-center justify-between">
                 <div>
                   <h3 className="text-3xl font-black uppercase italic text-gray-900 mb-2">Personal Link</h3>
@@ -165,7 +165,7 @@ export const InviteFriend: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-6">
-                <div className="h-20 bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl px-8 flex items-center justify-between group hover:border-[#CBFF38] transition-all">
+                <div className="h-16 sm:h-20 py-4 sm:py-0 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl sm:rounded-3xl px-4 sm:px-8 flex items-center justify-between group hover:border-[#CBFF38] transition-all">
                   <code className="text-xs font-black text-gray-600 truncate tracking-tight">{inviteLink}</code>
                   <button
                     onClick={copyToClipboard}
@@ -186,7 +186,7 @@ export const InviteFriend: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-16 pt-12 border-t border-gray-100 grid grid-cols-3 gap-8">
+              <div className="mt-16 pt-12 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
                 <div className="text-center">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 italic">Total Invited</p>
                   <div className="text-4xl font-black text-gray-900 italic">
@@ -216,7 +216,7 @@ export const InviteFriend: React.FC = () => {
 
           {/* How it Works / FAQ */}
           <div className="lg:col-span-2 space-y-8">
-            <div className={`${glassCard} p-12 bg-gray-50 border-gray-100 relative overflow-hidden`}>
+            <div className={`${glassCard} p-6 sm:p-12 bg-gray-50 border-gray-100 relative overflow-hidden`}>
               <div className="relative z-10">
                 <h4 className="text-xl font-black uppercase italic text-gray-900 mb-8 flex items-center gap-3">
                   Process Excellence
