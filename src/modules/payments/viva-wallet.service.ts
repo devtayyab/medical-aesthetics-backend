@@ -87,7 +87,7 @@ export class VivaWalletService {
                     disableCash: true,
                     disablePayAtHome: true,
                     merchantTrns: params.merchantTrns,
-                    sourceCode: this.sourceCode,
+                    ...(this.sourceCode && this.sourceCode !== 'Default' ? { sourceCode: this.sourceCode } : {}),
                     successUrl: `${process.env.APP_FRONTEND_URL || 'http://localhost:5173'}/payment/success`,
                     failureUrl: `${process.env.APP_FRONTEND_URL || 'http://localhost:5173'}/payment/failure`,
                 },
