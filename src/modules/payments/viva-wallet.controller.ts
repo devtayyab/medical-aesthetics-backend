@@ -6,6 +6,8 @@ import { Repository } from 'typeorm';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { VivaWalletService } from './viva-wallet.service';
+import { FinancialService } from './financial.service';
+import { PaymentMethod, PaymentType, PaymentStatus } from './entities/payment-record.entity';
 
 /**
  * Viva Wallet Webhook & Redirect Handler
@@ -28,6 +30,7 @@ export class VivaWalletController {
         @InjectRepository(Appointment)
         private appointmentsRepository: Repository<Appointment>,
         private vivaWalletService: VivaWalletService,
+        private financialService: FinancialService,
     ) { }
 
     /**
@@ -50,12 +53,29 @@ export class VivaWalletController {
                 const verified = await this.vivaWalletService.verifyTransaction(transactionId);
                 if (verified) {
                     const appointmentId = verified.merchantTrns;
-                    await this.appointmentsRepository.update(appointmentId, {
-                        status: AppointmentStatus.CONFIRMED,
-                        paymentMethod: 'card',
-                        // The amount is in cents from Viva, convert to your currency
-                        amountPaid: verified.amount / 100,
-                    });
+                    const appointment = await this.appointmentsRepository.findOne({ where: { id: appointmentId }});
+                    
+                    if (appointment) {
+                        await this.appointmentsRepository.update(appointmentId, {
+                            status: AppointmentStatus.CONFIRMED,
+                            paymentMethod: 'card',
+                            // The amount is in cents from Viva, convert to your currency
+                            amountPaid: verified.amount / 100,
+                        });
+                        
+                        await this.financialService.recordPayment({
+                            appointmentId,
+                            clinicId: appointment.clinicId,
+                            clientId: appointment.clientId,
+                            providerId: appointment.providerId,
+                            amount: verified.amount / 100,
+                            method: PaymentMethod.VIVA_WALLET,
+                            type: PaymentType.PAYMENT,
+                            status: PaymentStatus.COMPLETED,
+                            transactionReference: transactionId,
+                            notes: 'Paid online via Viva Wallet',
+                        });
+                    }
                     console.log(`[Viva Wallet] Appointment ${appointmentId} confirmed after payment.`);
                     // Redirect to the frontend confirmation page
                     return { redirectUrl: `/booking-confirmation?appointmentId=${appointmentId}&paid=true` };
@@ -100,11 +120,27 @@ export class VivaWalletController {
             const amount = body?.EventData?.Amount; // in cents
 
             if (merchantTrns) {
-                await this.appointmentsRepository.update(merchantTrns, {
-                    status: AppointmentStatus.CONFIRMED,
-                    paymentMethod: 'card',
-                    amountPaid: amount ? amount / 100 : undefined,
-                });
+                const appointment = await this.appointmentsRepository.findOne({ where: { id: merchantTrns }});
+                if (appointment) {
+                    await this.appointmentsRepository.update(merchantTrns, {
+                        status: AppointmentStatus.CONFIRMED,
+                        paymentMethod: 'card',
+                        amountPaid: amount ? amount / 100 : undefined,
+                    });
+                    
+                    await this.financialService.recordPayment({
+                        appointmentId: merchantTrns,
+                        clinicId: appointment.clinicId,
+                        clientId: appointment.clientId,
+                        providerId: appointment.providerId,
+                        amount: amount ? amount / 100 : 0,
+                        method: PaymentMethod.VIVA_WALLET,
+                        type: PaymentType.PAYMENT,
+                        status: PaymentStatus.COMPLETED,
+                        transactionReference: transactionId,
+                        notes: 'Paid online via Viva Wallet (Webhook)',
+                    });
+                }
                 console.log(`[Viva Wallet] Appointment ${merchantTrns} confirmed via webhook. TransactionId: ${transactionId}`);
             }
         }

@@ -261,6 +261,22 @@ export class FinancialService {
             data: { code, amount: data.amount, recipientEmail: data.recipientEmail },
         });
 
+        // Fetch any clinic to satisfy the non-null foreign key constraint in payment_records
+        const clinicRepo = this.paymentRecordsRepository.manager.getRepository(Clinic);
+        const clinic = await clinicRepo.findOne({ select: ['id'] });
+        const clinicId = clinic?.id || '00000000-0000-0000-0000-000000000000';
+
+        await this.recordPayment({
+            clinicId,
+            clientId: userId,
+            amount: data.amount,
+            method: PaymentMethod.GIFT_CARD,
+            type: PaymentType.PAYMENT,
+            status: PaymentStatus.COMPLETED,
+            notes: `Gift Card Purchase: Code ${code}`,
+            metadata: { giftCardCode: code },
+        });
+
         return savedCard;
     }
 
