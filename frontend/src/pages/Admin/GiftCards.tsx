@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Gift, Search, Plus, X } from 'lucide-react';
+import { Gift, Search, Plus, X, Info } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchGiftCardsSummary, fetchGiftCards, generateGiftCard, redeemGiftCardThunk } from '@/store/slices/adminSlice';
 import type { AppDispatch, RootState } from '@/store';
@@ -18,6 +18,8 @@ export const GiftCards: React.FC = () => {
     const [showRedeemModal, setShowRedeemModal] = useState(false);
     const [redeemCode, setRedeemCode] = useState('');
     const [redeemAmount, setRedeemAmount] = useState('');
+
+    const [selectedCard, setSelectedCard] = useState<any>(null);
 
     useEffect(() => {
         dispatch(fetchGiftCardsSummary());
@@ -153,7 +155,7 @@ export const GiftCards: React.FC = () => {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {giftCards?.map((card: any) => (
-                                <tr key={card.id}>
+                                <tr key={card.id} onClick={() => setSelectedCard(card)} className="cursor-pointer hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-gray-900">
                                         {card.code}
                                     </td>
@@ -292,6 +294,83 @@ export const GiftCards: React.FC = () => {
                             >
                                 Redeem
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* View Gift Card Details Modal */}
+            {selectedCard && (
+                <div className="fixed inset-0 bg-black/50 z-[10000] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                <Info className="w-5 h-5 text-blue-500" />
+                                Gift Card Details
+                            </h3>
+                            <button onClick={() => setSelectedCard(null)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                <p className="text-sm font-medium text-gray-500 mb-1">Gift Card Code</p>
+                                <p className="text-xl font-mono font-bold text-gray-900 tracking-wider">{selectedCard.code}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                    <p className="text-xs font-medium text-gray-500 mb-1">Purchased By</p>
+                                    <p className="text-sm font-bold text-gray-900">
+                                        {selectedCard.user ? `${selectedCard.user.firstName} ${selectedCard.user.lastName}` : (selectedCard.recipientEmail || 'Anonymous')}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                    <p className="text-xs font-medium text-gray-500 mb-1">Purchase Date</p>
+                                    <p className="text-sm font-bold text-gray-900">
+                                        {new Date(selectedCard.createdAt).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                                    <p className="text-xs font-medium text-blue-600 mb-1">Original Value</p>
+                                    <p className="text-lg font-black text-blue-700">€{Number(selectedCard.amount).toFixed(2)}</p>
+                                </div>
+                                <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                                    <p className="text-xs font-medium text-green-600 mb-1">Remaining Balance</p>
+                                    <p className="text-lg font-black text-green-700">€{Number(selectedCard.balance).toFixed(2)}</p>
+                                </div>
+                            </div>
+
+                            {selectedCard.redeemedByUser && (
+                                <div className="mt-6 border-t border-gray-100 pt-4">
+                                    <h4 className="text-sm font-bold text-gray-900 mb-3">Redemption History</h4>
+                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                        <p className="text-xs font-medium text-gray-500 mb-1">Used By</p>
+                                        <p className="text-sm font-bold text-gray-900 mb-2">
+                                            {selectedCard.redeemedByUser.firstName} {selectedCard.redeemedByUser.lastName}
+                                        </p>
+                                        
+                                        <p className="text-xs font-medium text-gray-500 mb-1">Used At Clinic</p>
+                                        <p className="text-sm font-bold text-gray-900 mb-2">
+                                            {selectedCard.redeemedAppointment?.clinic?.name || 'N/A'}
+                                        </p>
+
+                                        <p className="text-xs font-medium text-gray-500 mb-1">Redemption Date</p>
+                                        <p className="text-sm font-bold text-gray-900">
+                                            {selectedCard.redeemedAt ? new Date(selectedCard.redeemedAt).toLocaleString() : 'N/A'}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {!selectedCard.redeemedByUser && selectedCard.amount !== selectedCard.balance && (
+                                <div className="mt-6 border-t border-gray-100 pt-4">
+                                    <h4 className="text-sm font-bold text-gray-900 mb-3">Redemption History</h4>
+                                    <p className="text-sm text-gray-500 italic">This card was partially redeemed manually by an administrator.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

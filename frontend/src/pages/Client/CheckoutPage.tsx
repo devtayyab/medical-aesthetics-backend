@@ -53,14 +53,20 @@ export const CheckoutPage: React.FC = () => {
     const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, holdId } = useSelector((state: RootState) => state.booking);
     const { user } = useSelector((state: RootState) => state.auth);
 
-    const [paymentMethod, setPaymentMethod] = useState<'card' | 'venue' | 'paypal' | 'gift_card'>('card');
+    const [paymentMethod, setPaymentMethod] = useState<'card' | 'venue' | 'paypal'>('card');
     const [giftCardCode, setGiftCardCode] = useState('');
+    const [appliedGiftCard, setAppliedGiftCard] = useState<{ valid: boolean; balance: number; code: string; id: string } | null>(null);
+    const [isApplyingGiftCard, setIsApplyingGiftCard] = useState(false);
     const [formData, setFormData] = useState({
         fullName: crmState.customerName || crmState.name || '',
         email: crmState.customerEmail || crmState.email || '',
         phone: crmState.customerPhone || crmState.phone || '',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const totalAmount = selectedServices.reduce((acc, s) => acc + Number(s.price), 0);
+    const discountAmount = appliedGiftCard ? Math.min(totalAmount, appliedGiftCard.balance) : 0;
+    const payableAmount = totalAmount - discountAmount;
 
     useEffect(() => {
         // Redirect if state is missing (e.g. on refresh)
@@ -109,21 +115,6 @@ export const CheckoutPage: React.FC = () => {
                 return;
             }
 
-            if (paymentMethod === 'gift_card') {
-                if (!giftCardCode.trim()) {
-                    alert('Please enter a valid Gift Card code.');
-                    setIsSubmitting(false);
-                    return;
-                }
-                try {
-                    await paymentsAPI.redeemGiftCard(giftCardCode.trim());
-                } catch (err: any) {
-                    console.error("Gift card redemption failed:", err);
-                    alert(err?.response?.data?.message || err?.message || "Invalid or inactive Gift Card code. Please check and try again.");
-                    setIsSubmitting(false);
-                    return;
-                }
-            }
 
             const appointmentData = {
                 clinicId: selectedClinic.id,
@@ -134,9 +125,10 @@ export const CheckoutPage: React.FC = () => {
                 startTime: selectedTimeSlot.startTime,
                 endTime: selectedTimeSlot.endTime,
                 status: 'PENDING',
-                paymentMethod,
+                paymentMethod: payableAmount <= 0 ? 'gift_card' : paymentMethod,
                 clientDetails: formData,
-                holdId
+                holdId,
+                giftCardCode: appliedGiftCard?.code || undefined
             };
 
             const result = await dispatch(createAppointment(appointmentData));
@@ -280,40 +272,56 @@ export const CheckoutPage: React.FC = () => {
                                     <span className="text-[10px] font-black uppercase text-lime-600 bg-lime-100 px-3 py-1 rounded-full">Earn Points</span>
                                 </button>
 
-                                <button
-                                    type="button"
-                                    onClick={() => setPaymentMethod('gift_card')}
-                                    className={`w-full flex items-center justify-between p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'gift_card' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className={`size-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'gift_card' ? 'border-black bg-black' : 'border-gray-300'}`}>
-                                            {paymentMethod === 'gift_card' && <div className="size-2 rounded-full bg-[#CBFF38]" />}
-                                        </div>
-                                        <span className="font-black uppercase text-sm tracking-tight flex items-center gap-2">
-                                            <FaGift className="text-lime-500" /> Gift Card / Voucher
-                                        </span>
-                                    </div>
-                                    <span className="text-[10px] font-black uppercase text-lime-600 bg-lime-100 px-3 py-1 rounded-full">Redeem Instantly</span>
-                                </button>
-
-                                {paymentMethod === 'gift_card' && (
-                                    <div className="p-5 bg-lime-50 rounded-2xl border border-lime-100 space-y-3">
-                                        <p className="text-[10px] font-bold text-lime-700 uppercase tracking-tight leading-relaxed">
-                                            ENTER YOUR VOUCHER CODE BELOW. THE BALANCE WILL BE APPLIED AS CREDIT TOWARDS YOUR APPOINTMENT PAYMENT.
-                                        </p>
-                                        <div className="space-y-1">
-                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-1">Gift Card Code</label>
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. BD-XXXXXX"
-                                                value={giftCardCode}
-                                                onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
-                                                className="w-full h-12 px-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] focus:border-[#CBFF38] outline-none font-bold text-sm tracking-wider placeholder-gray-300 bg-white"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
                             </div>
+                        </div>
+
+                        {/* Gift Card */}
+                        <div className={cardStyle}>
+                            <h3 className={sectionTitle}><FaGift size={18} className="text-lime-500" /> Apply Gift Card</h3>
+                            {appliedGiftCard ? (
+                                <div className="p-4 bg-lime-50 border border-lime-200 rounded-xl flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-bold text-lime-800">Gift Card Applied: {appliedGiftCard.code}</p>
+                                        <p className="text-xs text-lime-600 mt-1">Balance: €{appliedGiftCard.balance.toLocaleString()}</p>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => { setAppliedGiftCard(null); setGiftCardCode(''); }}
+                                        className="text-xs font-bold text-red-500 hover:text-red-600 uppercase tracking-wider"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex gap-3">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Gift Card Code"
+                                        value={giftCardCode}
+                                        onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
+                                        className="flex-1 h-12 px-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] focus:border-[#CBFF38] outline-none font-bold text-sm tracking-wider uppercase"
+                                    />
+                                    <Button
+                                        disabled={!giftCardCode.trim() || isApplyingGiftCard}
+                                        onClick={async () => {
+                                            setIsApplyingGiftCard(true);
+                                            try {
+                                                const res = await paymentsAPI.applyGiftCard(giftCardCode.trim());
+                                                setAppliedGiftCard({ ...res.data, code: giftCardCode.trim() });
+                                                alert("Gift card applied successfully!");
+                                            } catch (err: any) {
+                                                console.error("Gift card apply error:", err);
+                                                alert(err?.response?.data?.message || "Invalid or expired gift card code.");
+                                            } finally {
+                                                setIsApplyingGiftCard(false);
+                                            }
+                                        }}
+                                        className="h-12 bg-black text-white hover:bg-gray-800 px-6 rounded-xl font-bold uppercase tracking-widest text-xs"
+                                    >
+                                        {isApplyingGiftCard ? "..." : "Apply"}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Policies */}
@@ -368,10 +376,22 @@ export const CheckoutPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="border-t border-gray-100 pt-6 mb-8">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-black uppercase text-gray-400 tracking-widest">Grand Total</span>
-                                    <span className="text-3xl font-black text-gray-900"><span className="font-sans mr-1">€</span>{selectedServices.reduce((acc, s) => acc + Number(s.price), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <div className="border-t border-gray-100 pt-6 mb-8 space-y-3">
+                                <div className="flex justify-between items-center text-gray-500">
+                                    <span className="text-xs font-black uppercase tracking-widest">Subtotal</span>
+                                    <span className="text-lg font-black"><span className="font-sans mr-1">€</span>{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                {discountAmount > 0 && (
+                                    <div className="flex justify-between items-center text-lime-600">
+                                        <span className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                                            <FaGift /> Gift Card Discount
+                                        </span>
+                                        <span className="text-lg font-black">-<span className="font-sans mr-1">€</span>{discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                                    <span className="text-sm font-black uppercase text-gray-900 tracking-widest">Payable Amount</span>
+                                    <span className="text-3xl font-black text-gray-900"><span className="font-sans mr-1">€</span>{payableAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             </div>
 

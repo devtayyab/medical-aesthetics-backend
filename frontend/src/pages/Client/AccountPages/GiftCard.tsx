@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { paymentsAPI } from "@/services/api";
 
 // Use the user's provided green banner image for the gift card hero section
+import { useLocation, useNavigate } from "react-router-dom";
 import HeroBg from "@/assets/giftcard_bg.png";
 
 const sectionStyles = css`
@@ -92,18 +93,34 @@ export const GiftCard: React.FC = () => {
   const [isPaying, setIsPaying] = useState<boolean>(false);
   const [copied, setCopied] = useState(false);
 
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('success') === 'true') {
+      const code = params.get('code');
+      if (code) {
+        setGiftCardCode(code);
+        toast.success("Voucher purchased successfully!");
+        // Clean URL
+        navigate('/account/gift-cards', { replace: true });
+      }
+    }
+  }, [location.search, navigate]);
+
   const handlePurchase = async () => {
     if (amount <= 0) return;
     setIsPaying(true);
 
     try {
       const res = await paymentsAPI.purchaseGiftCard({ amount });
-      setGiftCardCode(res.data.code);
-      toast.success("Voucher generated successfully!");
+      if (res.data.redirectUrl) {
+          window.location.href = res.data.redirectUrl;
+      }
     } catch (err: any) {
       console.error("Failed to purchase gift card:", err);
       toast.error(err.response?.data?.message || "Purchase failed. Please try again.");
-    } finally {
       setIsPaying(false);
     }
   };

@@ -285,7 +285,8 @@ export const bookingAPI = {
   reschedule: (id: string, startTime: string, endTime: string, notes?: string) =>
     api.patch(`/appointments/${id}/reschedule`, { startTime, endTime, notes }),
   cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
-  complete: (id: string, data?: any) => api.patch(`/appointments/${id}/complete`, data),
+  complete: (id: string, data?: any) => api.patch(`/clinic/appointments/${id}/complete`, data),
+  validateGiftCard: (code: string) => api.post(`/clinic/appointments/validate-gift-card`, { code }).then(res => res.data),
   updateStatus: (id: string, status: string) =>
     api.patch(`/appointments/${id}/status`, { status }),
   createBlockedSlot: (data: {
@@ -334,7 +335,7 @@ export const paymentsAPI = {
   getMyWallet: (params?: { limit?: number; offset?: number }) => api.get("/payments/my-wallet", { params }),
   getMyGiftCards: () => api.get("/payments/gift-cards"),
   purchaseGiftCard: (data: { amount: number; recipientEmail?: string; message?: string }) => api.post("/payments/gift-cards", data),
-  redeemGiftCard: (code: string) => api.post("/payments/gift-cards/redeem", { code }),
+  applyGiftCard: (code: string) => api.post("/payments/gift-cards/apply", { code }),
 };
 
 

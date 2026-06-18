@@ -405,8 +405,29 @@ export class BookingsService {
       console.log('✅ [BookingsService] Hold successfully removed.');
     }
 
-    // Set status to pending_payment if card is chosen
-    if (createAppointmentDto.paymentMethod === 'card') {
+    // Process Gift Card if provided
+    let payableAmount = appointmentData.totalAmount;
+    let validGiftCard = null;
+
+    if (createAppointmentDto.giftCardCode) {
+      validGiftCard = await this.financialService.validateGiftCard(createAppointmentDto.giftCardCode);
+      if (validGiftCard && validGiftCard.valid) {
+        appointmentData.giftCardId = validGiftCard.id;
+        
+        const discount = Math.min(validGiftCard.balance, appointmentData.totalAmount);
+        appointmentData.giftCardAmountRedeemed = discount;
+        payableAmount = appointmentData.totalAmount - discount;
+        
+        // If fully paid by gift card, override payment method and status
+        if (payableAmount <= 0) {
+          appointmentData.status = AppointmentStatus.CONFIRMED;
+          createAppointmentDto.paymentMethod = 'gift_card'; // Prevent card logic
+        }
+      }
+    }
+
+    // Set status to pending_payment if card is chosen and still has payable amount
+    if (createAppointmentDto.paymentMethod === 'card' && payableAmount > 0) {
       appointmentData.status = AppointmentStatus.PENDING_PAYMENT;
     }
 
@@ -417,6 +438,21 @@ export class BookingsService {
     console.log('📝 [BookingsService] Saving appointment to database...');
     const savedAppointment: Appointment = await this.appointmentsRepository.save(appointment);
     console.log('✅ [BookingsService] Appointment saved:', { id: savedAppointment.id });
+
+    // Single-use Gift Card Invalidation
+    if (validGiftCard) {
+      const giftCardRepo = this.appointmentsRepository.manager.getRepository('GiftCard');
+      const card = await giftCardRepo.findOne({ where: { id: validGiftCard.id } });
+      if (card) {
+        card.isActive = false;
+        card.balance = 0;
+        card.redeemedByUserId = clientId;
+        card.redeemedAt = new Date();
+        card.redeemedAppointmentId = savedAppointment.id;
+        await giftCardRepo.save(card);
+        console.log(`✅ [BookingsService] Gift Card ${card.code} redeemed and marked as inactive.`);
+      }
+    }
 
     // Create a CRM Task for Salesperson to confirm the appointment (Call Center Workflow)
     if (savedAppointment.status === AppointmentStatus.PENDING) {
@@ -485,40 +521,41 @@ export class BookingsService {
       );
     }
 
-    // If card payment, generate Viva Wallet redirect URL
-    if (createAppointmentDto.paymentMethod === 'card') {
-      const clientName = appointmentWithRelations.client
-        ? `${appointmentWithRelations.client.firstName} ${appointmentWithRelations.client.lastName}`
-        : (createAppointmentDto.clientDetails?.fullName || 'Guest');
+      // If card payment, generate Viva Wallet redirect URL
+      // If gift card covered the whole amount, payableAmount is 0 and paymentMethod was changed to 'gift_card' above.
+      if (createAppointmentDto.paymentMethod === 'card') {
+        const clientName = appointmentWithRelations.client
+          ? `${appointmentWithRelations.client.firstName} ${appointmentWithRelations.client.lastName}`
+          : (createAppointmentDto.clientDetails?.fullName || 'Guest');
 
-      const amount = Number(savedAppointment.totalAmount || 0);
-      const customerEmail = appointmentWithRelations.client?.email || createAppointmentDto.clientDetails?.email || '';
-      const customerPhone = appointmentWithRelations.client?.phone || createAppointmentDto.clientDetails?.phone || '';
+        const amount = payableAmount; // Use the dynamically calculated payableAmount
+        const customerEmail = appointmentWithRelations.client?.email || createAppointmentDto.clientDetails?.email || '';
+        const customerPhone = appointmentWithRelations.client?.phone || createAppointmentDto.clientDetails?.phone || '';
 
-      // DEMO MODE: If Viva credentials not configured yet, use a test redirect
-      const vivaClientId = process.env.VIVA_CLIENT_ID;
-      const vivaMerchantId = process.env.VIVA_MERCHANT_ID;
-      const vivaApiKey = process.env.VIVA_API_KEY;
+        // DEMO MODE: If Viva credentials not configured yet, use a test redirect
+        const vivaClientId = process.env.VIVA_CLIENT_ID;
+        const vivaMerchantId = process.env.VIVA_MERCHANT_ID;
+        const vivaApiKey = process.env.VIVA_API_KEY;
 
-      const hasOAuth = vivaClientId && vivaClientId !== 'your-viva-client-id';
-      const hasBasicAuth = vivaMerchantId && vivaApiKey && vivaMerchantId !== 'your-viva-merchant-id';
+        const hasOAuth = vivaClientId && vivaClientId !== 'your-viva-client-id';
+        const hasBasicAuth = vivaMerchantId && vivaApiKey && vivaMerchantId !== 'your-viva-merchant-id';
 
-      if (!hasOAuth && !hasBasicAuth) {
-        console.warn('[Viva Wallet] ⚠️  DEMO MODE — No real credentials set. Using test redirect.');
-        const frontendUrl = process.env.APP_FRONTEND_URL || 'http://localhost:5173';
-        const demoRedirectUrl = `${frontendUrl}/payment/success?t=DEMO_TXN_${savedAppointment.id}&s=DEMO_ORDER&paid=true&appointmentId=${savedAppointment.id}`;
-        // Mark appointment as confirmed in demo mode
-        await this.appointmentsRepository.update(savedAppointment.id, {
-          status: AppointmentStatus.CONFIRMED,
-        });
-        return {
-          ...appointmentWithRelations,
-          redirectUrl: demoRedirectUrl,
-        };
-      }
+        if (!hasOAuth && !hasBasicAuth) {
+          console.warn('[Viva Wallet] ⚠️  DEMO MODE — No real credentials set. Using test redirect.');
+          const frontendUrl = process.env.APP_FRONTEND_URL || 'http://localhost:5173';
+          const demoRedirectUrl = `${frontendUrl}/payment/success?t=DEMO_TXN_${savedAppointment.id}&s=DEMO_ORDER&paid=true&appointmentId=${savedAppointment.id}`;
+          // Mark appointment as confirmed in demo mode
+          await this.appointmentsRepository.update(savedAppointment.id, {
+            status: AppointmentStatus.CONFIRMED,
+          });
+          return {
+            ...appointmentWithRelations,
+            redirectUrl: demoRedirectUrl,
+          };
+        }
 
-      console.log(`[Viva Wallet] Creating payment order for appointment ${savedAppointment.id}, amount=${amount}, email=${customerEmail}`);
-      console.log('💳 [BookingsService] Initiating Viva Wallet payment order...', { amount });
+        console.log(`[Viva Wallet] Creating payment order for appointment ${savedAppointment.id}, amount=${amount}, email=${customerEmail}`);
+        console.log('💳 [BookingsService] Initiating Viva Wallet payment order...', { amount });
 
       try {
         const redirectUrl = await this.vivaWalletService.createPaymentOrder({
@@ -1306,7 +1343,9 @@ export class BookingsService {
       notes?: string;
     },
     serviceId?: string,
+    giftCardCode?: string,
   ): Promise<Appointment> {
+    console.log('[BookingsService] completeAppointmentWithPayment HIT!', { appointmentId, paymentData, serviceId, giftCardCode });
     const appointment = await this.findAppointmentForClinic(appointmentId, userId, userRole);
     const oldStatus = appointment.status;
     const oldTotal = Number(appointment.totalAmount ?? 0);
@@ -1332,14 +1371,59 @@ export class BookingsService {
       }
       appointment.notes = paymentData.notes || appointment.notes;
 
-      // RULE 3: Update existing revenue record if it exists to avoid double-counting
-      try {
+      // Handle Gift Card Redemption
+      if (giftCardCode && paymentData.amount > 0) {
+        try {
+          const giftCard = await this.financialService.validateGiftCard(giftCardCode);
+          if (giftCard && giftCard.valid) {
+            const discount = Math.min(giftCard.balance, paymentData.amount);
+            console.log(`[BookingsService] Redeeming Gift Card ${giftCardCode} for amount ${discount}`);
+            
+            // Record Gift Card Payment explicitly
+            await this.financialService.recordPayment({
+              appointmentId: appointment.id,
+              clinicId: appointment.clinicId, // Clinic gets the revenue attribution
+              clientId: appointment.clientId,
+              providerId: appointment.providerId,
+              amount: discount,
+              method: RecordPaymentMethod.GIFT_CARD,
+              type: PaymentType.PAYMENT,
+              notes: `Gift Card Redeemed: Code ${giftCardCode}`,
+              recordedById: userId,
+            });
+
+            // Update Gift Card Status
+            const giftCardRepo = this.appointmentsRepository.manager.getRepository('GiftCard');
+            const card = await giftCardRepo.findOne({ where: { id: giftCard.id } });
+            if (card) {
+              card.balance = Math.max(0, Number(card.balance) - discount);
+              if (card.balance <= 0) {
+                card.isActive = false;
+              }
+              card.redeemedByUserId = appointment.clientId;
+              card.redeemedAt = new Date();
+              card.redeemedAppointmentId = appointment.id;
+              await giftCardRepo.save(card);
+            }
+
+            // Reduce remaining amount for the rest of the logic
+            paymentData.amount = Math.max(0, paymentData.amount - discount);
+          }
+        } catch (gcErr) {
+          console.error('[BookingsService] Gift Card redemption failed:', gcErr.message);
+        }
+      }
+
+      // If there is still a remaining amount to be paid via other methods, or if we need to update an existing record
+      if (paymentData.amount > 0 || !giftCardCode) {
+        try {
         const type = paymentData.isAdvancePayment ? PaymentType.DEPOSIT : PaymentType.PAYMENT;
         const existing = await this.financialService['paymentRecordsRepository'].findOne({
           where: { appointmentId: appointment.id, type },
         });
 
         if (existing) {
+          console.log('[BookingsService] Updating existing PaymentRecord:', existing.id);
           await this.financialService['paymentRecordsRepository'].update(existing.id, {
             amount: paymentData.amount,
             method: paymentData.paymentMethod as any,
@@ -1352,6 +1436,7 @@ export class BookingsService {
           const totalPaid = records.reduce((acc, r) => acc + (r.type === PaymentType.REFUND || r.type === PaymentType.VOID ? -Number(r.amount) : Number(r.amount)), 0);
           appointment.amountPaid = totalPaid;
         } else {
+          console.log('[BookingsService] Creating NEW PaymentRecord for amount:', paymentData.amount);
           // Record new PaymentRecord
           await this.financialService.recordPayment({
             appointmentId: appointment.id,
@@ -1364,9 +1449,11 @@ export class BookingsService {
             notes: paymentData.notes,
             recordedById: userId,
           });
+          console.log('[BookingsService] Successfully recorded PaymentRecord');
         }
-      } catch (fErr) {
-        console.error('[BookingsService] Revenue update failed:', fErr.message);
+        } catch (fErr) {
+          console.error('[BookingsService] Revenue update failed:', fErr.message, fErr.stack);
+        }
       }
 
       // RULE: Always re-sync the in-memory appointment.amountPaid AFTER recording a payment 

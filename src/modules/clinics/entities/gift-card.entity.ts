@@ -8,6 +8,7 @@ import {
     JoinColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Appointment } from '../../bookings/entities/appointment.entity';
 
 @Entity('gift_cards')
 export class GiftCard {
@@ -44,7 +45,24 @@ export class GiftCard {
     @Column({ nullable: true })
     expiresAt: Date;
 
+    @Column({ type: 'uuid', nullable: true })
+    redeemedByUserId: string;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    redeemedAt: Date;
+
+    @Column({ type: 'uuid', nullable: true })
+    redeemedAppointmentId: string;
+
     @ManyToOne(() => User)
     @JoinColumn({ name: 'userId' })
     user: User;
+
+    @ManyToOne(() => User)
+    @JoinColumn({ name: 'redeemedByUserId' })
+    redeemedByUser: User;
+
+    @ManyToOne(() => Appointment)
+    @JoinColumn({ name: 'redeemedAppointmentId' })
+    redeemedAppointment: Appointment;
 }
