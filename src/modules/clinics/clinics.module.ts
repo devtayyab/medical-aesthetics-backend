@@ -15,12 +15,14 @@ import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
 import { ClinicOwnership } from '../crm/entities/clinic-ownership.entity';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Clinic, Service, Treatment, TreatmentCategory, Review, User, Appointment, AgentClinicAccess, ClinicOwnership]),
     forwardRef(() => BookingsModule),
     forwardRef(() => LoyaltyModule),
+    forwardRef(() => PaymentsModule),
     NotificationsModule,
   ],
   controllers: [ClinicsController, ClinicManagementController],

@@ -41,6 +41,9 @@ export class GiftCardsService {
     async getAllGiftCards(query?: { search?: string }) {
         const qb = this.giftCardRepository.createQueryBuilder('gc')
             .leftJoinAndSelect('gc.user', 'user')
+            .leftJoinAndSelect('gc.redeemedByUser', 'redeemedByUser')
+            .leftJoinAndSelect('gc.redeemedAppointment', 'appointment')
+            .leftJoinAndSelect('appointment.clinic', 'clinic')
             .orderBy('gc.createdAt', 'DESC');
 
         if (query?.search) {

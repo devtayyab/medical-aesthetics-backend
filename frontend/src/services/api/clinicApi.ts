@@ -156,6 +156,11 @@ export const appointmentsApi = {
   sendReminder: async (id: string): Promise<void> => {
     await apiClient.post(`/clinic/appointments/${id}/send-reminder`);
   },
+
+  validateGiftCard: async (code: string): Promise<any> => {
+    const response = await apiClient.post(`/clinic/appointments/validate-gift-card`, { code });
+    return response.data;
+  },
 };
 
 // Analytics API

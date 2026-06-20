@@ -58,6 +58,11 @@ export class CreateAppointmentDto {
   @IsString()
   paymentMethod?: string;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  giftCardCode?: string;
+
   @ApiProperty({ example: 50, required: false })
   @IsOptional()
   @IsNumber()

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { updateAppointmentStatus } from '../../store/slices/clinicSlice';
+import { updateAppointmentStatus, completeAppointment } from '../../store/slices/clinicSlice';
 import { PaymentMethod, Appointment, Service, AppointmentStatus } from '../../types/clinic.types';
 import { X, Euro, CreditCard, Banknote, Building2, Gift, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
-import { clinicsAPI, loyaltyAPI, adminAPI } from '@/services/api';
+import { clinicsAPI, loyaltyAPI, adminAPI, bookingAPI } from '@/services/api';
 
 interface AppointmentExecutionModalProps {
   appointment: Appointment;
@@ -20,7 +20,9 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
   const dispatch = useDispatch<AppDispatch>();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
-  const [giftCardCode, setGiftCardCode] = useState('');
+  const [giftCardCodeInput, setGiftCardCodeInput] = useState('');
+  const [appliedGiftCard, setAppliedGiftCard] = useState<{ code: string; balance: number } | null>(null);
+  const [isValidatingCard, setIsValidatingCard] = useState(false);
   const [finalAmount, setFinalAmount] = useState<number>(appointment.totalAmount || 0);
   const [treatmentNotes, setTreatmentNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,7 +83,31 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
   const calculateTotal = () => {
     const baseAmount = finalAmount;
     const pointsReduction = pointsToRedeem;
-    return Math.max(0, baseAmount - pointsReduction);
+    const preAppliedGiftCardReduction = appointment.giftCardAmountRedeemed || 0;
+    const newlyAppliedGiftCardReduction = appliedGiftCard ? Math.min(appliedGiftCard.balance, Math.max(0, baseAmount - pointsReduction - preAppliedGiftCardReduction)) : 0;
+    
+    return Math.max(0, baseAmount - pointsReduction - preAppliedGiftCardReduction - newlyAppliedGiftCardReduction);
+  };
+
+  const handleValidateGiftCard = async () => {
+    if (!giftCardCodeInput.trim()) return;
+    setIsValidatingCard(true);
+    try {
+      // Use the newly added validation endpoint via clinicApi
+      const res = await bookingAPI.validateGiftCard(giftCardCodeInput.trim());
+      if (res && res.valid) {
+        setAppliedGiftCard({ code: giftCardCodeInput.trim(), balance: res.balance });
+        setGiftCardCodeInput('');
+      } else {
+        alert('Invalid or inactive Gift Card.');
+        setAppliedGiftCard(null);
+      }
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to validate Gift Card.');
+      setAppliedGiftCard(null);
+    } finally {
+      setIsValidatingCard(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent, status: AppointmentStatus = AppointmentStatus.COMPLETED) => {
@@ -95,24 +121,6 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      if (paymentMethod === PaymentMethod.GIFT_CARD) {
-        if (!giftCardCode.trim()) {
-          alert('Please enter a valid Gift Card code.');
-          setIsSubmitting(false);
-          return;
-        }
-        try {
-          await adminAPI.redeemGiftCard({
-            code: giftCardCode.trim(),
-            amount: calculateTotal(),
-          });
-        } catch (err: any) {
-          console.error('Gift card redemption failed:', err);
-          alert(err?.response?.data?.message || err?.message || 'Invalid or inactive Gift Card code. Please verify and try again.');
-          setIsSubmitting(false);
-          return;
-        }
-      }
       const updateData: any = {
         notes: treatmentNotes,
         treatmentDetails: {
@@ -131,6 +139,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
         amountPaid: calculateTotal(),
         paymentMethod: paymentMethod,
         rewardPointsRedeemed: pointsToRedeem,
+        giftCardCode: appliedGiftCard?.code,
       };
 
       // 1. Redeem points if any
@@ -145,13 +154,22 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
       }
 
       // 2. Perform status update (Execution)
-      await dispatch(
-        updateAppointmentStatus({
-          id: appointment.id,
-          status: status,
-          updateData
-        })
-      ).unwrap();
+      if (status === AppointmentStatus.COMPLETED || status === AppointmentStatus.EXECUTED) {
+        await dispatch(
+          completeAppointment({
+            id: appointment.id,
+            data: updateData
+          })
+        ).unwrap();
+      } else {
+        await dispatch(
+          updateAppointmentStatus({
+            id: appointment.id,
+            status: status,
+            updateData
+          })
+        ).unwrap();
+      }
 
       onComplete();
     } catch (error) {
@@ -167,7 +185,6 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
     { value: PaymentMethod.POS, label: 'POS', icon: <CreditCard className="w-5 h-5" /> },
     { value: PaymentMethod.CARD, label: 'Card', icon: <CreditCard className="w-5 h-5" /> },
     { value: PaymentMethod.BANK_TRANSFER, label: 'Bank Transfer', icon: <Building2 className="w-5 h-5" /> },
-    { value: PaymentMethod.GIFT_CARD, label: 'Gift Card', icon: <Gift className="w-5 h-5" /> },
   ];
 
   return (
@@ -232,6 +249,20 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Pre-paid Gift Card applied online */}
+          {appointment.giftCardAmountRedeemed ? (
+            <div className="bg-lime-50 rounded-xl p-4 border border-lime-100 flex items-center justify-between">
+               <div className="flex items-center gap-2">
+                 <Gift className="w-5 h-5 text-lime-600" />
+                 <div>
+                   <h3 className="text-sm font-bold text-lime-800 uppercase tracking-wider">Gift Card Applied</h3>
+                   <p className="text-[10px] text-lime-600 font-bold uppercase tracking-widest mt-1">Applied during booking</p>
+                 </div>
+               </div>
+               <span className="text-lg font-black text-lime-700">-€{Number(appointment.giftCardAmountRedeemed).toFixed(2)}</span>
+            </div>
+          ) : null}
 
           {/* Loyalty Rewards */}
           <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
@@ -298,43 +329,78 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
                 Payment Method
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {paymentMethods.map((method) => (
-                  <button
-                    key={method.value}
-                    type="button"
-                    onClick={() => setPaymentMethod(method.value)}
-                    className={`flex items-center gap-2 p-3 border-2 rounded-xl transition-all ${paymentMethod === method.value
-                      ? 'border-green-600 bg-green-50 ring-2 ring-green-100'
-                      : 'border-gray-100 hover:border-gray-200'
-                      }`}
-                  >
-                    <div className={paymentMethod === method.value ? 'text-green-600' : 'text-gray-400'}>
-                      {method.icon}
-                    </div>
-                    <span className={`text-sm font-bold ${paymentMethod === method.value ? 'text-green-900' : 'text-gray-600'}`}>
-                      {method.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {paymentMethod === PaymentMethod.GIFT_CARD && (
-                <div className="pt-2">
-                  <label className="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1.5">
-                    Gift Card / Voucher Code
+              {calculateTotal() > 0 && (
+                <>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mt-4">
+                    Remaining Balance Payment Method
                   </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. BD-XXXXXX"
-                    value={giftCardCode}
-                    onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none font-bold text-sm bg-gray-50"
-                  />
-                </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {paymentMethods.map((method) => (
+                      <button
+                        key={method.value}
+                        type="button"
+                        onClick={() => setPaymentMethod(method.value)}
+                        className={`flex items-center gap-2 p-3 border-2 rounded-xl transition-all ${paymentMethod === method.value
+                          ? 'border-green-600 bg-green-50 ring-2 ring-green-100'
+                          : 'border-gray-100 hover:border-gray-200'
+                          }`}
+                      >
+                        <div className={paymentMethod === method.value ? 'text-green-600' : 'text-gray-400'}>
+                          {method.icon}
+                        </div>
+                        <span className={`text-sm font-bold ${paymentMethod === method.value ? 'text-green-900' : 'text-gray-600'}`}>
+                          {method.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
+
+            <div className="space-y-4">
+              {/* Add New Gift Card Section */}
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  Apply Gift Card
+                </label>
+                {appliedGiftCard ? (
+                  <div className="flex items-center justify-between p-3 bg-lime-50 border border-lime-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Gift className="w-4 h-4 text-lime-600" />
+                      <div>
+                        <p className="text-xs font-bold text-lime-800">{appliedGiftCard.code}</p>
+                        <p className="text-[10px] text-lime-600 uppercase font-bold">Balance: €{appliedGiftCard.balance.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAppliedGiftCard(null)}
+                      className="text-[10px] text-red-500 font-bold uppercase hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter code..."
+                      value={giftCardCodeInput}
+                      onChange={(e) => setGiftCardCodeInput(e.target.value.toUpperCase())}
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-green-500 uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleValidateGiftCard}
+                      disabled={isValidatingCard || !giftCardCodeInput.trim()}
+                      className="px-4 py-2 bg-gray-900 text-white text-xs font-bold uppercase rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      {isValidatingCard ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                )}
+              </div>
 
             {/* Total Recalculation */}
             <div className="bg-gray-900 rounded-xl p-5 text-white flex flex-col justify-center">
@@ -349,6 +415,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
               <div className="mt-2 text-[10px] text-gray-500 uppercase font-bold tracking-widest text-right">
                 (inc. all taxes & discounts)
               </div>
+            </div>
             </div>
           </div>
 

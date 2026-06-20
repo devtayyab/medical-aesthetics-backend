@@ -70,6 +70,12 @@ export class Appointment {
   @Column({ nullable: true })
   holdId: string; // Reference to temporary hold
 
+  @Column({ type: 'uuid', nullable: true })
+  giftCardId: string;
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  giftCardAmountRedeemed: number;
+
   @Column('json', { nullable: true })
   treatmentDetails: any;
 

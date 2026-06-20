@@ -44,7 +44,7 @@ export class PaymentRecord {
   @Column({ type: 'uuid', nullable: true })
   appointmentId: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', nullable: true })
   clinicId: string;
 
   @Column({ type: 'uuid' })

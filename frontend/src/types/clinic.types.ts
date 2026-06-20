@@ -162,6 +162,8 @@ export interface Appointment {
   isBeautyDoctorsClient?: boolean;
   serviceName?: string;
   rewardPointsRedeemed?: number;
+  giftCardAmountRedeemed?: number;
+  giftCardId?: string;
   executedAt?: string;
   executedById?: string;
   paymentMethod?: string;

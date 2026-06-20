@@ -123,6 +123,8 @@ const getAdminLinks = (role: string): SidebarItem[] => {
     { path: "/admin/users", label: "Users & Roles", icon: <Users className="w-5 h-5" />, group: "Main" },
     { path: "/admin/reviews", label: "Review Moderation", icon: <Eye className="w-5 h-5" />, group: "Approvals" },
     { path: "/admin/treatments", label: "Therapy Catalog", icon: <ListChecks className="w-5 h-5" />, group: "Approvals" },
+    { path: "/admin/payments", label: "Payments & Turnover", icon: <DollarSign className="w-5 h-5" />, group: "Finance" },
+    { path: "/admin/gift-cards", label: "Gift Cards", icon: <Tag className="w-5 h-5" />, group: "Finance" },
     { path: "/admin/notification-settings", label: "Notification Settings", icon: <Bell className="w-5 h-5" />, group: "System" },
     { path: "/admin/system-lists", label: "System Lists", icon: <ListChecks className="w-5 h-5" />, group: "System" },
     { path: "/admin/audit-logs", label: "Audit Logs", icon: <Shield className="w-5 h-5" />, group: "System" },

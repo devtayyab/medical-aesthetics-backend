@@ -22,6 +22,7 @@ import { BookingsService } from '../bookings/bookings.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { AvailabilityService } from '../bookings/availability.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { FinancialService } from '../payments/financial.service';
 import {
   CreateClinicProfileDto,
   UpdateClinicProfileDto,
@@ -54,6 +55,7 @@ export class ClinicManagementController {
     private readonly loyaltyService: LoyaltyService,
     private readonly availabilityService: AvailabilityService,
     private readonly notificationsService: NotificationsService,
+    private readonly financialService: FinancialService,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
   ) { }
@@ -154,6 +156,14 @@ export class ClinicManagementController {
     );
   }
 
+  @Post('appointments/validate-gift-card')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.DOCTOR)
+  @ApiOperation({ summary: 'Validate a gift card for in-clinic redemption' })
+  @ApiResponse({ status: 200, description: 'Gift card validated successfully' })
+  async validateGiftCard(@Body() body: { code: string }) {
+    return this.financialService.validateGiftCard(body.code);
+  }
+
   @Patch('appointments/:id/complete')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.SECRETARIAT, UserRole.SALESPERSON, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Complete appointment with payment recording and completion report' })
@@ -175,14 +185,18 @@ export class ClinicManagementController {
       amountPaid?: number;
       paymentMethod?: string;
       totalAmount?: number;
+      giftCardCode?: string;
     },
     @Request() req,
   ) {
+    console.log('[ClinicManagementController] completeAppointment HIT! Body:', body);
     // Robustness: Map top-level fields to paymentData or completionReport if they are missing
     const paymentData = body.paymentData || (body.paymentMethod ? {
       paymentMethod: body.paymentMethod,
       amount: body.amountPaid || body.totalAmount || 0,
     } : undefined);
+    
+    console.log('[ClinicManagementController] Extracted paymentData:', paymentData);
 
     const completionReport = body.completionReport || (body.amountPaid !== undefined ? {
       patientCame: true,
@@ -199,6 +213,7 @@ export class ClinicManagementController {
       body.treatmentDetails,
       completionReport,
       body.serviceId,
+      body.giftCardCode,
     );
   }
 
@@ -759,3 +774,5 @@ export class ClinicManagementController {
   }
 }
 
+
+// Trigger backend reload

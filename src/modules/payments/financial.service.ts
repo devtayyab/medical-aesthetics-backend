@@ -243,7 +243,7 @@ export class FinancialService {
             code,
             amount: data.amount,
             balance: data.amount,
-            isActive: true,
+            isActive: false, // Inactive until paid
             recipientEmail: data.recipientEmail,
             message: data.message,
             expiresAt,
@@ -252,73 +252,31 @@ export class FinancialService {
 
         const savedCard = await this.giftCardRepository.save(giftCard);
 
-        this.eventEmitter.emit('audit.log', {
-            userId,
-            action: 'GIFT_CARD_PURCHASE',
-            resource: 'gift_cards',
-            resourceId: savedCard.id,
-            changes: { after: { code, amount: data.amount, userId } },
-            data: { code, amount: data.amount, recipientEmail: data.recipientEmail },
-        });
-
         return savedCard;
     }
 
-    async redeemGiftCard(userId: string, code: string): Promise<{ success: boolean; redeemedAmount: number; code: string }> {
+    async validateGiftCard(code: string): Promise<{ valid: boolean; balance: number; id: string }> {
         const giftCard = await this.giftCardRepository.findOne({
             where: { code, isActive: true },
         });
 
         if (!giftCard) {
-            throw new NotFoundException('Gift card not found, inactive, or invalid code');
+            throw new NotFoundException('Gift card not found, inactive, or already used');
         }
 
         if (giftCard.expiresAt && giftCard.expiresAt < new Date()) {
-            giftCard.isActive = false;
-            await this.giftCardRepository.save(giftCard);
             throw new NotFoundException('Gift card has expired');
         }
 
-        const redeemAmount = Number(giftCard.balance);
-        if (redeemAmount <= 0) {
+        const balance = Number(giftCard.balance);
+        if (balance <= 0) {
             throw new NotFoundException('Gift card has zero balance');
         }
 
-        // Fetch any clinic to satisfy the non-null foreign key constraint in payment_records
-        const clinicRepo = this.paymentRecordsRepository.manager.getRepository(Clinic);
-        const clinic = await clinicRepo.findOne({ select: ['id'] });
-        const clinicId = clinic?.id || '00000000-0000-0000-0000-000000000000';
-
-        // Deduct the balance
-        giftCard.balance = 0;
-        giftCard.isActive = false;
-        await this.giftCardRepository.save(giftCard);
-
-        // Record a PaymentRecord of type DEPOSIT
-        await this.recordPayment({
-            clinicId,
-            clientId: userId,
-            amount: redeemAmount,
-            method: PaymentMethod.GIFT_CARD,
-            type: PaymentType.DEPOSIT,
-            status: PaymentStatus.COMPLETED,
-            notes: `Gift Card Redeemed: Code ${giftCard.code}`,
-            metadata: { giftCardCode: giftCard.code },
-        });
-
-        this.eventEmitter.emit('audit.log', {
-            userId,
-            action: 'GIFT_CARD_REDEEM_CLIENT',
-            resource: 'gift_cards',
-            resourceId: giftCard.id,
-            changes: { before: { balance: redeemAmount }, after: { balance: 0 } },
-            data: { code: giftCard.code, redeemAmount },
-        });
-
         return {
-            success: true,
-            redeemedAmount: redeemAmount,
-            code: giftCard.code,
+            valid: true,
+            balance,
+            id: giftCard.id,
         };
     }
 }

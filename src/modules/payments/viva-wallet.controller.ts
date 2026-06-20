@@ -6,6 +6,9 @@ import { Repository } from 'typeorm';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { VivaWalletService } from './viva-wallet.service';
+import { FinancialService } from './financial.service';
+import { PaymentMethod, PaymentType, PaymentStatus } from './entities/payment-record.entity';
+import { GiftCard } from '../clinics/entities/gift-card.entity';
 
 /**
  * Viva Wallet Webhook & Redirect Handler
@@ -27,7 +30,10 @@ export class VivaWalletController {
     constructor(
         @InjectRepository(Appointment)
         private appointmentsRepository: Repository<Appointment>,
+        @InjectRepository(GiftCard)
+        private giftCardRepository: Repository<GiftCard>,
         private vivaWalletService: VivaWalletService,
+        private financialService: FinancialService,
     ) { }
 
     /**
@@ -49,16 +55,54 @@ export class VivaWalletController {
             try {
                 const verified = await this.vivaWalletService.verifyTransaction(transactionId);
                 if (verified) {
-                    const appointmentId = verified.merchantTrns;
-                    await this.appointmentsRepository.update(appointmentId, {
-                        status: AppointmentStatus.CONFIRMED,
-                        paymentMethod: 'card',
-                        // The amount is in cents from Viva, convert to your currency
-                        amountPaid: verified.amount / 100,
-                    });
-                    console.log(`[Viva Wallet] Appointment ${appointmentId} confirmed after payment.`);
-                    // Redirect to the frontend confirmation page
-                    return { redirectUrl: `/booking-confirmation?appointmentId=${appointmentId}&paid=true` };
+                    const merchantTrns = verified.merchantTrns;
+                    
+                    // Try Appointment
+                    const appointment = await this.appointmentsRepository.findOne({ where: { id: merchantTrns }});
+                    if (appointment) {
+                        await this.appointmentsRepository.update(merchantTrns, {
+                            status: AppointmentStatus.CONFIRMED,
+                            paymentMethod: 'card',
+                            amountPaid: verified.amount / 100,
+                        });
+                        
+                        await this.financialService.recordPayment({
+                            appointmentId: merchantTrns,
+                            clinicId: appointment.clinicId,
+                            clientId: appointment.clientId,
+                            providerId: appointment.providerId,
+                            amount: verified.amount / 100,
+                            method: PaymentMethod.VIVA_WALLET,
+                            type: PaymentType.PAYMENT,
+                            status: PaymentStatus.COMPLETED,
+                            transactionReference: transactionId,
+                            notes: 'Paid online via Viva Wallet',
+                        });
+                        console.log(`[Viva Wallet] Appointment ${merchantTrns} confirmed after payment.`);
+                        return { redirectUrl: `/booking-confirmation?appointmentId=${merchantTrns}&paid=true` };
+                    }
+
+                    // Try Gift Card
+                    const giftCard = await this.giftCardRepository.findOne({ where: { id: merchantTrns }});
+                    if (giftCard) {
+                        giftCard.isActive = true;
+                        await this.giftCardRepository.save(giftCard);
+
+                        await this.financialService.recordPayment({
+                            clinicId: null, // Platform payment
+                            clientId: giftCard.userId,
+                            amount: verified.amount / 100,
+                            method: PaymentMethod.VIVA_WALLET,
+                            type: PaymentType.PAYMENT,
+                            status: PaymentStatus.COMPLETED,
+                            transactionReference: transactionId,
+                            notes: `Gift Card Purchase via Viva Wallet: Code ${giftCard.code}`,
+                            metadata: { giftCardCode: giftCard.code },
+                        });
+
+                        console.log(`[Viva Wallet] Gift Card ${merchantTrns} activated after payment.`);
+                        return { redirectUrl: `/account/gift-cards?success=true&code=${giftCard.code}` };
+                    }
                 }
             } catch (err) {
                 console.error('[Viva Wallet] Transaction verification failed:', err?.message);
@@ -100,12 +144,50 @@ export class VivaWalletController {
             const amount = body?.EventData?.Amount; // in cents
 
             if (merchantTrns) {
-                await this.appointmentsRepository.update(merchantTrns, {
-                    status: AppointmentStatus.CONFIRMED,
-                    paymentMethod: 'card',
-                    amountPaid: amount ? amount / 100 : undefined,
-                });
-                console.log(`[Viva Wallet] Appointment ${merchantTrns} confirmed via webhook. TransactionId: ${transactionId}`);
+                // Try Appointment
+                const appointment = await this.appointmentsRepository.findOne({ where: { id: merchantTrns }});
+                if (appointment) {
+                    await this.appointmentsRepository.update(merchantTrns, {
+                        status: AppointmentStatus.CONFIRMED,
+                        paymentMethod: 'card',
+                        amountPaid: amount ? amount / 100 : undefined,
+                    });
+                    
+                    await this.financialService.recordPayment({
+                        appointmentId: merchantTrns,
+                        clinicId: appointment.clinicId,
+                        clientId: appointment.clientId,
+                        providerId: appointment.providerId,
+                        amount: amount ? amount / 100 : 0,
+                        method: PaymentMethod.VIVA_WALLET,
+                        type: PaymentType.PAYMENT,
+                        status: PaymentStatus.COMPLETED,
+                        transactionReference: transactionId,
+                        notes: 'Paid online via Viva Wallet (Webhook)',
+                    });
+                    console.log(`[Viva Wallet] Appointment ${merchantTrns} confirmed via webhook. TransactionId: ${transactionId}`);
+                }
+
+                // Try Gift Card
+                const giftCard = await this.giftCardRepository.findOne({ where: { id: merchantTrns }});
+                if (giftCard && !giftCard.isActive) {
+                    giftCard.isActive = true;
+                    await this.giftCardRepository.save(giftCard);
+
+                    await this.financialService.recordPayment({
+                        clinicId: null, // Platform payment
+                        clientId: giftCard.userId,
+                        amount: amount ? amount / 100 : 0,
+                        method: PaymentMethod.VIVA_WALLET,
+                        type: PaymentType.PAYMENT,
+                        status: PaymentStatus.COMPLETED,
+                        transactionReference: transactionId,
+                        notes: `Gift Card Purchase via Viva Wallet (Webhook): Code ${giftCard.code}`,
+                        metadata: { giftCardCode: giftCard.code },
+                    });
+
+                    console.log(`[Viva Wallet] Gift Card ${merchantTrns} activated via webhook. TransactionId: ${transactionId}`);
+                }
             }
         }
 
