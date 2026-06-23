@@ -92,7 +92,6 @@ export const SalesWeekCalendar: React.FC = () => {
         date: Date;
         time: string;
     } | null>(null);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('card');
 
     // Wizard State
     const [wizardStep, setWizardStep] = useState(1);
@@ -383,32 +382,6 @@ export const SalesWeekCalendar: React.FC = () => {
         } catch (err) {
             console.error(err);
             toast.error("Failed to record. Please verify connection.");
-        }
-    };
-
-    const handleCardPayment = async () => {
-        if (!selectedApt) return;
-        try {
-            const loadingToast = toast.loading('Generating secure payment link...');
-            const res = await bookingAPI.generatePaymentUrl(selectedApt.id);
-            toast.dismiss(loadingToast);
-            if (res.data?.redirectUrl) {
-                window.open(res.data.redirectUrl, '_blank');
-            } else {
-                toast.error('Payment link not available. Please check Viva Wallet credentials in backend .env');
-            }
-        } catch (err: any) {
-            toast.dismiss();
-            const isCredsMissing = err?.response?.status === 500;
-            if (isCredsMissing) {
-                toast.error(
-                    'Card payment unavailable — Viva Wallet is not configured. Use "Pay at Venue" or "Cash" instead.',
-                    { duration: 6000 }
-                );
-            } else {
-                toast.error('Failed to generate payment link. Please try again.');
-            }
-            console.error(err);
         }
     };
 
@@ -1343,28 +1316,15 @@ export const SalesWeekCalendar: React.FC = () => {
                                     />
                                 </div>
 
-                                {/* Two big payment option buttons */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    {/* Card → Viva Wallet */}
-                                    <button
-                                        onClick={handleCardPayment}
-                                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-indigo-200 bg-white hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
-                                    >
-                                        <CreditCard size={22} className="text-indigo-500 group-hover:text-indigo-700" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Card</span>
-                                        <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Redirect to Viva Wallet</span>
-                                    </button>
-
-                                    {/* Pay at Venue */}
-                                    <button
-                                        onClick={handleRecordPayment}
-                                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-200 bg-white hover:border-emerald-500 hover:bg-emerald-50 transition-all group"
-                                    >
-                                        <MapPin size={22} className="text-emerald-500 group-hover:text-emerald-700" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Pay at Venue</span>
-                                        <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Confirm & stay pending</span>
-                                    </button>
-                                </div>
+                                {/* Pay at Venue */}
+                                <button
+                                    onClick={handleRecordPayment}
+                                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-200 bg-white hover:border-emerald-500 hover:bg-emerald-50 transition-all group"
+                                >
+                                    <MapPin size={22} className="text-emerald-500 group-hover:text-emerald-700" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Pay at Venue</span>
+                                    <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Confirm & stay pending</span>
+                                </button>
 
                                 {/* Complete + collect cash */}
                                 <button

@@ -17,13 +17,13 @@ html {
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
   scroll-behavior: smooth;
+  font-size: 80%;
 }
 
 body {
   /* background-color: #fafafa; */
   background-color: #F5F6F7;
   color: #333;
-  font-size: 16px;
 }
 
 /* CSS Custom Properties - Medical Aesthetics Theme */

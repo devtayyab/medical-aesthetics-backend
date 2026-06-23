@@ -4,6 +4,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Appointment } from '../bookings/entities/appointment.entity';
+import { Clinic } from '../clinics/entities/clinic.entity';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { VivaWalletService } from './viva-wallet.service';
 import { FinancialService } from './financial.service';
@@ -32,6 +33,8 @@ export class VivaWalletController {
         private appointmentsRepository: Repository<Appointment>,
         @InjectRepository(GiftCard)
         private giftCardRepository: Repository<GiftCard>,
+        @InjectRepository(Clinic)
+        private clinicsRepository: Repository<Clinic>,
         private vivaWalletService: VivaWalletService,
         private financialService: FinancialService,
     ) { }
@@ -79,6 +82,31 @@ export class VivaWalletController {
                             notes: 'Paid online via Viva Wallet',
                         });
                         console.log(`[Viva Wallet] Appointment ${merchantTrns} confirmed after payment.`);
+
+                        // ─── AUTO PAYOUT TO CLINIC IBAN ──────────────────────────────
+                        if (appointment.clinicId) {
+                            const clinic = await this.clinicsRepository.findOne({
+                                where: { id: appointment.clinicId }
+                            });
+                            if (clinic?.bankIban) {
+                                console.log(`[Viva Payout] Clinic has IBAN. Initiating payout to: ${clinic.bankIban}`);
+                                const payout = await this.vivaWalletService.sendPayoutToIban({
+                                    amount: verified.amount / 100,
+                                    iban: clinic.bankIban,
+                                    fullName: clinic.bankAccountHolder || clinic.name,
+                                    reference: merchantTrns,
+                                });
+                                if (payout.success) {
+                                    console.log(`[Viva Payout] ✅ Payout sent to clinic ${clinic.name}. TxId: ${payout.transactionId}`);
+                                } else {
+                                    console.warn(`[Viva Payout] ⚠️ Payout failed for clinic ${clinic.name}: ${payout.error}`);
+                                }
+                            } else {
+                                console.warn(`[Viva Payout] ⚠️ Clinic ${appointment.clinicId} has no IBAN set. Payout skipped.`);
+                            }
+                        }
+                        // ─────────────────────────────────────────────────────────────
+
                         return { redirectUrl: `/booking-confirmation?appointmentId=${merchantTrns}&paid=true` };
                     }
 
@@ -166,6 +194,31 @@ export class VivaWalletController {
                         notes: 'Paid online via Viva Wallet (Webhook)',
                     });
                     console.log(`[Viva Wallet] Appointment ${merchantTrns} confirmed via webhook. TransactionId: ${transactionId}`);
+
+                    // ─── AUTO PAYOUT TO CLINIC IBAN (Webhook) ────────────────────
+                    if (appointment.clinicId) {
+                        const clinic = await this.clinicsRepository.findOne({
+                            where: { id: appointment.clinicId }
+                        });
+                        if (clinic?.bankIban) {
+                            const payoutAmount = amount ? amount / 100 : 0;
+                            console.log(`[Viva Payout] Webhook: Initiating payout to clinic IBAN: ${clinic.bankIban}, amount: ${payoutAmount}`);
+                            const payout = await this.vivaWalletService.sendPayoutToIban({
+                                amount: payoutAmount,
+                                iban: clinic.bankIban,
+                                fullName: clinic.bankAccountHolder || clinic.name,
+                                reference: merchantTrns,
+                            });
+                            if (payout.success) {
+                                console.log(`[Viva Payout] ✅ Webhook payout sent to clinic ${clinic.name}. TxId: ${payout.transactionId}`);
+                            } else {
+                                console.warn(`[Viva Payout] ⚠️ Webhook payout failed: ${payout.error}`);
+                            }
+                        } else {
+                            console.warn(`[Viva Payout] ⚠️ Clinic ${appointment.clinicId} has no IBAN set. Payout skipped.`);
+                        }
+                    }
+                    // ────────────────────────────────────────────────────────────
                 }
 
                 // Try Gift Card

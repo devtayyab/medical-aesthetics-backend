@@ -6,8 +6,9 @@ import {
   updateClinicProfile,
 } from "../../store/slices/clinicSlice";
 import { ClinicProfile } from "../../types/clinic.types";
-import { Building2, Mail, Phone, Globe, MapPin, Save, Info, ArrowRight, Camera } from "lucide-react";
+import { Building2, Mail, Phone, Globe, MapPin, Save, Info, ArrowRight, Camera, Landmark, CheckCircle, AlertCircle } from "lucide-react";
 import ImageUpload from "../../components/atoms/ImageUpload";
+import { bankDetailsApi } from "../../services/api/clinicApi";
 
 const getImageUrl = (path: string) => {
     if (!path) return '';
@@ -42,6 +43,41 @@ const SettingsPage: React.FC = () => {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+
+  // --- Bank / IBAN State ---
+  const [bankData, setBankData] = useState({
+    bankIban: "",
+    bankAccountHolder: "",
+    bankName: "",
+    bankBic: "",
+  });
+  const [isSavingBank, setIsSavingBank] = useState(false);
+  const [bankToast, setBankToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  useEffect(() => {
+    bankDetailsApi.get().then((data) => {
+      setBankData({
+        bankIban: data.bankIban || "",
+        bankAccountHolder: data.bankAccountHolder || "",
+        bankName: data.bankName || "",
+        bankBic: data.bankBic || "",
+      });
+    }).catch(() => {});
+  }, []);
+
+  const handleSaveBank = async () => {
+    setIsSavingBank(true);
+    setBankToast(null);
+    try {
+      await bankDetailsApi.update(bankData);
+      setBankToast({ type: "success", msg: "Bank details saved successfully!" });
+    } catch {
+      setBankToast({ type: "error", msg: "Failed to save bank details. Try again." });
+    } finally {
+      setIsSavingBank(false);
+      setTimeout(() => setBankToast(null), 4000);
+    }
+  };
 
   useEffect(() => {
     dispatch(fetchClinicProfile());
@@ -296,6 +332,105 @@ const SettingsPage: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* ── BANK / IBAN PAYOUT DETAILS ────────────────────────── */}
+                        <div className="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-gray-100 flex flex-col">
+                            <div className="flex items-center gap-4 mb-2">
+                                <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
+                                    <Landmark size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-black uppercase italic tracking-tighter text-gray-900">Payment Payout Details</h2>
+                                    <p className="text-[10px] text-gray-400 font-medium">Online payments will be transferred to this bank account</p>
+                                </div>
+                            </div>
+
+                            {/* Toast */}
+                            {bankToast && (
+                                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-6 mt-4 text-sm font-bold ${
+                                    bankToast.type === "success"
+                                        ? "bg-lime-50 border border-lime-200 text-lime-700"
+                                        : "bg-red-50 border border-red-200 text-red-700"
+                                }`}>
+                                    {bankToast.type === "success"
+                                        ? <CheckCircle size={16} />
+                                        : <AlertCircle size={16} />}
+                                    {bankToast.msg}
+                                </div>
+                            )}
+
+                            <div className="space-y-5 mt-6">
+                                {/* IBAN */}
+                                <div className="relative group">
+                                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1 italic">IBAN Number *</p>
+                                    <input
+                                        type="text"
+                                        value={bankData.bankIban}
+                                        onChange={(e) => setBankData({ ...bankData, bankIban: e.target.value.toUpperCase() })}
+                                        placeholder="e.g. GB29 NWBK 6016 1331 9268 19"
+                                        className="w-full h-14 px-5 bg-gray-50 border border-gray-100 rounded-xl font-bold text-sm text-gray-900 focus:bg-white focus:border-black transition-all outline-none tracking-widest"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    {/* Account Holder */}
+                                    <div className="relative group">
+                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1 italic">Account Holder Name *</p>
+                                        <input
+                                            type="text"
+                                            value={bankData.bankAccountHolder}
+                                            onChange={(e) => setBankData({ ...bankData, bankAccountHolder: e.target.value })}
+                                            placeholder="e.g. Dr. Smith Aesthetics Ltd"
+                                            className="w-full h-14 px-5 bg-gray-50 border border-gray-100 rounded-xl font-bold text-sm text-gray-900 focus:bg-white focus:border-black transition-all outline-none"
+                                        />
+                                    </div>
+
+                                    {/* Bank Name */}
+                                    <div className="relative group">
+                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1 italic">Bank Name</p>
+                                        <input
+                                            type="text"
+                                            value={bankData.bankName}
+                                            onChange={(e) => setBankData({ ...bankData, bankName: e.target.value })}
+                                            placeholder="e.g. HSBC, Barclays, Alpha Bank"
+                                            className="w-full h-14 px-5 bg-gray-50 border border-gray-100 rounded-xl font-bold text-sm text-gray-900 focus:bg-white focus:border-black transition-all outline-none"
+                                        />
+                                    </div>
+
+                                    {/* BIC / SWIFT */}
+                                    <div className="md:col-span-2 relative group">
+                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1 italic">BIC / SWIFT Code</p>
+                                        <input
+                                            type="text"
+                                            value={bankData.bankBic}
+                                            onChange={(e) => setBankData({ ...bankData, bankBic: e.target.value.toUpperCase() })}
+                                            placeholder="e.g. HBUKGB4B"
+                                            className="w-full h-14 px-5 bg-gray-50 border border-gray-100 rounded-xl font-bold text-sm text-gray-900 focus:bg-white focus:border-black transition-all outline-none tracking-widest"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Info note */}
+                                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                                    <Info size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                                    <p className="text-[10px] font-bold text-amber-700 leading-relaxed">
+                                        When a client pays online via Viva Wallet, the amount will be <strong>automatically transferred</strong> to this bank account after payment confirmation.
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleSaveBank}
+                                    disabled={isSavingBank}
+                                    className="h-12 px-6 bg-[#CBFF38] text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all shadow-lg shadow-lime-500/10 flex items-center gap-3 disabled:opacity-20"
+                                >
+                                    <Save size={16} />
+                                    {isSavingBank ? "Saving..." : "Save Bank Details"}
+                                </button>
+                            </div>
+                        </div>
+                        {/* ─────────────────────────────────────────────────────── */}
+
                     </div>
 
                     {/* Sidebar / Info Area */}
