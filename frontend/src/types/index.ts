@@ -67,6 +67,10 @@ export interface Clinic {
   minPrice?: number;
   services: Service[];
   providers?: User[];
+  bankIban?: string;
+  bankAccountHolder?: string;
+  bankName?: string;
+  bankBic?: string;
 }
 
 export interface Treatment {

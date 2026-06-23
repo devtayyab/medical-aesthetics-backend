@@ -126,4 +126,53 @@ export class VivaWalletService {
         }
     }
 
+    /**
+     * Clinic ka IBAN number par payout bhejo.
+     * Yeh Viva Wallet ka "Send Money to Bank Account" API use karta hai.
+     *
+     * @param params.amount     - Amount in EUR (e.g. 150.00)
+     * @param params.iban       - Clinic ka IBAN (e.g. "GR1601101250000000012300695")
+     * @param params.fullName   - Clinic / Account Holder ka naam
+     * @param params.reference  - Hamare system ka reference (appointmentId wagera)
+     */
+    async sendPayoutToIban(params: {
+        amount: number;
+        iban: string;
+        fullName: string;
+        reference: string;
+    }): Promise<{ success: boolean; transactionId?: string; error?: string }> {
+        try {
+            const authHeader = await this.getAuthHeader();
+
+            console.log(`[Viva Payout] Initiating IBAN payout: amount=${params.amount}, iban=${params.iban}, ref=${params.reference}`);
+
+            const response = await axios.post(
+                `${this.apiUrl}/api/v1/transfers`,
+                {
+                    amount: Math.round(params.amount * 100), // cents mein
+                    description: `Clinic Payout - Ref: ${params.reference}`,
+                    beneficiary: {
+                        name: params.fullName,
+                        iban: params.iban.replace(/\s+/g, ''), // spaces hatao
+                    },
+                    merchantReference: params.reference,
+                },
+                {
+                    headers: { Authorization: authHeader },
+                },
+            );
+
+            const transactionId = response.data?.transactionId || response.data?.id;
+            console.log(`[Viva Payout] ✅ Payout successful! TransactionId: ${transactionId}`);
+
+            return { success: true, transactionId };
+        } catch (error) {
+            const errMsg = error.response?.data?.message || error.message;
+            console.error('[Viva Payout] ❌ Payout FAILED:', error.response?.data || error.message);
+            // Silently fail — payout log rakho, throw mat karo taake appointment confirm ho jaye
+            return { success: false, error: errMsg };
+        }
+    }
+
 }
+

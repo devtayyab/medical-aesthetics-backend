@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Clinic } from './entities/clinic.entity';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ClinicsService } from './clinics.service';
 import { BookingsService } from '../bookings/bookings.service';
@@ -36,6 +37,7 @@ import {
   UpdateTreatmentDto,
   CreateCategoryDto,
   UpdateCategoryDto,
+  UpdateBankDetailsDto,
 } from './dto/clinic.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -58,6 +60,8 @@ export class ClinicManagementController {
     private readonly financialService: FinancialService,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(Clinic)
+    private readonly clinicsRepository: Repository<Clinic>,
   ) { }
 
   // Clinic Profile Management
@@ -92,6 +96,54 @@ export class ClinicManagementController {
     @Request() req,
   ) {
     return this.clinicsService.updateClinicProfile(req.user.id, updateClinicProfileDto);
+  }
+
+  // ─── Bank / Payout Details ────────────────────────────────────────────────
+  @Get('bank-details')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
+  @ApiOperation({ summary: 'Get clinic bank/IBAN details for Viva payouts' })
+  async getBankDetails(@Request() req) {
+    const clinic = await this.clinicsService.findByOwnerId(req.user.id);
+    return {
+      bankIban: clinic.bankIban || null,
+      bankAccountHolder: clinic.bankAccountHolder || null,
+      bankName: clinic.bankName || null,
+      bankBic: clinic.bankBic || null,
+    };
+  }
+
+  @Patch('bank-details')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER)
+  @ApiOperation({ summary: 'Save clinic IBAN bank details for Viva payouts' })
+  async updateBankDetails(
+    @Body() dto: UpdateBankDetailsDto,
+    @Request() req,
+  ) {
+    const clinic = await this.clinicsService.findByOwnerId(req.user.id);
+    await this.clinicsRepository.update(clinic.id, {
+      bankIban: dto.bankIban,
+      bankAccountHolder: dto.bankAccountHolder,
+      bankName: dto.bankName,
+      bankBic: dto.bankBic,
+    });
+    return { message: 'Bank details updated successfully', clinicId: clinic.id };
+  }
+
+  // Admin: Update any clinic's bank details by clinicId
+  @Patch('admin/:clinicId/bank-details')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: '[Admin] Save any clinic IBAN by clinicId' })
+  async adminUpdateBankDetails(
+    @Param('clinicId') clinicId: string,
+    @Body() dto: UpdateBankDetailsDto,
+  ) {
+    await this.clinicsRepository.update(clinicId, {
+      bankIban: dto.bankIban,
+      bankAccountHolder: dto.bankAccountHolder,
+      bankName: dto.bankName,
+      bankBic: dto.bankBic,
+    });
+    return { message: 'Bank details updated successfully', clinicId };
   }
 
   // Appointment Management

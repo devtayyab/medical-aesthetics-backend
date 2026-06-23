@@ -28,6 +28,23 @@ export interface ClinicProfile {
   businessHours: BusinessHours;
   timezone: string;
   isActive: boolean;
+  // Visual / Media
+  photoUrl?: string;
+  images?: string[];
+  // Location
+  latitude?: number;
+  longitude?: number;
+  // Stats
+  rating?: number;
+  reviewCount?: number;
+  // Ownership
+  ownerId?: string;
+  // Bank / Payout Details (Viva Wallet IBAN payout)
+  bankIban?: string;
+  bankAccountHolder?: string;
+  bankName?: string;
+  bankBic?: string;
+  // Timestamps
   createdAt: string;
   updatedAt: string;
 }

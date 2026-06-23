@@ -7,11 +7,12 @@ import { PaymentsController } from './payments.controller';
 import { Appointment } from '../bookings/entities/appointment.entity';
 import { PaymentRecord } from './entities/payment-record.entity';
 import { GiftCard } from '../clinics/entities/gift-card.entity';
+import { Clinic } from '../clinics/entities/clinic.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Appointment, PaymentRecord, GiftCard]),
+        TypeOrmModule.forFeature([Appointment, PaymentRecord, GiftCard, Clinic]),
         NotificationsModule
     ],
     controllers: [VivaWalletController, PaymentsController],

@@ -505,3 +505,24 @@ export class UpdateCategoryDto {
   isActive?: boolean;
 }
 
+export class UpdateBankDetailsDto {
+  @ApiPropertyOptional({ description: 'Clinic IBAN number for Viva Wallet payouts' })
+  @IsOptional()
+  @IsString()
+  bankIban?: string;
+
+  @ApiPropertyOptional({ description: 'Bank account holder name' })
+  @IsOptional()
+  @IsString()
+  bankAccountHolder?: string;
+
+  @ApiPropertyOptional({ description: 'Bank name' })
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @ApiPropertyOptional({ description: 'SWIFT/BIC code' })
+  @IsOptional()
+  @IsString()
+  bankBic?: string;
+}

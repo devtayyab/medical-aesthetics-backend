@@ -2822,7 +2822,6 @@ export class CrmService implements OnModuleInit {
         clinicName: clinic.name,
         phone: clinic.phone,
         address: clinic.address,
-        treatmentRooms: clinic.treatmentRooms,
         totalAppointments: parseInt(clinicStats.totalAppointments || clinicStats.totalappointments) || 0,
         uniqueClients: parseInt(clinicStats.uniqueClients || clinicStats.uniqueclients) || 0,
         completed: parseInt(clinicStats.completed) || 0,

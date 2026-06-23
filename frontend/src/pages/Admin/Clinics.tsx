@@ -25,7 +25,7 @@ export const Clinics: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClinic, setEditingClinic] = useState<Clinic | null>(null);
-    const [activeTab, setActiveTab] = useState<"profile" | "hours" | "staff" | "blocked" | "services">("profile");
+    const [activeTab, setActiveTab] = useState<"profile" | "hours" | "staff" | "blocked" | "services" | "bank">("profile");
     const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
     const [clinicServices, setClinicServices] = useState<any[]>([]);
     const [isAddingService, setIsAddingService] = useState(false);
@@ -69,6 +69,10 @@ export const Clinics: React.FC = () => {
         isActive: true,
         ownerId: "",
         ownerIds: [],
+        bankIban: "",
+        bankAccountHolder: "",
+        bankName: "",
+        bankBic: "",
     });
 
     const ownerSearchRef = useRef<HTMLDivElement>(null);
@@ -233,6 +237,10 @@ export const Clinics: React.FC = () => {
                 isActive: true,
                 ownerId: "",
                 ownerIds: [],
+                bankIban: "",
+                bankAccountHolder: "",
+                bankName: "",
+                bankBic: "",
                 businessHours: {
                     monday: { open: "09:00", close: "18:00", isOpen: true },
                     tuesday: { open: "09:00", close: "18:00", isOpen: true },
@@ -426,13 +434,13 @@ export const Clinics: React.FC = () => {
                         </div>
 
                         {editingClinic && (
-                            <div className="px-6 py-2 bg-white border-b border-gray-100 flex gap-4 overflow-x-auto">
-                                {(["profile", "hours", "staff", "blocked", "services"] as const).map(tab => (
+                            <div className="px-6 pt-2 bg-white border-b border-gray-100 flex gap-6 overflow-x-auto shrink-0">
+                                {(["profile", "hours", "staff", "blocked", "services", "bank"] as const).map(tab => (
                                     <button
                                         key={tab}
                                         type="button"
                                         onClick={() => setActiveTab(tab)}
-                                        className={`px-4 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${activeTab === tab
+                                        className={`py-3 text-sm font-bold border-b-2 -mb-px transition-all whitespace-nowrap ${activeTab === tab
                                             ? "border-[#CBFF38] text-[#0B1120]"
                                             : "border-transparent text-gray-500 hover:text-gray-700"
                                             }`}
@@ -1189,6 +1197,51 @@ export const Clinics: React.FC = () => {
                                                 <p className="text-gray-500">No blocked slots found for this clinic.</p>
                                             </div>
                                         )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'bank' && (
+                                <div className="space-y-4">
+                                    <h4 className="font-bold text-gray-900 border-l-4 border-[#CBFF38] pl-3">Bank Details (Viva Wallet)</h4>
+                                    <p className="text-sm text-gray-500 mb-4">Provide clinic's IBAN details to enable direct payouts via Viva Wallet.</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">Account Holder Name</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none"
+                                                value={formData.bankAccountHolder || ""}
+                                                onChange={e => setFormData({ ...formData, bankAccountHolder: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">IBAN</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none uppercase"
+                                                value={formData.bankIban || ""}
+                                                onChange={e => setFormData({ ...formData, bankIban: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">Bank Name</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none"
+                                                value={formData.bankName || ""}
+                                                onChange={e => setFormData({ ...formData, bankName: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium text-gray-700">BIC / SWIFT (Optional)</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#CBFF38] outline-none uppercase"
+                                                value={formData.bankBic || ""}
+                                                onChange={e => setFormData({ ...formData, bankBic: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}

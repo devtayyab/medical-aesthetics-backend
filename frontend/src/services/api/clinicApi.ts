@@ -285,7 +285,6 @@ export const availabilityApi = {
 
 };
 
-// Staff Management API
 export const staffApi = {
   getAll: async (clinicId?: string): Promise<any[]> => {
     const params = clinicId ? { clinicId } : {};
@@ -303,6 +302,29 @@ export const staffApi = {
   },
 };
 
+// Bank / Payout Details API
+export const bankDetailsApi = {
+  get: async (): Promise<{
+    bankIban: string | null;
+    bankAccountHolder: string | null;
+    bankName: string | null;
+    bankBic: string | null;
+  }> => {
+    const response = await apiClient.get('/clinic/bank-details');
+    return response.data;
+  },
+
+  update: async (data: {
+    bankIban?: string;
+    bankAccountHolder?: string;
+    bankName?: string;
+    bankBic?: string;
+  }): Promise<{ message: string; clinicId: string }> => {
+    const response = await apiClient.patch('/clinic/bank-details', data);
+    return response.data;
+  },
+};
+
 export default {
   clinicProfile: clinicProfileApi,
   services: servicesApi,
@@ -313,4 +335,6 @@ export default {
   notifications: notificationsApi,
   availability: availabilityApi,
   staff: staffApi,
+  bankDetails: bankDetailsApi,
 };
+
