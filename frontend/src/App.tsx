@@ -75,8 +75,9 @@ import { Treatments } from"@/pages/Client/Treatments";
 import { Services } from"@/pages/Client/Services";
 import { Legal, SupportCenter, ChatSupport } from"@/pages/Client/InfoPages/InfoPages";
 import { InviteFriend } from"@/pages/Client/AccountPages/InviteFriend";
-import { Settings } from"@/pages/Client/AccountPages/Settings";
-import type { RootState } from"@/store";
+import { Settings } from "@/pages/Client/AccountPages/Settings";
+import { Reviews } from "@/pages/Client/Reviews";
+import type { RootState } from "@/store";
 import"@/styles/globals.css";
 
 import SiteLogo from"@/assets/SiteLogo.png";
