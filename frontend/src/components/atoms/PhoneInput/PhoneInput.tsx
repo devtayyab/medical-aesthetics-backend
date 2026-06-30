@@ -177,14 +177,14 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
  </label>
  )}
 
- <div className="flex items-stretch rounded-xl overflow-hidden border border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all bg-white shadow-sm">
+ <div className="flex items-stretch rounded-xl border border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all bg-white shadow-sm">
  {/* Country Selector Button */}
  <div className="relative flex-shrink-0" ref={dropRef}>
  <button
  type="button"
  disabled={disabled}
  onClick={() => setOpen((o) => !o)}
- className="h-full flex items-center gap-1.5 px-3 bg-slate-50 hover:bg-slate-100 border-r border-slate-200 transition-colors text-sm font-bold text-slate-700 focus:outline-none disabled:cursor-not-allowed min-w-[80px]"
+ className="h-full flex items-center gap-1.5 px-3 bg-slate-50 hover:bg-slate-100 border-r border-slate-200 transition-colors text-sm font-bold text-slate-700 focus:outline-none disabled:cursor-not-allowed min-w-[80px] rounded-l-xl"
  >
  <span className="text-lg leading-none">{country.flag}</span>
  <span className="text-slate-500 font-mono text-[11px]">{country.dial}</span>
@@ -254,7 +254,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
  onChange={handleLocalChange}
  placeholder={"X".repeat(country.digits).replace(/X/g,"0")}
  maxLength={country.digits}
- className="w-full h-full px-3 py-2.5 text-sm font-bold text-slate-800 bg-transparent focus:outline-none placeholder:text-slate-300 placeholder:font-normal disabled:cursor-not-allowed"
+ className="w-full h-full px-3 py-2.5 text-sm font-bold text-slate-800 bg-transparent focus:outline-none placeholder:text-slate-300 placeholder:font-normal disabled:cursor-not-allowed rounded-r-xl"
  />
  {/* Live digit counter */}
  <div className={`flex-shrink-0 pr-3 text-[10px] font-black tabular-nums transition-colors ${
