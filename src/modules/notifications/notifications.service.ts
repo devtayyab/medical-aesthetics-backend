@@ -260,17 +260,17 @@ export class NotificationsService implements OnModuleInit {
   ): Promise<{ sentTo: number }> {
     // Find the clinic to get the owner
     const clinic = await this.clinicRepository.findOne({ where: { id: clinicId } });
-    
+
     // Find all users related to this clinic (Secretariat, Doctors)
     const users = await this.usersService.findAll({ isActive: true });
-    const clinicStaff = users.filter(u => 
-      u.assignedClinicId === clinicId || 
+    const clinicStaff = users.filter(u =>
+      u.assignedClinicId === clinicId ||
       [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(u.role as UserRole)
     );
 
     const recipientIds = [...new Set([
-        ...clinicStaff.map(u => u.id),
-        ...(clinic?.ownerId ? [clinic.ownerId] : [])
+      ...clinicStaff.map(u => u.id),
+      ...(clinic?.ownerId ? [clinic.ownerId] : [])
     ])];
 
     if (recipientIds.length === 0) return { sentTo: 0 };
@@ -339,7 +339,7 @@ export class NotificationsService implements OnModuleInit {
     const existing = await this.templateRepository.findOne({
       where: { trigger: data.trigger, type: data.type },
     });
-    
+
     if (existing) {
       throw new BadRequestException(`A template for trigger '${data.trigger}' on channel '${data.type}' already exists. Please edit the existing one instead.`);
     }
@@ -439,6 +439,12 @@ export class NotificationsService implements OnModuleInit {
         content: 'Don\'t forget! You have an appointment for {{serviceName}} tomorrow at {{appointmentTime}}.',
       },
       {
+        trigger: NotificationTrigger.APPOINTMENT_REMINDER,
+        type: NotificationType.EMAIL,
+        subject: 'Reminder: Your Appointment Tomorrow at {{clinicName}}',
+        content: 'Dear {{customerName}},\n\nThis is a friendly reminder that you have an upcoming appointment:\n\n Date: {{appointmentDate}}\n Time: {{appointmentTime}}\n Treatment: {{serviceName}}\n Clinic: {{clinicName}}\n\nIf you need to reschedule or have any questions, please contact us as soon as possible.\n\nWe look forward to seeing you tomorrow!\n\nBest regards,\nThe {{clinicName}} Team',
+      },
+      {
         trigger: NotificationTrigger.POST_VISIT_THANK_YOU,
         type: NotificationType.EMAIL,
         subject: 'Thank You for Choosing {{clinicName}}',
@@ -473,6 +479,23 @@ export class NotificationsService implements OnModuleInit {
         await this.templateRepository.save(this.templateRepository.create({ ...data, isActive: true }));
       }
     }
+  }
+
+  /**
+   * Send a 6-digit OTP code for email verification during registration.
+   */
+  async sendEmailVerificationOtp(
+    recipientId: string,
+    firstName: string,
+    otp: string,
+  ): Promise<void> {
+    await this.create(
+      recipientId,
+      NotificationType.EMAIL,
+      'Your Beauty & Doctors Verification Code',
+      `Hi ${firstName},\n\nYour verification code is:\n\n${otp}\n\nThis code is valid for 15 minutes. Do not share it with anyone.\n\nIf you did not request this, please ignore this email.\n\nBest regards,\nBeauty & Doctors Team`,
+      { otp, type: 'email_verification' },
+    );
   }
 
 }

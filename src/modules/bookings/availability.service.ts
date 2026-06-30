@@ -235,6 +235,26 @@ export class AvailabilityService {
             return true;
           });
 
+          // Account for appointments assigned to 'clinic' (null) or external users not in the providers list
+          const unassignedApts = Object.entries(aptsByProvider).flatMap(([pid, apts]) => {
+            if (pid === 'clinic' || !providers.some(p => p.id === pid)) {
+               return apts;
+            }
+            return [];
+          });
+          
+          const overlappingUnassignedCount = unassignedApts.filter((apt: any) => 
+              slotStart < new Date(apt.endTime) && slotEnd > new Date(apt.startTime)
+          ).length;
+
+          if (overlappingUnassignedCount > 0) {
+              if (overlappingUnassignedCount >= availableProviders.length) {
+                  availableProviders.length = 0;
+              } else {
+                  availableProviders.splice(0, overlappingUnassignedCount);
+              }
+          }
+
             if (availableProviders.length > 0) {
               // Pick a provider (could be random or load-balanced, for now pick first)
               const chosenProvider = availableProviders[0];

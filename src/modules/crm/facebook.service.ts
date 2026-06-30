@@ -28,6 +28,7 @@ export interface ParsedFacebookLead {
   facebookAdSetId?: string;
   facebookAdId?: string;
   facebookLeadData: any;
+  notes?: string;
 }
 
 @Injectable()
@@ -183,11 +184,27 @@ export class FacebookService {
 
   parseLeadData(leadData: FacebookLeadData): ParsedFacebookLead {
     const fieldMap = new Map<string, string>();
+    const extraFields: string[] = [];
 
     // Map Facebook field names to our field names
     leadData.field_data.forEach((field) => {
       fieldMap.set(field.name, field.values[0]);
+      
+      const nameLower = field.name.toLowerCase();
+      if (
+        !nameLower.includes('first_name') &&
+        !nameLower.includes('last_name') &&
+        !nameLower.includes('full_name') &&
+        !nameLower.includes('email') &&
+        !nameLower.includes('phone') &&
+        !nameLower.includes('ad_name') &&
+        !nameLower.includes('campaign')
+      ) {
+        extraFields.push(`${field.name}: ${field.values[0]}`);
+      }
     });
+
+    const notes = extraFields.length > 0 ? extraFields.join('\n') : undefined;
 
     return {
       firstName: fieldMap.get('full_name')?.split(' ')[0] || fieldMap.get('first_name'),
@@ -200,6 +217,7 @@ export class FacebookService {
       facebookAdSetId: leadData.adset_id,
       facebookAdId: leadData.ad_id,
       facebookLeadData: leadData,
+      notes: notes,
     };
   }
 

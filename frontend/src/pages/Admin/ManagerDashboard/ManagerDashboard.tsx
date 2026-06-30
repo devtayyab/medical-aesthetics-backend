@@ -4,22 +4,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/molecules/Tabs';
 import { cn } from '@/lib/utils';
 import {
-  Activity,
-  AlertCircle,
-  BarChart3,
-  BookOpen,
-  Calendar,
-  Euro,
-  Loader2,
-  TrendingUp,
-  Users,
-  UserPlus,
-  ArrowLeft,
+ Activity,
+ AlertCircle,
+ BarChart3,
+ BookOpen,
+ Calendar,
+ Euro,
+ Loader2,
+ TrendingUp,
+ Users,
+ UserPlus,
+ ArrowLeft,
 
-  Phone,
-  Building2,
-  MessageSquare,
-  Briefcase
+ Phone,
+ Building2,
+ MessageSquare,
+ Briefcase
 } from 'lucide-react';
 import React, { useEffect, useState, cloneElement, ReactNode, ReactElement } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -41,975 +41,972 @@ import { columns as serviceColumns } from './columns/serviceColumns';
 
 // Define types
 export interface AgentKpi {
-  agentId: string;
-  agentName: string;
-  totalAppointments: number;
-  completedAppointments: number;
-  servicesSold: number;
-  noShows: number;
-  cancellations: number;
-  conversionRate: number;
-  totalRevenue: number;
-  avgAppointmentValue: number;
-  callsMade: number;
+ agentId: string;
+ agentName: string;
+ totalAppointments: number;
+ completedAppointments: number;
+ servicesSold: number;
+ noShows: number;
+ cancellations: number;
+ conversionRate: number;
+ totalRevenue: number;
+ avgAppointmentValue: number;
+ callsMade: number;
 }
 
 export interface ServiceStat {
-  serviceName: string;
-  totalAppointments: number;
-  totalRevenue: number;
-  avgRevenuePerAppointment?: number;
-  revenueShare?: number;
+ serviceName: string;
+ totalAppointments: number;
+ totalRevenue: number;
+ avgRevenuePerAppointment?: number;
+ revenueShare?: number;
 }
 
 export interface ClinicReturnRate {
-  clinicId: string;
-  clinicName: string;
-  returnRate: number;
-  last30Days: number;
-  last90Days: number;
+ clinicId: string;
+ clinicName: string;
+ returnRate: number;
+ last30Days: number;
+ last90Days: number;
 }
 
 export interface AdvertisementStat {
-  adId: string;
-  channel: string;
-  campaignName: string;
-  spent: number;
-  patientsCame: number;
-  cancelled: number;
-  totalRevenue: number;
-  agentBudgetOwner?: string;
+ adId: string;
+ channel: string;
+ campaignName: string;
+ spent: number;
+ patientsCame: number;
+ cancelled: number;
+ totalRevenue: number;
+ agentBudgetOwner?: string;
 }
 
 // Format currency utility function
 const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+ return new Intl.NumberFormat('en-GB', {
+ style: 'currency',
+ currency: 'EUR',
+ minimumFractionDigits: 0,
+ maximumFractionDigits: 0,
+ }).format(value);
 };
 
 export const ManagerDashboard = () => {
-  const dispatch = useDispatch();
-  const { services: clinicServices, availability: clinicAvailability, staff: clinicStaff } = useSelector((state: RootState) => state.clinic);
-  const [agentKpis, setAgentKpis] = useState<AgentKpi[]>([]);
-  const [serviceStats, setServiceStats] = useState<ServiceStat[]>([]);
-  const [clinicStats, setClinicStats] = useState<ClinicAnalytics[]>([]);
-  const [revenueData, setRevenueData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState('30');
-  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
-  const [searchParams] = useSearchParams();
-  const tabFromUrl = searchParams.get('tab') || 'overview';
-  const [activeTab, setActiveTab] = useState(tabFromUrl);
+ const dispatch = useDispatch();
+ const { services: clinicServices, availability: clinicAvailability, staff: clinicStaff } = useSelector((state: RootState) => state.clinic);
+ const [agentKpis, setAgentKpis] = useState<AgentKpi[]>([]);
+ const [serviceStats, setServiceStats] = useState<ServiceStat[]>([]);
+ const [clinicStats, setClinicStats] = useState<ClinicAnalytics[]>([]);
+ const [revenueData, setRevenueData] = useState<any[]>([]);
+ const [isLoading, setIsLoading] = useState(true);
+ const [error, setError] = useState<string | null>(null);
+ const [selectedPeriod, setSelectedPeriod] = useState('30');
+ const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
+ const [searchParams] = useSearchParams();
+ const tabFromUrl = searchParams.get('tab') || 'overview';
+ const [activeTab, setActiveTab] = useState(tabFromUrl);
 
-  const getPeriodDates = (period: string) => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - parseInt(period, 10));
-    
-    const formatDateString = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
+ const getPeriodDates = (period: string) => {
+ const endDate = new Date();
+ const startDate = new Date();
+ startDate.setDate(endDate.getDate() - parseInt(period, 10));
+ 
+ const formatDateString = (d: Date) => {
+ const year = d.getFullYear();
+ const month = String(d.getMonth() + 1).padStart(2, '0');
+ const day = String(d.getDate()).padStart(2, '0');
+ return `${year}-${month}-${day}`;
+ };
 
-    return {
-      startDate: formatDateString(startDate),
-      endDate: formatDateString(endDate)
-    };
-  };
+ return {
+ startDate: formatDateString(startDate),
+ endDate: formatDateString(endDate)
+ };
+ };
 
-  const handleExportReport = () => {
-    let headers: string[] = [];
-    let rows: any[] = [];
-    let filename = 'report';
+ const handleExportReport = () => {
+ let headers: string[] = [];
+ let rows: any[] = [];
+ let filename = 'report';
 
-    if (activeTab === 'agents') {
-      filename = `agents_performance_last_${selectedPeriod}_days`;
-      headers = ['Agent ID', 'Agent Name', 'Total Appointments', 'Completed Appointments', 'No Shows', 'Cancellations', 'Conversion Rate (%)', 'Total Revenue (€)', 'Calls Made'];
-      rows = agentKpis.map(a => [
-        a.agentId,
-        a.agentName,
-        a.totalAppointments,
-        a.completedAppointments,
-        a.noShows,
-        a.cancellations,
-        a.conversionRate.toFixed(1),
-        a.totalRevenue,
-        a.callsMade
-      ]);
-    } else if (activeTab === 'clinics') {
-      filename = `clinics_performance_last_${selectedPeriod}_days`;
-      headers = ['Clinic ID', 'Clinic Name', 'Total Appointments', 'Completed Appointments', 'Cancellations', 'No Shows', 'Total Revenue (€)'];
-      rows = clinicStats.map(c => [
-        c.clinicId,
-        c.clinicName,
-        c.totalAppointments,
-        c.completed,
-        c.cancelled,
-        c.noShow,
-        c.totalRevenue
-      ]);
-    } else {
-      filename = `dashboard_summary_last_${selectedPeriod}_days`;
-      headers = ['Metric', 'Value'];
-      rows = [
-        ['Total Revenue', formatCurrency(totalRevenue)],
-        ['Total Appointments', totalAppointments],
-        ['Completed Appointments', completedAppointments],
-        ['Average Conversion Rate', `${(avgConversionRate * 100).toFixed(1)}%`],
-        ['Active Agents Count', agentKpis.length],
-      ];
-    }
+ if (activeTab === 'agents') {
+ filename = `agents_performance_last_${selectedPeriod}_days`;
+ headers = ['Agent ID', 'Agent Name', 'Total Appointments', 'Completed Appointments', 'No Shows', 'Cancellations', 'Conversion Rate (%)', 'Total Revenue (€)', 'Calls Made'];
+ rows = agentKpis.map(a => [
+ a.agentId,
+ a.agentName,
+ a.totalAppointments,
+ a.completedAppointments,
+ a.noShows,
+ a.cancellations,
+ a.conversionRate.toFixed(1),
+ a.totalRevenue,
+ a.callsMade
+ ]);
+ } else if (activeTab === 'clinics') {
+ filename = `clinics_performance_last_${selectedPeriod}_days`;
+ headers = ['Clinic ID', 'Clinic Name', 'Total Appointments', 'Completed Appointments', 'Cancellations', 'No Shows', 'Total Revenue (€)'];
+ rows = clinicStats.map(c => [
+ c.clinicId,
+ c.clinicName,
+ c.totalAppointments,
+ c.completed,
+ c.cancelled,
+ c.noShow,
+ c.totalRevenue
+ ]);
+ } else {
+ filename = `dashboard_summary_last_${selectedPeriod}_days`;
+ headers = ['Metric', 'Value'];
+ rows = [
+ ['Total Revenue', formatCurrency(totalRevenue)],
+ ['Total Appointments', totalAppointments],
+ ['Completed Appointments', completedAppointments],
+ ['Average Conversion Rate', `${(avgConversionRate * 100).toFixed(1)}%`],
+ ['Active Agents Count', agentKpis.length],
+ ];
+ }
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map((val: any) => {
-        const str = String(val);
-        if (str.includes(',') || str.includes('\n') || str.includes('"')) {
-          return `"${str.replace(/"/g, '""')}"`;
-        }
-        return str;
-      }).join(','))
-    ].join('\n');
+ const csvContent = [
+ headers.join(','),
+ ...rows.map(row => row.map((val: any) => {
+ const str = String(val);
+ if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+ return `"${str.replace(/"/g, '""')}"`;
+ }
+ return str;
+ }).join(','))
+ ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${filename}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+ const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+ const url = URL.createObjectURL(blob);
+ const link = document.createElement('a');
+ link.setAttribute('href', url);
+ link.setAttribute('download', `${filename}.csv`);
+ link.style.visibility = 'hidden';
+ document.body.appendChild(link);
+ link.click();
+ document.body.removeChild(link);
+ };
 
-  // Sync activeTab when URL tab param changes (e.g. sidebar link)
-  useEffect(() => {
-    setActiveTab(tabFromUrl);
-  }, [tabFromUrl]);
+ // Sync activeTab when URL tab param changes (e.g. sidebar link)
+ useEffect(() => {
+ setActiveTab(tabFromUrl);
+ }, [tabFromUrl]);
 
-  // Agent Management State
-  const [selectedAgent, setSelectedAgent] = useState<AgentKpi | null>(null);
-  const [selectedClinic, setSelectedClinic] = useState<ClinicAnalytics | null>(null);
-  const [showAddAgentModal, setShowAddAgentModal] = useState(false);
-  const [newAgentData, setNewAgentData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    phone: '',
-    role: 'salesperson',
-  });
+ // Agent Management State
+ const [selectedAgent, setSelectedAgent] = useState<AgentKpi | null>(null);
+ const [selectedClinic, setSelectedClinic] = useState<ClinicAnalytics | null>(null);
+ const [showAddAgentModal, setShowAddAgentModal] = useState(false);
+ const [newAgentData, setNewAgentData] = useState({
+ firstName: '',
+ lastName: '',
+ email: '',
+ password: '',
+ phone: '',
+ role: 'salesperson',
+ });
 
-  // Cleanup filters when unmounting
-  useEffect(() => {
-    return () => {
-      dispatch(setLeadFilters({}));
-    };
-  }, [dispatch]);
+ // Cleanup filters when unmounting
+ useEffect(() => {
+ return () => {
+ dispatch(setLeadFilters({}));
+ };
+ }, [dispatch]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const { startDate, endDate } = getPeriodDates(selectedPeriod);
-        const [agents, services, clinics, performance] = await Promise.all([
-          fetchAgentKpis(startDate, endDate),
-          fetchServiceStats(startDate, endDate),
-          fetchClinicAnalytics(startDate, endDate),
-          fetchPerformanceDashboard(startDate, endDate)
-        ]);
-        setAgentKpis(agents);
-        setServiceStats(services);
-        setClinicStats(clinics);
-        if (performance && performance.dailyProgressChart) {
-          setRevenueData(performance.dailyProgressChart);
-        }
+ useEffect(() => {
+ const loadData = async () => {
+ try {
+ setIsLoading(true);
+ const { startDate, endDate } = getPeriodDates(selectedPeriod);
+ const [agents, services, clinics, performance] = await Promise.all([
+ fetchAgentKpis(startDate, endDate),
+ fetchServiceStats(startDate, endDate),
+ fetchClinicAnalytics(startDate, endDate),
+ fetchPerformanceDashboard(startDate, endDate)
+ ]);
+ setAgentKpis(agents);
+ setServiceStats(services);
+ setClinicStats(clinics);
+ if (performance && performance.dailyProgressChart) {
+ setRevenueData(performance.dailyProgressChart);
+ }
 
-        // Handle deep-linking to an agent
-        const paramAgentId = searchParams.get('agentId');
-        if (paramAgentId) {
-          const agent = agents.find((a: any) => a.agentId === paramAgentId);
-          if (agent) {
-            setSelectedAgent(agent);
-            dispatch(setLeadFilters({ assignedSalesId: agent.agentId }));
-          }
-        }
+ // Handle deep-linking to an agent
+ const paramAgentId = searchParams.get('agentId');
+ if (paramAgentId) {
+ const agent = agents.find((a: any) => a.agentId === paramAgentId);
+ if (agent) {
+ setSelectedAgent(agent);
+ dispatch(setLeadFilters({ assignedSalesId: agent.agentId }));
+ }
+ }
 
-        // Handle deep-linking to a clinic
-        const paramClinicId = searchParams.get('clinicId');
-        if (paramClinicId) {
-          const clinic = clinics.find((c: any) => c.clinicId === paramClinicId);
-          if (clinic) {
-            setSelectedClinic(clinic);
-            setActiveTab('clinics');
-            // Populate clinic data
-            dispatch(fetchClinicProviders(clinic.clinicId) as any);
-            dispatch(fetchServices(clinic.clinicId) as any);
-            dispatch(fetchAvailability(clinic.clinicId) as any);
-          }
-        }
+ // Handle deep-linking to a clinic
+ const paramClinicId = searchParams.get('clinicId');
+ if (paramClinicId) {
+ const clinic = clinics.find((c: any) => c.clinicId === paramClinicId);
+ if (clinic) {
+ setSelectedClinic(clinic);
+ setActiveTab('clinics');
+ // Populate clinic data
+ dispatch(fetchClinicProviders(clinic.clinicId) as any);
+ dispatch(fetchServices(clinic.clinicId) as any);
+ dispatch(fetchAvailability(clinic.clinicId) as any);
+ }
+ }
 
-        setError(null);
-      } catch (err) {
-        console.error('Failed to load manager dashboard data:', err);
-        setError('Failed to load dashboard data. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+ setError(null);
+ } catch (err) {
+ console.error('Failed to load manager dashboard data:', err);
+ setError('Failed to load dashboard data. Please try again later.');
+ } finally {
+ setIsLoading(false);
+ }
+ };
 
-    loadData();
-  }, [selectedPeriod]);
+ loadData();
+ }, [selectedPeriod]);
 
-  // Handle viewing agent details
-  const handleViewAgent = (agent: AgentKpi) => {
-    setSelectedAgent(agent);
-    // Filter leads for this agent
-    dispatch(setLeadFilters({ assignedSalesId: agent.agentId }));
-  };
+ // Handle viewing agent details
+ const handleViewAgent = (agent: AgentKpi) => {
+ setSelectedAgent(agent);
+ // Filter leads for this agent
+ dispatch(setLeadFilters({ assignedSalesId: agent.agentId }));
+ };
 
-  const handleViewClinic = (clinic: ClinicAnalytics) => {
-    setSelectedClinic(clinic);
-    // Fetch specific data for this clinic
-    dispatch(fetchServices(clinic.clinicId) as any);
-    dispatch(fetchAvailability(clinic.clinicId) as any);
-    dispatch(fetchClinicProviders(clinic.clinicId) as any);
-  };
+ const handleViewClinic = (clinic: ClinicAnalytics) => {
+ setSelectedClinic(clinic);
+ // Fetch specific data for this clinic
+ dispatch(fetchServices(clinic.clinicId) as any);
+ dispatch(fetchAvailability(clinic.clinicId) as any);
+ dispatch(fetchClinicProviders(clinic.clinicId) as any);
+ };
 
-  const handleCreateAgent = async () => {
-    // Basic validation
-    if (!newAgentData.email || !newAgentData.password || !newAgentData.firstName || !newAgentData.lastName) {
-      alert('Please fill all required fields (Name, Email, Password)');
-      return;
-    }
+ const handleCreateAgent = async () => {
+ // Basic validation
+ if (!newAgentData.email || !newAgentData.password || !newAgentData.firstName || !newAgentData.lastName) {
+ alert('Please fill all required fields (Name, Email, Password)');
+ return;
+ }
 
-    if (newAgentData.password.length < 8) {
-      alert('Password must be at least 8 characters long');
-      return;
-    }
+ if (newAgentData.password.length < 8) {
+ alert('Password must be at least 8 characters long');
+ return;
+ }
 
-    try {
-      // Clean up data: remove empty phone or other optional fields to avoid validation errors
-      const dataToSubmit = { ...newAgentData };
-      if (!dataToSubmit.phone || dataToSubmit.phone.trim() === '') {
-        delete (dataToSubmit as any).phone;
-      }
+ try {
+ // Clean up data: remove empty phone or other optional fields to avoid validation errors
+ const dataToSubmit = { ...newAgentData };
+ if (!dataToSubmit.phone || dataToSubmit.phone.trim() === '') {
+ delete (dataToSubmit as any).phone;
+ }
 
-      await userAPI.createUser(dataToSubmit);
-      setShowAddAgentModal(false);
-      setNewAgentData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        password: '',
-        phone: '',
-        role: 'salesperson',
-      });
-      // Refresh KPIs
-      const agents = await fetchAgentKpis();
-      setAgentKpis(agents);
-      alert('Agent created successfully!');
-    } catch (error: any) {
-      console.error('Failed to create agent:', error);
-      const errorMsg = error.response?.data?.message;
-      const finalMsg = Array.isArray(errorMsg) ? errorMsg.join(', ') : (errorMsg || 'Failed to create agent');
-      alert(`Error: ${finalMsg}`);
-    }
-  };
+ await userAPI.createUser(dataToSubmit);
+ setShowAddAgentModal(false);
+ setNewAgentData({
+ firstName: '',
+ lastName: '',
+ email: '',
+ password: '',
+ phone: '',
+ role: 'salesperson',
+ });
+ // Refresh KPIs
+ const agents = await fetchAgentKpis();
+ setAgentKpis(agents);
+ alert('Agent created successfully!');
+ } catch (error: any) {
+ console.error('Failed to create agent:', error);
+ const errorMsg = error.response?.data?.message;
+ const finalMsg = Array.isArray(errorMsg) ? errorMsg.join(', ') : (errorMsg || 'Failed to create agent');
+ alert(`Error: ${finalMsg}`);
+ }
+ };
 
-  // Custom columns for Agents table to include click handler
-  const dashboardAgentColumns = [
-    {
-      accessorKey: 'agentName',
-      header: 'Agent',
-      cell: ({ row }: any) => (
-        <div
-          className="font-medium text-blue-600 cursor-pointer hover:underline flex items-center gap-2"
-          onClick={() => handleViewAgent(row.original)}
-        >
-          <Users className="w-4 h-4" />
-          {row.getValue('agentName')}
-        </div>
-      ),
-    },
-    ...agentColumns.filter((c) => 'accessorKey' in c && c.accessorKey !== 'agentName')
-  ];
+ // Custom columns for Agents table to include click handler
+ const dashboardAgentColumns = [
+ {
+ accessorKey: 'agentName',
+ header: 'Agent',
+ cell: ({ row }: any) => (
+ <div
+ className="font-medium text-blue-600 cursor-pointer hover:underline flex items-center gap-2"
+ onClick={() => handleViewAgent(row.original)}
+ >
+ <Users className="w-4 h-4" />
+ {row.getValue('agentName')}
+ </div>
+ ),
+ },
+ ...agentColumns.filter((c) => 'accessorKey' in c && c.accessorKey !== 'agentName')
+ ];
 
-  const dashboardClinicColumns = [
-    {
-      accessorKey: 'clinicName',
-      header: 'Clinic',
-      cell: ({ row }: any) => (
-        <div
-          className="font-medium text-blue-600 cursor-pointer hover:underline flex items-center gap-2"
-          onClick={() => handleViewClinic(row.original)}
-        >
-          <Building2 className="w-4 h-4" />
-          {row.getValue('clinicName')}
-        </div>
-      ),
-    },
-    {
-      accessorKey: 'totalAppointments',
-      header: 'Total Appts',
-    },
-    {
-      accessorKey: 'totalRevenue',
-      header: 'Revenue',
-      cell: ({ row }: any) => formatCurrency(row.getValue('totalRevenue')),
-    },
-    {
-      accessorKey: 'completed',
-      header: 'Completed',
-    },
-    {
-      accessorKey: 'cancelled',
-      header: 'Cancelled',
-      cell: ({ row }: any) => (
-        <span className="text-rose-600">{row.getValue('cancelled')}</span>
-      ),
-    },
-    {
-      accessorKey: 'noShow',
-      header: 'No Shows',
-      cell: ({ row }: any) => (
-        <span className="text-amber-600">{row.getValue('noShow')}</span>
-      ),
-    },
-  ];
+ const dashboardClinicColumns = [
+ {
+ accessorKey: 'clinicName',
+ header: 'Clinic',
+ cell: ({ row }: any) => (
+ <div
+ className="font-medium text-blue-600 cursor-pointer hover:underline flex items-center gap-2"
+ onClick={() => handleViewClinic(row.original)}
+ >
+ <Building2 className="w-4 h-4" />
+ {row.getValue('clinicName')}
+ </div>
+ ),
+ },
+ {
+ accessorKey: 'totalAppointments',
+ header: 'Total Appts',
+ },
+ {
+ accessorKey: 'totalRevenue',
+ header: 'Revenue',
+ cell: ({ row }: any) => formatCurrency(row.getValue('totalRevenue')),
+ },
+ {
+ accessorKey: 'completed',
+ header: 'Completed',
+ },
+ {
+ accessorKey: 'cancelled',
+ header: 'Cancelled',
+ cell: ({ row }: any) => (
+ <span className="text-rose-600">{row.getValue('cancelled')}</span>
+ ),
+ },
+ {
+ accessorKey: 'noShow',
+ header: 'No Shows',
+ cell: ({ row }: any) => (
+ <span className="text-amber-600">{row.getValue('noShow')}</span>
+ ),
+ },
+ ];
 
-  // Calculate summary metrics
-  const revenueChange = 12.5; // Example: 12.5% increase
-  const appointmentsChange = 8.2; // Example: 8.2% increase
-  const conversionChange = 3.7; // Example: 3.7% increase
-  const totalRevenue = agentKpis.reduce((sum, agent) => sum + agent.totalRevenue, 0);
-  const totalAppointments = agentKpis.reduce((sum, agent) => sum + agent.totalAppointments, 0);
-  const completedAppointments = agentKpis.reduce((sum, agent) => sum + agent.completedAppointments, 0);
-  const avgConversionRate = agentKpis.length > 0
-    ? agentKpis.reduce((sum, agent) => sum + agent.conversionRate, 0) / agentKpis.length
-    : 0;
+ // Calculate summary metrics
+ const revenueChange = 12.5; // Example: 12.5% increase
+ const appointmentsChange = 8.2; // Example: 8.2% increase
+ const conversionChange = 3.7; // Example: 3.7% increase
+ const totalRevenue = agentKpis.reduce((sum, agent) => sum + agent.totalRevenue, 0);
+ const totalAppointments = agentKpis.reduce((sum, agent) => sum + agent.totalAppointments, 0);
+ const completedAppointments = agentKpis.reduce((sum, agent) => sum + agent.completedAppointments, 0);
+ const avgConversionRate = agentKpis.length > 0
+ ? agentKpis.reduce((sum, agent) => sum + agent.conversionRate, 0) / agentKpis.length
+ : 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Loading dashboard data...</p>
-      </div>
-    );
-  }
+ if (isLoading) {
+ return (
+ <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+ <Loader2 className="h-8 w-8 animate-spin text-primary" />
+ <p className="text-muted-foreground">Loading dashboard data...</p>
+ </div>
+ );
+ }
 
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start" role="alert">
-          <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-          <div>
-            <strong className="font-bold">Error loading data: </strong>
-            <span className="block sm:inline">{error}</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-
-
-  // Render Clinic Detail View
-  if (selectedClinic) {
-    return (
-      <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => setSelectedClinic(null)}>
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back to dashboard
-          </Button>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-gray-400" />
-            {selectedClinic.clinicName}
-          </h1>
-          <div className="ml-auto flex gap-2">
-            <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-bold">
-              Rev: {formatCurrency(selectedClinic.totalRevenue)}
-            </div>
-          </div>
-        </div>
-
-        <Tabs defaultValue="calendar" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
-            <TabsTrigger value="services">Services</TabsTrigger>
-            <TabsTrigger value="availability">Availability</TabsTrigger>
-            <TabsTrigger value="sales">Sales</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="calendar" className="h-[calc(100vh-200px)]">
-            <StaffDiary
-              clinicId={selectedClinic.clinicId}
-              onNewAppointment={() => {
-                alert('To create a new appointment, please select a customer from the CRM/Customers page first.');
-              }}
-            />
-          </TabsContent>
-
-          <TabsContent value="services">
-            <Card>
-              <CardHeader>
-                <CardTitle>Clinic Services</CardTitle>
-                <CardDescription>All available treatments at {selectedClinic.clinicName}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border">
-                  {clinicServices && clinicServices.length > 0 ? (
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Service Name</th>
-                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Category</th>
-                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Duration</th>
-                          <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Price</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {clinicServices.map((service, index) => (
-                          <tr key={service.id || index} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                            <td className="p-4 align-middle font-medium">{(service.name?.trim() || service.treatment?.name || 'Unnamed Service')}</td>
-                            <td className="p-4 align-middle text-muted-foreground">{service.treatment?.category || service.category || 'General'}</td>
-                            <td className="p-4 align-middle">{service.durationMinutes || 0} min</td>
-                            <td className="p-4 align-middle text-right">{service.price !== undefined && service.price !== null ? formatCurrency(Number(service.price)) : '€0'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="p-8 text-center text-muted-foreground">
-                      No services found for this clinic.
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="availability">
-            <Card>
-              <CardHeader>
-                <CardTitle>Opening Hours & Availability</CardTitle>
-                <CardDescription>Standard operating hours for {selectedClinic.clinicName}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Weekly Schedule</h3>
-                    <div className="rounded-md border p-4 space-y-3">
-                      {clinicAvailability?.businessHours ? Object.entries(clinicAvailability.businessHours).map(([day, hours], index) => (
-                        <div key={day} className="flex justify-between items-center text-sm">
-                          <span className="font-medium w-24 capitalize">{day}</span>
-                          <span className="text-muted-foreground flex-1 text-center">
-                            {hours.isOpen ? `${hours.open} - ${hours.close}` : 'Closed'}
-                          </span>
-                          <span className={cn(
-                            "px-2 py-0.5 rounded text-xs font-medium w-24 text-center",
-                            hours.isOpen ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                          )}>
-                            {hours.isOpen ? 'Open' : 'Closed'}
-                          </span>
-                        </div>
-                      )) : (
-                        <div className="text-center p-4 text-muted-foreground">No availability schedule set.</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Clinic Information</h3>
-                    <div className="grid gap-4">
-                      <div className="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border">
-                        <Phone className="h-5 w-5 text-gray-500 mt-0.5" />
-                        <div>
-                          <p className="font-medium">Contact Number</p>
-                          <p className="text-sm text-muted-foreground">{selectedClinic.phone || 'No phone provided'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border">
-                        <Building2 className="h-5 w-5 text-gray-500 mt-0.5" />
-                        <div>
-                          <p className="font-medium">Location</p>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedClinic.address ? (
-                              <>
-                                {selectedClinic.address.street}<br />
-                                {selectedClinic.address.city}, {selectedClinic.address.state} {selectedClinic.address.zipCode}<br />
-                                {selectedClinic.address.country}
-                              </>
-                            ) : (
-                              'No address provided'
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border">
-                        <Users className="h-5 w-5 text-gray-500 mt-0.5" />
-                        <div>
-                          <p className="font-medium">Staff Capacity</p>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedClinic.treatmentRooms || 1} Treatment Rooms<br />
-                            {clinicStaff.length || 0} Active Staff Members
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="sales">
-            <Analytics />
-          </TabsContent>
-
-          <TabsContent value="messages">
-            <Card>
-              <CardContent className="h-[400px] flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                  <p>Clinic Messages & Communications</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    );
-  }
-
-  // Render Agent Detail View
-  if (selectedAgent) {
-    return (
-      <div className="space-y-8 animate-in slide-in-from-right-8 duration-500 ease-out pb-20">
-        {/* Premium Header Architecture */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/20">
-          <div className="flex items-center gap-6">
-            <button
-              onClick={() => {
-                setSelectedAgent(null);
-                dispatch(setLeadFilters({}));
-              }}
-              className="size-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white hover:bg-[#CBFF38] hover:text-black hover:rotate-[-8deg] transition-all duration-300 shadow-xl shadow-slate-900/20"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-100 rounded-lg">
-                  <Users className="w-5 h-5 text-slate-500" />
-                </div>
-                <h1 className="text-3xl font-black text-slate-900 tracking-tight italic">
-                  {selectedAgent.agentName}
-                </h1>
-              </div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic ml-10">Strategic Deployment Terminal</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="px-6 py-4 bg-slate-900 rounded-[1.5rem] shadow-2xl shadow-slate-900/10 border border-slate-800">
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 italic">Generated Revenue</p>
-              <div className="flex items-center gap-3">
-                <div className="size-8 rounded-full bg-[#CBFF38] flex items-center justify-center text-black">
-                  <Euro size={14} strokeWidth={3} />
-                </div>
-                <span className="text-2xl font-black text-white tabular-nums tracking-tighter">
-                  {formatCurrency(selectedAgent.totalRevenue)}
-                </span>
-              </div>
-            </div>
-
-            <div className="hidden lg:flex flex-col gap-1 px-4 border-l border-slate-100">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">Mission Velocity</span>
-              <div className="flex items-center gap-2">
-                <TrendingUp size={12} className="text-[#CBFF38]" />
-                <span className="text-xs font-black text-slate-900">{(selectedAgent.conversionRate * 100).toFixed(1)}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* High-Contrast Tab Navigation */}
-        <div className="space-y-6">
-          <Tabs defaultValue="diary" className="w-full">
-            <div className="flex items-center justify-center lg:justify-start mb-8">
-              <TabsList className="bg-slate-100/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/50">
-                <TabsTrigger
-                  value="diary"
-                  className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
-                >
-                  Sales Diary
-                </TabsTrigger>
-                <TabsTrigger
-                  value="leads"
-                  className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
-                >
-                  Assigned Leads
-                </TabsTrigger>
-                <TabsTrigger
-                  value="performance"
-                  className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
-                >
-                  Analytics
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="diary" className="mt-0 ring-offset-0 focus-visible:outline-none">
-              <div className="animate-in fade-in zoom-in-95 duration-500">
-                <SalesDiary salespersonId={selectedAgent.agentId} />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="leads" className="mt-0 ring-offset-0 focus-visible:outline-none">
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <Card className="border-none shadow-2xl shadow-slate-200/50 bg-white rounded-[2rem] overflow-hidden">
-                  <CardContent className="p-0">
-                    <LeadsPage forceShowCreateForm={false} />
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="performance" className="mt-0 ring-offset-0 focus-visible:outline-none">
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <Analytics initialSalespersonId={selectedAgent.agentId} />
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 pb-6 border-b border-gray-100">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-[#CBFF38] rounded-2xl shadow-xl shadow-[#CBFF38]/20 group hover:rotate-6 transition-transform">
-            <BarChart3 className="h-8 w-8 text-gray-900" />
-          </div>
-          <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">Manager Dashboard</h1>
-            <p className="text-muted-foreground font-medium mt-1">Real-time performance analytics across your clinic network</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 relative">
-          <div className="relative">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
-              className="gap-2 bg-white hover:bg-gray-50 border-gray-200 shadow-sm h-10 px-4"
-            >
-              <Calendar className="h-4 w-4 text-[#CBFF38]" />
-              <span className="font-semibold">Last {selectedPeriod} days</span>
-            </Button>
-            {showPeriodDropdown && (
-              <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden py-1">
-                {[
-                  { value: '7', label: 'Last 7 days' },
-                  { value: '30', label: 'Last 30 days' },
-                  { value: '90', label: 'Last 90 days' },
-                  { value: '365', label: 'Last year' },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => {
-                      setSelectedPeriod(option.value);
-                      setShowPeriodDropdown(false);
-                    }}
-                    className={`w-full px-4 py-2.5 text-left text-xs font-bold hover:bg-gray-50 transition-colors ${selectedPeriod === option.value ? 'text-blue-600 bg-blue-50/50' : 'text-gray-700'}`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleExportReport}
-            className="bg-white hover:bg-gray-50 border-gray-200 shadow-sm h-10 px-4"
-          >
-            Export Report
-          </Button>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Revenue"
-          value={formatCurrency(totalRevenue)}
-          change={revenueChange}
-          icon={<Euro className="h-4 w-4" />}
-          iconBg="bg-green-100 text-green-600"
-        />
-        <StatCard
-          title="Appointments"
-          value={totalAppointments.toString()}
-          change={appointmentsChange}
-          icon={<Calendar className="h-4 w-4" />}
-          iconBg="bg-blue-100 text-blue-600"
-          description={`${completedAppointments} completed`}
-        />
-        <StatCard
-          title="Conversion Rate"
-          value={`${(avgConversionRate * 100).toFixed(1)}%`}
-          change={conversionChange}
-          icon={<TrendingUp className="h-4 w-4" />}
-          iconBg="bg-purple-100 text-purple-600"
-        />
-        <StatCard
-          title="Active Agents"
-          value={agentKpis.length.toString()}
-          change={2.3}
-          icon={<Users className="h-4 w-4" />}
-          iconBg="bg-amber-100 text-amber-600"
-        />
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-gray-100/50 p-1.5 rounded-xl border border-gray-200/50 w-full max-w-[650px]">
-          <TabsTrigger value="overview" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
-            <BarChart3 className="h-4 w-4" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="clinics" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
-            <Building2 className="h-4 w-4" />
-            Clinics
-          </TabsTrigger>
-          <TabsTrigger value="calendar-global" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
-            <Calendar className="h-4 w-4" />
-            Global Calendar
-          </TabsTrigger>
-          <TabsTrigger value="agents" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
-            <Users className="h-4 w-4" />
-            Agents
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="calendar-global" className="h-[calc(100vh-200px)]">
-          <SalesWeekCalendar />
-        </TabsContent>
+ if (error) {
+ return (
+ <div className="p-6">
+ <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start" role="alert">
+ <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+ <div>
+ <strong className="font-bold">Error loading data: </strong>
+ <span className="block sm:inline">{error}</span>
+ </div>
+ </div>
+ </div>
+ );
+ }
 
 
-        <TabsContent value="clinics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Clinic Performance</CardTitle>
-              <CardDescription>Overview of performance by clinic location</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                columns={dashboardClinicColumns}
-                data={clinicStats}
-                searchKey="clinicName"
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Revenue Overview</CardTitle>
-                <CardDescription>Revenue trends over time</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[300px] w-full mt-4">
-                {revenueData && revenueData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={revenueData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                      <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => {
-                        const date = new Date(value);
-                        return `${date.getMonth() + 1}/${date.getDate()}`;
-                      }} />
-                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `€${value}`} />
-                      <Tooltip
-                        cursor={{ fill: 'transparent' }}
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                        formatter={(value: number) => [formatCurrency(value), 'Revenue']}
-                        labelFormatter={(label) => new Date(label).toLocaleDateString()}
-                      />
-                      <Bar dataKey="revenue" fill="#CBFF38" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    No revenue data available for this period.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Top Performing Services</CardTitle>
-                <CardDescription>By revenue and appointments</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {serviceStats.slice(0, 5).map((service) => (
-                    <div key={service.serviceName} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{service.serviceName}</span>
-                        <span className="text-sm font-medium">{formatCurrency(service.totalRevenue)}</span>
-                      </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary"
-                          style={{
-                            width: `${(service.totalRevenue / totalRevenue) * 100}%`
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+ // Render Clinic Detail View
+ if (selectedClinic) {
+ return (
+ <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+ <div className="flex items-center gap-4">
+ <Button variant="ghost" onClick={() => setSelectedClinic(null)}>
+ <ArrowLeft className="h-4 w-4 mr-2" /> Back to dashboard
+ </Button>
+ <h1 className="text-2xl font-bold flex items-center gap-2">
+ <Building2 className="w-6 h-6 text-gray-400" />
+ {selectedClinic.clinicName}
+ </h1>
+ <div className="ml-auto flex gap-2">
+ <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-bold">
+ Rev: {formatCurrency(selectedClinic.totalRevenue)}
+ </div>
+ </div>
+ </div>
 
-        <TabsContent value="agents">
-          <Card className="border-none shadow-lg overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between border-b bg-gray-50/50 px-6 py-4">
-              <div>
-                <CardTitle className="text-xl">Agent Performance</CardTitle>
-                <CardDescription>Detailed breakdown of agent KPIs and metrics</CardDescription>
-              </div>
-              <Button onClick={() => setShowAddAgentModal(true)} className="bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm font-bold">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add New Agent
-              </Button>
-            </CardHeader>
-            <CardContent className="p-0">
-              <DataTable
-                columns={dashboardAgentColumns}
-                data={agentKpis}
-                searchKey="agentName"
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+ <Tabs defaultValue="calendar" className="space-y-4">
+ <TabsList>
+ <TabsTrigger value="calendar">Calendar</TabsTrigger>
+ <TabsTrigger value="services">Services</TabsTrigger>
+ <TabsTrigger value="availability">Availability</TabsTrigger>
+ <TabsTrigger value="sales">Sales</TabsTrigger>
+ <TabsTrigger value="messages">Messages</TabsTrigger>
+ </TabsList>
 
-      {/* Add Agent Modal */}
-      {showAddAgentModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[10000] p-4 animate-in fade-in">
-          <Card className="w-full max-w-lg shadow-2xl">
-            <CardHeader>
-              <CardTitle>Add New Agent</CardTitle>
-              <CardDescription>Create a new salesperson account</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="First Name"
-                  value={newAgentData.firstName}
-                  onChange={(e) => setNewAgentData({ ...newAgentData, firstName: e.target.value })}
-                />
-                <Input
-                  label="Last Name"
-                  value={newAgentData.lastName}
-                  onChange={(e) => setNewAgentData({ ...newAgentData, lastName: e.target.value })}
-                />
-              </div>
-              <Input
-                label="Email"
-                type="email"
-                value={newAgentData.email}
-                onChange={(e) => setNewAgentData({ ...newAgentData, email: e.target.value })}
-              />
-              <Input
-                label="Password"
-                type="password"
-                value={newAgentData.password}
-                onChange={(e) => setNewAgentData({ ...newAgentData, password: e.target.value })}
-              />
-              <Input
-                label="Phone"
-                value={newAgentData.phone}
-                onChange={(e) => setNewAgentData({ ...newAgentData, phone: e.target.value })}
-              />
-            </CardContent>
-            <div className="p-6 pt-0 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowAddAgentModal(false)}>Cancel</Button>
-              <Button onClick={handleCreateAgent}>Create Agent</Button>
-            </div>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
+ <TabsContent value="calendar" className="h-[calc(100vh-200px)]">
+ <StaffDiary
+ clinicId={selectedClinic.clinicId}
+ onNewAppointment={() => {
+ alert('To create a new appointment, please select a customer from the CRM/Customers page first.');
+ }}
+ />
+ </TabsContent>
+
+ <TabsContent value="services">
+ <Card>
+ <CardHeader>
+ <CardTitle>Clinic Services</CardTitle>
+ <CardDescription>All available treatments at {selectedClinic.clinicName}</CardDescription>
+ </CardHeader>
+ <CardContent>
+ <div className="rounded-md border">
+ {clinicServices && clinicServices.length > 0 ? (
+ <table className="w-full text-sm">
+ <thead>
+ <tr className="border-b bg-muted/50">
+ <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Service Name</th>
+ <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Category</th>
+ <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Duration</th>
+ <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Price</th>
+ </tr>
+ </thead>
+ <tbody>
+ {clinicServices.map((service, index) => (
+ <tr key={service.id || index} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+ <td className="p-4 align-middle font-medium">{(service.name?.trim() || service.treatment?.name || 'Unnamed Service')}</td>
+ <td className="p-4 align-middle text-muted-foreground">{service.treatment?.category || service.category || 'General'}</td>
+ <td className="p-4 align-middle">{service.durationMinutes || 0} min</td>
+ <td className="p-4 align-middle text-right">{service.price !== undefined && service.price !== null ? formatCurrency(Number(service.price)) : '€0'}</td>
+ </tr>
+ ))}
+ </tbody>
+ </table>
+ ) : (
+ <div className="p-8 text-center text-muted-foreground">
+ No services found for this clinic.
+ </div>
+ )}
+ </div>
+ </CardContent>
+ </Card>
+ </TabsContent>
+
+ <TabsContent value="availability">
+ <Card>
+ <CardHeader>
+ <CardTitle>Opening Hours & Availability</CardTitle>
+ <CardDescription>Standard operating hours for {selectedClinic.clinicName}</CardDescription>
+ </CardHeader>
+ <CardContent>
+ <div className="grid gap-6 md:grid-cols-2">
+ <div className="space-y-4">
+ <h3 className="font-semibold text-lg">Weekly Schedule</h3>
+ <div className="rounded-md border p-4 space-y-3">
+ {clinicAvailability?.businessHours ? Object.entries(clinicAvailability.businessHours).map(([day, hours], index) => (
+ <div key={day} className="flex justify-between items-center text-sm">
+ <span className="font-medium w-24 capitalize">{day}</span>
+ <span className="text-muted-foreground flex-1 text-center">
+ {hours.isOpen ? `${hours.open} - ${hours.close}` : 'Closed'}
+ </span>
+ <span className={cn("px-2 py-0.5 rounded text-xs font-medium w-24 text-center",
+ hours.isOpen ?"bg-green-100 text-green-700" :"bg-red-100 text-red-700"
+ )}>
+ {hours.isOpen ? 'Open' : 'Closed'}
+ </span>
+ </div>
+ )) : (
+ <div className="text-center p-4 text-muted-foreground">No availability schedule set.</div>
+ )}
+ </div>
+ </div>
+
+ <div className="space-y-4">
+ <h3 className="font-semibold text-lg">Clinic Information</h3>
+ <div className="grid gap-4">
+ <div className="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border">
+ <Phone className="h-5 w-5 text-gray-500 mt-0.5" />
+ <div>
+ <p className="font-medium">Contact Number</p>
+ <p className="text-sm text-muted-foreground">{selectedClinic.phone || 'No phone provided'}</p>
+ </div>
+ </div>
+ <div className="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border">
+ <Building2 className="h-5 w-5 text-gray-500 mt-0.5" />
+ <div>
+ <p className="font-medium">Location</p>
+ <p className="text-sm text-muted-foreground">
+ {selectedClinic.address ? (
+ <>
+ {selectedClinic.address.street}<br />
+ {selectedClinic.address.city}, {selectedClinic.address.state} {selectedClinic.address.zipCode}<br />
+ {selectedClinic.address.country}
+ </>
+ ) : (
+ 'No address provided'
+ )}
+ </p>
+ </div>
+ </div>
+ <div className="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border">
+ <Users className="h-5 w-5 text-gray-500 mt-0.5" />
+ <div>
+ <p className="font-medium">Staff Capacity</p>
+ <p className="text-sm text-muted-foreground">
+ {selectedClinic.treatmentRooms || 1} Treatment Rooms<br />
+ {clinicStaff.length || 0} Active Staff Members
+ </p>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
+ </CardContent>
+ </Card>
+ </TabsContent>
+
+ <TabsContent value="sales">
+ <Analytics />
+ </TabsContent>
+
+ <TabsContent value="messages">
+ <Card>
+ <CardContent className="h-[400px] flex items-center justify-center text-muted-foreground">
+ <div className="text-center">
+ <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-20" />
+ <p>Clinic Messages & Communications</p>
+ </div>
+ </CardContent>
+ </Card>
+ </TabsContent>
+ </Tabs>
+ </div>
+ );
+ }
+
+ // Render Agent Detail View
+ if (selectedAgent) {
+ return (
+ <div className="space-y-8 animate-in slide-in-from-right-8 duration-500 ease-out pb-20">
+ {/* Premium Header Architecture */}
+ <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/20">
+ <div className="flex items-center gap-6">
+ <button
+ onClick={() => {
+ setSelectedAgent(null);
+ dispatch(setLeadFilters({}));
+ }}
+ className="size-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white hover:bg-[#CBFF38] hover:text-black hover:rotate-[-8deg] transition-all duration-300 shadow-xl shadow-slate-900/20"
+ >
+ <ArrowLeft className="h-5 w-5" />
+ </button>
+ <div className="space-y-1">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-slate-100 rounded-lg">
+ <Users className="w-5 h-5 text-slate-500" />
+ </div>
+ <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+ {selectedAgent.agentName}
+ </h1>
+ </div>
+ <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-10">Strategic Deployment Terminal</p>
+ </div>
+ </div>
+
+ <div className="flex items-center gap-4">
+ <div className="px-6 py-4 bg-slate-900 rounded-[1.5rem] shadow-2xl shadow-slate-900/10 border border-slate-800">
+ <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Generated Revenue</p>
+ <div className="flex items-center gap-3">
+ <div className="size-8 rounded-full bg-[#CBFF38] flex items-center justify-center text-black">
+ <Euro size={14} strokeWidth={3} />
+ </div>
+ <span className="text-2xl font-black text-white tabular-nums tracking-tighter">
+ {formatCurrency(selectedAgent.totalRevenue)}
+ </span>
+ </div>
+ </div>
+
+ <div className="hidden lg:flex flex-col gap-1 px-4 border-l border-slate-100">
+ <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Mission Velocity</span>
+ <div className="flex items-center gap-2">
+ <TrendingUp size={12} className="text-[#CBFF38]" />
+ <span className="text-xs font-black text-slate-900">{(selectedAgent.conversionRate * 100).toFixed(1)}%</span>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ {/* High-Contrast Tab Navigation */}
+ <div className="space-y-6">
+ <Tabs defaultValue="diary" className="w-full">
+ <div className="flex items-center justify-center lg:justify-start mb-8">
+ <TabsList className="bg-slate-100/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/50">
+ <TabsTrigger
+ value="diary"
+ className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
+ >
+ Sales Diary
+ </TabsTrigger>
+ <TabsTrigger
+ value="leads"
+ className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
+ >
+ Assigned Leads
+ </TabsTrigger>
+ <TabsTrigger
+ value="performance"
+ className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
+ >
+ Analytics
+ </TabsTrigger>
+ </TabsList>
+ </div>
+
+ <TabsContent value="diary" className="mt-0 ring-offset-0 focus-visible:outline-none">
+ <div className="animate-in fade-in zoom-in-95 duration-500">
+ <SalesDiary salespersonId={selectedAgent.agentId} />
+ </div>
+ </TabsContent>
+
+ <TabsContent value="leads" className="mt-0 ring-offset-0 focus-visible:outline-none">
+ <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+ <Card className="border-none shadow-2xl shadow-slate-200/50 bg-white rounded-[2rem] overflow-hidden">
+ <CardContent className="p-0">
+ <LeadsPage forceShowCreateForm={false} />
+ </CardContent>
+ </Card>
+ </div>
+ </TabsContent>
+
+ <TabsContent value="performance" className="mt-0 ring-offset-0 focus-visible:outline-none">
+ <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+ <Analytics initialSalespersonId={selectedAgent.agentId} />
+ </div>
+ </TabsContent>
+ </Tabs>
+ </div>
+ </div>
+ );
+ }
+
+ return (
+ <div className="space-y-6">
+ <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 pb-6 border-b border-gray-100">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-[#CBFF38] rounded-2xl shadow-xl shadow-[#CBFF38]/20 group hover:rotate-6 transition-transform">
+ <BarChart3 className="h-8 w-8 text-gray-900" />
+ </div>
+ <div>
+ <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">Manager Dashboard</h1>
+ <p className="text-muted-foreground font-medium mt-1">Real-time performance analytics across your clinic network</p>
+ </div>
+ </div>
+ <div className="flex items-center gap-3 relative">
+ <div className="relative">
+ <Button 
+ variant="outline" 
+ size="sm" 
+ onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
+ className="gap-2 bg-white hover:bg-gray-50 border-gray-200 shadow-sm h-10 px-4"
+ >
+ <Calendar className="h-4 w-4 text-[#CBFF38]" />
+ <span className="font-semibold">Last {selectedPeriod} days</span>
+ </Button>
+ {showPeriodDropdown && (
+ <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+ {[
+ { value: '7', label: 'Last 7 days' },
+ { value: '30', label: 'Last 30 days' },
+ { value: '90', label: 'Last 90 days' },
+ { value: '365', label: 'Last year' },
+ ].map((option) => (
+ <button
+ key={option.value}
+ onClick={() => {
+ setSelectedPeriod(option.value);
+ setShowPeriodDropdown(false);
+ }}
+ className={`w-full px-4 py-2.5 text-left text-xs font-bold hover:bg-gray-50 transition-colors ${selectedPeriod === option.value ? 'text-blue-600 bg-blue-50/50' : 'text-gray-700'}`}
+ >
+ {option.label}
+ </button>
+ ))}
+ </div>
+ )}
+ </div>
+ <Button 
+ variant="outline" 
+ size="sm" 
+ onClick={handleExportReport}
+ className="bg-white hover:bg-gray-50 border-gray-200 shadow-sm h-10 px-4"
+ >
+ Export Report
+ </Button>
+ </div>
+ </div>
+
+ {/* Summary Cards */}
+ <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+ <StatCard
+ title="Total Revenue"
+ value={formatCurrency(totalRevenue)}
+ change={revenueChange}
+ icon={<Euro className="h-4 w-4" />}
+ iconBg="bg-green-100 text-green-600"
+ />
+ <StatCard
+ title="Appointments"
+ value={totalAppointments.toString()}
+ change={appointmentsChange}
+ icon={<Calendar className="h-4 w-4" />}
+ iconBg="bg-blue-100 text-blue-600"
+ description={`${completedAppointments} completed`}
+ />
+ <StatCard
+ title="Conversion Rate"
+ value={`${(avgConversionRate * 100).toFixed(1)}%`}
+ change={conversionChange}
+ icon={<TrendingUp className="h-4 w-4" />}
+ iconBg="bg-purple-100 text-purple-600"
+ />
+ <StatCard
+ title="Active Agents"
+ value={agentKpis.length.toString()}
+ change={2.3}
+ icon={<Users className="h-4 w-4" />}
+ iconBg="bg-amber-100 text-amber-600"
+ />
+ </div>
+
+ <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+ <TabsList className="bg-gray-100/50 p-1.5 rounded-xl border border-gray-200/50 w-full max-w-[650px]">
+ <TabsTrigger value="overview" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
+ <BarChart3 className="h-4 w-4" />
+ Overview
+ </TabsTrigger>
+ <TabsTrigger value="clinics" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
+ <Building2 className="h-4 w-4" />
+ Clinics
+ </TabsTrigger>
+ <TabsTrigger value="calendar-global" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
+ <Calendar className="h-4 w-4" />
+ Global Calendar
+ </TabsTrigger>
+ <TabsTrigger value="agents" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
+ <Users className="h-4 w-4" />
+ Agents
+ </TabsTrigger>
+ </TabsList>
+ <TabsContent value="calendar-global" className="h-[calc(100vh-200px)]">
+ <SalesWeekCalendar />
+ </TabsContent>
+
+
+ <TabsContent value="clinics">
+ <Card>
+ <CardHeader>
+ <CardTitle>Clinic Performance</CardTitle>
+ <CardDescription>Overview of performance by clinic location</CardDescription>
+ </CardHeader>
+ <CardContent>
+ <DataTable
+ columns={dashboardClinicColumns}
+ data={clinicStats}
+ searchKey="clinicName"
+ />
+ </CardContent>
+ </Card>
+ </TabsContent>
+
+ <TabsContent value="overview" className="space-y-4">
+ <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+ <Card className="col-span-4">
+ <CardHeader>
+ <CardTitle>Revenue Overview</CardTitle>
+ <CardDescription>Revenue trends over time</CardDescription>
+ </CardHeader>
+ <CardContent className="h-[300px] w-full mt-4">
+ {revenueData && revenueData.length > 0 ? (
+ <ResponsiveContainer width="100%" height="100%">
+ <BarChart data={revenueData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+ <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+ <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => {
+ const date = new Date(value);
+ return `${date.getMonth() + 1}/${date.getDate()}`;
+ }} />
+ <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `€${value}`} />
+ <Tooltip
+ cursor={{ fill: 'transparent' }}
+ contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+ formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+ labelFormatter={(label) => new Date(label).toLocaleDateString()}
+ />
+ <Bar dataKey="revenue" fill="#CBFF38" radius={[4, 4, 0, 0]} maxBarSize={50} />
+ </BarChart>
+ </ResponsiveContainer>
+ ) : (
+ <div className="flex items-center justify-center h-full text-muted-foreground">
+ No revenue data available for this period.
+ </div>
+ )}
+ </CardContent>
+ </Card>
+ <Card className="col-span-3">
+ <CardHeader>
+ <CardTitle>Top Performing Services</CardTitle>
+ <CardDescription>By revenue and appointments</CardDescription>
+ </CardHeader>
+ <CardContent>
+ <div className="space-y-4">
+ {serviceStats.slice(0, 5).map((service) => (
+ <div key={service.serviceName} className="space-y-1">
+ <div className="flex items-center justify-between">
+ <span className="text-sm font-medium">{service.serviceName}</span>
+ <span className="text-sm font-medium">{formatCurrency(service.totalRevenue)}</span>
+ </div>
+ <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+ <div
+ className="h-full bg-primary"
+ style={{
+ width: `${(service.totalRevenue / totalRevenue) * 100}%`
+ }}
+ />
+ </div>
+ </div>
+ ))}
+ </div>
+ </CardContent>
+ </Card>
+ </div>
+ </TabsContent>
+
+ <TabsContent value="agents">
+ <Card className="border-none shadow-lg overflow-hidden">
+ <CardHeader className="flex flex-row items-center justify-between border-b bg-gray-50/50 px-6 py-4">
+ <div>
+ <CardTitle className="text-xl">Agent Performance</CardTitle>
+ <CardDescription>Detailed breakdown of agent KPIs and metrics</CardDescription>
+ </div>
+ <Button onClick={() => setShowAddAgentModal(true)} className="bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm font-bold">
+ <UserPlus className="h-4 w-4 mr-2" />
+ Add New Agent
+ </Button>
+ </CardHeader>
+ <CardContent className="p-0">
+ <DataTable
+ columns={dashboardAgentColumns}
+ data={agentKpis}
+ searchKey="agentName"
+ />
+ </CardContent>
+ </Card>
+ </TabsContent>
+ </Tabs>
+
+ {/* Add Agent Modal */}
+ {showAddAgentModal && (
+ <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[10000] p-4 animate-in fade-in">
+ <Card className="w-full max-w-lg shadow-2xl">
+ <CardHeader>
+ <CardTitle>Add New Agent</CardTitle>
+ <CardDescription>Create a new salesperson account</CardDescription>
+ </CardHeader>
+ <CardContent className="space-y-4">
+ <div className="grid grid-cols-2 gap-4">
+ <Input
+ label="First Name"
+ value={newAgentData.firstName}
+ onChange={(e) => setNewAgentData({ ...newAgentData, firstName: e.target.value })}
+ />
+ <Input
+ label="Last Name"
+ value={newAgentData.lastName}
+ onChange={(e) => setNewAgentData({ ...newAgentData, lastName: e.target.value })}
+ />
+ </div>
+ <Input
+ label="Email"
+ type="email"
+ value={newAgentData.email}
+ onChange={(e) => setNewAgentData({ ...newAgentData, email: e.target.value })}
+ />
+ <Input
+ label="Password"
+ type="password"
+ value={newAgentData.password}
+ onChange={(e) => setNewAgentData({ ...newAgentData, password: e.target.value })}
+ />
+ <Input
+ label="Phone"
+ value={newAgentData.phone}
+ onChange={(e) => setNewAgentData({ ...newAgentData, phone: e.target.value })}
+ />
+ </CardContent>
+ <div className="p-6 pt-0 flex justify-end gap-2">
+ <Button variant="outline" onClick={() => setShowAddAgentModal(false)}>Cancel</Button>
+ <Button onClick={handleCreateAgent}>Create Agent</Button>
+ </div>
+ </Card>
+ </div>
+ )}
+ </div>
+ );
 };
 
 // StatCard component for reusable metric cards
 const StatCard = ({
-  title,
-  value,
-  change,
-  icon,
-  iconBg,
-  description
+ title,
+ value,
+ change,
+ icon,
+ iconBg,
+ description
 }: {
-  title: string;
-  value: string;
-  change: number;
-  icon: ReactNode;
-  iconBg: string;
-  description?: string;
+ title: string;
+ value: string;
+ change: number;
+ icon: ReactNode;
+ iconBg: string;
+ description?: string;
 }) => {
-  const isPositive = change >= 0;
+ const isPositive = change >= 0;
 
-  return (
-    <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-none shadow-md bg-white">
-      <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-gray-50 to-transparent -mr-8 -mt-8 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-500" />
-      <div className={cn(
-        "absolute right-4 top-4 h-12 w-12 rounded-xl flex items-center justify-center shadow-sm",
-        iconBg
-      )}>
-        {cloneElement(icon as ReactElement, { className: "h-6 w-6" })}
-      </div>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-extrabold tracking-tight text-gray-900 mt-1">{value}</div>
-        <div className="flex items-center text-xs mt-3 font-semibold">
-          <span className={cn(
-            "flex items-center px-2 py-1 rounded-full",
-            isPositive ? "bg-green-100 text-green-700 font-bold" : "bg-red-100 text-red-700 font-bold"
-          )}>
-            {isPositive ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingUp className="h-3 w-3 mr-1 rotate-180" />}
-            {Math.abs(change)}%
-          </span>
-          <span className="ml-2 text-muted-foreground font-normal">vs last period</span>
-        </div>
-        {description && (
-          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 text-xs text-muted-foreground font-medium italic">
-            <Activity className="h-3 w-3 text-blue-500" />
-            {description}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+ return (
+ <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-none shadow-md bg-white">
+ <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-gray-50 to-transparent -mr-8 -mt-8 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-500" />
+ <div className={cn("absolute right-4 top-4 h-12 w-12 rounded-xl flex items-center justify-center shadow-sm",
+ iconBg
+ )}>
+ {cloneElement(icon as ReactElement, { className:"h-6 w-6" })}
+ </div>
+ <CardHeader className="pb-2">
+ <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</CardTitle>
+ </CardHeader>
+ <CardContent>
+ <div className="text-3xl font-extrabold tracking-tight text-gray-900 mt-1">{value}</div>
+ <div className="flex items-center text-xs mt-3 font-semibold">
+ <span className={cn("flex items-center px-2 py-1 rounded-full",
+ isPositive ?"bg-green-100 text-green-700 font-bold" :"bg-red-100 text-red-700 font-bold"
+ )}>
+ {isPositive ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingUp className="h-3 w-3 mr-1 rotate-180" />}
+ {Math.abs(change)}%
+ </span>
+ <span className="ml-2 text-muted-foreground font-normal">vs last period</span>
+ </div>
+ {description && (
+ <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 text-xs text-muted-foreground font-medium">
+ <Activity className="h-3 w-3 text-blue-500" />
+ {description}
+ </div>
+ )}
+ </CardContent>
+ </Card>
+ );
 };
 
 export default ManagerDashboard;

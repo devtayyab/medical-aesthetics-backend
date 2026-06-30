@@ -1,557 +1,1483 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { PhoneInput } from '@/components/atoms/PhoneInput/PhoneInput';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-    format,
-    addDays,
-    addMinutes,
-    isSameDay,
-    startOfWeek,
-    eachDayOfInterval,
-    endOfWeek,
-    setHours,
-    setMinutes,
-    isToday
-} from 'date-fns';
-import {
-    ChevronLeft,
-    ChevronRight,
-    Plus,
-    Search,
-    User as UserIcon,
-    Calendar as CalendarIcon,
-    MoreHorizontal,
-    Clock,
-    X
+    ChevronLeft, ChevronRight, Plus, Clock, User, Users, Scissors, CheckCircle2,
+    XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone, ArrowLeft, Trash2
 } from 'lucide-react';
-import { RootState, AppDispatch } from '@/store';
-import { fetchAppointments, fetchClinicProviders, fetchServices, fetchClinicProfile, updateAppointmentStatus } from '@/store/slices/clinicSlice';
-import { AppointmentStatus } from '@/types/clinic.types';
-import AppointmentExecutionModal from '@/components/clinic/AppointmentExecutionModal';
+import {
+    format, startOfWeek, endOfWeek, addDays, eachDayOfInterval, isSameDay,
+    startOfDay, isToday, addWeeks, subWeeks, subDays, setHours, setMinutes, parseISO
+} from 'date-fns';
+import { AppDispatch, RootState } from '@/store';
+import {
+    fetchClinicAppointments,
+    updateAppointmentStatus,
+    completeAppointment,
+    setSelectedClinic,
+    setSelectedDate,
+    setSelectedTimeSlot,
+    addService,
+    clearBooking,
+    recordAppointmentPayment,
+} from '@/store/slices/bookingSlice';
+import { fetchAvailability } from '@/store/slices/clinicSlice';
+import { fetchClients } from '@/store/slices/clinicSlice';
+import { createLead } from '@/store/slices/crmSlice';
 import { Button } from '@/components/atoms/Button/Button';
-import { Card, CardContent } from '@/components/molecules/Card/Card';
-import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
-import { crmAPI, bookingAPI } from '@/services/api';
-import './StaffDiary.css';
+import { crmAPI, clinicsAPI, bookingAPI, adminAPI } from '@/services/api';
+import toast from 'react-hot-toast';
 
-interface StaffDiaryProps {
-    clinicId?: string;
-    onNewAppointment?: () => void;
-}
+const statusLabels: Record<string, { label: string, color: string, icon: any }> = {
+    PENDING: { label: 'Booked', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: Clock },
+    CONFIRMED: { label: 'Confirmed', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
+    ARRIVED: { label: 'Arrived', color: 'bg-indigo-100 text-indigo-700 border-indigo-200', icon: User },
+    IN_PROGRESS: { label: 'Started', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Scissors },
+    NO_SHOW: { label: 'No-show', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: AlertCircle },
+    CANCELLED: { label: 'Cancelled', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
+    COMPLETED: { label: 'Done', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: CheckCircle2 },
+};
 
-export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointment }) => {
+// Helper to reliably extract hour and minute in a specific timezone
+const getClinicLocalTime = (dateStr: string, timezone?: string) => {
+    const d = new Date(dateStr);
+    try {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone || 'Europe/Athens',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: false
+        });
+        const parts = formatter.formatToParts(d);
+        const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+        const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+        return { hour: hour === 24 ? 0 : hour, minute };
+    } catch (e) {
+        // Fallback to browser local if timezone is invalid
+        return { hour: d.getHours(), minute: d.getMinutes() };
+    }
+};
+
+const formatClinicTime = (dateStr: string, timezone?: string) => {
+    const { hour, minute } = getClinicLocalTime(dateStr, timezone);
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+};
+
+interface StaffDiaryProps { clinicId?: string; onNewAppointment?: () => void; }
+
+export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointment: _onNewAppointment }) => {
     const dispatch = useDispatch<AppDispatch>();
-    const { appointments, staff: allStaff, profile, services, isLoading } = useSelector((state: RootState) => state.clinic);
+    const navigate = useNavigate();
+    const { appointments } = useSelector((state: RootState) => state.booking);
+    const { availability } = useSelector((state: RootState) => state.clinic);
     const { user } = useSelector((state: RootState) => state.auth);
+    const { clients, staff } = useSelector((state: RootState) => state.clinic);
 
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
-    const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-    const [selectedApt, setSelectedApt] = useState<any>(null);
+
+    const [viewDate, setViewDate] = useState(new Date());
+    const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
+    const [selectedClinicId, setSelectedClinicId] = useState<string>(clinicId || 'all');
+
+    useEffect(() => {
+        if (clinicId) setSelectedClinicId(clinicId);
+    }, [clinicId]);
+
+    const isManager = user?.role === 'manager' || user?.role === 'admin' || user?.role === 'SUPER_ADMIN';
+    const [selectedProviderId, setSelectedProviderId] = useState<string>(user?.id || 'all');
+
+    // Drawers state
+    const [isAddWizardOpen, setIsAddWizardOpen] = useState(false);
     const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
-    const [isExecutionModalOpen, setIsExecutionModalOpen] = useState(false);
 
-    const filteredAppointments = useMemo(() => {
-        let apts = appointments || [];
-        if (user?.role === 'doctor') {
-            apts = apts.filter(apt => apt.providerId === user.id);
+    // Detailed Appointment logic
+    const [selectedApt, setSelectedApt] = useState<any>(null);
+    const [isPaymentPrompt, setIsPaymentPrompt] = useState(false);
+    const [paymentAmt, setPaymentAmt] = useState('');
+
+    const [contextMenu, setContextMenu] = useState<{
+        x: number;
+        y: number;
+        visible: boolean;
+        date: Date;
+        time: string;
+    } | null>(null);
+
+    // Wizard State
+    const [wizardStep, setWizardStep] = useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [wizardClient, setWizardClient] = useState<any>(null);
+    const [wizardClinic, setWizardClinic] = useState<any>(null);
+    const [availableClinics, setAvailableClinics] = useState<any[]>([]);
+    const [wizardServices, setWizardServices] = useState<any[]>([]);
+    const [availableServices, setAvailableServices] = useState<any[]>([]);
+    const [availableTimeSlots, setAvailableTimeSlots] = useState<any[]>([]);
+    const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+
+    const [wizardDate, setWizardDate] = useState(new Date());
+    const [wizardTime, setWizardTime] = useState(format(new Date(), 'HH:mm'));
+    const [wizardProviderId, setWizardProviderId] = useState<string | null>(null);
+    const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+    const [clinicSearchQuery, setClinicSearchQuery] = useState('');
+    const [isClinicDropdownOpen, setIsClinicDropdownOpen] = useState(false);
+
+    // Walk-in state
+    const [isWalkIn, setIsWalkIn] = useState(false);
+    const [walkInForm, setWalkInForm] = useState({ firstName: '', lastName: '', phone: '' });
+
+    // Drawer Services
+    const [drawerServices, setDrawerServices] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (isDetailDrawerOpen && selectedApt?.clinicId) {
+            clinicsAPI.getServices(selectedApt.clinicId).then(res => {
+                setDrawerServices(res.data);
+            }).catch(console.error);
         }
-        return apts.filter(apt => apt.status !== 'CANCELLED');
-    }, [appointments, user]);
+    }, [isDetailDrawerOpen, selectedApt?.clinicId]);
 
-    const staff = useMemo(() => {
-        let baseStaff = [...allStaff];
+    const [isEditingService, setIsEditingService] = useState(false);
+    const [editPrice, setEditPrice] = useState<string>('');
+    const [editServices, setEditServices] = useState<any[]>([]);
+    const [allAvailableServices, setAllAvailableServices] = useState<any[]>([]);
 
-        if (user?.role === 'doctor') {
-            return baseStaff.filter(s => s.id === user.id);
+    useEffect(() => {
+        if (availableClinics.length > 0 && allAvailableServices.length === 0) {
+            Promise.all(availableClinics.map(c =>
+                clinicsAPI.getServices(c.id).then(res => res.data.map((s: any) => ({ ...s, clinicName: c.name })))
+            )).then(results => {
+                setAllAvailableServices(results.flat());
+            }).catch(console.error);
+        }
+    }, [availableClinics]);
+
+    // Fetch Base Clinic on Load
+    useEffect(() => {
+        const init = async () => {
+            try {
+                const res = await crmAPI.getAccessibleClinics();
+                if (res.data) {
+                    setAvailableClinics(res.data);
+                    if (res.data.length > 0 && selectedClinicId === 'all') {
+                        // Keep 'all' for managers/admins, but maybe default to first clinic for others
+                    }
+                }
+            } catch (e) {
+                console.error("Failed loading clinic/services", e);
+            }
+        };
+        init();
+    }, [user]);
+
+    const currentFilters = useMemo(() => {
+        const filters: any = {};
+        if (!isManager && (user?.role as string) !== 'doctor') {
+            filters.providerId = user?.id;
+        } else if (isManager && selectedProviderId !== 'all') {
+            filters.providerId = selectedProviderId;
+        }
+        if (viewMode === 'week') {
+            filters.startDate = format(startOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+            filters.endDate = format(endOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        } else {
+            filters.date = format(viewDate, 'yyyy-MM-dd');
+        }
+        if (selectedClinicId !== 'all') {
+            filters.clinicId = selectedClinicId;
+        }
+        return filters;
+    }, [user, selectedClinicId, selectedProviderId, viewDate, viewMode, isManager]);
+
+    useEffect(() => {
+        if (selectedClinicId !== 'all') {
+            dispatch(fetchAvailability({
+                clinicId: selectedClinicId,
+                date: format(viewDate, 'yyyy-MM-dd'),
+                serviceId: 'all'
+            } as any));
+        } else if (availableClinics.length > 0) {
+            // For 'all' clinics, we might want to fetch availability for each or a combined view
+            // For now, let's at least fetch for the first one or skip if too complex
         }
 
-        const hasUnassignedOrUnknown = filteredAppointments.some(apt => {
-            const matchesDay = isSameDay(new Date(apt.startTime), selectedDate);
-            if (!matchesDay) return false;
-            const isKnown = allStaff.some(s => s.id === apt.providerId);
-            return !apt.providerId || !isKnown;
+        console.log('[StaffDiary] Fetching appointments with currentFilters:', currentFilters);
+        dispatch(fetchClinicAppointments(currentFilters));
+    }, [dispatch, currentFilters, availableClinics, selectedClinicId, viewDate]);
+
+    useEffect(() => {
+        if (searchQuery.length > 2) {
+            dispatch(fetchClients({ search: searchQuery } as any));
+        }
+    }, [searchQuery, dispatch]);
+
+    // Fetch Slots when Service/Date changes in Wizard Step 2
+    useEffect(() => {
+        if (wizardStep !== 2 || !wizardClinic || wizardServices.length === 0) return;
+
+        const fetchSlots = async () => {
+            setIsLoadingSlots(true);
+            try {
+                const res = await bookingAPI.getAvailability({
+                    clinicId: wizardClinic.id,
+                    serviceId: wizardServices[0].id,
+                    date: format(wizardDate, 'yyyy-MM-dd')
+                });
+                setAvailableTimeSlots(res.data.slots || res.data || []);
+            } catch (err) {
+                console.error("Failed to fetch slots", err);
+            } finally {
+                setIsLoadingSlots(false);
+            }
+        };
+        fetchSlots();
+    }, [wizardStep, wizardClinic, wizardServices, wizardDate]);
+
+    const weekDays = useMemo(() => {
+        if (viewMode === 'day') return [startOfDay(viewDate)];
+        return eachDayOfInterval({
+            start: startOfWeek(viewDate, { weekStartsOn: 1 }),
+            end: endOfWeek(viewDate, { weekStartsOn: 1 })
+        });
+    }, [viewDate, viewMode]);
+
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+
+    const weeklyStats = useMemo(() => {
+        const stats = {
+            booked: 0,
+            done: 0,
+            noShow: 0,
+            cancelled: 0,
+            returned: 0
+        };
+
+        console.log(`[StaffDiary] Calculating stats for ${appointments.length} appointments`);
+
+        appointments.forEach(apt => {
+            const aptDate = new Date(apt.startTime);
+            let isInView = false;
+            if (viewMode === 'week') {
+                const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
+                const weekEnd = endOfWeek(viewDate, { weekStartsOn: 1 });
+                if (aptDate >= weekStart && aptDate <= weekEnd) isInView = true;
+            } else {
+                if (isSameDay(aptDate, viewDate)) isInView = true;
+            }
+
+            if (isInView) {
+                stats.booked++;
+                if (apt.status === 'COMPLETED' || apt.status === 'EXECUTED') stats.done++;
+                if (apt.status === 'NO_SHOW') stats.noShow++;
+                if (apt.status === 'CANCELLED') stats.cancelled++;
+                if ((apt as any).isReturned) stats.returned++;
+            }
         });
 
-        if (hasUnassignedOrUnknown) {
-            const unassigned = {
-                id: 'unassigned',
-                fullName: 'Unassigned',
-                role: 'No Provider',
-                profilePictureUrl: null
-            };
-            return [unassigned, ...baseStaff];
-        }
+        return stats;
+    }, [appointments, viewDate, viewMode]);
 
-        return baseStaff;
-    }, [allStaff, user, filteredAppointments, selectedDate]);
-
-    const timeSlots = useMemo(() => {
-        const slots = [];
-        let current = setMinutes(setHours(new Date(), 8), 0);
-        const end = setMinutes(setHours(new Date(), 23), 30);
-        while (current <= end) {
-            slots.push(format(current, 'HH:mm'));
-            current = addMinutes(current, 30);
-        }
-        return slots;
-    }, []);
-
-    const resolvedClinicId = clinicId || profile?.id || (user as any)?.assignedClinics?.[0]?.id || (user as any)?.associatedClinicId || (user as any)?.clinicId || (user as any)?.ownedClinics?.[0]?.id || (user as any)?.ownedClinics?.[0];
-
-    // Auto-fetch clinic profile if not yet loaded (needed to resolve clinicId)
-    useEffect(() => {
-        if (!profile) {
-            dispatch(fetchClinicProfile());
-        }
-    }, [dispatch, profile]);
-
-    useEffect(() => {
-        if (resolvedClinicId) {
-            dispatch(fetchClinicProviders(resolvedClinicId));
-            dispatch(fetchServices(resolvedClinicId));
-        }
-
-        const filters: any = {};
-        if (resolvedClinicId) filters.clinicId = resolvedClinicId;
-        
-        if (viewMode === 'day') {
-            filters.date = format(selectedDate, 'yyyy-MM-dd');
+    const handleOpenWizard = async (initialDate?: Date, initialTimeStr?: string) => {
+        if (initialDate) setWizardDate(initialDate);
+        if (initialTimeStr) setWizardTime(initialTimeStr);
+        setWizardStep(1);
+        setWizardClient(null);
+        setWizardServices([]);
+        setIsWalkIn(false);
+        setWalkInForm({ firstName: '', lastName: '', phone: '' });
+        if (selectedProviderId && selectedProviderId !== 'all') {
+            setWizardProviderId(selectedProviderId);
         } else {
-            filters.startDate = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-            filters.endDate = format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+            setWizardProviderId('');
         }
-        
-        dispatch(fetchAppointments(filters));
-    }, [dispatch, profile?.id, clinicId, selectedDate, user, viewMode, resolvedClinicId]);
 
-    const navigateDate = (direction: 'prev' | 'next') => {
-        if (viewMode === 'day') setSelectedDate(prev => addDays(prev, direction === 'next' ? 1 : -1));
-        else setSelectedDate(prev => addDays(prev, direction === 'next' ? 7 : -7));
+        // Default clinic to the selected one in the view if not 'all'
+        if (selectedClinicId !== 'all') {
+            const clinic = availableClinics.find(c => c.id === selectedClinicId);
+            if (clinic) {
+                setWizardClinic(clinic);
+                try {
+                    const srvRes = await clinicsAPI.getServices(clinic.id);
+                    setAvailableServices(srvRes.data);
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        } else if (availableClinics.length > 0) {
+            setWizardClinic(availableClinics[0]);
+            try {
+                const srvRes = await clinicsAPI.getServices(availableClinics[0].id);
+                setAvailableServices(srvRes.data);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        setIsAddWizardOpen(true);
     };
 
-    const getAppointmentsForProvider = (providerId: string, date: Date) => {
-        return filteredAppointments.filter(apt => {
-            const appointmentDate = new Date(apt.startTime);
-            const matchesDay = isSameDay(appointmentDate, date);
-            if (!matchesDay) return false;
-            const isKnownProvider = allStaff.some(s => s.id === apt.providerId);
-            if (providerId === 'unassigned') return !apt.providerId || !isKnownProvider;
-            return apt.providerId === providerId;
-        });
+    const handleCreateBooking = async () => {
+        let clientId = wizardClient ? wizardClient.id : null;
+        let clientData = wizardClient || {};
+
+        if (isWalkIn) {
+            // Create minor contact
+            const leadRes = await dispatch(createLead({
+                source: 'walk_in',
+                firstName: walkInForm.firstName,
+                lastName: walkInForm.lastName,
+                phone: walkInForm.phone,
+                email: `${walkInForm.firstName.toLowerCase()}${Math.random().toString(36).substr(2, 5)}@walkin.local`,
+                status: 'new'
+            })).unwrap();
+            clientId = leadRes.id;
+            clientData = leadRes;
+        }
+
+        if (!clientId || wizardServices.length === 0 || !wizardClinic) return;
+
+        const [hh, mm] = wizardTime.split(':').map(Number);
+        const startDateTime = setMinutes(setHours(startOfDay(wizardDate), hh), mm);
+
+        const totalDuration = wizardServices.reduce((acc, s) => acc + (s.duration || 30), 0);
+        const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60000);
+
+        try {
+            await bookingAPI.createAppointment({
+                clientId: clientId!,
+                clinicId: wizardClinic.id,
+                serviceId: wizardServices[0].id,
+                additionalServiceIds: wizardServices.length > 1 ? wizardServices.slice(1).map(s => s.id) : undefined,
+                providerId: wizardProviderId || undefined,
+                startTime: startDateTime.toISOString(),
+                endTime: endDateTime.toISOString(),
+                status: 'PENDING',
+                bookedById: user?.id
+            });
+
+            setIsAddWizardOpen(false);
+            dispatch(fetchClinicAppointments(currentFilters));
+
+            // Reset wizard
+            setWizardStep(1);
+            setWizardClient(null);
+            setWizardServices([]);
+            setWizardTime("10:00");
+        } catch (error) {
+            console.error(error);
+            alert("Failed to book appointment.");
+        }
+    };
+
+    const handleStatusUpdate = async (id: string, st: string) => {
+        if (st === 'COMPLETED') {
+            setIsPaymentPrompt(true);
+            return;
+        }
+        await dispatch(updateAppointmentStatus({ id, status: st }));
+        setSelectedApt({ ...selectedApt, status: st });
+        dispatch(fetchClinicAppointments(currentFilters));
+    };
+
+    const handleRecordPayment = async () => {
+        if (!selectedApt) return;
+        try {
+            const amountValue = parseFloat(paymentAmt) || calculateAptTotal(selectedApt);
+            await dispatch(recordAppointmentPayment({
+                id: selectedApt.id,
+                data: {
+                    amount: amountValue,
+                    method: 'cash', // 'venue' is not a DB enum — use cash as proxy for pay-at-venue
+                    notes: 'Pay at Venue — client will pay on arrival'
+                }
+            })).unwrap();
+            setIsPaymentPrompt(false);
+            setIsDetailDrawerOpen(false);
+            dispatch(fetchClinicAppointments(currentFilters));
+            toast.success("Confirmed — client will pay at venue!");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to record. Please verify connection.");
+        }
+    };
+
+    const handleCompletePayment = async () => {
+        if (!selectedApt) return;
+        try {
+            const amountValue = parseFloat(paymentAmt) || calculateAptTotal(selectedApt);
+            await dispatch(completeAppointment({
+                id: selectedApt.id,
+                data: {
+                    amountPaid: amountValue,
+                    totalAmount: amountValue,
+                    paymentMethod: 'cash', // Cash collected in person — always lowercase for DB enum
+                    serviceExecuted: true,
+                    treatmentDetails: {
+                        patientCame: true,
+                        notes: 'Cash collected via Sales Calendar'
+                    }
+                }
+            })).unwrap();
+            setIsPaymentPrompt(false);
+            setIsDetailDrawerOpen(false);
+            dispatch(fetchClinicAppointments(currentFilters));
+            toast.success("Cash collected — appointment completed!");
+        } catch (err) {
+            console.error(err);
+            toast.error("Checkout incomplete. Please verify amount and connection.");
+        }
+    };
+
+    const handleCardCompletePayment = async () => {
+        if (!selectedApt) return;
+        try {
+            const amountValue = parseFloat(paymentAmt) || calculateAptTotal(selectedApt);
+            await dispatch(completeAppointment({
+                id: selectedApt.id,
+                data: {
+                    amountPaid: amountValue,
+                    totalAmount: amountValue,
+                    paymentMethod: 'card',
+                    serviceExecuted: true,
+                    treatmentDetails: {
+                        patientCame: true,
+                        notes: 'Card collected via Sales Calendar'
+                    }
+                }
+            })).unwrap();
+            setIsPaymentPrompt(false);
+            setIsDetailDrawerOpen(false);
+            dispatch(fetchClinicAppointments(currentFilters));
+            toast.success("Card payment recorded — appointment completed!");
+        } catch (err) {
+            console.error(err);
+            toast.error("Checkout incomplete. Please verify amount and connection.");
+        }
+    };
+
+    const calculateAptTotal = (apt: any) => {
+        if (apt.totalAmount != null && !isNaN(parseFloat(apt.totalAmount)) && parseFloat(apt.totalAmount) > 0) {
+            return parseFloat(apt.totalAmount);
+        }
+        let total = parseFloat(apt.service?.price) || 0;
+        if (apt.additionalServiceIds?.length > 0) {
+            apt.additionalServiceIds.forEach((id: string) => {
+                const srv = allAvailableServices.find(s => s.id === id) || drawerServices.find(s => s.id === id);
+                if (srv) total += parseFloat(srv.price) || 0;
+            });
+        }
+        return total;
     };
 
     const openAptDetails = (apt: any) => {
         setSelectedApt(apt);
+        setIsPaymentPrompt(false);
+        setPaymentAmt(calculateAptTotal(apt).toString() || '');
         setIsDetailDrawerOpen(true);
     };
 
-    const renderDayView = () => {
-        const dayApts = filteredAppointments.filter(apt =>
-            isSameDay(new Date(apt.startTime), selectedDate)
-        );
+    const handleUnblockSlot = async (slotId: string) => {
+        if (!window.confirm("Are you sure you want to remove this blocked time?")) return;
+        try {
+            await adminAPI.unblockSlot(slotId);
+            toast.success("Time slot unblocked successfully!");
+            // Refresh appointments
+            dispatch(fetchClinicAppointments(currentFilters));
+            // Refresh availability if a clinic is selected
+            if (selectedClinicId !== 'all') {
+                dispatch(fetchAvailability({
+                    clinicId: selectedClinicId,
+                    date: format(viewDate, 'yyyy-MM-dd'),
+                    serviceId: 'all'
+                } as any));
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to unblock slot");
+            console.error("Failed to unblock slot", err);
+        }
+    };
 
-        return (
-            <div className="flex-1 overflow-auto custom-scrollbar relative">
-                <div className="flex flex-col relative h-full">
-                    {/* Single header: Clinic name */}
-                    <div className="sticky top-0 z-[50] flex border-b border-slate-100 bg-white/95 backdrop-blur-sm">
-                        <div className="w-[70px] bg-slate-50 border-r border-slate-100 flex-none flex items-center justify-center">
-                            <Clock className="w-4 h-4 text-slate-400" />
-                        </div>
-                        <div className="flex-1 p-4 flex items-center gap-3">
-                            <div className="p-2 bg-slate-900 rounded-xl">
-                                <CalendarIcon className="w-4 h-4 text-white" />
-                            </div>
-                            <div>
-                                <h3 className="text-[11px] font-black uppercase text-slate-900 leading-none">{profile?.name || 'Clinic'}</h3>
-                                <p className="text-[9px] font-bold text-slate-400 tracking-widest uppercase mt-0.5">{dayApts.length} appointment{dayApts.length !== 1 ? 's' : ''} today</p>
-                            </div>
-                        </div>
-                    </div>
+    return (
+        <div className="flex h-full w-full bg-gray-50 relative overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+            {/* Left Sidebar: Team List - MANAGER ONLY */}
+            {/* Team List Sidebar - Visible for Managers and Salespeople (to see all) */}
+            <div className="w-48 bg-white border-r border-gray-100 flex flex-col hidden lg:flex">
+                <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">MY SCHEDULE</h3>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase">{(staff || []).length + 1} ACTIVE</p>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
 
-                    <div className="flex flex-1">
-                        {/* Time column */}
-                        <div className="w-[70px] flex-none bg-white border-r border-slate-100 sticky left-0 z-40">
-                            {timeSlots.map(time => (
-                                <div key={time} className="h-[80px] flex items-start justify-center pt-2 text-[10px] font-black text-slate-400 tabular-nums">
-                                    {time}
+                    {isManager && (
+                        <>
+                            <div
+                                onClick={() => setSelectedProviderId('all')}
+                                className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 ${selectedProviderId === 'all' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
+                            >
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === 'all' ? 'bg-indigo-400' : 'bg-indigo-100'}`}>
+                                    <Users className={`w-3 h-3 ${selectedProviderId === 'all' ? 'text-white' : 'text-indigo-600'}`} />
+                                </div>
+                                <span className="text-xs truncate">Full Roster</span>
+                            </div>
+
+                            {(staff || []).filter(s => s.id !== user?.id).map(s => (
+                                <div
+                                    key={s.id}
+                                    onClick={() => setSelectedProviderId(s.id)}
+                                    className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 group ${selectedProviderId === s.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
+                                >
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === s.id ? 'bg-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>{s.firstName?.[0]}</div>
+                                    <span className="text-xs truncate">{s.firstName}</span>
                                 </div>
                             ))}
-                        </div>
+                            <div className="h-px bg-gray-100 my-2 mx-2" />
+                        </>
+                    )}
 
-                        {/* Single appointments column */}
-                        <div className="flex-1 relative bg-white/20">
-                            {timeSlots.map(time => (
-                                <div key={time} className="h-[80px] border-b border-slate-100/50 hover:bg-slate-50 transition-colors" />
-                            ))}
-
-                            {dayApts.map(apt => {
-                                const start = new Date(apt.startTime);
-                                const end = new Date(apt.endTime);
-                                const top = ((start.getHours() * 60 + start.getMinutes() - 480) / 30) * 80;
-                                const height = Math.max(((end.getTime() - start.getTime()) / 60000 / 30) * 80, 50);
-                                const provider = staff.find(s => s.id === apt.providerId);
-
-                                // ── Blocked Time Slot ──────────────────────
-                                if (apt.isBlocked) {
-                                    return (
-                                        <div key={apt.id} onClick={() => openAptDetails(apt)}
-                                            className="absolute left-2 right-2 rounded-xl p-3 border-l-4 border-red-500 shadow-sm cursor-pointer flex flex-col justify-between bg-red-50 hover:bg-red-100 transition-all hover:scale-[1.01] hover:z-50"
-                                            style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
-                                        >
-                                            <div className="flex justify-between items-start mb-1">
-                                                <span className="text-[10px] font-black uppercase text-red-700 truncate">🚫 Blocked Time</span>
-                                                <span className="text-[8px] font-black uppercase text-white bg-red-500 px-1.5 py-0.5 rounded-md ml-1 whitespace-nowrap">Blocked</span>
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <div className="text-[9px] font-bold text-red-400 truncate italic">
-                                                    {apt.reason || apt.notes || 'No reason provided'}
-                                                </div>
-                                            </div>
-                                            <div className="mt-auto flex justify-between items-center pt-1 border-t border-red-100">
-                                                <span className="text-[9px] font-black text-red-400">{format(start, 'HH:mm')} – {format(end, 'HH:mm')}</span>
-                                            </div>
-                                        </div>
-                                    );
-                                }
-
-                                // ── Normal Appointment ──────────────────────
-                                return (
-                                    <div key={apt.id} onClick={() => openAptDetails(apt)}
-                                        className={`absolute left-2 right-2 rounded-xl p-3 border-l-4 shadow-sm transition-all hover:scale-[1.01] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status.toLowerCase()} bg-white shadow-slate-200/50`}
-                                        style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
-                                    >
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="text-[10px] font-black uppercase text-slate-900 truncate">{apt.clientDetails?.fullName || apt.client?.firstName || 'Patient'}</span>
-                                            {provider && (
-                                                <span className="text-[8px] font-black uppercase text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md ml-1 whitespace-nowrap border border-indigo-100">
-                                                    {provider.fullName?.split(' ')[0]}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="space-y-0.5">
-                                            <div className="text-[9px] font-bold text-slate-500 truncate lowercase">{apt.serviceName || 'Treatment'}</div>
-                                            <div className="text-[8px] font-medium text-slate-400 truncate">{apt.clientDetails?.phone || apt.client?.phone || 'No Phone'}</div>
-                                        </div>
-                                        <div className="mt-auto flex justify-between items-center pt-1 border-t border-slate-50">
-                                            <span className="text-[9px] font-black text-slate-400">{format(start, 'HH:mm')} – {format(end, 'HH:mm')}</span>
-                                            {apt.bookedByInfo && <span className="text-[7px] font-black uppercase text-blue-400 bg-blue-50 px-1 rounded">By {apt.bookedByInfo.name.split(' ')[0]}</span>}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                    <div
+                        onClick={() => setSelectedProviderId(user?.id || '')}
+                        className={`p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 group ${selectedProviderId === user?.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 font-black' : 'hover:bg-gray-50 text-gray-500 font-medium'}`}
+                    >
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${selectedProviderId === user?.id ? 'bg-indigo-400' : 'bg-indigo-100'}`}>{user?.firstName?.[0]}</div>
+                        <span className="text-xs truncate">Me</span>
                     </div>
                 </div>
             </div>
-        );
-    };
 
-
-    const renderWeekView = () => {
-        const weekDays = eachDayOfInterval({
-            start: startOfWeek(selectedDate, { weekStartsOn: 1 }),
-            end: endOfWeek(selectedDate, { weekStartsOn: 1 })
-        });
-
-        return (
-            <div className="flex-1 overflow-auto custom-scrollbar relative">
-                <div className="min-w-max flex flex-col relative h-full">
-                    <div className="sticky top-0 z-[100] flex border-b border-slate-100 bg-white/95 backdrop-blur-sm">
-                        <div className="w-[70px] bg-slate-50 border-r border-slate-100 flex-none flex items-center justify-center sticky left-0 z-[110]">
-                            <CalendarIcon className="w-4 h-4 text-slate-400" />
+            {/* Main Calendar View */}
+            <div className={`flex flex-col flex-1 transition-all duration-300 ${isAddWizardOpen || (isDetailDrawerOpen && selectedApt) ? 'mr-96 lg:mr-[400px]' : ''}`}>
+                <div className="bg-white border-b border-gray-200 z-10 sticky top-0">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between px-4 lg:px-6 py-4 gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="size-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                                <Calendar className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h1 className="text-lg lg:text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                                    Clinic Schedule
+                                    <span className="hidden sm:inline-block text-[8px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-black">LIVE</span>
+                                </h1>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Operations & Schedule</p>
+                            </div>
                         </div>
-                        {weekDays.map(day => (
-                            <div key={day.toISOString()} className="w-[160px] p-4 flex-none border-r border-slate-100 text-center">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{format(day, 'EEE')}</span>
-                                <h3 className={`text-xl font-black mt-1 ${isToday(day) ? 'text-blue-600' : 'text-slate-900'}`}>{format(day, 'd')}</h3>
-                                <p className="text-[8px] font-bold text-slate-300 mt-0.5">
-                                    {filteredAppointments.filter(a => isSameDay(new Date(a.startTime), day)).length} apts
-                                </p>
+
+                        <div className="flex flex-wrap items-center gap-2 lg:gap-4">
+                            <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg p-1 w-full sm:w-auto">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewDate(d => viewMode === 'week' ? subWeeks(d, 1) : subDays(d, 1))}>
+                                    <ChevronLeft className="w-4 h-4" />
+                                </Button>
+                                <span className="text-[11px] font-black text-gray-700 min-w-[120px] text-center uppercase">
+                                    {viewMode === 'week'
+                                        ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[weekDays.length - 1], 'MMM d')}`
+                                        : format(viewDate, 'EEEE, MMM d')}
+                                </span>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewDate(d => viewMode === 'week' ? addWeeks(d, 1) : addDays(d, 1))}>
+                                    <ChevronRight className="w-4 h-4" />
+                                </Button>
+                            </div>
+
+                            <div className="flex-1 sm:flex-none">
+                                <select
+                                    value={selectedClinicId}
+                                    onChange={(e) => setSelectedClinicId(e.target.value)}
+                                    className="w-full bg-gray-50 border border-gray-100 text-gray-900 rounded-lg px-3 py-2 text-[10px] font-black uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer appearance-none pr-8"
+                                    style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.2em 1.2em` }}
+                                >
+                                    <option value="all">Global (All Clinics)</option>
+                                    {availableClinics.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex gap-1 items-center bg-gray-100 p-1 rounded-lg">
+                                <button onClick={() => setViewMode('day')} className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${viewMode === 'day' ? 'bg-white shadow-sm text-indigo-600 px-4' : 'text-gray-400'}`}>Day</button>
+                                <button onClick={() => setViewMode('week')} className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-md transition-all ${viewMode === 'week' ? 'bg-white shadow-sm text-indigo-600 px-4' : 'text-gray-400'}`}>Week</button>
+                            </div>
+
+                            <Button onClick={() => handleOpenWizard()} className="bg-black text-[#CBFF38] hover:bg-zinc-800 font-black uppercase text-[10px] h-10 px-4 gap-2 shadow-xl shadow-lime-500/10 border-0">
+                                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add Apt</span>
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Weekly Stats Header */}
+                <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <div className="flex flex-col p-2 bg-gray-50 rounded-lg border border-gray-100">
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Booked</span>
+                        <span className="text-sm font-black text-gray-900 leading-none">{weeklyStats.booked}</span>
+                    </div>
+                    <div className="flex flex-col p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                        <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mb-1">Done</span>
+                        <span className="text-sm font-black text-emerald-700 leading-none">{weeklyStats.done}</span>
+                    </div>
+                    <div className="flex flex-col p-2 bg-orange-50 rounded-lg border border-orange-100">
+                        <span className="text-[8px] font-black text-orange-600 uppercase tracking-widest mb-1">No-show</span>
+                        <span className="text-sm font-black text-orange-700 leading-none">{weeklyStats.noShow}</span>
+                    </div>
+                    <div className="flex flex-col p-2 bg-red-50 rounded-lg border border-red-100">
+                        <span className="text-[8px] font-black text-red-600 uppercase tracking-widest mb-1">Canceled</span>
+                        <span className="text-sm font-black text-red-700 leading-none">{weeklyStats.cancelled}</span>
+                    </div>
+                    <div className="flex flex-col p-2 bg-blue-50 rounded-lg border border-blue-100">
+                        <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest mb-1">Returned</span>
+                        <span className="text-sm font-black text-blue-700 leading-none">{weeklyStats.returned}</span>
+                    </div>
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="flex-1 overflow-auto flex bg-white relative">
+                    <div className="w-16 flex-shrink-0 border-r border-gray-100 bg-gray-50/50 pt-12 sticky left-0 z-20">
+                        {hours.map(hour => (
+                            <div key={hour} className="h-16 flex items-start justify-center text-[10px] font-bold text-gray-400 -mt-2">
+                                {hour.toString().padStart(2, '0')}:00
                             </div>
                         ))}
                     </div>
 
-                    <div className="flex flex-1">
-                        <div className="w-[70px] flex-none bg-white border-r border-slate-100 sticky left-0 z-40">
-                            {timeSlots.map(time => (
-                                <div key={time} className="h-[80px] flex items-start justify-center pt-2 text-[10px] font-black text-slate-400 tabular-nums">
-                                    {time}
+                    <div className={`flex-1 grid ${viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-1'} min-w-[800px] relative`}>
+                        {weekDays.map(day => (
+                            <div key={day.toISOString()} className={`relative border-r border-gray-100 ${isToday(day) ? 'bg-indigo-50/20' : ''}`}>
+                                <div className="h-12 border-b border-gray-100 flex flex-col items-center justify-center sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+                                    <span className={`text-[10px] font-bold uppercase ${isToday(day) ? 'text-indigo-600' : 'text-gray-500'}`}>{format(day, 'EEE')}</span>
+                                    <span className={`text-base font-black ${isToday(day) ? 'text-indigo-700' : 'text-gray-900'}`}>{format(day, 'd')}</span>
                                 </div>
-                            ))}
-                        </div>
-                        <div className="flex-1 flex relative">
-                            {weekDays.map(day => (
-                                <div key={day.toISOString()} className={`w-[160px] flex-none border-r border-slate-100 relative ${isToday(day) ? 'bg-blue-50/20' : 'bg-white/20'}`}>
-                                    {timeSlots.map(time => (
-                                        <div key={time} className="h-[80px] border-b border-slate-100/50 hover:bg-slate-50 transition-colors" />
-                                    ))}
+                                <div className="relative h-[1536px]"> {/* 24 * 64px = 1536px */}
+                                    {hours.map(hour => {
+                                        const dayName = format(day, 'EEEE').toLowerCase();
+                                        const bh = availability?.businessHours?.[dayName];
+                                        let isClosed = false;
+                                        if (bh) {
+                                            const [openH] = bh.open.split(':').map(Number);
+                                            const [closeH] = bh.close.split(':').map(Number);
+                                            if (!bh.isOpen || hour < openH || hour >= closeH) {
+                                                isClosed = true;
+                                            }
+                                        }
 
-                                    {filteredAppointments.filter(apt => isSameDay(new Date(apt.startTime), day)).map(apt => {
-                                        const start = new Date(apt.startTime);
-                                        const end = new Date(apt.endTime);
-                                        const top = ((start.getHours() * 60 + start.getMinutes() - 480) / 30) * 80;
-                                        const height = Math.max(((end.getTime() - start.getTime()) / 60000 / 30) * 80, 45);
-                                        const provider = staff.find(s => s.id === apt.providerId);
-                                        const clientName = apt.clientDetails?.fullName 
-                                            || `${apt.client?.firstName || ''} ${apt.client?.lastName || ''}`.trim() 
-                                            || 'Patient';
+                                        return (
+                                            <div
+                                                key={hour}
+                                                className={`h-16 border-b border-gray-50/50 w-full hover:bg-indigo-50/10 cursor-alias relative ${isClosed ? 'bg-gray-100/50 pattern-diagonal-lines' : ''}`}
+                                                onClick={(e) => {
+                                                    if (isClosed) return;
+                                                    handleOpenWizard(day, `${hour.toString().padStart(2, '0')}:00`);
+                                                }}
+                                            >
+                                                {isClosed && hour === 12 && (
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                        <span className="text-[10px] font-bold text-gray-400 rotate-[-15deg] uppercase tracking-widest">Closed</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
 
-                                        // ── Blocked Time Slot ──────────────
+                                    {appointments.filter(a => isSameDay(parseISO(a.startTime), day)).map(apt => {
+                                        const clinicTz = apt.clinic?.timezone || 'Europe/Athens';
+                                        const { hour: startHour, minute: startMinute } = getClinicLocalTime(apt.startTime, clinicTz);
+                                        const top = startHour * 64 + (startMinute / 60) * 64;
+
+                                        const start = parseISO(apt.startTime);
+                                        const end = parseISO(apt.endTime);
+                                        const durationHours = (end.getTime() - start.getTime()) / 3600000;
+                                        const height = Math.max(durationHours * 64, 45); // Minimum height for visibility
+                                        const normalizedStatus = (apt.status || 'PENDING').toUpperCase();
+                                        const style = statusLabels[normalizedStatus] || statusLabels.PENDING;
+                                        const Icon = style.icon;
+
                                         if (apt.isBlocked) {
                                             return (
-                                                <div key={apt.id} onClick={() => openAptDetails(apt)}
-                                                    className="absolute left-1 right-1 rounded-xl p-2 border-l-4 border-red-500 shadow-sm cursor-pointer flex flex-col justify-between bg-red-50 hover:bg-red-100 transition-all hover:scale-[1.02] hover:z-50"
-                                                    style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
+                                                <div
+                                                    key={apt.id}
+                                                    onClick={(e) => { e.stopPropagation(); handleUnblockSlot(apt.id); }}
+                                                    className="absolute left-1 right-1 rounded-md border-2 border-dashed border-orange-200 bg-orange-50/40 z-10 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-orange-100/50 hover:border-orange-300 transition-all group"
+                                                    style={{ top, height }}
+                                                    title={`Blocked: ${apt.displayName || apt.serviceName || 'No reason'}. Click to unblock.`}
                                                 >
-                                                    <span className="text-[9px] font-black uppercase text-red-700 truncate leading-none">🚫 Blocked</span>
-                                                    <div className="space-y-0.5 mt-0.5">
-                                                        <div className="text-[8px] font-bold text-red-400 truncate italic">
-                                                            {apt.reason || apt.notes || ''}
-                                                        </div>
+                                                    <div className="flex flex-col items-center justify-center p-1 text-center">
+                                                        <span className="text-[8px] font-black text-orange-600 uppercase tracking-tighter leading-none">BLOCKED</span>
+                                                        {height > 40 && <span className="text-[7px] font-bold text-orange-500/70 truncate w-full px-1">{apt.displayName || apt.serviceName || 'Unavailable'}</span>}
                                                     </div>
-                                                    <div className="mt-auto pt-1 border-t border-red-100">
-                                                        <span className="text-[8px] font-black text-red-400">{format(start, 'HH:mm')}–{format(end, 'HH:mm')}</span>
-                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUnblockSlot(apt.id);
+                                                        }}
+                                                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-md text-orange-600 hover:text-red-600 hover:bg-orange-100/80 transition-all z-20 opacity-70 group-hover:opacity-100"
+                                                        title="Delete blocked time"
+                                                    >
+                                                        <Trash2 size={12} className="stroke-[2.5]" />
+                                                    </button>
                                                 </div>
                                             );
                                         }
 
-                                        // ── Normal Appointment ──────────────
                                         return (
-                                            <div key={apt.id} onClick={() => openAptDetails(apt)}
-                                                className={`absolute left-1 right-1 rounded-xl p-2 border-l-4 shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer flex flex-col justify-between status-${apt.status.toLowerCase()} bg-white shadow-slate-200/50`}
-                                                style={{ top: `${top + 2}px`, height: `${height - 4}px` }}
+                                            <div
+                                                key={apt.id}
+                                                onClick={(e) => { e.stopPropagation(); openAptDetails(apt); }}
+                                                className={`absolute left-0 right-1 rounded-r-md border-l-[3px] border-l-current shadow-sm cursor-pointer group hover:shadow-md hover:scale-[1.01] z-20 overflow-visible transition-all flex flex-col p-1.5 ${style.color.split(' ').slice(0, 2).join(' ')}`}
+                                                style={{ top, height }}
                                             >
-                                                <div className="flex justify-between items-start gap-1">
-                                                    <span className="text-[10px] font-black uppercase text-slate-900 truncate leading-none">{clientName}</span>
+                                                {/* Tooltip Preview on Hover */}
+                                                <div className="absolute left-full ml-2 w-48 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 z-[100] hidden group-hover:block transition-all duration-300 pointer-events-none transform -translate-y-1/2 top-1/2">
+                                                    <div className="flex justify-between items-start border-b border-gray-100 pb-2 mb-2">
+                                                        <div className="flex items-center gap-1.5 text-indigo-600">
+                                                            <Clock size={12} strokeWidth={3} />
+                                                            <span className="text-[10px] font-black">{formatClinicTime(apt.startTime, apt.clinic?.timezone)} – {formatClinicTime(apt.endTime, apt.clinic?.timezone)}</span>
+                                                        </div>
+                                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${style.color.split(' ')[0]} ${style.color.split(' ')[1]}`}>{style.label}</span>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="text-xs font-black text-gray-900">{apt.client?.firstName} {apt.client?.lastName}</p>
+                                                        <p className="text-[10px] text-gray-500 flex items-center gap-1 leading-none mb-2">
+                                                            <Phone size={10} className="text-gray-400" /> {apt.client?.phone || 'No phone'}
+                                                        </p>
+                                                        <div className="flex justify-between items-center text-[10px] text-gray-700 font-bold bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                                            <span className="truncate w-2/3">{apt.additionalServiceIds?.length > 0 ? `${apt.service?.treatment?.name || apt.service?.name} + ${apt.additionalServiceIds.length}` : (apt.service?.treatment?.name || apt.service?.name)}</span>
+                                                            <span className="text-emerald-700 font-black">€{apt.totalAmount ?? apt.service?.price}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-0.5 mt-0.5">
-                                                    <div className="text-[9px] font-bold text-slate-500 truncate lowercase">{apt.serviceName || apt.service?.name || 'Treatment'}</div>
-                                                    {provider && (
-                                                        <div className="text-[8px] font-black text-indigo-500 truncate">{provider.fullName?.split(' ')[0]}</div>
-                                                    )}
-                                                </div>
-                                                <div className="mt-auto pt-1 border-t border-slate-50">
-                                                    <span className="text-[8px] font-black text-slate-400">{format(start, 'HH:mm')}–{format(end, 'HH:mm')}</span>
+
+                                                <div className="flex items-start gap-1">
+                                                    <span className={`text-[10px] font-bold opacity-75`}>{formatClinicTime(apt.startTime, apt.clinic?.timezone)}</span>
+                                                    <span className="text-[10px] font-black leading-tight flex-1">
+                                                        {apt.client?.firstName} {apt.client?.lastName}
+                                                        {(apt as any).isReturned && <span className="ml-1 text-[7px] px-1 rounded bg-black/10 font-black">RET</span>}
+                                                    </span>
                                                 </div>
                                             </div>
                                         );
                                     })}
+
+
+
+                                    {isToday(day) && (
+                                        <div
+                                            className="absolute left-0 right-0 border-t-2 border-red-500 z-30 pointer-events-none"
+                                            style={{
+                                                top: (new Date().getHours() * 64) + (new Date().getMinutes() / 60 * 64)
+                                            }}
+                                        >
+                                            <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500" />
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-
-    return (
-        <div className="h-full flex flex-col overflow-hidden relative isolation-auto bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-4 flex-none px-6 py-4 border-b border-slate-100 bg-white z-[200] relative sticky top-0">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-slate-900 rounded-xl">
-                        <CalendarIcon className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-black text-slate-900 tracking-tighter italic uppercase">{user?.role === 'doctor' ? 'Personal Matrix' : 'Clinic Schedule'}</h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">{profile?.name || 'Authorized'} Terminal</p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-inner">
-                        {(['day', 'week'] as const).map(mode => (
-                            <button key={mode} onClick={() => setViewMode(mode)} className={`px-5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === mode ? 'bg-white text-slate-900 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>{mode}</button>
+                            </div>
                         ))}
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-slate-200 bg-white" onClick={() => navigateDate('prev')}><ChevronLeft size={16} /></Button>
-                        <div className="px-5 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-black text-slate-800 min-w-[140px] text-center italic shadow-sm">{format(selectedDate, "MMMM d, yyyy")}</div>
-                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-slate-200 bg-white" onClick={() => navigateDate('next')}><ChevronRight size={16} /></Button>
-                    </div>
-                    <Button onClick={() => setIsBookingModalOpen(true)} className="bg-slate-900 hover:bg-black text-white rounded-xl px-6 h-10 font-black uppercase tracking-widest text-[10px] shadow-xl shadow-slate-200 transition-all border-none">
-                        <Plus className="w-4 h-4 mr-2" /> New Entry
-                    </Button>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-hidden relative">
-                {isLoading && (
-                    <div className="absolute inset-0 z-[200] bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
-                        <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                )}
-                {viewMode === 'day' ? renderDayView() : renderWeekView()}
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-8 py-4 px-6 bg-slate-50/50 flex-none border-t border-slate-100">
-                {[
-                    { label: 'Pending', color: 'bg-blue-500' },
-                    { label: 'Confirmed', color: 'bg-green-500' },
-                    { label: 'Completed', color: 'bg-emerald-500' },
-                    { label: 'Arrived', color: 'bg-amber-500' },
-                    { label: 'No Show', color: 'bg-red-500' },
-                ].map(status => (
-                    <div key={status.label} className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${status.color}`} />
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 italic">{status.label}</span>
-                    </div>
-                ))}
-            </div>
-
-            {isDetailDrawerOpen && selectedApt && (
-                <div className="fixed top-0 right-0 w-full sm:w-[400px] h-full bg-white border-l border-slate-200 shadow-2xl flex flex-col z-[2000] animate-in slide-in-from-right duration-300">
-                    <div className="p-6 text-white bg-slate-900 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10" />
-                        <div className="flex justify-between items-start mb-4 relative z-10">
-                            <h2 className="text-xl font-black italic tracking-tighter">{selectedApt.clientDetails?.fullName || selectedApt.client?.firstName || 'Patient Detail'}</h2>
-                            <button onClick={() => setIsDetailDrawerOpen(false)} className="text-white/40 hover:text-white bg-white/5 p-1.5 rounded-xl"><X size={18} /></button>
+            {/* Appointment Creation Wizard Drawer - Minimal & Compact */}
+            {isAddWizardOpen && (
+                <div className="fixed top-0 right-0 w-full sm:w-[450px] h-screen bg-white border-l border-slate-200 shadow-[-10px_0_50px_rgba(0,0,0,0.1)] flex flex-col z-[1000] animate-in slide-in-from-right transition-all duration-300">
+                    <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
+                        <div className="flex flex-col">
+                            <h2 className="text-lg font-black text-gray-900 leading-none">New Booking</h2>
+                            <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Wizard Step {wizardStep} of 2</span>
                         </div>
-                        <div className="space-y-1.5 relative z-10">
-                            <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{format(new Date(selectedApt.startTime), 'EEEE, MMM do, yyyy')}</p>
-                            <p className="text-sm font-black italic tracking-tight">{format(new Date(selectedApt.startTime), 'HH:mm')} — {format(new Date(selectedApt.endTime), 'HH:mm')}</p>
-                        </div>
-                        <div className="mt-6 flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5 relative z-10">
-                            <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center"><UserIcon size={14} className="text-blue-400" /></div>
-                            <div>
-                                <p className="text-[8px] font-black text-white/20 uppercase">Provider Assigned</p>
-                                <p className="text-xs font-black text-white/90">{staff.find(s => s.id === selectedApt.providerId)?.fullName || 'Pending'}</p>
-                            </div>
-                        </div>
+                        <button onClick={() => setIsAddWizardOpen(false)} className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-gray-100"><X size={20} /></button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-                        <div className="space-y-4">
-                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex justify-between items-center group">
-                                <div className="min-w-0">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Service Type</p>
-                                    <p className="font-black text-slate-800 italic truncate">{selectedApt.serviceName || 'Medical Procedure'}</p>
-                                </div>
-                                <span className="text-xl font-black text-slate-900 ml-4 whitespace-nowrap">€{selectedApt.service?.price || '–'}</span>
-                            </div>
-                            <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xl shadow-slate-200/50 space-y-5">
-                                <div className="flex items-center gap-2.5 text-blue-600"><CalendarIcon size={16} /><span className="text-[11px] font-black uppercase tracking-widest italic">Operational Control</span></div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1"><label className="text-[8px] font-black text-slate-400 uppercase px-1">Matrix Date</label><input type="date" value={format(new Date(selectedApt.startTime), 'yyyy-MM-dd')} onChange={(e) => { const d = new Date(e.target.value); const old = new Date(selectedApt.startTime); d.setHours(old.getHours(), old.getMinutes()); setSelectedApt({ ...selectedApt, startTime: d.toISOString() }); }} className="w-full h-11 px-4 bg-slate-50 border-none rounded-2xl text-[11px] font-black outline-none focus:bg-slate-100" /></div>
-                                    <div className="space-y-1"><label className="text-[8px] font-black text-slate-400 uppercase px-1">Start Hour</label><input type="time" value={format(new Date(selectedApt.startTime), 'HH:mm')} onChange={(e) => { const [h, m] = e.target.value.split(':').map(Number); const d = new Date(selectedApt.startTime); d.setHours(h, m); setSelectedApt({ ...selectedApt, startTime: d.toISOString() }); }} className="w-full h-11 px-4 bg-slate-50 border-none rounded-2xl text-[11px] font-black outline-none focus:bg-slate-100" /></div>
-                                </div>
-                                <div className="space-y-1"><label className="text-[8px] font-black text-slate-400 uppercase px-1">Professional Lead</label><select className="w-full h-11 px-4 bg-slate-50 border-none rounded-2xl text-[11px] font-black outline-none appearance-none" value={selectedApt.providerId || ''} onChange={(e) => setSelectedApt({ ...selectedApt, providerId: e.target.value })}><option value="">Select Professional</option>{staff.map((s: any) => (<option key={s.id} value={s.id}>{s.fullName}</option>))}</select></div>
 
-                                <div className="space-y-1">
-                                    <label className="text-[8px] font-black text-slate-400 uppercase px-1">Treatment Matrix</label>
-                                    <select 
-                                        className="w-full h-11 px-4 bg-slate-50 border-none rounded-2xl text-[11px] font-black outline-none appearance-none" 
-                                        value={selectedApt.serviceId || ''} 
-                                        onChange={(e) => {
-                                            const serviceId = e.target.value;
-                                            const service = services?.find((s: any) => s.id === serviceId);
-                                            setSelectedApt({ ...selectedApt, serviceId, serviceName: service?.name || service?.treatment?.name });
-                                        }}
-                                    >
-                                        <option value="">Select Treatment</option>
-                                        {services?.map((s: any) => (
-                                            <option key={s.id} value={s.id}>{s.name || s.treatment?.name}</option>
-                                        ))}
-                                    </select>
+                    <div className="flex px-5 py-3 border-b border-gray-100 bg-white items-center text-[10px] font-black text-gray-400 gap-2 uppercase tracking-widest">
+                        <span className={wizardStep === 1 ? 'text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100' : 'px-2'}>01. Identity</span>
+                        <div className="h-[1px] w-4 bg-slate-200"></div>
+                        <span className={wizardStep === 2 ? 'text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100' : 'px-2'}>02. Logistics</span>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        {wizardStep === 1 && (
+                            <div className="flex flex-col h-full divide-y divide-slate-100">
+                                {/* Section 1: Client Selection */}
+                                <div className="p-5 space-y-4 bg-slate-50/50">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Patient Profile</label>
+                                        <div className="flex gap-1 p-0.5 bg-slate-200 rounded-lg">
+                                            <button onClick={() => setIsWalkIn(false)} className={`text-[9px] font-black px-3 py-1.5 rounded-md transition-all ${!isWalkIn ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}>EXISTING</button>
+                                            <button onClick={() => setIsWalkIn(true)} className={`text-[9px] font-black px-3 py-1.5 rounded-md transition-all ${isWalkIn ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}>WALK-IN</button>
+                                        </div>
+                                    </div>
+
+                                    {!isWalkIn ? (
+                                        <div className="space-y-3">
+                                            <div className="relative group">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search database..."
+                                                    className="w-full pl-10 pr-4 py-2.5 border-none rounded-xl text-sm bg-white shadow-sm focus:ring-2 focus:ring-indigo-100 transition-all font-bold placeholder:text-slate-300"
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Matching Records</p>
+                                                    <span className="text-[9px] font-bold text-slate-300">{clients.length} found</span>
+                                                </div>
+                                                {clients.map(lead => (
+                                                    <div
+                                                        key={lead.id}
+                                                        onClick={() => setWizardClient(lead)}
+                                                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${wizardClient?.id === lead.id ? 'border-indigo-600 bg-white shadow-md' : 'border-transparent bg-white hover:border-slate-100'}`}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${wizardClient?.id === lead.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                                {lead.firstName[0]}{lead.lastName[0]}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-black text-slate-900 text-xs leading-none mb-1">{lead.firstName} {lead.lastName}</p>
+                                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{lead.phone || lead.email || 'No contact info'}</p>
+                                                            </div>
+                                                        </div>
+                                                        {wizardClient?.id === lead.id && <CheckCircle2 size={12} className="text-indigo-600" />}
+                                                    </div>
+                                                ))}
+                                                {clients.length === 0 && searchQuery && <p className="text-[10px] text-center text-slate-400 py-4 font-bold uppercase">No Matches Found</p>}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3 bg-white p-4 rounded-xl shadow-sm">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input type="text" placeholder="First Name *" value={walkInForm.firstName} onChange={(e) => setWalkInForm({ ...walkInForm, firstName: e.target.value })} className="w-full p-2.5 border border-slate-100 rounded-lg text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none font-bold" />
+                                                <input type="text" placeholder="Last Name" value={walkInForm.lastName} onChange={(e) => setWalkInForm({ ...walkInForm, lastName: e.target.value })} className="w-full p-2.5 border border-slate-100 rounded-lg text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none font-bold" />
+                                            </div>
+                                            <PhoneInput
+                                                value={walkInForm.phone}
+                                                onChange={(val) => setWalkInForm({ ...walkInForm, phone: val })}
+                                                label="Phone Number *"
+                                                defaultCountry="GR"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
-                                {selectedApt.status === 'COMPLETED' && (
-                                    <div className="pt-4 space-y-4 border-t border-slate-100">
-                                        {selectedApt.treatmentDetails?.actualServiceNames?.length > 1 && (
-                                            <div className="space-y-1.5">
-                                                <p className="text-[8px] font-black text-slate-400 uppercase px-1">Procedures Performed</p>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {selectedApt.treatmentDetails.actualServiceNames.map((name: string, i: number) => (
-                                                        <span key={i} className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[9px] font-black uppercase italic border border-emerald-100">{name}</span>
-                                                    ))}
+                                {/* Section 2: Service Selection */}
+                                <div className="flex-1 p-5 space-y-4">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Service Logic</label>
+                                            <div
+                                                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-black cursor-pointer flex items-center gap-1.5 transition-all"
+                                                onClick={() => setIsClinicDropdownOpen(!isClinicDropdownOpen)}
+                                            >
+                                                <MapPin size={10} />
+                                                <span className="truncate max-w-[100px]">{wizardClinic?.name || 'Switch Clinic'}</span>
+                                            </div>
+                                        </div>
+
+                                        {isClinicDropdownOpen && (
+                                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-2 animate-in zoom-in-95 duration-200">
+                                                <div className="relative">
+                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Quick search clinic..."
+                                                        className="w-full pl-8 pr-3 py-2 bg-white border border-slate-100 rounded-lg text-xs font-bold outline-none ring-offset-0 focus:ring-2 focus:ring-indigo-100"
+                                                        value={clinicSearchQuery}
+                                                        onChange={(e) => setClinicSearchQuery(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="max-h-[120px] overflow-y-auto custom-scrollbar space-y-1">
+                                                    {availableClinics
+                                                        .filter(c => c.name.toLowerCase().includes(clinicSearchQuery.toLowerCase()))
+                                                        .map(c => (
+                                                            <div
+                                                                key={c.id}
+                                                                className={`px-3 py-2 text-[10px] font-black cursor-pointer transition-all flex items-center justify-between rounded-md ${wizardClinic?.id === c.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
+                                                                onClick={async () => {
+                                                                    setWizardClinic(c);
+                                                                    setIsClinicDropdownOpen(false);
+                                                                    setClinicSearchQuery('');
+                                                                    try {
+                                                                        const srvRes = await clinicsAPI.getServices(c.id);
+                                                                        setAvailableServices(srvRes.data);
+                                                                    } catch (err) { console.error(err); }
+                                                                }}
+                                                            >
+                                                                <span>{c.name}</span>
+                                                                {wizardClinic?.id === c.id && <CheckCircle2 size={10} />}
+                                                            </div>
+                                                        ))}
                                                 </div>
                                             </div>
                                         )}
-                                        {selectedApt.notes && (
-                                            <div className="space-y-1">
-                                                <p className="text-[8px] font-black text-slate-400 uppercase px-1">Clinical Notes</p>
-                                                <div className="p-3 bg-slate-50 rounded-xl text-[10px] font-medium text-slate-600 italic border border-slate-100">{selectedApt.notes}</div>
-                                            </div>
-                                        )}
                                     </div>
-                                )}
 
-                                <Button className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all mt-4" onClick={async () => { try { await bookingAPI.updateAppointment(selectedApt.id, { startTime: selectedApt.startTime, providerId: selectedApt.providerId, serviceId: selectedApt.serviceId }); const targetClinicId = clinicId || profile?.id || (user as any)?.associatedClinicId || (user as any)?.clinicId || (user as any)?.ownedClinics?.[0]?.id || (user as any)?.ownedClinics?.[0]; const filters: any = {}; if (targetClinicId) filters.clinicId = targetClinicId; filters.date = format(selectedDate, 'yyyy-MM-dd'); dispatch(fetchAppointments(filters)); setIsDetailDrawerOpen(false); } catch (err) { alert("Matrix Sync Failed"); } }}>Update Matrix</Button>
-                            </div>
+                                    <div className="relative group">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                                        <input
+                                            type="text"
+                                            placeholder="Find treatment..."
+                                            className="w-full pl-10 pr-4 py-2.5 border-none rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-100 transition-all font-bold placeholder:text-slate-300"
+                                            value={serviceSearchQuery}
+                                            onChange={(e) => setServiceSearchQuery(e.target.value)}
+                                        />
+                                    </div>
 
-                            {/* New Quick Actions Section */}
-                            {selectedApt.status !== 'COMPLETED' && selectedApt.status !== 'CANCELLED' && (
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2.5 text-slate-900"><div className="w-1.5 h-1.5 rounded-full bg-blue-500" /><span className="text-[11px] font-black uppercase tracking-widest italic">Live Operations</span></div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <Button 
-                                            variant="outline" 
-                                            className="h-11 rounded-2xl border-slate-100 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-100"
-                                            onClick={() => dispatch(updateAppointmentStatus({ id: selectedApt.id, status: AppointmentStatus.ARRIVED }))}
-                                        >
-                                            Arrived
-                                        </Button>
-                                        <Button 
-                                            variant="outline" 
-                                            className="h-11 rounded-2xl border-slate-100 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-100"
-                                            onClick={() => dispatch(updateAppointmentStatus({ id: selectedApt.id, status: AppointmentStatus.NO_SHOW }))}
-                                        >
-                                            No Show
-                                        </Button>
-                                        <Button 
-                                            variant="outline" 
-                                            className="h-11 rounded-2xl border-slate-100 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100"
-                                            onClick={() => {
-                                                if (window.confirm("Cancel this appointment?")) {
-                                                    dispatch(updateAppointmentStatus({ id: selectedApt.id, status: AppointmentStatus.CANCELLED }));
-                                                    setIsDetailDrawerOpen(false);
-                                                }
-                                            }}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button 
-                                            className="h-11 rounded-2xl bg-[#CBFF38] text-black hover:bg-black hover:text-[#CBFF38] text-[10px] font-black uppercase tracking-widest border-none"
-                                            onClick={() => setIsExecutionModalOpen(true)}
-                                        >
-                                            Execute
-                                        </Button>
+                                    <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {!serviceSearchQuery ? (
+                                            <div className="py-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                                <p className="text-[10px] font-black uppercase text-slate-400">Type to search services...</p>
+                                            </div>
+                                        ) : (
+                                            Object.entries(
+                                                (availableServices || [])
+                                                    .filter(s => (s.treatment?.name || s.name || '').toLowerCase().includes(serviceSearchQuery.toLowerCase()))
+                                                    .reduce((acc: any, srv) => {
+                                                        const cat = srv.treatment?.category || 'General';
+                                                        if (!acc[cat]) acc[cat] = [];
+                                                        acc[cat].push(srv);
+                                                        return acc;
+                                                    }, {})
+                                            ).map(([category, services]: [string, any]) => (
+                                                <div key={category} className="space-y-1.5 mb-3">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] pl-1 mb-1">{category}</p>
+                                                    {services.map((srv: any) => {
+                                                        const isSelected = wizardServices.find(s => s.id === srv.id);
+                                                        return (
+                                                            <div
+                                                                key={srv.id}
+                                                                onClick={() => {
+                                                                    if (isSelected) setWizardServices(ws => ws.filter(x => x.id !== srv.id));
+                                                                    else setWizardServices([...wizardServices, srv]);
+                                                                }}
+                                                                className={`px-3 py-2.5 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center group/item ${isSelected ? 'border-emerald-500 bg-emerald-50 shadow-sm text-emerald-900' : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-700'}`}
+                                                            >
+                                                                <div className="flex flex-col">
+                                                                    <p className="font-black text-[11px] leading-none mb-1">{srv.treatment?.name || srv.name}</p>
+                                                                    <p className={`text-[9px] font-bold uppercase tracking-tighter ${isSelected ? 'text-emerald-700/80' : 'text-slate-400'}`}>{srv.durationMinutes || srv.duration}M</p>
+                                                                </div>
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="font-black text-xs">€{srv.price}</span>
+                                                                    {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ))
+                                        )}
+                                        {availableServices.length === 0 && <p className="text-[10px] text-center text-slate-400 py-6 uppercase font-black">Select Clinic first</p>}
                                     </div>
                                 </div>
+                            </div>
+                        )}
+
+                        {wizardStep === 2 && (
+                            <div className="p-5 space-y-5 animate-in slide-in-from-bottom-4 duration-300">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Assigned Professional</label>
+                                        <select
+                                            className="w-full mt-2 p-3 border-none rounded-xl text-sm bg-slate-50 font-black cursor-pointer ring-offset-0 focus:ring-2 focus:ring-indigo-100 outline-none"
+                                            value={wizardProviderId || ''}
+                                            onChange={(e) => setWizardProviderId(e.target.value)}
+                                        >
+                                            <option value="" disabled>Select Staff Member...</option>
+                                            <option value={user?.id}>Personal Schedule ({user?.firstName})</option>
+                                            {isManager && (staff || []).filter(s => s.id !== user?.id).map(s => (
+                                                <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Target Date</label>
+                                            <div className="relative mt-2">
+                                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
+                                                <input type="date" value={format(wizardDate, 'yyyy-MM-dd')} onChange={(e) => setWizardDate(parseISO(e.target.value))} className="w-full pl-10 pr-3 py-3 border-none rounded-xl text-sm bg-slate-50 font-black outline-none focus:ring-2 focus:ring-indigo-100" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Custom Time</label>
+                                            <div className="relative mt-2">
+                                                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
+                                                <input type="time" value={wizardTime} onChange={(e) => setWizardTime(e.target.value)} className="w-full pl-10 pr-3 py-3 border-none rounded-xl text-sm bg-slate-50 font-black outline-none focus:ring-2 focus:ring-indigo-100" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Available Windows</label>
+                                            {isLoadingSlots && <span className="text-[9px] font-black text-indigo-500 animate-pulse tracking-tighter uppercase">Computing...</span>}
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-2 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar p-1">
+                                            {availableTimeSlots.map((slot: any, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    onClick={() => setWizardTime(format(new Date(slot.startTime), 'HH:mm'))}
+                                                    className={`py-2 text-center text-[10px] font-black rounded-lg border-2 cursor-pointer transition-all ${wizardTime === format(new Date(slot.startTime), 'HH:mm')
+                                                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-md'
+                                                        : 'border-transparent hover:border-indigo-100 text-slate-600 bg-slate-50'
+                                                        }`}
+                                                >
+                                                    {format(new Date(slot.startTime), 'HH:mm')}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-900 mx-5 p-5 rounded-2xl text-white shadow-2xl relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10" />
+                                    <div className="relative z-10 flex flex-col gap-4">
+                                        <div className="flex justify-between items-start border-b border-white/5 pb-3">
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Engagement</span>
+                                                <p className="text-sm font-black text-white/90">{isWalkIn ? walkInForm.firstName : (wizardClient?.firstName + ' ' + (wizardClient?.lastName || '')) || 'Guest Patient'}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Total Value</span>
+                                                <p className="text-xl font-black text-[#CBFF38]">€{wizardServices.reduce((a, b) => a + parseFloat(b.price || '0'), 0).toFixed(2)}</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">Assigned To</span>
+                                                <p className="text-[11px] font-black text-white/80 uppercase">{staff.find(s => s.id === (wizardProviderId || user?.id))?.firstName || user?.firstName}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">Service Count</span>
+                                                <p className="text-[11px] font-black text-white/80 uppercase">{wizardServices.length} ITEMS SELECTED</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-5 bg-white border-t border-slate-100 mt-auto shadow-[-20px_0_40px_rgba(0,0,0,0.05)]">
+                        <div className="flex gap-3">
+                            {wizardStep === 2 && (
+                                <Button variant="outline" onClick={() => setWizardStep(1)} className="h-14 w-14 p-0 rounded-2xl border-slate-200 text-slate-400 hover:text-slate-900 transition-all">
+                                    <ArrowLeft className="w-5 h-5" />
+                                </Button>
                             )}
+                            <Button
+                                onClick={wizardStep === 1 ? () => setWizardStep(2) : handleCreateBooking}
+                                disabled={wizardStep === 1 ? (!wizardClient && !isWalkIn) || wizardServices.length === 0 : !wizardTime}
+                                className={`flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.25em] transition-all active:scale-[0.98] shadow-xl ${wizardStep === 1 ? 'bg-slate-900 text-white hover:bg-black' : 'bg-[#CBFF38] text-slate-900 hover:bg-[#A3D900] shadow-[#CBFF38]/20'}`}
+                            >
+                                {wizardStep === 1 ? 'Configure Schedule' : 'Launch Appointment'}
+                            </Button>
                         </div>
                     </div>
                 </div>
             )}
 
-            <CRMBookingModal 
-                isOpen={isBookingModalOpen} 
-                onClose={() => setIsBookingModalOpen(false)} 
-                clinicId={resolvedClinicId}
-                onSuccess={() => {
-                    const filters: any = {};
-                    if (resolvedClinicId) filters.clinicId = resolvedClinicId;
-                    filters.date = format(selectedDate, 'yyyy-MM-dd');
-                    dispatch(fetchAppointments(filters));
-                }}
-            />
 
-            {isExecutionModalOpen && selectedApt && (
-                <AppointmentExecutionModal
-                    appointment={selectedApt}
-                    onClose={() => setIsExecutionModalOpen(false)}
-                    onComplete={() => {
-                        setIsExecutionModalOpen(false);
-                        setIsDetailDrawerOpen(false);
-                        const targetClinicId = resolvedClinicId;
-                        const filters: any = {};
-                        if (targetClinicId) filters.clinicId = targetClinicId;
-                        filters.date = format(selectedDate, 'yyyy-MM-dd');
-                        dispatch(fetchAppointments(filters));
-                    }}
-                />
+            {/* Appointment Detail Drawer */}
+            {isDetailDrawerOpen && selectedApt && (
+                <div className="fixed top-0 right-0 w-[400px] h-screen bg-white border-l border-gray-200 shadow-2xl flex flex-col z-[1000] animate-in slide-in-from-right">
+                    <div className="p-6 text-white bg-gradient-to-br from-slate-800 to-indigo-900">
+                        <div className="flex justify-between items-start mb-4">
+                            <h2 className="text-xl font-black text-white">{selectedApt.client?.firstName} {selectedApt.client?.lastName}</h2>
+                            <button onClick={() => setIsDetailDrawerOpen(false)} className="text-white/70 hover:text-white"><X size={20} /></button>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm font-medium text-white/90">
+                            <Clock size={14} /> {format(new Date(selectedApt.startTime), 'EEEE, MMM do, yyyy')}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm font-medium text-white/90 mt-1">
+                            <MapPin size={14} /> {formatClinicTime(selectedApt.startTime, selectedApt.clinic?.timezone)} - {formatClinicTime(selectedApt.endTime, selectedApt.clinic?.timezone)}
+                        </div>
+                        <div className="flex flex-col gap-1 mt-4 pt-4 border-t border-white/10">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Client Contact</p>
+                            <p className="text-xs font-bold">{selectedApt.client?.phone || 'No phone'}</p>
+                            <p className="text-xs font-bold opacity-80">{selectedApt.client?.email}</p>
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-2 bg-white/10 p-3 rounded-lg border border-white/5">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-bold text-white/50 uppercase">Clinic</span>
+                                <span className="text-xs font-black truncate">{selectedApt.clinic?.name || 'Main Clinic'}</span>
+                            </div>
+                            <div className="flex flex-col border-l border-white/10 pl-3">
+                                <span className="text-[9px] font-bold text-white/50 uppercase">Provider</span>
+                                <span className="text-xs font-black truncate">{selectedApt.bookedByInfo?.name || 'System'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                        <div>
+                            <div className="flex justify-between items-center mb-2">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Service Details</p>
+                                <button onClick={() => {
+                                    if (!isEditingService) {
+                                        setEditPrice(calculateAptTotal(selectedApt).toFixed(2));
+                                        const mainSrv = allAvailableServices.find(s => s.id === selectedApt.serviceId) || drawerServices.find(s => s.id === selectedApt.serviceId) || selectedApt.service;
+                                        const initialExtra = selectedApt.additionalServiceIds?.map((id: string) =>
+                                            allAvailableServices.find(s => s.id === id) || drawerServices.find(s => s.id === id) || { id, name: 'Loading...' }
+                                        ) || [];
+                                        setEditServices([mainSrv, ...initialExtra].filter(Boolean));
+                                    }
+                                    setIsEditingService(!isEditingService);
+                                }} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase tracking-widest bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition-colors">
+                                    {isEditingService ? 'Cancel Edit' : 'Edit Services'}
+                                </button>
+                            </div>
+
+                            {isEditingService ? (
+                                <div className="bg-white p-4 rounded-xl border-2 border-indigo-200 shadow-sm space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                                    <div>
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Selected Services</p>
+                                        <div className="space-y-2 mb-3">
+                                            {editServices.map((srv, idx) => (
+                                                <div key={idx} className="flex justify-between items-center bg-gray-50 p-2.5 border border-gray-100 rounded-lg">
+                                                    <span className="text-xs font-bold text-gray-700 leading-none">
+                                                        {srv.treatment?.name || srv.name}
+                                                        <span className="text-[9px] text-gray-400 ml-1">({srv.clinicName || 'Unknown'})</span>
+                                                        {idx === 0 && <span className="ml-2 text-[8px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-black uppercase tracking-widest">Primary</span>}
+                                                    </span>
+                                                    <button onClick={() => {
+                                                        setEditServices(prev => prev.filter((_, i) => i !== idx));
+                                                        const currentTotal = parseFloat(editPrice) || 0;
+                                                        const newTotal = Math.max(0, currentTotal - (parseFloat(srv.price) || 0));
+                                                        setEditPrice(newTotal.toFixed(2));
+                                                    }} className="text-red-400 hover:text-red-600 p-1 bg-white rounded shadow-sm border border-gray-100"><X size={12} /></button>
+                                                </div>
+                                            ))}
+                                            {editServices.length === 0 && (
+                                                <p className="text-[10px] text-red-500 font-bold">You must have at least one service.</p>
+                                            )}
+                                        </div>
+                                        <select
+                                            className="w-full text-xs p-2.5 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white shadow-sm focus:border-indigo-500 outline-none"
+                                            onChange={(e) => {
+                                                const srv = allAvailableServices.find(s => s.id === e.target.value) || drawerServices.find(s => s.id === e.target.value);
+                                                if (srv) {
+                                                    const updatedServices = [...editServices, srv];
+                                                    setEditServices(updatedServices);
+                                                    setEditPrice(updatedServices.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0).toFixed(2));
+                                                }
+                                                e.target.value = "";
+                                            }}
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>+ Add Service from any clinic...</option>
+                                            {allAvailableServices.map(srv => (
+                                                <option key={srv.id} value={srv.id}>{srv.treatment?.name || srv.name} - €{srv.price} ({srv.clinicName})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-gray-100">
+                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1.5">Total Price Override (€)</label>
+                                        <input
+                                            type="number"
+                                            value={editPrice}
+                                            onChange={(e) => setEditPrice(e.target.value)}
+                                            className="w-full font-black text-lg p-2.5 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                                        />
+                                    </div>
+
+                                    <button
+                                        disabled={editServices.length === 0}
+                                        onClick={async () => {
+                                            if (editServices.length === 0) return;
+                                            try {
+                                                const amt = parseFloat(editPrice) || 0;
+                                                const mainServiceId = editServices[0].id;
+                                                const aids = editServices.slice(1).map(s => s.id);
+
+                                                await bookingAPI.updateAppointment(selectedApt.id, {
+                                                    serviceId: mainServiceId,
+                                                    totalAmount: amt,
+                                                    additionalServiceIds: aids
+                                                });
+
+                                                setIsEditingService(false);
+                                                dispatch(fetchClinicAppointments(currentFilters));
+                                                setSelectedApt({
+                                                    ...selectedApt,
+                                                    serviceId: mainServiceId,
+                                                    service: editServices[0],
+                                                    totalAmount: amt,
+                                                    additionalServiceIds: aids
+                                                });
+                                            } catch (e) {
+                                                console.error(e);
+                                                alert("Failed to update services & price.");
+                                            }
+                                        }}
+                                        className={`w-full font-black uppercase tracking-widest text-[10px] py-3 rounded-xl transition-all shadow-md mt-2 ${editServices.length === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                                    >
+                                        Save Service Details
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex justify-between items-start gap-4">
+                                    <div className="flex-1">
+                                        <p className="font-bold text-gray-900 leading-tight">
+                                            {selectedApt.serviceName || selectedApt.service?.treatment?.name || selectedApt.service?.name || 'Service'}
+                                            <span className="text-xs text-gray-500 block font-medium mt-0.5">{selectedApt.service?.durationMinutes || selectedApt.service?.duration || '–'} mins</span>
+                                        </p>
+
+                                        {selectedApt.additionalServiceIds?.length > 0 && (
+                                            <div className="mt-2.5 pt-2 border-t border-gray-200/50 space-y-1.5">
+                                                {selectedApt.additionalServiceIds.map((id: string) => {
+                                                    const srv = drawerServices.find(s => s.id === id) || allAvailableServices.find(s => s.id === id);
+                                                    return (
+                                                        <div key={id} className="flex justify-between items-center">
+                                                            <p className="font-bold text-gray-600 text-[11px] leading-tight flex-1">
+                                                                <span className="text-indigo-400 mr-1">+</span> {srv?.treatment?.name || srv?.name || 'Additional Service'}
+                                                                <span className="text-gray-400 font-medium ml-1">({srv?.durationMinutes || srv?.duration || '–'}m)</span>
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-lg font-black text-gray-900 leading-none">€{calculateAptTotal(selectedApt).toFixed(2)}</span>
+                                        {selectedApt.additionalServiceIds?.length > 0 && (
+                                            <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mt-1 bg-indigo-50 px-1.5 py-0.5 rounded">Total</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Rescheduling & Reassignment (Requirement 12c) */}
+                        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-4">
+                            <div className="flex items-center gap-2 text-indigo-700">
+                                <Calendar size={14} /> <span className="text-[10px] font-black uppercase tracking-widest">Reschedule & Reassign</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-gray-400 uppercase leading-none px-1">Date</label>
+                                    <input
+                                        type="date"
+                                        value={format(new Date(selectedApt.startTime), 'yyyy-MM-dd')}
+                                        onChange={(e) => {
+                                            const d = new Date(e.target.value);
+                                            const old = new Date(selectedApt.startTime);
+                                            d.setHours(old.getHours(), old.getMinutes());
+                                            setSelectedApt({ ...selectedApt, startTime: d.toISOString() });
+                                        }}
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-black outline-none focus:bg-white focus:ring-1 focus:ring-indigo-100 transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-gray-400 uppercase leading-none px-1">Time</label>
+                                    <input
+                                        type="time"
+                                        value={format(new Date(selectedApt.startTime), 'HH:mm')}
+                                        onChange={(e) => {
+                                            const [h, m] = e.target.value.split(':').map(Number);
+                                            const d = new Date(selectedApt.startTime);
+                                            d.setHours(h, m);
+                                            setSelectedApt({ ...selectedApt, startTime: d.toISOString() });
+                                        }}
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-black outline-none focus:bg-white focus:ring-1 focus:ring-indigo-100 transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-gray-400 uppercase leading-none px-1">Staff Assigned</label>
+                                <select
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-black outline-none transition-all cursor-pointer"
+                                    value={selectedApt.providerId || ''}
+                                    onChange={(e) => setSelectedApt({ ...selectedApt, providerId: e.target.value })}
+                                >
+                                    {!selectedApt.providerId && <option value="">– Unassigned –</option>}
+                                    {/* Current provider first if not in staff list */}
+                                    {selectedApt.providerName && !staff.find((s: any) => s.id === selectedApt.providerId) && (
+                                        <option value={selectedApt.providerId}>{selectedApt.providerName}</option>
+                                    )}
+                                    {/* All team members */}
+                                    <option value={user?.id}>Me ({user?.firstName} {user?.lastName})</option>
+                                    {isManager && (staff || []).filter((s: any) => s.id !== user?.id).map((s: any) => (
+                                        <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <Button
+                                variant="outline"
+                                className="w-full py-2.5 bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100 font-black text-[9px] uppercase tracking-widest rounded-xl"
+                                onClick={async () => {
+                                    try {
+                                        await bookingAPI.updateAppointment(selectedApt.id, {
+                                            startTime: selectedApt.startTime,
+                                            providerId: selectedApt.providerId
+                                        });
+                                        dispatch(fetchClinicAppointments({ providerId: user?.id }));
+                                        alert("Appointment rescheduled successfully.");
+                                    } catch (err) { alert("Reschedule failed."); }
+                                }}
+                            >
+                                Confirm Updates
+                            </Button>
+                        </div>
+
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Current Status</p>
+                            <select
+                                value={selectedApt.status}
+                                onChange={(e) => handleStatusUpdate(selectedApt.id, e.target.value)}
+                                disabled={selectedApt.status === 'COMPLETED' || selectedApt.status === 'EXECUTED'}
+                                className="w-full p-3 bg-white border border-gray-200 rounded-xl text-sm font-bold shadow-sm focus:ring-indigo-500 outline-none"
+                            >
+                                <option value="PENDING">Booked</option>
+                                <option value="ARRIVED">Just Arrived</option>
+                                <option value="NO_SHOW">No Show</option>
+                                <option value="CANCELLED">Cancelled</option>
+                                <option value="COMPLETED">Done (Completed)</option>
+                            </select>
+                        </div>
+
+                        {['PENDING', 'ARRIVED'].includes(selectedApt.status) && (
+                            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl space-y-4 animate-in fade-in">
+                                <div className="flex items-center gap-2 text-emerald-800">
+                                    <CreditCard size={18} /> <h3 className="font-black">Collect Payment</h3>
+                                </div>
+
+                                {/* Amount */}
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Amount (€)</label>
+                                    <input
+                                        type="number"
+                                        value={paymentAmt || calculateAptTotal(selectedApt).toFixed(2)}
+                                        onChange={e => setPaymentAmt(e.target.value)}
+                                        className="w-full mt-1 p-3 border border-emerald-200 rounded-xl text-emerald-900 font-black focus:bg-white outline-none shadow-inner"
+                                    />
+                                </div>
+
+                                {/* Two options container */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    {/* Pay at Venue */}
+                                    <button
+                                        onClick={handleRecordPayment}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-200 bg-white hover:border-emerald-500 hover:bg-emerald-50 transition-all group"
+                                    >
+                                        <MapPin size={22} className="text-emerald-500 group-hover:text-emerald-700" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Pay at Venue</span>
+                                        <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Confirm & stay pending</span>
+                                    </button>
+
+                                    {/* Card (Manual Mark as Paid) */}
+                                    <button
+                                        onClick={handleCardCompletePayment}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-indigo-200 bg-white hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
+                                    >
+                                        <CreditCard size={22} className="text-indigo-500 group-hover:text-indigo-700" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Card</span>
+                                        <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Record as Card & Complete</span>
+                                    </button>
+                                </div>
+
+                                {/* Complete + collect cash */}
+                                <button
+                                    onClick={handleCompletePayment}
+                                    className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest shadow-md transition-all"
+                                >
+                                    Cash — Collect & Complete
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="pt-4 border-t border-gray-100 flex flex-col gap-2">
+                            <Button
+                                variant="outline"
+                                className="w-full h-11 border-red-50 text-red-500 hover:bg-red-50 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2"
+                                onClick={async () => {
+                                    if (window.confirm("ARE YOU SURE? This will soft-delete the appointment and VOID all related revenue records. This action is audited.")) {
+                                        try {
+                                            await bookingAPI.deleteAppointment(selectedApt.id);
+                                            setIsDetailDrawerOpen(false);
+                                            setSelectedApt(null);
+                                            dispatch(fetchClinicAppointments(currentFilters));
+                                        } catch (err) { alert("Delete failed."); }
+                                    }
+                                }}
+                            >
+                                <XCircle className="w-4 h-4" /> Delete Appointment
+                            </Button>
+                            <p className="text-[9px] text-gray-400 text-center uppercase font-bold px-4">Soft-Delete Only (Hidden from View & Analytics)</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Context Menu (Click Empty Slot) */}
+            {contextMenu && contextMenu.visible && (
+                <>
+                    <div className="fixed inset-0 z-[110]" onClick={() => setContextMenu(null)} />
+                    <div
+                        className="fixed z-[120] bg-white border border-gray-200 rounded-xl shadow-2xl p-1.5 w-64 animate-in fade-in zoom-in duration-150"
+                        style={{ left: contextMenu.x, top: contextMenu.y }}
+                    >
+                        <div className="p-3 border-b border-gray-50 mb-1 text-center bg-gray-50/50 rounded-t-lg">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{format(contextMenu.date, 'EEEE, MMM d')}</p>
+                            <p className="text-sm font-black text-indigo-700">{contextMenu.time}</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                handleOpenWizard(contextMenu.date, contextMenu.time);
+                                setContextMenu(null);
+                            }}
+                            className="w-full flex items-center gap-3 p-2.5 hover:bg-indigo-50 text-gray-700 hover:text-indigo-700 rounded-lg text-sm font-bold transition-all group"
+                        >
+                            <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded-md group-hover:bg-indigo-600 group-hover:text-white transition-all"><Plus size={14} /></div>
+                            Add Appointment
+                        </button>
+                        <button
+                            onClick={() => {
+                                setViewDate(contextMenu.date);
+                                setViewMode('day');
+                                setContextMenu(null);
+                            }}
+                            className="w-full flex items-center gap-3 p-2.5 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-lg text-sm font-bold transition-all group"
+                        >
+                            <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-md group-hover:bg-emerald-600 group-hover:text-white transition-all"><Calendar size={14} /></div>
+                            Go to Day View
+                        </button>
+                        {user?.role === 'clinic_owner' && (
+                            <button
+                                onClick={async () => {
+                                    if (selectedClinicId === 'all') return alert("Please select a clinic first.");
+                                    try {
+                                        const startTime = setMinutes(setHours(startOfDay(contextMenu.date), parseInt(contextMenu.time)), 0);
+                                        const end = new Date(startTime.getTime() + 60 * 60000);
+
+                                        await bookingAPI.createBlockedSlot({
+                                            clinicId: selectedClinicId,
+                                            providerId: selectedProviderId === 'all' ? null : selectedProviderId,
+                                            startTime: startTime.toISOString(),
+                                            endTime: end.toISOString(),
+                                            reason: 'Staff Break / Admin Block'
+                                        });
+                                        setContextMenu(null);
+                                        toast.success("Block time created successfully!");
+                                        dispatch(fetchClinicAppointments({ clinicId: selectedClinicId !== 'all' ? selectedClinicId : undefined }));
+                                        dispatch(fetchAvailability({
+                                            clinicId: selectedClinicId,
+                                            date: format(viewDate, 'yyyy-MM-dd'),
+                                            serviceId: 'all'
+                                        } as any));
+                                    } catch (err) {
+                                        console.error(err);
+                                        toast.error("Failed to block slot.");
+                                    }
+                                }}
+                                className="w-full flex items-center gap-3 p-2.5 hover:bg-orange-50 text-gray-700 hover:text-orange-700 rounded-lg text-sm font-bold transition-all group"
+                            >
+                                <div className="p-1.5 bg-orange-100 text-orange-600 rounded-md group-hover:bg-orange-600 group-hover:text-white transition-all"><XCircle size={14} /></div>
+                                Block Time
+                            </button>
+                        )}
+                    </div>
+                </>
             )}
         </div>
     );

@@ -2,50 +2,51 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Search,
-  Filter,
-  Plus,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Phone,
-  Mail,
-  Edit,
-  Trash2,
-  Copy,
-  Users,
-  X,
-  Eye,
-  User,
-  Globe,
-  Tag,
-  MessageSquare,
-  Calendar,
-  List,
-  FilePlus,
-  CalendarPlus,
-  Zap,
-  Upload,
-  Download,
-  FileText,
-  AlertCircle,
-  CheckCircle2,
-  ChevronRight
+ Search,
+ Filter,
+ Plus,
+ AlertTriangle,
+ CheckCircle,
+ Clock,
+ Phone,
+ Mail,
+ Edit,
+ Trash2,
+ Copy,
+ Users,
+ X,
+ Eye,
+ User,
+ Globe,
+ Tag,
+ MessageSquare,
+ Calendar,
+ List,
+ FilePlus,
+ CalendarPlus,
+ Zap,
+ Upload,
+ Download,
+ FileText,
+ AlertCircle,
+ CheckCircle2,
+ ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
+import { PhoneInput } from '@/components/atoms/PhoneInput/PhoneInput';
 import { Select } from '@/components/atoms/Select/Select';
 import { Badge } from '@/components/atoms/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/molecules/Table/Table';
 import {
-  fetchLeads,
-  createLead,
-  updateLead,
-  deleteLead,
-  checkForDuplicates,
-  setLeadFilters,
-  fetchSalespersons
+ fetchLeads,
+ createLead,
+ updateLead,
+ deleteLead,
+ checkForDuplicates,
+ setLeadFilters,
+ fetchSalespersons
 } from '@/store/slices/crmSlice';
 import { openDialer } from '@/store/slices/dialerSlice';
 import type { RootState, AppDispatch } from '@/store';
@@ -55,1722 +56,1721 @@ import { toast } from 'react-hot-toast';
 
 
 interface LeadsPageProps {
-  onViewLead?: (lead: Lead) => void;
-  forceShowCreateForm?: boolean;
-  onFormShown?: () => void;
+ onViewLead?: (lead: Lead) => void;
+ forceShowCreateForm?: boolean;
+ onFormShown?: () => void;
 }
 
 export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreateForm = false, onFormShown }) => {
-  const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
-  const { leads, leadFilters, duplicateCheck, isLoading, salespersons } = useSelector((state: RootState) => state.crm);
-  const { user } = useSelector((state: RootState) => state.auth);
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
-  const [showDuplicateResults, setShowDuplicateResults] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [editingLead, setEditingLead] = useState<Lead | null>(null);
-
-  // Bulk import state
-  const [showBulkImport, setShowBulkImport] = useState(false);
-  const [csvRows, setCsvRows] = useState<Record<string, string>[]>([]);
-  const [csvFileName, setCsvFileName] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [importLoading, setImportLoading] = useState(false);
-  const [importResult, setImportResult] = useState<{ success: number; errors: { row: number; message: string }[] } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Facebook Form Schedule State
-  const [showFormScheduleModal, setShowFormScheduleModal] = useState(false);
-  const [facebookForms, setFacebookForms] = useState<any[]>([]);
-  const [selectedForms, setSelectedForms] = useState<string[]>([]);
-  const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().split('T')[0]);
-  const [isAssigning, setIsAssigning] = useState(false);
-  const [showBulkTaskModal, setShowBulkTaskModal] = useState(false);
-  const [bulkTaskData, setBulkTaskData] = useState({
-    salespersonId: '',
-    dueDate: new Date().toISOString().split('T')[0],
-    title: 'Follow-up Call'
-  });
-
-  // Post-log action states
-  const [createFollowUpTask, setCreateFollowUpTask] = useState(false);
-  const [taskData, setTaskData] = useState({
-    subject: '',
-    dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Default to tomorrow
-    priority: 'medium'
-  });
-
-  const [providers, setProviders] = useState<{ value: string; label: string }[]>([]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const salesRes = await crmAPI.getSalespersons();
-        const salesOptions = (salesRes.data || [])
-          .filter((s: any) => s.role === 'salesperson')
-          .map((s: any) => ({
-            value: s.id,
-            label: `${s.firstName} ${s.lastName}`
-          }));
-        setProviders(salesOptions);
-      } catch (e) {
-        console.error("Failed to load providers", e);
-      }
-    })();
-  }, []);
-
-  // Initial form state
-  const initialFormState = {
-    source: "facebook_ads",
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    status: "new",
-    notes: "",
-    assignedSalesId: user?.id || null,
-    metadata: {},
-    estimatedValue: 0,
-  };
-  const [formData, setFormData] = useState(initialFormState);
-
-  useEffect(() => {
-    if (forceShowCreateForm && !showCreateForm) {
-      setShowCreateForm(true);
-      if (onFormShown) onFormShown();
-    }
-  }, [forceShowCreateForm, onFormShown]);
-
-  useEffect(() => {
-    // Set default status filter to 'new' for Leads page
-    dispatch(setLeadFilters({ ...leadFilters, status: 'new' }));
-    dispatch(fetchSalespersons());
-  }, [dispatch]);
-
-  useEffect(() => {
-    dispatch(fetchLeads(leadFilters));
-  }, [dispatch, leadFilters]);
-
-  // Handlers
-  const handleFilterChange = (key: string, value: string | string[]) => {
-    dispatch(setLeadFilters({ ...leadFilters, [key]: value }));
-  };
-
-  const handleSearch = () => {
-    dispatch(setLeadFilters({
-      ...leadFilters,
-      search: searchTerm,
-      page: 1
-    }));
-  };
-
-  // Real-time search with debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm !== leadFilters.search) {
-        handleSearch();
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  const handleCreateLead = async () => {
-    if (!formData.firstName || !formData.lastName || !formData.phone) {
-      toast.error("First Name, Last Name, and Phone Number are required");
-      return;
-    }
-    try {
-      const payload = { ...formData };
-      if (!payload.email || payload.email.trim() === "") {
-        delete (payload as any).email;
-      }
-      const result = await dispatch(createLead(payload)).unwrap();
-      const leadId = result.id;
-
-      // Handle follow-up actions
-      const actions: Promise<any>[] = [];
-
-      if (createFollowUpTask) {
-        actions.push(crmAPI.createAction({
-          customerId: leadId,
-          actionType: 'follow_up_call',
-          title: taskData.subject || `Follow up: ${formData.firstName} ${formData.lastName}`,
-          description: `Automated follow-up task created during lead creation.`,
-          dueDate: taskData.dueDate,
-          priority: taskData.priority as any,
-          status: 'pending',
-          salespersonId: (user as any)?.id
-        }));
-      }
-
-
-
-      if (actions.length > 0) {
-        await Promise.all(actions);
-      }
-
-      setShowCreateForm(false);
-      setFormData(initialFormState);
-
-      // Reset action states
-      setCreateFollowUpTask(false);
-    } catch (error: any) {
-      console.error('Failed to create lead:', error);
-      toast.error(error.response?.data?.message || error.message || 'Failed to create lead');
-    }
-  };
-
-  const handleCheckDuplicates = async (lead: Lead) => {
-    await dispatch(checkForDuplicates({
-      email: lead.email,
-      phone: lead.phone,
-      firstName: lead.firstName,
-      lastName: lead.lastName
-    }));
-    setShowDuplicateResults(true);
-  };
-
-  const handleEditLead = (lead: Lead) => {
-    setEditingLead(lead);
-    setCreateFollowUpTask(false);
-    setShowModal(true);
-  };
-
-  const handleBulkAction = async (action: string, value?: string) => {
-    if (selectedLeads.length === 0) return;
-
-    const count = selectedLeads.length;
-    const toastId = toast.loading(`Performing bulk ${action}...`);
-
-    try {
-      if (action === 'delete') {
-        for (const leadId of selectedLeads) await dispatch(deleteLead(leadId)).unwrap();
-      } else if (action === 'mark_contacted') {
-        for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { status: 'contacted' } })).unwrap();
-      } else if (action === 'assign' && value) {
-        for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { assignedSalesId: value } })).unwrap();
-      }
-
-      toast.success(`Successfully updated ${count} leads`, { id: toastId });
-      setSelectedLeads([]);
-      // Refresh list to be sure
-      dispatch(fetchLeads(leadFilters));
-    } catch (error: any) {
-      console.error(`Bulk ${action} failed:`, error);
-      toast.error(`Failed to update some leads: ${error.message || 'Unknown error'}`, { id: toastId });
-    }
-  };
-
-  const handleBulkCreateTasks = async () => {
-    if (selectedLeads.length === 0 || !bulkTaskData.salespersonId) {
-      toast.error('Please select leads and a salesperson');
-      return;
-    }
-
-    const toastId = toast.loading(`Creating ${selectedLeads.length} tasks...`);
-    try {
-      await crmAPI.bulkCreateTasks({
-        leadIds: selectedLeads,
-        salespersonId: bulkTaskData.salespersonId,
-        dueDate: bulkTaskData.dueDate,
-        title: bulkTaskData.title
-      });
-      toast.success(`Successfully created tasks for ${selectedLeads.length} leads`, { id: toastId });
-      setShowBulkTaskModal(false);
-      setSelectedLeads([]);
-      dispatch(fetchLeads(leadFilters));
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create bulk tasks', { id: toastId });
-    }
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingLead) return;
-    const toastId = toast.loading("Updating lead...");
-    try {
-      const updates = {
-        firstName: editingLead.firstName?.trim(),
-        lastName: editingLead.lastName?.trim(),
-        email: editingLead.email?.trim(),
-        phone: editingLead.phone?.trim() || undefined,
-        status: editingLead.status,
-        source: editingLead.source,
-        assignedSalesId: editingLead.assignedSalesId,
-      };
-      await dispatch(updateLead({ id: editingLead.id, updates })).unwrap();
-
-      // Handle follow-up actions (if any - though UI is removed, keep logic safe)
-      const actions: Promise<any>[] = [];
-
-      if (createFollowUpTask) {
-        actions.push(crmAPI.createAction({
-          customerId: editingLead.id,
-          actionType: 'follow_up_call',
-          title: taskData.subject || `Follow up: ${editingLead.firstName} ${editingLead.lastName}`,
-          description: `Automated follow-up task created during lead edit.`,
-          dueDate: taskData.dueDate,
-          priority: taskData.priority as any,
-          status: 'pending',
-          salespersonId: (user as any)?.id
-        }));
-      }
-
-
-      if (actions.length > 0) {
-        await Promise.all(actions);
-      }
-
-      toast.success("Lead updated successfully", { id: toastId });
-      setShowModal(false);
-      setEditingLead(null);
-
-      // Reset action states
-      setCreateFollowUpTask(false);
-
-      dispatch(fetchLeads(leadFilters));
-    } catch (error: any) {
-      console.error("Update failed:", error);
-      // Try to extract detailed message if available
-      const detailedError = error.response?.data?.message;
-      const errorMessage = Array.isArray(detailedError) ? detailedError.join(", ") : detailedError;
-      toast.error(errorMessage || error.message || "Failed to update lead", { id: toastId });
-    }
-  };
-
-  // CSV Bulk Import helpers
-  const parseCsv = (file: File) => {
-    setCsvFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) return;
-      // Normalize headers: trim whitespace & lowercase
-      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-      const rows: Record<string, string>[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-        if (values.every(v => !v)) continue; // skip blank lines
-        const row: Record<string, string> = {};
-        headers.forEach((h, idx) => { row[h] = values[idx] ?? ''; });
-        rows.push(row);
-      }
-      setCsvRows(rows);
-    };
-    reader.readAsText(file);
-  };
-
-  const handleBulkImport = async () => {
-    const validRows = csvRows.filter(r => r.firstName && r.lastName && r.email);
-    if (validRows.length === 0) return;
-    setImportLoading(true);
-    try {
-      const payload = validRows.map(r => ({
-        firstName: r.firstName,
-        lastName: r.lastName,
-        email: r.email,
-        phone: r.phone || undefined,
-        source: r.source || 'manual',
-        status: r.status || 'new',
-        notes: r.notes || undefined,
-      }));
-      const res = await crmAPI.bulkCreateLeads(payload);
-      const data = res.data;
-
-      const succeeded = data.created ?? 0;
-      const errors: { row: number; message: string }[] = (data.results || [])
-        .map((r: any, i: number) => r.status === 'error' ? { row: i + 2, message: r.message } : null)
-        .filter(Boolean);
-
-      setImportResult({ success: succeeded, errors });
-      dispatch(fetchLeads(leadFilters));
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Import failed';
-      setImportResult({ success: 0, errors: [{ row: 0, message: msg }] });
-    } finally {
-      setImportLoading(false);
-    }
-  };
-
-  const fetchFacebookForms = async () => {
-    try {
-      const res = await crmAPI.getFacebookForms();
-      setFacebookForms(res.data || []);
-    } catch (error) {
-      toast.error('Failed to fetch Facebook forms');
-    }
-  };
-
-  const handleAssignForms = async () => {
-    if (selectedForms.length === 0) {
-      toast.error('Please select at least one form');
-      return;
-    }
-    setIsAssigning(true);
-    try {
-      const res = await crmAPI.assignFormsToDay({
-        formNames: selectedForms,
-        scheduledAt: scheduleDate
-      });
-      toast.success(res.data?.message || `Succesfully scheduled leads`);
-      setShowFormScheduleModal(false);
-      setSelectedForms([]);
-      dispatch(fetchLeads(leadFilters));
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to assign forms');
-    } finally {
-      setIsAssigning(false);
-    }
-  };
-
-  // UI Helpers
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      new: "bg-blue-50 text-blue-700 border-blue-100",
-      contacted: "bg-amber-50 text-amber-700 border-amber-100",
-      qualified: "bg-purple-50 text-purple-700 border-purple-100",
-      converted: "bg-emerald-50 text-emerald-700 border-emerald-100",
-      lost: "bg-gray-50 text-gray-500 border-gray-100",
-    };
-    return styles[status as keyof typeof styles] || styles.new;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  // Render Stats Card
-  const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
-    <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative">
-      <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-[0.03] group-hover:scale-110 transition-transform duration-500 ${color.split(' ')[1]}`} style={{ backgroundColor: 'currentColor' }} />
-      <CardContent className="p-3 flex items-start justify-between relative z-10">
-        <div className="space-y-1">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 group-hover:text-gray-500 transition-colors">{title}</p>
-          <div className="flex items-baseline gap-1.5">
-            <h3 className="text-xl font-extrabold text-gray-900 leading-none">{value}</h3>
-            {trend && (
-              <span className="text-[10px] font-bold text-emerald-600 flex items-center bg-emerald-50 px-1 py-0.5 rounded-full">
-                {trend.includes('%') ? trend : `+${trend}`}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className={`p-2 rounded-xl ${color} shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
-          <Icon className="w-5 h-5" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-
-
-  return (
-    <div className="min-h-screen bg-[#f8fafc] space-y-8 max-w-full mx-auto px-6 sm:px-8 lg:px-10 pb-20 pt-6 relative overflow-hidden">
-      {/* Decorative Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-slate-100 to-transparent opacity-50 pointer-events-none" />
-      <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#CBFF38]/5 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="flex flex-wrap items-center justify-between gap-y-10 gap-x-8 pb-6 relative z-10">
-        <div className="shrink-0 space-y-2">
-          <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic">
-              Registry
-            </h1>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#CBFF38] text-black rounded-xl shadow-xl shadow-[#CBFF38]/20">
-              <Users size={14} strokeWidth={3} />
-              <span className="text-[11px] font-black uppercase tracking-widest">{leads.length} Leads</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-1 w-12 bg-[#CBFF38] rounded-full" />
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] italic">Strategic Asset Terminal</p>
-          </div>
-        </div>
-
-        <div className="order-3 xl:order-none w-full xl:flex-1 xl:max-w-2xl min-w-0">
-          <div className="relative group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-[#CBFF38] transition-all duration-300 z-10 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search leads, phone, or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full h-14 pl-16 pr-8 bg-white border-2 border-slate-50 rounded-[2rem] text-[14px] font-bold placeholder:text-slate-300 focus:bg-white focus:ring-[8px] focus:ring-[#CBFF38]/10 focus:border-[#CBFF38]/30 transition-all outline-none shadow-2xl shadow-slate-200/50 cursor-text"
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 order-2 xl:order-none ml-auto xl:ml-0">
-          <div className="flex items-center bg-slate-100/50 p-1.5 rounded-[1.5rem] border border-slate-100 shadow-sm">
-            <select
-              value={leadFilters.status || ''}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="h-10 px-4 bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-slate-700 focus:outline-none cursor-pointer rounded-2xl hover:bg-white/80 transition-all appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.65rem_auto] bg-[right_0.75rem_center] bg-no-repeat"
-            >
-              <option value="">All Statuses</option>
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="qualified">Qualified</option>
-              <option value="converted">Converted</option>
-              <option value="lost">Lost</option>
-            </select>
-
-            <div className="h-6 w-[1px] bg-slate-200 mx-1.5" />
-
-            <Button
-              variant="ghost"
-              onClick={() => setShowFilters(!showFilters)}
-              className={`h-10 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${showFilters ? 'bg-slate-900 text-[#CBFF38] shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}
-            >
-              <Filter size={14} className="mr-2" />
-              {showFilters ? 'Applied' : 'Filters'}
-            </Button>
-
-            {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
-              <div className="hidden sm:flex items-center gap-1 border-l border-slate-200 ml-1.5 pl-1.5">
-                <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white" onClick={() => setShowBulkImport(true)}>
-                  <Upload size={16} className="text-slate-400" />
-                </Button>
-                <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white" onClick={() => { setShowFormScheduleModal(true); fetchFacebookForms(); }}>
-                  <Globe size={16} className="text-blue-500" />
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <Button
-            onClick={() => setShowCreateForm(true)}
-            className="h-14 px-8 bg-[#CBFF38] text-slate-900 border-none rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.15em] shadow-2xl shadow-[#CBFF38]/30 transition-all hover:scale-[1.05] active:scale-[0.95] hover:bg-[#b3d81b] flex items-center gap-3"
-          >
-            <Plus size={18} strokeWidth={4} />
-            <span className="hidden sm:inline">Add Lead</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Filter Chips */}
-      {Object.keys(leadFilters).some(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search') && (
-        <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
-          {Object.entries(leadFilters).map(([key, value]) => {
-            if (!value || key === 'search' || key === 'page') return null;
-            let label = key;
-            if (key === 'status') label = 'Status';
-            if (key === 'source') label = 'Source';
-            if (key === 'formNames') label = 'Form';
-            if (key === 'submissionDateFrom') label = 'From';
-            if (key === 'submissionDateTo') label = 'To';
-            if (key === 'lastContactedFrom') label = 'Contact From';
-            if (key === 'lastContactedTo') label = 'Contact To';
-
-            const displayValue = Array.isArray(value)
-              ? value.filter(Boolean).map(v => String(v).replace('_', ' ')).join(', ').toUpperCase()
-              : String(value || '').replace('_', ' ').toUpperCase();
-
-            return (
-              <Badge
-                key={key}
-                variant="secondary"
-                className="pl-2 pr-1 py-1 h-7 flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-100 font-medium text-[10px] rounded-lg"
-              >
-                <span className="opacity-60">{label}:</span> {displayValue}
-                <button
-                  onClick={() => handleFilterChange(key, '')}
-                  className="ml-1 hover:bg-blue-100 rounded-full p-0.5 transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </Badge>
-            )
-          })}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              dispatch(setLeadFilters({ status: 'new' }));
-              setSearchTerm('');
-            }}
-            className="h-7 px-2 text-[10px] font-bold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-          >
-            Clear All
-          </Button>
-        </div>
-      )}
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard
-          title="Total Leads"
-          value={leads.length}
-          icon={Users}
-          color="bg-[#CBFF38]/20 text-gray-900"
-          trend="+12%"
-        />
-        <StatCard
-          title="New Inquiries"
-          value={leads.filter(l => l.status === 'new').length}
-          icon={AlertTriangle}
-          color="bg-amber-50 text-amber-600"
-        />
-        <StatCard
-          title="In Conversation"
-          value={leads.filter(l => l.status === 'contacted').length}
-          icon={Clock}
-          color="bg-purple-50 text-purple-600"
-        />
-        <StatCard
-          title="Converted"
-          value={leads.filter(l => l.status === 'converted').length}
-          icon={CheckCircle}
-          color="bg-[#b3d81b] text-white"
-          trend="4.5%"
-        />
-      </div>
-      {/* Filters Drawer-style */}
-      {showFilters && (
-        <Card className="border-none shadow-md bg-white animate-in slide-in-from-top-2 duration-300">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Lead Status</label>
-                <Select
-                  value={leadFilters.status || ''}
-                  onChange={(val) => handleFilterChange('status', val)}
-                  options={[
-                    { value: '', label: 'All Statuses' },
-                    { value: 'new', label: 'New' },
-                    { value: 'contacted', label: 'Contacted' },
-                    { value: 'qualified', label: 'Qualified' },
-                    { value: 'converted', label: 'Converted' },
-                    { value: 'lost', label: 'Lost' },
-                  ]}
-                  className="h-9 text-xs border-gray-200"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
-                <Select
-                  value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
-                  onChange={(val) => {
-                    dispatch(setLeadFilters({ ...leadFilters, formNames: val ? [val] : [], search: searchTerm }));
-                    toast.success(`Filtering by: ${val || 'All'}`);
-                  }}
-                  placeholder="Select form..."
-                  options={[
-                    { value: '', label: 'All Forms' },
-                    ...Array.from(new Set(leads.map(l => (l as any).lastMetaFormName).filter(Boolean))).map(f => ({ value: f as string, label: f as string }))
-                  ]}
-                  className="h-9 text-xs border-gray-200"
-                />
-              </div>
-
-              <div className="md:col-span-1 space-y-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-col sm:flex-row sm:items-end gap-2">
-                    <Input
-                      label="From"
-                      type="date"
-                      value={leadFilters.submissionDateFrom || ''}
-                      onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
-                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
-                    />
-                    <Input
-                      label="To"
-                      type="date"
-                      value={leadFilters.submissionDateTo || ''}
-                      onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
-                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {[
-                      { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
-                      { label: 'Yesterday', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
-                      { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
-                      { label: 'Last 30 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
-                    ].map(preset => (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => {
-                          const { from, to } = preset.getValue();
-                          handleFilterChange('submissionDateFrom', from);
-                          handleFilterChange('submissionDateTo', to);
-                        }}
-                        className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="md:col-span-1 space-y-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-col sm:flex-row sm:items-end gap-2">
-                    <Input
-                      label="From"
-                      type="date"
-                      value={leadFilters.lastContactedFrom || ''}
-                      onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
-                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
-                    />
-                    <Input
-                      label="To"
-                      type="date"
-                      value={leadFilters.lastContactedTo || ''}
-                      onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
-                      className="h-auto text-[10px] px-0 flex-1 border-gray-100"
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {[
-                      { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
-                      { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
-                    ].map(preset => (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => {
-                          const { from, to } = preset.getValue();
-                          handleFilterChange('lastContactedFrom', from);
-                          handleFilterChange('lastContactedTo', to);
-                        }}
-                        className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => dispatch(setLeadFilters({ status: 'new' }))}
-                  className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  Clear All Filters
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 text-[10px] font-bold">
-                  Close Filters
-                </Button>
-                <Button size="sm" onClick={handleSearch} className="h-8 px-6 text-[10px] font-bold bg-slate-900 text-white">
-                  Apply Filters
-                </Button>
-                {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
-                  <Button
-                    size="sm"
-                    onClick={async () => {
-                      try {
-                        const currentForm = Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] : leadFilters.formNames;
-                        if (currentForm) {
-                          setSelectedForms([currentForm]);
-                        } else {
-                          setSelectedForms([]);
-                        }
-                        await fetchFacebookForms();
-                        setShowFormScheduleModal(true);
-                      } catch (e) {
-                        setShowFormScheduleModal(true);
-                      }
-                    }}
-                    className="h-8 px-4 text-[10px] font-bold bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm border-none transition-all flex items-center gap-1.5"
-                  >
-                    <CalendarPlus className="w-3.5 h-3.5" />
-                    Schedule This Filter
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Bulk Actions Bar */}
-      {/* 3. Bulk Actions Floating Bar */}
-      {selectedLeads.length > 0 && (
-        <div className="sticky top-2 z-50 bg-slate-900 border border-slate-800 p-2.5 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 shadow-2xl shadow-black/40 backdrop-blur-md mb-6">
-          <div className="flex items-center gap-4">
-            <div className="bg-[#CBFF38] p-2 rounded-xl shadow-[0_0_15px_rgba(203,255,56,0.2)]">
-              <Zap className="w-4 h-4 text-black font-black" />
-            </div>
-            <div>
-              <span className="text-sm font-black text-white tracking-tight">{selectedLeads.length} Records Selected</span>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Bulk Action Mode Active</p>
-            </div>
-          </div>
-
-          <div className="flex gap-2.5 items-center">
-            {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
-              <Select
-                placeholder="Assign Owner"
-                options={(salespersons || [])
-                  .filter((sp: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(sp.role))
-                  .map((sp: any) => ({
-                    value: sp.id,
-                    label: `${sp.firstName} ${sp.lastName}`
-                  }))}
-                onChange={(val) => handleBulkAction('assign', val)}
-                className="w-44 text-xs h-9 bg-slate-800 border-slate-700 text-white font-bold rounded-xl"
-              />
-            )}
-
-            {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
-              <Button
-                onClick={() => {
-                  setBulkTaskData(prev => ({ ...prev, salespersonId: '' }));
-                  setShowBulkTaskModal(true);
-                }}
-                className="h-9 px-4 bg-[#CBFF38] text-black hover:bg-[#b3d81b] border-none font-black text-[10px] uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02]"
-              >
-                <CalendarPlus className="w-3.5 h-3.5 mr-2" /> Create Task Plan
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              onClick={() => handleBulkAction('mark_contacted')}
-              className="h-9 px-4 border-slate-700 text-slate-300 hover:bg-slate-800 font-bold text-[10px] uppercase tracking-widest rounded-xl"
-            >
-              Contacted
-            </Button>
-
-            {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
-              <Button
-                variant="outline"
-                onClick={() => handleBulkAction('delete')}
-                className="h-9 px-4 border-red-900/40 text-red-500 hover:bg-red-950/30 font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all"
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-2" /> Wipe
-              </Button>
-            )}
-
-            <div className="h-6 w-[1px] bg-slate-800 mx-1" />
-
-            <Button
-              variant="ghost"
-              onClick={() => setSelectedLeads([])}
-              className="h-8 w-8 p-0 text-slate-500 hover:text-white transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Table Section */}
-      <Card className="border-none shadow-md overflow-hidden bg-white rounded-2xl">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-8 text-center text-xs text-gray-500">Loading leads...</div>
-          ) : leads.length === 0 ? (
-            <div className="p-8 text-center flex flex-col items-center justify-center text-gray-400">
-              <Users className="w-8 h-8 mb-2 opacity-20" />
-              <p className="text-xs">No leads found matching your filters.</p>
-            </div>
-          ) : (
-            <Table className="min-w-full">
-              <TableHeader className="bg-gray-50/50">
-                <TableRow className="h-10">
-                  <TableHead className="w-[40px] px-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedLeads.length === leads.length}
-                      onChange={(e) => setSelectedLeads(e.target.checked ? leads.map(l => l.id) : [])}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
-                    />
-                  </TableHead>
-                  <TableHead className="w-[130px] px-2">Lead Name</TableHead>
-                  <TableHead className="w-[160px] px-2">Contact Info</TableHead>
-                  <TableHead className="w-[100px] px-2">Assigned To</TableHead>
-                  <TableHead className="w-[80px] px-2 text-center">Status</TableHead>
-                  <TableHead className="w-[100px] px-2">Source</TableHead>
-                  <TableHead className="w-[120px] px-2 text-emerald-600 bg-emerald-50/50">Last Form</TableHead>
-                  <TableHead className="w-[85px] px-2">Contacted</TableHead>
-                  <TableHead className="w-[85px] px-2">Added</TableHead>
-                  <TableHead className="text-right px-2">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leads.map((lead) => (
-                  <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0 h-14">
-                    <TableCell className="py-2 px-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedLeads.includes(lead.id)}
-                        onChange={(e) => {
-                          setSelectedLeads(e.target.checked
-                            ? [...selectedLeads, lead.id]
-                            : selectedLeads.filter(id => id !== lead.id)
-                          );
-                        }}
-                        className="rounded border-gray-300 text-primary focus:ring-primary h-3.5 w-3.5 transition-all"
-                      />
-                    </TableCell>
-                    <TableCell className="py-2 px-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 shrink-0 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-[10px] uppercase shadow-sm">
-                          {lead.firstName[0]}{lead.lastName[0]}
-                        </div>
-                        <div className="flex-1 min-w-0 flex items-center gap-2">
-                          <div className="truncate max-w-[90px]">
-                            <div className="font-bold text-gray-900 text-[11px] truncate" title={`${lead.firstName} ${lead.lastName}`}>{lead.firstName} {lead.lastName}</div>
-                            <div className="text-[8px] text-gray-400 font-mono tracking-tighter uppercase">
-                              {lead.id.slice(0, 6)}
-                            </div>
-                          </div>
-                          <Button
-                            size="xs"
-                            variant="white"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditLead(lead);
-                            }}
-                            className="h-6 w-6 p-0 bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all shadow-sm shrink-0"
-                            title="Edit Lead"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-2 px-2">
-                      <div className="flex flex-col gap-0.5 max-w-[150px]">
-                        <div className="flex items-center gap-1 text-[10px] text-gray-500 font-medium truncate" title={lead.email}>
-                          <Mail className="h-2.5 w-2.5 shrink-0" /> {lead.email}
-                        </div>
-                        {lead.phone && (
-                          <div className="flex items-center gap-1 text-[9px] text-gray-400 font-medium">
-                            <Phone className="h-2.5 w-2.5 shrink-0" /> {lead.phone}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-2 px-2">
-                      {lead.assignedSales ? (
-                        <div className="flex items-center gap-1.5 overflow-hidden">
-                          <div className="w-5 h-5 shrink-0 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[9px] font-black uppercase">
-                            {lead.assignedSales.firstName[0]}{lead.assignedSales.lastName[0]}
-                          </div>
-                          <span className="text-[10px] font-bold text-gray-700 truncate">
-                            {lead.assignedSales.firstName}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 opacity-50">
-                          <div className="w-5 h-5 rounded-full bg-gray-50 text-gray-300 border border-dashed border-gray-200 flex items-center justify-center text-[9px]">
-                            <User className="w-2.5 h-2.5" />
-                          </div>
-                          <span className="text-[9px] text-gray-400 italic">Unassigned</span>
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-2 px-2 text-center">
-                      <Badge className={`${getStatusBadge(lead.status)} border px-1.5 py-0.5 rounded-full capitalize font-bold text-[8px] tracking-wider`}>
-                        {lead.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="py-2 px-2">
-                      <div className="flex flex-col gap-0 overflow-hidden max-w-[90px]">
-                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter truncate">{lead.source?.replace('_', ' ')}</span>
-                        {lead.facebookAdName && <span className="text-[7px] font-bold text-blue-500 truncate" title={lead.facebookAdName}>AD: {lead.facebookAdName}</span>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-2 px-2 bg-emerald-50/10">
-                      {lead.lastMetaFormSubmittedAt ? (
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-gray-900 truncate max-w-[120px]" title={lead.lastMetaFormName || 'Form'}>
-                            {lead.lastMetaFormName || 'Meta Form'}
-                          </span>
-                          <span className="text-[9px] font-semibold text-emerald-600">{formatDate(lead.lastMetaFormSubmittedAt)}</span>
-                        </div>
-                      ) : <span className="text-gray-300 text-[10px] italic">No submission</span>}
-                    </TableCell>
-                    <TableCell className="py-2 px-2">
-                      {lead.lastContactedAt ? (
-                        <span className="text-[9px] font-bold text-slate-800">{formatDate(lead.lastContactedAt)}</span>
-                      ) : <span className="text-gray-200 text-[9px]">-</span>}
-                    </TableCell>
-                    <TableCell className="py-2 px-2 text-gray-400 text-[10px] font-semibold">
-                      {formatDate(lead.createdAt)}
-                    </TableCell>
-                    <TableCell className="py-2 px-2 text-right">
-                      <div className="flex justify-end gap-1 items-center">
-                        <div className="flex items-center bg-white border border-gray-100 rounded-lg shadow-sm p-0.5">
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => {
-                            if (onViewLead) {
-                              onViewLead(lead);
-                            } else {
-                              navigate(`/crm/customer/${lead.id}`);
-                            }
-                          }}>
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => handleCheckDuplicates(lead)}>
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => handleEditLead(lead)}>
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                          <div className="w-px h-3 bg-gray-100 mx-0.5" />
-                          {user?.role !== 'salesperson' && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md" onClick={() => dispatch(deleteLead(lead.id))}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Logic for Edit Modal */}
-      {
-        showModal && editingLead && (
-          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-500">
-            <Card className="w-full max-w-lg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] border border-slate-800 overflow-hidden rounded-[2.5rem] bg-slate-900">
-              {/* Premium Header */}
-              <CardHeader className="px-10 py-8 flex flex-row items-center justify-between bg-gradient-to-br from-slate-900 to-slate-800 border-b border-slate-800/50">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[#CBFF38] rounded-2xl shadow-[0_0_20px_rgba(203,255,56,0.15)] transition-transform hover:scale-105">
-                    <Edit className="w-6 h-6 text-black" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl font-black text-white tracking-tight">Lead Modification</CardTitle>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-0.5">Strategic Terminal ID: {editingLead.id.slice(0, 8)}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all border border-slate-700/50"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </CardHeader>
-
-              {/* Enhanced Body with Light Background */}
-              <CardContent className="p-10 space-y-8 bg-white overflow-y-auto max-h-[60vh] custom-scrollbar">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="h-1 w-8 bg-[#CBFF38] rounded-full" />
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Identity Matrix</h4>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-5">
-                    <Input label="First Name" value={editingLead.firstName} onChange={(e) => setEditingLead({ ...editingLead, firstName: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
-                    <Input label="Last Name" value={editingLead.lastName} onChange={(e) => setEditingLead({ ...editingLead, lastName: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
-                  </div>
-                  <Input label="Email Address" value={editingLead.email} onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
-                  <Input label="Direct Line" value={editingLead.phone || ''} onChange={(e) => setEditingLead({ ...editingLead, phone: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
-
-                  <div className="grid grid-cols-2 gap-5">
-                    <Select
-                      label="Deployment Status"
-                      value={editingLead.status}
-                      onChange={(value) => setEditingLead({ ...editingLead, status: value as any })}
-                      options={[{ value: 'new', label: 'New Recruit' }, { value: 'contacted', label: 'In Contact' }, { value: 'qualified', label: 'Qualified' }, { value: 'converted', label: 'Mission Accomplished' }, { value: 'lost', label: 'Aborted' }]}
-                      className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100"
-                    />
-                    <Select
-                      label="Acquisition Source"
-                      value={editingLead.source}
-                      onChange={(value) => setEditingLead({ ...editingLead, source: value as any })}
-                      options={[{ value: 'facebook_ads', label: 'Social Echo (FB)' }, { value: 'website', label: 'Direct Portal' }, { value: 'referral', label: 'Intelligence Network' }]}
-                      className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100"
-                    />
-                    <Select
-                      label="Lead Owner"
-                      value={editingLead.assignedSalesId || ''}
-                      onChange={(value) => setEditingLead({ ...editingLead, assignedSalesId: value })}
-                      options={providers}
-                      disabled={user?.role === 'salesperson'}
-                      className={`bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100 col-span-2 ${user?.role === 'salesperson' ? 'opacity-60' : ''}`}
-                    />
-                  </div>
-                </div>
-
-
-
-              </CardContent>
-
-              {/* Action Footer */}
-              <div className="p-10 border-t border-slate-800 flex items-center gap-4 bg-slate-900">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 h-14 rounded-2xl font-black text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white transition-all uppercase text-[10px] tracking-widest"
-                >
-                  Discard
-                </Button>
-                <Button
-                  onClick={handleSaveEdit}
-                  className="flex-[2] h-14 bg-[#CBFF38] text-black rounded-2xl font-black shadow-[0_10px_30px_rgba(203,255,56,0.2)] hover:scale-[1.03] active:scale-[0.97] transition-all uppercase text-[10px] tracking-widest"
-                >
-                  Apply Modifications
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )
-      }
-
-      {/* Create Modal Logic - Revamped Design */}
-      {
-        showCreateForm && (
-          <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-            <Card className="w-full max-w-2xl shadow-2xl border-0 overflow-hidden rounded-2xl flex flex-col max-h-[85vh]">
-              {/* Header */}
-              <div className="px-8 py-6 border-b border-gray-100 bg-white flex items-start justify-between flex-none">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Add New Lead</h2>
-                  <p className="text-gray-500 mt-1.5 text-sm font-medium">Create a new prospect entry in your CRM</p>
-                </div>
-                <button
-                  onClick={() => setShowCreateForm(false)}
-                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-gray-50/50">
-                {/* Section 1: Contact Information */}
-                <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-50">
-                    <div className="bg-blue-50 p-2 rounded-lg">
-                      <User className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-semibold text-gray-900">Contact Information</h3>
-                      <p className="text-xs text-gray-500">Basic details about the prospect</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <Input
-                        label="First Name"
-                        placeholder="e.g. Sarah"
-                        value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        required
-                        leftIcon={<User className="w-4 h-4" />}
-                      />
-                      <Input
-                        label="Last Name"
-                        placeholder="e.g. Johnson"
-                        value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        required
-                        leftIcon={<User className="w-4 h-4" />}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <Input
-                        label="Email Address"
-                        type="email"
-                        placeholder="sarah@example.com"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        leftIcon={<Mail className="w-4 h-4" />}
-                      />
-                      <Input
-                        label="Phone Number"
-                        placeholder="+1 (555) 000-0000"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        required
-                        leftIcon={<Phone className="w-4 h-4" />}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 2: Lead Details */}
-                <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-50">
-                    <div className="bg-purple-50 p-2 rounded-lg">
-                      <Tag className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-semibold text-gray-900">Lead Details</h3>
-                      <p className="text-xs text-gray-500">Status and source information</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <Select
-                        label="Initial Status"
-                        value={formData.status}
-                        onChange={(value) => setFormData({ ...formData, status: value })}
-                        leftIcon={<Tag className="w-4 h-4" />}
-                        options={[
-                          { value: 'new', label: 'New Lead' },
-                          { value: 'contacted', label: 'Contacted' },
-                          { value: 'qualified', label: 'Qualified' }
-                        ]}
-                      />
-                      <Select
-                        label="Lead Source"
-                        value={formData.source}
-                        onChange={(value) => setFormData({ ...formData, source: value })}
-                        leftIcon={<Globe className="w-4 h-4" />}
-                        options={[
-                          { value: 'facebook_ads', label: 'Facebook Ads' },
-                          { value: 'website', label: 'Website' },
-                          { value: 'manual', label: 'Manual Entry' },
-                          { value: 'referral', label: 'Referral' }
-                        ]}
-                      />
-                    </div>
-
-                    <div className="col-span-2">
-                      <Input
-                        label="Initial Notes"
-                        placeholder="Add any initial notes or context about this lead..."
-                        value={formData.notes || ''}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        leftIcon={<MessageSquare className="w-4 h-4" />}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 3: Optional Actions */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-6">
-                  <div>
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <div className={`w-10 h-6 rounded-full transition-all relative ${createFollowUpTask ? 'bg-indigo-600' : 'bg-slate-300'}`}>
-                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${createFollowUpTask ? 'left-5' : 'left-1'}`} />
-                        <input type="checkbox" className="hidden" checked={createFollowUpTask} onChange={() => setCreateFollowUpTask(!createFollowUpTask)} />
-                      </div>
-                      <div>
-                        <span className="text-sm font-bold text-slate-800">Create Follow-up Task</span>
-                        <p className="text-[10px] text-slate-500 font-medium">Add a reminder to your task list</p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-
-              </div>
-
-              {/* Footer */}
-              <div className="p-6 bg-white border-t border-gray-100 flex justify-end gap-3 flex-none shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-                <Button
-                  variant="white"
-                  onClick={() => setShowCreateForm(false)}
-                  className="text-gray-700 hover:text-gray-900 border-gray-200"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleCreateLead}
-                  className="px-8 shadow-lg shadow-blue-500/20"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Lead
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )
-      }
-
-      {/* Duplicate Results Modal Logic */}
-      {
-        showDuplicateResults && duplicateCheck && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
-            <Card className="w-full max-w-md shadow-2xl border-t-4 border-amber-400">
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-amber-100 rounded-full text-amber-600">
-                    <AlertTriangle className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">Duplicate Check</h3>
-                    <p className="text-sm text-gray-500">Analysis results</p>
-                  </div>
-                </div>
-
-                {duplicateCheck.isDuplicate ? (
-                  <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-4">
-                    <p className="font-semibold text-amber-800 flex items-center gap-2">
-                      Potential duplicate found!
-                    </p>
-                    <p className="text-sm text-amber-700 mt-1">
-                      Matched with <strong>{duplicateCheck.existingCustomer?.firstName} {duplicateCheck.existingCustomer?.lastName}</strong> ({duplicateCheck.confidence}% confidence)
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bg-green-50 p-4 rounded-xl border border-green-100 mb-4 flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    <span className="text-green-800 font-medium">No duplicates detected.</span>
-                  </div>
-                )}
-
-                <div className="flex justify-end">
-                  <Button onClick={() => setShowDuplicateResults(false)}>Close</Button>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )
-      }
-
-      {/* ── Bulk CSV Import Modal ── */}
-      {showBulkImport && (
-        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="bg-violet-100 p-2.5 rounded-xl">
-                  <Upload className="w-5 h-5 text-violet-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Bulk Lead Import</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Upload a CSV file to create multiple leads at once</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowBulkImport(false)}
-                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
-              {/* Template download */}
-              <div className="flex items-center justify-between bg-violet-50 border border-violet-100 rounded-xl px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-4 h-4 text-violet-600" />
-                  <span className="text-xs font-bold text-violet-800">Need the CSV template?</span>
-                  <span className="text-[11px] text-violet-600">Columns: firstName, lastName, email, phone, source, status, notes</span>
-                </div>
-                <button
-                  onClick={() => {
-                    const header = 'firstName,lastName,email,phone,source,status,notes';
-                    const sample = 'Sarah,Johnson,sarah@example.com,+971501234567,facebook_ads,new,Interested in Botox';
-                    const blob = new Blob([header + '\n' + sample], { type: 'text/csv' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a'); a.href = url; a.download = 'leads_template.csv'; a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  className="flex items-center gap-1.5 bg-white border border-violet-200 text-violet-700 text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-violet-100 transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5" /> Download Template
-                </button>
-              </div>
-
-              {!importResult ? (
-                <>
-                  {/* Drop Zone */}
-                  {csvRows.length === 0 && (
-                    <div
-                      className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${isDragging
-                          ? 'border-violet-400 bg-violet-50'
-                          : 'border-gray-200 bg-gray-50 hover:border-violet-300 hover:bg-violet-50/50'
-                        }`}
-                      onClick={() => fileInputRef.current?.click()}
-                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                      onDragLeave={() => setIsDragging(false)}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setIsDragging(false);
-                        const file = e.dataTransfer.files?.[0];
-                        if (file) parseCsv(file);
-                      }}
-                    >
-                      <div className="flex flex-col items-center gap-3">
-                        <div className={`p-4 rounded-2xl transition-colors ${isDragging ? 'bg-violet-200' : 'bg-gray-200'}`}>
-                          <Upload className={`w-8 h-8 transition-colors ${isDragging ? 'text-violet-700' : 'text-gray-400'}`} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-gray-700">Drop your CSV file here</p>
-                          <p className="text-xs text-gray-400 mt-1">or <span className="text-violet-600 font-bold underline underline-offset-2">click to browse</span></p>
-                        </div>
-                        <p className="text-[11px] text-gray-400">Supports .csv files up to 5 MB</p>
-                      </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".csv,text/csv"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) parseCsv(file);
-                          e.target.value = '';
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Preview Table */}
-                  {csvRows.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                          <span className="text-xs font-bold text-gray-800">Parsed {csvRows.length} rows from <span className="text-violet-600">{csvFileName}</span></span>
-                        </div>
-                        <button
-                          onClick={() => { setCsvRows([]); setCsvFileName(''); }}
-                          className="text-[11px] font-bold text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" /> Clear
-                        </button>
-                      </div>
-
-                      {/* Validation warnings */}
-                      {csvRows.filter(r => !r.firstName || !r.lastName || !r.email).length > 0 && (
-                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                          <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                          <p className="text-[11px] text-amber-800 font-medium">
-                            <strong>{csvRows.filter(r => !r.firstName || !r.lastName || !r.email).length} rows</strong> are missing required fields (firstName, lastName, email) and will be skipped.
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="overflow-auto rounded-xl border border-gray-100 max-h-64">
-                        <table className="w-full text-[11px]">
-                          <thead className="bg-gray-50 sticky top-0">
-                            <tr>
-                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">#</th>
-                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">First</th>
-                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Last</th>
-                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Email</th>
-                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Phone</th>
-                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Source</th>
-                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                              <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Valid</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-50">
-                            {csvRows.map((row, i) => {
-                              const valid = !!(row.firstName && row.lastName && row.email);
-                              return (
-                                <tr key={i} className={valid ? 'bg-white hover:bg-gray-50' : 'bg-red-50'}>
-                                  <td className="px-3 py-2 text-gray-400 font-mono">{i + 1}</td>
-                                  <td className="px-3 py-2 font-semibold text-gray-800">{row.firstName || <span className="text-red-400 italic">missing</span>}</td>
-                                  <td className="px-3 py-2 text-gray-700">{row.lastName || <span className="text-red-400 italic">missing</span>}</td>
-                                  <td className="px-3 py-2 text-gray-600">{row.email || <span className="text-red-400 italic">missing</span>}</td>
-                                  <td className="px-3 py-2 text-gray-500">{row.phone || '—'}</td>
-                                  <td className="px-3 py-2 text-gray-500">{row.source || 'manual'}</td>
-                                  <td className="px-3 py-2 text-gray-500">{row.status || 'new'}</td>
-                                  <td className="px-3 py-2">
-                                    {valid
-                                      ? <span className="inline-flex items-center gap-1 text-emerald-700 font-bold"><CheckCircle2 className="w-3.5 h-3.5" /> OK</span>
-                                      : <span className="inline-flex items-center gap-1 text-red-500 font-bold"><AlertCircle className="w-3.5 h-3.5" /> Skip</span>
-                                    }
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* Result Summary */
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 text-center">
-                      <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                      <p className="text-3xl font-black text-emerald-700">{importResult.success}</p>
-                      <p className="text-xs font-bold text-emerald-600 mt-1">Leads Imported</p>
-                    </div>
-                    <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center">
-                      <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-                      <p className="text-3xl font-black text-red-600">{importResult.errors.length}</p>
-                      <p className="text-xs font-bold text-red-500 mt-1">Failed Rows</p>
-                    </div>
-                  </div>
-                  {importResult.errors.length > 0 && (
-                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 space-y-2 max-h-40 overflow-y-auto">
-                      <p className="text-[11px] font-black text-red-700 uppercase tracking-wider">Error Details</p>
-                      {importResult.errors.map((err, i) => (
-                        <div key={i} className="flex items-start gap-2 text-[11px] text-red-600">
-                          <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                          <span><strong>Row {err.row}:</strong> {err.message}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-gray-100 px-8 py-5 bg-gray-50 flex items-center justify-between flex-none">
-              <span className="text-[11px] text-gray-400 font-medium">
-                {csvRows.length > 0 && !importResult
-                  ? `${csvRows.filter(r => r.firstName && r.lastName && r.email).length} of ${csvRows.length} rows will be imported`
-                  : importResult
-                    ? 'Import complete'
-                    : 'Upload a CSV file to get started'}
-              </span>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowBulkImport(false)}
-                  className="px-4 py-2 text-[11px] font-bold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
-                >
-                  {importResult ? 'Close' : 'Cancel'}
-                </button>
-                {!importResult && csvRows.filter(r => r.firstName && r.lastName && r.email).length > 0 && (
-                  <button
-                    disabled={importLoading}
-                    onClick={handleBulkImport}
-                    className="flex items-center gap-2 px-6 py-2 text-[11px] font-bold bg-violet-600 text-white rounded-xl hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-md shadow-violet-200"
-                  >
-                    {importLoading ? (
-                      <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full" /> Importing...</>
-                    ) : (
-                      <><Upload className="w-3.5 h-3.5" /> Import {csvRows.filter(r => r.firstName && r.lastName && r.email).length} Leads</>
-                    )}
-                  </button>
-                )}
-                {importResult && (
-                  <button
-                    onClick={() => { setCsvRows([]); setCsvFileName(''); setImportResult(null); }}
-                    className="flex items-center gap-2 px-6 py-2 text-[11px] font-bold bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition-colors shadow-md shadow-violet-200"
-                  >
-                    <Upload className="w-3.5 h-3.5" /> Import Another File
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Facebook Form Schedule Modal */}
-      {showFormScheduleModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-blue-600 text-white flex-none">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/10 rounded-xl">
-                  <Globe className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black tracking-tight">Schedule Forms</h2>
-                  <p className="text-xs text-blue-100 font-medium">Assign Facebook leads to a specific day</p>
-                </div>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => setShowFormScheduleModal(false)} className="text-white hover:bg-white/10 rounded-full">
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-
-            <div className="p-8 space-y-6 overflow-y-auto flex-1">
-              {/* Date Selection */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Assignment Date</label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="date"
-                    value={scheduleDate}
-                    onChange={(e) => setScheduleDate(e.target.value)}
-                    className="h-12 bg-gray-50 border-gray-100 focus:ring-blue-500 rounded-xl font-bold"
-                  />
-                  <div className="flex flex-col gap-1">
-                    <button onClick={() => {
-                      const d = new Date();
-                      setScheduleDate(d.toISOString().split('T')[0]);
-                    }} className="text-[9px] font-bold text-blue-600 hover:underline">Today</button>
-                    <button onClick={() => {
-                      const d = new Date();
-                      d.setDate(d.getDate() + 1);
-                      setScheduleDate(d.toISOString().split('T')[0]);
-                    }} className="text-[9px] font-bold text-gray-400 hover:underline">Tomorrow</button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Selection */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Forms ({selectedForms.length})</label>
-                  <button
-                    onClick={() => setSelectedForms(facebookForms.length === selectedForms.length ? [] : facebookForms.map(f => f.name))}
-                    className="text-[10px] font-bold text-blue-600"
-                  >
-                    {facebookForms.length === selectedForms.length ? 'Deselect All' : 'Select All'}
-                  </button>
-                </div>
-
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                  {facebookForms.length === 0 ? (
-                    <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-100">
-                      <p className="text-xs text-gray-400">No active forms found</p>
-                    </div>
-                  ) : (
-                    facebookForms.map((form) => (
-                      <div
-                        key={form.id}
-                        onClick={() => {
-                          setSelectedForms(prev =>
-                            prev.includes(form.name)
-                              ? prev.filter(n => n !== form.name)
-                              : [...prev, form.name]
-                          );
-                        }}
-                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer group flex items-center justify-between ${selectedForms.includes(form.name)
-                            ? 'border-blue-500 bg-blue-50/50 shadow-sm'
-                            : 'border-gray-50 bg-white hover:border-gray-200'
-                          }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selectedForms.includes(form.name) ? 'bg-blue-600 border-blue-600' : 'border-gray-200 group-hover:border-blue-300'
-                            }`}>
-                            {selectedForms.includes(form.name) && <CheckCircle2 className="w-3 h-3 text-white" />}
-                          </div>
-                          <div>
-                            <p className="text-xs font-black text-gray-900">{form.name}</p>
-                            <div className="flex gap-2 mt-0.5">
-                              <span className="text-[9px] font-bold text-gray-400">{form.id.startsWith('db_') ? 'From Leads' : 'Active API'}</span>
-                              {form.leads_count !== undefined && <span className="text-[9px] font-bold text-emerald-600">({form.leads_count} leads)</span>}
-                            </div>
-                          </div>
-                        </div>
-                        <Badge className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg border ${form.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-50 text-gray-400 border-gray-100'
-                          }`}>
-                          {form.status || 'READY'}
-                        </Badge>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-8 bg-gray-50 border-t border-gray-100 flex gap-4 flex-none">
-              <Button
-                variant="outline"
-                onClick={() => setShowFormScheduleModal(false)}
-                className="flex-1 h-12 rounded-2xl font-bold text-gray-500"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAssignForms}
-                disabled={isAssigning || selectedForms.length === 0}
-                className="flex-[3] h-12 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
-              >
-                {isAssigning ? 'Scheduling...' : `Schedule Leads from ${selectedForms.length} Forms`}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Bulk Task Modal */}
-      {showBulkTaskModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[70] p-4 animate-in fade-in transition-all duration-500">
-          <Card className="w-full max-w-md shadow-2xl rounded-[2.5rem] overflow-hidden border border-slate-800 bg-slate-900 shadow-black/50">
-            <div className="px-10 py-8 border-b border-slate-800 flex items-center justify-between bg-gradient-to-br from-slate-900 to-slate-800">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-[#CBFF38] rounded-2xl shadow-[0_0_20px_rgba(203,255,56,0.15)]">
-                  <CalendarPlus className="w-6 h-6 text-black" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black text-white tracking-tight">Bulk Mission</h2>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.15em] mt-0.5">Planning {selectedLeads.length} Assignments</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowBulkTaskModal(false)}
-                className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <CardContent className="p-10 space-y-8 bg-slate-900">
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between px-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Task Title</label>
-                  <span className="text-[9px] font-black text-[#CBFF38] uppercase bg-[#CBFF38]/10 px-2 py-0.5 rounded-full">Required</span>
-                </div>
-                <Input
-                  value={bulkTaskData.title}
-                  onChange={(e) => setBulkTaskData({ ...bulkTaskData, title: e.target.value })}
-                  className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white focus:bg-slate-800 focus:border-[#CBFF38]/30 transition-all font-bold text-sm px-5"
-                  placeholder="e.g., Immediate Follow-up"
-                />
-              </div>
-
-              <div className="space-y-2.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Deliverable Due Date</label>
-                <Input
-                  type="date"
-                  value={bulkTaskData.dueDate}
-                  onChange={(e) => setBulkTaskData({ ...bulkTaskData, dueDate: e.target.value })}
-                  className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white focus:bg-slate-800 focus:border-[#CBFF38]/30 transition-all font-bold text-sm px-5"
-                />
-              </div>
-
-              <div className="space-y-2.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Assign To Strategist</label>
-                <Select
-                  value={bulkTaskData.salespersonId}
-                  onChange={(val) => setBulkTaskData({ ...bulkTaskData, salespersonId: val })}
-                  placeholder="Select Lead Strategist..."
-                  options={(salespersons || [])
-                    .filter((sp: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(sp.role))
-                    .map((sp: any) => ({
-                      value: sp.id,
-                      label: `${sp.firstName} ${sp.lastName}`
-                    }))}
-                  className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white font-bold"
-                />
-              </div>
-            </CardContent>
-
-            <div className="p-10 bg-slate-900 border-t border-slate-800 flex gap-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowBulkTaskModal(false)}
-                className="flex-1 h-14 rounded-2xl font-black text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white transition-all text-xs uppercase tracking-widest"
-              >
-                Discard
-              </Button>
-              <Button
-                onClick={handleBulkCreateTasks}
-                disabled={!bulkTaskData.salespersonId}
-                className="flex-[2] h-14 bg-[#CBFF38] text-black rounded-2xl font-black shadow-[0_10px_30px_rgba(203,255,56,0.2)] hover:bg-[#b3d81b] hover:scale-[1.03] active:scale-[0.97] disabled:opacity-30 disabled:hover:scale-100 transition-all text-xs uppercase tracking-widest"
-              >
-                Deploy Tasks
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
+ const navigate = useNavigate();
+ const dispatch = useDispatch<AppDispatch>();
+ const { leads, leadFilters, duplicateCheck, isLoading, salespersons } = useSelector((state: RootState) => state.crm);
+ const { user } = useSelector((state: RootState) => state.auth);
+
+ const [searchTerm, setSearchTerm] = useState('');
+ const [showFilters, setShowFilters] = useState(false);
+ const [showCreateForm, setShowCreateForm] = useState(false);
+ const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+ const [showDuplicateResults, setShowDuplicateResults] = useState(false);
+ const [showModal, setShowModal] = useState(false);
+ const [editingLead, setEditingLead] = useState<Lead | null>(null);
+
+ // Bulk import state
+ const [showBulkImport, setShowBulkImport] = useState(false);
+ const [csvRows, setCsvRows] = useState<Record<string, string>[]>([]);
+ const [csvFileName, setCsvFileName] = useState('');
+ const [isDragging, setIsDragging] = useState(false);
+ const [importLoading, setImportLoading] = useState(false);
+ const [importResult, setImportResult] = useState<{ success: number; errors: { row: number; message: string }[] } | null>(null);
+ const fileInputRef = useRef<HTMLInputElement>(null);
+
+ // Facebook Form Schedule State
+ const [showFormScheduleModal, setShowFormScheduleModal] = useState(false);
+ const [facebookForms, setFacebookForms] = useState<any[]>([]);
+ const [selectedForms, setSelectedForms] = useState<string[]>([]);
+ const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().split('T')[0]);
+ const [isAssigning, setIsAssigning] = useState(false);
+ const [showBulkTaskModal, setShowBulkTaskModal] = useState(false);
+ const [bulkTaskData, setBulkTaskData] = useState({
+ salespersonId: '',
+ dueDate: new Date().toISOString().split('T')[0],
+ title: 'Follow-up Call'
+ });
+
+ // Post-log action states
+ const [createFollowUpTask, setCreateFollowUpTask] = useState(false);
+ const [taskData, setTaskData] = useState({
+ subject: '',
+ dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Default to tomorrow
+ priority: 'medium'
+ });
+
+ const [providers, setProviders] = useState<{ value: string; label: string }[]>([]);
+
+ useEffect(() => {
+ (async () => {
+ try {
+ const salesRes = await crmAPI.getSalespersons();
+ const salesOptions = (salesRes.data || [])
+ .filter((s: any) => s.role === 'salesperson')
+ .map((s: any) => ({
+ value: s.id,
+ label: `${s.firstName} ${s.lastName}`
+ }));
+ setProviders(salesOptions);
+ } catch (e) {
+ console.error("Failed to load providers", e);
+ }
+ })();
+ }, []);
+
+ // Initial form state
+ const initialFormState = {
+ source:"facebook_ads",
+ firstName:"",
+ lastName:"",
+ email:"",
+ phone:"",
+ status:"new",
+ notes:"",
+ assignedSalesId: user?.id || null,
+ metadata: {},
+ estimatedValue: 0,
+ };
+ const [formData, setFormData] = useState(initialFormState);
+
+ useEffect(() => {
+ if (forceShowCreateForm && !showCreateForm) {
+ setShowCreateForm(true);
+ if (onFormShown) onFormShown();
+ }
+ }, [forceShowCreateForm, onFormShown]);
+
+ useEffect(() => {
+ // Set default status filter to 'new' for Leads page
+ dispatch(setLeadFilters({ ...leadFilters, status: 'new' }));
+ dispatch(fetchSalespersons());
+ }, [dispatch]);
+
+ useEffect(() => {
+ dispatch(fetchLeads(leadFilters));
+ }, [dispatch, leadFilters]);
+
+ // Handlers
+ const handleFilterChange = (key: string, value: string | string[]) => {
+ dispatch(setLeadFilters({ ...leadFilters, [key]: value }));
+ };
+
+ const handleSearch = () => {
+ dispatch(setLeadFilters({
+ ...leadFilters,
+ search: searchTerm,
+ page: 1
+ }));
+ };
+
+ // Real-time search with debounce
+ useEffect(() => {
+ const timer = setTimeout(() => {
+ if (searchTerm !== leadFilters.search) {
+ handleSearch();
+ }
+ }, 500);
+ return () => clearTimeout(timer);
+ }, [searchTerm]);
+
+ const handleCreateLead = async () => {
+ if (!formData.firstName || !formData.lastName || !formData.phone) {
+ toast.error("First Name, Last Name, and Phone Number are required");
+ return;
+ }
+ try {
+ const payload = { ...formData };
+ if (!payload.email || payload.email.trim() ==="") {
+ delete (payload as any).email;
+ }
+ const result = await dispatch(createLead(payload)).unwrap();
+ const leadId = result.id;
+
+ // Handle follow-up actions
+ const actions: Promise<any>[] = [];
+
+ if (createFollowUpTask) {
+ actions.push(crmAPI.createAction({
+ customerId: leadId,
+ actionType: 'follow_up_call',
+ title: taskData.subject || `Follow up: ${formData.firstName} ${formData.lastName}`,
+ description: `Automated follow-up task created during lead creation.`,
+ dueDate: taskData.dueDate,
+ priority: taskData.priority as any,
+ status: 'pending',
+ salespersonId: (user as any)?.id
+ }));
+ }
+
+
+
+ if (actions.length > 0) {
+ await Promise.all(actions);
+ }
+
+ setShowCreateForm(false);
+ setFormData(initialFormState);
+
+ // Reset action states
+ setCreateFollowUpTask(false);
+ } catch (error: any) {
+ console.error('Failed to create lead:', error);
+ toast.error(error.response?.data?.message || error.message || 'Failed to create lead');
+ }
+ };
+
+ const handleCheckDuplicates = async (lead: Lead) => {
+ await dispatch(checkForDuplicates({
+ email: lead.email,
+ phone: lead.phone,
+ firstName: lead.firstName,
+ lastName: lead.lastName
+ }));
+ setShowDuplicateResults(true);
+ };
+
+ const handleEditLead = (lead: Lead) => {
+ setEditingLead(lead);
+ setCreateFollowUpTask(false);
+ setShowModal(true);
+ };
+
+ const handleBulkAction = async (action: string, value?: string) => {
+ if (selectedLeads.length === 0) return;
+
+ const count = selectedLeads.length;
+ const toastId = toast.loading(`Performing bulk ${action}...`);
+
+ try {
+ if (action === 'delete') {
+ for (const leadId of selectedLeads) await dispatch(deleteLead(leadId)).unwrap();
+ } else if (action === 'mark_contacted') {
+ for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { status: 'contacted' } })).unwrap();
+ } else if (action === 'assign' && value) {
+ for (const leadId of selectedLeads) await dispatch(updateLead({ id: leadId, updates: { assignedSalesId: value } })).unwrap();
+ }
+
+ toast.success(`Successfully updated ${count} leads`, { id: toastId });
+ setSelectedLeads([]);
+ // Refresh list to be sure
+ dispatch(fetchLeads(leadFilters));
+ } catch (error: any) {
+ console.error(`Bulk ${action} failed:`, error);
+ toast.error(`Failed to update some leads: ${error.message || 'Unknown error'}`, { id: toastId });
+ }
+ };
+
+ const handleBulkCreateTasks = async () => {
+ if (selectedLeads.length === 0 || !bulkTaskData.salespersonId) {
+ toast.error('Please select leads and a salesperson');
+ return;
+ }
+
+ const toastId = toast.loading(`Creating ${selectedLeads.length} tasks...`);
+ try {
+ await crmAPI.bulkCreateTasks({
+ leadIds: selectedLeads,
+ salespersonId: bulkTaskData.salespersonId,
+ dueDate: bulkTaskData.dueDate,
+ title: bulkTaskData.title
+ });
+ toast.success(`Successfully created tasks for ${selectedLeads.length} leads`, { id: toastId });
+ setShowBulkTaskModal(false);
+ setSelectedLeads([]);
+ dispatch(fetchLeads(leadFilters));
+ } catch (error: any) {
+ toast.error(error.response?.data?.message || 'Failed to create bulk tasks', { id: toastId });
+ }
+ };
+
+ const handleSaveEdit = async () => {
+ if (!editingLead) return;
+ const toastId = toast.loading("Updating lead...");
+ try {
+ const updates = {
+ firstName: editingLead.firstName?.trim(),
+ lastName: editingLead.lastName?.trim(),
+ email: editingLead.email?.trim(),
+ phone: editingLead.phone?.trim() || undefined,
+ status: editingLead.status,
+ source: editingLead.source,
+ assignedSalesId: editingLead.assignedSalesId,
+ };
+ await dispatch(updateLead({ id: editingLead.id, updates })).unwrap();
+
+ // Handle follow-up actions (if any - though UI is removed, keep logic safe)
+ const actions: Promise<any>[] = [];
+
+ if (createFollowUpTask) {
+ actions.push(crmAPI.createAction({
+ customerId: editingLead.id,
+ actionType: 'follow_up_call',
+ title: taskData.subject || `Follow up: ${editingLead.firstName} ${editingLead.lastName}`,
+ description: `Automated follow-up task created during lead edit.`,
+ dueDate: taskData.dueDate,
+ priority: taskData.priority as any,
+ status: 'pending',
+ salespersonId: (user as any)?.id
+ }));
+ }
+
+
+ if (actions.length > 0) {
+ await Promise.all(actions);
+ }
+
+ toast.success("Lead updated successfully", { id: toastId });
+ setShowModal(false);
+ setEditingLead(null);
+
+ // Reset action states
+ setCreateFollowUpTask(false);
+
+ dispatch(fetchLeads(leadFilters));
+ } catch (error: any) {
+ console.error("Update failed:", error);
+ // Try to extract detailed message if available
+ const detailedError = error.response?.data?.message;
+ const errorMessage = Array.isArray(detailedError) ? detailedError.join(",") : detailedError;
+ toast.error(errorMessage || error.message ||"Failed to update lead", { id: toastId });
+ }
+ };
+
+ // CSV Bulk Import helpers
+ const parseCsv = (file: File) => {
+ setCsvFileName(file.name);
+ const reader = new FileReader();
+ reader.onload = (e) => {
+ const text = e.target?.result as string;
+ const lines = text.split(/\r?\n/).filter(l => l.trim());
+ if (lines.length < 2) return;
+ // Normalize headers: trim whitespace & lowercase
+ const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+ const rows: Record<string, string>[] = [];
+ for (let i = 1; i < lines.length; i++) {
+ const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+ if (values.every(v => !v)) continue; // skip blank lines
+ const row: Record<string, string> = {};
+ headers.forEach((h, idx) => { row[h] = values[idx] ?? ''; });
+ rows.push(row);
+ }
+ setCsvRows(rows);
+ };
+ reader.readAsText(file);
+ };
+
+ const handleBulkImport = async () => {
+ const validRows = csvRows.filter(r => r.firstName && r.lastName && r.email);
+ if (validRows.length === 0) return;
+ setImportLoading(true);
+ try {
+ const payload = validRows.map(r => ({
+ firstName: r.firstName,
+ lastName: r.lastName,
+ email: r.email,
+ phone: r.phone || undefined,
+ source: r.source || 'manual',
+ status: r.status || 'new',
+ notes: r.notes || undefined,
+ }));
+ const res = await crmAPI.bulkCreateLeads(payload);
+ const data = res.data;
+
+ const succeeded = data.created ?? 0;
+ const errors: { row: number; message: string }[] = (data.results || [])
+ .map((r: any, i: number) => r.status === 'error' ? { row: i + 2, message: r.message } : null)
+ .filter(Boolean);
+
+ setImportResult({ success: succeeded, errors });
+ dispatch(fetchLeads(leadFilters));
+ } catch (err: any) {
+ const msg = err?.response?.data?.message || err?.message || 'Import failed';
+ setImportResult({ success: 0, errors: [{ row: 0, message: msg }] });
+ } finally {
+ setImportLoading(false);
+ }
+ };
+
+ const fetchFacebookForms = async () => {
+ try {
+ const res = await crmAPI.getFacebookForms();
+ setFacebookForms(res.data || []);
+ } catch (error) {
+ toast.error('Failed to fetch Facebook forms');
+ }
+ };
+
+ const handleAssignForms = async () => {
+ if (selectedForms.length === 0) {
+ toast.error('Please select at least one form');
+ return;
+ }
+ setIsAssigning(true);
+ try {
+ const res = await crmAPI.assignFormsToDay({
+ formNames: selectedForms,
+ scheduledAt: scheduleDate
+ });
+ toast.success(res.data?.message || `Succesfully scheduled leads`);
+ setShowFormScheduleModal(false);
+ setSelectedForms([]);
+ dispatch(fetchLeads(leadFilters));
+ } catch (error: any) {
+ toast.error(error.response?.data?.message || 'Failed to assign forms');
+ } finally {
+ setIsAssigning(false);
+ }
+ };
+
+ // UI Helpers
+ const getStatusBadge = (status: string) => {
+ const styles = {
+ new:"bg-blue-50 text-blue-700 border-blue-100",
+ contacted:"bg-amber-50 text-amber-700 border-amber-100",
+ qualified:"bg-purple-50 text-purple-700 border-purple-100",
+ converted:"bg-emerald-50 text-emerald-700 border-emerald-100",
+ lost:"bg-gray-50 text-gray-500 border-gray-100",
+ };
+ return styles[status as keyof typeof styles] || styles.new;
+ };
+
+ const formatDate = (dateString: string) => {
+ return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+ };
+
+ // Render Stats Card
+ const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
+ <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative">
+ <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-[0.03] group-hover:scale-110 transition-transform duration-500 ${color.split(' ')[1]}`} style={{ backgroundColor: 'currentColor' }} />
+ <CardContent className="p-3 flex items-start justify-between relative z-10">
+ <div className="space-y-1">
+ <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 group-hover:text-gray-500 transition-colors">{title}</p>
+ <div className="flex items-baseline gap-1.5">
+ <h3 className="text-xl font-extrabold text-gray-900 leading-none">{value}</h3>
+ {trend && (
+ <span className="text-[10px] font-bold text-emerald-600 flex items-center bg-emerald-50 px-1 py-0.5 rounded-full">
+ {trend.includes('%') ? trend : `+${trend}`}
+ </span>
+ )}
+ </div>
+ </div>
+ <div className={`p-2 rounded-xl ${color} shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300`}>
+ <Icon className="w-5 h-5" />
+ </div>
+ </CardContent>
+ </Card>
+ );
+
+
+
+ return (
+ <div className="min-h-screen bg-[#f8fafc] space-y-8 max-w-full mx-auto px-6 sm:px-8 lg:px-10 pb-20 pt-6 relative overflow-hidden">
+ {/* Decorative Background Elements */}
+ <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-slate-100 to-transparent opacity-50 pointer-events-none" />
+ <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#CBFF38]/5 rounded-full blur-3xl pointer-events-none" />
+
+ <div className="flex flex-wrap items-center justify-between gap-y-10 gap-x-8 pb-6 relative z-10">
+ <div className="shrink-0 space-y-2">
+ <div className="flex items-center gap-4">
+ <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
+ Registry
+ </h1>
+ <div className="flex items-center gap-2 px-3 py-1.5 bg-[#CBFF38] text-black rounded-xl shadow-xl shadow-[#CBFF38]/20">
+ <Users size={14} strokeWidth={3} />
+ <span className="text-[11px] font-black uppercase tracking-widest">{leads.length} Leads</span>
+ </div>
+ </div>
+ <div className="flex items-center gap-2">
+ <div className="h-1 w-12 bg-[#CBFF38] rounded-full" />
+ <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Strategic Asset Terminal</p>
+ </div>
+ </div>
+
+ <div className="order-3 xl:order-none w-full xl:flex-1 xl:max-w-2xl min-w-0">
+ <div className="relative group">
+ <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-[#CBFF38] transition-all duration-300 z-10 pointer-events-none" />
+ <input
+ type="text"
+ placeholder="Search leads, phone, or email..."
+ value={searchTerm}
+ onChange={(e) => setSearchTerm(e.target.value)}
+ onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+ className="w-full h-14 pl-16 pr-8 bg-white border-2 border-slate-50 rounded-[2rem] text-[14px] font-bold placeholder:text-slate-300 focus:bg-white focus:ring-[8px] focus:ring-[#CBFF38]/10 focus:border-[#CBFF38]/30 transition-all outline-none shadow-2xl shadow-slate-200/50 cursor-text"
+ />
+ </div>
+ </div>
+
+ <div className="flex items-center gap-3 order-2 xl:order-none ml-auto xl:ml-0">
+ <div className="flex items-center bg-slate-100/50 p-1.5 rounded-[1.5rem] border border-slate-100 shadow-sm">
+ <select
+ value={leadFilters.status || ''}
+ onChange={(e) => handleFilterChange('status', e.target.value)}
+ className="h-10 px-4 bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-slate-700 focus:outline-none cursor-pointer rounded-2xl hover:bg-white/80 transition-all appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.65rem_auto] bg-[right_0.75rem_center] bg-no-repeat"
+ >
+ <option value="">All Statuses</option>
+ <option value="new">New</option>
+ <option value="contacted">Contacted</option>
+ <option value="qualified">Qualified</option>
+ <option value="converted">Converted</option>
+ <option value="lost">Lost</option>
+ </select>
+
+ <div className="h-6 w-[1px] bg-slate-200 mx-1.5" />
+
+ <Button
+ variant="ghost"
+ onClick={() => setShowFilters(!showFilters)}
+ className={`h-10 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${showFilters ? 'bg-slate-900 text-[#CBFF38] shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}
+ >
+ <Filter size={14} className="mr-2" />
+ {showFilters ? 'Applied' : 'Filters'}
+ </Button>
+
+ {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
+ <div className="hidden sm:flex items-center gap-1 border-l border-slate-200 ml-1.5 pl-1.5">
+ <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white" onClick={() => setShowBulkImport(true)}>
+ <Upload size={16} className="text-slate-400" />
+ </Button>
+ <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white" onClick={() => { setShowFormScheduleModal(true); fetchFacebookForms(); }}>
+ <Globe size={16} className="text-blue-500" />
+ </Button>
+ </div>
+ )}
+ </div>
+
+ <Button
+ onClick={() => setShowCreateForm(true)}
+ className="h-14 px-8 bg-[#CBFF38] text-slate-900 border-none rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.15em] shadow-2xl shadow-[#CBFF38]/30 transition-all hover:scale-[1.05] active:scale-[0.95] hover:bg-[#b3d81b] flex items-center gap-3"
+ >
+ <Plus size={18} strokeWidth={4} />
+ <span className="hidden sm:inline">Add Lead</span>
+ </Button>
+ </div>
+ </div>
+
+ {/* Filter Chips */}
+ {Object.keys(leadFilters).some(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search') && (
+ <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+ {Object.entries(leadFilters).map(([key, value]) => {
+ if (!value || key === 'search' || key === 'page') return null;
+ let label = key;
+ if (key === 'status') label = 'Status';
+ if (key === 'source') label = 'Source';
+ if (key === 'formNames') label = 'Form';
+ if (key === 'submissionDateFrom') label = 'From';
+ if (key === 'submissionDateTo') label = 'To';
+ if (key === 'lastContactedFrom') label = 'Contact From';
+ if (key === 'lastContactedTo') label = 'Contact To';
+
+ const displayValue = Array.isArray(value)
+ ? value.filter(Boolean).map(v => String(v).replace('_', ' ')).join(', ').toUpperCase()
+ : String(value || '').replace('_', ' ').toUpperCase();
+
+ return (
+ <Badge
+ key={key}
+ variant="secondary"
+ className="pl-2 pr-1 py-1 h-7 flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-100 font-medium text-[10px] rounded-lg"
+ >
+ <span className="opacity-60">{label}:</span> {displayValue}
+ <button
+ onClick={() => handleFilterChange(key, '')}
+ className="ml-1 hover:bg-blue-100 rounded-full p-0.5 transition-colors"
+ >
+ <X className="w-3 h-3" />
+ </button>
+ </Badge>
+ )
+ })}
+ <Button
+ variant="ghost"
+ size="sm"
+ onClick={() => {
+ dispatch(setLeadFilters({ status: 'new' }));
+ setSearchTerm('');
+ }}
+ className="h-7 px-2 text-[10px] font-bold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+ >
+ Clear All
+ </Button>
+ </div>
+ )}
+
+ {/* Stats Grid */}
+ <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+ <StatCard
+ title="Total Leads"
+ value={leads.length}
+ icon={Users}
+ color="bg-[#CBFF38]/20 text-gray-900"
+ trend="+12%"
+ />
+ <StatCard
+ title="New Inquiries"
+ value={leads.filter(l => l.status === 'new').length}
+ icon={AlertTriangle}
+ color="bg-amber-50 text-amber-600"
+ />
+ <StatCard
+ title="In Conversation"
+ value={leads.filter(l => l.status === 'contacted').length}
+ icon={Clock}
+ color="bg-purple-50 text-purple-600"
+ />
+ <StatCard
+ title="Converted"
+ value={leads.filter(l => l.status === 'converted').length}
+ icon={CheckCircle}
+ color="bg-[#b3d81b] text-white"
+ trend="4.5%"
+ />
+ </div>
+ {/* Filters Drawer-style */}
+ {showFilters && (
+ <Card className="border-none shadow-md bg-white animate-in slide-in-from-top-2 duration-300">
+ <CardContent className="p-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className="space-y-1.5">
+ <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Lead Status</label>
+ <Select
+ value={leadFilters.status || ''}
+ onChange={(val) => handleFilterChange('status', val)}
+ options={[
+ { value: '', label: 'All Statuses' },
+ { value: 'new', label: 'New' },
+ { value: 'contacted', label: 'Contacted' },
+ { value: 'qualified', label: 'Qualified' },
+ { value: 'converted', label: 'Converted' },
+ { value: 'lost', label: 'Lost' },
+ ]}
+ className="h-9 text-xs border-gray-200"
+ />
+ </div>
+
+ <div className="space-y-1.5">
+ <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
+ <Select
+ value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
+ onChange={(val) => {
+ dispatch(setLeadFilters({ ...leadFilters, formNames: val ? [val] : [], search: searchTerm }));
+ toast.success(`Filtering by: ${val || 'All'}`);
+ }}
+ placeholder="Select form..."
+ options={[
+ { value: '', label: 'All Forms' },
+ ...Array.from(new Set(leads.map(l => (l as any).lastMetaFormName).filter(Boolean))).map(f => ({ value: f as string, label: f as string }))
+ ]}
+ className="h-9 text-xs border-gray-200"
+ />
+ </div>
+
+ <div className="md:col-span-1 space-y-1.5">
+ <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
+ <div className="flex flex-col gap-2">
+ <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+ <Input
+ label="From"
+ type="date"
+ value={leadFilters.submissionDateFrom || ''}
+ onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
+ className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+ />
+ <Input
+ label="To"
+ type="date"
+ value={leadFilters.submissionDateTo || ''}
+ onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
+ className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+ />
+ </div>
+ <div className="flex flex-wrap gap-1 mt-1.5">
+ {[
+ { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+ { label: 'Yesterday', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
+ { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+ { label: 'Last 30 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+ ].map(preset => (
+ <button
+ key={preset.label}
+ type="button"
+ onClick={() => {
+ const { from, to } = preset.getValue();
+ handleFilterChange('submissionDateFrom', from);
+ handleFilterChange('submissionDateTo', to);
+ }}
+ className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+ >
+ {preset.label}
+ </button>
+ ))}
+ </div>
+ </div>
+ </div>
+
+ <div className="md:col-span-1 space-y-1.5">
+ <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
+ <div className="flex flex-col gap-2">
+ <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+ <Input
+ label="From"
+ type="date"
+ value={leadFilters.lastContactedFrom || ''}
+ onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
+ className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+ />
+ <Input
+ label="To"
+ type="date"
+ value={leadFilters.lastContactedTo || ''}
+ onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
+ className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+ />
+ </div>
+ <div className="flex flex-wrap gap-1 mt-1.5">
+ {[
+ { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+ { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+ ].map(preset => (
+ <button
+ key={preset.label}
+ type="button"
+ onClick={() => {
+ const { from, to } = preset.getValue();
+ handleFilterChange('lastContactedFrom', from);
+ handleFilterChange('lastContactedTo', to);
+ }}
+ className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+ >
+ {preset.label}
+ </button>
+ ))}
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
+ <div className="flex items-center gap-2">
+ <button
+ onClick={() => dispatch(setLeadFilters({ status: 'new' }))}
+ className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+ >
+ Clear All Filters
+ </button>
+ </div>
+ <div className="flex items-center gap-2">
+ <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 text-[10px] font-bold">
+ Close Filters
+ </Button>
+ <Button size="sm" onClick={handleSearch} className="h-8 px-6 text-[10px] font-bold bg-slate-900 text-white">
+ Apply Filters
+ </Button>
+ {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
+ <Button
+ size="sm"
+ onClick={async () => {
+ try {
+ const currentForm = Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] : leadFilters.formNames;
+ if (currentForm) {
+ setSelectedForms([currentForm]);
+ } else {
+ setSelectedForms([]);
+ }
+ await fetchFacebookForms();
+ setShowFormScheduleModal(true);
+ } catch (e) {
+ setShowFormScheduleModal(true);
+ }
+ }}
+ className="h-8 px-4 text-[10px] font-bold bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm border-none transition-all flex items-center gap-1.5"
+ >
+ <CalendarPlus className="w-3.5 h-3.5" />
+ Schedule This Filter
+ </Button>
+ )}
+ </div>
+ </div>
+ </CardContent>
+ </Card>
+ )}
+
+ {/* Bulk Actions Bar */}
+ {/* 3. Bulk Actions Floating Bar */}
+ {selectedLeads.length > 0 && (
+ <div className="sticky top-2 z-50 bg-slate-900 border border-slate-800 p-2.5 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 shadow-2xl shadow-black/40 backdrop-blur-md mb-6">
+ <div className="flex items-center gap-4">
+ <div className="bg-[#CBFF38] p-2 rounded-xl shadow-[0_0_15px_rgba(203,255,56,0.2)]">
+ <Zap className="w-4 h-4 text-black font-black" />
+ </div>
+ <div>
+ <span className="text-sm font-black text-white tracking-tight">{selectedLeads.length} Records Selected</span>
+ <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Bulk Action Mode Active</p>
+ </div>
+ </div>
+
+ <div className="flex gap-2.5 items-center">
+ {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
+ <Select
+ placeholder="Assign Owner"
+ options={(salespersons || [])
+ .filter((sp: any) => sp.isActive !== false && ['salesperson', 'SUPER_ADMIN', 'manager', 'admin', 'clinic_owner'].includes(sp.role))
+ .map((sp: any) => ({
+ value: sp.id,
+ label: `${sp.firstName} ${sp.lastName}`
+ }))}
+ onChange={(val) => handleBulkAction('assign', val)}
+ className="w-44 text-xs h-9 bg-slate-800 border-slate-700 text-white font-bold rounded-xl"
+ />
+ )}
+
+ {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
+ <Button
+ onClick={() => {
+ setBulkTaskData(prev => ({ ...prev, salespersonId: '' }));
+ setShowBulkTaskModal(true);
+ }}
+ className="h-9 px-4 bg-[#CBFF38] text-black hover:bg-[#b3d81b] border-none font-black text-[10px] uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02]"
+ >
+ <CalendarPlus className="w-3.5 h-3.5 mr-2" /> Create Task Plan
+ </Button>
+ )}
+
+ <Button
+ variant="outline"
+ onClick={() => handleBulkAction('mark_contacted')}
+ className="h-9 px-4 border-slate-700 text-slate-300 hover:bg-slate-800 font-bold text-[10px] uppercase tracking-widest rounded-xl"
+ >
+ Contacted
+ </Button>
+
+ {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
+ <Button
+ variant="outline"
+ onClick={() => handleBulkAction('delete')}
+ className="h-9 px-4 border-red-900/40 text-red-500 hover:bg-red-950/30 font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all"
+ >
+ <Trash2 className="w-3.5 h-3.5 mr-2" /> Wipe
+ </Button>
+ )}
+
+ <div className="h-6 w-[1px] bg-slate-800 mx-1" />
+
+ <Button
+ variant="ghost"
+ onClick={() => setSelectedLeads([])}
+ className="h-8 w-8 p-0 text-slate-500 hover:text-white transition-colors"
+ >
+ <X className="w-5 h-5" />
+ </Button>
+ </div>
+ </div>
+ )}
+
+ {/* Table Section */}
+ <Card className="border-none shadow-md overflow-hidden bg-white rounded-2xl">
+ <CardContent className="p-0">
+ {isLoading ? (
+ <div className="p-8 text-center text-xs text-gray-500">Loading leads...</div>
+ ) : leads.length === 0 ? (
+ <div className="p-8 text-center flex flex-col items-center justify-center text-gray-400">
+ <Users className="w-8 h-8 mb-2 opacity-20" />
+ <p className="text-xs">No leads found matching your filters.</p>
+ </div>
+ ) : (
+ <Table className="min-w-full">
+ <TableHeader className="bg-gray-50/50">
+ <TableRow className="h-10">
+ <TableHead className="w-[40px] px-2 text-center">
+ <input
+ type="checkbox"
+ checked={selectedLeads.length === leads.length}
+ onChange={(e) => setSelectedLeads(e.target.checked ? leads.map(l => l.id) : [])}
+ className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+ />
+ </TableHead>
+ <TableHead className="w-[130px] px-2">Lead Name</TableHead>
+ <TableHead className="w-[160px] px-2">Contact Info</TableHead>
+ <TableHead className="w-[100px] px-2">Assigned To</TableHead>
+ <TableHead className="w-[80px] px-2 text-center">Status</TableHead>
+ <TableHead className="w-[100px] px-2">Source</TableHead>
+ <TableHead className="w-[120px] px-2 text-emerald-600 bg-emerald-50/50">Last Form</TableHead>
+ <TableHead className="w-[85px] px-2">Contacted</TableHead>
+ <TableHead className="w-[85px] px-2">Added</TableHead>
+ <TableHead className="text-right px-2">Actions</TableHead>
+ </TableRow>
+ </TableHeader>
+ <TableBody>
+ {leads.map((lead) => (
+ <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0 h-14">
+ <TableCell className="py-2 px-2 text-center">
+ <input
+ type="checkbox"
+ checked={selectedLeads.includes(lead.id)}
+ onChange={(e) => {
+ setSelectedLeads(e.target.checked
+ ? [...selectedLeads, lead.id]
+ : selectedLeads.filter(id => id !== lead.id)
+ );
+ }}
+ className="rounded border-gray-300 text-primary focus:ring-primary h-3.5 w-3.5 transition-all"
+ />
+ </TableCell>
+ <TableCell className="py-2 px-2">
+ <div className="flex items-center gap-2">
+ <div className="w-7 h-7 shrink-0 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-[10px] uppercase shadow-sm">
+ {lead.firstName[0]}{lead.lastName[0]}
+ </div>
+ <div className="flex-1 min-w-0 flex items-center gap-2">
+ <div className="truncate max-w-[90px]">
+ <div className="font-bold text-gray-900 text-[11px] truncate" title={`${lead.firstName} ${lead.lastName}`}>{lead.firstName} {lead.lastName}</div>
+ <div className="text-[8px] text-gray-400 font-mono tracking-tighter uppercase">
+ {lead.id.slice(0, 6)}
+ </div>
+ </div>
+ <Button
+ size="xs"
+ variant="white"
+ onClick={(e) => {
+ e.stopPropagation();
+ handleEditLead(lead);
+ }}
+ className="h-6 w-6 p-0 bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all shadow-sm shrink-0"
+ title="Edit Lead"
+ >
+ <Edit className="h-3 w-3" />
+ </Button>
+ </div>
+ </div>
+ </TableCell>
+ <TableCell className="py-2 px-2">
+ <div className="flex flex-col gap-0.5 max-w-[150px]">
+ <div className="flex items-center gap-1 text-[10px] text-gray-500 font-medium truncate" title={lead.email}>
+ <Mail className="h-2.5 w-2.5 shrink-0" /> {lead.email}
+ </div>
+ {lead.phone && (
+ <div className="flex items-center gap-1 text-[9px] text-gray-400 font-medium">
+ <Phone className="h-2.5 w-2.5 shrink-0" /> {lead.phone}
+ </div>
+ )}
+ </div>
+ </TableCell>
+ <TableCell className="py-2 px-2">
+ {lead.assignedSales ? (
+ <div className="flex items-center gap-1.5 overflow-hidden">
+ <div className="w-5 h-5 shrink-0 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[9px] font-black uppercase">
+ {lead.assignedSales.firstName[0]}{lead.assignedSales.lastName[0]}
+ </div>
+ <span className="text-[10px] font-bold text-gray-700 truncate">
+ {lead.assignedSales.firstName}
+ </span>
+ </div>
+ ) : (
+ <div className="flex items-center gap-1.5 opacity-50">
+ <div className="w-5 h-5 rounded-full bg-gray-50 text-gray-300 border border-dashed border-gray-200 flex items-center justify-center text-[9px]">
+ <User className="w-2.5 h-2.5" />
+ </div>
+ <span className="text-[9px] text-gray-400">Unassigned</span>
+ </div>
+ )}
+ </TableCell>
+ <TableCell className="py-2 px-2 text-center">
+ <Badge className={`${getStatusBadge(lead.status)} border px-1.5 py-0.5 rounded-full capitalize font-bold text-[8px] tracking-wider`}>
+ {lead.status}
+ </Badge>
+ </TableCell>
+ <TableCell className="py-2 px-2">
+ <div className="flex flex-col gap-0 overflow-hidden max-w-[90px]">
+ <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter truncate">{lead.source?.replace('_', ' ')}</span>
+ {lead.facebookAdName && <span className="text-[7px] font-bold text-blue-500 truncate" title={lead.facebookAdName}>AD: {lead.facebookAdName}</span>}
+ </div>
+ </TableCell>
+ <TableCell className="py-2 px-2 bg-emerald-50/10">
+ {lead.lastMetaFormSubmittedAt ? (
+ <div className="flex flex-col">
+ <span className="text-[10px] font-bold text-gray-900 truncate max-w-[120px]" title={lead.lastMetaFormName || 'Form'}>
+ {lead.lastMetaFormName || 'Meta Form'}
+ </span>
+ <span className="text-[9px] font-semibold text-emerald-600">{formatDate(lead.lastMetaFormSubmittedAt)}</span>
+ </div>
+ ) : <span className="text-gray-300 text-[10px]">No submission</span>}
+ </TableCell>
+ <TableCell className="py-2 px-2">
+ {lead.lastContactedAt ? (
+ <span className="text-[9px] font-bold text-slate-800">{formatDate(lead.lastContactedAt)}</span>
+ ) : <span className="text-gray-200 text-[9px]">-</span>}
+ </TableCell>
+ <TableCell className="py-2 px-2 text-gray-400 text-[10px] font-semibold">
+ {formatDate(lead.createdAt)}
+ </TableCell>
+ <TableCell className="py-2 px-2 text-right">
+ <div className="flex justify-end gap-1 items-center">
+ <div className="flex items-center bg-white border border-gray-100 rounded-lg shadow-sm p-0.5">
+ <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => {
+ if (onViewLead) {
+ onViewLead(lead);
+ } else {
+ navigate(`/crm/customer/${lead.id}`);
+ }
+ }}>
+ <Eye className="h-3.5 w-3.5" />
+ </Button>
+ <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => handleCheckDuplicates(lead)}>
+ <Copy className="h-3.5 w-3.5" />
+ </Button>
+ <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => handleEditLead(lead)}>
+ <Edit className="h-3.5 w-3.5" />
+ </Button>
+ <div className="w-px h-3 bg-gray-100 mx-0.5" />
+ {user?.role !== 'salesperson' && (
+ <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md" onClick={() => dispatch(deleteLead(lead.id))}>
+ <Trash2 className="h-3.5 w-3.5" />
+ </Button>
+ )}
+ </div>
+ </div>
+ </TableCell>
+ </TableRow>
+ ))}
+ </TableBody>
+ </Table>
+ )}
+ </CardContent>
+ </Card>
+
+ {/* Logic for Edit Modal */}
+ {
+ showModal && editingLead && (
+ <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-500">
+ <Card className="w-full max-w-lg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] border border-slate-800 overflow-hidden rounded-[2.5rem] bg-slate-900">
+ {/* Premium Header */}
+ <CardHeader className="px-10 py-8 flex flex-row items-center justify-between bg-gradient-to-br from-slate-900 to-slate-800 border-b border-slate-800/50">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-[#CBFF38] rounded-2xl shadow-[0_0_20px_rgba(203,255,56,0.15)] transition-transform hover:scale-105">
+ <Edit className="w-6 h-6 text-black" />
+ </div>
+ <div>
+ <CardTitle className="text-xl font-black text-white tracking-tight">Lead Modification</CardTitle>
+ <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-0.5">Strategic Terminal ID: {editingLead.id.slice(0, 8)}</p>
+ </div>
+ </div>
+ <button
+ onClick={() => setShowModal(false)}
+ className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all border border-slate-700/50"
+ >
+ <X className="w-5 h-5" />
+ </button>
+ </CardHeader>
+
+ {/* Enhanced Body with Light Background */}
+ <CardContent className="p-10 space-y-8 bg-white overflow-y-auto max-h-[60vh] custom-scrollbar">
+ <div className="space-y-6">
+ <div className="flex items-center gap-2 mb-2">
+ <div className="h-1 w-8 bg-[#CBFF38] rounded-full" />
+ <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Identity Matrix</h4>
+ </div>
+
+ <div className="grid grid-cols-2 gap-5">
+ <Input label="First Name" value={editingLead.firstName} onChange={(e) => setEditingLead({ ...editingLead, firstName: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
+ <Input label="Last Name" value={editingLead.lastName} onChange={(e) => setEditingLead({ ...editingLead, lastName: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
+ </div>
+ <Input label="Email Address" value={editingLead.email} onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })} className="bg-slate-50/50 border-slate-100 focus:bg-white h-12 rounded-xl font-bold" />
+ <PhoneInput label="Direct Line" value={editingLead.phone || ''} onChange={(val) => setEditingLead({ ...editingLead, phone: val })} defaultCountry="GR" />
+
+ <div className="grid grid-cols-2 gap-5">
+ <Select
+ label="Deployment Status"
+ value={editingLead.status}
+ onChange={(value) => setEditingLead({ ...editingLead, status: value as any })}
+ options={[{ value: 'new', label: 'New Recruit' }, { value: 'contacted', label: 'In Contact' }, { value: 'qualified', label: 'Qualified' }, { value: 'converted', label: 'Mission Accomplished' }, { value: 'lost', label: 'Aborted' }]}
+ className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100"
+ />
+ <Select
+ label="Acquisition Source"
+ value={editingLead.source}
+ onChange={(value) => setEditingLead({ ...editingLead, source: value as any })}
+ options={[{ value: 'facebook_ads', label: 'Social Echo (FB)' }, { value: 'website', label: 'Direct Portal' }, { value: 'referral', label: 'Intelligence Network' }]}
+ className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100"
+ />
+ <Select
+ label="Lead Owner"
+ value={editingLead.assignedSalesId || ''}
+ onChange={(value) => setEditingLead({ ...editingLead, assignedSalesId: value })}
+ options={providers}
+ disabled={user?.role === 'salesperson'}
+ className={`bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100 col-span-2 ${user?.role === 'salesperson' ? 'opacity-60' : ''}`}
+ />
+ </div>
+ </div>
+
+
+
+ </CardContent>
+
+ {/* Action Footer */}
+ <div className="p-10 border-t border-slate-800 flex items-center gap-4 bg-slate-900">
+ <Button
+ variant="outline"
+ onClick={() => setShowModal(false)}
+ className="flex-1 h-14 rounded-2xl font-black text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white transition-all uppercase text-[10px] tracking-widest"
+ >
+ Discard
+ </Button>
+ <Button
+ onClick={handleSaveEdit}
+ className="flex-[2] h-14 bg-[#CBFF38] text-black rounded-2xl font-black shadow-[0_10px_30px_rgba(203,255,56,0.2)] hover:scale-[1.03] active:scale-[0.97] transition-all uppercase text-[10px] tracking-widest"
+ >
+ Apply Modifications
+ </Button>
+ </div>
+ </Card>
+ </div>
+ )
+ }
+
+ {/* Create Modal Logic - Revamped Design */}
+ {
+ showCreateForm && (
+ <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+ <Card className="w-full max-w-2xl shadow-2xl border-0 overflow-hidden rounded-2xl flex flex-col max-h-[85vh]">
+ {/* Header */}
+ <div className="px-8 py-6 border-b border-gray-100 bg-white flex items-start justify-between flex-none">
+ <div>
+ <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Add New Lead</h2>
+ <p className="text-gray-500 mt-1.5 text-sm font-medium">Create a new prospect entry in your CRM</p>
+ </div>
+ <button
+ onClick={() => setShowCreateForm(false)}
+ className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors"
+ >
+ <X className="w-5 h-5" />
+ </button>
+ </div>
+
+ <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-gray-50/50">
+ {/* Section 1: Contact Information */}
+ <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+ <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-50">
+ <div className="bg-blue-50 p-2 rounded-lg">
+ <User className="w-5 h-5 text-blue-600" />
+ </div>
+ <div>
+ <h3 className="text-base font-semibold text-gray-900">Contact Information</h3>
+ <p className="text-xs text-gray-500">Basic details about the prospect</p>
+ </div>
+ </div>
+
+ <div className="space-y-5">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+ <Input
+ label="First Name"
+ placeholder="e.g. Sarah"
+ value={formData.firstName}
+ onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+ required
+ leftIcon={<User className="w-4 h-4" />}
+ />
+ <Input
+ label="Last Name"
+ placeholder="e.g. Johnson"
+ value={formData.lastName}
+ onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+ required
+ leftIcon={<User className="w-4 h-4" />}
+ />
+ </div>
+
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+ <Input
+ label="Email Address"
+ type="email"
+ placeholder="sarah@example.com"
+ value={formData.email}
+ onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+ leftIcon={<Mail className="w-4 h-4" />}
+ />
+ <PhoneInput
+ label="Phone Number"
+ value={formData.phone}
+ onChange={(val) => setFormData({ ...formData, phone: val })}
+ required
+ defaultCountry="GR"
+ />
+ </div>
+ </div>
+ </div>
+
+ {/* Section 2: Lead Details */}
+ <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+ <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-50">
+ <div className="bg-purple-50 p-2 rounded-lg">
+ <Tag className="w-5 h-5 text-purple-600" />
+ </div>
+ <div>
+ <h3 className="text-base font-semibold text-gray-900">Lead Details</h3>
+ <p className="text-xs text-gray-500">Status and source information</p>
+ </div>
+ </div>
+
+ <div className="space-y-5">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+ <Select
+ label="Initial Status"
+ value={formData.status}
+ onChange={(value) => setFormData({ ...formData, status: value })}
+ leftIcon={<Tag className="w-4 h-4" />}
+ options={[
+ { value: 'new', label: 'New Lead' },
+ { value: 'contacted', label: 'Contacted' },
+ { value: 'qualified', label: 'Qualified' }
+ ]}
+ />
+ <Select
+ label="Lead Source"
+ value={formData.source}
+ onChange={(value) => setFormData({ ...formData, source: value })}
+ leftIcon={<Globe className="w-4 h-4" />}
+ options={[
+ { value: 'facebook_ads', label: 'Facebook Ads' },
+ { value: 'website', label: 'Website' },
+ { value: 'manual', label: 'Manual Entry' },
+ { value: 'referral', label: 'Referral' }
+ ]}
+ />
+ </div>
+
+ <div className="col-span-2">
+ <Input
+ label="Initial Notes"
+ placeholder="Add any initial notes or context about this lead..."
+ value={formData.notes || ''}
+ onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+ leftIcon={<MessageSquare className="w-4 h-4" />}
+ />
+ </div>
+ </div>
+ </div>
+
+ {/* Section 3: Optional Actions */}
+ <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-6">
+ <div>
+ <label className="flex items-center gap-3 cursor-pointer group">
+ <div className={`w-10 h-6 rounded-full transition-all relative ${createFollowUpTask ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+ <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${createFollowUpTask ? 'left-5' : 'left-1'}`} />
+ <input type="checkbox" className="hidden" checked={createFollowUpTask} onChange={() => setCreateFollowUpTask(!createFollowUpTask)} />
+ </div>
+ <div>
+ <span className="text-sm font-bold text-slate-800">Create Follow-up Task</span>
+ <p className="text-[10px] text-slate-500 font-medium">Add a reminder to your task list</p>
+ </div>
+ </label>
+ </div>
+ </div>
+
+
+ </div>
+
+ {/* Footer */}
+ <div className="p-6 bg-white border-t border-gray-100 flex justify-end gap-3 flex-none shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+ <Button
+ variant="white"
+ onClick={() => setShowCreateForm(false)}
+ className="text-gray-700 hover:text-gray-900 border-gray-200"
+ >
+ Cancel
+ </Button>
+ <Button
+ variant="primary"
+ onClick={handleCreateLead}
+ className="px-8 shadow-lg shadow-blue-500/20"
+ >
+ <Plus className="w-4 h-4 mr-2" />
+ Create Lead
+ </Button>
+ </div>
+ </Card>
+ </div>
+ )
+ }
+
+ {/* Duplicate Results Modal Logic */}
+ {
+ showDuplicateResults && duplicateCheck && (
+ <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+ <Card className="w-full max-w-md shadow-2xl border-t-4 border-amber-400">
+ <div className="p-6">
+ <div className="flex items-center gap-3 mb-4">
+ <div className="p-2 bg-amber-100 rounded-full text-amber-600">
+ <AlertTriangle className="w-6 h-6" />
+ </div>
+ <div>
+ <h3 className="text-lg font-bold text-gray-900">Duplicate Check</h3>
+ <p className="text-sm text-gray-500">Analysis results</p>
+ </div>
+ </div>
+
+ {duplicateCheck.isDuplicate ? (
+ <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-4">
+ <p className="font-semibold text-amber-800 flex items-center gap-2">
+ Potential duplicate found!
+ </p>
+ <p className="text-sm text-amber-700 mt-1">
+ Matched with <strong>{duplicateCheck.existingCustomer?.firstName} {duplicateCheck.existingCustomer?.lastName}</strong> ({duplicateCheck.confidence}% confidence)
+ </p>
+ </div>
+ ) : (
+ <div className="bg-green-50 p-4 rounded-xl border border-green-100 mb-4 flex items-center gap-3">
+ <CheckCircle className="w-5 h-5 text-green-600" />
+ <span className="text-green-800 font-medium">No duplicates detected.</span>
+ </div>
+ )}
+
+ <div className="flex justify-end">
+ <Button onClick={() => setShowDuplicateResults(false)}>Close</Button>
+ </div>
+ </div>
+ </Card>
+ </div>
+ )
+ }
+
+ {/* ── Bulk CSV Import Modal ── */}
+ {showBulkImport && (
+ <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+ <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+
+ {/* Header */}
+ <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+ <div className="flex items-center gap-3">
+ <div className="bg-violet-100 p-2.5 rounded-xl">
+ <Upload className="w-5 h-5 text-violet-600" />
+ </div>
+ <div>
+ <h2 className="text-xl font-bold text-gray-900">Bulk Lead Import</h2>
+ <p className="text-xs text-gray-500 mt-0.5">Upload a CSV file to create multiple leads at once</p>
+ </div>
+ </div>
+ <button
+ onClick={() => setShowBulkImport(false)}
+ className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors"
+ >
+ <X className="w-5 h-5" />
+ </button>
+ </div>
+
+ <div className="flex-1 overflow-y-auto p-8 space-y-6">
+ {/* Template download */}
+ <div className="flex items-center justify-between bg-violet-50 border border-violet-100 rounded-xl px-4 py-3">
+ <div className="flex items-center gap-3">
+ <FileText className="w-4 h-4 text-violet-600" />
+ <span className="text-xs font-bold text-violet-800">Need the CSV template?</span>
+ <span className="text-[11px] text-violet-600">Columns: firstName, lastName, email, phone, source, status, notes</span>
+ </div>
+ <button
+ onClick={() => {
+ const header = 'firstName,lastName,email,phone,source,status,notes';
+ const sample = 'Sarah,Johnson,sarah@example.com,+971501234567,facebook_ads,new,Interested in Botox';
+ const blob = new Blob([header + '\n' + sample], { type: 'text/csv' });
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a'); a.href = url; a.download = 'leads_template.csv'; a.click();
+ URL.revokeObjectURL(url);
+ }}
+ className="flex items-center gap-1.5 bg-white border border-violet-200 text-violet-700 text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-violet-100 transition-colors"
+ >
+ <Download className="w-3.5 h-3.5" /> Download Template
+ </button>
+ </div>
+
+ {!importResult ? (
+ <>
+ {/* Drop Zone */}
+ {csvRows.length === 0 && (
+ <div
+ className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${isDragging
+ ? 'border-violet-400 bg-violet-50'
+ : 'border-gray-200 bg-gray-50 hover:border-violet-300 hover:bg-violet-50/50'
+ }`}
+ onClick={() => fileInputRef.current?.click()}
+ onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+ onDragLeave={() => setIsDragging(false)}
+ onDrop={(e) => {
+ e.preventDefault();
+ setIsDragging(false);
+ const file = e.dataTransfer.files?.[0];
+ if (file) parseCsv(file);
+ }}
+ >
+ <div className="flex flex-col items-center gap-3">
+ <div className={`p-4 rounded-2xl transition-colors ${isDragging ? 'bg-violet-200' : 'bg-gray-200'}`}>
+ <Upload className={`w-8 h-8 transition-colors ${isDragging ? 'text-violet-700' : 'text-gray-400'}`} />
+ </div>
+ <div>
+ <p className="text-sm font-bold text-gray-700">Drop your CSV file here</p>
+ <p className="text-xs text-gray-400 mt-1">or <span className="text-violet-600 font-bold underline underline-offset-2">click to browse</span></p>
+ </div>
+ <p className="text-[11px] text-gray-400">Supports .csv files up to 5 MB</p>
+ </div>
+ <input
+ ref={fileInputRef}
+ type="file"
+ accept=".csv,text/csv"
+ className="hidden"
+ onChange={(e) => {
+ const file = e.target.files?.[0];
+ if (file) parseCsv(file);
+ e.target.value = '';
+ }}
+ />
+ </div>
+ )}
+
+ {/* Preview Table */}
+ {csvRows.length > 0 && (
+ <div className="space-y-3">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-2">
+ <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+ <span className="text-xs font-bold text-gray-800">Parsed {csvRows.length} rows from <span className="text-violet-600">{csvFileName}</span></span>
+ </div>
+ <button
+ onClick={() => { setCsvRows([]); setCsvFileName(''); }}
+ className="text-[11px] font-bold text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+ >
+ <X className="w-3.5 h-3.5" /> Clear
+ </button>
+ </div>
+
+ {/* Validation warnings */}
+ {csvRows.filter(r => !r.firstName || !r.lastName || !r.email).length > 0 && (
+ <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+ <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+ <p className="text-[11px] text-amber-800 font-medium">
+ <strong>{csvRows.filter(r => !r.firstName || !r.lastName || !r.email).length} rows</strong> are missing required fields (firstName, lastName, email) and will be skipped.
+ </p>
+ </div>
+ )}
+
+ <div className="overflow-auto rounded-xl border border-gray-100 max-h-64">
+ <table className="w-full text-[11px]">
+ <thead className="bg-gray-50 sticky top-0">
+ <tr>
+ <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">#</th>
+ <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">First</th>
+ <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Last</th>
+ <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Email</th>
+ <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Phone</th>
+ <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Source</th>
+ <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Status</th>
+ <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase tracking-wider">Valid</th>
+ </tr>
+ </thead>
+ <tbody className="divide-y divide-gray-50">
+ {csvRows.map((row, i) => {
+ const valid = !!(row.firstName && row.lastName && row.email);
+ return (
+ <tr key={i} className={valid ? 'bg-white hover:bg-gray-50' : 'bg-red-50'}>
+ <td className="px-3 py-2 text-gray-400 font-mono">{i + 1}</td>
+ <td className="px-3 py-2 font-semibold text-gray-800">{row.firstName || <span className="text-red-400">missing</span>}</td>
+ <td className="px-3 py-2 text-gray-700">{row.lastName || <span className="text-red-400">missing</span>}</td>
+ <td className="px-3 py-2 text-gray-600">{row.email || <span className="text-red-400">missing</span>}</td>
+ <td className="px-3 py-2 text-gray-500">{row.phone || '—'}</td>
+ <td className="px-3 py-2 text-gray-500">{row.source || 'manual'}</td>
+ <td className="px-3 py-2 text-gray-500">{row.status || 'new'}</td>
+ <td className="px-3 py-2">
+ {valid
+ ? <span className="inline-flex items-center gap-1 text-emerald-700 font-bold"><CheckCircle2 className="w-3.5 h-3.5" /> OK</span>
+ : <span className="inline-flex items-center gap-1 text-red-500 font-bold"><AlertCircle className="w-3.5 h-3.5" /> Skip</span>
+ }
+ </td>
+ </tr>
+ );
+ })}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ )}
+ </>
+ ) : (
+ /* Result Summary */
+ <div className="space-y-4">
+ <div className="grid grid-cols-2 gap-4">
+ <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 text-center">
+ <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+ <p className="text-3xl font-black text-emerald-700">{importResult.success}</p>
+ <p className="text-xs font-bold text-emerald-600 mt-1">Leads Imported</p>
+ </div>
+ <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center">
+ <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+ <p className="text-3xl font-black text-red-600">{importResult.errors.length}</p>
+ <p className="text-xs font-bold text-red-500 mt-1">Failed Rows</p>
+ </div>
+ </div>
+ {importResult.errors.length > 0 && (
+ <div className="bg-red-50 border border-red-100 rounded-xl p-4 space-y-2 max-h-40 overflow-y-auto">
+ <p className="text-[11px] font-black text-red-700 uppercase tracking-wider">Error Details</p>
+ {importResult.errors.map((err, i) => (
+ <div key={i} className="flex items-start gap-2 text-[11px] text-red-600">
+ <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+ <span><strong>Row {err.row}:</strong> {err.message}</span>
+ </div>
+ ))}
+ </div>
+ )}
+ </div>
+ )}
+ </div>
+
+ {/* Footer */}
+ <div className="border-t border-gray-100 px-8 py-5 bg-gray-50 flex items-center justify-between flex-none">
+ <span className="text-[11px] text-gray-400 font-medium">
+ {csvRows.length > 0 && !importResult
+ ? `${csvRows.filter(r => r.firstName && r.lastName && r.email).length} of ${csvRows.length} rows will be imported`
+ : importResult
+ ? 'Import complete'
+ : 'Upload a CSV file to get started'}
+ </span>
+ <div className="flex items-center gap-3">
+ <button
+ onClick={() => setShowBulkImport(false)}
+ className="px-4 py-2 text-[11px] font-bold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+ >
+ {importResult ? 'Close' : 'Cancel'}
+ </button>
+ {!importResult && csvRows.filter(r => r.firstName && r.lastName && r.email).length > 0 && (
+ <button
+ disabled={importLoading}
+ onClick={handleBulkImport}
+ className="flex items-center gap-2 px-6 py-2 text-[11px] font-bold bg-violet-600 text-white rounded-xl hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-md shadow-violet-200"
+ >
+ {importLoading ? (
+ <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full" /> Importing...</>
+ ) : (
+ <><Upload className="w-3.5 h-3.5" /> Import {csvRows.filter(r => r.firstName && r.lastName && r.email).length} Leads</>
+ )}
+ </button>
+ )}
+ {importResult && (
+ <button
+ onClick={() => { setCsvRows([]); setCsvFileName(''); setImportResult(null); }}
+ className="flex items-center gap-2 px-6 py-2 text-[11px] font-bold bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition-colors shadow-md shadow-violet-200"
+ >
+ <Upload className="w-3.5 h-3.5" /> Import Another File
+ </button>
+ )}
+ </div>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* Facebook Form Schedule Modal */}
+ {showFormScheduleModal && (
+ <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+ <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+ <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-blue-600 text-white flex-none">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-white/10 rounded-xl">
+ <Globe className="w-5 h-5" />
+ </div>
+ <div>
+ <h2 className="text-xl font-black tracking-tight">Schedule Forms</h2>
+ <p className="text-xs text-blue-100 font-medium">Assign Facebook leads to a specific day</p>
+ </div>
+ </div>
+ <Button variant="ghost" size="icon" onClick={() => setShowFormScheduleModal(false)} className="text-white hover:bg-white/10 rounded-full">
+ <X className="w-5 h-5" />
+ </Button>
+ </div>
+
+ <div className="p-8 space-y-6 overflow-y-auto flex-1">
+ {/* Date Selection */}
+ <div className="space-y-2">
+ <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Assignment Date</label>
+ <div className="flex items-center gap-2">
+ <Input
+ type="date"
+ value={scheduleDate}
+ onChange={(e) => setScheduleDate(e.target.value)}
+ className="h-12 bg-gray-50 border-gray-100 focus:ring-blue-500 rounded-xl font-bold"
+ />
+ <div className="flex flex-col gap-1">
+ <button onClick={() => {
+ const d = new Date();
+ setScheduleDate(d.toISOString().split('T')[0]);
+ }} className="text-[9px] font-bold text-blue-600 hover:underline">Today</button>
+ <button onClick={() => {
+ const d = new Date();
+ d.setDate(d.getDate() + 1);
+ setScheduleDate(d.toISOString().split('T')[0]);
+ }} className="text-[9px] font-bold text-gray-400 hover:underline">Tomorrow</button>
+ </div>
+ </div>
+ </div>
+
+ {/* Form Selection */}
+ <div className="space-y-3">
+ <div className="flex items-center justify-between px-1">
+ <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Forms ({selectedForms.length})</label>
+ <button
+ onClick={() => setSelectedForms(facebookForms.length === selectedForms.length ? [] : facebookForms.map(f => f.name))}
+ className="text-[10px] font-bold text-blue-600"
+ >
+ {facebookForms.length === selectedForms.length ? 'Deselect All' : 'Select All'}
+ </button>
+ </div>
+
+ <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+ {facebookForms.length === 0 ? (
+ <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-100">
+ <p className="text-xs text-gray-400">No active forms found</p>
+ </div>
+ ) : (
+ facebookForms.map((form) => (
+ <div
+ key={form.id}
+ onClick={() => {
+ setSelectedForms(prev =>
+ prev.includes(form.name)
+ ? prev.filter(n => n !== form.name)
+ : [...prev, form.name]
+ );
+ }}
+ className={`p-4 rounded-2xl border-2 transition-all cursor-pointer group flex items-center justify-between ${selectedForms.includes(form.name)
+ ? 'border-blue-500 bg-blue-50/50 shadow-sm'
+ : 'border-gray-50 bg-white hover:border-gray-200'
+ }`}
+ >
+ <div className="flex items-center gap-3">
+ <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selectedForms.includes(form.name) ? 'bg-blue-600 border-blue-600' : 'border-gray-200 group-hover:border-blue-300'
+ }`}>
+ {selectedForms.includes(form.name) && <CheckCircle2 className="w-3 h-3 text-white" />}
+ </div>
+ <div>
+ <p className="text-xs font-black text-gray-900">{form.name}</p>
+ <div className="flex gap-2 mt-0.5">
+ <span className="text-[9px] font-bold text-gray-400">{form.id.startsWith('db_') ? 'From Leads' : 'Active API'}</span>
+ {form.leads_count !== undefined && <span className="text-[9px] font-bold text-emerald-600">({form.leads_count} leads)</span>}
+ </div>
+ </div>
+ </div>
+ <Badge className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg border ${form.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-50 text-gray-400 border-gray-100'
+ }`}>
+ {form.status || 'READY'}
+ </Badge>
+ </div>
+ ))
+ )}
+ </div>
+ </div>
+ </div>
+
+ <div className="p-8 bg-gray-50 border-t border-gray-100 flex gap-4 flex-none">
+ <Button
+ variant="outline"
+ onClick={() => setShowFormScheduleModal(false)}
+ className="flex-1 h-12 rounded-2xl font-bold text-gray-500"
+ >
+ Cancel
+ </Button>
+ <Button
+ onClick={handleAssignForms}
+ disabled={isAssigning || selectedForms.length === 0}
+ className="flex-[3] h-12 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+ >
+ {isAssigning ? 'Scheduling...' : `Schedule Leads from ${selectedForms.length} Forms`}
+ </Button>
+ </div>
+ </div>
+ </div>
+ )}
+ {/* Bulk Task Modal */}
+ {showBulkTaskModal && (
+ <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[70] p-4 animate-in fade-in transition-all duration-500">
+ <Card className="w-full max-w-md shadow-2xl rounded-[2.5rem] overflow-hidden border border-slate-800 bg-slate-900 shadow-black/50">
+ <div className="px-10 py-8 border-b border-slate-800 flex items-center justify-between bg-gradient-to-br from-slate-900 to-slate-800">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-[#CBFF38] rounded-2xl shadow-[0_0_20px_rgba(203,255,56,0.15)]">
+ <CalendarPlus className="w-6 h-6 text-black" />
+ </div>
+ <div>
+ <h2 className="text-xl font-black text-white tracking-tight">Bulk Mission</h2>
+ <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.15em] mt-0.5">Planning {selectedLeads.length} Assignments</p>
+ </div>
+ </div>
+ <button
+ onClick={() => setShowBulkTaskModal(false)}
+ className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all"
+ >
+ <X className="w-5 h-5" />
+ </button>
+ </div>
+
+ <CardContent className="p-10 space-y-8 bg-slate-900">
+ <div className="space-y-2.5">
+ <div className="flex items-center justify-between px-1">
+ <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Task Title</label>
+ <span className="text-[9px] font-black text-[#CBFF38] uppercase bg-[#CBFF38]/10 px-2 py-0.5 rounded-full">Required</span>
+ </div>
+ <Input
+ value={bulkTaskData.title}
+ onChange={(e) => setBulkTaskData({ ...bulkTaskData, title: e.target.value })}
+ className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white focus:bg-slate-800 focus:border-[#CBFF38]/30 transition-all font-bold text-sm px-5"
+ placeholder="e.g., Immediate Follow-up"
+ />
+ </div>
+
+ <div className="space-y-2.5">
+ <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Deliverable Due Date</label>
+ <Input
+ type="date"
+ value={bulkTaskData.dueDate}
+ onChange={(e) => setBulkTaskData({ ...bulkTaskData, dueDate: e.target.value })}
+ className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white focus:bg-slate-800 focus:border-[#CBFF38]/30 transition-all font-bold text-sm px-5"
+ />
+ </div>
+
+ <div className="space-y-2.5">
+ <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Assign To Strategist</label>
+ <Select
+ value={bulkTaskData.salespersonId}
+ onChange={(val) => setBulkTaskData({ ...bulkTaskData, salespersonId: val })}
+ placeholder="Select Lead Strategist..."
+ options={(salespersons || [])
+ .filter((sp: any) => sp.isActive !== false && ['salesperson', 'SUPER_ADMIN', 'manager', 'admin', 'clinic_owner'].includes(sp.role))
+ .map((sp: any) => ({
+ value: sp.id,
+ label: `${sp.firstName} ${sp.lastName}`
+ }))}
+ className="h-14 rounded-2xl border-slate-800 bg-slate-800/40 text-white font-bold"
+ />
+ </div>
+ </CardContent>
+
+ <div className="p-10 bg-slate-900 border-t border-slate-800 flex gap-4">
+ <Button
+ variant="outline"
+ onClick={() => setShowBulkTaskModal(false)}
+ className="flex-1 h-14 rounded-2xl font-black text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white transition-all text-xs uppercase tracking-widest"
+ >
+ Discard
+ </Button>
+ <Button
+ onClick={handleBulkCreateTasks}
+ disabled={!bulkTaskData.salespersonId}
+ className="flex-[2] h-14 bg-[#CBFF38] text-black rounded-2xl font-black shadow-[0_10px_30px_rgba(203,255,56,0.2)] hover:bg-[#b3d81b] hover:scale-[1.03] active:scale-[0.97] disabled:opacity-30 disabled:hover:scale-100 transition-all text-xs uppercase tracking-widest"
+ >
+ Deploy Tasks
+ </Button>
+ </div>
+ </Card>
+ </div>
+ )}
+ </div>
+ );
 };

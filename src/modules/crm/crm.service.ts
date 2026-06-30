@@ -124,19 +124,20 @@ export class CrmService implements OnModuleInit {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) return false;
 
-    // Direct platform managers/admins have full access
-    if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER].includes(user.role as UserRole)) {
+    // Direct platform managers/admins and salespersons have full access
+    if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.SALESPERSON].includes(user.role as UserRole)) {
       return true;
     }
 
     if (!user) return false;
     
     // Explicitly allow high-level roles
-    if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER].includes(user.role)) {
+    if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.SALESPERSON].includes(user.role)) {
       return true;
     }
 
     if (user.role === UserRole.SALESPERSON) {
+      return true; // We already returned true above, but just in case
       // First check if it's a lead
       const lead = await this.leadsRepository.findOne({ 
         where: { id: customerId },
@@ -638,7 +639,7 @@ export class CrmService implements OnModuleInit {
         direction: 'incoming',
         status: 'completed',
         subject: 'Facebook Lead Form Submission',
-        notes: `Form submitted via Facebook. Campaign: ${parsedLead.facebookCampaignId || 'Unknown'}. Form: ${parsedLead.facebookFormId || 'Unknown form'}.`,
+        notes: `Form submitted via Facebook. Campaign: ${parsedLead.facebookCampaignId || 'Unknown'}. Form: ${parsedLead.facebookFormId || 'Unknown form'}.\n\nForm Answers:\n${parsedLead.notes || 'None'}`,
         metadata: {
           facebookLeadId: parsedLead.facebookLeadId,
           facebookFormId: parsedLead.facebookFormId,
@@ -693,6 +694,7 @@ export class CrmService implements OnModuleInit {
       facebookAdId: parsedLead.facebookAdId,
       facebookLeadData: parsedLead.facebookLeadData,
       facebookAdName: facebookAdName, // Direct column
+      notes: parsedLead.notes,
       status: LeadStatus.NEW,
       metadata: {
         importedFromFacebook: true,
@@ -806,12 +808,9 @@ export class CrmService implements OnModuleInit {
       qb.andWhere('CAST(lead.lastContactedAt AS DATE) <= :lastContactedTo', { lastContactedTo: filters.lastContactedTo });
     }
 
-    // ACL: if requester is salesperson, only show leads assigned to them
+    // ACL: if requester is salesperson, they can now see ALL leads (globally).
     if (filters._requesterId) {
       const user = await this.usersRepository.findOne({ where: { id: filters._requesterId } });
-      if (user?.role === UserRole.SALESPERSON) {
-        qb.andWhere('lead.assignedSalesId = :sid', { sid: filters._requesterId });
-      }
       // For clinic owners, leave as-is for now (leads may not be linked to clinics). Future: relate leads to clinic and filter.
     }
 
@@ -3823,7 +3822,7 @@ export class CrmService implements OnModuleInit {
   async getSalespersons(): Promise<any[]> {
     const users = await this.usersRepository.find({
       where: {
-        role: UserRole.SALESPERSON,
+        role: In([UserRole.SALESPERSON, UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER]),
         isActive: true
       },
       select: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePictureUrl', 'role'],

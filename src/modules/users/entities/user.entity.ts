@@ -75,6 +75,16 @@ export class User {
   @Exclude()
   refreshToken: string;
 
+  @Column({ nullable: true })
+  @Exclude()
+  emailVerificationToken: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  emailVerificationExpiry: Date;
+
+  @Column({ default: false })
+  isEmailVerified: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

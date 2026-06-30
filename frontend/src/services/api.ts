@@ -1,35 +1,34 @@
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError } from"axios";
 
 import type {
-  Lead,
-  CustomerRecord,
-  CommunicationLog,
-  CrmAction,
-  CrmFilters,
-  User,
-  Task
-} from "@/types";
+ Lead,
+ CustomerRecord,
+ CommunicationLog,
+ CrmAction,
+ CrmFilters,
+ User,
+ Task
+} from"@/types";
 
 const getBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_API_BASE_URL;
-  if (envUrl) {
-    let url = envUrl;
-    if (url.endsWith('/')) url = url.slice(0, -1);
-    // Ensure it's the full URL including /api
-    return url.endsWith('/api') ? url : `${url}/api`;
-  }
-  // Default to relative /api for local proxy and production rewrites
-  return '/api';
+ const envUrl = import.meta.env.VITE_API_BASE_URL;
+ if (envUrl) {
+ let url = envUrl;
+ if (url.endsWith('/')) url = url.slice(0, -1);
+ // Ensure it's the full URL including /api
+ return url.endsWith('/api') ? url : `${url}/api`;
+ }
+ // Default to relative /api for local proxy and production rewrites
+ return '/api';
 };
 
 const API_BASE_URL = getBaseUrl();
-// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||"/api";
 
 export const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+ baseURL: API_BASE_URL,
+ headers: {"Content-Type":"application/json",
+ },
 });
 
 let store: any;
@@ -37,650 +36,646 @@ let setTokensAction: any;
 let logoutAction: any;
 
 export const setupAxiosInterceptors = (_store: any, _actions: { setTokens: any, logout: any }) => {
-  store = _store;
-  setTokensAction = _actions.setTokens;
-  logoutAction = _actions.logout;
+ store = _store;
+ setTokensAction = _actions.setTokens;
+ logoutAction = _actions.logout;
 };
 
 let isRefreshing = false;
 let refreshSubscribers: ((token: string | null, error?: any) => void)[] = [];
 
 const subscribeTokenRefresh = (cb: (token: string | null, error?: any) => void) => {
-  refreshSubscribers.push(cb);
+ refreshSubscribers.push(cb);
 };
 
 const onRefreshed = (token: string) => {
-  refreshSubscribers.forEach((cb) => cb(token));
-  refreshSubscribers = [];
+ refreshSubscribers.forEach((cb) => cb(token));
+ refreshSubscribers = [];
 };
 
 const onRefreshFailed = (error: any) => {
-  refreshSubscribers.forEach((cb) => cb(null, error));
-  refreshSubscribers = [];
+ refreshSubscribers.forEach((cb) => cb(null, error));
+ refreshSubscribers = [];
 };
 
 api.interceptors.request.use((config) => {
-  if (store) {
-    const state = store.getState();
-    const token = state.auth.accessToken;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return config;
+ if (store) {
+ const state = store.getState();
+ const token = state.auth.accessToken;
+ if (token) {
+ config.headers.Authorization = `Bearer ${token}`;
+ }
+ }
+ return config;
 });
 
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  async (error: AxiosError) => {
-    const originalRequest = error.config as any;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (!store) return Promise.reject(error);
+ (response) => {
+ return response;
+ },
+ async (error: AxiosError) => {
+ const originalRequest = error.config as any;
+ if (error.response?.status === 401 && !originalRequest._retry) {
+ if (!store) return Promise.reject(error);
 
-      console.log(
-        "401 detected, isRefreshing:",
-        isRefreshing,
-        "originalRequest:",
-        {
-          url: originalRequest.url,
-          method: originalRequest.method,
-        }
-      );
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          subscribeTokenRefresh((token, refreshError) => {
-            if (refreshError) {
-              reject(refreshError);
-            } else if (token) {
-              if (originalRequest.headers) {
-                delete originalRequest.headers.authorization;
-                delete originalRequest.headers.Authorization;
-                originalRequest.headers.Authorization = `Bearer ${token}`;
-              }
-              resolve(api(originalRequest));
-            }
-          });
-        });
-      }
+ console.log("401 detected, isRefreshing:",
+ isRefreshing,"originalRequest:",
+ {
+ url: originalRequest.url,
+ method: originalRequest.method,
+ }
+ );
+ if (isRefreshing) {
+ return new Promise((resolve, reject) => {
+ subscribeTokenRefresh((token, refreshError) => {
+ if (refreshError) {
+ reject(refreshError);
+ } else if (token) {
+ if (originalRequest.headers) {
+ delete originalRequest.headers.authorization;
+ delete originalRequest.headers.Authorization;
+ originalRequest.headers.Authorization = `Bearer ${token}`;
+ }
+ resolve(api(originalRequest));
+ }
+ });
+ });
+ }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
+ originalRequest._retry = true;
+ isRefreshing = true;
 
-      const state = store.getState();
-      const refreshToken =
-        state.auth.refreshToken || sessionStorage.getItem("refreshToken");
-      if (refreshToken) {
-        try {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
-          const { accessToken, refreshToken: newRefreshToken } = response.data;
+ const state = store.getState();
+ const refreshToken =
+ state.auth.refreshToken || sessionStorage.getItem("refreshToken");
+ if (refreshToken) {
+ try {
+ const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+ refreshToken,
+ });
+ const { accessToken, refreshToken: newRefreshToken } = response.data;
 
-          if (store && setTokensAction) {
-            store.dispatch(
-              setTokensAction({ accessToken, refreshToken: newRefreshToken })
-            );
-          }
+ if (store && setTokensAction) {
+ store.dispatch(
+ setTokensAction({ accessToken, refreshToken: newRefreshToken })
+ );
+ }
 
-          console.log("Token refresh successful, retrying original request:", originalRequest.url);
-          
-          // Re-set flag before retrying to avoid the race condition where new requests
-          // during the retry think a refresh is still in progress
-          isRefreshing = false;
-          onRefreshed(accessToken);
+ console.log("Token refresh successful, retrying original request:", originalRequest.url);
+ 
+ // Re-set flag before retrying to avoid the race condition where new requests
+ // during the retry think a refresh is still in progress
+ isRefreshing = false;
+ onRefreshed(accessToken);
 
-          // Standard way to update headers for retry safely
-          if (originalRequest.headers) {
-            delete originalRequest.headers.authorization;
-            delete originalRequest.headers.Authorization;
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          }
-          
-          return api(originalRequest);
-        } catch (refreshError: any) {
-          console.error("Refresh failed:", {
-            message: refreshError.response?.data || refreshError.message,
-            status: refreshError.response?.status,
-          });
+ // Standard way to update headers for retry safely
+ if (originalRequest.headers) {
+ delete originalRequest.headers.authorization;
+ delete originalRequest.headers.Authorization;
+ originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+ }
+ 
+ return api(originalRequest);
+ } catch (refreshError: any) {
+ console.error("Refresh failed:", {
+ message: refreshError.response?.data || refreshError.message,
+ status: refreshError.response?.status,
+ });
 
-          isRefreshing = false;
-          onRefreshFailed(refreshError);
+ isRefreshing = false;
+ onRefreshFailed(refreshError);
 
-          if (store && logoutAction) {
-            store.dispatch(logoutAction());
-          }
-          window.location.href = "/login";
-          return Promise.reject(refreshError);
-        }
-      } else {
-        console.warn("No refresh token found, logging out");
-        if (store && logoutAction) {
-          store.dispatch(logoutAction());
-        }
-        window.location.href = "/login";
-      }
-    }
-    return Promise.reject(error);
-  }
+ if (store && logoutAction) {
+ store.dispatch(logoutAction());
+ }
+ window.location.href ="/login";
+ return Promise.reject(refreshError);
+ }
+ } else {
+ console.warn("No refresh token found, logging out");
+ if (store && logoutAction) {
+ store.dispatch(logoutAction());
+ }
+ window.location.href ="/login";
+ }
+ }
+ return Promise.reject(error);
+ }
 );
 
 export const authAPI = {
-  login: (email: string, password: string) =>
-    api.post("/auth/login", { email, password }),
-  register: (userData: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    phone?: string;
-  }) => api.post("/auth/register", userData),
-  logout: () => {
-    // We try to get state from the injected store if available, else null
-    const state = store ? store.getState() : null;
-    const token = state?.auth?.accessToken;
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    return api.post("/auth/logout", {}, { headers }).catch((error) => {
-      console.log(
-        "Logout API failed, clearing state:",
-        error.response?.data || error.message
-      );
-      return Promise.resolve({ data: { message: "Logged out" } });
-    });
-  },
-  refreshToken: (refreshToken: string) =>
-    axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }),
+ login: (email: string, password: string) =>
+ api.post("/auth/login", { email, password }),
+ register: (userData: {
+ email: string;
+ password: string;
+ firstName: string;
+ lastName: string;
+ phone?: string;
+ }) => api.post("/auth/register", userData),
+ logout: () => {
+ // We try to get state from the injected store if available, else null
+ const state = store ? store.getState() : null;
+ const token = state?.auth?.accessToken;
+ const headers = token ? { Authorization: `Bearer ${token}` } : {};
+ return api.post("/auth/logout", {}, { headers }).catch((error) => {
+ console.log("Logout API failed, clearing state:",
+ error.response?.data || error.message
+ );
+ return Promise.resolve({ data: { message:"Logged out" } });
+ });
+ },
+ refreshToken: (refreshToken: string) =>
+ axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }),
 
-  resetPassword: (password: string, resetToken: string) =>
-    api.post("/auth/reset-password", { password, resetToken }),
+ resetPassword: (password: string, resetToken: string) =>
+ api.post("/auth/reset-password", { password, resetToken }),
 
-  forgotPassword: (email: string) =>
-    api.post("/auth/forget-password", { email })
-      .catch((error) => {
-        console.log("Forgot password API failed:", error.response?.data || error.message);
-        return Promise.reject(error);
-      }),
+ forgotPassword: (email: string) =>
+ api.post("/auth/forget-password", { email })
+ .catch((error) => {
+ console.log("Forgot password API failed:", error.response?.data || error.message);
+ return Promise.reject(error);
+ }),
 
 
 };
 
 export const clinicsAPI = {
-  search: (params: {
-    location?: string;
-    category?: string;
-    search?: string;
-    limit?: number;
-    offset?: number;
-  }) => api.get("/clinics", { params: { ...params, search: params.search || (params as any).query } }),
-  getById: (id: string) => api.get(`/clinics/${id}`),
-  getServices: (clinicId: string) => api.get(`/clinics/${clinicId}/services`),
-  getFeatured: () => api.get("/clinics/featured"),
-  getTreatmentDetails: (id: string) => api.get(`/clinics/treatments/${id}`),
-  createReview: (id: string, data: { rating: number; comment?: string; appointmentId?: string }) =>
-    api.post(`/clinics/${id}/reviews`, data),
-  getPublicReviews: (id: string, params?: { limit?: number; offset?: number }) =>
-    api.get(`/clinics/${id}/reviews`, { params }),
-  getProviders: (clinicId: string) => api.get(`/clinics/${clinicId}/providers`),
-  getPendingReviews: (params?: { limit?: number; offset?: number }) =>
-    api.get("/clinics/reviews/pending", { params }),
-  moderateReview: (id: string, data: { status: 'APPROVED' | 'REJECTED'; rejectReason?: string }) =>
-    api.patch(`/clinics/reviews/${id}/moderate`, data),
-  getSuggestions: (q: string) => api.get("/clinics/suggestions", { params: { q } }),
-  // Public, super-admin-managed category tree + featured treatments
-  getCategoryTree: (withTreatments?: boolean) => api.get("/clinics/categories", { params: withTreatments ? { withTreatments: true } : undefined }),
-  getCategoryTreatments: (id: string) => api.get(`/clinics/categories/${id}/treatments`),
-  getTopTreatments: (limit?: number) => api.get("/clinics/top-treatments", { params: { limit } }),
+ search: (params: {
+ location?: string;
+ category?: string;
+ search?: string;
+ limit?: number;
+ offset?: number;
+ }) => api.get("/clinics", { params: { ...params, search: params.search || (params as any).query } }),
+ getById: (id: string) => api.get(`/clinics/${id}`),
+ getServices: (clinicId: string) => api.get(`/clinics/${clinicId}/services`),
+ getFeatured: () => api.get("/clinics/featured"),
+ getTreatmentDetails: (id: string) => api.get(`/clinics/treatments/${id}`),
+ createReview: (id: string, data: { rating: number; comment?: string; appointmentId?: string }) =>
+ api.post(`/clinics/${id}/reviews`, data),
+ getPublicReviews: (id: string, params?: { limit?: number; offset?: number }) =>
+ api.get(`/clinics/${id}/reviews`, { params }),
+ getProviders: (clinicId: string) => api.get(`/clinics/${clinicId}/providers`),
+ getPendingReviews: (params?: { limit?: number; offset?: number }) =>
+ api.get("/clinics/reviews/pending", { params }),
+ moderateReview: (id: string, data: { status: 'APPROVED' | 'REJECTED'; rejectReason?: string }) =>
+ api.patch(`/clinics/reviews/${id}/moderate`, data),
+ getSuggestions: (q: string) => api.get("/clinics/suggestions", { params: { q } }),
+ // Public, super-admin-managed category tree + featured treatments
+ getCategoryTree: (withTreatments?: boolean) => api.get("/clinics/categories", { params: withTreatments ? { withTreatments: true } : undefined }),
+ getCategoryTreatments: (id: string) => api.get(`/clinics/categories/${id}/treatments`),
+ getTopTreatments: (limit?: number) => api.get("/clinics/top-treatments", { params: { limit } }),
 };
 
 export const bookingAPI = {
-  getAvailability: (params: {
-    clinicId: string;
-    serviceId: string | string[];
-    providerId?: string;
-    date: string;
-    allowPast?: boolean;
-  }) => api.get("/availability", { 
-    params,
-    paramsSerializer: {
-      indexes: null // Allows passing arrays as ?serviceId=id1&serviceId=id2
-    }
-  }),
-  holdSlot: (data: {
-    clinicId: string;
-    serviceId: string;
-    providerId?: string;
-    startTime: string;
-    endTime: string;
-    additionalServiceIds?: string[];
-  }) => api.post("/appointments/hold", data),
-  createAppointment: (data: {
-    clinicId: string;
-    serviceId: string;
-    additionalServiceIds?: string[];
-    providerId?: string;
-    clientId: string;
-    startTime: string;
-    endTime: string;
-    notes?: string;
-    paymentMethod?: string;
-    advancePaymentAmount?: number;
-    holdId?: string;
-    status?: string;
-    bookedById?: string;
-    clientDetails?: {
-      fullName: string;
-      email: string;
-      phone: string;
-    };
-  }) => api.post("/appointments", data),
-  getUserAppointments: () => api.get("/appointments"),
-  getAppointment: (id: string) => api.get(`/appointments/${id}`),
-  getClinicAppointments: (params: { clinicId?: string; date?: string; providerId?: string; status?: string }) =>
-    api.get("/appointments/clinic", { params }),
-  recordPayment: (id: string, data: { amount: number; method: string; notes?: string }) =>
-    api.post(`/appointments/${id}/payment`, data),
-  generatePaymentUrl: (id: string) =>
-    api.post(`/appointments/${id}/payment-url`),
-  reschedule: (id: string, startTime: string, endTime: string, notes?: string) =>
-    api.patch(`/appointments/${id}/reschedule`, { startTime, endTime, notes }),
-  cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
-  complete: (id: string, data?: any) => api.patch(`/clinic/appointments/${id}/complete`, data),
-  validateGiftCard: (code: string) => api.post(`/clinic/appointments/validate-gift-card`, { code }).then(res => res.data),
-  updateStatus: (id: string, status: string) =>
-    api.patch(`/appointments/${id}/status`, { status }),
-  createBlockedSlot: (data: {
-    clinicId: string;
-    providerId?: string | null;
-    startTime: string;
-    endTime: string;
-    reason?: string;
-  }) => api.post("/blocked-slots", data),
-  updateAppointment: (id: string, data: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string; totalAmount?: number; additionalServiceIds?: string[] }) =>
-    api.patch(`/appointments/${id}/update`, data),
-  deleteAppointment: (id: string) => api.patch(`/appointments/${id}/delete`),
+ getAvailability: (params: {
+ clinicId: string;
+ serviceId: string | string[];
+ providerId?: string;
+ date: string;
+ allowPast?: boolean;
+ }) => api.get("/availability", { 
+ params,
+ paramsSerializer: {
+ indexes: null // Allows passing arrays as ?serviceId=id1&serviceId=id2
+ }
+ }),
+ holdSlot: (data: {
+ clinicId: string;
+ serviceId: string;
+ providerId?: string;
+ startTime: string;
+ endTime: string;
+ additionalServiceIds?: string[];
+ }) => api.post("/appointments/hold", data),
+ createAppointment: (data: {
+ clinicId: string;
+ serviceId: string;
+ additionalServiceIds?: string[];
+ providerId?: string;
+ clientId: string;
+ startTime: string;
+ endTime: string;
+ notes?: string;
+ paymentMethod?: string;
+ advancePaymentAmount?: number;
+ holdId?: string;
+ status?: string;
+ bookedById?: string;
+ clientDetails?: {
+ fullName: string;
+ email: string;
+ phone: string;
+ };
+ }) => api.post("/appointments", data),
+ getUserAppointments: () => api.get("/appointments"),
+ getAppointment: (id: string) => api.get(`/appointments/${id}`),
+ getClinicAppointments: (params: { clinicId?: string; date?: string; providerId?: string; status?: string }) =>
+ api.get("/appointments/clinic", { params }),
+ recordPayment: (id: string, data: { amount: number; method: string; notes?: string }) =>
+ api.post(`/appointments/${id}/payment`, data),
+ generatePaymentUrl: (id: string) =>
+ api.post(`/appointments/${id}/payment-url`),
+ reschedule: (id: string, startTime: string, endTime: string, notes?: string) =>
+ api.patch(`/appointments/${id}/reschedule`, { startTime, endTime, notes }),
+ cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
+ complete: (id: string, data?: any) => api.patch(`/clinic/appointments/${id}/complete`, data),
+ validateGiftCard: (code: string) => api.post(`/clinic/appointments/validate-gift-card`, { code }).then(res => res.data),
+ updateStatus: (id: string, status: string) =>
+ api.patch(`/appointments/${id}/status`, { status }),
+ createBlockedSlot: (data: {
+ clinicId: string;
+ providerId?: string | null;
+ startTime: string;
+ endTime: string;
+ reason?: string;
+ }) => api.post("/blocked-slots", data),
+ updateAppointment: (id: string, data: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string; totalAmount?: number; additionalServiceIds?: string[] }) =>
+ api.patch(`/appointments/${id}/update`, data),
+ deleteAppointment: (id: string) => api.patch(`/appointments/${id}/delete`),
 };
 
 export const userAPI = {
-  getProfile: () => api.get("/users/me"),
-  updateProfile: (data: Partial<User>) => api.patch("/users/me/profile", data),
-  exportData: () => api.get("/users/me/export"),
-  deleteData: () => api.post("/users/me/delete"),
-  getAllUsers: (params: { limit?: number; offset?: number; role?: string; search?: string }) =>
-    api.get("/users", { params }),
-  createUser: (userData: any) => api.post("/users", userData),
-  changePassword: (data: any) => api.post("/users/me/change-password", data),
-  getReferralStats: () => api.get("/users/me/referral-stats"),
+ getProfile: () => api.get("/users/me"),
+ updateProfile: (data: Partial<User>) => api.patch("/users/me/profile", data),
+ exportData: () => api.get("/users/me/export"),
+ deleteData: () => api.post("/users/me/delete"),
+ getAllUsers: (params: { limit?: number; offset?: number; role?: string; search?: string }) =>
+ api.get("/users", { params }),
+ createUser: (userData: any) => api.post("/users", userData),
+ changePassword: (data: any) => api.post("/users/me/change-password", data),
+ getReferralStats: () => api.get("/users/me/referral-stats"),
 };
 
 export const loyaltyAPI = {
-  getCatalog: () => api.get("/loyalty/catalog"),
-  getBalance: (clientId: string, clinicId?: string) => {
-    const params = clinicId ? { clinicId } : {};
-    return api.get(`/loyalty/${clientId}`, { params });
-  },
-  getHistory: (clientId: string, clinicId?: string) => {
-    const params = clinicId ? { clinicId } : {};
-    return api.get(`/loyalty/${clientId}/history`, { params });
-  },
-  redeemPoints: (data: {
-    clientId: string;
-    clinicId: string;
-    points: number;
-    description: string;
-  }) => api.post("/loyalty/redeem", data),
+ getCatalog: () => api.get("/loyalty/catalog"),
+ getBalance: (clientId: string, clinicId?: string) => {
+ const params = clinicId ? { clinicId } : {};
+ return api.get(`/loyalty/${clientId}`, { params });
+ },
+ getHistory: (clientId: string, clinicId?: string) => {
+ const params = clinicId ? { clinicId } : {};
+ return api.get(`/loyalty/${clientId}/history`, { params });
+ },
+ redeemPoints: (data: {
+ clientId: string;
+ clinicId: string;
+ points: number;
+ description: string;
+ }) => api.post("/loyalty/redeem", data),
 };
 
 export const paymentsAPI = {
-  getMyWallet: (params?: { limit?: number; offset?: number }) => api.get("/payments/my-wallet", { params }),
-  getMyGiftCards: () => api.get("/payments/gift-cards"),
-  purchaseGiftCard: (data: { amount: number; recipientEmail?: string; message?: string }) => api.post("/payments/gift-cards", data),
-  applyGiftCard: (code: string) => api.post("/payments/gift-cards/apply", { code }),
+ getMyWallet: (params?: { limit?: number; offset?: number }) => api.get("/payments/my-wallet", { params }),
+ getMyGiftCards: () => api.get("/payments/gift-cards"),
+ purchaseGiftCard: (data: { amount: number; recipientEmail?: string; message?: string }) => api.post("/payments/gift-cards", data),
+ applyGiftCard: (code: string) => api.post("/payments/gift-cards/apply", { code }),
 };
 
 
 
 export const crmAPI = {
-  // Lead Management
-  createLead: (data: {
-    source: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone?: string;
-    facebookLeadId?: string;
-    facebookFormId?: string;
-    facebookCampaignId?: string;
-    facebookAdSetId?: string;
-    facebookAdId?: string;
-    facebookLeadData?: any;
-    status: string;
-    metadata?: any;
-    assignedSalesId?: string;
-    notes?: string;
-    estimatedValue?: number;
-  }) => api.post("/crm/leads", data),
-  getLeads: (filters?: CrmFilters) => api.get("/crm/leads", { params: filters }),
-  getLead: (id: string) => api.get(`/crm/leads/${id}`),
-  updateLead: (id: string, data: Partial<Lead>) =>
-    api.patch(`/crm/leads/${id}`, data),
-  deleteLead: (id: string) => api.delete(`/crm/leads/${id}`),
-  bulkCreateLeads: (leads: any[]) => api.post("/crm/leads/bulk", leads),
+ // Lead Management
+ createLead: (data: {
+ source: string;
+ firstName: string;
+ lastName: string;
+ email: string;
+ phone?: string;
+ facebookLeadId?: string;
+ facebookFormId?: string;
+ facebookCampaignId?: string;
+ facebookAdSetId?: string;
+ facebookAdId?: string;
+ facebookLeadData?: any;
+ status: string;
+ metadata?: any;
+ assignedSalesId?: string;
+ notes?: string;
+ estimatedValue?: number;
+ }) => api.post("/crm/leads", data),
+ getLeads: (filters?: CrmFilters) => api.get("/crm/leads", { params: filters }),
+ getLead: (id: string) => api.get(`/crm/leads/${id}`),
+ updateLead: (id: string, data: Partial<Lead>) =>
+ api.patch(`/crm/leads/${id}`, data),
+ deleteLead: (id: string) => api.delete(`/crm/leads/${id}`),
+ bulkCreateLeads: (leads: any[]) => api.post("/crm/leads/bulk", leads),
 
-  // Facebook Integration
-  handleFacebookWebhook: (data: any) => api.post("/crm/facebook/webhook", data),
-  importFacebookLeads: (formId: string, limit?: number) =>
-    api.post(`/crm/facebook/import/${formId}`, {}, { params: { limit } }),
-  getFacebookForms: (pageId?: string) => api.get("/crm/facebook/forms", { params: pageId ? { pageId } : undefined }),
-  testFacebookConnection: () => api.get("/crm/facebook/test"),
-  assignFormsToDay: (data: { formNames: string[]; scheduledAt: string }) => api.post('/crm/facebook/forms/assign', data),
-  bulkCreateTasks: (data: { leadIds: string[]; salespersonId: string; dueDate: string; title: string }) => api.post('/crm/actions/bulk', data),
+ // Facebook Integration
+ handleFacebookWebhook: (data: any) => api.post("/crm/facebook/webhook", data),
+ importFacebookLeads: (formId: string, limit?: number) =>
+ api.post(`/crm/facebook/import/${formId}`, {}, { params: { limit } }),
+ getFacebookForms: (pageId?: string) => api.get("/crm/facebook/forms", { params: pageId ? { pageId } : undefined }),
+ testFacebookConnection: () => api.get("/crm/facebook/test"),
+ assignFormsToDay: (data: { formNames: string[]; scheduledAt: string }) => api.post('/crm/facebook/forms/assign', data),
+ bulkCreateTasks: (data: { leadIds: string[]; salespersonId: string; dueDate: string; title: string }) => api.post('/crm/actions/bulk', data),
 
-  // Duplicate Detection
-  checkForDuplicates: (data: {
-    email?: string;
-    phone?: string;
-    firstName?: string;
-    lastName?: string;
-  }) => api.get("/crm/duplicates/check", { params: data }),
-  getDuplicateSuggestions: (data: {
-    email?: string;
-    phone?: string;
-    firstName?: string;
-    lastName?: string;
-  }) => api.get("/crm/duplicates/suggestions", { params: data }),
-  mergeDuplicates: (targetId: string, sourceId: string) =>
-    api.post(`/crm/duplicates/merge`, { targetId, sourceId }),
+ // Duplicate Detection
+ checkForDuplicates: (data: {
+ email?: string;
+ phone?: string;
+ firstName?: string;
+ lastName?: string;
+ }) => api.get("/crm/duplicates/check", { params: data }),
+ getDuplicateSuggestions: (data: {
+ email?: string;
+ phone?: string;
+ firstName?: string;
+ lastName?: string;
+ }) => api.get("/crm/duplicates/suggestions", { params: data }),
+ mergeDuplicates: (targetId: string, sourceId: string) =>
+ api.post(`/crm/duplicates/merge`, { targetId, sourceId }),
 
-  // Customer Records
-  getCustomerRecord: (customerId: string, salespersonId?: string) =>
-    api.get(`/crm/customers/${customerId}/record`, { params: { salespersonId } }),
-  getCustomer: (id?: string) =>
-    api.get(`/crm/customer/${id}`),
-  updateCustomerRecord: (customerId: string, data: Partial<CustomerRecord>) =>
-    api.patch(`/crm/customers/${customerId}`, data),
+ // Customer Records
+ getCustomerRecord: (customerId: string, salespersonId?: string) =>
+ api.get(`/crm/customers/${customerId}/record`, { params: { salespersonId } }),
+ getCustomer: (id?: string) =>
+ api.get(`/crm/customer/${id}`),
+ updateCustomerRecord: (customerId: string, data: Partial<CustomerRecord>) =>
+ api.patch(`/crm/customers/${customerId}`, data),
 
-  // Communication Management
-  logCommunication: (data: Partial<CommunicationLog>) =>
-    api.post("/crm/communications", data),
-  getCommunicationHistory: (customerId: string, filters?: {
-    type?: string;
-    startDate?: string;
-    endDate?: string;
-  }) => api.get(`/crm/customers/${customerId}/communications`, { params: filters }),
+ // Communication Management
+ logCommunication: (data: Partial<CommunicationLog>) =>
+ api.post("/crm/communications", data),
+ getCommunicationHistory: (customerId: string, filters?: {
+ type?: string;
+ startDate?: string;
+ endDate?: string;
+ }) => api.get(`/crm/customers/${customerId}/communications`, { params: filters }),
 
-  updateCommunication: (id: string, data: Partial<CommunicationLog>) =>
-    api.patch(`/crm/communications/${id}`, data),
+ updateCommunication: (id: string, data: Partial<CommunicationLog>) =>
+ api.patch(`/crm/communications/${id}`, data),
 
-  deleteCommunication: (id: string) => api.delete(`/crm/communications/${id}`),
+ deleteCommunication: (id: string) => api.delete(`/crm/communications/${id}`),
 
-  // Action/Task Management
-  createAction: (data: Partial<CrmAction>) =>
-    api.post("/crm/actions", data),
-  updateAction: (id: string, data: Partial<CrmAction>) =>
-    api.patch(`/crm/actions/${id}`, data),
-  deleteAction: (id: string) => api.delete(`/crm/actions/${id}`),
-  getActions: (salespersonId?: string, filters?: {
-    status?: string;
-    priority?: string;
-    customerId?: string;
-  }) => api.get(`/crm/actions`, { params: { ...filters, salespersonId } }),
-  getPendingActions: (salespersonId?: string) =>
-    api.get(`/crm/actions/${salespersonId}/pending`),
-  getOverdueTasks: (salespersonId?: string) =>
-    api.get("/crm/tasks/overdue", { params: { salespersonId } }),
-  getTaskKpis: (salespersonId?: string) => api.get("/crm/tasks/kpis", { params: { salespersonId } }),
+ // Action/Task Management
+ createAction: (data: Partial<CrmAction>) =>
+ api.post("/crm/actions", data),
+ updateAction: (id: string, data: Partial<CrmAction>) =>
+ api.patch(`/crm/actions/${id}`, data),
+ deleteAction: (id: string) => api.delete(`/crm/actions/${id}`),
+ getActions: (salespersonId?: string, filters?: {
+ status?: string;
+ priority?: string;
+ customerId?: string;
+ }) => api.get(`/crm/actions`, { params: { ...filters, salespersonId } }),
+ getPendingActions: (salespersonId?: string) =>
+ api.get(`/crm/actions/${salespersonId}/pending`),
+ getOverdueTasks: (salespersonId?: string) =>
+ api.get("/crm/tasks/overdue", { params: { salespersonId } }),
+ getTaskKpis: (salespersonId?: string) => api.get("/crm/tasks/kpis", { params: { salespersonId } }),
 
-  // Tag Management
-  addCustomerTag: (customerId: string, tagId: string, notes?: string) =>
-    api.post(`/crm/customers/${customerId}/tags`, { tagId, notes }),
-  removeCustomerTag: (id: string) => api.delete(`/crm/tags/${id}`),
-  getCustomersByTag: (tagId: string, salespersonId?: string) =>
-    api.get(`/crm/tags/${tagId}/customers`, { params: { salespersonId } }),
+ // Tag Management
+ addCustomerTag: (customerId: string, tagId: string, notes?: string) =>
+ api.post(`/crm/customers/${customerId}/tags`, { tagId, notes }),
+ removeCustomerTag: (id: string) => api.delete(`/crm/tags/${id}`),
+ getCustomersByTag: (tagId: string, salespersonId?: string) =>
+ api.get(`/crm/tags/${tagId}/customers`, { params: { salespersonId } }),
 
-  // Task Automation
-  getAutomationRules: () => api.get("/crm/automation/rules"),
-  runTaskAutomationCheck: () => api.post("/crm/automation/run-check"),
-  createAutomatedTasks: () => api.post("/crm/automation/create-tasks"),
+ // Task Automation
+ getAutomationRules: () => api.get("/crm/automation/rules"),
+ runTaskAutomationCheck: () => api.post("/crm/automation/run-check"),
+ createAutomatedTasks: () => api.post("/crm/automation/create-tasks"),
 
-  // Field Validation
-  getRequiredFieldsForCall: () => api.get("/crm/validation/required-fields/call"),
-  getRequiredFieldsForAction: (actionType: string) =>
-    api.get(`/crm/validation/required-fields/action/${actionType}`),
-  validateCommunication: (data: {
-    customerId: string;
-    communicationData: Partial<CommunicationLog>;
-  }) => api.post("/crm/validation/validate-communication", data),
-  validateAction: (data: {
-    customerId: string;
-    actionData: Partial<CrmAction>;
-  }) => api.post("/crm/validation/validate-action", data),
+ // Field Validation
+ getRequiredFieldsForCall: () => api.get("/crm/validation/required-fields/call"),
+ getRequiredFieldsForAction: (actionType: string) =>
+ api.get(`/crm/validation/required-fields/action/${actionType}`),
+ validateCommunication: (data: {
+ customerId: string;
+ communicationData: Partial<CommunicationLog>;
+ }) => api.post("/crm/validation/validate-communication", data),
+ validateAction: (data: {
+ customerId: string;
+ actionData: Partial<CrmAction>;
+ }) => api.post("/crm/validation/validate-action", data),
 
-  // Analytics
-  getSalespersonAnalytics: (salespersonId: string, dateRange?: {
-    startDate: string;
-    endDate: string;
-  }) => api.get(`/crm/analytics/${salespersonId}`, { params: dateRange }),
-  getCrmMetrics: () => api.get("/crm/metrics"),
-  getPerformanceDashboard: (params?: { startDate?: string; endDate?: string; salespersonId?: string }) =>
-    api.get("/crm/analytics/performance-dashboard", { params }),
-  getClinicAnalytics: (params?: { startDate?: string; endDate?: string; clinicId?: string }) =>
-    api.get("/crm/analytics/manager/clinics", { params }),
+ // Analytics
+ getSalespersonAnalytics: (salespersonId: string, dateRange?: {
+ startDate: string;
+ endDate: string;
+ }) => api.get(`/crm/analytics/${salespersonId}`, { params: dateRange }),
+ getCrmMetrics: () => api.get("/crm/metrics"),
+ getPerformanceDashboard: (params?: { startDate?: string; endDate?: string; salespersonId?: string }) =>
+ api.get("/crm/analytics/performance-dashboard", { params }),
+ getClinicAnalytics: (params?: { startDate?: string; endDate?: string; clinicId?: string }) =>
+ api.get("/crm/analytics/manager/clinics", { params }),
 
-  // Repeat Customer Management
-  identifyRepeatCustomers: (salespersonId?: string) =>
-    api.get("/crm/customers/repeat", { params: { salespersonId } }),
-  getCustomersDueForFollowUp: (salespersonId?: string, daysThreshold?: number) =>
-    api.get("/crm/follow-up", { params: { salespersonId, daysThreshold } }),
+ // Repeat Customer Management
+ identifyRepeatCustomers: (salespersonId?: string) =>
+ api.get("/crm/customers/repeat", { params: { salespersonId } }),
+ getCustomersDueForFollowUp: (salespersonId?: string, daysThreshold?: number) =>
+ api.get("/crm/follow-up", { params: { salespersonId, daysThreshold } }),
 
-  // Reassignment & Dashboard
-  reassignCustomer: (customerId: string, salespersonId: string) =>
-    api.post(`/crm/customers/${customerId}/reassign`, { salespersonId }),
-  getSuperAdminDashboardStats: (params: { startDate?: string; endDate?: string }) =>
-    api.get("/crm/analytics/super-admin/dashboard", { params }),
+ // Reassignment & Dashboard
+ reassignCustomer: (customerId: string, salespersonId: string) =>
+ api.post(`/crm/customers/${customerId}/reassign`, { salespersonId }),
+ getSuperAdminDashboardStats: (params: { startDate?: string; endDate?: string }) =>
+ api.get("/crm/analytics/super-admin/dashboard", { params }),
 
-  // Legacy methods (keeping for backward compatibility)
-  logAction: (customerId: string, data: { type: string; notes: string }) =>
-    api.post("/crm/actions", { customerId, ...data }),
-  createTask: (data: {
-    customerId: string;
-    description: string;
-    type: string;
-    dueDate: string;
-    assignedTo: string;
-  }) => api.post("/crm/tasks", data),
-  getTasks: (salespersonId: string) => api.get(`/crm/tasks/${salespersonId}`),
-  updateTask: (id: string, data: Partial<CrmAction>) =>
-    api.patch(`/crm/tasks/${id}`, data),
-  scheduleRecurring: (data: {
-    customerId: string;
-    clinicId: string;
-    serviceId: string;
-    frequency: string;
-    startDate: string;
-  }) => api.post("/crm/recurring-appointments", data),
-  // Clinic Access
-  getAccessibleClinics: () => api.get("/crm/accessible-clinics"),
-  getSalespersons: () => api.get("/crm/salespersons"),
-  getSalesActivities: (date?: string, salespersonId?: string) => api.get("/crm/activities/diary", { params: { date, salespersonId } }),
+ // Legacy methods (keeping for backward compatibility)
+ logAction: (customerId: string, data: { type: string; notes: string }) =>
+ api.post("/crm/actions", { customerId, ...data }),
+ createTask: (data: {
+ customerId: string;
+ description: string;
+ type: string;
+ dueDate: string;
+ assignedTo: string;
+ }) => api.post("/crm/tasks", data),
+ getTasks: (salespersonId: string) => api.get(`/crm/tasks/${salespersonId}`),
+ updateTask: (id: string, data: Partial<CrmAction>) =>
+ api.patch(`/crm/tasks/${id}`, data),
+ scheduleRecurring: (data: {
+ customerId: string;
+ clinicId: string;
+ serviceId: string;
+ frequency: string;
+ startDate: string;
+ }) => api.post("/crm/recurring-appointments", data),
+ // Clinic Access
+ getAccessibleClinics: () => api.get("/crm/accessible-clinics"),
+ getSalespersons: () => api.get("/crm/salespersons"),
+ getSalesActivities: (date?: string, salespersonId?: string) => api.get("/crm/activities/diary", { params: { date, salespersonId } }),
 };
 
 export const adminAPI = {
-  getMetrics: () => api.get("/admin/metrics"),
-  getTags: () => api.get("/admin/tags"),
-  createTag: (data: { name: string; color?: string; description?: string }) => api.post("/admin/tags", data),
-  getClinics: () => api.get("/admin/clinics"),
-  createClinic: (data: any) => api.post("/admin/clinics", data),
-  updateClinic: (id: string, data: any) => api.put(`/admin/clinics/${id}`, data),
-  getClinicServices: (clinicId: string) => api.get(`/clinic/services?clinicId=${clinicId}`),
-  createClinicService: (data: any) => api.post(`/clinic/services`, data),
-  updateClinicService: (id: string, data: any) => api.put(`/clinic/services/${id}`, data),
-  deleteClinicService: (id: string, clinicId: string) => api.delete(`/clinic/services/${id}?clinicId=${clinicId}`),
-  toggleServiceStatus: (id: string, clinicId: string) => api.patch(`/clinic/services/${id}/toggle?clinicId=${clinicId}`),
-  getBlockedSlots: (clinicId: string) => api.get(`/clinic/availability/blocked-slots?clinicId=${clinicId}`),
-  blockSlot: (data: any) => api.post(`/clinic/availability/block-time-slot`, data),
-  updateBlockedSlot: (id: string, data: any) => api.put(`/clinic/availability/block-time-slot/${id}`, data),
-  unblockSlot: (id: string) => api.delete(`/clinic/availability/block-time-slot/${id}`),
-  createUser: (data: any) => api.post("/clinic/staff", data),
-  getUsers: () => api.get("/admin/users"),
-  updateUser: (id: string, updateData: any) =>
-    api.put(`/admin/users/${id}`, updateData),
-  getLoyalty: () => api.get("/admin/loyalty"),
-  updateLoyalty: (data: {
-    tiers: { name: string; points: number; rewards: string[] }[];
-  }) => api.patch("/admin/loyalty", data),
-  getLogs: () => api.get("/admin/monitor"),
-  toggleUserStatus: (id: string) => api.patch(`/admin/users/${id}/toggle-status`),
-  getWalletSummary: () => api.get("/admin/wallet/summary"),
-  getRecentTransactions: () => api.get("/admin/wallet/transactions"),
-  getPaymentsLedger: (params?: {
-    clinicId?: string;
-    providerId?: string;
-    salespersonId?: string;
-    date?: string;
-    method?: string;
-    limit?: number;
-    offset?: number;
-  }) => api.get("/admin/payments/ledger", { params }),
-  refundPayment: (id: string, notes: string) => api.post(`/admin/payments/${id}/refund`, { notes }),
-  voidPayment: (id: string, notes: string) =>
-    api.post(`/admin/payments/${id}/void`, { notes }),
-  createManualPayment: (data: {
-    amount: number;
-    method: string;
-    type: string;
-    notes: string;
-    clinicId: string;
-    clientId: string;
-    providerId?: string;
-    salespersonId?: string;
-  }) =>
-    api.post(`/admin/payments/manual`, data),
-  getGiftCardsSummary: () => api.get("/admin/gift-cards/summary"),
-  getGiftCards: (search?: string) => api.get("/admin/gift-cards", { params: { search } }),
-  generateGiftCard: (data: { amount: number; recipientEmail?: string; message?: string; expiresAt?: string }) =>
-    api.post("/admin/gift-cards/generate", data),
-  redeemGiftCard: (data: { code: string; amount: number }) =>
-    api.post("/admin/gift-cards/redeem", data),
-  getBlogCategories: () => api.get("/admin/blogs/categories"),
-  createBlogCategory: (data: { name: string; slug: string }) => api.post("/admin/blogs/categories", data),
-  getBlogPosts: (search?: string) => api.get("/admin/blogs/posts", { params: { search } }),
-  getBlogPost: (id: string) => api.get(`/admin/blogs/posts/${id}`),
-  createBlogPost: (data: any) => api.post("/admin/blogs/posts", data),
-  updateBlogPost: (id: string, data: any) => api.put(`/admin/blogs/posts/${id}`, data),
-  deleteBlogPost: (id: string) => api.delete(`/admin/blogs/posts/${id}`),
+ getMetrics: () => api.get("/admin/metrics"),
+ getTags: () => api.get("/admin/tags"),
+ createTag: (data: { name: string; color?: string; description?: string }) => api.post("/admin/tags", data),
+ getClinics: () => api.get("/admin/clinics"),
+ createClinic: (data: any) => api.post("/admin/clinics", data),
+ updateClinic: (id: string, data: any) => api.put(`/admin/clinics/${id}`, data),
+ getClinicServices: (clinicId: string) => api.get(`/clinic/services?clinicId=${clinicId}`),
+ createClinicService: (data: any) => api.post(`/clinic/services`, data),
+ updateClinicService: (id: string, data: any) => api.put(`/clinic/services/${id}`, data),
+ deleteClinicService: (id: string, clinicId: string) => api.delete(`/clinic/services/${id}?clinicId=${clinicId}`),
+ toggleServiceStatus: (id: string, clinicId: string) => api.patch(`/clinic/services/${id}/toggle?clinicId=${clinicId}`),
+ getBlockedSlots: (clinicId: string) => api.get(`/clinic/availability/blocked-slots?clinicId=${clinicId}`),
+ blockSlot: (data: any) => api.post(`/clinic/availability/block-time-slot`, data),
+ updateBlockedSlot: (id: string, data: any) => api.put(`/clinic/availability/block-time-slot/${id}`, data),
+ unblockSlot: (id: string) => api.delete(`/clinic/availability/block-time-slot/${id}`),
+ createUser: (data: any) => api.post("/clinic/staff", data),
+ getUsers: () => api.get("/admin/users"),
+ updateUser: (id: string, updateData: any) =>
+ api.put(`/admin/users/${id}`, updateData),
+ getLoyalty: () => api.get("/admin/loyalty"),
+ updateLoyalty: (data: {
+ tiers: { name: string; points: number; rewards: string[] }[];
+ }) => api.patch("/admin/loyalty", data),
+ getLogs: () => api.get("/admin/monitor"),
+ toggleUserStatus: (id: string) => api.patch(`/admin/users/${id}/toggle-status`),
+ getWalletSummary: () => api.get("/admin/wallet/summary"),
+ getRecentTransactions: () => api.get("/admin/wallet/transactions"),
+ getPaymentsLedger: (params?: {
+ clinicId?: string;
+ providerId?: string;
+ salespersonId?: string;
+ date?: string;
+ method?: string;
+ limit?: number;
+ offset?: number;
+ }) => api.get("/admin/payments/ledger", { params }),
+ refundPayment: (id: string, notes: string) => api.post(`/admin/payments/${id}/refund`, { notes }),
+ voidPayment: (id: string, notes: string) =>
+ api.post(`/admin/payments/${id}/void`, { notes }),
+ createManualPayment: (data: {
+ amount: number;
+ method: string;
+ type: string;
+ notes: string;
+ clinicId: string;
+ clientId: string;
+ providerId?: string;
+ salespersonId?: string;
+ }) =>
+ api.post(`/admin/payments/manual`, data),
+ getGiftCardsSummary: () => api.get("/admin/gift-cards/summary"),
+ getGiftCards: (search?: string) => api.get("/admin/gift-cards", { params: { search } }),
+ generateGiftCard: (data: { amount: number; recipientEmail?: string; message?: string; expiresAt?: string }) =>
+ api.post("/admin/gift-cards/generate", data),
+ redeemGiftCard: (data: { code: string; amount: number }) =>
+ api.post("/admin/gift-cards/redeem", data),
+ getBlogCategories: () => api.get("/admin/blogs/categories"),
+ createBlogCategory: (data: { name: string; slug: string }) => api.post("/admin/blogs/categories", data),
+ getBlogPosts: (search?: string) => api.get("/admin/blogs/posts", { params: { search } }),
+ getBlogPost: (id: string) => api.get(`/admin/blogs/posts/${id}`),
+ createBlogPost: (data: any) => api.post("/admin/blogs/posts", data),
+ updateBlogPost: (id: string, data: any) => api.put(`/admin/blogs/posts/${id}`, data),
+ deleteBlogPost: (id: string) => api.delete(`/admin/blogs/posts/${id}`),
 
-  // Master Catalog (Therapies/Treatments)
-  getMasterCategories: (params?: { search?: string; status?: string }) => api.get("/clinic/master/categories", { params }),
-  getMasterCategoryTree: () => api.get("/clinic/master/categories/tree"),
-  createMasterCategory: (data: any) => api.post("/clinic/master/categories", data),
-  updateMasterCategory: (id: string, data: any) => api.put(`/clinic/master/categories/${id}`, data),
-  deleteMasterCategory: (id: string) => api.delete(`/clinic/master/categories/${id}`),
+ // Master Catalog (Therapies/Treatments)
+ getMasterCategories: (params?: { search?: string; status?: string }) => api.get("/clinic/master/categories", { params }),
+ getMasterCategoryTree: () => api.get("/clinic/master/categories/tree"),
+ createMasterCategory: (data: any) => api.post("/clinic/master/categories", data),
+ updateMasterCategory: (id: string, data: any) => api.put(`/clinic/master/categories/${id}`, data),
+ deleteMasterCategory: (id: string) => api.delete(`/clinic/master/categories/${id}`),
 
-  getMasterTreatments: (params?: { search?: string; status?: string; categoryId?: string }) => api.get("/clinic/master/treatments", { params }),
-  createMasterTreatment: (data: any) => api.post("/clinic/master/treatments", data),
-  updateMasterTreatment: (id: string, data: any) => api.put(`/clinic/master/treatments/${id}`, data),
-  deleteMasterTreatment: (id: string) => api.delete(`/clinic/master/treatments/${id}`),
+ getMasterTreatments: (params?: { search?: string; status?: string; categoryId?: string }) => api.get("/clinic/master/treatments", { params }),
+ createMasterTreatment: (data: any) => api.post("/clinic/master/treatments", data),
+ updateMasterTreatment: (id: string, data: any) => api.put(`/clinic/master/treatments/${id}`, data),
+ deleteMasterTreatment: (id: string) => api.delete(`/clinic/master/treatments/${id}`),
 
-  getPendingTreatments: () => api.get("/clinics/treatments/pending"),
-  setTreatmentStatus: (id: string, status: string) => api.patch(`/clinics/treatments/${id}/status`, { status }),
+ getPendingTreatments: () => api.get("/clinics/treatments/pending"),
+ setTreatmentStatus: (id: string, status: string) => api.patch(`/clinics/treatments/${id}/status`, { status }),
 
-  // Global calendar (admin/sales oversight)
-  getGlobalCalendar: (params: {
-    startDate: string;
-    endDate: string;
-    clinicId?: string;
-    providerId?: string;
-  }) => api.get("/admin/calendar", { params }),
+ // Global calendar (admin/sales oversight)
+ getGlobalCalendar: (params: {
+ startDate: string;
+ endDate: string;
+ clinicId?: string;
+ providerId?: string;
+ }) => api.get("/admin/calendar", { params }),
 };
 
 export const notificationsAPI = {
-  getNotifications: (limit?: number) => api.get("/notifications", { params: { limit } }),
-  getUnreadCount: () => api.get("/notifications/unread-count"),
-  markAllAsRead: () => api.patch("/notifications/read-all"),
-  markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+ getNotifications: (limit?: number) => api.get("/notifications", { params: { limit } }),
+ getUnreadCount: () => api.get("/notifications/unread-count"),
+ markAllAsRead: () => api.patch("/notifications/read-all"),
+ markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
 
-  // Template Management (Admin)
-  getTemplates: () => api.get("/notifications/templates"),
-  createTemplate: (data: any) => api.post("/notifications/templates", data),
-  updateTemplate: (id: string, data: any) => api.patch(`/notifications/templates/${id}`, data),
-  resetDefaultTemplates: () => api.post("/notifications/templates/reset-defaults"),
-  sendNotification: (data: { recipientId: string; type: string; title: string, message: string; data?: any }) =>
-    api.post("/notifications/send", data),
+ // Template Management (Admin)
+ getTemplates: () => api.get("/notifications/templates"),
+ createTemplate: (data: any) => api.post("/notifications/templates", data),
+ updateTemplate: (id: string, data: any) => api.patch(`/notifications/templates/${id}`, data),
+ resetDefaultTemplates: () => api.post("/notifications/templates/reset-defaults"),
+ sendNotification: (data: { recipientId: string; type: string; title: string, message: string; data?: any }) =>
+ api.post("/notifications/send", data),
 };
 
 export const publicBlogsAPI = {
-  getCategories: () => api.get("/public/blogs/categories"),
-  getPosts: (params?: { search?: string; categoryId?: string }) => api.get("/public/blogs/posts", { params }),
-  getPostBySlug: (slug: string) => api.get(`/public/blogs/posts/${slug}`),
+ getCategories: () => api.get("/public/blogs/categories"),
+ getPosts: (params?: { search?: string; categoryId?: string }) => api.get("/public/blogs/posts", { params }),
+ getPostBySlug: (slug: string) => api.get(`/public/blogs/posts/${encodeURIComponent(slug)}`),
 };
 
 export const TaskAPI = {
-  createTask: (data: {
-    description: string;
-    type: string;
-    dueDate: string;
-    assignedTo: string;
-    metadata: Record<string, any>;
-    customerId: string;
-  }) => api.post("/tasks", data),
-  getTasks: () => api.get(`/tasks`),
-  updateTask: (id: string, data: Partial<Task>) =>
-    api.patch(`/tasks/${id}`, data),
-  deleteTask: (id: string) => api.delete(`/tasks/${id}`),
+ createTask: (data: {
+ description: string;
+ type: string;
+ dueDate: string;
+ assignedTo: string;
+ metadata: Record<string, any>;
+ customerId: string;
+ }) => api.post("/tasks", data),
+ getTasks: () => api.get(`/tasks`),
+ updateTask: (id: string, data: Partial<Task>) =>
+ api.patch(`/tasks/${id}`, data),
+ deleteTask: (id: string) => api.delete(`/tasks/${id}`),
 };
 
 export const messagesAPI = {
-  getConversations: () => api.get("/messages/conversations"),
-  getMessages: (conversationId: string, params?: { limit?: number; offset?: number }) =>
-    api.get(`/messages/conversations/${conversationId}/messages`, { params }),
-  sendMessage: (conversationId: string, data: { content: string; type?: string; metadata?: any }) =>
-    api.post(`/messages/conversations/${conversationId}/messages`, data),
-  createConversation: (participantIds: string[], title?: string, isGroup?: boolean) =>
-    api.post("/messages/conversations", { participantIds, title, isGroup }),
-  search: (query: string) => api.get("/messages/search", { params: { q: query } }),
+ getConversations: () => api.get("/messages/conversations"),
+ getMessages: (conversationId: string, params?: { limit?: number; offset?: number }) =>
+ api.get(`/messages/conversations/${conversationId}/messages`, { params }),
+ sendMessage: (conversationId: string, data: { content: string; type?: string; metadata?: any }) =>
+ api.post(`/messages/conversations/${conversationId}/messages`, data),
+ createConversation: (participantIds: string[], title?: string, isGroup?: boolean) =>
+ api.post("/messages/conversations", { participantIds, title, isGroup }),
+ search: (query: string) => api.get("/messages/search", { params: { q: query } }),
 };
 
 export const adminAuditLogsAPI = {
-  getAuditLogs: (params?: any) => api.get("/admin/audit-logs", { params }),
+ getAuditLogs: (params?: any) => api.get("/admin/audit-logs", { params }),
 };
 
 export const adminSettingsAPI = {
-  getSettings: () => api.get("/admin/settings"),
-  updateSettings: (settings: any) => api.patch("/admin/settings", settings),
-  getIntegrationLogs: () => api.get("/admin/integrations/logs"),
+ getSettings: () => api.get("/admin/settings"),
+ updateSettings: (settings: any) => api.patch("/admin/settings", settings),
+ getIntegrationLogs: () => api.get("/admin/integrations/logs"),
 };
 
 export const adminSystemListsAPI = {
-  getCategories: () => api.get("/admin/categories"),
-  createCategory: (data: any) => api.post("/admin/categories", data),
-  updateCategory: (id: string, data: any) => api.put(`/admin/categories/${id}`, data),
-  deleteCategory: (id: string) => api.delete(`/admin/categories/${id}`),
+ getCategories: () => api.get("/admin/categories"),
+ createCategory: (data: any) => api.post("/admin/categories", data),
+ updateCategory: (id: string, data: any) => api.put(`/admin/categories/${id}`, data),
+ deleteCategory: (id: string) => api.delete(`/admin/categories/${id}`),
 
-  getTreatments: (params?: any) => api.get("/admin/treatments", { params }),
-  createTreatment: (data: any) => api.post("/admin/treatments", data),
-  updateTreatment: (id: string, data: any) => api.put(`/admin/treatments/${id}`, data),
+ getTreatments: (params?: any) => api.get("/admin/treatments", { params }),
+ createTreatment: (data: any) => api.post("/admin/treatments", data),
+ updateTreatment: (id: string, data: any) => api.put(`/admin/treatments/${id}`, data),
 };
 
 // Public catalog API — no authentication required
 export const publicCatalogAPI = {
-  getCategories: () => api.get('/clinics/categories'),
-  getTreatmentsByCategory: (catId: string) =>
-    api.get(`/clinics/categories/${catId}/treatments`),
-  getAllMasterTreatments: () =>
-    api.get('/clinic/master/treatments', { params: { status: 'approved' } }),
+ getCategories: () => api.get('/clinics/categories'),
+ getTreatmentsByCategory: (catId: string) =>
+ api.get(`/clinics/categories/${catId}/treatments`),
+ getAllMasterTreatments: () =>
+ api.get('/clinic/master/treatments', { params: { status: 'approved' } }),
 };
 
 export const uploadAPI = {
-  uploadImage: (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    return api.post("/upload/image", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-  },
+ uploadImage: (file: File) => {
+ const formData = new FormData();
+ formData.append("file", file);
+ return api.post("/upload/image", formData, {
+ headers: {"Content-Type":"multipart/form-data",
+ },
+ });
+ },
 };
 
 export default api;

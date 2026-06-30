@@ -239,4 +239,19 @@ export class UsersService {
       totalEarnedCash,
     };
   }
+
+  async saveEmailVerificationToken(userId: string, token: string, expiry: Date): Promise<void> {
+    await this.usersRepository.update(userId, {
+      emailVerificationToken: token,
+      emailVerificationExpiry: expiry,
+    } as any);
+  }
+
+  async markEmailVerified(userId: string): Promise<void> {
+    await this.usersRepository.update(userId, {
+      isEmailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpiry: null,
+    } as any);
+  }
 }
