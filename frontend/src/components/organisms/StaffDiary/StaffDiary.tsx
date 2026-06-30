@@ -94,6 +94,18 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
     const [selectedApt, setSelectedApt] = useState<any>(null);
     const [isPaymentPrompt, setIsPaymentPrompt] = useState(false);
     const [paymentAmt, setPaymentAmt] = useState('');
+    const [isEditingDuration, setIsEditingDuration] = useState(false);
+    const [editedDuration, setEditedDuration] = useState(0);
+
+    useEffect(() => {
+        if (selectedApt) {
+            const start = new Date(selectedApt.startTime);
+            const end = new Date(selectedApt.endTime);
+            const diff = Math.round((end.getTime() - start.getTime()) / 60000);
+            setEditedDuration(diff > 0 ? diff : 30);
+            setIsEditingDuration(false);
+        }
+    }, [selectedApt]);
 
     const [contextMenu, setContextMenu] = useState<{
         x: number;
@@ -1086,7 +1098,46 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                         </div>
                         <div className="flex items-center gap-2 text-sm font-medium text-white/90 mt-1">
                             <MapPin size={14} /> {formatClinicTime(selectedApt.startTime, selectedApt.clinic?.timezone)} - {formatClinicTime(selectedApt.endTime, selectedApt.clinic?.timezone)}
+                            <button 
+                                onClick={() => setIsEditingDuration(!isEditingDuration)} 
+                                className="ml-2 px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] uppercase font-bold tracking-widest transition-colors"
+                            >
+                                {isEditingDuration ? 'Cancel' : 'Edit Duration'}
+                            </button>
                         </div>
+
+                        {isEditingDuration && (
+                            <div className="flex items-center gap-2 mt-2 bg-white/10 p-2 rounded-lg border border-white/20">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/70">Duration (mins):</span>
+                                <input 
+                                    type="number" 
+                                    value={editedDuration} 
+                                    onChange={e => setEditedDuration(Number(e.target.value))} 
+                                    className="w-16 px-2 py-1 text-black text-xs font-bold rounded outline-none focus:ring-2 focus:ring-indigo-400"
+                                    min={1}
+                                />
+                                <button 
+                                    onClick={async () => {
+                                        try {
+                                            const start = new Date(selectedApt.startTime);
+                                            const newEnd = new Date(start.getTime() + editedDuration * 60000);
+                                            await bookingAPI.updateAppointment(selectedApt.id, {
+                                                endTime: newEnd.toISOString()
+                                            });
+                                            toast.success("Duration updated successfully!");
+                                            dispatch(fetchClinicAppointments(currentFilters));
+                                            setIsEditingDuration(false);
+                                            setSelectedApt({...selectedApt, endTime: newEnd.toISOString()});
+                                        } catch(err) {
+                                            toast.error("Failed to update duration");
+                                        }
+                                    }}
+                                    className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 rounded text-[10px] font-bold uppercase tracking-widest transition-colors ml-auto"
+                                >
+                                    Save
+                                </button>
+                            </div>
+                        )}
                         <div className="flex flex-col gap-1 mt-4 pt-4 border-t border-white/10">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Client Contact</p>
                             <p className="text-xs font-bold">{selectedApt.client?.phone || 'No phone'}</p>
