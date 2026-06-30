@@ -1,288 +1,288 @@
 export enum AppointmentStatus {
-  PENDING = 'PENDING',
-  PENDING_PAYMENT = 'PENDING_PAYMENT',
-  CONFIRMED = 'CONFIRMED',
-  ARRIVED = 'ARRIVED',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-  NO_SHOW = 'NO_SHOW',
-  EXECUTED = 'EXECUTED',
+ PENDING = 'PENDING',
+ PENDING_PAYMENT = 'PENDING_PAYMENT',
+ CONFIRMED = 'CONFIRMED',
+ ARRIVED = 'ARRIVED',
+ IN_PROGRESS = 'IN_PROGRESS',
+ COMPLETED = 'COMPLETED',
+ CANCELLED = 'CANCELLED',
+ NO_SHOW = 'NO_SHOW',
+ EXECUTED = 'EXECUTED',
 }
 
 export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  role: 'client' | 'admin' | 'SUPER_ADMIN' | 'clinic_owner' | 'doctor' | 'secretariat' | 'salesperson' | 'manager';
-  profile?: any;
-  profilePictureUrl?: string;
-  lastLoginAt?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  beautyPoints?: number;
-  monthlyTarget?: number;
-  assignedClinics?: Clinic[];
-  pendingTasksCount?: number;
+ id: string;
+ email: string;
+ firstName: string;
+ lastName: string;
+ phone?: string;
+ role: 'client' | 'admin' | 'SUPER_ADMIN' | 'clinic_owner' | 'doctor' | 'secretariat' | 'salesperson' | 'manager';
+ profile?: any;
+ profilePictureUrl?: string;
+ lastLoginAt?: string;
+ isActive: boolean;
+ createdAt: string;
+ updatedAt: string;
+ beautyPoints?: number;
+ monthlyTarget?: number;
+ assignedClinics?: Clinic[];
+ pendingTasksCount?: number;
 }
 
 export interface Clinic {
-  id: string;
-  name: string;
-  description: string;
-  address: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-  };
-  phone?: string;
-  email?: string;
-  website?: string;
-  businessHours: {
-    [day: string]: {
-      open: string;
-      close: string;
-      isOpen: boolean;
-    };
-  };
-  timezone?: string;
-  isActive: boolean;
-  ownerId: string;
-  owner?: User;
-  owners?: User[];
-  ownerIds?: string[];
-  images?: string[];
-  photoUrl?: string;
-  latitude?: number;
-  longitude?: number;
-  rating?: number;
-  reviewCount?: number;
-  priceRange?: string;
-  distance?: number;
-  minPrice?: number;
-  services: Service[];
-  providers?: User[];
-  bankIban?: string;
-  bankAccountHolder?: string;
-  bankName?: string;
-  bankBic?: string;
+ id: string;
+ name: string;
+ description: string;
+ address: {
+ street: string;
+ city: string;
+ state: string;
+ zipCode: string;
+ country: string;
+ };
+ phone?: string;
+ email?: string;
+ website?: string;
+ businessHours: {
+ [day: string]: {
+ open: string;
+ close: string;
+ isOpen: boolean;
+ };
+ };
+ timezone?: string;
+ isActive: boolean;
+ ownerId: string;
+ owner?: User;
+ owners?: User[];
+ ownerIds?: string[];
+ images?: string[];
+ photoUrl?: string;
+ latitude?: number;
+ longitude?: number;
+ rating?: number;
+ reviewCount?: number;
+ priceRange?: string;
+ distance?: number;
+ minPrice?: number;
+ services: Service[];
+ providers?: User[];
+ bankIban?: string;
+ bankAccountHolder?: string;
+ bankName?: string;
+ bankBic?: string;
 }
 
 export interface Treatment {
-  id: string;
-  name: string;
-  shortDescription: string;
-  fullDescription: string;
-  category: string;
-  imageUrl?: string;
-  isActive: boolean;
-  fromPrice?: number;
-  clinicsCount?: number;
-  availableAt?: string[];
-  singleClinicId?: string;
-  singleServiceId?: string;
-  serviceId?: string;
-  offerings?: any[];
+ id: string;
+ name: string;
+ shortDescription: string;
+ fullDescription: string;
+ category: string;
+ imageUrl?: string;
+ isActive: boolean;
+ fromPrice?: number;
+ clinicsCount?: number;
+ availableAt?: string[];
+ singleClinicId?: string;
+ singleServiceId?: string;
+ serviceId?: string;
+ offerings?: any[];
 }
 
 export interface Service {
-  id: string;
-  name?: string;
-  description?: string;
-  price: number;
-  durationMinutes: number;
-  category?: string;
-  imageUrl?: string;
-  metadata?: any;
-  isActive: boolean;
-  clinicId: string;
-  treatmentId?: string;
-  treatment?: Treatment;
-  images?: string[];
+ id: string;
+ name?: string;
+ description?: string;
+ price: number;
+ durationMinutes: number;
+ category?: string;
+ imageUrl?: string;
+ metadata?: any;
+ isActive: boolean;
+ clinicId: string;
+ treatmentId?: string;
+ treatment?: Treatment;
+ images?: string[];
 }
 
 export interface Appointment {
-  id: string;
-  clinicId: string;
-  serviceId: string;
-  providerId?: string;
-  clientId: string;
-  startTime: string;
-  endTime: string;
-  status: 'PENDING' | 'PENDING_PAYMENT' | 'CONFIRMED' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' | 'EXECUTED';
-  notes?: string;
-  paymentMethod?: string;
-  advancePaymentAmount?: number;
-  totalAmount?: number;
-  amountPaid?: number;
-  treatmentDetails?: any;
-  clientDetails?: {
-    fullName: string;
-    email: string;
-    phone: string;
-  };
-  bookedByInfo?: {
-    id: string;
-    name: string;
-    role: string;
-  };
-  completedAt?: string;
-  executedAt?: string;
-  clinic: Clinic;
-  service: Service;
-  provider: User;
-  client: User;
-  createdAt?: string;
-  updatedAt?: string;
-  displayName?: string;
-  serviceName?: string;
-  providerName?: string;
-  isBlocked?: boolean;
-  additionalServiceIds?: string[];
+ id: string;
+ clinicId: string;
+ serviceId: string;
+ providerId?: string;
+ clientId: string;
+ startTime: string;
+ endTime: string;
+ status: 'PENDING' | 'PENDING_PAYMENT' | 'CONFIRMED' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' | 'EXECUTED';
+ notes?: string;
+ paymentMethod?: string;
+ advancePaymentAmount?: number;
+ totalAmount?: number;
+ amountPaid?: number;
+ treatmentDetails?: any;
+ clientDetails?: {
+ fullName: string;
+ email: string;
+ phone: string;
+ };
+ bookedByInfo?: {
+ id: string;
+ name: string;
+ role: string;
+ };
+ completedAt?: string;
+ executedAt?: string;
+ clinic: Clinic;
+ service: Service;
+ provider: User;
+ client: User;
+ createdAt?: string;
+ updatedAt?: string;
+ displayName?: string;
+ serviceName?: string;
+ providerName?: string;
+ isBlocked?: boolean;
+ additionalServiceIds?: string[];
 }
 
 export interface TimeSlot {
-  startTime: string;
-  startTimeDisplay?: string;
-  endTime: string;
-  available?: boolean;
-  price?: number;
-  discount?: number;
-  providerId?: string;
-  clinicId?: string;
+ startTime: string;
+ startTimeDisplay?: string;
+ endTime: string;
+ available?: boolean;
+ price?: number;
+ discount?: number;
+ providerId?: string;
+ clinicId?: string;
 }
 
 export interface LoyaltyBalance {
-  clientId: string;
-  clinicId?: string;
-  // totalPoints: number;
-  points: number;
-  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
-  rewards: string[];
+ clientId: string;
+ clinicId?: string;
+ // totalPoints: number;
+ points: number;
+ tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+ rewards: string[];
 }
 
 export interface Notification {
-  id: string;
-  recipientId: string;
-  type: 'push' | 'sms' | 'viber' | 'email' | 'appointment' | 'task' | 'general';
-  title: string;
-  message: string;
-  data?: any;
-  isRead: boolean;
-  isSent: boolean;
-  sentAt?: string;
-  readAt?: string;
-  createdAt: string;
+ id: string;
+ recipientId: string;
+ type: 'push' | 'sms' | 'viber' | 'email' | 'appointment' | 'task' | 'general';
+ title: string;
+ message: string;
+ data?: any;
+ isRead: boolean;
+ isSent: boolean;
+ sentAt?: string;
+ readAt?: string;
+ createdAt: string;
 }
 
 export interface BookingFlow {
-  selectedClinic?: Clinic;
-  selectedServices: Service[];
-  selectedDate?: string;
-  selectedTimeSlot?: TimeSlot;
-  totalAmount: number;
-  step: 'services' | 'datetime' | 'details' | 'confirmation';
+ selectedClinic?: Clinic;
+ selectedServices: Service[];
+ selectedDate?: string;
+ selectedTimeSlot?: TimeSlot;
+ totalAmount: number;
+ step: 'services' | 'datetime' | 'details' | 'confirmation';
 }
 
 export interface SearchFilters {
-  query?: string;
-  location?: string;
-  category?: string;
-  date?: string;
-  time?: string;
-  search_date?: string;
-  search_time_window?: string;
-  priceRange?: [number, number];
-  rating?: number;
-  distance?: number;
-  lat?: number;
-  lng?: number;
-  sortBy?: 'rating' | 'price' | 'distance' | 'popularity' | 'recommended' | 'price-asc' | 'price-desc';
+ query?: string;
+ location?: string;
+ category?: string;
+ date?: string;
+ time?: string;
+ search_date?: string;
+ search_time_window?: string;
+ priceRange?: [number, number];
+ rating?: number;
+ distance?: number;
+ lat?: number;
+ lng?: number;
+ sortBy?: 'rating' | 'price' | 'distance' | 'popularity' | 'recommended' | 'price-asc' | 'price-desc';
 }
 
 export interface Lead {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
-  tags?: string[];
-  createdAt: string;
-  updatedAt: string;
-  source?: string;
+ id: string;
+ firstName: string;
+ lastName: string;
+ email: string;
+ phone?: string;
+ status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+ tags?: string[];
+ createdAt: string;
+ updatedAt: string;
+ source?: string;
 }
 
 export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  type: 'phone' | 'email' | 'meeting';
-  dueDate: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  assignedTo: string;
-  customerId?: string;
-  createdAt: string;
-  updatedAt: string;
-  selectedTask: boolean;
-  customer?: Customer;
-  assignee?: User;
+ id: string;
+ title: string;
+ description: string;
+ type: 'phone' | 'email' | 'meeting';
+ dueDate: string;
+ status: 'pending' | 'in_progress' | 'completed';
+ assignedTo: string;
+ customerId?: string;
+ createdAt: string;
+ updatedAt: string;
+ selectedTask: boolean;
+ customer?: Customer;
+ assignee?: User;
 }
 export interface Customer {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  assignedSalespersonId?: string;
-  assignedSales?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    role?: string;
-    email: string;
-    phone: string;
-    createdAt: string;
-    updatedAt: string;
-  };
-  isRepeatCustomer: boolean;
-  createdAt: string;
-  updatedAt: string;
-  source: string;
-  summary: {
-    totalAppointments: number;
-    completedAppointments: number;
-    lifetimeValue: number;
-    repeatCount: number;
-  };
+ id: string;
+ firstName: string;
+ lastName: string;
+ email: string;
+ phone?: string;
+ status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+ priority: 'low' | 'medium' | 'high' | 'urgent';
+ assignedSalespersonId?: string;
+ assignedSales?: {
+ id: string;
+ firstName: string;
+ lastName: string;
+ role?: string;
+ email: string;
+ phone: string;
+ createdAt: string;
+ updatedAt: string;
+ };
+ isRepeatCustomer: boolean;
+ createdAt: string;
+ updatedAt: string;
+ source: string;
+ summary: {
+ totalAppointments: number;
+ completedAppointments: number;
+ lifetimeValue: number;
+ repeatCount: number;
+ };
 }
 export interface ActionLogType {
-  id: string;
-  customerId: string;
-  type: 'call' | 'email' | 'note' | 'meeting';
-  notes: string;
-  createdAt: string;
+ id: string;
+ customerId: string;
+ type: 'call' | 'email' | 'note' | 'meeting';
+ notes: string;
+ createdAt: string;
 }
 
 export interface LoyaltyTier {
-  name: string;
-  points: number;
-  rewards: string[];
+ name: string;
+ points: number;
+ rewards: string[];
 }
 
 export interface AuditLog {
-  id: string;
-  userId: string;
-  action: string;
-  timestamp: string;
-  details?: any;
+ id: string;
+ userId: string;
+ action: string;
+ timestamp: string;
+ details?: any;
 }
 
 export * from './crm.types';

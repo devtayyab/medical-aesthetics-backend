@@ -13,26 +13,26 @@ import messagesSlice from '@/store/slices/messagesSlice';
 import dialerSlice from '@/store/slices/dialerSlice';
 
 export const store = configureStore({
-  reducer: {
-    auth: authSlice,
-    clinics: clinicsSlice,
-    booking: bookingSlice,
-    user: userSlice,
-    notifications: notificationsSlice,
-    client: clientSlice,
-    clinic: clinicSlice,
-    crm: crmSlice,
-    admin: adminSlice,
-    task: taskSlice,
-    messages: messagesSlice,
-    dialer: dialerSlice,
-  },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: ['persist/PERSIST'],
-      },
-    }),
+ reducer: {
+ auth: authSlice,
+ clinics: clinicsSlice,
+ booking: bookingSlice,
+ user: userSlice,
+ notifications: notificationsSlice,
+ client: clientSlice,
+ clinic: clinicSlice,
+ crm: crmSlice,
+ admin: adminSlice,
+ task: taskSlice,
+ messages: messagesSlice,
+ dialer: dialerSlice,
+ },
+ middleware: (getDefaultMiddleware) =>
+ getDefaultMiddleware({
+ serializableCheck: {
+ ignoredActions: ['persist/PERSIST'],
+ },
+ }),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

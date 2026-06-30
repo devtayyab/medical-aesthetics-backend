@@ -13,95 +13,95 @@ import SettingsPage from '../pages/Clinic/SettingsPage';
 
 // Protected Route Component
 const ProtectedClinicRoute: React.FC<{ children: React.ReactNode; allowedRoles: string[] }> = ({
-  children,
-  allowedRoles,
+ children,
+ allowedRoles,
 }) => {
-  const userRole = localStorage.getItem('userRole');
+ const userRole = localStorage.getItem('userRole');
 
-  if (!userRole || !allowedRoles.includes(userRole)) {
-    return <Navigate to="/" replace />;
-  }
+ if (!userRole || !allowedRoles.includes(userRole)) {
+ return <Navigate to="/" replace />;
+ }
 
-  return <>{children}</>;
+ return <>{children}</>;
 };
 
 export const clinicRoutes: RouteObject[] = [
-  {
-    path: '/clinic',
-    element: (
-      <ProtectedClinicRoute
-        allowedRoles={['clinic_owner', 'doctor', 'secretariat', 'salesperson']}
-      >
-        <ClinicLayout />
-      </ProtectedClinicRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <Navigate to="/clinic/dashboard" replace />,
-      },
-      {
-        path: 'dashboard',
-        element: <ClinicDashboard />,
-      },
-      {
-        path: 'appointments',
-        element: <AppointmentsPage />,
-      },
-      {
-        path: 'services',
-        element: (
-          <ProtectedClinicRoute allowedRoles={['clinic_owner', 'secretariat']}>
-            <ServicesPage />
-          </ProtectedClinicRoute>
-        ),
-      },
-      {
-        path: 'availability',
-        element: (
-          <ProtectedClinicRoute allowedRoles={['clinic_owner', 'secretariat']}>
-            <AvailabilityPage />
-          </ProtectedClinicRoute>
-        ),
-      },
-      {
-        path: 'analytics',
-        element: (
-          <ProtectedClinicRoute allowedRoles={['clinic_owner', 'salesperson']}>
-            <AnalyticsPage />
-          </ProtectedClinicRoute>
-        ),
-      },
-      {
-        path: 'clients',
-        element: <ClientsPage />,
-      },
-      {
-        path: 'reviews',
-        element: (
-          <ProtectedClinicRoute allowedRoles={['clinic_owner', 'secretariat']}>
-            <ReviewsPage />
-          </ProtectedClinicRoute>
-        ),
-      },
-      {
-        path: 'notifications',
-        element: (
-          <ProtectedClinicRoute allowedRoles={['clinic_owner', 'secretariat']}>
-            <NotificationsPage />
-          </ProtectedClinicRoute>
-        ),
-      },
-      {
-        path: 'settings',
-        element: (
-          <ProtectedClinicRoute allowedRoles={['clinic_owner']}>
-            <SettingsPage />
-          </ProtectedClinicRoute>
-        ),
-      },
-    ],
-  },
+ {
+ path: '/clinic',
+ element: (
+ <ProtectedClinicRoute
+ allowedRoles={['clinic_owner', 'doctor', 'secretariat', 'salesperson']}
+ >
+ <ClinicLayout />
+ </ProtectedClinicRoute>
+ ),
+ children: [
+ {
+ index: true,
+ element: <Navigate to="/clinic/dashboard" replace />,
+ },
+ {
+ path: 'dashboard',
+ element: <ClinicDashboard />,
+ },
+ {
+ path: 'appointments',
+ element: <AppointmentsPage />,
+ },
+ {
+ path: 'services',
+ element: (
+ <ProtectedClinicRoute allowedRoles={['clinic_owner', 'secretariat']}>
+ <ServicesPage />
+ </ProtectedClinicRoute>
+ ),
+ },
+ {
+ path: 'availability',
+ element: (
+ <ProtectedClinicRoute allowedRoles={['clinic_owner', 'secretariat']}>
+ <AvailabilityPage />
+ </ProtectedClinicRoute>
+ ),
+ },
+ {
+ path: 'analytics',
+ element: (
+ <ProtectedClinicRoute allowedRoles={['clinic_owner', 'salesperson']}>
+ <AnalyticsPage />
+ </ProtectedClinicRoute>
+ ),
+ },
+ {
+ path: 'clients',
+ element: <ClientsPage />,
+ },
+ {
+ path: 'reviews',
+ element: (
+ <ProtectedClinicRoute allowedRoles={['clinic_owner', 'secretariat']}>
+ <ReviewsPage />
+ </ProtectedClinicRoute>
+ ),
+ },
+ {
+ path: 'notifications',
+ element: (
+ <ProtectedClinicRoute allowedRoles={['clinic_owner', 'secretariat']}>
+ <NotificationsPage />
+ </ProtectedClinicRoute>
+ ),
+ },
+ {
+ path: 'settings',
+ element: (
+ <ProtectedClinicRoute allowedRoles={['clinic_owner']}>
+ <SettingsPage />
+ </ProtectedClinicRoute>
+ ),
+ },
+ ],
+ },
 ];
 
 export default clinicRoutes;

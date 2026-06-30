@@ -737,7 +737,14 @@ export class ClinicsService {
       ]
     });
 
-    assignedStaff.forEach((user) => {
+    // 1b. Salespersons are default staff for ALL clinics, so we fetch them regardless of assignedClinicId
+    const salespersons = await this.usersRepository.find({
+      where: { role: UserRole.SALESPERSON }
+    });
+
+    const allStaff = [...assignedStaff, ...salespersons];
+
+    allStaff.forEach((user) => {
       uniqueProviders.set(user.id, {
         id: user.id,
         firstName: user.firstName,

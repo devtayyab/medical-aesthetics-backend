@@ -213,7 +213,7 @@ export class CrmController {
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get overdue tasks' })
   getOverdueTasks(@Query('salespersonId') salespersonId: string, @Request() req) {
-    const sid = salespersonId || (req.user.role === UserRole.SALESPERSON ? req.user.id : undefined);
+    const sid = salespersonId || undefined;
     return this.crmService.getOverdueTasks(sid);
   }
 
@@ -222,7 +222,7 @@ export class CrmController {
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Get task management KPIs' })
   getTaskKpis(@Query('salespersonId') salespersonId: string, @Request() req) {
-    const sid = salespersonId || (req.user.role === UserRole.SALESPERSON ? req.user.id : undefined);
+    const sid = salespersonId || undefined;
     return this.crmService.getTaskKpis(sid);
   }
 
@@ -364,7 +364,7 @@ export class CrmController {
     const dateRange = query.startDate && query.endDate
       ? { startDate: new Date(query.startDate), endDate: new Date(query.endDate) }
       : undefined;
-    const salespersonId = req.user.role === UserRole.SALESPERSON ? req.user.id : query.salespersonId;
+    const salespersonId = query.salespersonId;
     return this.crmService.getPerformanceDashboard(dateRange, salespersonId);
   }
 
@@ -616,9 +616,7 @@ export class CrmController {
   @UseGuards(RolesGuard)
   getSalesActivities(@Query('date') date: string, @Query('salespersonId') querySalespersonId: string, @Request() req) {
     // Salespersons are always restricted to their own data
-    const salespersonId = req.user.role === UserRole.SALESPERSON
-      ? req.user.id
-      : querySalespersonId || undefined;
+    const salespersonId = querySalespersonId || undefined;
     return this.crmService.getSalesActivities(date ? new Date(date) : undefined, salespersonId);
   }
 

@@ -47,4 +47,11 @@ export class AuthController {
     await this.authService.logout(req.user.id);
     return { message: 'Logged out successfully' };
   }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email with OTP code sent during registration' })
+  async verifyEmail(@Body() body: { userId: string; otp: string }) {
+    return this.authService.verifyEmail(body.userId, body.otp);
+  }
 }

@@ -124,6 +124,7 @@ export class AuthService {
       ...registerDto,
       role: UserRole.CLIENT,
       referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+      isEmailVerified: false,
     };
 
     // Create user
@@ -137,7 +138,6 @@ export class AuthService {
         console.error("[AuthService] Referral handling failed:", error.message);
       }
     }
-
 
     // If appointment data is provided during registration (for clients), create appointment
     if (registerDto.appointmentData && registerDto.role === UserRole.CLIENT) {
@@ -156,9 +156,52 @@ export class AuthService {
         console.log("[AuthService] Appointment created successfully during registration");
       } catch (error) {
         console.error("[AuthService] Failed to create appointment during registration:", error.message);
-        // Continue with registration even if appointment creation fails
       }
     }
+
+    // Generate a 6-digit OTP and save it with 15-min expiry
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 15 * 60 * 1000);
+    await this.usersService.saveEmailVerificationToken(user.id, otp, expiry);
+
+    // Send OTP via email
+    try {
+      await this.notificationsService.sendEmailVerificationOtp(user.id, user.firstName, otp);
+      console.log("[AuthService] Verification OTP sent to:", user.email);
+    } catch (error) {
+      console.error("[AuthService] Failed to send OTP email:", error.message);
+    }
+
+    // Return userId so frontend can show the OTP input screen
+    return {
+      requiresVerification: true,
+      userId: user.id,
+      email: user.email,
+      message: 'A verification code has been sent to your email address. Please enter it to activate your account.',
+    };
+  }
+
+  async verifyEmail(userId: string, otp: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (user.isEmailVerified) {
+      // Already verified — just log them in
+      return this.login(user);
+    }
+
+    if (!user.emailVerificationToken || user.emailVerificationToken !== otp) {
+      throw new UnauthorizedException('Invalid verification code');
+    }
+
+    if (!user.emailVerificationExpiry || new Date() > user.emailVerificationExpiry) {
+      throw new UnauthorizedException('Verification code has expired. Please register again or request a new code.');
+    }
+
+    // Mark as verified and clear token
+    await this.usersService.markEmailVerified(userId);
 
     // Send Welcome Email
     try {
@@ -170,13 +213,12 @@ export class AuthService {
           email: user.email,
         }
       );
-      console.log("[AuthService] Welcome email triggered for user:", user.email);
     } catch (error) {
       console.error("[AuthService] Failed to trigger welcome email:", error.message);
     }
 
-    // Generate tokens and return
-    return this.login(user);
+    const verifiedUser = await this.usersService.findById(userId);
+    return this.login(verifiedUser);
   }
 
   async logout(userId: string) {
