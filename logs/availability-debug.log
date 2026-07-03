@@ -4744,3 +4744,75 @@
 [2026-06-27T07:08:55.230Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
 [2026-06-27T07:08:55.263Z] 🔵 Checking availability for 4 providers 
 [2026-06-27T07:08:55.376Z] ✅ Found 17 slots for clinic: muneeb 
+[2026-07-03T12:06:04.910Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":"cf1c6100-c43a-4e0c-8eb4-c493d7bf28b5","date":"2026-07-04"}
+[2026-07-03T12:06:05.185Z] 🔵 Using date: "2026-07-04"
+[2026-07-03T12:06:05.221Z] 🔵 Clinic: "ehsan clinic"
+[2026-07-03T12:06:05.277Z] ❌ Error in getAvailableSlots: {"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","stack":"NotFoundException: No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01\n    at AvailabilityService.getAvailableSlots (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\availability.service.ts:75:15)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingsController.getAvailability (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\bookings.controller.ts:42:22)\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\.pnpm\\@nestjs+core@11.1.6_@nestjs+common@11.1.6_class-transformer@0.5.1_class-validator@0.14.2_refl_lhtmu6dp4jbc2v35gmxkneqdey\\node_modules\\@nestjs\\core\\router\\router-execution-context.js:46:28\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\.pnpm\\@nestjs+core@11.1.6_@nestjs+common@11.1.6_class-transformer@0.5.1_class-validator@0.14.2_refl_lhtmu6dp4jbc2v35gmxkneqdey\\node_modules\\@nestjs\\core\\router\\router-proxy.js:9:17","details":{"response":{"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","error":"Not Found","statusCode":404},"status":404,"options":{},"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","name":"NotFoundException"}}
+[2026-07-03T12:06:15.056Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":"cf1c6100-c43a-4e0c-8eb4-c493d7bf28b5","date":"2026-07-05"}
+[2026-07-03T12:06:15.057Z] 🔵 Using date: "2026-07-05"
+[2026-07-03T12:06:15.075Z] 🔵 Clinic: "ehsan clinic"
+[2026-07-03T12:06:15.083Z] ❌ Error in getAvailableSlots: {"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","stack":"NotFoundException: No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01\n    at AvailabilityService.getAvailableSlots (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\availability.service.ts:75:15)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingsController.getAvailability (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\bookings.controller.ts:42:22)\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\.pnpm\\@nestjs+core@11.1.6_@nestjs+common@11.1.6_class-transformer@0.5.1_class-validator@0.14.2_refl_lhtmu6dp4jbc2v35gmxkneqdey\\node_modules\\@nestjs\\core\\router\\router-execution-context.js:46:28\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\.pnpm\\@nestjs+core@11.1.6_@nestjs+common@11.1.6_class-transformer@0.5.1_class-validator@0.14.2_refl_lhtmu6dp4jbc2v35gmxkneqdey\\node_modules\\@nestjs\\core\\router\\router-proxy.js:9:17","details":{"response":{"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","error":"Not Found","statusCode":404},"status":404,"options":{},"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","name":"NotFoundException"}}
+[2026-07-03T12:06:18.299Z] 🔵 Availability Request: {"clinicId":"1f0c099e-663f-462a-bd8d-b90ad71cbb01","serviceIds":["7cc7ae88-9a64-43f2-9ff3-8a2253a52242"],"providerId":"cf1c6100-c43a-4e0c-8eb4-c493d7bf28b5","date":"2026-07-06"}
+[2026-07-03T12:06:18.300Z] 🔵 Using date: "2026-07-06"
+[2026-07-03T12:06:18.322Z] 🔵 Clinic: "ehsan clinic"
+[2026-07-03T12:06:18.333Z] ❌ Error in getAvailableSlots: {"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","stack":"NotFoundException: No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01\n    at AvailabilityService.getAvailableSlots (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\availability.service.ts:75:15)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingsController.getAvailability (E:\\ebizz\\medical-aesthetics-backend\\src\\modules\\bookings\\bookings.controller.ts:42:22)\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\.pnpm\\@nestjs+core@11.1.6_@nestjs+common@11.1.6_class-transformer@0.5.1_class-validator@0.14.2_refl_lhtmu6dp4jbc2v35gmxkneqdey\\node_modules\\@nestjs\\core\\router\\router-execution-context.js:46:28\n    at E:\\ebizz\\medical-aesthetics-backend\\node_modules\\.pnpm\\@nestjs+core@11.1.6_@nestjs+common@11.1.6_class-transformer@0.5.1_class-validator@0.14.2_refl_lhtmu6dp4jbc2v35gmxkneqdey\\node_modules\\@nestjs\\core\\router\\router-proxy.js:9:17","details":{"response":{"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","error":"Not Found","statusCode":404},"status":404,"options":{},"message":"No matching services found for clinic 1f0c099e-663f-462a-bd8d-b90ad71cbb01","name":"NotFoundException"}}
+[2026-07-03T12:07:44.485Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":"bffbce73-ff95-424d-ba0b-4cb440175f4d","date":"2026-07-04"}
+[2026-07-03T12:07:44.485Z] 🔵 Using date: "2026-07-04"
+[2026-07-03T12:07:44.549Z] 🔵 Clinic: "muneeb"
+[2026-07-03T12:07:44.557Z] 🔵 Total duration: 60
+[2026-07-03T12:07:44.557Z] 🔵 Using timezone: "America/New_York"
+[2026-07-03T12:07:44.571Z] 🔵 Day of week: "saturday"
+[2026-07-03T12:07:44.572Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-07-03T12:07:44.573Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-03T12:07:44.573Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
+[2026-07-03T12:07:44.581Z] 🔵 Checking availability for 1 providers 
+[2026-07-03T12:07:44.627Z] ✅ Found 17 slots for clinic: muneeb 
+[2026-07-03T12:07:49.641Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":"bffbce73-ff95-424d-ba0b-4cb440175f4d","date":"2026-07-12"}
+[2026-07-03T12:07:49.643Z] 🔵 Using date: "2026-07-12"
+[2026-07-03T12:07:49.668Z] 🔵 Clinic: "muneeb"
+[2026-07-03T12:07:49.674Z] 🔵 Total duration: 60
+[2026-07-03T12:07:49.676Z] 🔵 Using timezone: "America/New_York"
+[2026-07-03T12:07:49.677Z] 🔵 Day of week: "sunday"
+[2026-07-03T12:07:49.678Z] 🔵 Business hours for sunday: {"open":"09:00","close":"18:00","isOpen":false}
+[2026-07-03T12:07:49.678Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-03T12:07:54.616Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":"bffbce73-ff95-424d-ba0b-4cb440175f4d","date":"2026-07-13"}
+[2026-07-03T12:07:54.617Z] 🔵 Using date: "2026-07-13"
+[2026-07-03T12:07:54.633Z] 🔵 Clinic: "muneeb"
+[2026-07-03T12:07:54.641Z] 🔵 Total duration: 60
+[2026-07-03T12:07:54.644Z] 🔵 Using timezone: "America/New_York"
+[2026-07-03T12:07:54.645Z] 🔵 Day of week: "monday"
+[2026-07-03T12:07:54.649Z] 🔵 Business hours for monday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-03T12:07:54.649Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-03T12:07:54.650Z] ✅ Clinic is open on monday from 09:00 to 23:00 
+[2026-07-03T12:07:54.654Z] 🔵 Checking availability for 1 providers 
+[2026-07-03T12:07:54.678Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-07-03T12:08:48.579Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":"bffbce73-ff95-424d-ba0b-4cb440175f4d","date":"2026-07-19"}
+[2026-07-03T12:08:48.580Z] 🔵 Using date: "2026-07-19"
+[2026-07-03T12:08:48.643Z] 🔵 Clinic: "muneeb"
+[2026-07-03T12:08:48.651Z] 🔵 Total duration: 60
+[2026-07-03T12:08:48.652Z] 🔵 Using timezone: "America/New_York"
+[2026-07-03T12:08:48.653Z] 🔵 Day of week: "sunday"
+[2026-07-03T12:08:48.653Z] 🔵 Business hours for sunday: {"open":"09:00","close":"18:00","isOpen":false}
+[2026-07-03T12:08:48.654Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-03T12:08:52.463Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":"bffbce73-ff95-424d-ba0b-4cb440175f4d","date":"2026-07-20"}
+[2026-07-03T12:08:52.464Z] 🔵 Using date: "2026-07-20"
+[2026-07-03T12:08:52.488Z] 🔵 Clinic: "muneeb"
+[2026-07-03T12:08:52.497Z] 🔵 Total duration: 60
+[2026-07-03T12:08:52.498Z] 🔵 Using timezone: "America/New_York"
+[2026-07-03T12:08:52.499Z] 🔵 Day of week: "monday"
+[2026-07-03T12:08:52.499Z] 🔵 Business hours for monday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-03T12:08:52.500Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-03T12:08:52.501Z] ✅ Clinic is open on monday from 09:00 to 23:00 
+[2026-07-03T12:08:52.505Z] 🔵 Checking availability for 1 providers 
+[2026-07-03T12:08:52.552Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-07-03T12:10:31.676Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":"bffbce73-ff95-424d-ba0b-4cb440175f4d","date":"2026-07-10"}
+[2026-07-03T12:10:31.676Z] 🔵 Using date: "2026-07-10"
+[2026-07-03T12:10:31.760Z] 🔵 Clinic: "muneeb"
+[2026-07-03T12:10:31.788Z] 🔵 Total duration: 60
+[2026-07-03T12:10:31.789Z] 🔵 Using timezone: "America/New_York"
+[2026-07-03T12:10:31.790Z] 🔵 Day of week: "friday"
+[2026-07-03T12:10:31.790Z] 🔵 Business hours for friday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-03T12:10:31.791Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-03T12:10:31.793Z] ✅ Clinic is open on friday from 09:00 to 23:00 
+[2026-07-03T12:10:31.798Z] 🔵 Checking availability for 1 providers 
+[2026-07-03T12:10:31.858Z] ✅ Found 27 slots for clinic: muneeb 
