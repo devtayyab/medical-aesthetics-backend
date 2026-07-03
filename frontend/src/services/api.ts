@@ -302,6 +302,7 @@ export const userAPI = {
  updateProfile: (data: Partial<User>) => api.patch("/users/me/profile", data),
  exportData: () => api.get("/users/me/export"),
  deleteData: () => api.post("/users/me/delete"),
+ deactivateData: () => api.post("/users/me/deactivate"),
  getAllUsers: (params: { limit?: number; offset?: number; role?: string; search?: string }) =>
  api.get("/users", { params }),
  createUser: (userData: any) => api.post("/users", userData),

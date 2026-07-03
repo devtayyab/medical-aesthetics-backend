@@ -327,10 +327,46 @@ const AvailabilityPage: React.FC = () => {
  <select
  value={timezone}
  onChange={(e) => setTimezone(e.target.value)}
- className="w-full h-11 pl-5 pr-10 bg-gray-50 border-none rounded-xl font-black uppercase text-[9px] tracking-widest appearance-none focus:outline-none cursor-not-allowed opacity-70"
- disabled
+ className="w-full h-11 pl-5 pr-10 bg-gray-50 border-none rounded-xl font-black uppercase text-[9px] tracking-widest appearance-none focus:outline-none cursor-pointer hover:bg-gray-100 transition-colors"
  >
- <option value="UTC">Coordinated Universal Time (UTC)</option>
+ {[
+ { value: "Pacific/Midway", label: "UTC -11:00 (Midway)" },
+ { value: "Pacific/Honolulu", label: "UTC -10:00 (Hawaii)" },
+ { value: "America/Anchorage", label: "UTC -09:00 (Alaska)" },
+ { value: "America/Los_Angeles", label: "UTC -08:00 (Pacific Time)" },
+ { value: "America/Denver", label: "UTC -07:00 (Mountain Time)" },
+ { value: "America/Chicago", label: "UTC -06:00 (Central Time)" },
+ { value: "America/New_York", label: "UTC -05:00 (Eastern Time)" },
+ { value: "America/Caracas", label: "UTC -04:00 (Caracas)" },
+ { value: "America/Buenos_Aires", label: "UTC -03:00 (Buenos Aires)" },
+ { value: "Atlantic/South_Georgia", label: "UTC -02:00 (South Georgia)" },
+ { value: "Atlantic/Azores", label: "UTC -01:00 (Azores)" },
+ { value: "UTC", label: "Coordinated Universal Time (UTC)" },
+ { value: "Europe/London", label: "UTC +00:00 (London)" },
+ { value: "Europe/Berlin", label: "UTC +01:00 (Central European Time)" },
+ { value: "Europe/Athens", label: "UTC +02:00 (Eastern European Time)" },
+ { value: "Europe/Moscow", label: "UTC +03:00 (Moscow)" },
+ { value: "Asia/Tehran", label: "UTC +03:30 (Tehran)" },
+ { value: "Asia/Dubai", label: "UTC +04:00 (Dubai)" },
+ { value: "Asia/Kabul", label: "UTC +04:30 (Kabul)" },
+ { value: "Asia/Karachi", label: "UTC +05:00 (Islamabad, Karachi)" },
+ { value: "Asia/Kolkata", label: "UTC +05:30 (India Standard Time)" },
+ { value: "Asia/Kathmandu", label: "UTC +05:45 (Kathmandu)" },
+ { value: "Asia/Dhaka", label: "UTC +06:00 (Dhaka)" },
+ { value: "Asia/Bangkok", label: "UTC +07:00 (Bangkok)" },
+ { value: "Asia/Singapore", label: "UTC +08:00 (Beijing, Singapore)" },
+ { value: "Asia/Tokyo", label: "UTC +09:00 (Tokyo)" },
+ { value: "Australia/Adelaide", label: "UTC +09:30 (Adelaide)" },
+ { value: "Australia/Sydney", label: "UTC +10:00 (Sydney)" },
+ { value: "Pacific/Noumea", label: "UTC +11:00 (New Caledonia)" },
+ { value: "Pacific/Auckland", label: "UTC +12:00 (Auckland)" },
+ { value: "Pacific/Tongatapu", label: "UTC +13:00 (Tonga)" },
+ { value: "Pacific/Kiritimati", label: "UTC +14:00 (Kiribati)" },
+ ].map((tz) => (
+ <option key={tz.value} value={tz.value}>
+ {tz.label}
+ </option>
+ ))}
  </select>
  <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
  <Clock size={12} />

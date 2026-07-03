@@ -32,7 +32,27 @@ import {
  isBefore,
  startOfToday
 } from"date-fns";
-import { FaChevronLeft, FaChevronRight, FaClock, FaCheckCircle, FaCalendarAlt } from"react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaClock, FaCheckCircle, FaCalendarAlt } from "react-icons/fa";
+
+const formatClinicTime = (dateStr: string | Date, timezone?: string) => {
+    const d = new Date(dateStr);
+    try {
+        if (!timezone) throw new Error("No timezone");
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: false
+        });
+        const parts = formatter.formatToParts(d);
+        const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+        const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+        const normalizedHour = hour === 24 ? 0 : hour;
+        return `${normalizedHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    } catch (e) {
+        return format(d, "HH:mm");
+    }
+};
 
 const containerStyle = css`
  max-width: 1100px;
@@ -333,7 +353,7 @@ export const AppointmentBooking: React.FC = () => {
  className={slotButton(selectedSlot?.startTime === slot.startTime, slot.available)}
  onClick={() => handleSlotClick(slot)}
  >
- {format(new Date(slot.startTime),"HH:mm")}
+ {formatClinicTime(slot.startTime, clinic?.timezone)}
  </button>
  ))}
  </div>
@@ -380,7 +400,7 @@ export const AppointmentBooking: React.FC = () => {
  <span className="text-[9px] font-black uppercase text-black/60 tracking-[0.2em]">Scheduled For</span>
  </div>
  <p className="text-base font-black uppercase">{format(selectedDateState,"EEEE, MMMM d")}</p>
- <p className="text-2xl font-black leading-none">{format(new Date(selectedSlot.startTime),"HH:mm")}</p>
+ <p className="text-2xl font-black leading-none">{formatClinicTime(selectedSlot.startTime, clinic?.timezone)}</p>
  </div>
  )}
  </div>
@@ -439,7 +459,7 @@ export const AppointmentBooking: React.FC = () => {
  }
  }}
  >
- {format(new Date(slot.startTime),"HH:mm")}
+ {formatClinicTime(slot.startTime, clinic?.timezone)}
  </button>
  ))}
  </div>

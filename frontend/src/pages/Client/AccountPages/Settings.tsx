@@ -2,7 +2,8 @@ import React, { useState, useEffect } from"react";
 import { useNavigate, Link } from"react-router-dom";
 import { useDispatch, useSelector } from"react-redux";
 import type { RootState, AppDispatch } from"@/store";
-import { updateProfile } from"@/store/slices/authSlice";
+import { updateProfile, logout } from "@/store/slices/authSlice";
+import { userAPI } from "@/services/api";
 import { css } from"@emotion/css";
 import { ChevronRight, Bell, ShieldOff, Trash2, CheckCircle2, Sliders, Smartphone, Mail, Sparkles } from"lucide-react";
 import { motion, AnimatePresence } from"framer-motion";
@@ -87,6 +88,24 @@ export const Settings: React.FC = () => {
  }, [user]);
 
  const [saveSuccess, setSaveSuccess] = useState(false);
+ const [isDeactivating, setIsDeactivating] = useState(false);
+
+ const handleDeactivate = async () => {
+   if (window.confirm("Are you sure you want to request termination? You will be logged out and unable to login until a super admin reactivates your account.")) {
+     setIsDeactivating(true);
+     try {
+       await userAPI.deactivateData();
+       dispatch(logout());
+       navigate("/login", { replace: true });
+       alert("Your account has been terminated successfully.");
+     } catch (err: any) {
+       console.error("Failed to deactivate account:", err);
+       alert(err.response?.data?.message || "Failed to terminate account. Please try again.");
+     } finally {
+       setIsDeactivating(false);
+     }
+   }
+ };
 
  const toggle = async (section: keyof typeof settings, key: string) => {
  const newSettings = {
@@ -254,10 +273,11 @@ export const Settings: React.FC = () => {
  </div>
  </div>
  <button 
- onClick={() => navigate("/delete-account")}
+ onClick={handleDeactivate}
+ disabled={isDeactivating}
  className="h-14 px-10 rounded-2xl bg-black text-white hover:bg-red-600 font-black uppercase text-[10px] tracking-[0.3em] transition-all shadow-2xl border border-white/10"
  >
- Request Termination
+ {isDeactivating ? "PROCESSING..." : "Request Termination"}
  </button>
  </div>
  

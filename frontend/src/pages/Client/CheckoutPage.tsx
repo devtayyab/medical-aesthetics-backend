@@ -13,6 +13,26 @@ import { format } from"date-fns";
 import { paymentsAPI } from"@/services/api";
 import { FaGift } from"react-icons/fa";
 
+const formatClinicTime = (dateStr: string | Date, timezone?: string) => {
+    const d = new Date(dateStr);
+    try {
+        if (!timezone) throw new Error("No timezone");
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: false
+        });
+        const parts = formatter.formatToParts(d);
+        const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+        const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+        const normalizedHour = hour === 24 ? 0 : hour;
+        return `${normalizedHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    } catch (e) {
+        return format(d, "HH:mm");
+    }
+};
+
 const containerStyle = css`
  max-width: 1200px;
  margin: 0 auto;
@@ -358,7 +378,7 @@ export const CheckoutPage: React.FC = () => {
  {selectedDate ? format(new Date(selectedDate),"EEEE, MMMM d") : 'Date not set'}
  </p>
  <p className="text-lg font-black text-lime-600">
- {selectedTimeSlot ? format(new Date(selectedTimeSlot.startTime),"HH:mm") : '00:00'}
+ {selectedTimeSlot ? formatClinicTime(selectedTimeSlot.startTime, selectedClinic?.timezone) : '00:00'}
  </p>
  </div>
  </div>
