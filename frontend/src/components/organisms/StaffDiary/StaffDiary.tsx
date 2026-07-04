@@ -39,29 +39,70 @@ const statusLabels: Record<string, { label: string, color: string, icon: any }> 
     COMPLETED: { label: 'Done', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: CheckCircle2 },
 };
 
+// Sanitize timezone: the DB may store the literal string "null" which must be treated as missing.
+const sanitizeTz = (tz?: string | null): string => {
+    if (!tz || tz === 'null' || tz.trim() === '') return 'UTC';
+    return tz;
+};
+
 // Helper to reliably extract hour and minute in a specific timezone
 const getClinicLocalTime = (dateStr: string, timezone?: string) => {
     const d = new Date(dateStr);
+    const tz = sanitizeTz(timezone);
     try {
-        const formatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: timezone || 'Europe/Athens',
+        const fmt = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
             hour: 'numeric',
             minute: 'numeric',
-            hour12: false
+            hourCycle: 'h23', // 0-23, never 24, never AM/PM
         });
-        const parts = formatter.formatToParts(d);
-        const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
-        const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
-        return { hour: hour === 24 ? 0 : hour, minute };
-    } catch (e) {
-        // Fallback to browser local if timezone is invalid
-        return { hour: d.getHours(), minute: d.getMinutes() };
+        const parts = fmt.formatToParts(d);
+        const hourPart = parts.find(p => p.type === 'hour')?.value ?? '0';
+        const minutePart = parts.find(p => p.type === 'minute')?.value ?? '0';
+        const hour = parseInt(hourPart, 10);
+        const minute = parseInt(minutePart, 10);
+        return { hour: isNaN(hour) ? 0 : hour, minute: isNaN(minute) ? 0 : minute };
+    } catch {
+        // Last-resort fallback: use UTC (never browser-local) to avoid PKT offset errors
+        return { hour: d.getUTCHours(), minute: d.getUTCMinutes() };
     }
 };
 
 const formatClinicTime = (dateStr: string, timezone?: string) => {
     const { hour, minute } = getClinicLocalTime(dateStr, timezone);
     return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+};
+
+// Convert a local date + time string (in the clinic's timezone) to a UTC Date object.
+const createClinicUTCDateTime = (localDate: Date, timeStr: string, timezone: string): Date => {
+    const tz = sanitizeTz(timezone);
+    // Use UTC getters since localDate comes from a date-only string parsed as UTC midnight.
+    const yyyy = localDate.getUTCFullYear();
+    const mm = String(localDate.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(localDate.getUTCDate()).padStart(2, '0');
+    const isoString = `${yyyy}-${mm}-${dd}T${timeStr}:00`;
+    let guess = new Date(isoString + 'Z');
+    try {
+        const fmt = new Intl.DateTimeFormat('en-CA', {
+            timeZone: tz,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hourCycle: 'h23'
+        });
+        for (let i = 0; i < 4; i++) {
+            const formatted = fmt.format(guess);
+            const formattedParts = formatted.replace(/, /g, 'T');
+            const formattedDate = new Date(formattedParts + 'Z');
+            const targetDate = new Date(isoString + 'Z');
+            const diff = targetDate.getTime() - formattedDate.getTime();
+            if (Math.abs(diff) < 1000) break;
+            guess = new Date(guess.getTime() + diff);
+        }
+    } catch (e) {
+        console.error('[createClinicUTCDateTime] Invalid timezone:', tz, e);
+        guess = new Date(isoString + 'Z');
+    }
+    return guess;
 };
 
 interface StaffDiaryProps { clinicId?: string; onNewAppointment?: () => void; }
@@ -212,7 +253,6 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
             // For now, let's at least fetch for the first one or skip if too complex
         }
 
-        console.log('[StaffDiary] Fetching appointments with currentFilters:', currentFilters);
         dispatch(fetchClinicAppointments(currentFilters));
     }, [dispatch, currentFilters, availableClinics, selectedClinicId, viewDate]);
 
@@ -263,7 +303,6 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
             returned: 0
         };
 
-        console.log(`[StaffDiary] Calculating stats for ${appointments.length} appointments`);
 
         appointments.forEach(apt => {
             const aptDate = new Date(apt.startTime);
@@ -347,10 +386,12 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
 
         if (!clientId || wizardServices.length === 0 || !wizardClinic) return;
 
-        const [hh, mm] = wizardTime.split(':').map(Number);
-        const startDateTime = setMinutes(setHours(startOfDay(wizardDate), hh), mm);
+        // The wizardDate and wizardTime represent the date and time in the CLINIC'S timezone.
+        // We need to convert this to the correct UTC timestamp.
+        const tz = sanitizeTz(wizardClinic.timezone);
+        const startDateTime = createClinicUTCDateTime(wizardDate, wizardTime, tz);
 
-        const totalDuration = wizardServices.reduce((acc, s) => acc + (s.duration || 30), 0);
+        const totalDuration = wizardServices.reduce((acc: number, s: any) => acc + Number(s.durationMinutes || s.duration || 30), 0);
         const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60000);
 
         try {
@@ -641,8 +682,10 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                 <div className="flex-1 overflow-auto flex bg-white relative">
                     <div className="w-16 flex-shrink-0 border-r border-gray-100 bg-gray-50/50 pt-12 sticky left-0 z-20">
                         {hours.map(hour => (
-                            <div key={hour} className="h-16 flex items-start justify-center text-[10px] font-bold text-gray-400 -mt-2">
-                                {hour.toString().padStart(2, '0')}:00
+                            <div key={hour} className="h-16 relative">
+                                <span className="absolute -top-2 w-full text-center text-[10px] font-bold text-gray-400 bg-gray-50/50">
+                                    {hour.toString().padStart(2, '0')}:00
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -685,8 +728,28 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
                                         );
                                     })}
 
-                                    {appointments.filter(a => isSameDay(parseISO(a.startTime), day)).map(apt => {
-                                        const clinicTz = apt.clinic?.timezone || 'Europe/Athens';
+                                    {appointments.filter(a => {
+                                        // Use clinic-local date so the column the appointment lands in
+                                        // matches the date shown in the card label (formatClinicTime).
+                                        const tz = (a as any).clinic?.timezone || 'UTC';
+                                        const d = new Date(a.startTime);
+                                        let aptDateStr: string;
+                                        try {
+                                            const fmt = new Intl.DateTimeFormat('en-CA', {
+                                                timeZone: tz,
+                                                year: 'numeric',
+                                                month: '2-digit',
+                                                day: '2-digit',
+                                            });
+                                            aptDateStr = fmt.format(d); // yields "YYYY-MM-DD" from en-CA locale
+                                        } catch {
+                                            // fallback: browser-local
+                                            aptDateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                                        }
+                                        const colDateStr = format(day, 'yyyy-MM-dd');
+                                        return colDateStr === aptDateStr;
+                                    }).map(apt => {
+                                        const clinicTz = apt.clinic?.timezone || 'UTC';
                                         const { hour: startHour, minute: startMinute } = getClinicLocalTime(apt.startTime, clinicTz);
                                         const top = startHour * 64 + (startMinute / 60) * 64;
 

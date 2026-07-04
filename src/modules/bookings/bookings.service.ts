@@ -1127,6 +1127,7 @@ export class BookingsService {
           endTime: slot.endTime,
           status: 'BLOCKED',
           clinicId: slot.clinicId,
+          clinic: slot.clinic ? { id: slot.clinic.id, timezone: slot.clinic.timezone } : null,
           isBlocked: true,
           displayName: slot.reason || 'Blocked Time',
           serviceName: slot.reason || 'Blocked',
@@ -1136,6 +1137,7 @@ export class BookingsService {
           isReturned: false,
         };
       });
+
 
       return [...mappedAppointments, ...mappedBlockedSlots];
     } catch (err) {

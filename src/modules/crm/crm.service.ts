@@ -3768,7 +3768,7 @@ export class CrmService implements OnModuleInit {
         // Admins and Global Sales see all active clinics
         return this.clinicsRepository.find({
           where: { isActive: true },
-          select: ['id', 'name', 'address', 'phone', 'email']
+          select: ['id', 'name', 'address', 'phone', 'email', 'timezone']
         });
       }
 
@@ -3811,7 +3811,7 @@ export class CrmService implements OnModuleInit {
 
       return this.clinicsRepository.find({
         where: { id: In(Array.from(accessibleClinicIds)), isActive: true },
-        select: ['id', 'name', 'address', 'phone', 'email']
+        select: ['id', 'name', 'address', 'phone', 'email', 'timezone']
       });
     } catch (err) {
       this.logger.error(`[CrmService] Error in getAccessibleClinicsForUser: ${err.message}`, err.stack);
