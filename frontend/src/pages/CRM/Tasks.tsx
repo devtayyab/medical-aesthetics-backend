@@ -1389,6 +1389,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  <p className="text-[9px] font-black text-blue-800 uppercase tracking-widest mb-3">Recall Schedule</p>
  <Input 
  type="datetime-local" 
+ lang="en-GB"
  value={callbackDate}
  onChange={(e) => setCallbackDate(e.target.value)}
  className="h-10 text-[11px] font-black rounded-lg border-blue-200 bg-white"
@@ -1536,7 +1537,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  className="h-10 text-[11px] font-bold rounded-lg border-amber-200"
  />
  <div className="grid grid-cols-1 gap-2">
- <Input type="datetime-local" value={followUpData.dueDate} onChange={(e) => setFollowUpData({...followUpData, dueDate: e.target.value})} className="h-10 text-[10px] font-bold rounded-lg border-amber-200" />
+ <Input type="datetime-local" lang="en-GB" value={followUpData.dueDate} onChange={(e) => setFollowUpData({...followUpData, dueDate: e.target.value})} className="h-10 text-[10px] font-bold rounded-lg border-amber-200" />
  </div>
  </div>
  )}

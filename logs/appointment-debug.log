@@ -311,3 +311,4 @@
 [2026-06-29T04:54:09.791Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"076a67e2-da8c-4738-8331-a72a54f70a68"}
 [2026-06-29T04:54:14.852Z] --- BOOKING PROCESS STARTED --- {"clientId":"076a67e2-da8c-4738-8331-a72a54f70a68","hasDetails":false}
 [2026-06-29T04:54:14.884Z] 🔍 [BookingsService] Robust fallback search for clientId: {"clientId":"076a67e2-da8c-4738-8331-a72a54f70a68"}
+[2026-07-01T04:53:48.370Z] --- BOOKING PROCESS STARTED --- {"clientId":"61b900a9-0da8-40f0-80ae-1338b6f5a4ab","hasDetails":false}

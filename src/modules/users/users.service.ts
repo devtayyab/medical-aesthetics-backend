@@ -203,6 +203,13 @@ export class UsersService {
     await this.consentRepository.delete({ userId });
   }
 
+  async deactivateUserData(userId: string): Promise<void> {
+    const user = await this.findById(userId);
+    await this.usersRepository.update(userId, {
+      isActive: false,
+    });
+  }
+
   async getReferralStats(userId: string): Promise<any> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {

@@ -113,6 +113,14 @@ export class UsersController {
     return this.usersService.deleteUserData(req.user.id);
   }
 
+  @Post('me/deactivate')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deactivate user account' })
+  deactivateData(@Request() req) {
+    return this.usersService.deactivateUserData(req.user.id);
+  }
+
   @Post('me/change-password')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

@@ -1,223 +1,397 @@
-import React, { useState, useEffect } from"react";
-import { useDispatch, useSelector } from"react-redux";
-import { format } from"date-fns";
-import { X, Calendar, Clock } from"lucide-react";
-import { AppDispatch, RootState } from"@/store";
-import { fetchAvailability, rescheduleAppointment, fetchUserAppointments } from"@/store/slices/bookingSlice";
-import { Button } from"@/components/atoms/Button/Button";
-import { Appointment } from"@/types";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { format } from "date-fns";
+import { X, Calendar, Clock, ArrowRight, CheckCircle2 } from "lucide-react";
+import { AppDispatch, RootState } from "@/store";
+import { fetchAvailability, rescheduleAppointment, fetchUserAppointments } from "@/store/slices/bookingSlice";
+import { Appointment } from "@/types";
 
 interface RescheduleModalProps {
- isOpen: boolean;
- onClose: () => void;
- appointment: Appointment;
+  isOpen: boolean;
+  onClose: () => void;
+  appointment: Appointment;
 }
 
 export const RescheduleModal: React.FC<RescheduleModalProps> = ({
- isOpen,
- onClose,
- appointment,
+  isOpen,
+  onClose,
+  appointment,
 }) => {
- const dispatch = useDispatch<AppDispatch>();
- const [selectedDate, setSelectedDate] = useState<string>("");
- const [selectedSlot, setSelectedSlot] = useState<{ startTime: string; endTime: string } | null>(null);
- const [rescheduleNotes, setRescheduleNotes] = useState<string>("");
- const { availableSlots, isLoading, error: bookingError } = useSelector((state: RootState) => state.booking);
+  const dispatch = useDispatch<AppDispatch>();
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedSlot, setSelectedSlot] = useState<{ startTime: string; endTime: string } | null>(null);
+  const [rescheduleNotes, setRescheduleNotes] = useState<string>("");
+  const { availableSlots, isLoading, error: bookingError } = useSelector((state: RootState) => state.booking);
 
- useEffect(() => {
- if (isOpen) {
- // Reset state when opening
- setSelectedDate("");
- setSelectedSlot(null);
- setRescheduleNotes("");
- // Clear any previous errors
- dispatch({ type: 'booking/clearError' });
- }
- }, [isOpen, dispatch]);
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDate("");
+      setSelectedSlot(null);
+      setRescheduleNotes("");
+      dispatch({ type: 'booking/clearError' });
+    }
+  }, [isOpen, dispatch]);
 
- const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
- const date = e.target.value;
- setSelectedDate(date);
- setSelectedSlot(null);
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = e.target.value;
+    setSelectedDate(date);
+    setSelectedSlot(null);
 
- // More robust ID extraction
- const clinicId = appointment.clinicId || appointment.clinic?.id;
- const serviceId = appointment.serviceId || appointment.service?.id;
- const providerId = appointment.providerId || appointment.provider?.id;
+    const clinicId = appointment.clinicId || appointment.clinic?.id;
+    const serviceId = appointment.serviceId || appointment.service?.id;
+    const providerId = appointment.providerId || appointment.provider?.id;
 
- console.log("Rescheduling - Context Check:", { 
- clinicId, 
- serviceId, 
- providerId,
- appointmentId: appointment.id 
- });
+    if (date && clinicId && serviceId) {
+      dispatch(fetchAvailability({ clinicId, serviceId, providerId, date }));
+    }
+  };
 
- if (date && clinicId && serviceId) {
- dispatch(
- fetchAvailability({
- clinicId,
- serviceId,
- providerId,
- date: date,
- })
- );
- }
- };
+  const handleConfirm = async () => {
+    if (!selectedSlot) return;
+    try {
+      await dispatch(
+        rescheduleAppointment({
+          id: appointment.id,
+          startTime: selectedSlot.startTime,
+          endTime: selectedSlot.endTime,
+          notes: rescheduleNotes,
+        })
+      ).unwrap();
+      dispatch(fetchUserAppointments());
+      alert("Appointment rescheduled successfully!");
+      onClose();
+    } catch (error) {
+      alert("Failed to reschedule appointment. Please try again.");
+      console.error("Reschedule Error:", error);
+    }
+  };
 
- const handleConfirm = async () => {
- if (!selectedSlot) return;
+  if (!isOpen) return null;
 
- try {
- await dispatch(
- rescheduleAppointment({
- id: appointment.id,
- startTime: selectedSlot.startTime,
- endTime: selectedSlot.endTime,
- notes: rescheduleNotes,
- })
- ).unwrap();
+  return (
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
+    >
+      <div
+        className="w-full max-w-md flex flex-col"
+        style={{
+          background: "#fff",
+          borderRadius: 32,
+          boxShadow: "0 40px 100px rgba(0,0,0,0.25)",
+          border: "1px solid rgba(0,0,0,0.06)",
+          maxHeight: "92vh",
+          overflow: "hidden",
+        }}
+      >
+        {/* ── Header ── */}
+        <div
+          style={{
+            background: "linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)",
+            padding: "28px 28px 24px",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* decorative accent */}
+          <div
+            style={{
+              position: "absolute",
+              top: -40,
+              right: -40,
+              width: 140,
+              height: 140,
+              background: "radial-gradient(circle, rgba(203,255,56,0.18) 0%, transparent 70%)",
+              borderRadius: "50%",
+            }}
+          />
+          <div className="flex items-start justify-between relative z-10">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Calendar size={14} color="#CBFF38" />
+                <span style={{ fontSize: 10, fontWeight: 900, color: "#CBFF38", letterSpacing: "0.2em", textTransform: "uppercase" }}>
+                  Appointment
+                </span>
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 900, color: "#fff", textTransform: "uppercase", letterSpacing: "-0.5px", margin: 0 }}>
+                Reschedule
+              </h3>
+              <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.2em", marginTop: 4 }}>
+                Select a new date & time slot
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                width: 36, height: 36,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer",
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.16)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+            >
+              <X size={16} color="rgba(255,255,255,0.6)" />
+            </button>
+          </div>
 
- // Refresh the appointments list in the parent
- dispatch(fetchUserAppointments());
- 
- alert("Appointment rescheduled successfully!");
- onClose();
- } catch (error) {
- alert("Failed to reschedule appointment. Please try again.");
- console.error("Reschedule Error:", error);
- }
- };
+          {/* current slot pill */}
+          <div
+            style={{
+              marginTop: 20,
+              background: "rgba(203,255,56,0.1)",
+              border: "1px solid rgba(203,255,56,0.25)",
+              borderRadius: 16,
+              padding: "12px 16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              position: "relative",
+              zIndex: 10,
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 4 }}>
+                Current Slot
+              </p>
+              <p style={{ fontSize: 13, fontWeight: 900, color: "#fff", textTransform: "uppercase", margin: 0 }}>
+                {format(new Date(appointment.startTime), "PPP")}
+              </p>
+            </div>
+            <div
+              style={{
+                background: "#CBFF38",
+                borderRadius: 10,
+                padding: "6px 12px",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Clock size={12} color="#000" />
+              <span style={{ fontSize: 14, fontWeight: 900, color: "#000", letterSpacing: "0.05em" }}>
+                {format(new Date(appointment.startTime), "HH:mm")}
+              </span>
+            </div>
+          </div>
+        </div>
 
- if (!isOpen) return null;
+        {/* ── Body ── */}
+        <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 20, overflowY: "auto", flex: 1 }}>
 
- return (
- <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
- <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
- {/* Header */}
- <div className="flex items-center justify-between p-8 border-b border-gray-50">
- <div>
- <h3 className="text-xl font-black uppercase text-gray-900 tracking-tight">Reschedule</h3>
- <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Select your new time slot</p>
- </div>
- <button
- onClick={onClose}
- className="size-10 rounded-full hover:bg-gray-50 flex items-center justify-center transition-all"
- >
- <X size={20} className="text-gray-400" />
- </button>
- </div>
+          {/* Date picker */}
+          <div>
+            <label style={{ display: "block", fontSize: 9, fontWeight: 900, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 8 }}>
+              Select New Date
+            </label>
+            <div style={{ position: "relative" }}>
+              <Calendar
+                size={16}
+                color="#9ca3af"
+                style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+              />
+              <input
+                type="date"
+                min={new Date().toISOString().split("T")[0]}
+                value={selectedDate}
+                onChange={handleDateChange}
+                style={{
+                  width: "100%",
+                  height: 52,
+                  paddingLeft: 42,
+                  paddingRight: 16,
+                  background: "#f9fafb",
+                  border: "1.5px solid #f1f5f9",
+                  borderRadius: 14,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#111",
+                  outline: "none",
+                  transition: "border-color 0.2s",
+                  boxSizing: "border-box",
+                }}
+                onFocus={e => (e.target.style.borderColor = "#CBFF38")}
+                onBlur={e => (e.target.style.borderColor = "#f1f5f9")}
+              />
+            </div>
+          </div>
 
- {/* Body */}
- <div className="p-8 space-y-8">
- {/* Current Appointment Info */}
- <div className="bg-gray-50 p-6 rounded-[24px] border border-gray-100">
- <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Current Slot</p>
- <div className="space-y-1">
- <p className="text-sm font-black text-gray-900 uppercase">
- {format(new Date(appointment.startTime),"PPP")}
- </p>
- <p className="text-xs font-bold text-lime-600 uppercase tracking-widest">
- {format(new Date(appointment.startTime),"p")}
- </p>
- </div>
- </div>
+          {/* Slots */}
+          {selectedDate && (
+            <div>
+              <label style={{ display: "block", fontSize: 9, fontWeight: 900, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 8 }}>
+                Available Slots
+              </label>
 
- {/* Date Selection */}
- <div>
- <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
- Select New Date
- </label>
- <div className="relative">
- <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
- <input
- type="date"
- min={new Date().toISOString().split("T")[0]}
- value={selectedDate}
- onChange={handleDateChange}
- className="w-full pl-12 pr-4 h-14 bg-gray-50 border border-gray-100 rounded-2xl focus:border-[#CBFF38] outline-none transition-all font-bold text-sm"
- />
- </div>
- </div>
+              {isLoading ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 0", gap: 12 }}>
+                  <div
+                    style={{
+                      width: 36, height: 36,
+                      border: "3px solid #CBFF38",
+                      borderTopColor: "transparent",
+                      borderRadius: "50%",
+                      animation: "spin 0.8s linear infinite",
+                    }}
+                  />
+                  <span style={{ fontSize: 10, fontWeight: 900, color: "#d1d5db", textTransform: "uppercase", letterSpacing: "0.2em" }}>
+                    Checking Availability
+                  </span>
+                </div>
+              ) : availableSlots.length > 0 ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, maxHeight: 180, overflowY: "auto", paddingRight: 4 }}>
+                  {availableSlots.map((slot, index) => {
+                    const isSelected = selectedSlot?.startTime === slot.startTime;
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedSlot(slot)}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 4,
+                          height: 56,
+                          borderRadius: 12,
+                          border: isSelected ? "2px solid #000" : "1.5px solid #f1f5f9",
+                          background: isSelected ? "#000" : "#f9fafb",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                          transform: isSelected ? "scale(0.97)" : "scale(1)",
+                        }}
+                        onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.borderColor = "#000"; e.currentTarget.style.background = "#f1f5f9"; } }}
+                        onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = "#f1f5f9"; e.currentTarget.style.background = "#f9fafb"; } }}
+                      >
+                        {isSelected
+                          ? <CheckCircle2 size={12} color="#CBFF38" />
+                          : <Clock size={12} color="#9ca3af" />
+                        }
+                        <span style={{ fontSize: 12, fontWeight: 900, color: isSelected ? "#CBFF38" : "#374151", letterSpacing: "0.05em" }}>
+                          {format(new Date(slot.startTime), "HH:mm")}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 14, padding: "16px", textAlign: "center" }}>
+                  <p style={{ fontSize: 10, fontWeight: 900, color: "#dc2626", textTransform: "uppercase", letterSpacing: "0.15em", margin: 0 }}>
+                    {bookingError || "No slots available for this date."}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
- {/* Slots Selection */}
- {selectedDate && (
- <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
- <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
- Available Slots
- </label>
+          {/* Notes */}
+          <div>
+            <label style={{ display: "block", fontSize: 9, fontWeight: 900, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 8 }}>
+              Reason for Rescheduling <span style={{ fontWeight: 600, textTransform: "none", color: "#d1d5db" }}>(optional)</span>
+            </label>
+            <textarea
+              value={rescheduleNotes}
+              onChange={(e) => setRescheduleNotes(e.target.value)}
+              placeholder="Please explain why you need to reschedule..."
+              rows={3}
+              style={{
+                width: "100%",
+                padding: "14px 16px",
+                background: "#f9fafb",
+                border: "1.5px solid #f1f5f9",
+                borderRadius: 14,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#111",
+                outline: "none",
+                resize: "none",
+                transition: "border-color 0.2s",
+                boxSizing: "border-box",
+                fontFamily: "inherit",
+              }}
+              onFocus={e => (e.target.style.borderColor = "#CBFF38")}
+              onBlur={e => (e.target.style.borderColor = "#f1f5f9")}
+            />
+          </div>
 
- {isLoading ? (
- <div className="flex flex-col items-center justify-center py-10 gap-4">
- <div className="size-10 border-2 border-[#CBFF38] border-t-transparent rounded-full animate-spin"></div>
- <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Checking Availability</span>
- </div>
- ) : availableSlots.length > 0 ? (
- <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
- {availableSlots.map((slot, index) => {
- const isSelected = selectedSlot?.startTime === slot.startTime;
- return (
- <button
- key={index}
- onClick={() => setSelectedSlot(slot)}
- className={`flex items-center justify-center gap-2 h-12 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-all ${isSelected
- ?"bg-black text-[#CBFF38] border-black shadow-xl scale-95"
- :"bg-white border-gray-100 text-gray-400 hover:border-black hover:text-black"
- }`}
- >
- <Clock size={12} />
- {format(new Date(slot.startTime),"p")}
- </button>
- );
- })}
- </div>
- ) : (
- <div className="bg-red-50 p-6 rounded-2xl border border-red-100 text-center">
- <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">
- {bookingError ||"No slots available for this date."}
- </p>
- </div>
- )}
- </div>
- )}
+          {/* Missing context error */}
+          {(!appointment.clinicId && !appointment.clinic?.id) && (
+            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "12px 16px" }}>
+              <p style={{ fontSize: 10, fontWeight: 900, color: "#dc2626", textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>
+                Error: Clinic context missing.
+              </p>
+            </div>
+          )}
+        </div>
 
- {/* Reschedule Notes */}
- <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-200">
- <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
- Reason for Rescheduling (Optional)
- </label>
- <textarea
- value={rescheduleNotes}
- onChange={(e) => setRescheduleNotes(e.target.value)}
- placeholder="Please explain why you need to reschedule..."
- className="w-full p-5 min-h-[100px] bg-gray-50 border border-gray-100 rounded-2xl focus:border-[#CBFF38] outline-none transition-all font-bold text-sm resize-none"
- />
- </div>
+        {/* ── Footer ── */}
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            padding: "16px 28px 28px",
+            borderTop: "1px solid #f1f5f9",
+            background: "#fff",
+            flexShrink: 0,
+          }}
+        >
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1,
+              height: 52,
+              borderRadius: 14,
+              border: "1.5px solid #f1f5f9",
+              background: "#f9fafb",
+              fontSize: 11,
+              fontWeight: 900,
+              color: "#6b7280",
+              textTransform: "uppercase",
+              letterSpacing: "0.15em",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = "#111"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.color = "#6b7280"; }}
+          >
+            Discard
+          </button>
 
- {/* Missing Data Errors */}
- {(!appointment.clinicId && !appointment.clinic?.id) && (
- <div className="p-4 bg-red-50 text-red-700 rounded-2xl text-[10px] font-black uppercase border border-red-100">
- Error: Clinic context missing.
- </div>
- )}
- </div>
+          <button
+            onClick={handleConfirm}
+            disabled={!selectedSlot || isLoading}
+            style={{
+              flex: 2,
+              height: 52,
+              borderRadius: 14,
+              border: "none",
+              background: !selectedSlot || isLoading ? "#f1f5f9" : "#CBFF38",
+              fontSize: 11,
+              fontWeight: 900,
+              color: !selectedSlot || isLoading ? "#d1d5db" : "#000",
+              textTransform: "uppercase",
+              letterSpacing: "0.15em",
+              cursor: !selectedSlot || isLoading ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              transition: "all 0.2s",
+              boxShadow: !selectedSlot || isLoading ? "none" : "0 8px 24px rgba(203,255,56,0.35)",
+            }}
+          >
+            Confirm Slot
+            {selectedSlot && !isLoading && <ArrowRight size={14} />}
+          </button>
+        </div>
+      </div>
 
- {/* Footer */}
- <div className="p-8 bg-gray-50 border-t border-gray-100 flex gap-4">
- <button 
- onClick={onClose}
- className="flex-1 h-14 rounded-2xl text-[11px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-colors"
- >
- Discard
- </button>
- <button
- onClick={handleConfirm}
- disabled={!selectedSlot || isLoading}
- className="flex-1 h-14 bg-[#CBFF38] disabled:bg-gray-100 disabled:text-gray-300 text-black rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
- >
- Confirm Slot
- </button>
- </div>
- </div>
- </div>
- );
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  );
 };
