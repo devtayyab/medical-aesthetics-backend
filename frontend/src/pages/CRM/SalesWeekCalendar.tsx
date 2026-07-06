@@ -698,7 +698,7 @@ export const SalesWeekCalendar: React.FC = () => {
             {hours.map(hour => (
               <div key={hour} className="h-16 relative">
                 <span className="absolute -top-2 w-full text-center text-[10px] font-bold text-gray-400 bg-gray-50/50">
-                  {hour.toString().padStart(2, '0')}:00
+                  {hour}
                 </span>
               </div>
             ))}
@@ -820,7 +820,7 @@ export const SalesWeekCalendar: React.FC = () => {
                         </div>
 
                         <div className="flex items-start gap-1">
-                          <span className={`text-[10px] font-bold opacity-75`}>{timeString}</span>
+                          <span className={`text-[10px] font-bold opacity-75`}>{strHour}</span>
                           <span className="text-[10px] font-black leading-tight flex-1">
                             {apt.client?.firstName} {apt.client?.lastName}
                             {(apt as any).isReturned && <span className="ml-1 text-[7px] px-1 rounded bg-black/10 font-black">RET</span>}
