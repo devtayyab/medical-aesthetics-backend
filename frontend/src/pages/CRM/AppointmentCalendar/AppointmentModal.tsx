@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { bookingAPI, crmAPI, clinicsAPI } from '@/services/api';
 import { APPOINTMENT_STATUS_OPTIONS, DURATION_OPTIONS, STATUS_CONFIG, PAYMENT_STATUS_CONFIG } from './constants';
 import type { AppointmentFormData, CalendarAppointment, ConflictInfo } from './types';
@@ -656,16 +657,12 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide mb-1.5">
                 <MapPin className="inline w-3 h-3 mr-1" /> Clinic *
               </label>
-              <select
-                value={form.clinicId}
-                onChange={e => handleClinicChange(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              >
-                <option value="">Select clinic...</option>
-                {clinics.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={form.clinicId || ''}
+                onChange={value => handleClinicChange(value)}
+                options={clinics.map(c => ({ value: c.id, label: c.name }))}
+                placeholder="Select clinic..."
+              />
             </div>
 
             {/* Treatment */}
@@ -680,41 +677,37 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <select
-                    value={form.serviceId}
-                    onChange={e => {
-                      const newIds = [e.target.value, ...(form.additionalServiceIds || [])];
+                  <SearchableSelect
+                    value={form.serviceId || ''}
+                    onChange={value => {
+                      const newIds = [value, ...(form.additionalServiceIds || [])];
                       handleServicesChange(newIds.filter(Boolean));
                     }}
                     disabled={!form.clinicId}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50"
-                  >
-                    <option value="">{form.clinicId ? 'Select primary treatment...' : 'Select clinic first'}</option>
-                    {availableServices.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} {s.price ? `— $${s.price}` : ''} {s.durationMinutes ? `(${s.durationMinutes}m)` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={form.clinicId ? 'Select primary treatment...' : 'Select clinic first'}
+                    options={availableServices.map(s => ({
+                      value: s.id,
+                      label: `${s.name} ${s.price ? `— $${s.price}` : ''} ${s.durationMinutes ? `(${s.durationMinutes}m)` : ''}`.trim()
+                    }))}
+                  />
 
                   {form.additionalServiceIds?.map((id, index) => (
                     <div key={`additional-${index}`} className="flex items-center gap-2">
-                      <select
-                        value={id}
-                        onChange={e => {
-                          const newAdditional = [...(form.additionalServiceIds || [])];
-                          newAdditional[index] = e.target.value;
-                          handleServicesChange([form.serviceId, ...newAdditional]);
-                        }}
-                        className="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                      >
-                        <option value="">Select additional treatment...</option>
-                        {availableServices.map(s => (
-                          <option key={s.id} value={s.id}>
-                            {s.name} {s.price ? `— $${s.price}` : ''} {s.durationMinutes ? `(${s.durationMinutes}m)` : ''}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex-1">
+                        <SearchableSelect
+                          value={id || ''}
+                          onChange={value => {
+                            const newAdditional = [...(form.additionalServiceIds || [])];
+                            newAdditional[index] = value;
+                            handleServicesChange([form.serviceId, ...newAdditional]);
+                          }}
+                          placeholder="Select additional treatment..."
+                          options={availableServices.map(s => ({
+                            value: s.id,
+                            label: `${s.name} ${s.price ? `— $${s.price}` : ''} ${s.durationMinutes ? `(${s.durationMinutes}m)` : ''}`.trim()
+                          }))}
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => {

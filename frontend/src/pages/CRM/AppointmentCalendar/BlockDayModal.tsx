@@ -3,6 +3,7 @@ import { X, Calendar, AlertTriangle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { adminAPI } from '@/services/api';
+import { createClinicUTCDateTime } from './useCalendarData';
 import type { BlockDayFormData } from './types';
 
 interface BlockDayModalProps {
@@ -54,9 +55,17 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
     const reasonText = form.reason === 'OTHER' ? customReason || 'Other' :
       BLOCK_DAY_REASONS.find(r => r.value === form.reason)?.label || form.reason;
 
-    // Block the entire day: midnight to midnight
-    const dayStart = new Date(`${form.date}T00:00:00`);
-    const dayEnd = new Date(`${form.date}T23:59:59`);
+    // Get clinic timezone
+    const clinic = clinics.find(c => c.id === form.clinicId);
+    const tz = clinic?.timezone || 'UTC';
+
+    // Block the entire day in the clinic's timezone
+    const localDate = new Date(`${form.date}T12:00:00`);
+    const dayStart = createClinicUTCDateTime(localDate, '00:00', tz);
+    
+    // We create 23:59 and add 59 seconds to it manually since createClinicUTCDateTime takes HH:mm
+    const dayEnd = createClinicUTCDateTime(localDate, '23:59', tz);
+    dayEnd.setSeconds(59);
 
     setIsSubmitting(true);
     try {

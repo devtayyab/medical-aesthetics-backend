@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { adminAPI } from '@/services/api';
 import { BLOCK_REASON_OPTIONS, TIME_OPTIONS } from './constants';
+import { createClinicUTCDateTime } from './useCalendarData';
 import type { BlockSlotFormData } from './types';
 
 interface BlockSlotModalProps {
@@ -57,13 +58,20 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
 
     const reasonText = form.reason === 'OTHER' ? form.customReason : form.reason.replace('_', ' ');
 
+    const clinic = clinics.find(c => c.id === form.clinicId);
+    const tz = clinic?.timezone || 'UTC';
+    const localDate = new Date(`${form.date}T12:00:00`);
+    
+    const startDateTime = createClinicUTCDateTime(localDate, form.startTime, tz);
+    const endDateTime = createClinicUTCDateTime(localDate, form.endTime, tz);
+
     setIsSubmitting(true);
     try {
       await adminAPI.blockSlot({
         clinicId: form.clinicId,
         providerId: form.salesPersonId || null,
-        startTime: new Date(`${form.date}T${form.startTime}`).toISOString(),
-        endTime: new Date(`${form.date}T${form.endTime}`).toISOString(),
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
         reason: reasonText,
       });
       toast.success('Time slot blocked successfully!');
