@@ -85,6 +85,19 @@ export const AppointmentCalendar: React.FC = () => {
     );
   }, [appointments, filters.paymentStatus]);
 
+  // ── Effective clinic timezone for the current time red line ─────────────────
+  // When a specific clinic is selected, use its timezone so the red line
+  // aligns with appointment positions. Fall back to the first available
+  // clinic's timezone, or undefined (which will use browser local time).
+  const effectiveClinicTimezone = useMemo(() => {
+    if (filters.clinicId !== 'all') {
+      const c = clinics.find((cl: any) => cl.id === filters.clinicId);
+      return c?.timezone || undefined;
+    }
+    // "all" mode: use the first clinic's timezone as a reasonable default
+    return clinics[0]?.timezone || undefined;
+  }, [filters.clinicId, clinics]);
+
   // ── Stats ───────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     const total = appointments.length;
@@ -244,6 +257,7 @@ export const AppointmentCalendar: React.FC = () => {
             selectedSalesPersonId={selectedSalesPersonId}
             clinics={clinics}
             selectedClinicId={filters.clinicId}
+            clinicTimezone={effectiveClinicTimezone}
             onSlotClick={handleSlotClick}
             onAppointmentEdit={handleAppointmentEdit}
             onRefresh={refreshAppointments}

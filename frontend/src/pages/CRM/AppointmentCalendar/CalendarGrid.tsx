@@ -20,6 +20,7 @@ interface CalendarGridProps {
   selectedSalesPersonId: string;
   clinics: any[];
   selectedClinicId: string;
+  clinicTimezone?: string;
   onSlotClick: (payload: SlotClickPayload) => void;
   onAppointmentEdit: (apt: CalendarAppointment) => void;
   onRefresh: () => void;
@@ -38,6 +39,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   selectedSalesPersonId: _selectedSalesPersonId,
   clinics,
   selectedClinicId: _selectedClinicId,
+  clinicTimezone,
   onSlotClick,
   onAppointmentEdit,
   onRefresh,
@@ -55,17 +57,39 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     });
   }, [viewDate, viewMode]);
 
-  // Current time line
+  // Current time line — use clinic timezone so the red line
+  // aligns with appointment positions (which are also in clinic tz).
   useEffect(() => {
     const updateTime = () => {
-      const now = new Date();
-      const minutes = now.getHours() * 60 + now.getMinutes();
+      const nowIso = new Date().toISOString();
+      const tz = clinicTimezone && clinicTimezone !== 'null' ? clinicTimezone : undefined;
+      let minutes: number;
+      if (tz) {
+        try {
+          const fmt = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            hour: 'numeric',
+            minute: 'numeric',
+            hourCycle: 'h23',
+          });
+          const parts = fmt.formatToParts(new Date(nowIso));
+          const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
+          const m = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
+          minutes = (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+        } catch {
+          const now = new Date();
+          minutes = now.getHours() * 60 + now.getMinutes();
+        }
+      } else {
+        const now = new Date();
+        minutes = now.getHours() * 60 + now.getMinutes();
+      }
       setCurrentTimeTop((minutes / 60) * HOUR_HEIGHT_PX);
     };
     updateTime();
     const interval = setInterval(updateTime, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [clinicTimezone]);
 
   // Scroll to current time on mount
   useEffect(() => {
@@ -92,12 +116,14 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   };
 
   // Get blocked slots for a day
+  // NOTE: getClinicLocalDate() already returns a 'yyyy-MM-dd' string — do NOT
+  // wrap it in format() (which expects a Date object and would silently break).
   const getBlockedByDay = (day: Date): any[] => {
     const dayDateStr = format(day, 'yyyy-MM-dd');
     return blockedSlots.filter(slot => {
       const clinic = clinics.find(c => c.id === slot.clinicId);
       const tz = clinic?.timezone || 'UTC';
-      const slotDateStr = format(getClinicLocalDate(slot.startTime, tz), 'yyyy-MM-dd');
+      const slotDateStr = getClinicLocalDate(slot.startTime, tz); // already a string
       return slotDateStr === dayDateStr;
     });
   };
@@ -333,6 +359,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
                       key={apt.id}
                       appointment={apt}
                       style={aptStyle}
+                      timezone={tz}
                       onEdit={onAppointmentEdit}
                       onDragStart={() => {}}
                       onResizeStart={() => {}}
