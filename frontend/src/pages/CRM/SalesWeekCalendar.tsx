@@ -803,7 +803,7 @@ export const SalesWeekCalendar: React.FC = () => {
                           <div className="flex justify-between items-start border-b border-gray-100 pb-2 mb-2">
                             <div className="flex items-center gap-1.5 text-indigo-600">
                               <Clock size={12} strokeWidth={3} />
-                              <span className="text-[10px] font-black">{timeString} – {format(parseISO(apt.endTime), 'HH:mm')}</span>
+                              <span className="text-[10px] font-black">{timeString} – {formatClinicTime(apt.endTime, tz)}</span>
                             </div>
                             <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${style.color.split(' ')[0]} ${style.color.split(' ')[1]}`}>{style.label}</span>
                           </div>

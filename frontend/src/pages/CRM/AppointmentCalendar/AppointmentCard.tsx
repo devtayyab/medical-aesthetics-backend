@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Clock, User, CreditCard, GripVertical } from 'lucide-react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { STATUS_CONFIG, PAYMENT_STATUS_CONFIG, SALESPERSON_COLORS } from './constants';
+import { getClinicLocalTime } from './useCalendarData';
 import type { CalendarAppointment } from './types';
 
 interface AppointmentCardProps {
   appointment: CalendarAppointment;
   style: React.CSSProperties;
+  timezone: string;
   onEdit: (apt: CalendarAppointment) => void;
   onDragStart: (e: React.MouseEvent, apt: CalendarAppointment) => void;
   onResizeStart: (e: React.MouseEvent, apt: CalendarAppointment) => void;
@@ -15,6 +17,7 @@ interface AppointmentCardProps {
 export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   appointment,
   style,
+  timezone,
   onEdit,
   onDragStart,
   onResizeStart,
@@ -52,8 +55,10 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       ? `${apt.provider.firstName} ${apt.provider.lastName || ''}`.trim()
       : (apt as any).providerName || 'Unassigned';
 
-  const startDisplay = format(parseISO(apt.startTime), 'HH:mm');
-  const endDisplay = format(parseISO(apt.endTime), 'HH:mm');
+  const startLocal = getClinicLocalTime(apt.startTime, timezone);
+  const endLocal = getClinicLocalTime(apt.endTime, timezone);
+  const startDisplay = `${startLocal.hour.toString().padStart(2, '0')}:${startLocal.minute.toString().padStart(2, '0')}`;
+  const endDisplay = `${endLocal.hour.toString().padStart(2, '0')}:${endLocal.minute.toString().padStart(2, '0')}`;
   const durationMin = differenceInMinutes(parseISO(apt.endTime), parseISO(apt.startTime));
 
   const isCompact = durationMin < 30;
