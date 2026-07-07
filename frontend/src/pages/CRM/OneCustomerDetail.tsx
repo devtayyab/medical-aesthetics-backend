@@ -249,9 +249,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  const [showPhoneCallModal, setShowPhoneCallModal] = useState(false);
  const [phoneCallNotes, setPhoneCallNotes] = useState("");
 
- const [showEmailModal, setShowEmailModal] = useState(false);
- const [emailNotes, setEmailNotes] = useState("");
- const [emailDate, setEmailDate] = useState(new Date().toISOString().substring(0, 16));
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailNotes, setEmailNotes] = useState("");
+  const [emailDate, setEmailDate] = useState(new Date().toISOString().substring(0, 16));
+
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteContent, setNoteContent] = useState("");
 
  const [showDiaryModal, setShowDiaryModal] = useState(false);
  const [editingLogId, setEditingLogId] = useState<string | null>(null);
@@ -444,7 +447,42 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  }
  };
 
- const handleStartInteraction = (type: 'call' | 'meeting' | 'email') => {
+  const handleSaveNote = async () => {
+  if (!noteContent.trim()) return;
+  try {
+  const isLegacyId = editingLogId?.startsWith('lead-log-');
+
+  if (editingLogId && !isLegacyId) {
+  await dispatch(updateCommunication({
+  id: editingLogId,
+  updates: { notes: noteContent }
+  })).unwrap();
+  } else {
+  await dispatch(logCommunication({
+  customerId: customer.id,
+  salespersonId: user?.id,
+  type: 'note',
+  status: 'completed',
+  notes: noteContent,
+  direction: 'outgoing',
+  metadata: {
+  wasLegacyEdit: isLegacyId ? true : undefined,
+  originalLegacyId: isLegacyId ? editingLogId : undefined
+  }
+  })).unwrap();
+  }
+
+  setNoteContent("");
+  setEditingLogId(null);
+  setShowNoteModal(false);
+  dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+  } catch (error) {
+  console.error("Failed to save note", error);
+  alert("Failed to save.");
+  }
+  };
+
+  const handleStartInteraction = (type: 'call' | 'meeting' | 'email') => {
  setInteractionType(type);
  if (type === 'call') {
  setShowDialer(true);
@@ -1018,6 +1056,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-800">Task</span>
  </button>
+ <button onClick={() => { setActiveTab('notes'); setShowNoteModal(true); }} className="flex flex-col items-center gap-1 group">
+ <div className="w-9 h-9 rounded-full border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 group-hover:bg-purple-50 group-hover:text-purple-600 group-hover:border-purple-200 transition-all group-hover:scale-105">
+ <FileText className="w-4 h-4" />
+ </div>
+ <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-800">Note</span>
+ </button>
  </div>
  </div>
 
@@ -1135,144 +1179,174 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  {/* Content Area */}
  <div className="p-8">
- {activeTab === 'overview' && (
  <div className="space-y-6">
- <div className="flex justify-between items-center mb-8">
- <h3 className="font-black text-slate-800 text-base flex items-center gap-2">
- <Activity className="w-5 h-5 text-blue-600" /> Activity Feed
- </h3>
- </div>
+  <div className="flex justify-between items-center mb-8">
+  <h3 className="font-black text-slate-800 text-base flex items-center gap-2">
+  <Activity className="w-5 h-5 text-blue-600" /> {activeTab === 'overview' ? 'Activity Feed' : activeTab === 'activities' ? 'Activities' : 'Notes'}
+  </h3>
+  </div>
+  
+  {/* Unified Timeline */}
+  <div className="relative border-l-[3px] border-slate-100 ml-6 pl-10 space-y-10 pb-6">
+  
+  {/* Combine and Sort Timeline Items */}
+  {(() => {
+  const timelineItems: any[] = [];
+  
+  if (summary?.communications) {
+    summary.communications.forEach(c => {
+      const itemType = c.type === 'note' ? 'note' : 'comm';
+      
+      if (activeTab === 'overview') {
+        timelineItems.push({ type: itemType, date: new Date(c.createdAt || (c as any).timestamp || Date.now()), data: c });
+      } else if (activeTab === 'activities') {
+        if (c.type !== 'note') {
+          timelineItems.push({ type: itemType, date: new Date(c.createdAt || (c as any).timestamp || Date.now()), data: c });
+        }
+      } else if (activeTab === 'notes') {
+        if (c.type === 'note' || c.type === 'email') {
+          // If it's an email in notes tab, let's treat it as note so it renders nicely or keep as comm
+          // The user requested emails to be in notes. We keep itemType which is 'comm' for emails.
+          timelineItems.push({ type: itemType, date: new Date(c.createdAt || (c as any).timestamp || Date.now()), data: c });
+        }
+      }
+    });
+  }
+
+  if (activeTab === 'overview' || activeTab === 'activities') {
+    if (summary?.actions) {
+      summary.actions.forEach(a => timelineItems.push({ type: 'action', date: new Date(a.createdAt || Date.now()), data: a }));
+    }
+    if (summary?.appointments) {
+      summary.appointments.forEach(a => timelineItems.push({ type: 'appointment', date: new Date(a.startTime || Date.now()), data: a }));
+    }
+  }
+  
+  if (activeTab === 'overview') {
+    // Create a lead created event
+    timelineItems.push({ type: 'created', date: new Date(customer.createdAt), data: null });
+  }
+
+  timelineItems.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+  if (timelineItems.length === 0) {
+    return (
+      <div className="text-center text-slate-400 py-10 font-medium">
+        No {activeTab} to show yet.
+      </div>
+    );
+  }
+
+  return timelineItems.map((item, idx) => {
+  let icon = <Activity className="w-5 h-5 text-slate-400" />;
+  let iconBg ="bg-white border-slate-200";
+  let content = null;
+
+  if (item.type === 'created') {
+  icon = <UserPlus className="w-5 h-5 text-emerald-600" />;
+  iconBg ="bg-emerald-50 border-emerald-200";
+  content = (
+  <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm font-medium text-slate-600 shadow-sm">
+  <span className="font-bold text-slate-900 block mb-1">Contact created</span> 
+  This contact was created via {customer.source || 'Manual Entry'}.
+  </div>
+  );
+  } else if (item.type === 'note') {
+  icon = <FileText className="w-5 h-5 text-purple-600" />;
+  iconBg ="bg-purple-50 border-purple-200";
+  content = (
+  <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group">
+  <div className="flex justify-between items-center mb-3">
+  <span className="font-bold text-slate-900 text-sm flex items-center gap-2">Note</span>
+  <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+  </div>
+  <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-lg border border-slate-100">{item.data.content || item.data.text || item.data.note || item.data.notes}</p>
+  </div>
+  );
+  } else if (item.type === 'comm') {
+  const isCall = item.data.type === 'call';
+  icon = isCall ? <PhoneCall className="w-5 h-5 text-blue-600" /> : <Mail className="w-5 h-5 text-indigo-600" />;
+  iconBg = isCall ?"bg-blue-50 border-blue-200" :"bg-indigo-50 border-indigo-200";
+  content = (
+  <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group">
+  <div className="flex justify-between items-center mb-3">
+  <span className="font-bold text-slate-900 text-sm flex items-center gap-2">
+  {isCall ? 'Logged a Call' : 'Logged an Email'}
+  </span>
+  <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+  </div>
+  <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-lg border border-slate-100">{item.data.notes}</p>
+  {item.data.metadata?.outcome && (
+  <Badge className="mt-3 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest px-2.5">{item.data.metadata.outcome.replace('_', ' ')}</Badge>
+  )}
+  </div>
+  );
+  } else if (item.type === 'appointment') {
+  icon = <Calendar className="w-5 h-5 text-amber-600" />;
+  iconBg ="bg-amber-50 border-amber-200";
+  content = (
+  <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all">
+  <div className="flex justify-between items-center mb-3">
+  <span className="font-bold text-slate-900 text-sm">Appointment: {item.data.serviceName}</span>
+  <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+  </div>
+  <div className="text-sm text-slate-600 font-medium mb-4 flex items-center gap-2">
+  <Badge className={`${item.data.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'} text-[10px] font-black uppercase`}>
+  {item.data.status}
+  </Badge>
+  <span>at {item.data.clinicName}</span>
+  </div>
+  <div className="flex gap-2 items-center border-t border-slate-100 pt-3">
+  {item.data.status === 'COMPLETED' ? (
+  <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setPendingAptId(item.data.id); setPendingAptObj(item.data); setPaymentAmt(item.data.amountPaid?.toString() || ''); setPaymentMethod(item.data.paymentMethod || 'cash'); setIsPaymentPrompt(true); }}>Update Record</Button>
+  ) : (
+  <>
+  <Button size="sm" className="h-8 text-[11px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-sm" onClick={() => handleUpdateAppointmentStatus(item.data.id, 'COMPLETED', item.data)}>Complete</Button>
+  <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold text-slate-600 border-slate-200 hover:bg-slate-50" onClick={() => { setSelectedAppointmentForEdit(item.data); setShowBookingModal(true); }}>Edit</Button>
+  </>
+  )}
+  </div>
+  </div>
+  );
+  } else if (item.type === 'action') {
+  icon = <CheckCircle className="w-5 h-5 text-slate-600" />;
+  iconBg ="bg-slate-100 border-slate-300";
+  content = (
+  <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all">
+  <div className="flex justify-between items-center mb-2">
+  <span className="font-bold text-slate-900 text-sm">Task: {item.data.title}</span>
+  <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+  </div>
+  <p className="text-sm text-slate-600 font-medium mb-4">{item.data.description}</p>
+  <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+  <input type="checkbox" checked={item.data.status === 'completed'} onChange={async (e) => { 
+  const newStatus = item.data.status === 'completed' ? 'pending' : 'completed';
+  await dispatch(updateAction({ id: item.data.id, updates: { status: newStatus } })).unwrap();
+  dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
+  }} className="h-5 w-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer" />
+  <span className="text-xs font-bold text-slate-700 uppercase tracking-tight">Mark Complete</span>
+  {item.data.dueDate && (
+  <span className={`ml-auto text-[10px] font-bold uppercase ${new Date(item.data.dueDate) < new Date() && item.data.status !== 'completed' ? 'text-red-500' : 'text-slate-400'}`}>
+  Due: {new Date(item.data.dueDate).toLocaleDateString()}
+  </span>
+  )}
+  </div>
+  </div>
+  );
+  }
  
- {/* Unified Timeline */}
- <div className="relative border-l-[3px] border-slate-100 ml-6 pl-10 space-y-10 pb-6">
- 
- {/* Combine and Sort Timeline Items */}
- {(() => {
- const timelineItems = [];
- 
- if (summary?.communications) {
- summary.communications.forEach(c => timelineItems.push({ type: 'comm', date: new Date(c.createdAt), data: c }));
- }
- if (summary?.actions) {
- summary.actions.forEach(a => timelineItems.push({ type: 'action', date: new Date(a.createdAt), data: a }));
- }
- if (summary?.appointments) {
- summary.appointments.forEach(a => timelineItems.push({ type: 'appointment', date: new Date(a.startTime), data: a }));
- }
- 
- // Create a lead created event
- timelineItems.push({ type: 'created', date: new Date(customer.createdAt), data: null });
-
- timelineItems.sort((a, b) => b.date.getTime() - a.date.getTime());
-
- return timelineItems.map((item, idx) => {
- let icon = <Activity className="w-5 h-5 text-slate-400" />;
- let iconBg ="bg-white border-slate-200";
- let content = null;
-
- if (item.type === 'created') {
- icon = <UserPlus className="w-5 h-5 text-emerald-600" />;
- iconBg ="bg-emerald-50 border-emerald-200";
- content = (
- <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm font-medium text-slate-600 shadow-sm">
- <span className="font-bold text-slate-900 block mb-1">Contact created</span> 
- This contact was created via {customer.source || 'Manual Entry'}.
- </div>
- );
- } else if (item.type === 'comm') {
- const isCall = item.data.type === 'call';
- icon = isCall ? <PhoneCall className="w-5 h-5 text-blue-600" /> : <Mail className="w-5 h-5 text-indigo-600" />;
- iconBg = isCall ?"bg-blue-50 border-blue-200" :"bg-indigo-50 border-indigo-200";
- content = (
- <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group">
- <div className="flex justify-between items-center mb-3">
- <span className="font-bold text-slate-900 text-sm flex items-center gap-2">
- {isCall ? 'Logged a Call' : 'Logged an Email'}
- </span>
- <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
- </div>
- <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-lg border border-slate-100">{item.data.notes}</p>
- {item.data.metadata?.outcome && (
- <Badge className="mt-3 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest px-2.5">{item.data.metadata.outcome.replace('_', ' ')}</Badge>
- )}
- </div>
- );
- } else if (item.type === 'appointment') {
- icon = <Calendar className="w-5 h-5 text-amber-600" />;
- iconBg ="bg-amber-50 border-amber-200";
- content = (
- <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all">
- <div className="flex justify-between items-center mb-3">
- <span className="font-bold text-slate-900 text-sm">Appointment: {item.data.serviceName}</span>
- <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
- </div>
- <div className="text-sm text-slate-600 font-medium mb-4 flex items-center gap-2">
- <Badge className={`${item.data.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'} text-[10px] font-black uppercase`}>
- {item.data.status}
- </Badge>
- <span>at {item.data.clinicName}</span>
- </div>
- <div className="flex gap-2 items-center border-t border-slate-100 pt-3">
- {item.data.status === 'COMPLETED' ? (
- <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setPendingAptId(item.data.id); setPendingAptObj(item.data); setPaymentAmt(item.data.amountPaid?.toString() || ''); setPaymentMethod(item.data.paymentMethod || 'cash'); setIsPaymentPrompt(true); }}>Update Record</Button>
- ) : (
- <>
- <Button size="sm" className="h-8 text-[11px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-sm" onClick={() => handleUpdateAppointmentStatus(item.data.id, 'COMPLETED', item.data)}>Complete</Button>
- <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold text-slate-600 border-slate-200 hover:bg-slate-50" onClick={() => { setSelectedAppointmentForEdit(item.data); setShowBookingModal(true); }}>Edit</Button>
- </>
- )}
- </div>
- </div>
- );
- } else if (item.type === 'action') {
- icon = <CheckCircle className="w-5 h-5 text-slate-600" />;
- iconBg ="bg-slate-100 border-slate-300";
- content = (
- <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all">
- <div className="flex justify-between items-center mb-2">
- <span className="font-bold text-slate-900 text-sm">Task: {item.data.title}</span>
- <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
- </div>
- <p className="text-sm text-slate-600 font-medium mb-4">{item.data.description}</p>
- <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
- <input type="checkbox" checked={item.data.status === 'completed'} onChange={async (e) => { 
- const newStatus = item.data.status === 'completed' ? 'pending' : 'completed';
- await dispatch(updateAction({ id: item.data.id, updates: { status: newStatus } })).unwrap();
- dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
- }} className="h-5 w-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer" />
- <span className="text-xs font-bold text-slate-700 uppercase tracking-tight">Mark Complete</span>
- {item.data.dueDate && (
- <span className={`ml-auto text-[10px] font-bold uppercase ${new Date(item.data.dueDate) < new Date() && item.data.status !== 'completed' ? 'text-red-500' : 'text-slate-400'}`}>
- Due: {new Date(item.data.dueDate).toLocaleDateString()}
- </span>
- )}
- </div>
- </div>
- );
- }
-
- return (
- <div key={`${item.type}-${idx}`} className="relative">
- <div className={`absolute -left-[63px] top-1 w-11 h-11 rounded-full border-[3px] ${iconBg} flex items-center justify-center shadow-sm z-10`}>
- {icon}
- </div>
- {content}
- </div>
- );
- });
- })()}
- </div>
- </div>
- )}
-
- {activeTab !== 'overview' && (
- <div className="py-20 text-center text-slate-400 font-medium">
- <Activity className="w-12 h-12 mx-auto mb-4 opacity-20 text-blue-500" />
- <h3 className="text-lg font-bold text-slate-600 mb-1">Coming Soon</h3>
- <p className="text-sm">This tab is being optimized in the new layout.<br/> Use the Overview tab for a unified timeline feed.</p>
- </div>
- )}
-
+  return (
+  <div key={`${item.type}-${idx}`} className="relative">
+  <div className={`absolute -left-[63px] top-1 w-11 h-11 rounded-full border-[3px] ${iconBg} flex items-center justify-center shadow-sm z-10`}>
+  {icon}
+  </div>
+  {content}
+  </div>
+  );
+  });
+  })()}
+  </div>
+  </div>
  </div>
  </div>
  </div>
@@ -1429,6 +1503,37 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  </div>
  )}
+
+  {/* Note Modal */}
+  {showNoteModal && (
+  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1001] flex items-center justify-center p-4 animate-in fade-in">
+  <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
+  <div className="flex justify-between items-center mb-2">
+  <h3 className="font-bold text-slate-800 flex items-center gap-2">
+  <FileText className="w-4 h-4 text-slate-400" /> {editingLogId ?"Edit Note" :"Add a Note"}
+  </h3>
+  <Button variant="ghost" size="sm" onClick={() => { setShowNoteModal(false); setNoteContent(""); setEditingLogId(null); }} className="h-8 w-8 p-0">
+  <X className="w-4 h-4" />
+  </Button>
+  </div>
+  <div className="space-y-4">
+  <div>
+  <label className="text-xs font-bold text-slate-500 mb-1 block">Note Content</label>
+  <Textarea
+  placeholder="Enter your note..."
+  value={noteContent}
+  onChange={(e) => setNoteContent(e.target.value)}
+  className="min-h-[120px] resize-none"
+  />
+  </div>
+  <div className="flex justify-end gap-2 pt-2">
+  <Button variant="outline" onClick={() => { setShowNoteModal(false); setNoteContent(""); }}>Cancel</Button>
+  <Button className="bg-slate-800 hover:bg-slate-900 text-white" onClick={handleSaveNote}>Save Note</Button>
+  </div>
+  </div>
+  </div>
+  </div>
+  )}
 
  {/* Tag Modal */}
  {showTagModal && (
