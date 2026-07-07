@@ -390,6 +390,7 @@ export const crmAPI = {
  api.post(`/crm/duplicates/merge`, { targetId, sourceId }),
 
  // Customer Records
+ getCustomers: (filters?: any) => api.get("/crm/customers", { params: filters }),
  getCustomerRecord: (customerId: string, salespersonId?: string) =>
  api.get(`/crm/customers/${customerId}/record`, { params: { salespersonId } }),
  getCustomer: (id?: string) =>

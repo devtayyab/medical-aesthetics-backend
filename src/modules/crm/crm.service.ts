@@ -1219,10 +1219,11 @@ export class CrmService implements OnModuleInit {
       .leftJoinAndSelect('record.assignedSalesperson', 'salesperson');
 
     if (requesterId) {
-      const user = await this.usersRepository.findOne({ where: { id: requesterId } });
-      if (user?.role === UserRole.SALESPERSON) {
-        query.andWhere('record.assignedSalespersonId = :requesterId', { requesterId });
-      }
+      // Access granted globally to salespeople and clinics per user request
+      // const user = await this.usersRepository.findOne({ where: { id: requesterId } });
+      // if (user?.role === UserRole.SALESPERSON) {
+      //   query.andWhere('record.assignedSalespersonId = :requesterId', { requesterId });
+      // }
     }
 
     if (filters.search) {
@@ -2030,26 +2031,27 @@ export class CrmService implements OnModuleInit {
       .leftJoinAndSelect('customerTag.tag', 'tag')
       .where('customerTag.tagId = :tagId', { tagId });
 
-    if (user?.role === UserRole.SALESPERSON) {
-      queryBuilder.andWhere('customerTag.addedBy = :sid', { sid: requesterId });
-    } else if (user?.role === UserRole.CLINIC_OWNER) {
-      const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
-      const ownedClinicIds = ownerships.map(o => o.clinicId);
-      if (ownedClinicIds.length > 0) {
-        const clientIds = await this.appointmentsRepository.createQueryBuilder('apt')
-          .select('DISTINCT apt.clientId', 'clientId')
-          .where('apt.clinicId IN (:...ids)', { ids: ownedClinicIds })
-          .getRawMany();
-        const ids = clientIds.map(r => r.clientId);
-        if (ids.length > 0) {
-          queryBuilder.andWhere('customerTag.customerId IN (:...ids)', { ids });
-        } else {
-          return [];
-        }
-      } else {
-        return [];
-      }
-    }
+    // Access granted globally to salespeople and clinics per user request
+    // if (user?.role === UserRole.SALESPERSON) {
+    //   queryBuilder.andWhere('customerTag.addedBy = :sid', { sid: requesterId });
+    // } else if (user?.role === UserRole.CLINIC_OWNER) {
+    //   const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
+    //   const ownedClinicIds = ownerships.map(o => o.clinicId);
+    //   if (ownedClinicIds.length > 0) {
+    //     const clientIds = await this.appointmentsRepository.createQueryBuilder('apt')
+    //       .select('DISTINCT apt.clientId', 'clientId')
+    //       .where('apt.clinicId IN (:...ids)', { ids: ownedClinicIds })
+    //       .getRawMany();
+    //     const ids = clientIds.map(r => r.clientId);
+    //     if (ids.length > 0) {
+    //       queryBuilder.andWhere('customerTag.customerId IN (:...ids)', { ids });
+    //     } else {
+    //       return [];
+    //     }
+    //   } else {
+    //     return [];
+    //   }
+    // }
 
     const tags = await queryBuilder.getMany();
     return tags.map(t => ({
@@ -2068,23 +2070,24 @@ export class CrmService implements OnModuleInit {
       .leftJoinAndSelect('record.customer', 'customer')
       .where('record.isRepeatCustomer = :isRepeat', { isRepeat: true });
 
-    if (user?.role === UserRole.SALESPERSON) {
-      qb.andWhere('record.assignedSalespersonId = :sid', { sid: requesterId });
-    }
-
-    if (user?.role === UserRole.CLINIC_OWNER) {
-      const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
-      const ownedClinicIds = ownerships.map(o => o.clinicId);
-      if (ownedClinicIds.length === 0) return [];
-      // Filter customers who had appointments in owned clinics
-      const clientIds = await this.appointmentsRepository.createQueryBuilder('apt')
-        .select('DISTINCT apt.clientId', 'clientId')
-        .where('apt.clinicId IN (:...ids)', { ids: ownedClinicIds })
-        .getRawMany();
-      const ids = clientIds.map(r => r.clientId);
-      if (ids.length === 0) return [];
-      qb.andWhere('record.customerId IN (:...ids)', { ids });
-    }
+    // Access granted globally to salespeople and clinics per user request
+    // if (user?.role === UserRole.SALESPERSON) {
+    //   qb.andWhere('record.assignedSalespersonId = :sid', { sid: requesterId });
+    // }
+    // 
+    // if (user?.role === UserRole.CLINIC_OWNER) {
+    //   const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
+    //   const ownedClinicIds = ownerships.map(o => o.clinicId);
+    //   if (ownedClinicIds.length === 0) return [];
+    //   // Filter customers who had appointments in owned clinics
+    //   const clientIds = await this.appointmentsRepository.createQueryBuilder('apt')
+    //     .select('DISTINCT apt.clientId', 'clientId')
+    //     .where('apt.clinicId IN (:...ids)', { ids: ownedClinicIds })
+    //     .getRawMany();
+    //   const ids = clientIds.map(r => r.clientId);
+    //   if (ids.length === 0) return [];
+    //   qb.andWhere('record.customerId IN (:...ids)', { ids });
+    // }
 
     return qb.orderBy('record.repeatCount', 'DESC').getMany();
   }
@@ -2100,21 +2103,22 @@ export class CrmService implements OnModuleInit {
       .orWhere('record.lastContactDate IS NULL');
 
     if (requesterId) {
-      const user = await this.usersRepository.findOne({ where: { id: requesterId } });
-      if (user?.role === UserRole.SALESPERSON) {
-        queryBuilder.andWhere('record.assignedSalespersonId = :sid', { sid: requesterId });
-      } else if (user?.role === UserRole.CLINIC_OWNER) {
-        const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
-        const ownedClinicIds = ownerships.map(o => o.clinicId);
-        if (ownedClinicIds.length === 0) return [];
-        const clientIds = await this.appointmentsRepository.createQueryBuilder('apt')
-          .select('DISTINCT apt.clientId', 'clientId')
-          .where('apt.clinicId IN (:...ids)', { ids: ownedClinicIds })
-          .getRawMany();
-        const ids = clientIds.map(r => r.clientId);
-        if (ids.length === 0) return [];
-        queryBuilder.andWhere('record.customerId IN (:...ids)', { ids });
-      }
+      // Access granted globally to salespeople and clinics per user request
+      // const user = await this.usersRepository.findOne({ where: { id: requesterId } });
+      // if (user?.role === UserRole.SALESPERSON) {
+      //   queryBuilder.andWhere('record.assignedSalespersonId = :sid', { sid: requesterId });
+      // } else if (user?.role === UserRole.CLINIC_OWNER) {
+      //   const ownerships = await this.clinicOwnershipRepository.find({ where: { ownerUserId: requesterId } });
+      //   const ownedClinicIds = ownerships.map(o => o.clinicId);
+      //   if (ownedClinicIds.length === 0) return [];
+      //   const clientIds = await this.appointmentsRepository.createQueryBuilder('apt')
+      //     .select('DISTINCT apt.clientId', 'clientId')
+      //     .where('apt.clinicId IN (:...ids)', { ids: ownedClinicIds })
+      //     .getRawMany();
+      //   const ids = clientIds.map(r => r.clientId);
+      //   if (ids.length === 0) return [];
+      //   queryBuilder.andWhere('record.customerId IN (:...ids)', { ids });
+      // }
     }
 
     return queryBuilder

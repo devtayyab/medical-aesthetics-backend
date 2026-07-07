@@ -1,5 +1,5 @@
-﻿import React from"react";
-import { StaffDiary } from"@/components/organisms/StaffDiary/StaffDiary";
+import React from "react";
+import StaffDiary from "@/pages/CRM/StaffDiary";
 
 export const Diary: React.FC = () => {
  return (
@@ -8,4 +8,3 @@ export const Diary: React.FC = () => {
  </div>
  );
 };
-
