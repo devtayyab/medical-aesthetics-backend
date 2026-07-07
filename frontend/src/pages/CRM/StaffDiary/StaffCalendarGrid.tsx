@@ -335,6 +335,7 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
                       key={apt.id}
                       appointment={apt}
                       style={aptStyle}
+                      timezone={tz}
                       onEdit={onAppointmentEdit}
                       onDragStart={() => {}}
                       onResizeStart={() => {}}
@@ -405,7 +406,11 @@ const AgendaView: React.FC<AgendaViewProps> = ({ appointments, days, onEdit }) =
                             {statusCfg.label}
                           </span>
                           <span className="text-[10px] text-slate-400">
-                            {format(parseISO(apt.startTime), 'HH:mm')}
+                            {(() => {
+                              const tz = apt.clinic?.timezone || 'UTC';
+                              const { hour, minute } = getClinicLocalTime(apt.startTime, tz);
+                              return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                            })()}
                           </span>
                         </div>
                       </div>
