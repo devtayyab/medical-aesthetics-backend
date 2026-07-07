@@ -10,7 +10,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { bookingAPI, crmAPI, clinicsAPI } from '@/services/api';
 import { APPOINTMENT_STATUS_OPTIONS, DURATION_OPTIONS, STATUS_CONFIG, PAYMENT_STATUS_CONFIG } from './constants';
 import type { AppointmentFormData, CalendarAppointment, ConflictInfo } from './types';
-import { createClinicUTCDateTime } from './useCalendarData';
+import { createClinicUTCDateTime, getClinicLocalTime, getClinicLocalDate } from './useCalendarData';
 import { useConflictDetection } from './useConflictDetection';
 
 interface AppointmentModalProps {
@@ -122,8 +122,12 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         clinicId: apt.clinicId,
         clinicName: apt.clinic?.name || '',
         salesPersonId: apt.providerId || '',
-        date: format(start, 'yyyy-MM-dd'),
-        startTime: format(start, 'HH:mm'),
+        date: getClinicLocalDate(apt.startTime, apt.clinic?.timezone || 'UTC'),
+        startTime: (() => {
+          const tz = apt.clinic?.timezone || 'UTC';
+          const { hour, minute } = getClinicLocalTime(apt.startTime, tz);
+          return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        })(),
         durationMinutes: durationMin,
         status: apt.status as any,
         notes: apt.notes || '',
