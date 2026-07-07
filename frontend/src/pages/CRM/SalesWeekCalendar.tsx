@@ -832,16 +832,40 @@ export const SalesWeekCalendar: React.FC = () => {
 
 
 
-                  {isToday(day) && (
-                    <div
-                      className="absolute left-0 right-0 border-t-2 border-red-500 z-30 pointer-events-none"
-                      style={{
-                        top: (new Date().getHours() * 64) + (new Date().getMinutes() / 60 * 64)
-                      }}
-                    >
-                      <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500" />
-                    </div>
-                  )}
+                  {isToday(day) && (() => {
+                    // Use the selected clinic's timezone so the red line aligns
+                    // with appointment positions (which are also in clinic tz).
+                    const activeTz = selectedClinicId !== 'all'
+                      ? availableClinics.find((c: any) => c.id === selectedClinicId)?.timezone
+                      : availableClinics[0]?.timezone;
+                    let topPx: number;
+                    if (activeTz && activeTz !== 'null') {
+                      try {
+                        const fmt = new Intl.DateTimeFormat('en-US', {
+                          timeZone: activeTz,
+                          hour: 'numeric',
+                          minute: 'numeric',
+                          hourCycle: 'h23',
+                        });
+                        const parts = fmt.formatToParts(new Date());
+                        const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
+                        const m = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
+                        topPx = (isNaN(h) ? 0 : h) * 64 + ((isNaN(m) ? 0 : m) / 60 * 64);
+                      } catch {
+                        topPx = new Date().getHours() * 64 + (new Date().getMinutes() / 60 * 64);
+                      }
+                    } else {
+                      topPx = new Date().getHours() * 64 + (new Date().getMinutes() / 60 * 64);
+                    }
+                    return (
+                      <div
+                        className="absolute left-0 right-0 border-t-2 border-red-500 z-30 pointer-events-none"
+                        style={{ top: topPx }}
+                      >
+                        <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500" />
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             ))}
