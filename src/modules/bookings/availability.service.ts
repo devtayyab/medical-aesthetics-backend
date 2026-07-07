@@ -255,28 +255,28 @@ export class AvailabilityService {
               }
           }
 
-            if (availableProviders.length > 0) {
-              // Pick a provider (could be random or load-balanced, for now pick first)
-              const chosenProvider = availableProviders[0];
+            // Always format display time for the slot
+            let startTimeDisplay: string;
+            try {
+              startTimeDisplay = slotStart.toLocaleTimeString('en-GB', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false,
+                timeZone: timezone 
+              });
+            } catch (e) {
+              log('⚠️ Invalid timezone for toLocaleTimeString, falling back to UTC:', timezone);
+              startTimeDisplay = slotStart.toLocaleTimeString('en-GB', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'UTC' 
+              });
+            }
 
-              // Format display time according to clinic timezone
-              let startTimeDisplay: string;
-              try {
-                startTimeDisplay = slotStart.toLocaleTimeString('en-GB', { 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  hour12: false,
-                  timeZone: timezone 
-                });
-              } catch (e) {
-                log('⚠️ Invalid timezone for toLocaleTimeString, falling back to UTC:', timezone);
-                startTimeDisplay = slotStart.toLocaleTimeString('en-GB', { 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  hour12: false,
-                  timeZone: 'UTC' 
-                });
-              }
+            if (availableProviders.length > 0) {
+              // Pick a provider
+              const chosenProvider = availableProviders[0];
 
               slots.push({
                 startTime: slotStart.toISOString(),
@@ -285,6 +285,17 @@ export class AvailabilityService {
                 available: true,
                 providerId: chosenProvider.id,
                 providerName: `${chosenProvider.firstName} ${chosenProvider.lastName}`,
+              });
+            } else {
+              // Time slot is completely booked/blocked
+              slots.push({
+                startTime: slotStart.toISOString(),
+                startTimeDisplay,
+                endTime: slotEnd.toISOString(),
+                available: false,
+                providerId: null,
+                providerName: null,
+                reason: 'booked'
               });
             }
         }

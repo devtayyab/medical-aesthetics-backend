@@ -106,7 +106,7 @@ import ClinicAnalyticsPage from"./pages/Admin/ClinicAnalyticsPage";
 import { ChangePassword } from"@/pages/Account/ChangePassword";
 import { Toaster } from"react-hot-toast";
 import { MessagesPage } from"@/pages/Messages/MessagesPage";
-import { SalesWeekCalendar } from"./pages/CRM/SalesWeekCalendar";
+import { AppointmentCalendar } from"./pages/CRM/AppointmentCalendar";
 import { AdminSuperCalendar } from"./pages/Admin/AdminSuperCalendar";
 import { initializeFirebase } from"@/services/firebase";
 import { GlobalDialer } from"./components/crm/GlobalDialer";
@@ -625,7 +625,7 @@ function AppContent() {
  element={
  <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
  <AdminLayout>
- <SalesWeekCalendar />
+ <AppointmentCalendar />
  </AdminLayout>
  </ProtectedLayout>
  }

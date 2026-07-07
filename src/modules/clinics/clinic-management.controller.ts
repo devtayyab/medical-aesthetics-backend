@@ -303,9 +303,14 @@ export class ClinicManagementController {
   ) {
     let clinicId = body.clinicId;
 
-    if (!clinicId || !(req.user.role === UserRole.ADMIN || req.user.role === UserRole.SUPER_ADMIN || req.user.role === UserRole.MANAGER)) {
+    if (!clinicId) {
+      // Only fall back to owner lookup when no clinicId was sent at all
       const clinic = await this.clinicsService.findByOwnerId(req.user.id);
-      clinicId = clinic.id;
+      clinicId = clinic?.id;
+    }
+
+    if (!clinicId) {
+      throw new Error('clinicId is required');
     }
 
     const effectiveProviderId = body.providerId || (req.user.role === UserRole.DOCTOR ? req.user.id : null);
@@ -360,7 +365,7 @@ export class ClinicManagementController {
     @Request() req,
   ) {
     let clinic;
-    if (query.clinicId && (req.user.role === UserRole.MANAGER || req.user.role === UserRole.ADMIN || req.user.role === UserRole.SUPER_ADMIN)) {
+    if (query.clinicId) {
       clinic = await this.clinicsService.findById(query.clinicId);
     } else {
       clinic = await this.clinicsService.findByOwnerId(req.user.id);

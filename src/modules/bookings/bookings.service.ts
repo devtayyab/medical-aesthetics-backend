@@ -377,15 +377,44 @@ export class BookingsService {
       conflictQuery = conflictQuery.andWhere('apt.providerId = :providerId', { providerId });
     }
 
-    const conflictingAppointment = await conflictQuery.getOne();
+    const conflictingAppointments = await conflictQuery.getMany();
 
-    if (conflictingAppointment) {
-      this.logDebug('❌ [BookingsService] Conflict detected: Time slot already occupied.', {
-          conflictingAptId: conflictingAppointment.id,
-          status: conflictingAppointment.status,
-          requestedTime: { start: newStart, end: newEnd }
-      });
-      throw new ConflictException('Time slot is already booked or pending payment');
+    if (conflictingAppointments.length > 0) {
+      for (const apt of conflictingAppointments) {
+        // If it's a PENDING_PAYMENT appointment, check if it belongs to the same client
+        if (apt.status === AppointmentStatus.PENDING_PAYMENT) {
+          const WALK_IN_DUMMY = '00000000-0000-0000-0000-000000000000';
+          let isSameClient = false;
+          
+          if (clientId !== WALK_IN_DUMMY && apt.clientId === clientId) {
+             isSameClient = true;
+          } else if (
+             createAppointmentDto.clientDetails?.email && 
+             apt.clientDetails?.email === createAppointmentDto.clientDetails.email
+          ) {
+             isSameClient = true;
+          } else if (
+             createAppointmentDto.clientDetails?.phone && 
+             apt.clientDetails?.phone === createAppointmentDto.clientDetails.phone
+          ) {
+             isSameClient = true;
+          }
+
+          if (isSameClient) {
+            console.log(`🔄 [BookingsService] Removing previous pending payment appointment (${apt.id}) for same client so they can re-book.`);
+            await this.appointmentsRepository.remove(apt);
+            continue;
+          }
+        }
+        
+        // If we reach here, it's a true conflict
+        this.logDebug('❌ [BookingsService] Conflict detected: Time slot already occupied.', {
+            conflictingAptId: apt.id,
+            status: apt.status,
+            requestedTime: { start: newStart, end: newEnd }
+        });
+        throw new ConflictException('Time slot is already booked or pending payment');
+      }
     }
     console.log('✅ [BookingsService] No conflicting appointments found.');
 
@@ -1004,11 +1033,7 @@ export class BookingsService {
       }
       if (query.clinicId) queryBuilder.andWhere('appointment.clinicId = :clinicId', { clinicId: query.clinicId });
       if (query.providerId) {
-        if (normalizedRole === 'salesperson' && query.providerId === userId) {
-          queryBuilder.andWhere('(appointment.providerId = :providerId OR appointment.bookedById = :providerId)', { providerId: query.providerId });
-        } else {
-          queryBuilder.andWhere('appointment.providerId = :providerId', { providerId: query.providerId });
-        }
+        queryBuilder.andWhere('(appointment.providerId = :providerId OR appointment.bookedById = :providerId)', { providerId: query.providerId });
       }
       if (query.appointmentSource) queryBuilder.andWhere('appointment.appointmentSource = :source', { source: query.appointmentSource });
 

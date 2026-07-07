@@ -107,19 +107,20 @@ const dayStyle = (isCurrentMonth: boolean, isSelected: boolean, isPast: boolean)
 `;
 
 const slotButton = (isSelected: boolean, isAvailable: boolean) => css`
- padding: 16px 10px;
- text-align: center;
- border-radius: 16px;
- font-weight: 900;
- font-size: 14px;
- transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
- cursor: ${isAvailable ? 'pointer' : 'not-allowed'};
- border: 2px solid ${isSelected ? '#000' : '#f1f5f9'};
- background: ${isSelected ? '#000' : isAvailable ? 'white' : '#f8fafc'};
- color: ${isSelected ? '#CBFF38' : isAvailable ? '#000' : '#cbd5e0'};
- &:hover {
- ${isAvailable && !isSelected && 'border-color: #000; color: #000; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.05);'}
- }
+  padding: 16px 10px;
+  text-align: center;
+  border-radius: 16px;
+  font-weight: 900;
+  font-size: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: ${isAvailable ? 'pointer' : 'not-allowed'};
+  border: 2px solid ${isSelected ? '#000' : isAvailable ? '#f1f5f9' : '#fee2e2'};
+  background: ${isSelected ? '#000' : isAvailable ? 'white' : '#fef2f2'};
+  color: ${isSelected ? '#CBFF38' : isAvailable ? '#000' : '#f87171'};
+  ${!isAvailable && 'text-decoration: line-through;'}
+  &:hover {
+  ${isAvailable && !isSelected && 'border-color: #000; color: #000; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.05);'}
+  }
 `;
 
 export const AppointmentBooking: React.FC = () => {

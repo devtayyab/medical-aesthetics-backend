@@ -284,16 +284,26 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
  <div className="space-y-1">
  <label className="text-xs font-bold text-gray-500 uppercase">Select Slot *</label>
  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
- {availableSlots.map((slot, i) => (
- <button
- key={i}
- onClick={() => setSelectedSlot(slot)}
- className={`p-2 text-xs font-bold border rounded-lg transition-all ${selectedSlot === slot ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-blue-50'
- }`}
- >
- {format(new Date(slot.startTime), 'HH:mm')}
- </button>
- ))}
+  {availableSlots.map((slot, i) => {
+    const isSelected = selectedSlot === slot;
+    const isDisabled = slot.available === false && !isSelected;
+    return (
+      <button
+        key={i}
+        disabled={isDisabled}
+        onClick={() => setSelectedSlot(slot)}
+        className={`p-2 text-xs font-bold border rounded-lg transition-all ${
+          isDisabled
+            ? 'bg-red-50 border-red-200 text-red-400 line-through cursor-not-allowed'
+            : isSelected
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'hover:bg-blue-50'
+        }`}
+      >
+        {format(new Date(slot.startTime), 'HH:mm')}
+      </button>
+    );
+  })}
  {availableSlots.length === 0 && (
  <div className="col-span-2 flex flex-col items-center justify-center p-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
  <Clock className="w-8 h-8 text-gray-300 mb-2" />
