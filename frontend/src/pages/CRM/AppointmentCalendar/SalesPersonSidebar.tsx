@@ -38,38 +38,34 @@ export const SalesPersonSidebar: React.FC<SalesPersonSidebarProps> = ({
         {_isManager && (
           <button
             onClick={() => onSelect('all')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left group ${
-              selectedId === 'all'
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left group ${selectedId === 'all'
                 ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
                 : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-          <div
-            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-              selectedId === 'all' ? 'bg-white/20' : 'bg-slate-100'
-            }`}
-          >
-            <Users
-              className={`w-4 h-4 ${selectedId === 'all' ? 'text-white' : 'text-slate-500'}`}
-            />
-          </div>
-          <div className="min-w-0">
-            <p
-              className={`text-[11px] font-bold truncate ${
-                selectedId === 'all' ? 'text-white' : 'text-slate-700'
               }`}
+          >
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedId === 'all' ? 'bg-white/20' : 'bg-slate-100'
+                }`}
             >
-              All Staff
-            </p>
-            <p
-              className={`text-[9px] ${
-                selectedId === 'all' ? 'text-white/70' : 'text-slate-400'
-              }`}
-            >
-              Full roster
-            </p>
-          </div>
-        </button>
+              <Users
+                className={`w-4 h-4 ${selectedId === 'all' ? 'text-white' : 'text-slate-500'}`}
+              />
+            </div>
+            <div className="min-w-0">
+              <p
+                className={`text-[11px] font-bold truncate ${selectedId === 'all' ? 'text-white' : 'text-slate-700'
+                  }`}
+              >
+                All Staff
+              </p>
+              <p
+                className={`text-[9px] ${selectedId === 'all' ? 'text-white/70' : 'text-slate-400'
+                  }`}
+              >
+                Full roster
+              </p>
+            </div>
+          </button>
         )}
 
         {/* Divider */}
@@ -87,17 +83,15 @@ export const SalesPersonSidebar: React.FC<SalesPersonSidebarProps> = ({
             <button
               key={sp.id}
               onClick={() => onSelect(sp.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left group ${
-                isSelected
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left group ${isSelected
                   ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
                   : 'text-slate-600 hover:bg-slate-50'
-              }`}
+                }`}
             >
               {/* Avatar */}
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-black ${
-                  isSelected ? 'bg-white/20 text-white' : `${colors.bg} ${colors.text}`
-                }`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-black ${isSelected ? 'bg-white/20 text-white' : `${colors.bg} ${colors.text}`
+                  }`}
               >
                 {sp.initials}
               </div>
@@ -106,16 +100,14 @@ export const SalesPersonSidebar: React.FC<SalesPersonSidebarProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
                   <p
-                    className={`text-[11px] font-bold truncate ${
-                      isSelected ? 'text-white' : 'text-slate-700'
-                    }`}
+                    className={`text-[11px] font-bold truncate ${isSelected ? 'text-white' : 'text-slate-700'
+                      }`}
                   >
                     {sp.name}
                     {isMe && (
                       <span
-                        className={`ml-1 text-[8px] font-black ${
-                          isSelected ? 'text-white/70' : 'text-indigo-500'
-                        }`}
+                        className={`ml-1 text-[8px] font-black ${isSelected ? 'text-white/70' : 'text-indigo-500'
+                          }`}
                       >
                         (You)
                       </span>
@@ -123,9 +115,8 @@ export const SalesPersonSidebar: React.FC<SalesPersonSidebarProps> = ({
                   </p>
                 </div>
                 <p
-                  className={`text-[9px] font-mono ${
-                    isSelected ? 'text-white/60' : 'text-slate-400'
-                  }`}
+                  className={`text-[9px] font-mono ${isSelected ? 'text-white/60' : 'text-slate-400'
+                    }`}
                 >
                   #{sp.id.slice(-6).toUpperCase()}
                 </p>
@@ -145,40 +136,35 @@ export const SalesPersonSidebar: React.FC<SalesPersonSidebarProps> = ({
             <div className="h-px bg-slate-100 my-2 mx-1" />
             <button
               onClick={() => onSelect(currentUserId)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left ${
-                selectedId === currentUserId
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left ${selectedId === currentUserId
                   ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
                   : 'text-slate-600 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-black ${
-                  selectedId === currentUserId
+                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-black ${selectedId === currentUserId
                     ? 'bg-white/20 text-white'
                     : 'bg-indigo-100 text-indigo-700'
-                }`}
+                  }`}
               >
                 {currentUserName?.[0]?.toUpperCase() || 'M'}
               </div>
               <div className="min-w-0">
                 <p
-                  className={`text-[11px] font-bold truncate ${
-                    selectedId === currentUserId ? 'text-white' : 'text-slate-700'
-                  }`}
+                  className={`text-[11px] font-bold truncate ${selectedId === currentUserId ? 'text-white' : 'text-slate-700'
+                    }`}
                 >
                   {currentUserName || 'Me'}
                   <span
-                    className={`ml-1 text-[8px] font-black ${
-                      selectedId === currentUserId ? 'text-white/70' : 'text-indigo-500'
-                    }`}
+                    className={`ml-1 text-[8px] font-black ${selectedId === currentUserId ? 'text-white/70' : 'text-indigo-500'
+                      }`}
                   >
                     (You)
                   </span>
                 </p>
                 <p
-                  className={`text-[9px] font-mono ${
-                    selectedId === currentUserId ? 'text-white/60' : 'text-slate-400'
-                  }`}
+                  className={`text-[9px] font-mono ${selectedId === currentUserId ? 'text-white/60' : 'text-slate-400'
+                    }`}
                 >
                   #{currentUserId.slice(-6).toUpperCase()}
                 </p>

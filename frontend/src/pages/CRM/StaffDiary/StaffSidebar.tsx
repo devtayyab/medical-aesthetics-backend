@@ -21,7 +21,7 @@ export const StaffSidebar: React.FC<StaffSidebarProps> = ({
   selectedId,
   currentUserId,
   currentUserName,
-  isManager: _isManager,
+  isManager,
   onSelect,
   clinics,
   selectedClinicId,
@@ -96,12 +96,12 @@ export const StaffSidebar: React.FC<StaffSidebarProps> = ({
         </button>
 
         {/* Divider */}
-        {providers.length > 0 && (
+        {(!isManager && providers.length > 0) && (
           <div className="h-px bg-slate-100 my-2 mx-1" />
         )}
 
         {/* Providers */}
-        {providers.map(provider => {
+        {!isManager && providers.map(provider => {
           const colors = PROVIDER_COLORS[provider.colorIndex % PROVIDER_COLORS.length];
           const isSelected = selectedId === provider.id;
           const isMe = provider.id === currentUserId;

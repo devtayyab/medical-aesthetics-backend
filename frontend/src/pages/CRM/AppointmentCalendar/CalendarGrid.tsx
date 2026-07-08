@@ -277,7 +277,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
             return (
               <div
                 key={day.toISOString()}
-                className={`flex-1 relative border-r border-slate-100 cursor-crosshair min-w-[80px] ${
+                className={`flex-1 relative border-r border-slate-100 cursor-default min-w-[80px] ${
                   isDayToday ? 'bg-indigo-50/10' : ''
                 }`}
                 style={{ height: GRID_TOTAL_HEIGHT }}

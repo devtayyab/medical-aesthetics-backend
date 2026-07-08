@@ -12,6 +12,8 @@ import { APPOINTMENT_STATUS_OPTIONS, DURATION_OPTIONS, STATUS_CONFIG, PAYMENT_ST
 import type { AppointmentFormData, CalendarAppointment, ConflictInfo } from './types';
 import { createClinicUTCDateTime, getClinicLocalTime, getClinicLocalDate } from './useCalendarData';
 import { useConflictDetection } from './useConflictDetection';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
 
 interface AppointmentModalProps {
   isOpen: boolean;
@@ -48,6 +50,15 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const { user } = useSelector((state: RootState) => state.auth);
+
+  const displaySalespersons = React.useMemo(() => {
+    if (user?.role === 'salesperson') {
+      return salespersons.filter(sp => sp.id === user.id);
+    }
+    return salespersons;
+  }, [salespersons, user]);
 
   // Patient search
   const [patientSearch, setPatientSearch] = useState('');
@@ -752,7 +763,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
                 <option value="">Unassigned</option>
-                {salespersons.map(sp => (
+                {displaySalespersons.map(sp => (
                   <option key={sp.id} value={sp.id}>{sp.name}</option>
                 ))}
               </select>

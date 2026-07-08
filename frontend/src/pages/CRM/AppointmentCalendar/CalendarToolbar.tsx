@@ -7,6 +7,8 @@ import {
   format, addDays, subDays, addWeeks, subWeeks,
   startOfWeek, endOfWeek,
 } from 'date-fns';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
 import type { CalendarView, CalendarFilters } from './types';
 
 interface CalendarToolbarProps {
@@ -45,6 +47,8 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onRefresh,
 }) => {
   const [showBlockMenu, setShowBlockMenu] = useState(false);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const isSalesperson = user?.role === 'salesperson';
 
   const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(viewDate, { weekStartsOn: 1 });
@@ -169,41 +173,43 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           </button>
 
           {/* Block Slot menu */}
-          <div className="relative">
-            <button
-              onClick={() => setShowBlockMenu(v => !v)}
-              className="h-9 px-3 flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Block</span>
-              <ChevronLeft className="w-3 h-3 rotate-[-90deg]" />
-            </button>
+          {!isSalesperson && (
+            <div className="relative">
+              <button
+                onClick={() => setShowBlockMenu(v => !v)}
+                className="h-9 px-3 flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Block</span>
+                <ChevronLeft className="w-3 h-3 rotate-[-90deg]" />
+              </button>
 
-            {showBlockMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowBlockMenu(false)}
-                />
-                <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
-                  <button
-                    onClick={() => { setShowBlockMenu(false); onBlockSlot(); }}
-                    className="w-full px-4 py-3 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
-                  >
-                    <Lock className="w-3.5 h-3.5 text-slate-400" />
-                    Block Time Slot
-                  </button>
-                  <button
-                    onClick={() => { setShowBlockMenu(false); onBlockDay(); }}
-                    className="w-full px-4 py-3 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2 border-t border-slate-100"
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    Block Entire Day
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+              {showBlockMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowBlockMenu(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                    <button
+                      onClick={() => { setShowBlockMenu(false); onBlockSlot(); }}
+                      className="w-full px-4 py-3 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-slate-400" />
+                      Block Time Slot
+                    </button>
+                    <button
+                      onClick={() => { setShowBlockMenu(false); onBlockDay(); }}
+                      className="w-full px-4 py-3 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2 border-t border-slate-100"
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      Block Entire Day
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* New Appointment */}
           <button
