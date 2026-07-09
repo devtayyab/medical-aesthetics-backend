@@ -246,14 +246,14 @@ export class LoyaltyService {
     };
   }
   async handleReferral(newClientId: string, referralCode: string): Promise<void> {
-    const referrer = await this.ledgerRepository.manager.getRepository('users').findOne({
+    const referrer = await this.ledgerRepository.manager.getRepository('User').findOne({
       where: { referralCode },
     });
 
     if (!referrer) return;
 
     // Link the new client to the referrer
-    await this.ledgerRepository.manager.getRepository('users').update(newClientId, {
+    await this.ledgerRepository.manager.getRepository('User').update(newClientId, {
       referredById: (referrer as any).id,
     });
 

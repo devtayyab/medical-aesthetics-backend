@@ -45,11 +45,13 @@ export class DuplicateDetectionService {
     let existingCustomer: User | undefined;
     let existingLead: Lead | undefined;
 
-    // Check for exact email match (highest confidence)
+    // Check for exact email match (highest confidence). Case-insensitive so a submission of
+    // "jane@x.com" still matches a stored "Jane@X.com" (records are not lowercased on write).
     if (email) {
-      existingCustomer = await this.usersRepository.findOne({
-        where: { email: email.toLowerCase() },
-      });
+      existingCustomer = await this.usersRepository
+        .createQueryBuilder('u')
+        .where('LOWER(u.email) = LOWER(:email)', { email })
+        .getOne() || undefined;
 
       if (existingCustomer) {
         matchReasons.push('Email match');
@@ -82,9 +84,10 @@ export class DuplicateDetectionService {
     // Check for existing leads if no customer match
     if (!existingCustomer) {
       if (email) {
-        existingLead = await this.leadsRepository.findOne({
-          where: { email: email.toLowerCase() },
-        });
+        existingLead = await this.leadsRepository
+          .createQueryBuilder('l')
+          .where('LOWER(l.email) = LOWER(:email)', { email })
+          .getOne() || undefined;
 
         if (existingLead) {
           matchReasons.push('Lead email match');

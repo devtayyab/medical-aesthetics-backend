@@ -362,12 +362,14 @@ export class BookingsService {
 
     let conflictQuery = this.appointmentsRepository.createQueryBuilder('apt')
       .where('apt.clinicId = :clinicId', { clinicId: createAppointmentDto.clinicId })
-      .andWhere('apt.status IN (:...statuses)', { 
+      .andWhere('apt.status IN (:...statuses)', {
           statuses: [
-              AppointmentStatus.CONFIRMED, 
-              AppointmentStatus.PENDING, 
-              AppointmentStatus.PENDING_PAYMENT
-          ] 
+              AppointmentStatus.CONFIRMED,
+              AppointmentStatus.PENDING,
+              AppointmentStatus.PENDING_PAYMENT,
+              AppointmentStatus.ARRIVED,
+              AppointmentStatus.IN_PROGRESS
+          ]
       })
       .andWhere('apt.startTime < :newEnd', { newEnd })
       .andWhere('apt.endTime > :newStart', { newStart });
@@ -2003,6 +2005,10 @@ export class BookingsService {
       );
     }
 
+    // Capture the full result set size BEFORE paginating so `total` reflects the real count,
+    // not just the current page length.
+    const countQuery = baseQuery.clone();
+
     if (query.limit) {
       baseQuery = baseQuery.limit(query.limit);
     }
@@ -2011,11 +2017,14 @@ export class BookingsService {
       baseQuery = baseQuery.offset(query.offset);
     }
 
-    const clients = await baseQuery.getRawMany();
+    const [clients, allRows] = await Promise.all([
+      baseQuery.getRawMany(),
+      countQuery.getRawMany(),
+    ]);
 
     return {
       clients,
-      total: clients.length,
+      total: allRows.length,
       limit: query.limit || clients.length,
       offset: query.offset || 0,
     };

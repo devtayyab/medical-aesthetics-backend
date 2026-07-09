@@ -56,7 +56,12 @@ export class NotificationProcessor {
             notification.title,
             notification.message
           );
-          externalId = mailInfo?.messageId || `email_failed_${Date.now()}`;
+          // sendMail returns null on failure/misconfig — throw so the job retries and the
+          // notification is NOT falsely marked as sent.
+          if (!mailInfo?.messageId) {
+            throw new Error(`Email send failed for notification ${notificationId}`);
+          }
+          externalId = mailInfo.messageId;
           break;
 
         default:

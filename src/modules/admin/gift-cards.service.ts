@@ -73,35 +73,47 @@ export class GiftCardsService {
     }
 
     async redeemGiftCard(code: string, amount: number, recordedById?: string) {
-        const giftCard = await this.giftCardRepository.findOne({
-            where: { code, isActive: true },
+        // Run inside a transaction with a row lock so two concurrent redemptions cannot both
+        // pass the balance check and double-spend the same card.
+        const { giftCard, beforeBalance, redeemAmount } = await this.giftCardRepository.manager.transaction(async (em) => {
+            const repo = em.getRepository(GiftCard);
+            const card = await repo.findOne({
+                where: { code, isActive: true },
+                lock: { mode: 'pessimistic_write' },
+            });
+
+            if (!card) {
+                throw new NotFoundException('Gift card not found, inactive, or invalid code');
+            }
+
+            if (card.expiresAt && card.expiresAt < new Date()) {
+                card.isActive = false;
+                await repo.save(card);
+                throw new NotFoundException('Gift card has expired');
+            }
+
+            const redeem = Number(amount);
+            const currentBalance = Number(card.balance);
+
+            if (!(redeem > 0)) {
+                throw new NotFoundException('Redeem amount must be greater than zero');
+            }
+            if (redeem > currentBalance) {
+                throw new NotFoundException(`Insufficient gift card balance. Available: €${currentBalance.toFixed(2)}`);
+            }
+
+            const before = currentBalance;
+            // Round to cents; only zero-out/deactivate when the balance is actually 0 — don't
+            // silently void a card that still holds up to €0.01.
+            card.balance = Math.round((currentBalance - redeem) * 100) / 100;
+            if (card.balance <= 0) {
+                card.balance = 0;
+                card.isActive = false;
+            }
+
+            await repo.save(card);
+            return { giftCard: card, beforeBalance: before, redeemAmount: redeem };
         });
-
-        if (!giftCard) {
-            throw new NotFoundException('Gift card not found, inactive, or invalid code');
-        }
-
-        if (giftCard.expiresAt && giftCard.expiresAt < new Date()) {
-            giftCard.isActive = false;
-            await this.giftCardRepository.save(giftCard);
-            throw new NotFoundException('Gift card has expired');
-        }
-
-        const redeemAmount = Number(amount);
-        const currentBalance = Number(giftCard.balance);
-
-        if (redeemAmount > currentBalance) {
-            throw new NotFoundException(`Insufficient gift card balance. Available: €${currentBalance.toFixed(2)}`);
-        }
-
-        const beforeBalance = currentBalance;
-        giftCard.balance = currentBalance - redeemAmount;
-        if (giftCard.balance <= 0.01) {
-            giftCard.balance = 0;
-            giftCard.isActive = false;
-        }
-
-        await this.giftCardRepository.save(giftCard);
 
         this.eventEmitter.emit('audit.log', {
             userId: recordedById,
