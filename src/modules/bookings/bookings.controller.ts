@@ -20,6 +20,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { Public } from '../../common/decorators/public.decorator';
 
+const STAFF_ROLES = ['admin', 'super_admin', 'manager', 'salesperson', 'clinic_owner', 'doctor', 'secretariat'];
+
 @ApiTags('Bookings')
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -29,6 +31,26 @@ export class BookingsController {
     private readonly bookingsService: BookingsService,
     private readonly availabilityService: AvailabilityService,
   ) { }
+
+  private isStaff(user: any): boolean {
+    return STAFF_ROLES.includes((user?.role || '').toLowerCase());
+  }
+
+  // Owner-or-staff: a client may only touch their own appointment; staff may touch any.
+  private async assertCanAccess(id: string, user: any) {
+    const appointment = await this.bookingsService.findById(id);
+    if (!this.isStaff(user) && String(appointment.clientId) !== String(user?.id)) {
+      throw new ForbiddenException('You do not have access to this appointment.');
+    }
+    return appointment;
+  }
+
+  // Staff-only management operations (complete / record payment / change status / edit details).
+  private assertStaff(user: any) {
+    if (!this.isStaff(user)) {
+      throw new ForbiddenException('This action requires staff privileges.');
+    }
+  }
 
   @Public()
   @Get('availability') // Ensures this is treated as /bookings/availability or root level depending on controller mounting
@@ -66,10 +88,15 @@ export class BookingsController {
   @ApiOperation({ summary: 'Confirm appointment booking' })
   async createAppointment(@Body() createAppointmentDto: CreateAppointmentDto, @Request() req: any) {
     try {
-      const payload = {
+      const payload: any = {
         ...createAppointmentDto,
         bookedById: req.user?.id,
       };
+      // A public/non-staff caller must never dictate the appointment status (e.g. self-confirm
+      // without paying). Only staff may pass an explicit status; otherwise it's derived server-side.
+      if (!this.isStaff(req.user)) {
+        delete payload.status;
+      }
       return await this.bookingsService.createAppointment(payload);
     } catch (error) {
       console.error('❌ [BookingsController] Create Appointment Error:', {
@@ -95,8 +122,8 @@ export class BookingsController {
 
   @Get('appointments/:id')
   @ApiOperation({ summary: 'Get appointment details' })
-  async getAppointment(@Param('id') id: string) {
-    const appointment = await this.bookingsService.findById(id);
+  async getAppointment(@Param('id') id: string, @Request() req) {
+    const appointment = await this.assertCanAccess(id, req.user);
     const result: any = {
       ...appointment,
       displayName: this.bookingsService.formatAppointmentDisplayName(appointment),
@@ -169,22 +196,27 @@ export class BookingsController {
     @Body() body: { startTime?: string; endTime?: string; providerId?: string; clinicId?: string; serviceId?: string; notes?: string; totalAmount?: number; additionalServiceIds?: string[] },
     @Request() req,
   ) {
+    // Editing appointment details (incl. price) is a staff action, and must be authorized.
+    this.assertStaff(req.user);
+    await this.assertCanAccess(id, req.user);
+
+    // Explicit field whitelist — normalize empty-string ids to null so we never write '' to an FK.
     const updateData: any = {};
     if (body.startTime) updateData.startTime = new Date(body.startTime);
     if (body.endTime) updateData.endTime = new Date(body.endTime);
-    if (body.providerId !== undefined) updateData.providerId = body.providerId;
-    if (body.clinicId !== undefined) updateData.clinicId = body.clinicId;
-    if (body.serviceId !== undefined) updateData.serviceId = body.serviceId;
+    if (body.providerId !== undefined) updateData.providerId = body.providerId || null;
+    if (body.clinicId !== undefined) updateData.clinicId = body.clinicId || null;
+    if (body.serviceId !== undefined) updateData.serviceId = body.serviceId || null;
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.totalAmount !== undefined) updateData.totalAmount = body.totalAmount;
     if (body.additionalServiceIds !== undefined) updateData.additionalServiceIds = body.additionalServiceIds;
-    await this.bookingsService['appointmentsRepository'].update(id, updateData);
-    return this.bookingsService.findById(id);
+    return this.bookingsService.updateAppointmentDetails(id, updateData);
   }
 
   @Patch('appointments/:id/cancel')
   @ApiOperation({ summary: 'Cancel appointment' })
   async cancel(@Param('id') id: string, @Request() req) {
+    await this.assertCanAccess(id, req.user);
     return this.bookingsService.updateStatus(id, AppointmentStatus.CANCELLED, undefined, req.user?.id);
   }
 
@@ -196,17 +228,21 @@ export class BookingsController {
 
   @Patch('appointments/:id/complete')
   @ApiOperation({ summary: 'Mark appointment as completed' })
-  complete(@Param('id') id: string, @Body() data: any, @Request() req) {
+  async complete(@Param('id') id: string, @Body() data: any, @Request() req) {
+    this.assertStaff(req.user);
+    await this.assertCanAccess(id, req.user);
     return this.bookingsService.updateStatus(id, AppointmentStatus.COMPLETED, data, req.user?.id);
   }
 
   @Post('appointments/:id/payment')
   @ApiOperation({ summary: 'Record payment for an appointment without completing it' })
-  recordPayment(
+  async recordPayment(
     @Param('id') id: string,
     @Body() body: { amount: number; method: string; notes?: string },
     @Request() req,
   ) {
+    this.assertStaff(req.user);
+    await this.assertCanAccess(id, req.user);
     return this.bookingsService.recordAppointmentPayment(id, body.amount, body.method, body.notes || '', req.user.id);
   }
 
@@ -220,11 +256,13 @@ export class BookingsController {
 
   @Patch('appointments/:id/status')
   @ApiOperation({ summary: 'Update appointment status' })
-  updateStatus(
+  async updateStatus(
     @Param('id') id: string,
     @Body() body: { status: AppointmentStatus },
     @Request() req,
   ) {
+    this.assertStaff(req.user);
+    await this.assertCanAccess(id, req.user);
     return this.bookingsService.updateAppointmentStatus(id, body.status, req.user.id, req.user.role);
   }
 
@@ -238,6 +276,8 @@ export class BookingsController {
   @Post('blocked-slots')
   @ApiOperation({ summary: 'Block a time slot' })
   createBlockedSlot(@Body() body: any, @Request() req) {
+    // Only staff may block a clinic's calendar (prevents any authenticated user blocking slots).
+    this.assertStaff(req.user);
     return this.availabilityService.blockTimeSlot(
       body.clinicId,
       body.providerId || null,

@@ -12,6 +12,8 @@ import {
   Request,
   UsePipes,
   ParseUUIDPipe,
+  Headers,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
@@ -449,7 +451,16 @@ export class CrmController {
   @Post('facebook/webhook')
   @Public()
   @ApiOperation({ summary: 'Messenger/Lead Ads Webhook' })
-  handleFacebookWebhook(@Body() data: FacebookWebhookDto) {
+  async handleFacebookWebhook(
+    @Body() data: FacebookWebhookDto,
+    @Headers('x-hub-signature-256') signature: string,
+  ) {
+    // Verify the payload actually came from Facebook before processing attacker-supplied leadgen ids.
+    // (validateFacebookSignature safely skips when FACEBOOK_APP_SECRET is unset during testing.)
+    const valid = await this.crmService.validateFacebookSignature(signature, data);
+    if (!valid) {
+      throw new ForbiddenException('Invalid webhook signature');
+    }
     return this.crmService.handleFacebookWebhook(data);
   }
 
@@ -492,9 +503,10 @@ export class CrmController {
     return this.crmService.assignFormsToDay(data.formNames, new Date(data.scheduledAt));
   }
 
-  @Public()
   @Get('facebook/seed-test-leads')
-  @ApiOperation({ summary: 'Seed test leads with Facebook form names (UNPROTECTED FOR TESTING)' })
+  @Roles(UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Seed test leads with Facebook form names (SUPER_ADMIN only)' })
   seedFacebookTestLeads() {
     return this.crmService.seedFacebookTestLeads();
   }
@@ -633,8 +645,9 @@ export class CrmController {
     return this.crmService.getGlobalCallLogs(filters);
   }
   @Get('manager-crm/seed-mock-data')
-  @Public()
-  @ApiOperation({ summary: 'Seed mock CRM data for testing' })
+  @Roles(UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Seed mock CRM data for testing (SUPER_ADMIN only)' })
   seedMockData() {
     return this.crmService.seedMockCrmData();
   }
@@ -659,11 +672,15 @@ export class CrmController {
   }
 
   @Post('tasks/inject-confirmations')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
   injectConfirmations() {
     return this.crmService.scheduledInjectConfirmationTask();
   }
 
   @Post('tasks/inject-followups')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
   injectFollowups() {
     return this.crmService.scheduledInjectNextDayFollowUp();
   }
