@@ -13,6 +13,7 @@ import { MessagesGateway } from './gateways/messages.gateway';
     imports: [
         TypeOrmModule.forFeature([Conversation, Message, ConversationParticipant, User]),
         JwtModule.register({
+            // NOTE: hardcoded fallback kept intentionally for the testing phase. Remove before production.
             secret: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'medical-aesthetics-secret-key',
             signOptions: { expiresIn: '1d' },
         }),

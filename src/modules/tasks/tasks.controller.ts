@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { TasksService } from './tasks.service';
@@ -23,9 +24,24 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
+  // A task may be read/modified by its assignee or an admin/manager. Anything else is an IDOR.
+  private async assertCanAccess(id: string, user: any) {
+    const task = await this.tasksService.findById(id);
+    const isPrivileged = ['admin', 'SUPER_ADMIN', 'manager'].includes(user?.role);
+    if (!isPrivileged && task.assigneeId !== user?.id) {
+      throw new ForbiddenException('You do not have access to this task.');
+    }
+    return task;
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a new task' })
-  create(@Body() createTaskDto: CreateTaskDto) {
+  create(@Body() createTaskDto: CreateTaskDto, @Request() req) {
+    // Non-privileged users can only create tasks assigned to themselves.
+    const isPrivileged = ['admin', 'SUPER_ADMIN', 'manager'].includes(req.user?.role);
+    if (!isPrivileged) {
+      createTaskDto.assigneeId = req.user.id;
+    }
     return this.tasksService.create(createTaskDto);
   }
 
@@ -55,19 +71,21 @@ export class TasksController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get task details' })
-  findOne(@Param('id') id: string) {
-    return this.tasksService.findById(id);
+  async findOne(@Param('id') id: string, @Request() req) {
+    return this.assertCanAccess(id, req.user);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update task' })
-  update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto) {
+  async update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto, @Request() req) {
+    await this.assertCanAccess(id, req.user);
     return this.tasksService.update(id, updateTaskDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Soft delete task' })
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Request() req) {
+    await this.assertCanAccess(id, req.user);
     return this.tasksService.softDelete(id);
   }
 }

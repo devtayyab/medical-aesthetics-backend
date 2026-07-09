@@ -20,6 +20,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     NotificationsModule,
     PassportModule,
     JwtModule.register({
+      // NOTE: hardcoded fallback kept intentionally for the testing phase.
+      // TODO(security): remove the fallback and fail fast before production.
       secret: process.env.JWT_SECRET || 'medical-aesthetics-secret-key',
       signOptions: { expiresIn: '1d' },
     }),

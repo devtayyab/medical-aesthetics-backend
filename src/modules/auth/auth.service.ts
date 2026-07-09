@@ -26,16 +26,20 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email);
-    if (user && (await bcrypt.compare(password, user.passwordHash))) {
-      console.log("[AuthService] User validated:", user.email);
-      return user;
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      return null;
     }
-    console.log("[AuthService] User validation failed for:", email);
-    return null;
+    if (!user.isActive) {
+      throw new UnauthorizedException("This account has been deactivated.");
+    }
+    // Public clients must verify their email; staff accounts are created by admins and trusted.
+    if (user.role === UserRole.CLIENT && !user.isEmailVerified) {
+      throw new UnauthorizedException("Please verify your email before logging in.");
+    }
+    return user;
   }
 
   async login(user: User) {
-    console.log("[AuthService] Login for user:", user.email);
     const payload = { email: user.email, sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>("JWT_ACCESS_SECRET"),
@@ -51,12 +55,6 @@ export class AuthService {
       refreshToken: storedRefreshToken,
       ...userData
     } = user;
-    console.log(
-      "[AuthService] Login success for user:",
-      user.email,
-      "refreshToken:",
-      refreshToken.substring(0, 20) + "..."
-    );
     return {
       accessToken,
       refreshToken,
@@ -65,10 +63,6 @@ export class AuthService {
   }
 
   async refreshToken(refreshToken: string) {
-    console.log(
-      "[AuthService] Attempting token refresh with token:",
-      refreshToken.substring(0, 20) + "..."
-    );
     try {
       const payload = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
