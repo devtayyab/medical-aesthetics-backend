@@ -7,7 +7,7 @@ import {
   XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone, ArrowLeft, Trash2
 } from 'lucide-react';
 import {
-  format, startOfWeek, endOfWeek, addDays, eachDayOfInterval, isSameDay,
+  format, startOfWeek, endOfWeek, addDays, eachDayOfInterval,
   startOfDay, isToday, addWeeks, subWeeks, subDays, setHours, setMinutes, parseISO
 } from 'date-fns';
 import { AppDispatch, RootState } from '@/store';
@@ -185,8 +185,11 @@ export const SalesWeekCalendar: React.FC = () => {
 
   useEffect(() => {
     if (isDetailDrawerOpen && selectedApt?.clinicId) {
+      const clinicName = selectedApt.clinic?.name
+        || availableClinics.find(c => c.id === selectedApt.clinicId)?.name;
       clinicsAPI.getServices(selectedApt.clinicId).then(res => {
-        setDrawerServices(res.data);
+        // Attach clinicName so the drawer/edit list never renders "(Unknown)".
+        setDrawerServices((res.data || []).map((s: any) => ({ ...s, clinicName: s.clinicName || clinicName })));
       }).catch(console.error);
     }
   }, [isDetailDrawerOpen, selectedApt?.clinicId]);
@@ -195,6 +198,16 @@ export const SalesWeekCalendar: React.FC = () => {
   const [editPrice, setEditPrice] = useState<string>('');
   const [editServices, setEditServices] = useState<any[]>([]);
   const [allAvailableServices, setAllAvailableServices] = useState<any[]>([]);
+
+  // Recompute the pre-filled payment amount once service catalogues finish loading.
+  // Only when totalAmount is not set on the appointment (i.e. we rely on service prices),
+  // otherwise the initial computation would under-count additional services (race on load).
+  useEffect(() => {
+    if (isDetailDrawerOpen && selectedApt && selectedApt.totalAmount == null) {
+      setPaymentAmt(calculateAptTotal(selectedApt).toFixed(2));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerServices, allAvailableServices, isDetailDrawerOpen, selectedApt?.id]);
 
   useEffect(() => {
     if (availableClinics.length > 0 && allAvailableServices.length === 0) {
@@ -307,14 +320,19 @@ export const SalesWeekCalendar: React.FC = () => {
 
 
     appointments.forEach(apt => {
-      const aptDate = new Date(apt.startTime);
+      // Bucket by the appointment's CLINIC-local date so counts match the grid columns
+      // (which are also positioned in clinic timezone), not the browser timezone.
+      const tz = (apt as any).clinic?.timezone
+        || availableClinics.find(c => c.id === (apt as any).clinicId)?.timezone
+        || 'UTC';
+      const aptDateStr = getClinicLocalDate(apt.startTime, tz);
       let isInView = false;
       if (viewMode === 'week') {
-        const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
-        const weekEnd = endOfWeek(viewDate, { weekStartsOn: 1 });
-        if (aptDate >= weekStart && aptDate <= weekEnd) isInView = true;
+        const weekStartStr = format(startOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        const weekEndStr = format(endOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        if (aptDateStr >= weekStartStr && aptDateStr <= weekEndStr) isInView = true;
       } else {
-        if (isSameDay(aptDate, viewDate)) isInView = true;
+        if (aptDateStr === format(viewDate, 'yyyy-MM-dd')) isInView = true;
       }
 
       if (isInView) {
@@ -327,7 +345,7 @@ export const SalesWeekCalendar: React.FC = () => {
     });
 
     return stats;
-  }, [appointments, viewDate, viewMode]);
+  }, [appointments, viewDate, viewMode, availableClinics]);
 
   const handleOpenWizard = async (initialDate?: Date, initialTimeStr?: string) => {
     if (initialDate) setWizardDate(initialDate);
@@ -429,7 +447,7 @@ export const SalesWeekCalendar: React.FC = () => {
       setWizardTime("10:00");
     } catch (error) {
       console.error(error);
-      alert("Failed to book appointment. The time slot might be already taken.");
+      toast.error("Failed to book appointment. The time slot might be already taken.");
     } finally {
       setIsSubmitting(false);
     }
@@ -437,7 +455,9 @@ export const SalesWeekCalendar: React.FC = () => {
 
   const handleStatusUpdate = async (id: string, st: string) => {
     if (st === 'COMPLETED') {
-      setIsPaymentPrompt(true);
+      // Completion must go through the payment flow (cash + collected total),
+      // otherwise revenue records would be created without an amount.
+      await handleCompletePayment();
       return;
     }
     await dispatch(updateAppointmentStatus({ id, status: st }));
@@ -814,7 +834,7 @@ export const SalesWeekCalendar: React.FC = () => {
                             </p>
                             <div className="flex justify-between items-center text-[10px] text-gray-700 font-bold bg-gray-50 p-2 rounded-lg border border-gray-100">
                               <span className="truncate w-2/3">{apt.additionalServiceIds?.length > 0 ? `${apt.service?.treatment?.name || apt.service?.name} + ${apt.additionalServiceIds.length}` : (apt.service?.treatment?.name || apt.service?.name)}</span>
-                              <span className="text-emerald-700 font-black">€{apt.totalAmount ?? apt.service?.price}</span>
+                              <span className="text-emerald-700 font-black">€{calculateAptTotal(apt).toFixed(2)}</span>
                             </div>
                           </div>
                         </div>
@@ -1215,11 +1235,17 @@ export const SalesWeekCalendar: React.FC = () => {
                     <button onClick={() => {
                       if (!isEditingService) {
                         setEditPrice(calculateAptTotal(selectedApt).toFixed(2));
+                        const fallbackClinicName = selectedApt.clinic?.name
+                          || availableClinics.find(c => c.id === selectedApt.clinicId)?.name;
                         const mainSrv = allAvailableServices.find(s => s.id === selectedApt.serviceId) || drawerServices.find(s => s.id === selectedApt.serviceId) || selectedApt.service;
                         const initialExtra = selectedApt.additionalServiceIds?.map((id: string) =>
                           allAvailableServices.find(s => s.id === id) || drawerServices.find(s => s.id === id) || { id, name: 'Loading...' }
                         ) || [];
-                        setEditServices([mainSrv, ...initialExtra].filter(Boolean));
+                        setEditServices(
+                          [mainSrv, ...initialExtra]
+                            .filter(Boolean)
+                            .map((s: any) => ({ ...s, clinicName: s.clinicName || fallbackClinicName }))
+                        );
                       }
                       setIsEditingService(!isEditingService);
                     }} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-black uppercase tracking-widest bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition-colors">
@@ -1233,7 +1259,7 @@ export const SalesWeekCalendar: React.FC = () => {
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Selected Services</p>
                         <div className="space-y-2 mb-3">
                           {editServices.map((srv, idx) => (
-                            <div key={idx} className="flex justify-between items-center bg-gray-50 p-2.5 border border-gray-100 rounded-lg">
+                            <div key={srv.id ?? idx} className="flex justify-between items-center bg-gray-50 p-2.5 border border-gray-100 rounded-lg">
                               <span className="text-xs font-bold text-gray-700 leading-none">
                                 {srv.treatment?.name || srv.name}
                                 <span className="text-[9px] text-gray-400 ml-1">({srv.clinicName || 'Unknown'})</span>
@@ -1255,19 +1281,22 @@ export const SalesWeekCalendar: React.FC = () => {
                           className="w-full text-xs p-2.5 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white shadow-sm focus:border-indigo-500 outline-none"
                           onChange={(e) => {
                             const srv = allAvailableServices.find(s => s.id === e.target.value) || drawerServices.find(s => s.id === e.target.value);
-                            if (srv) {
-                              const updatedServices = [...editServices, srv];
-                              setEditServices(updatedServices);
-                              setEditPrice(updatedServices.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0).toFixed(2));
+                            // Skip duplicates — the same service must not be added twice.
+                            if (srv && !editServices.some(s => s.id === srv.id)) {
+                              setEditServices(prev => [...prev, srv]);
+                              // Incremental so a manual price override is preserved (mirrors the remove behaviour).
+                              setEditPrice(((parseFloat(editPrice) || 0) + (parseFloat(srv.price) || 0)).toFixed(2));
                             }
                             e.target.value = "";
                           }}
                           defaultValue=""
                         >
                           <option value="" disabled>+ Add Service from any clinic...</option>
-                          {allAvailableServices.map(srv => (
-                            <option key={srv.id} value={srv.id}>{srv.treatment?.name || srv.name} - €{srv.price} ({srv.clinicName})</option>
-                          ))}
+                          {allAvailableServices
+                            .filter(srv => !editServices.some(s => s.id === srv.id))
+                            .map(srv => (
+                              <option key={srv.id} value={srv.id}>{srv.treatment?.name || srv.name} - €{srv.price} ({srv.clinicName})</option>
+                            ))}
                         </select>
                       </div>
 
@@ -1290,10 +1319,20 @@ export const SalesWeekCalendar: React.FC = () => {
                             const mainServiceId = editServices[0].id;
                             const aids = editServices.slice(1).map(s => s.id);
 
+                            // Recalculate the end time from the new set of services so the
+                            // calendar block duration stays consistent with what's booked.
+                            const totalDuration = editServices.reduce(
+                              (acc, s) => acc + Number(s.durationMinutes || s.duration || 30), 0
+                            );
+                            const newEndTime = new Date(
+                              new Date(selectedApt.startTime).getTime() + totalDuration * 60000
+                            ).toISOString();
+
                             await bookingAPI.updateAppointment(selectedApt.id, {
                               serviceId: mainServiceId,
                               totalAmount: amt,
-                              additionalServiceIds: aids
+                              additionalServiceIds: aids,
+                              endTime: newEndTime
                             });
 
                             setIsEditingService(false);
@@ -1303,11 +1342,13 @@ export const SalesWeekCalendar: React.FC = () => {
                               serviceId: mainServiceId,
                               service: editServices[0],
                               totalAmount: amt,
-                              additionalServiceIds: aids
+                              additionalServiceIds: aids,
+                              endTime: newEndTime
                             });
+                            toast.success("Services & price updated.");
                           } catch (e) {
                             console.error(e);
-                            alert("Failed to update services & price.");
+                            toast.error("Failed to update services & price.");
                           }
                         }}
                         className={`w-full font-black uppercase tracking-widest text-[10px] py-3 rounded-xl transition-all shadow-md mt-2 ${editServices.length === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
@@ -1360,12 +1401,18 @@ export const SalesWeekCalendar: React.FC = () => {
                       <label className="text-[9px] font-black text-gray-400 uppercase leading-none px-1">Date</label>
                       <input
                         type="date"
-                        value={format(new Date(selectedApt.startTime), 'yyyy-MM-dd')}
+                        value={getClinicLocalDate(selectedApt.startTime, selectedApt.clinic?.timezone)}
                         onChange={(e) => {
-                          const d = new Date(e.target.value);
-                          const old = new Date(selectedApt.startTime);
-                          d.setHours(old.getHours(), old.getMinutes());
-                          setSelectedApt({ ...selectedApt, startTime: d.toISOString() });
+                          // Keep the clinic-local time of day, just move the date, then re-derive UTC.
+                          const tz = selectedApt.clinic?.timezone || 'UTC';
+                          const timeStr = formatClinicTime(selectedApt.startTime, tz);
+                          const duration = new Date(selectedApt.endTime).getTime() - new Date(selectedApt.startTime).getTime();
+                          const newStart = createClinicUTCDateTime(parseISO(e.target.value), timeStr, tz);
+                          setSelectedApt({
+                            ...selectedApt,
+                            startTime: newStart.toISOString(),
+                            endTime: new Date(newStart.getTime() + duration).toISOString(),
+                          });
                         }}
                         className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-black outline-none focus:bg-white focus:ring-1 focus:ring-indigo-100 transition-all"
                       />
@@ -1374,12 +1421,18 @@ export const SalesWeekCalendar: React.FC = () => {
                       <label className="text-[9px] font-black text-gray-400 uppercase leading-none px-1">Time</label>
                       <input
                         type="time"
-                        value={format(new Date(selectedApt.startTime), 'HH:mm')}
+                        value={formatClinicTime(selectedApt.startTime, selectedApt.clinic?.timezone)}
                         onChange={(e) => {
-                          const [h, m] = e.target.value.split(':').map(Number);
-                          const d = new Date(selectedApt.startTime);
-                          d.setHours(h, m);
-                          setSelectedApt({ ...selectedApt, startTime: d.toISOString() });
+                          // Interpret the entered time as clinic-local, keep the clinic-local date.
+                          const tz = selectedApt.clinic?.timezone || 'UTC';
+                          const dateStr = getClinicLocalDate(selectedApt.startTime, tz);
+                          const duration = new Date(selectedApt.endTime).getTime() - new Date(selectedApt.startTime).getTime();
+                          const newStart = createClinicUTCDateTime(parseISO(dateStr), e.target.value, tz);
+                          setSelectedApt({
+                            ...selectedApt,
+                            startTime: newStart.toISOString(),
+                            endTime: new Date(newStart.getTime() + duration).toISOString(),
+                          });
                         }}
                         className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-black outline-none focus:bg-white focus:ring-1 focus:ring-indigo-100 transition-all"
                       />
@@ -1413,11 +1466,13 @@ export const SalesWeekCalendar: React.FC = () => {
                       try {
                         await bookingAPI.updateAppointment(selectedApt.id, {
                           startTime: selectedApt.startTime,
-                          providerId: selectedApt.providerId
+                          endTime: selectedApt.endTime,
+                          // Normalize empty string (unassigned) to undefined so we don't write '' to the FK.
+                          providerId: selectedApt.providerId || undefined
                         });
-                        dispatch(fetchClinicAppointments({ providerId: user?.id }));
-                        alert("Appointment rescheduled successfully.");
-                      } catch (err) { alert("Reschedule failed."); }
+                        dispatch(fetchClinicAppointments(currentFilters));
+                        toast.success("Appointment rescheduled successfully.");
+                      } catch (err) { toast.error("Reschedule failed."); }
                     }}
                   >
                     Confirm Updates
@@ -1453,7 +1508,7 @@ export const SalesWeekCalendar: React.FC = () => {
                       <label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Amount (€)</label>
                       <input
                         type="number"
-                        value={paymentAmt || calculateAptTotal(selectedApt).toFixed(2)}
+                        value={paymentAmt}
                         onChange={e => setPaymentAmt(e.target.value)}
                         className="w-full mt-1 p-3 border border-emerald-200 rounded-xl text-emerald-900 font-black focus:bg-white outline-none shadow-inner"
                       />
@@ -1503,7 +1558,8 @@ export const SalesWeekCalendar: React.FC = () => {
                           setIsDetailDrawerOpen(false);
                           setSelectedApt(null);
                           dispatch(fetchClinicAppointments(currentFilters));
-                        } catch (err) { alert("Delete failed."); }
+                          toast.success("Appointment deleted.");
+                        } catch (err) { toast.error("Delete failed."); }
                       }
                     }}
                   >
@@ -1551,7 +1607,7 @@ export const SalesWeekCalendar: React.FC = () => {
                 {user?.role === 'clinic_owner' && (
                   <button
                     onClick={async () => {
-                      if (selectedClinicId === 'all') return alert("Please select a clinic first.");
+                      if (selectedClinicId === 'all') return toast.error("Please select a clinic first.");
                       try {
                         const startTime = setMinutes(setHours(startOfDay(contextMenu.date), parseInt(contextMenu.time)), 0);
                         const end = new Date(startTime.getTime() + 60 * 60000);
