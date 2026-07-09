@@ -66,7 +66,8 @@ export const RepeatManagement: React.FC = () => {
 
  const handleClinicChange = async (clinicId: string) => {
  setSelectedClinicId(clinicId);
- setForm({ ...form, serviceId:"", clinicId });
+ // Also clear providerId — the previously chosen staff member doesn't belong to the new clinic.
+ setForm({ ...form, serviceId:"", providerId:"", clinicId });
  setServices([]);
  setAvailableSlots([]);
  setSelectedSlot(null);

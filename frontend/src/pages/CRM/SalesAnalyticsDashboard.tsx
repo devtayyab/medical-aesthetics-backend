@@ -21,6 +21,7 @@ export const SalesAnalyticsDashboard = () => {
 
  const [isLoading, setIsLoading] = useState(true);
  const [data, setData] = useState<any>(null);
+ const [loadError, setLoadError] = useState<string | null>(null);
 
  // Filters
  const [dateRange, setDateRange] = useState({
@@ -42,6 +43,7 @@ export const SalesAnalyticsDashboard = () => {
 
  const fetchDashboardData = async () => {
  setIsLoading(true);
+ setLoadError(null);
  try {
  const params: any = {
  startDate: dateRange.startDate,
@@ -61,6 +63,8 @@ export const SalesAnalyticsDashboard = () => {
  setData(res.data);
  } catch (error) {
  console.error('Failed to fetch performance dashboard data', error);
+ setLoadError('Failed to load the performance dashboard. Please try again.');
+ setData(null);
  } finally {
  setIsLoading(false);
  }
@@ -69,6 +73,12 @@ export const SalesAnalyticsDashboard = () => {
  useEffect(() => {
  fetchDashboardData();
  }, [dateRange, selectedSalesPerson, selectedClinic]);
+
+ // Reset to the first page whenever the result set changes, otherwise a filter/search that
+ // yields fewer pages can leave the table showing a blank page past the end.
+ useEffect(() => {
+ setCurrentPage(1);
+ }, [searchQuery, statusFilter, dateRange, selectedSalesPerson, selectedClinic]);
 
  // Derived states
  const filteredReport = useMemo(() => {
@@ -182,7 +192,16 @@ export const SalesAnalyticsDashboard = () => {
  <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
  <span className="text-sm font-black uppercase tracking-widest text-blue-600">Gathering Intelligence...</span>
  </div>
- ) : data && (
+ ) : loadError ? (
+ <div className="flex flex-col items-center justify-center p-20 gap-4">
+ <span className="text-sm font-black uppercase tracking-widest text-red-600">{loadError}</span>
+ <button onClick={fetchDashboardData} className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-black uppercase tracking-widest">Retry</button>
+ </div>
+ ) : !data ? (
+ <div className="flex flex-col items-center justify-center p-20 gap-4">
+ <span className="text-sm font-black uppercase tracking-widest text-slate-400">No data for the selected period.</span>
+ </div>
+ ) : (
  <div className="space-y-12">
  {/* LAYER 1 €– Revenue Control (Performance KPI Bar) - ONLY FOR ADMIN/DOCTOR */}
  {canSeeFinancials && (

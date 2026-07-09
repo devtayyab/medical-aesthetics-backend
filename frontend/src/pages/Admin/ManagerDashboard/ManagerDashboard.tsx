@@ -873,7 +873,12 @@ export const ManagerDashboard = () => {
  <div
  className="h-full bg-primary"
  style={{
- width: `${(service.totalRevenue / totalRevenue) * 100}%`
+ // Scale bars against the largest service revenue (not agent-revenue total),
+ // and guard against divide-by-zero when there is no data.
+ width: `${(() => {
+ const maxRev = Math.max(0, ...serviceStats.map((s: any) => Number(s.totalRevenue) || 0));
+ return maxRev > 0 ? Math.min(100, (Number(service.totalRevenue) / maxRev) * 100) : 0;
+ })()}%`
  }}
  />
  </div>
