@@ -354,7 +354,18 @@ export class AdminService {
   }
 
   async updateUser(id: string, updateData: Partial<User> & { assignedClinicIds?: string[] }): Promise<User> {
-    const { assignedClinicIds, ...dataToUpdate } = updateData;
+    const { assignedClinicIds, ...rest } = updateData;
+
+    // Whitelist updatable columns — prevents mass-assignment of passwordHash, refreshToken,
+    // emailVerificationToken, or other sensitive columns via `@Body() any`.
+    const ALLOWED_FIELDS = [
+      'firstName', 'lastName', 'email', 'phone', 'role', 'isActive',
+      'assignedClinicId', 'monthlyTarget', 'profile', 'profilePictureUrl',
+    ] as const;
+    const dataToUpdate: any = {};
+    for (const key of ALLOWED_FIELDS) {
+      if ((rest as any)[key] !== undefined) dataToUpdate[key] = (rest as any)[key];
+    }
 
     await this.usersRepository.update(id, dataToUpdate);
 

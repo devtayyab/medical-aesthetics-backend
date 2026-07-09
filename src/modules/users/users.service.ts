@@ -197,6 +197,7 @@ export class UsersService {
       profile: null,
       profilePictureUrl: null,
       isActive: false,
+      refreshToken: null, // Invalidate any existing session
     });
 
     // Delete consent records
@@ -207,6 +208,7 @@ export class UsersService {
     const user = await this.findById(userId);
     await this.usersRepository.update(userId, {
       isActive: false,
+      refreshToken: null, // Invalidate any existing session
     });
   }
 

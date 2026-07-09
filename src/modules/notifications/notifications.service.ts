@@ -113,8 +113,10 @@ export class NotificationsService implements OnModuleInit {
     });
   }
 
-  async markAsRead(id: string): Promise<void> {
-    await this.notificationsRepository.update(id, {
+  async markAsRead(id: string, recipientId?: string): Promise<void> {
+    // Scope to the recipient so a user cannot mark someone else's notifications read (IDOR).
+    const criteria: any = recipientId ? { id, recipientId } : { id };
+    await this.notificationsRepository.update(criteria, {
       isRead: true,
       readAt: new Date(),
     });

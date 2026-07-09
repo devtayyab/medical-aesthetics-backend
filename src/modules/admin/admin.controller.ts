@@ -10,6 +10,7 @@ import {
   Patch,
   UseGuards,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
@@ -120,7 +121,11 @@ export class AdminController {
   @Put('users/:id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update user' })
-  updateUser(@Param('id') id: string, @Body() updateData: any) {
+  updateUser(@Request() req, @Param('id') id: string, @Body() updateData: any) {
+    // Only a SUPER_ADMIN may grant the SUPER_ADMIN role — prevents ADMIN self-escalation.
+    if (updateData?.role === UserRole.SUPER_ADMIN && req.user?.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('You are not allowed to assign the SUPER_ADMIN role.');
+    }
     return this.adminService.updateUser(id, updateData);
   }
 
