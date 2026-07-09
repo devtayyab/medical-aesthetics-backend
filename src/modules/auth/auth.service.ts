@@ -33,9 +33,10 @@ export class AuthService {
       throw new UnauthorizedException("This account has been deactivated.");
     }
     // Public clients must verify their email; staff accounts are created by admins and trusted.
-    if (user.role === UserRole.CLIENT && !user.isEmailVerified) {
-      throw new UnauthorizedException("Please verify your email before logging in.");
-    }
+    // Temporary bypass OTP: Disabled the check below.
+    // if (user.role === UserRole.CLIENT && !user.isEmailVerified) {
+    //   throw new UnauthorizedException("Please verify your email before logging in.");
+    // }
     return user;
   }
 
