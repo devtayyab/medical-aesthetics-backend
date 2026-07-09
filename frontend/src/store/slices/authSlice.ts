@@ -26,13 +26,17 @@ export const login = createAsyncThunk("auth/login",
  { rejectWithValue }
  ) => {
  try {
- const response = await authAPI.login(email, password);
- console.log("Login success, response:", response.data);
- sessionStorage.setItem("refreshToken", response.data.refreshToken);
- console.log("Login: Stored refreshToken:",
- response.data.refreshToken.substring(0, 20) +"..."
- );
- return response.data;
+  const response = await authAPI.login(email, password);
+  console.log("Login success, response:", response.data);
+  if (response.data.refreshToken) {
+    sessionStorage.setItem("refreshToken", response.data.refreshToken);
+    console.log("Login: Stored refreshToken:",
+      response.data.refreshToken.substring(0, 20) + "..."
+    );
+  } else {
+    console.log("Login: No refreshToken returned.");
+  }
+  return response.data;
  } catch (error: any) {
  console.error("Login failed:", error.response?.data || error.message);
  return rejectWithValue(error.response?.data?.message ||"Login failed");
@@ -52,13 +56,17 @@ export const register = createAsyncThunk("auth/register",
  { rejectWithValue }
  ) => {
  try {
- const response = await authAPI.register(userData);
- console.log("Register success, response:", response.data);
- sessionStorage.setItem("refreshToken", response.data.refreshToken);
- console.log("Register: Stored refreshToken:",
- response.data.refreshToken.substring(0, 20) +"..."
- );
- return response.data;
+  const response = await authAPI.register(userData);
+  console.log("Register success, response:", response.data);
+  if (response.data.refreshToken) {
+    sessionStorage.setItem("refreshToken", response.data.refreshToken);
+    console.log("Register: Stored refreshToken:",
+      response.data.refreshToken.substring(0, 20) + "..."
+    );
+  } else {
+    console.log("Register: No refreshToken returned (requires verification).");
+  }
+  return response.data;
  } catch (error: any) {
  console.error("Register failed:", error.response?.data || error.message);
  return rejectWithValue(
@@ -243,18 +251,18 @@ const authSlice = createSlice({
  state.error = null;
  console.log("register.pending");
  })
- .addCase(register.fulfilled, (state, action) => {
- state.isLoading = false;
- state.user = action.payload.user;
- state.accessToken = action.payload.accessToken;
- state.refreshToken = action.payload.refreshToken;
- state.isAuthenticated = true;
- state.error = null;
- console.log("register.fulfilled: User:",
- state.user,"refreshToken:",
- state.refreshToken?.substring(0, 20) +"..."
- );
- })
+  .addCase(register.fulfilled, (state, action) => {
+    state.isLoading = false;
+    state.user = action.payload.user || null;
+    state.accessToken = action.payload.accessToken || null;
+    state.refreshToken = action.payload.refreshToken || null;
+    state.isAuthenticated = !action.payload.requiresVerification;
+    state.error = null;
+    console.log("register.fulfilled: User:",
+      state.user, "refreshToken:",
+      state.refreshToken?.substring(0, 20) + "..."
+    );
+  })
  .addCase(register.rejected, (state, action) => {
  state.isLoading = false;
  state.error = action.payload as string;
