@@ -265,7 +265,7 @@ export const Customers: React.FC = () => {
  variant="ghost"
  size="sm"
  onClick={() => {
- dispatch(setLeadFilters({}));
+ dispatch(setLeadFilters({ status: 'converted' }));
  setSearchTerm('');
  }}
  className="h-7 px-2 text-[10px] font-bold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
@@ -398,7 +398,7 @@ export const Customers: React.FC = () => {
 
  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
  <button
- onClick={() => dispatch(setLeadFilters({}))}
+ onClick={() => dispatch(setLeadFilters({ status: 'converted' }))}
  className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
  >
  Clear All Filters

@@ -68,7 +68,6 @@ export const AdminSuperCalendar: React.FC = () => {
  useEffect(() => {
  dispatch(fetchClinics());
  dispatch(fetchSalespersons());
- refreshStats();
  }, [dispatch]);
 
  const refreshStats = async () => {
@@ -84,6 +83,13 @@ export const AdminSuperCalendar: React.FC = () => {
  setIsStatsLoading(false);
  }
  };
+
+ // Refresh the KPI header whenever the visible month changes, so the stat cards stay in
+ // sync with the calendar grid instead of showing the month the page first loaded.
+ useEffect(() => {
+ refreshStats();
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [viewDate.getFullYear(), viewDate.getMonth()]);
 
  const currentFilters = useMemo(() => {
  const filters: any = {};

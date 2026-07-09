@@ -375,7 +375,7 @@ export const CheckoutPage: React.FC = () => {
  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Appointment</h4>
  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
  <p className="text-sm font-black text-gray-900 uppercase mb-1">
- {selectedDate ? format(new Date(selectedDate),"EEEE, MMMM d") : 'Date not set'}
+ {selectedDate ? format(new Date(`${selectedDate}T00:00:00`),"EEEE, MMMM d") : 'Date not set'}
  </p>
  <p className="text-lg font-black text-lime-600">
  {selectedTimeSlot ? formatClinicTime(selectedTimeSlot.startTime, selectedClinic?.timezone) : '00:00'}

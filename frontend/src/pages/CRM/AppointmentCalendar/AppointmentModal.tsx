@@ -281,7 +281,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     return () => clearTimeout(timer);
   }, [patientSearch]);
 
-  const handleServicesChange = (selectedIds: string[]) => {
+  const handleServicesChange = (rawSelectedIds: string[]) => {
+    // De-duplicate so the same service can't be counted twice (as primary + additional),
+    // which would double the amount and duration and send a duplicate id to the API.
+    const selectedIds = Array.from(new Set(rawSelectedIds));
+
     if (selectedIds.length === 0) {
       setForm(prev => ({
         ...prev,
