@@ -906,11 +906,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     </label>
                     <input
                       type="number"
-                      value={form.amount}
+                      value={total.toFixed(2)}
                       readOnly
                       className="w-full px-4 py-3 text-[22px] font-black text-slate-800 bg-white border-2 border-emerald-200 rounded-xl focus:outline-none focus:border-emerald-400 text-center tracking-wide"
                     />
-                    {/* Breakdown hint */}
+                    {/* Breakdown hint — the field above shows the total that will actually be charged */}
                     <p className="text-[10px] text-slate-400 text-center mt-1">
                       ${form.amount.toFixed(2)} + ${taxAmount.toFixed(2)} tax − ${form.discount.toFixed(2)} disc
                     </p>

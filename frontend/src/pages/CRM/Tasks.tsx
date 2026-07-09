@@ -1264,7 +1264,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  : 'Unassigned'}
  </p>
  </div>
- <Button variant="ghost" size="icon" onClick={() => setShowInteractionModal(false)} className="rounded-xl hover:bg-slate-50">
+ <Button variant="ghost" size="icon" onClick={handleCloseInteraction} className="rounded-xl hover:bg-slate-50">
  <X className="w-5 h-5 text-slate-400" />
  </Button>
  </div>

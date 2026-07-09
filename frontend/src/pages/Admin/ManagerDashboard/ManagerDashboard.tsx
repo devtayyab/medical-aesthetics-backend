@@ -385,10 +385,9 @@ export const ManagerDashboard = () => {
  },
  ];
 
- // Calculate summary metrics
- const revenueChange = 12.5; // Example: 12.5% increase
- const appointmentsChange = 8.2; // Example: 8.2% increase
- const conversionChange = 3.7; // Example: 3.7% increase
+ // Calculate summary metrics.
+ // NOTE: period-over-period deltas are not available from the API yet, so the trend
+ // indicator is intentionally omitted rather than showing hardcoded/fake percentages.
  const totalRevenue = agentKpis.reduce((sum, agent) => sum + agent.totalRevenue, 0);
  const totalAppointments = agentKpis.reduce((sum, agent) => sum + agent.totalAppointments, 0);
  const completedAppointments = agentKpis.reduce((sum, agent) => sum + agent.completedAppointments, 0);
@@ -635,7 +634,7 @@ export const ManagerDashboard = () => {
  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Mission Velocity</span>
  <div className="flex items-center gap-2">
  <TrendingUp size={12} className="text-[#CBFF38]" />
- <span className="text-xs font-black text-slate-900">{(selectedAgent.conversionRate * 100).toFixed(1)}%</span>
+ <span className="text-xs font-black text-slate-900">{selectedAgent.conversionRate.toFixed(1)}%</span>
  </div>
  </div>
  </div>
@@ -755,29 +754,25 @@ export const ManagerDashboard = () => {
  <StatCard
  title="Total Revenue"
  value={formatCurrency(totalRevenue)}
- change={revenueChange}
  icon={<Euro className="h-4 w-4" />}
  iconBg="bg-green-100 text-green-600"
  />
  <StatCard
  title="Appointments"
  value={totalAppointments.toString()}
- change={appointmentsChange}
  icon={<Calendar className="h-4 w-4" />}
  iconBg="bg-blue-100 text-blue-600"
  description={`${completedAppointments} completed`}
  />
  <StatCard
  title="Conversion Rate"
- value={`${(avgConversionRate * 100).toFixed(1)}%`}
- change={conversionChange}
+ value={`${avgConversionRate.toFixed(1)}%`}
  icon={<TrendingUp className="h-4 w-4" />}
  iconBg="bg-purple-100 text-purple-600"
  />
  <StatCard
  title="Active Agents"
  value={agentKpis.length.toString()}
- change={2.3}
  icon={<Users className="h-4 w-4" />}
  iconBg="bg-amber-100 text-amber-600"
  />
@@ -969,12 +964,12 @@ const StatCard = ({
 }: {
  title: string;
  value: string;
- change: number;
+ change?: number;
  icon: ReactNode;
  iconBg: string;
  description?: string;
 }) => {
- const isPositive = change >= 0;
+ const isPositive = (change ?? 0) >= 0;
 
  return (
  <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-none shadow-md bg-white">
@@ -989,6 +984,7 @@ const StatCard = ({
  </CardHeader>
  <CardContent>
  <div className="text-3xl font-extrabold tracking-tight text-gray-900 mt-1">{value}</div>
+ {change !== undefined && (
  <div className="flex items-center text-xs mt-3 font-semibold">
  <span className={cn("flex items-center px-2 py-1 rounded-full",
  isPositive ?"bg-green-100 text-green-700 font-bold" :"bg-red-100 text-red-700 font-bold"
@@ -998,6 +994,7 @@ const StatCard = ({
  </span>
  <span className="ml-2 text-muted-foreground font-normal">vs last period</span>
  </div>
+ )}
  {description && (
  <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 text-xs text-muted-foreground font-medium">
  <Activity className="h-3 w-3 text-blue-500" />

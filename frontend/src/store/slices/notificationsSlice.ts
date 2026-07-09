@@ -93,15 +93,16 @@ const notificationsSlice = createSlice({
  state.isLoading = false;
  // Optional: revert optimistic update if needed, but for"read all" it's usually fine to keep it
  })
- // Loading states
+ // Loading states — scope to notifications thunks only, otherwise EVERY thunk in the
+ // whole app (login, CRM, search, ...) would flip this slice's isLoading flag.
  .addMatcher(
- (action) => action.type.endsWith('/pending'),
+ (action) => action.type.startsWith('notifications/') && action.type.endsWith('/pending'),
  (state) => {
  state.isLoading = true;
  }
  )
  .addMatcher(
- (action) => action.type.endsWith('/fulfilled') || action.type.endsWith('/rejected'),
+ (action) => action.type.startsWith('notifications/') && (action.type.endsWith('/fulfilled') || action.type.endsWith('/rejected')),
  (state) => {
  state.isLoading = false;
  }
