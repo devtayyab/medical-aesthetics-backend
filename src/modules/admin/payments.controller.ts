@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { ManualPaymentDto } from './dto/manual-payment.dto';
 
 @ApiTags('Admin Payments')
 @Controller('admin/payments')
@@ -17,6 +18,7 @@ export class PaymentsController {
     @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
     @ApiOperation({ summary: 'Get unified ledger transactions for payments and turnover' })
     getLedger(
+        @Req() req: any,
         @Query('clinicId') clinicId?: string,
         @Query('providerId') providerId?: string,
         @Query('salespersonId') salespersonId?: string,
@@ -25,6 +27,12 @@ export class PaymentsController {
         @Query('limit') limit?: number,
         @Query('offset') offset?: number
     ) {
+        // Managers must scope the ledger to a specific clinic; only platform admins may read
+        // the unscoped, cross-clinic ledger.
+        const isPlatformAdmin = req.user?.role === UserRole.ADMIN || req.user?.role === UserRole.SUPER_ADMIN;
+        if (!isPlatformAdmin && !clinicId) {
+            throw new ForbiddenException('A clinicId is required to view the payments ledger.');
+        }
         return this.paymentsService.getLedger({ clinicId, providerId, salespersonId, date, method, limit, offset });
     }
 
@@ -45,7 +53,7 @@ export class PaymentsController {
     @Post('manual')
     @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
     @ApiOperation({ summary: 'Create a manual payment record' })
-    createManualPayment(@Body() body: any, @Req() req: any) {
+    createManualPayment(@Body() body: ManualPaymentDto, @Req() req: any) {
         return this.paymentsService.createManualPayment({
             ...body,
             recordedById: req.user.id

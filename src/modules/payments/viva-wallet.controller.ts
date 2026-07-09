@@ -59,16 +59,25 @@ export class VivaWalletController {
                 const verified = await this.vivaWalletService.verifyTransaction(transactionId);
                 if (verified) {
                     const merchantTrns = verified.merchantTrns;
-                    
+
+                    // Idempotency: the success redirect AND the webhook both fire for the same
+                    // payment (and Viva retries). If we already recorded this transaction, stop
+                    // so we never double-record or double-payout.
+                    const alreadyProcessed = await this.financialService.findByTransactionReference(transactionId);
+                    if (alreadyProcessed) {
+                        return { redirectUrl: `/booking-confirmation?appointmentId=${merchantTrns}&paid=true` };
+                    }
+
                     // Try Appointment
                     const appointment = await this.appointmentsRepository.findOne({ where: { id: merchantTrns }});
                     if (appointment) {
+                        // NOTE: do not set amountPaid here — recordPayment() is the single source of
+                        // truth and increments amountPaid, otherwise the amount is counted twice.
                         await this.appointmentsRepository.update(merchantTrns, {
                             status: AppointmentStatus.CONFIRMED,
-                            paymentMethod: 'card',
-                            amountPaid: verified.amount / 100,
+                            paymentMethod: PaymentMethod.VIVA_WALLET,
                         });
-                        
+
                         await this.financialService.recordPayment({
                             appointmentId: merchantTrns,
                             clinicId: appointment.clinicId,
@@ -168,19 +177,36 @@ export class VivaWalletController {
         // EventTypeId 1796 = Transaction Payment Created (successful payment)
         if (eventType === 1796) {
             const transactionId = body?.EventData?.TransactionId;
-            const merchantTrns = body?.EventData?.MerchantTrns; // This is our appointmentId
-            const amount = body?.EventData?.Amount; // in cents
+
+            // SECURITY: never trust the webhook body. Re-verify the transaction server-to-server
+            // against Viva's API and use ITS authoritative amount/merchantTrns. A forged webhook
+            // with a bogus TransactionId will fail verification and be ignored.
+            if (!transactionId) return { received: true };
+            let verified: any = null;
+            try {
+                verified = await this.vivaWalletService.verifyTransaction(transactionId);
+            } catch (err) {
+                console.error('[Viva Wallet] Webhook verification failed:', err?.message);
+            }
+            if (!verified) return { received: true };
+
+            const merchantTrns = verified.merchantTrns;
+            const amount = verified.amount; // in cents, from Viva
+
+            // Idempotency: skip if this transaction was already recorded (redirect or a webhook retry).
+            const alreadyProcessed = await this.financialService.findByTransactionReference(transactionId);
+            if (alreadyProcessed) return { received: true };
 
             if (merchantTrns) {
                 // Try Appointment
                 const appointment = await this.appointmentsRepository.findOne({ where: { id: merchantTrns }});
                 if (appointment) {
+                    // Do not set amountPaid here — recordPayment() increments it (avoids double count).
                     await this.appointmentsRepository.update(merchantTrns, {
                         status: AppointmentStatus.CONFIRMED,
-                        paymentMethod: 'card',
-                        amountPaid: amount ? amount / 100 : undefined,
+                        paymentMethod: PaymentMethod.VIVA_WALLET,
                     });
-                    
+
                     await this.financialService.recordPayment({
                         appointmentId: merchantTrns,
                         clinicId: appointment.clinicId,
@@ -248,6 +274,16 @@ export class VivaWalletController {
         if (eventType === 1797) {
             const merchantTrns = body?.EventData?.MerchantTrns;
             if (merchantTrns) {
+                // Reverse the original payment so revenue/turnover and amountPaid are corrected,
+                // not just the appointment status.
+                const original = await this.financialService.findCompletedPaymentByAppointment(merchantTrns);
+                if (original) {
+                    try {
+                        await this.financialService.refundPayment(original.id, 'Viva Wallet transaction reversed');
+                    } catch (err) {
+                        console.error('[Viva Wallet] Failed to record refund on reversal:', err?.message);
+                    }
+                }
                 await this.appointmentsRepository.update(merchantTrns, {
                     status: AppointmentStatus.CANCELLED,
                 });

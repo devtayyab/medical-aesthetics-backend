@@ -1,4 +1,4 @@
-import { IsNumber, IsString, IsUUID } from 'class-validator';
+import { IsInt, IsPositive, IsString, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RedeemPointsDto {
@@ -11,7 +11,8 @@ export class RedeemPointsDto {
   clinicId: string;
 
   @ApiProperty({ example: 100 })
-  @IsNumber()
+  @IsInt()
+  @IsPositive()
   points: number;
 
   @ApiProperty({ example: 'Discount on treatment' })
