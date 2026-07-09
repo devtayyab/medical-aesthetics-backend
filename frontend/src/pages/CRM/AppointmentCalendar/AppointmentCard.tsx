@@ -29,14 +29,15 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   const statusCfg = STATUS_CONFIG[normalizedStatus] || STATUS_CONFIG.PENDING;
   const paymentCfg = PAYMENT_STATUS_CONFIG[apt.computedPaymentStatus] || PAYMENT_STATUS_CONFIG.UNPAID;
 
+  const isFullDayBlocked = apt.isBlocked && apt.startTime?.includes('00:00:00') && (apt.endTime?.includes('23:59') || apt.endTime?.includes('23:00'));
   const clientName = apt.isBlocked
-    ? apt.displayName || apt.notes || apt.reason || 'Blocked Slot'
+    ? (isFullDayBlocked ? 'Clinic Closed' : 'Blocked Slot')
     : apt.client?.firstName
     ? `${apt.client.firstName} ${apt.client.lastName || ''}`.trim()
     : apt.clientDetails?.fullName || 'Unknown Patient';
 
   let treatmentName = apt.isBlocked
-    ? 'Unavailable'
+    ? apt.displayName || apt.notes || apt.reason || 'Unavailable'
     : apt.service?.name ||
       apt.service?.treatment?.name ||
       (apt as any).serviceName ||

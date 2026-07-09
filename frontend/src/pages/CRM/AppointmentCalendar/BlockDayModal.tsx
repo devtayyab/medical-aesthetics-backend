@@ -52,8 +52,10 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
     if (!form.clinicId) { toast.error('Please select a clinic.'); return; }
     if (!form.date) { toast.error('Please select a date.'); return; }
 
-    const reasonText = form.reason === 'OTHER' ? customReason || 'Other' :
-      BLOCK_DAY_REASONS.find(r => r.value === form.reason)?.label || form.reason;
+    const baseReason = BLOCK_DAY_REASONS.find(r => r.value === form.reason)?.label || form.reason;
+    const reasonText = form.reason === 'OTHER'
+      ? customReason || 'Other'
+      : customReason ? `${baseReason} - ${customReason}` : baseReason;
 
     // Get clinic timezone
     const clinic = clinics.find(c => c.id === form.clinicId);
@@ -164,15 +166,13 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
                 </button>
               ))}
             </div>
-            {form.reason === 'OTHER' && (
-              <input
-                type="text"
-                value={customReason}
-                onChange={e => setCustomReason(e.target.value)}
-                placeholder="Enter reason..."
-                className="mt-2 w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-400"
-              />
-            )}
+            <input
+              type="text"
+              value={customReason}
+              onChange={e => setCustomReason(e.target.value)}
+              placeholder="Additional details (optional)..."
+              className="mt-3 w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+            />
           </div>
 
           {/* Preview */}
@@ -184,8 +184,11 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
               Entire day will be blocked — 00:00 to 23:59
             </p>
             <p className="text-[10px] text-red-500 mt-1">
-              Reason: {form.reason === 'OTHER' ? customReason || '—' :
-                BLOCK_DAY_REASONS.find(r => r.value === form.reason)?.label}
+              Reason: {form.reason === 'OTHER' 
+                ? customReason || '—' 
+                : customReason 
+                  ? `${BLOCK_DAY_REASONS.find(r => r.value === form.reason)?.label} - ${customReason}`
+                  : BLOCK_DAY_REASONS.find(r => r.value === form.reason)?.label}
             </p>
           </div>
         </div>
