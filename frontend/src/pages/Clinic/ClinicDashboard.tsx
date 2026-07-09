@@ -45,7 +45,7 @@ const ClinicDashboard: React.FC = () => {
  const [queueType, setQueueType] = useState<'today' | 'pending'>('today');
 
  // Get clinicId from profile or user context
- const clinicId = user?.role === 'clinic_owner' ? (user as any).ownedClinics?.[0]?.id : (user as any).associatedClinicId;
+ const clinicId = user?.role === 'clinic_owner' ? (user as any).ownedClinics?.[0]?.id : (user as any).assignedClinicId;
  const activeClinicId = profile?.id || clinicId || appointments[0]?.clinicId;
 
  useEffect(() => {

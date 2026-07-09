@@ -118,7 +118,9 @@ export const redeemGiftCardThunk = createAsyncThunk("admin/redeemGiftCard", asyn
 });
 
 export const fetchPaymentsLedger = createAsyncThunk("admin/fetchPaymentsLedger",
- async (params?: { type?: string; date?: string }) => {
+ // Widened to match adminAPI.getPaymentsLedger so the ledger screen can pass clinic/provider/
+ // method/pagination filters through instead of being limited to type/date.
+ async (params?: { type?: string; date?: string; clinicId?: string; providerId?: string; salespersonId?: string; method?: string; limit?: number; offset?: number }) => {
  const response = await adminAPI.getPaymentsLedger(params);
  return response.data;
  }
@@ -194,15 +196,19 @@ const adminSlice = createSlice({
  state.users.unshift(action.payload.user || action.payload);
  })
  .addCase(updateUserDetails.fulfilled, (state, action) => {
- const index = state.users.findIndex((u) => u.id === action.payload.id);
+ // The API may wrap the entity as { user } (as createNewUser shows) — normalize so the
+ // table actually reflects the change instead of silently no-op'ing on a missing id.
+ const updated = (action.payload as any).user || action.payload;
+ const index = state.users.findIndex((u) => u.id === updated.id);
  if (index !== -1) {
- state.users[index] = action.payload;
+ state.users[index] = updated;
  }
  })
  .addCase(toggleUserStatus.fulfilled, (state, action) => {
- const index = state.users.findIndex((u) => u.id === action.payload.id);
+ const updated = (action.payload as any).user || action.payload;
+ const index = state.users.findIndex((u) => u.id === updated.id);
  if (index !== -1) {
- state.users[index] = action.payload;
+ state.users[index] = updated;
  }
  })
  .addCase(fetchLoyaltyTiers.fulfilled, (state, action) => {
@@ -233,16 +239,20 @@ const adminSlice = createSlice({
  })
  .addCase(redeemGiftCardThunk.fulfilled, (state, action) => {
  const payload = action.payload;
+ // Coerce monetary fields to Number — if they arrive as strings, arithmetic below would
+ // concatenate (e.g. totalRedeemed becomes "05.00") and corrupt the liability figures.
+ const remainingBalance = Number(payload.remainingBalance) || 0;
+ const redeemedAmount = Number(payload.redeemedAmount) || 0;
  const index = state.giftCards.findIndex((c) => c.code === payload.code);
  if (index !== -1) {
- state.giftCards[index].balance = payload.remainingBalance;
- if (payload.remainingBalance <= 0) {
+ state.giftCards[index].balance = remainingBalance;
+ if (remainingBalance <= 0) {
  state.giftCards[index].isActive = false;
  state.giftCardsSummary.activeCards -= 1;
  }
  }
- state.giftCardsSummary.totalLiability -= payload.redeemedAmount;
- (state.giftCardsSummary as any).totalRedeemed = ((state.giftCardsSummary as any).totalRedeemed || 0) + payload.redeemedAmount;
+ state.giftCardsSummary.totalLiability -= redeemedAmount;
+ (state.giftCardsSummary as any).totalRedeemed = ((state.giftCardsSummary as any).totalRedeemed || 0) + redeemedAmount;
  })
  .addCase(fetchPaymentsLedger.fulfilled, (state, action) => {
  state.paymentsLedger = action.payload; // I'll keep the whole object in state or just items based on existing usage

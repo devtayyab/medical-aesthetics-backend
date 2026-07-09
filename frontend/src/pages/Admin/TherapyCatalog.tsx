@@ -228,8 +228,9 @@ export const TherapyCatalog: React.FC = () => {
  setIsTreatmentModalOpen(true);
  };
 
+ // Show inactive treatments too — they render with a "Draft" badge and must remain
+ // visible so they can be found and re-activated (previously they vanished with no way back).
  const filteredTreatments = treatments
- .filter(t => t.isActive)
  .filter(t =>
  t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
  t.categoryRef?.name.toLowerCase().includes(searchQuery.toLowerCase())

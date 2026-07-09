@@ -277,7 +277,9 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  const canSeeFinancials = ['admin', 'SUPER_ADMIN', 'doctor', 'ADMIN', 'DOCTOR', 'manager'].includes(user?.role);
 
  useEffect(() => {
- if (customer) {
+ // Don't reseed while the user is actively editing — a background refetch of the customer
+ // record would otherwise wipe out their in-progress edits.
+ if (customer && !isEditingCore) {
  setEditedProperties({
  firstName: customer.firstName,
  lastName: customer.lastName,
@@ -289,7 +291,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  estimatedValue: customer.estimatedValue
  });
  }
- }, [customer]);
+ }, [customer, isEditingCore]);
 
  const handleSaveCoreProperties = async () => {
  try {
@@ -620,9 +622,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  clickOnly: true,
  outcome: interactionOutcome,
  tags: selectedTags,
- recordingUrl: (interactionType === 'call' && callDuration > 0)
- ? `https://api.twilio.com/2010-04-01/Accounts/AC.../Recordings/RE${Date.now()}.mp3`
- : undefined
+ // Do not fabricate a recording URL — there is no real recording, and a fake link
+ // would render as a playable recording downstream.
  }
  })).unwrap();
 

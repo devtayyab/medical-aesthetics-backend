@@ -93,14 +93,18 @@ const clinicsSlice = createSlice({
  })
  .addCase(searchClinics.fulfilled, (state, action) => {
  state.isLoading = false;
- const { clinics, total, offset } = action.payload;
- 
- if (offset === 0) {
+ const { clinics, total } = action.payload;
+
+ // Use the REQUESTED offset (thunk arg), not the response — the API may not echo `offset`,
+ // in which case the old check always appended and duplicated/grew the list on every search.
+ const requestedOffset = Number((action.meta.arg as any)?.offset) || 0;
+
+ if (requestedOffset === 0) {
  state.clinics = clinics;
  } else {
  state.clinics = [...state.clinics, ...clinics];
  }
- 
+
  state.total = total;
  state.hasMore = state.clinics.length < total;
  })
