@@ -362,12 +362,14 @@ export class BookingsService {
 
     let conflictQuery = this.appointmentsRepository.createQueryBuilder('apt')
       .where('apt.clinicId = :clinicId', { clinicId: createAppointmentDto.clinicId })
-      .andWhere('apt.status IN (:...statuses)', { 
+      .andWhere('apt.status IN (:...statuses)', {
           statuses: [
-              AppointmentStatus.CONFIRMED, 
-              AppointmentStatus.PENDING, 
-              AppointmentStatus.PENDING_PAYMENT
-          ] 
+              AppointmentStatus.CONFIRMED,
+              AppointmentStatus.PENDING,
+              AppointmentStatus.PENDING_PAYMENT,
+              AppointmentStatus.ARRIVED,
+              AppointmentStatus.IN_PROGRESS
+          ]
       })
       .andWhere('apt.startTime < :newEnd', { newEnd })
       .andWhere('apt.endTime > :newStart', { newStart });
@@ -702,7 +704,15 @@ export class BookingsService {
       : (appointment.clientDetails?.fullName || 'Guest');
     const customerEmail = appointment.client?.email || appointment.clientDetails?.email || '';
     const customerPhone = appointment.client?.phone || appointment.clientDetails?.phone || '';
-    const amount = Number(appointment.service?.price || 0);
+
+    // Charge the true outstanding balance: the full total (which already accounts for any
+    // additional services) minus what was already paid and any gift-card redemption — not just
+    // the base service price, otherwise clients underpay for multi-service appointments.
+    const basePrice = Number(appointment.service?.price || 0);
+    const total = appointment.totalAmount != null ? Number(appointment.totalAmount) : basePrice;
+    const alreadyPaid = Number(appointment.amountPaid || 0);
+    const giftCardRedeemed = Number((appointment as any).giftCardAmountRedeemed || 0);
+    const amount = Math.max(0, total - alreadyPaid - giftCardRedeemed);
 
     return this.vivaWalletService.createPaymentOrder({
       amount,
@@ -711,6 +721,13 @@ export class BookingsService {
       customerName: clientName,
       merchantTrns: appointment.id,
     });
+  }
+
+  // Update whitelisted appointment detail fields (provider/time/service/price). Authorization
+  // and field whitelisting are enforced by the controller; this replaces direct private-repo access.
+  async updateAppointmentDetails(id: string, updateData: any): Promise<Appointment> {
+    await this.appointmentsRepository.update(id, updateData);
+    return this.findById(id);
   }
 
   async updateStatus(id: string, status: AppointmentStatus, data?: any, userId?: string): Promise<Appointment> {
@@ -1988,6 +2005,10 @@ export class BookingsService {
       );
     }
 
+    // Capture the full result set size BEFORE paginating so `total` reflects the real count,
+    // not just the current page length.
+    const countQuery = baseQuery.clone();
+
     if (query.limit) {
       baseQuery = baseQuery.limit(query.limit);
     }
@@ -1996,11 +2017,14 @@ export class BookingsService {
       baseQuery = baseQuery.offset(query.offset);
     }
 
-    const clients = await baseQuery.getRawMany();
+    const [clients, allRows] = await Promise.all([
+      baseQuery.getRawMany(),
+      countQuery.getRawMany(),
+    ]);
 
     return {
       clients,
-      total: clients.length,
+      total: allRows.length,
       limit: query.limit || clients.length,
       offset: query.offset || 0,
     };

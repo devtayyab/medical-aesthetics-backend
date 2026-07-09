@@ -49,7 +49,10 @@ export const Payments: React.FC = () => {
  const clients = users.filter(u => u.role === 'client');
 
  const handleFilterChange = (name: string, value: string) => {
- setFilters(prev => ({ ...prev, [name]: value, offset: 0 }));
+ // Paging must not reset itself: only a real filter change resets offset to 0.
+ setFilters(prev => name === 'offset'
+ ? { ...prev, offset: Number(value) }
+ : { ...prev, [name]: value, offset: 0 });
  };
 
  const handleExportCSV = () => {

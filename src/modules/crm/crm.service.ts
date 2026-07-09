@@ -178,6 +178,11 @@ export class CrmService implements OnModuleInit {
     if (createLeadDto.email && createLeadDto.email.trim() === '') {
       createLeadDto.email = undefined;
     }
+    // Coerce empty-string uuid FK fields to undefined — '' is not valid uuid input and
+    // causes a Postgres "invalid input syntax for type uuid" 500 on insert.
+    if ((createLeadDto as any).assignedSalesId === '') {
+      (createLeadDto as any).assignedSalesId = undefined;
+    }
 
     // Use enhanced duplicate detection
     const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
@@ -4023,7 +4028,10 @@ export class CrmService implements OnModuleInit {
     const { appointment, newStatus, oldStatus } = eventData;
     if (!appointment || !appointment.clientId) return;
 
-    if (newStatus === AppointmentStatus.COMPLETED) {
+    // Ignore no-op events and avoid double-counting when an appointment is re-saved as COMPLETED.
+    if (newStatus === oldStatus) return;
+
+    if (newStatus === AppointmentStatus.COMPLETED && oldStatus !== AppointmentStatus.COMPLETED) {
       // 1. Conversion check (redundant but safe)
       const lead = await this.leadsRepository.findOne({ where: { id: appointment.clientId } });
       if (lead && lead.status !== LeadStatus.CONVERTED) {
@@ -4066,6 +4074,13 @@ export class CrmService implements OnModuleInit {
       });
       if (record) {
         record.cancelledAppointments = (record.cancelledAppointments || 0) + 1;
+        // If this appointment was previously counted as completed, reverse those aggregates
+        // so lifetimeValue / completedAppointments don't stay inflated after a cancellation.
+        if (oldStatus === AppointmentStatus.COMPLETED) {
+          record.completedAppointments = Math.max(0, (record.completedAppointments || 0) - 1);
+          record.lifetimeValue = Math.max(0, Number(record.lifetimeValue || 0) - Number(appointment.totalAmount || 0));
+          record.isRepeatCustomer = record.completedAppointments > 1;
+        }
         await this.customerRecordsRepository.save(record);
       }
     }
@@ -4389,12 +4404,21 @@ export class CrmService implements OnModuleInit {
     }
     const { total: totalRevenue } = await revenueQuery.getRawOne();
 
-    // 2. Appointment Counts
-    const aptCounts = await this.appointmentsRepository.createQueryBuilder('a')
+    // 2. Appointment Counts — apply the SAME date window as revenue so the dashboard is
+    // internally consistent (previously counts were all-time while revenue was date-filtered).
+    const aptCountsQuery = this.appointmentsRepository.createQueryBuilder('a')
       .select('a.status', 'status')
       .addSelect('COUNT(*)', 'count')
-      .groupBy('a.status')
-      .getRawMany();
+      .groupBy('a.status');
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      aptCountsQuery.where('a.startTime BETWEEN :start AND :end', { start, end });
+    }
+    const aptCounts = await aptCountsQuery.getRawMany();
 
     const totalApts = aptCounts.reduce((sum, item) => sum + parseInt(item.count), 0);
     const completedApts = aptCounts.find(c => c.status === AppointmentStatus.COMPLETED)?.count || 0;

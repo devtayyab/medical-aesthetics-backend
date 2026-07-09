@@ -1396,7 +1396,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  </div>
 
- {/* Financials / Payments Widget */}
+ {/* Financials / Payments Widget — only roles allowed to see revenue */}
+ {canSeeFinancials && (
  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
  <div className="bg-slate-50 border-b border-slate-200 px-5 py-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors">
  <h3 className="font-bold text-slate-800 text-sm">Financials</h3>
@@ -1412,6 +1413,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <p className="text-[10px] font-bold text-slate-400 text-right">Total Revenue Generated</p>
  </div>
  </div>
+ )}
 
  </div>
  </div>

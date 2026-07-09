@@ -154,6 +154,8 @@ export class AvailabilityService {
             AppointmentStatus.CONFIRMED,
             AppointmentStatus.PENDING,
             AppointmentStatus.PENDING_PAYMENT,
+            AppointmentStatus.ARRIVED,
+            AppointmentStatus.IN_PROGRESS,
           ]),
         },
       });

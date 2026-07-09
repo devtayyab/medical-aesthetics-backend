@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -133,12 +133,29 @@ export class FinancialService {
         return { items, total };
     }
 
+    /** Look up a payment by its transaction reference (used for webhook idempotency). */
+    async findByTransactionReference(ref?: string): Promise<PaymentRecord | null> {
+        if (!ref) return null;
+        return this.paymentRecordsRepository.findOne({ where: { transactionReference: ref } });
+    }
+
+    /** Latest COMPLETED payment for an appointment (used to reverse Viva refunds). */
+    async findCompletedPaymentByAppointment(appointmentId: string): Promise<PaymentRecord | null> {
+        if (!appointmentId) return null;
+        return this.paymentRecordsRepository.findOne({
+            where: { appointmentId, type: PaymentType.PAYMENT, status: PaymentStatus.COMPLETED },
+            order: { createdAt: 'DESC' },
+        });
+    }
+
     async refundPayment(paymentId: string, notes?: string, recordedById?: string): Promise<PaymentRecord> {
         const originalPayment = await this.paymentRecordsRepository.findOne({ where: { id: paymentId } });
         if (!originalPayment) throw new NotFoundException('Payment record not found');
 
-        if (originalPayment.status === PaymentStatus.REFUNDED) {
-            throw new Error('Payment already refunded');
+        // Only a genuine, completed payment can be reversed — never a pending/failed record,
+        // and never a refund/void/deposit record.
+        if (originalPayment.type !== PaymentType.PAYMENT || originalPayment.status !== PaymentStatus.COMPLETED) {
+            throw new BadRequestException('Only completed payments can be refunded');
         }
 
         // Create a refund record
@@ -183,8 +200,8 @@ export class FinancialService {
         const originalPayment = await this.paymentRecordsRepository.findOne({ where: { id: paymentId } });
         if (!originalPayment) throw new NotFoundException('Payment record not found');
 
-        if (originalPayment.status === PaymentStatus.VOIDED) {
-            throw new Error('Payment already voided');
+        if (originalPayment.type !== PaymentType.PAYMENT || originalPayment.status !== PaymentStatus.COMPLETED) {
+            throw new BadRequestException('Only completed payments can be voided');
         }
 
         // Create a void record

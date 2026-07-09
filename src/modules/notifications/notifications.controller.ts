@@ -62,8 +62,10 @@ export class NotificationsController {
 
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark notification as read' })
-  markAsRead(@Param('id') id: string) {
-    return this.notificationsService.markAsRead(id);
+  markAsRead(@Param('id') id: string, @Request() req) {
+    // Admins may mark any notification; everyone else is scoped to their own (prevents IDOR).
+    const isPrivileged = req.user.role === UserRole.SUPER_ADMIN || req.user.role === UserRole.ADMIN;
+    return this.notificationsService.markAsRead(id, isPrivileged ? undefined : req.user.id);
   }
 
   // Template Management

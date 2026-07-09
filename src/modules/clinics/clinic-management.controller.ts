@@ -707,6 +707,7 @@ export class ClinicManagementController {
     return this.clinicsService.createClinicStaff(req.user.id, req.user.role, staffData);
   }
 
+  @Delete('staff/:id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.DOCTOR, UserRole.SECRETARIAT)
   @ApiOperation({ summary: 'Remove staff member from clinic' })
   async removeStaff(

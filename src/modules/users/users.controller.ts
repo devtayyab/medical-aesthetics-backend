@@ -13,7 +13,9 @@ import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForbiddenException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -59,7 +61,17 @@ export class UsersController {
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.CLINIC_OWNER, UserRole.SUPER_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create new user (Agent/Staff)' })
-  create(@Body() createUserDto: CreateUserDto) {
+  create(@Request() req, @Body() createUserDto: CreateUserDto) {
+    // Prevent privilege escalation: only a SUPER_ADMIN may create ADMIN/SUPER_ADMIN accounts.
+    const requestedRole = createUserDto.role;
+    const privilegedRoles = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
+    if (
+      requestedRole &&
+      privilegedRoles.includes(requestedRole) &&
+      req.user?.role !== UserRole.SUPER_ADMIN
+    ) {
+      throw new ForbiddenException('You are not allowed to assign this role.');
+    }
     return this.usersService.create(createUserDto);
   }
 
@@ -76,8 +88,10 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update own profile' })
-  updateOwnProfile(@Request() req, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(req.user.id, updateUserDto);
+  updateOwnProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+    // UpdateProfileDto omits role/clinic fields; the global whitelist pipe strips any
+    // privileged fields a client tries to send, so this can no longer escalate roles.
+    return this.usersService.update(req.user.id, updateProfileDto);
   }
 
   @Post(':id/consent')

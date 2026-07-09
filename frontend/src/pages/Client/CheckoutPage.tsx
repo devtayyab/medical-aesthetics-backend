@@ -83,6 +83,7 @@ export const CheckoutPage: React.FC = () => {
  phone: crmState.customerPhone || crmState.phone || '',
  });
  const [isSubmitting, setIsSubmitting] = useState(false);
+ const [hasConsented, setHasConsented] = useState(false);
 
  const totalAmount = selectedServices.reduce((acc, s) => acc + Number(s.price), 0);
  const discountAmount = appliedGiftCard ? Math.min(totalAmount, appliedGiftCard.balance) : 0;
@@ -121,6 +122,13 @@ export const CheckoutPage: React.FC = () => {
 
  if (!formData.phone) {
  alert('Mobile number is mandatory for appointment booking.');
+ return;
+ }
+
+ // The consent button below is not a form submit, so the checkbox `required` attribute never
+ // fires — enforce it explicitly so a booking cannot complete without agreement (compliance).
+ if (!hasConsented) {
+ alert('Please agree to the Terms of Service and consent to communications to continue.');
  return;
  }
 
@@ -239,6 +247,8 @@ export const CheckoutPage: React.FC = () => {
  <input
  type="checkbox"
  required
+ checked={hasConsented}
+ onChange={(e) => setHasConsented(e.target.checked)}
  className="mt-1 size-5 rounded border-gray-300 text-lime-500 focus:ring-lime-500 shrink-0"
  />
  <span className="text-xs text-gray-600 leading-relaxed group-hover:text-black">

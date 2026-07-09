@@ -126,8 +126,12 @@ export const AppointmentCalendar: React.FC = () => {
 
   const handleSlotClick = useCallback(
     (payload: SlotClickPayload) => {
+      // Use LOCAL date parts, not toISOString() — the latter converts a local-midnight Date to
+      // UTC and can roll back to the previous day for positive-UTC-offset users (e.g. Berlin).
+      const d = payload.date;
+      const localDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       setInitialAptData({
-        date: payload.date.toISOString().split('T')[0],
+        date: localDateStr,
         startTime: payload.timeStr,
         clinicId: filters.clinicId !== 'all' ? filters.clinicId : clinics[0]?.id || '',
         salesPersonId:
