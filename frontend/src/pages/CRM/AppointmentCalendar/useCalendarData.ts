@@ -143,13 +143,19 @@ export function useCalendarData({ viewDate, viewMode, filters }: UseCalendarData
     refreshAppointments();
   }, [refreshAppointments]);
 
-  // Fetch blocked slots for selected clinic
+  // Fetch blocked slots. In "all clinics" mode we must load blocks for EVERY accessible clinic,
+  // not just clinics[0] — otherwise other clinics' blocks are invisible and conflict detection
+  // lets appointments be booked into blocked periods.
   useEffect(() => {
-    const clinicId = filters.clinicId !== 'all' ? filters.clinicId : clinics[0]?.id;
-    if (!clinicId) return;
-    adminAPI.getBlockedSlots(clinicId)
-      .then((res: any) => setBlockedSlots(res.data || []))
-      .catch(() => setBlockedSlots([]));
+    const clinicIds = filters.clinicId !== 'all'
+      ? [filters.clinicId]
+      : clinics.map((c: any) => c.id);
+    if (!clinicIds.length) { setBlockedSlots([]); return; }
+    Promise.all(
+      clinicIds.map((id: string) =>
+        adminAPI.getBlockedSlots(id).then((r: any) => r.data || []).catch(() => [])
+      )
+    ).then((results) => setBlockedSlots(results.flat()));
   }, [filters.clinicId, clinics]);
 
   // Enrich appointments with computed fields

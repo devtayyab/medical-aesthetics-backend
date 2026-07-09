@@ -235,7 +235,9 @@ const bookingSlice = createSlice({
  })
  .addCase(createAppointment.rejected, (state, action) => {
  state.isLoading = false;
- state.error = action.error.message || 'Failed to create appointment';
+ // The thunk uses rejectWithValue, so the real backend message is in action.payload;
+ // action.error.message is just the generic "Rejected".
+ state.error = (action.payload as string) || action.error.message || 'Failed to create appointment';
  })
  // Fetch user appointments
  .addCase(fetchUserAppointments.fulfilled, (state, action) => {
