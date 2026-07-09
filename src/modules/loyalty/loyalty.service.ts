@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThanOrEqual } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoyaltyLedger } from './entities/loyalty-ledger.entity';
 import { ClinicsService } from '../clinics/clinics.service';
@@ -79,6 +79,12 @@ export class LoyaltyService {
     description: string,
     recordedById?: string,
   ): Promise<LoyaltyLedger> {
+    // Reject non-positive/non-integer redemptions — otherwise a negative value passes the
+    // balance check and writes a positive "redeemed" credit, granting free points.
+    if (!Number.isInteger(points) || points <= 0) {
+      throw new BadRequestException('Points to redeem must be a positive whole number');
+    }
+
     const balance = await this.getClientBalance(clientId, clinicId);
 
     if (balance.totalPoints < points) {
@@ -149,9 +155,11 @@ export class LoyaltyService {
   }
 
   async expireOldPoints(): Promise<void> {
+    // Match every earned entry whose expiry is in the past (the old `expiresAt: new Date()`
+    // equality check matched the exact current instant, i.e. never).
     const expiredEntries = await this.ledgerRepository.find({
       where: {
-        expiresAt: new Date(),
+        expiresAt: LessThanOrEqual(new Date()),
         transactionType: 'earned',
       },
     });
@@ -159,12 +167,14 @@ export class LoyaltyService {
     for (const entry of expiredEntries) {
       await this.ledgerRepository.save({
         ...entry,
-        id: undefined, // Create new entry
+        id: undefined, // Create new offsetting entry
         points: -entry.points,
         transactionType: 'expired',
         description: `Points expired from ${entry.description}`,
         expiresAt: null,
       });
+      // Consume the source entry so it is never expired again on the next run (idempotent).
+      await this.ledgerRepository.update(entry.id, { expiresAt: null });
     }
   }
 
