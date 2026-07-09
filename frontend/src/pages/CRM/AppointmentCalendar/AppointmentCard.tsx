@@ -30,7 +30,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   const paymentCfg = PAYMENT_STATUS_CONFIG[apt.computedPaymentStatus] || PAYMENT_STATUS_CONFIG.UNPAID;
 
   const clientName = apt.isBlocked
-    ? apt.notes || apt.reason || 'Blocked Slot'
+    ? apt.displayName || apt.notes || apt.reason || 'Blocked Slot'
     : apt.client?.firstName
     ? `${apt.client.firstName} ${apt.client.lastName || ''}`.trim()
     : apt.clientDetails?.fullName || 'Unknown Patient';
