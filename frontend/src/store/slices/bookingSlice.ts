@@ -147,7 +147,9 @@ const bookingSlice = createSlice({
 
  if (existingIndex === -1) {
  state.selectedServices.push(service);
- state.totalAmount += service.price;
+ // Coerce to Number — API Decimal columns can serialize price as a string, and
+ // `+=` on a string would concatenate instead of add.
+ state.totalAmount += Number(service.price) || 0;
  }
  },
  removeService: (state, action: PayloadAction<string>) => {
@@ -157,7 +159,7 @@ const bookingSlice = createSlice({
  if (serviceIndex !== -1) {
  const service = state.selectedServices[serviceIndex];
  state.selectedServices.splice(serviceIndex, 1);
- state.totalAmount -= service.price;
+ state.totalAmount -= Number(service.price) || 0;
  }
  },
  setSelectedClinic: (state, action: PayloadAction<Clinic>) => {

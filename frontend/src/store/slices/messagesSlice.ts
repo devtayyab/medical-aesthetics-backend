@@ -175,6 +175,15 @@ const messagesSlice = createSlice({
  state.isMessagesLoading = false;
  state.error = action.error.message || 'Failed to fetch messages';
  })
+ .addCase(sendMessage.fulfilled, (state, action) => {
+ // Append the sent message so it shows immediately even if the socket echo never arrives
+ // (e.g. disconnected). Dedupe by id in case the socket also delivers it.
+ const msg = action.payload;
+ if (msg && state.activeConversationId === msg.conversationId) {
+ const exists = state.activeConversationMessages.some(m => m.id === msg.id);
+ if (!exists) state.activeConversationMessages.push(msg);
+ }
+ })
  .addCase(createConversation.fulfilled, (state, action) => {
  if (!state.conversations.find(c => c.id === action.payload.id)) {
  state.conversations.unshift({ ...action.payload, unreadCount: 0 });
