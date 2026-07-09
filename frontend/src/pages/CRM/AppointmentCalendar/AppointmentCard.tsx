@@ -29,17 +29,19 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   const statusCfg = STATUS_CONFIG[normalizedStatus] || STATUS_CONFIG.PENDING;
   const paymentCfg = PAYMENT_STATUS_CONFIG[apt.computedPaymentStatus] || PAYMENT_STATUS_CONFIG.UNPAID;
 
-  const clientName =
-    apt.client?.firstName
-      ? `${apt.client.firstName} ${apt.client.lastName || ''}`.trim()
-      : apt.clientDetails?.fullName || 'Unknown Patient';
+  const clientName = apt.isBlocked
+    ? apt.notes || apt.reason || 'Blocked Slot'
+    : apt.client?.firstName
+    ? `${apt.client.firstName} ${apt.client.lastName || ''}`.trim()
+    : apt.clientDetails?.fullName || 'Unknown Patient';
 
-  let treatmentName =
-    apt.service?.name ||
-    apt.service?.treatment?.name ||
-    (apt as any).serviceName ||
-    (apt as any).displayName ||
-    'Treatment';
+  let treatmentName = apt.isBlocked
+    ? 'Unavailable'
+    : apt.service?.name ||
+      apt.service?.treatment?.name ||
+      (apt as any).serviceName ||
+      (apt as any).displayName ||
+      'Treatment';
 
   if (apt.additionalServiceIds && apt.additionalServiceIds.length > 0) {
     treatmentName += ` + ${apt.additionalServiceIds.length} more`;
@@ -67,10 +69,13 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   const colorIdx = apt.colorIndex % SALESPERSON_COLORS.length;
   const salespersonColor = SALESPERSON_COLORS[colorIdx];
 
+  const blockedBg = 'bg-gray-100/80';
+  const blockedBorder = 'border-gray-400';
+
   return (
     <div
       className={`absolute rounded-r-lg cursor-pointer transition-all group select-none
-        border-l-[3px] ${statusCfg.bg} ${statusCfg.border}
+        border-l-[3px] ${apt.isBlocked ? blockedBg : statusCfg.bg} ${apt.isBlocked ? blockedBorder : statusCfg.border}
         shadow-sm hover:shadow-md hover:scale-[1.01] hover:z-30 z-20`}
       style={style}
       onClick={e => { e.stopPropagation(); onEdit(apt); }}
@@ -118,13 +123,20 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
         )}
 
         {/* Status + Payment badges */}
-        {!isVeryCompact && (
+        {!isVeryCompact && !apt.isBlocked && (
           <div className="flex items-center gap-1 flex-wrap mt-auto pt-0.5">
             <span className={`text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full ${statusCfg.bg} ${statusCfg.text} border ${statusCfg.border}`}>
               {statusCfg.label}
             </span>
             <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${paymentCfg.bg} ${paymentCfg.text}`}>
               {paymentCfg.label}
+            </span>
+          </div>
+        )}
+        {!isVeryCompact && apt.isBlocked && (
+          <div className="flex items-center gap-1 flex-wrap mt-auto pt-0.5">
+            <span className="text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700 border border-gray-300">
+              BLOCKED
             </span>
           </div>
         )}
@@ -150,9 +162,15 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
                 <span>{endDisplay}</span>
               </div>
             </div>
-            <span className={`text-[9px] font-black uppercase tracking-wide px-2 py-1 rounded-full ${statusCfg.bg} ${statusCfg.text} border ${statusCfg.border}`}>
-              {statusCfg.label}
-            </span>
+            {!apt.isBlocked ? (
+              <span className={`text-[9px] font-black uppercase tracking-wide px-2 py-1 rounded-full ${statusCfg.bg} ${statusCfg.text} border ${statusCfg.border}`}>
+                {statusCfg.label}
+              </span>
+            ) : (
+              <span className="text-[9px] font-black uppercase tracking-wide px-2 py-1 rounded-full bg-gray-200 text-gray-700 border border-gray-300">
+                BLOCKED
+              </span>
+            )}
           </div>
 
           <div className="w-full h-px bg-slate-100" />
@@ -162,12 +180,14 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
             <span className="text-[13px] font-black text-slate-800 leading-tight">
               {clientName}
             </span>
-            <div className="flex items-center gap-1.5 text-slate-400">
-              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              <span className="text-[11px] font-medium">{clientPhone}</span>
-            </div>
+            {(!apt.isBlocked && clientPhone) && (
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                <span className="text-[11px] font-medium">{clientPhone}</span>
+              </div>
+            )}
           </div>
 
           {/* Treatment Info */}
@@ -175,9 +195,11 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
             <span className="text-[11px] font-bold text-slate-700 truncate mr-2">
               {treatmentName}
             </span>
-            <span className="text-[12px] font-black text-emerald-600 flex-shrink-0">
-              €{treatmentPrice.toFixed(2)}
-            </span>
+            {!apt.isBlocked && (
+              <span className="text-[12px] font-black text-emerald-600 flex-shrink-0">
+                €{treatmentPrice.toFixed(2)}
+              </span>
+            )}
           </div>
         </div>
       )}
