@@ -56,7 +56,10 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
     const endMs = new Date(`${form.date}T${form.endTime}`).getTime();
     if (endMs <= startMs) { toast.error('End time must be after start time.'); return; }
 
-    const reasonText = form.reason === 'OTHER' ? form.customReason : form.reason.replace('_', ' ');
+    const baseReason = form.reason.replace('_', ' ');
+    const reasonText = form.reason === 'OTHER'
+      ? form.customReason || 'Other'
+      : form.customReason ? `${baseReason} - ${form.customReason}` : baseReason;
 
     const clinic = clinics.find(c => c.id === form.clinicId);
     const tz = clinic?.timezone || 'UTC';
@@ -201,24 +204,31 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
                 </button>
               ))}
             </div>
-            {form.reason === 'OTHER' && (
-              <input
-                type="text"
-                value={form.customReason}
-                onChange={e => setForm(prev => ({ ...prev, customReason: e.target.value }))}
-                placeholder="Enter reason..."
-                className="mt-2 w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
-            )}
+            <input
+              type="text"
+              value={form.customReason}
+              onChange={e => setForm(prev => ({ ...prev, customReason: e.target.value }))}
+              placeholder="Additional details (optional)..."
+              className="mt-3 w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
           </div>
 
           {/* Preview */}
           <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
             <Lock className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
-            <p className="text-[11px] text-orange-700 font-medium">
-              Blocking <strong>{form.date}</strong> from <strong>{form.startTime}</strong> to <strong>{form.endTime}</strong>.
-              New appointments cannot be booked during this period.
-            </p>
+            <div className="text-[11px] text-orange-700 font-medium">
+              <p>
+                Blocking <strong>{form.date}</strong> from <strong>{form.startTime}</strong> to <strong>{form.endTime}</strong>.
+                New appointments cannot be booked during this period.
+              </p>
+              <p className="mt-1 font-bold">
+                Reason: {form.reason === 'OTHER' 
+                  ? form.customReason || '—' 
+                  : form.customReason 
+                    ? `${form.reason.replace('_', ' ')} - ${form.customReason}`
+                    : form.reason.replace('_', ' ')}
+              </p>
+            </div>
           </div>
         </div>
 
