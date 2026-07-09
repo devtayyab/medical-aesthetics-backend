@@ -33,9 +33,10 @@ export class AuthService {
       throw new UnauthorizedException("This account has been deactivated.");
     }
     // Public clients must verify their email; staff accounts are created by admins and trusted.
-    if (user.role === UserRole.CLIENT && !user.isEmailVerified) {
-      throw new UnauthorizedException("Please verify your email before logging in.");
-    }
+    // Temporary bypass OTP: Disabled the check below.
+    // if (user.role === UserRole.CLIENT && !user.isEmailVerified) {
+    //   throw new UnauthorizedException("Please verify your email before logging in.");
+    // }
     return user;
   }
 
@@ -118,7 +119,7 @@ export class AuthService {
       ...registerDto,
       role: UserRole.CLIENT,
       referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
-      isEmailVerified: false,
+      isEmailVerified: true, // Temporary bypass OTP: set to true
     };
 
     // Create user
@@ -153,26 +154,22 @@ export class AuthService {
       }
     }
 
-    // Generate a 6-digit OTP and save it with 15-min expiry
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiry = new Date(Date.now() + 15 * 60 * 1000);
-    await this.usersService.saveEmailVerificationToken(user.id, otp, expiry);
-
-    // Send OTP via email
+    // Send Welcome Email (moved here since we skip verifyEmail step)
     try {
-      await this.notificationsService.sendEmailVerificationOtp(user.id, user.firstName, otp);
-      console.log("[AuthService] Verification OTP sent to:", user.email);
+      await this.notificationsService.sendTriggeredNotification(
+        NotificationTrigger.WELCOME_CREDENTIALS,
+        user.id,
+        {
+          customerName: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+        }
+      );
     } catch (error) {
-      console.error("[AuthService] Failed to send OTP email:", error.message);
+      console.error("[AuthService] Failed to trigger welcome email:", error.message);
     }
 
-    // Return userId so frontend can show the OTP input screen
-    return {
-      requiresVerification: true,
-      userId: user.id,
-      email: user.email,
-      message: 'A verification code has been sent to your email address. Please enter it to activate your account.',
-    };
+    // Temporary bypass OTP: log the user in directly
+    return this.login(user);
   }
 
   async verifyEmail(userId: string, otp: string) {
