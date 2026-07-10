@@ -4,6 +4,9 @@ import { AppDispatch, RootState } from '../../store';
 import { fetchAppointments, updateAppointmentStatus } from '../../store/slices/clinicSlice';
 import { AppointmentStatus } from '../../types/clinic.types';
 import { hasPermission } from '../../utils/rolePermissions';
+import { getClinicLocalDate, getClinicLocalTime } from '../../utils/clinicTime';
+
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 import { Calendar, Clock, User, Search, X } from 'lucide-react';
 import AppointmentExecutionModal from '../../components/clinic/AppointmentExecutionModal';
 import ClinicBookingModal from '../../components/clinic/ClinicBookingModal';
@@ -47,14 +50,25 @@ const AppointmentsPage: React.FC = () => {
  refreshAppointments();
  }, [dispatch, selectedDate, activeClinicId]);
 
+ // Bucket by the appointment's CLINIC-local date, NOT the UTC date portion of the
+ // ISO string. The backend intentionally over-fetches a ±1 day window, so filtering
+ // here is what pins appointments to the selected day. Using the clinic timezone keeps
+ // this consistent with how the appointment's day/time is displayed everywhere else,
+ // and — critically — the tab COUNTS below are derived from this same date-filtered set
+ // so "5 Active" can never disagree with the 1 row actually rendered.
+ const dateFilteredAppointments = (appointments || []).filter((apt) => {
+ if (selectedDate === '') return true;
+ return getClinicLocalDate(apt.startTime, (apt as any).clinic?.timezone) === selectedDate;
+ });
+
  const counts = {
- active: (appointments || []).filter(a => a?.status?.toLowerCase() !== 'completed').length,
- completed: (appointments || []).filter(a => a?.status?.toLowerCase() === 'completed').length,
+ active: dateFilteredAppointments.filter(a => a?.status?.toLowerCase() !== 'completed').length,
+ completed: dateFilteredAppointments.filter(a => a?.status?.toLowerCase() === 'completed').length,
  };
 
- const filteredAppointments = (appointments || []).filter((apt) => {
+ const filteredAppointments = dateFilteredAppointments.filter((apt) => {
  const status = apt.status.toLowerCase();
- 
+
  // Tab filtering
  if (activeTab === 'active' && status === 'completed') return false;
  if (activeTab === 'completed' && status !== 'completed') return false;
@@ -65,9 +79,8 @@ const AppointmentsPage: React.FC = () => {
  apt.client?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
  apt.client?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
  (apt.serviceName || apt.service?.treatment?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
- const matchesDate = selectedDate === '' || apt.startTime.split('T')[0] === selectedDate;
 
- return matchesStatus && matchesSearch && matchesDate;
+ return matchesStatus && matchesSearch;
  });
 
  const handleConfirm = async (id: string) => {
@@ -396,13 +409,16 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
  {/* Temporal Node */}
  <div className="flex flex-col items-center justify-center size-16 bg-black rounded-xl text-[#CBFF38] shrink-0 group-hover:scale-105 transition-transform ml-4 my-5">
  <span className="text-[7px] font-black uppercase tracking-widest opacity-60">
- {new Date(appointment.startTime).toLocaleDateString([], { month: 'short' })}
+ {MONTH_ABBR[parseInt(getClinicLocalDate(appointment.startTime, (appointment as any).clinic?.timezone).slice(5, 7), 10) - 1]}
  </span>
  <span className="text-xl font-black tracking-tighter leading-none my-0.5">
- {new Date(appointment.startTime).getDate()}
+ {parseInt(getClinicLocalDate(appointment.startTime, (appointment as any).clinic?.timezone).slice(8, 10), 10)}
  </span>
  <span className="text-[7px] font-black">
- {new Date(appointment.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+ {(() => {
+ const { hour, minute } = getClinicLocalTime(appointment.startTime, (appointment as any).clinic?.timezone);
+ return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+ })()}
  </span>
  </div>
 

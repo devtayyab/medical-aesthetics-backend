@@ -7,7 +7,7 @@ import {
     XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone, ArrowLeft, Trash2
 } from 'lucide-react';
 import {
-    format, startOfWeek, endOfWeek, addDays, eachDayOfInterval, isSameDay,
+    format, startOfWeek, endOfWeek, addDays, eachDayOfInterval,
     startOfDay, isToday, addWeeks, subWeeks, subDays, setHours, setMinutes, parseISO
 } from 'date-fns';
 import { AppDispatch, RootState } from '@/store';
@@ -27,6 +27,7 @@ import { fetchClients } from '@/store/slices/clinicSlice';
 import { createLead } from '@/store/slices/crmSlice';
 import { Button } from '@/components/atoms/Button/Button';
 import { crmAPI, clinicsAPI, bookingAPI, adminAPI } from '@/services/api';
+import { getClinicLocalDate } from '@/utils/clinicTime';
 import toast from 'react-hot-toast';
 
 const statusLabels: Record<string, { label: string, color: string, icon: any }> = {
@@ -305,14 +306,19 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
 
 
         appointments.forEach(apt => {
-            const aptDate = new Date(apt.startTime);
+            // Bucket by the appointment's CLINIC-local date so these counts match the
+            // day columns below (which are also positioned in clinic tz) instead of the
+            // browser timezone — otherwise the "Booked" count disagrees with the number
+            // of cards actually rendered for the week/day.
+            const tz = (apt as any).clinic?.timezone || 'UTC';
+            const aptDateStr = getClinicLocalDate(apt.startTime, tz);
             let isInView = false;
             if (viewMode === 'week') {
-                const weekStart = startOfWeek(viewDate, { weekStartsOn: 1 });
-                const weekEnd = endOfWeek(viewDate, { weekStartsOn: 1 });
-                if (aptDate >= weekStart && aptDate <= weekEnd) isInView = true;
+                const weekStartStr = format(startOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+                const weekEndStr = format(endOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+                if (aptDateStr >= weekStartStr && aptDateStr <= weekEndStr) isInView = true;
             } else {
-                if (isSameDay(aptDate, viewDate)) isInView = true;
+                if (aptDateStr === format(viewDate, 'yyyy-MM-dd')) isInView = true;
             }
 
             if (isInView) {

@@ -2256,6 +2256,7 @@ export class BookingsService {
         return {
           id: apt.id,
           clinicId: apt.clinicId,
+          clinicTimezone: apt.clinic?.timezone || null,
           providerId: apt.providerId,
           startTime: apt.startTime,
           endTime: apt.endTime,
@@ -2272,6 +2273,7 @@ export class BookingsService {
       return {
         id: apt.id,
         clinicId: apt.clinicId,
+        clinicTimezone: apt.clinic?.timezone || null,
         serviceId: apt.serviceId,
         providerId: apt.providerId,
         clientId: apt.clientId,

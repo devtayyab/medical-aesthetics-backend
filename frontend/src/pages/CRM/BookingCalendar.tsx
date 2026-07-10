@@ -12,11 +12,18 @@ import {
  AlertCircle,
  ChevronDown,
 } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, addDays, eachDayOfInterval, isSameDay, startOfDay, addHours, isToday, addWeeks, subWeeks, subDays } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addDays, eachDayOfInterval, startOfDay, isToday, addWeeks, subWeeks, subDays } from 'date-fns';
 import { AppDispatch, RootState } from '@/store';
 import { fetchClinicAppointments, updateAppointmentStatus } from '@/store/slices/bookingSlice';
 import { fetchSalespersons } from '@/store/slices/crmSlice';
+import { getClinicLocalTime, isSameClinicDay } from '@/utils/clinicTime';
 import { Button } from '@/components/atoms/Button/Button';
+
+// Format a UTC ISO instant as "HH:mm" in the clinic's timezone.
+const fmtClinic = (iso: string, tz?: string): string => {
+  const { hour, minute } = getClinicLocalTime(iso, tz);
+  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+};
 
 // Translation helpers based on user request
 const statusLabels: Record<string, { label: string, color: string, icon: any }> = {
@@ -160,10 +167,14 @@ export const BookingCalendar: React.FC = () => {
  ))}
 
  {/* Appointments Area */}
- {appointments && appointments.filter(apt => isSameDay(new Date(apt.startTime), day)).map(apt => {
+ {appointments && appointments.filter(apt => isSameClinicDay(apt.startTime, day, apt.clinic?.timezone)).map(apt => {
  const start = new Date(apt.startTime);
  const end = new Date(apt.endTime);
- const top = (start.getHours()) * 56 + (start.getMinutes() / 60) * 56;
+ // Position vertically using the CLINIC-local wall-clock time so the card sits at
+ // the right hour and lands in the correct day column (see isSameClinicDay above),
+ // regardless of the viewer's browser timezone.
+ const { hour: startHour, minute: startMinute } = getClinicLocalTime(apt.startTime, apt.clinic?.timezone);
+ const top = startHour * 56 + (startMinute / 60) * 56;
  const lengthInHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
  const height = lengthInHours * 56;
  const statusStyle = statusLabels[apt.status] || statusLabels.pending;
@@ -202,7 +213,7 @@ export const BookingCalendar: React.FC = () => {
  {height > 50 && (
  <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 opacity-60">
  <Clock className="w-2.5 h-2.5" />
- <span className="text-[9px] font-black tracking-tight">{format(start, 'HH:mm')} - {format(end, 'HH:mm')}</span>
+ <span className="text-[9px] font-black tracking-tight">{fmtClinic(apt.startTime, apt.clinic?.timezone)} - {fmtClinic(apt.endTime, apt.clinic?.timezone)}</span>
  </div>
  )}
  </div>
