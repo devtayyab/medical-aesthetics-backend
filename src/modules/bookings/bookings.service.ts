@@ -1005,17 +1005,8 @@ export class BookingsService {
           queryBuilder.where('(appointment.providerId = :userId OR appointment.bookedById = :userId)', { userId });
         }
       } else if (normalizedRole === 'salesperson') {
-        // Sales team view (Direct Lead ID match or via Client User phone/email)
-        queryBuilder.leftJoin('leads', 'l', 'l.id = appointment.clientId OR (client.phone IS NOT NULL AND l.phone = client.phone) OR (client.email IS NOT NULL AND l.email = client.email)')
-          .leftJoin('customer_records', 'cr', 'cr.customerId = appointment.clientId')
-          .where(new Brackets(qb => {
-            qb.where('appointment.bookedById = :userId', { userId })
-              .orWhere('appointment.providerId = :userId', { userId })
-              .orWhere('appointment.representativeId = :userId', { userId })
-              .orWhere('l.assignedSalesId = :userId', { userId })
-              .orWhere('cr.assignedSalespersonId = :userId', { userId });
-          }));
-          
+        // Sales team view: User requested that sales people should see ALL appointments
+        queryBuilder.where('1=1');
         queryBuilder.leftJoinAndSelect('client.customerRecords', 'clientCustomerRecords');
       } else {
         queryBuilder.where('(appointment.providerId = :userId OR appointment.clientId = :userId OR appointment.bookedById = :userId)', { userId });
