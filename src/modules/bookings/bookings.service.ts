@@ -230,6 +230,16 @@ export class BookingsService {
 
               clientId = savedUser.id;
               userExists = savedUser;
+
+              // Link the lead to the new user so the CRM page can find its appointments
+              await this.leadsRepository.update(lead.id, {
+                status: 'converted' as any,
+                metadata: {
+                  ...(lead.metadata || {}),
+                  convertedToUserId: savedUser.id,
+                  convertedToCustomerId: savedUser.id
+                }
+              });
             } catch (createErr) {
               console.error('createCustomer failed during booking:', createErr);
               const retryUser = await this.usersRepository.findOne({
