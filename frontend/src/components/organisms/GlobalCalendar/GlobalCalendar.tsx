@@ -19,6 +19,7 @@ import {
  CalendarClock,
 } from"lucide-react";
 import { adminAPI, bookingAPI } from"@/services/api";
+import { getClinicLocalDate, getClinicLocalTime } from"@/utils/clinicTime";
 import { Button } from"@/components/atoms/Button/Button";
 import { Card, CardContent } from"@/components/molecules/Card/Card";
 import { RescheduleModal } from"@/components/organisms/RescheduleModal";
@@ -27,6 +28,7 @@ import { AppointmentStatus } from"@/types";
 type GlobalCalendarAppointment = {
  id: string;
  clinicId: string;
+ clinicTimezone?: string | null;
  serviceId?: string;
  providerId?: string | null;
  clientId?: string | null;
@@ -307,13 +309,16 @@ export const GlobalCalendar: React.FC<GlobalCalendarProps> = ({ defaultWeekStart
  }, [currentWeekStart]);
 
  const groupedByDay = useMemo(() => {
+ // Key each day column and each appointment by the CLINIC-local calendar date
+ // (YYYY-MM-DD) rather than the browser-local toDateString(), so an appointment
+ // booked for e.g. Monday isn't pushed onto Sunday for viewers whose browser
+ // timezone differs from the clinic's.
  const map: Record<string, GlobalCalendarAppointment[]> = {};
  for (const day of daysOfWeek) {
- map[day.toDateString()] = [];
+ map[format(day, 'yyyy-MM-dd')] = [];
  }
  for (const apt of appointments) {
- const d = new Date(apt.startTime);
- const key = d.toDateString();
+ const key = getClinicLocalDate(apt.startTime, apt.clinicTimezone || undefined);
  if (!map[key]) map[key] = [];
  map[key].push(apt);
  }
@@ -380,7 +385,7 @@ export const GlobalCalendar: React.FC<GlobalCalendarProps> = ({ defaultWeekStart
  {/* Scrollable Appointment Columns Grid */}
  <div className="grid grid-cols-7 gap-px bg-slate-200 overflow-y-auto custom-scrollbar flex-1">
  {daysOfWeek.map((day) => {
- const dayKey = day.toDateString();
+ const dayKey = format(day, 'yyyy-MM-dd');
  const items = (groupedByDay[dayKey] || []).sort(
  (a, b) =>
  new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
@@ -395,10 +400,12 @@ export const GlobalCalendar: React.FC<GlobalCalendarProps> = ({ defaultWeekStart
  </div>
  )}
  {items.map((apt) => {
- const start = new Date(apt.startTime);
- const end = new Date(apt.endTime);
- const timeLabel =
- format(start,"HH:mm") +" -" + format(end,"HH:mm");
+ // Label in the clinic's timezone so the printed time matches the day column.
+ const fmtTz = (iso: string) => {
+ const { hour, minute } = getClinicLocalTime(iso, apt.clinicTimezone || undefined);
+ return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+ };
+ const timeLabel = `${fmtTz(apt.startTime)} - ${fmtTz(apt.endTime)}`;
 
  const baseColor = apt.isBlocked
  ?"bg-slate-100/80 border-slate-200 text-slate-500"

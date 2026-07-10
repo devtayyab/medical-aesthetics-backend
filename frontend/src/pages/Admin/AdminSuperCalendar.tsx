@@ -7,7 +7,7 @@ import {
  TrendingUp, Target, ListTodo, MoreVertical, RefreshCw, Move, Shield, Building2
 } from 'lucide-react';
 import {
- format, startOfWeek, endOfWeek, addDays, eachDayOfInterval, isSameDay,
+ format, startOfWeek, endOfWeek, addDays, eachDayOfInterval,
  startOfDay, isToday, addWeeks, subWeeks, subDays, setHours, setMinutes, parseISO, startOfMonth, endOfMonth
 } from 'date-fns';
 import { AppDispatch, RootState } from '@/store';
@@ -20,6 +20,7 @@ import { fetchAvailability } from '@/store/slices/clinicSlice';
 import { fetchLeads, fetchSalespersons, fetchClinics, fetchSuperAdminStats, reassignCustomer, scheduleRecurring } from '@/store/slices/crmSlice';
 import { Button } from '@/components/atoms/Button/Button';
 import { crmAPI, clinicsAPI, bookingAPI } from '@/services/api';
+import { getClinicLocalTime, isSameClinicDay } from '@/utils/clinicTime';
 import toast from 'react-hot-toast';
 
 const statusLabels: Record<string, { label: string, color: string, icon: any }> = {
@@ -281,10 +282,13 @@ export const AdminSuperCalendar: React.FC = () => {
  <div key={hour} className="h-16 border-b border-gray-50/50 w-full relative" />
  ))}
 
- {appointments.filter(a => isSameDay(parseISO(a.startTime), day)).map(apt => {
+ {appointments.filter(a => isSameClinicDay(a.startTime, day, a.clinic?.timezone)).map(apt => {
  const start = parseISO(apt.startTime);
  const end = parseISO(apt.endTime);
- const top = start.getHours() * 64 + (start.getMinutes() / 60) * 64;
+ // Position by clinic-local wall-clock time so the card lands at the right hour
+ // in the correct day column, independent of the viewer's browser timezone.
+ const { hour: startHour, minute: startMinute } = getClinicLocalTime(apt.startTime, apt.clinic?.timezone);
+ const top = startHour * 64 + (startMinute / 60) * 64;
  const durationHours = (end.getTime() - start.getTime()) / 3600000;
  const height = Math.max(durationHours * 64, 45);
  const style = statusLabels[apt.status] || statusLabels.PENDING;
@@ -392,7 +396,12 @@ export const AdminSuperCalendar: React.FC = () => {
  </div>
  <div className="flex items-center gap-3 text-sm">
  <Clock className="w-4 h-4 text-gray-400" />
- <span className="font-bold text-gray-700">{format(parseISO(selectedApt.startTime), 'EEEE, MMM d @ HH:mm')}</span>
+ <span className="font-bold text-gray-700">{(() => {
+ const tz = selectedApt.clinic?.timezone && selectedApt.clinic.timezone !== 'null' ? selectedApt.clinic.timezone : 'UTC';
+ const datePart = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(selectedApt.startTime));
+ const { hour, minute } = getClinicLocalTime(selectedApt.startTime, tz);
+ return `${datePart} @ ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+ })()}</span>
  </div>
  </div>
  </section>

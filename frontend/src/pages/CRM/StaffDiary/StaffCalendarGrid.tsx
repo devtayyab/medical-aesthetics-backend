@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
-  format, isSameDay, isToday, startOfWeek, endOfWeek,
+  format, isToday, startOfWeek, endOfWeek,
   eachDayOfInterval, startOfDay, parseISO,
 } from 'date-fns';
 import { Trash2, Lock } from 'lucide-react';
@@ -99,7 +99,9 @@ export const StaffCalendarGrid: React.FC<CalendarGridProps> = ({
     return blockedSlots.filter(slot => {
       const clinic = clinics.find(c => c.id === slot.clinicId);
       const tz = clinic?.timezone || 'UTC';
-      const slotDateStr = format(getClinicLocalDate(slot.startTime, tz), 'yyyy-MM-dd');
+      // getClinicLocalDate already returns a 'yyyy-MM-dd' string — do NOT wrap it in
+      // format() (which expects a Date and silently mis-parses the string).
+      const slotDateStr = getClinicLocalDate(slot.startTime, tz);
       return slotDateStr === dayDateStr;
     });
   };
@@ -364,8 +366,10 @@ const AgendaView: React.FC<AgendaViewProps> = ({ appointments, days, onEdit }) =
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {days.map(day => {
         const dayApts = appointments.filter(apt => {
-          const aptDate = new Date(apt.startTime);
-          return isSameDay(aptDate, day);
+          // Bucket by clinic-local date (same as the desktop grid's getAptsByDay),
+          // NOT browser-local, so mobile and desktop agree on which day a card is on.
+          const tz = apt.clinic?.timezone || 'UTC';
+          return getClinicLocalDate(apt.startTime, tz) === format(day, 'yyyy-MM-dd');
         });
 
         return (
