@@ -404,13 +404,27 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  <div className="grid grid-cols-3 gap-2">
  {slots.length === 0 ? (
  <div className="col-span-3 py-10 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">No slots available for this date</div>
- ) : (
- slots.map((slot, idx) => (
+ ) : slots.map((slot, idx) => {
+ const isAvailable = slot.available !== false;
+ return (
  <button
  key={idx}
+ disabled={!isAvailable}
  onClick={() => setSelectedSlot(slot)}
- className={`p-2.5 text-center text-[11px] font-black border rounded-lg transition-all ${selectedSlot === slot ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white text-slate-700 border-slate-100 hover:border-slate-300'}`}
+ className={`p-2.5 text-center text-[11px] font-black border rounded-lg transition-all 
+ ${!isAvailable 
+ ? 'bg-slate-50 text-slate-400 border-slate-100 cursor-not-allowed opacity-75 relative overflow-hidden' 
+ : selectedSlot === slot 
+ ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' 
+ : 'bg-white text-slate-700 border-slate-100 hover:border-slate-300'
+ }`}
  >
+ {!isAvailable && (
+ <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-50">
+ <div className="w-[120%] h-0.5 bg-red-500 -rotate-12 transform origin-center"></div>
+ </div>
+ )}
+ <span className={!isAvailable ? "relative z-10 opacity-60" : ""}>
  {(() => {
  const display = slot.startTimeDisplay || (slot.startTime.includes('T') ? slot.startTime.split('T')[1].substring(0, 5) : slot.startTime);
  if (/am|pm/i.test(display)) {
@@ -426,9 +440,10 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  }
  return display;
  })()}
+ </span>
  </button>
- ))
- )}
+ );
+ })}
  </div>
  </div>
  </div>

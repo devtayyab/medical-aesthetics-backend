@@ -156,7 +156,12 @@ export class AvailabilityService {
             AppointmentStatus.PENDING_PAYMENT,
             AppointmentStatus.ARRIVED,
             AppointmentStatus.IN_PROGRESS,
-          ]),
+            'confirmed',
+            'pending',
+            'pending_payment',
+            'arrived',
+            'in_progress'
+          ] as any[]),
         },
       });
 

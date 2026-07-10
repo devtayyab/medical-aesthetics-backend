@@ -30,13 +30,14 @@ const DEFAULT_FILTERS: CalendarFilters = {
 export const AppointmentCalendar: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const canSeeAll = isSuperAdmin || user?.role === 'admin' || user?.role === 'manager' || user?.role === 'salesperson';
 
   // ── View State ──────────────────────────────────────────────────────────────
   const [viewDate, setViewDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarView>('week');
   const [filters, setFilters] = useState<CalendarFilters>(DEFAULT_FILTERS);
   const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<string>(
-    isSuperAdmin ? 'all' : user?.id || 'all',
+    canSeeAll ? 'all' : user?.id || 'all',
   );
 
   // ── Modal State ─────────────────────────────────────────────────────────────
@@ -73,9 +74,9 @@ export const AppointmentCalendar: React.FC = () => {
 
   // Filter salespersons for sidebar based on role
   const visibleSalespersons = useMemo(() => {
-    if (isSuperAdmin) return salespersons;
+    if (canSeeAll) return salespersons;
     return salespersons.filter((sp: any) => sp.id === user?.id);
-  }, [salespersons, isSuperAdmin, user?.id]);
+  }, [salespersons, canSeeAll, user?.id]);
 
   // ── Filtered appointments (by payment status, which isn't server-side) ──────
   const displayAppointments = useMemo(() => {
