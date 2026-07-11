@@ -1248,7 +1248,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  )}
 
  {showInteractionModal && interactionTask && (
- <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex justify-end animate-in fade-in duration-300">
+ <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex justify-end animate-in fade-in duration-300">
  <div className="bg-white w-full max-w-[500px] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col h-full border-l border-slate-100">
  <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
  <div className="space-y-1">
