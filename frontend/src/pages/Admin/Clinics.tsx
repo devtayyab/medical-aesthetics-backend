@@ -1012,6 +1012,9 @@ export const Clinics: React.FC = () => {
                               onChange={e => setServiceForm({ ...serviceForm, imageUrl: e.target.value })}
                               placeholder="https://..."
                             />
+                            <p className="text-[9px] text-gray-400 mt-1 leading-tight">
+                              <span className="font-bold text-gray-500">Recommended Size:</span> 800 x 400 pixels (16:9 Aspect Ratio). <span className="font-bold text-gray-500">Max Size:</span> 200-500KB.
+                            </p>
                           </div>
                         </div>
                       </div>

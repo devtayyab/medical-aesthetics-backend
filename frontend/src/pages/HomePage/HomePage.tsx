@@ -156,11 +156,10 @@ export const HomePage: React.FC = () => {
  <div>
  {/* Hero Section */}
  <section 
- className="relative w-full bg-cover bg-no-repeat flex items-center"
+ className="relative w-full bg-cover bg-no-repeat flex items-center bg-[position:80%_top] md:bg-[position:center_top]"
  style={{ 
  backgroundImage: `url(${HeaderBanner})`,
  backgroundSize: 'cover',
- backgroundPosition: 'center top',
  backgroundRepeat: 'no-repeat',
  height: '70vh',
  minHeight: '520px'

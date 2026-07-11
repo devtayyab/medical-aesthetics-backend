@@ -397,8 +397,8 @@ export const Header: React.FC = () => {
  }
  className={`flex items-center ml-2 no-underline ${clinicRoles.includes(user?.role ||"") ?"justify-center" :""}`}
  >
- <div className="w-[140px] sm:w-[180px] h-12 relative flex items-center justify-center mr-2 lg:mr-4">
- <img src={SiteLogo} alt="Site Logo" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180px] sm:w-[220px] max-w-none drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] transition-all pointer-events-none" />
+ <div className="w-[140px] sm:w-[180px] h-10 sm:h-12 relative flex items-center justify-center mr-2 lg:mr-4">
+ <img src={SiteLogo} alt="Site Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] pointer-events-none" />
  </div>
  </Link>
  </div>
@@ -676,8 +676,8 @@ export const Header: React.FC = () => {
  <div className={mobileMenuStyle}>
  <div className={mobileMenuHeaderStyle}>
  <Link to="/" className={logoStyle}>
- <div className="w-[160px] h-10 relative flex items-center justify-center">
- <img src={SiteLogo} alt="Site Logo" className="w-full h-[180%] object-contain pointer-events-none" />
+ <div className="w-[140px] h-10 relative flex items-center justify-center">
+ <img src={SiteLogo} alt="Site Logo" className="w-full h-full object-contain pointer-events-none" />
  </div>
  </Link>
  <button onClick={() => setIsMobileMenuOpen(false)}>

@@ -543,6 +543,10 @@ export const TherapyCatalog: React.FC = () => {
  value={treatmentForm.imageUrl} 
  onChange={(url) => setTreatmentForm({ ...treatmentForm, imageUrl: url })}
  />
+ <p className="text-[10px] text-gray-400 mt-1 ml-1 leading-tight">
+ <span className="font-bold text-gray-500">Recommended Size:</span> 800 x 400 pixels (16:9 Aspect Ratio).<br/>
+ <span className="font-bold text-gray-500">Max File Size:</span> 200KB to 500KB.
+ </p>
  </div>
 
  <div className="space-y-2">
