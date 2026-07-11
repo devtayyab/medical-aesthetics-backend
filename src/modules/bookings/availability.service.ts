@@ -78,7 +78,8 @@ export class AvailabilityService {
       const totalDurationMinutes = services.reduce((sum, s) => sum + s.durationMinutes, 0);
       log('🔵 Total duration:', totalDurationMinutes);
 
-      const timezone = clinic.timezone || 'UTC';
+      const rawTz = clinic.timezone;
+      const timezone = (rawTz && rawTz !== 'null' && rawTz.trim() !== '') ? rawTz : 'UTC';
       log('🔵 Using timezone:', timezone);
 
       // Create date objects for start and end of day respecting timezone
