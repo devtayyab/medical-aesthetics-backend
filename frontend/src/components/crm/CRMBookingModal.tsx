@@ -189,7 +189,9 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  serviceId: selectedService,
  date: selectedDate
  });
- setSlots(res.data.slots || []);
+ const slotsData = res.data?.slots || res.data?.data?.slots || res.data?.data || res.data;
+ const slotsArray = Array.isArray(slotsData) ? slotsData : [];
+ setSlots(slotsArray);
  } catch (err) {
  console.error("Failed to fetch slots", err);
  } finally {
@@ -515,7 +517,7 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  };
 
  return (
- <div className="fixed inset-0 z-[1001] flex items-center justify-center pointer-events-none p-4 md:p-6">
+ <div className="fixed inset-0 z-[99999] flex items-center justify-center pointer-events-none p-4 md:p-6">
  <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm pointer-events-auto" onClick={onClose} />
  <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl relative z-10 pointer-events-auto overflow-hidden border border-slate-100 flex flex-col h-full max-h-[85vh]">
  <div className="p-8 border-b border-slate-50 flex items-center justify-between">

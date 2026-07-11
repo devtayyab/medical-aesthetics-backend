@@ -88,7 +88,7 @@ const DialerModal = ({
  if (!isOpen) return null;
 
  return (
- <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+ <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
  <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-gray-700 relative">
  <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -ml-10 -mt-10" />
  <div className="absolute bottom-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl -mr-10 -mb-10" />
@@ -1248,7 +1248,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  )}
 
  {showInteractionModal && interactionTask && (
- <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex justify-end animate-in fade-in duration-300">
+ <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex justify-end animate-in fade-in duration-300">
  <div className="bg-white w-full max-w-[500px] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col h-full border-l border-slate-100">
  <div className="flex items-center justify-between px-6 py-6 border-b border-slate-50">
  <div className="space-y-1">
@@ -1648,7 +1648,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  )}
  {/* Messaging Modal */}
  {showEmailModal && interactionTask && (
- <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+ <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
  <div>

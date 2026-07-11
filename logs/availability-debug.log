@@ -6251,3 +6251,201 @@
 [2026-07-07T13:26:47.758Z] ✅ Clinic is open on friday from 09:00 to 23:00 
 [2026-07-07T13:26:47.764Z] 🔵 Checking availability for 1 providers 
 [2026-07-07T13:26:47.883Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-07-10T06:27:23.517Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":"343abd7b-587f-4447-9a1d-eabfc843334d","date":"2026-07-10"}
+[2026-07-10T06:27:23.625Z] 🔵 Using date: "2026-07-10"
+[2026-07-10T06:27:24.328Z] 🔵 Clinic: "muneeb"
+[2026-07-10T06:27:24.449Z] 🔵 Total duration: 60
+[2026-07-10T06:27:24.450Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T06:27:24.764Z] 🔵 Day of week: "friday"
+[2026-07-10T06:27:24.778Z] 🔵 Business hours for friday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T06:27:24.780Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T06:27:24.781Z] ✅ Clinic is open on friday from 09:00 to 23:00 
+[2026-07-10T06:27:24.862Z] 🔵 Checking availability for 1 providers 
+[2026-07-10T06:27:26.351Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-07-10T06:27:31.658Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":"343abd7b-587f-4447-9a1d-eabfc843334d","date":"2026-07-13"}
+[2026-07-10T06:27:31.660Z] 🔵 Using date: "2026-07-13"
+[2026-07-10T06:27:33.213Z] 🔵 Clinic: "muneeb"
+[2026-07-10T06:27:33.551Z] 🔵 Total duration: 60
+[2026-07-10T06:27:33.552Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T06:27:33.553Z] 🔵 Day of week: "monday"
+[2026-07-10T06:27:33.601Z] 🔵 Business hours for monday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T06:27:33.602Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T06:27:33.696Z] ✅ Clinic is open on monday from 09:00 to 23:00 
+[2026-07-10T06:27:33.788Z] 🔵 Checking availability for 1 providers 
+[2026-07-10T06:27:34.262Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-07-10T06:35:49.906Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":"d3e3aec9-5e11-4601-8b59-d22cbed98fa0","date":"2026-07-10"}
+[2026-07-10T06:35:50.185Z] 🔵 Using date: "2026-07-10"
+[2026-07-10T06:35:50.205Z] 🔵 Clinic: "muneeb"
+[2026-07-10T06:35:50.213Z] 🔵 Total duration: 60
+[2026-07-10T06:35:50.214Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T06:35:50.223Z] 🔵 Day of week: "friday"
+[2026-07-10T06:35:50.224Z] 🔵 Business hours for friday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T06:35:50.225Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T06:35:50.226Z] ✅ Clinic is open on friday from 09:00 to 23:00 
+[2026-07-10T06:35:50.232Z] 🔵 Checking availability for 1 providers 
+[2026-07-10T06:35:50.361Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-07-10T06:35:54.407Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":"d3e3aec9-5e11-4601-8b59-d22cbed98fa0","date":"2026-07-13"}
+[2026-07-10T06:35:54.433Z] 🔵 Using date: "2026-07-13"
+[2026-07-10T06:35:54.483Z] 🔵 Clinic: "muneeb"
+[2026-07-10T06:35:54.495Z] 🔵 Total duration: 60
+[2026-07-10T06:35:54.497Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T06:35:54.499Z] 🔵 Day of week: "monday"
+[2026-07-10T06:35:54.504Z] 🔵 Business hours for monday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T06:35:54.506Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T06:35:54.506Z] ✅ Clinic is open on monday from 09:00 to 23:00 
+[2026-07-10T06:35:54.516Z] 🔵 Checking availability for 1 providers 
+[2026-07-10T06:35:54.645Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-07-10T07:30:22.658Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-10"}
+[2026-07-10T07:30:22.711Z] 🔵 Using date: "2026-07-10"
+[2026-07-10T07:30:22.770Z] 🔵 Clinic: "muneeb"
+[2026-07-10T07:30:22.781Z] 🔵 Total duration: 60
+[2026-07-10T07:30:22.790Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T07:30:22.952Z] 🔵 Day of week: "friday"
+[2026-07-10T07:30:22.953Z] 🔵 Business hours for friday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T07:30:22.954Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T07:30:22.955Z] ✅ Clinic is open on friday from 09:00 to 23:00 
+[2026-07-10T07:30:23.044Z] 🔵 Checking availability for 6 providers 
+[2026-07-10T07:30:23.190Z] ✅ Found 23 slots for clinic: muneeb 
+[2026-07-10T07:41:07.378Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-10"}
+[2026-07-10T07:41:07.459Z] 🔵 Using date: "2026-07-10"
+[2026-07-10T07:41:07.643Z] 🔵 Clinic: "muneeb"
+[2026-07-10T07:41:07.698Z] 🔵 Total duration: 60
+[2026-07-10T07:41:07.727Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T07:41:07.927Z] 🔵 Day of week: "friday"
+[2026-07-10T07:41:07.946Z] 🔵 Business hours for friday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T07:41:07.957Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T07:41:07.975Z] ✅ Clinic is open on friday from 09:00 to 23:00 
+[2026-07-10T07:41:08.448Z] 🔵 Checking availability for 6 providers 
+[2026-07-10T07:41:09.044Z] ✅ Found 23 slots for clinic: muneeb 
+[2026-07-10T07:41:14.108Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-13"}
+[2026-07-10T07:41:14.113Z] 🔵 Using date: "2026-07-13"
+[2026-07-10T07:41:14.194Z] 🔵 Clinic: "muneeb"
+[2026-07-10T07:41:14.228Z] 🔵 Total duration: 60
+[2026-07-10T07:41:14.239Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T07:41:14.245Z] 🔵 Day of week: "monday"
+[2026-07-10T07:41:14.254Z] 🔵 Business hours for monday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T07:41:14.258Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T07:41:14.261Z] ✅ Clinic is open on monday from 09:00 to 23:00 
+[2026-07-10T07:41:14.344Z] 🔵 Checking availability for 6 providers 
+[2026-07-10T07:41:14.439Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-07-10T07:42:11.777Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-10"}
+[2026-07-10T07:42:11.790Z] 🔵 Using date: "2026-07-10"
+[2026-07-10T07:42:11.908Z] 🔵 Clinic: "muneeb"
+[2026-07-10T07:42:11.939Z] 🔵 Total duration: 60
+[2026-07-10T07:42:11.940Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T07:42:11.956Z] 🔵 Day of week: "friday"
+[2026-07-10T07:42:11.957Z] 🔵 Business hours for friday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T07:42:11.959Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T07:42:11.960Z] ✅ Clinic is open on friday from 09:00 to 23:00 
+[2026-07-10T07:42:12.111Z] 🔵 Checking availability for 6 providers 
+[2026-07-10T07:42:12.271Z] ✅ Found 23 slots for clinic: muneeb 
+[2026-07-10T07:45:45.323Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-10"}
+[2026-07-10T07:45:45.592Z] 🔵 Using date: "2026-07-10"
+[2026-07-10T07:45:45.898Z] 🔵 Clinic: "muneeb"
+[2026-07-10T07:45:46.029Z] 🔵 Total duration: 60
+[2026-07-10T07:45:46.030Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T07:45:46.088Z] 🔵 Day of week: "friday"
+[2026-07-10T07:45:46.095Z] 🔵 Business hours for friday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T07:45:46.099Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T07:45:46.157Z] ✅ Clinic is open on friday from 09:00 to 23:00 
+[2026-07-10T07:45:46.952Z] 🔵 Checking availability for 6 providers 
+[2026-07-10T07:45:48.101Z] ✅ Found 23 slots for clinic: muneeb 
+[2026-07-10T07:45:57.279Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-20"}
+[2026-07-10T07:45:57.389Z] 🔵 Using date: "2026-07-20"
+[2026-07-10T07:45:57.495Z] 🔵 Clinic: "muneeb"
+[2026-07-10T07:45:57.569Z] 🔵 Total duration: 60
+[2026-07-10T07:45:57.570Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T07:45:57.572Z] 🔵 Day of week: "monday"
+[2026-07-10T07:45:57.586Z] 🔵 Business hours for monday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T07:45:57.589Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T07:45:57.616Z] ✅ Clinic is open on monday from 09:00 to 23:00 
+[2026-07-10T07:45:58.638Z] 🔵 Checking availability for 6 providers 
+[2026-07-10T07:45:59.830Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-07-10T07:48:45.156Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-10"}
+[2026-07-10T07:48:45.187Z] 🔵 Using date: "2026-07-10"
+[2026-07-10T07:48:45.254Z] 🔵 Clinic: "muneeb"
+[2026-07-10T07:48:45.294Z] 🔵 Total duration: 60
+[2026-07-10T07:48:45.301Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T07:48:45.316Z] 🔵 Day of week: "friday"
+[2026-07-10T07:48:45.327Z] 🔵 Business hours for friday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T07:48:45.337Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T07:48:45.353Z] ✅ Clinic is open on friday from 09:00 to 23:00 
+[2026-07-10T07:48:45.459Z] 🔵 Checking availability for 6 providers 
+[2026-07-10T07:48:45.559Z] ✅ Found 23 slots for clinic: muneeb 
+[2026-07-10T07:49:25.525Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-07-10"}
+[2026-07-10T07:49:25.583Z] 🔵 Using date: "2026-07-10"
+[2026-07-10T07:49:25.718Z] 🔵 Clinic: "muneeb"
+[2026-07-10T07:49:25.751Z] 🔵 Total duration: 60
+[2026-07-10T07:49:25.752Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-10T07:49:25.758Z] 🔵 Day of week: "friday"
+[2026-07-10T07:49:25.781Z] 🔵 Business hours for friday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-07-10T07:49:25.797Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-10T07:49:25.798Z] ✅ Clinic is open on friday from 09:00 to 23:00 
+[2026-07-10T07:49:25.927Z] 🔵 Checking availability for 6 providers 
+[2026-07-10T07:49:26.118Z] ✅ Found 23 slots for clinic: muneeb 
+[2026-07-11T07:09:54.508Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-11"}
+[2026-07-11T07:09:54.832Z] 🔵 Using date: "2026-07-11"
+[2026-07-11T07:09:55.332Z] 🔵 Clinic: "muneeb"
+[2026-07-11T07:09:55.461Z] 🔵 Total duration: 60
+[2026-07-11T07:09:55.486Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-11T07:09:57.627Z] 🔵 Day of week: "saturday"
+[2026-07-11T07:09:57.746Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-07-11T07:09:57.811Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-11T07:09:57.815Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
+[2026-07-11T07:09:58.747Z] 🔵 Checking availability for 6 providers 
+[2026-07-11T07:09:59.620Z] ✅ Found 14 slots for clinic: muneeb 
+[2026-07-11T07:15:28.427Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-11"}
+[2026-07-11T07:15:28.571Z] 🔵 Using date: "2026-07-11"
+[2026-07-11T07:15:28.766Z] 🔵 Clinic: "muneeb"
+[2026-07-11T07:15:28.800Z] 🔵 Total duration: 60
+[2026-07-11T07:15:28.804Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-11T07:15:28.879Z] 🔵 Day of week: "saturday"
+[2026-07-11T07:15:28.888Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-07-11T07:15:28.900Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-11T07:15:28.902Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
+[2026-07-11T07:15:28.986Z] 🔵 Checking availability for 6 providers 
+[2026-07-11T07:15:29.192Z] ✅ Found 14 slots for clinic: muneeb 
+[2026-07-11T07:16:12.671Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":"d3e3aec9-5e11-4601-8b59-d22cbed98fa0","date":"2026-07-11"}
+[2026-07-11T07:16:12.673Z] 🔵 Using date: "2026-07-11"
+[2026-07-11T07:16:12.724Z] 🔵 Clinic: "muneeb"
+[2026-07-11T07:16:12.739Z] 🔵 Total duration: 60
+[2026-07-11T07:16:12.742Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-11T07:16:12.744Z] 🔵 Day of week: "saturday"
+[2026-07-11T07:16:12.748Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-07-11T07:16:12.749Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-11T07:16:12.771Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
+[2026-07-11T07:16:12.782Z] 🔵 Checking availability for 1 providers 
+[2026-07-11T07:16:12.876Z] ✅ Found 17 slots for clinic: muneeb 
+[2026-07-11T07:16:44.606Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-11"}
+[2026-07-11T07:16:44.607Z] 🔵 Using date: "2026-07-11"
+[2026-07-11T07:16:44.720Z] 🔵 Clinic: "muneeb"
+[2026-07-11T07:16:44.791Z] 🔵 Total duration: 60
+[2026-07-11T07:16:44.805Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-11T07:16:44.849Z] 🔵 Day of week: "saturday"
+[2026-07-11T07:16:44.870Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-07-11T07:16:44.871Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-11T07:16:44.915Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
+[2026-07-11T07:16:45.180Z] 🔵 Checking availability for 6 providers 
+[2026-07-11T07:16:46.124Z] ✅ Found 14 slots for clinic: muneeb 
+[2026-07-11T07:18:26.912Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-11"}
+[2026-07-11T07:18:27.014Z] 🔵 Using date: "2026-07-11"
+[2026-07-11T07:18:27.238Z] 🔵 Clinic: "muneeb"
+[2026-07-11T07:18:27.270Z] 🔵 Total duration: 60
+[2026-07-11T07:18:27.272Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-11T07:18:27.275Z] 🔵 Day of week: "saturday"
+[2026-07-11T07:18:27.284Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-07-11T07:18:27.297Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-11T07:18:27.298Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
+[2026-07-11T07:18:27.454Z] 🔵 Checking availability for 6 providers 
+[2026-07-11T07:18:27.771Z] ✅ Found 14 slots for clinic: muneeb 
+[2026-07-11T07:41:57.142Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["4776d73c-16be-4861-928e-31dc4838b441"],"providerId":null,"date":"2026-07-11"}
+[2026-07-11T07:41:57.223Z] 🔵 Using date: "2026-07-11"
+[2026-07-11T07:41:57.760Z] 🔵 Clinic: "muneeb"
+[2026-07-11T07:41:57.880Z] 🔵 Total duration: 60
+[2026-07-11T07:41:57.998Z] 🔵 Using timezone: "Europe/Athens"
+[2026-07-11T07:41:58.078Z] 🔵 Day of week: "saturday"
+[2026-07-11T07:41:58.089Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-07-11T07:41:58.157Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-07-11T07:41:58.162Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
+[2026-07-11T07:41:58.755Z] 🔵 Checking availability for 6 providers 
+[2026-07-11T07:41:59.711Z] ✅ Found 13 slots for clinic: muneeb 
