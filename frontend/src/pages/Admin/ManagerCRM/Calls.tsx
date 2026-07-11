@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from"react";
+import React, { useEffect, useState, useCallback } from"react";
 import { useSelector, useDispatch } from"react-redux";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
 import { DataTable } from"@/components/ui/DataTable";
@@ -81,7 +81,7 @@ const DialerModal = ({
  if (!isOpen) return null;
 
  return (
- <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+ <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
  <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-gray-700 relative">
  <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -ml-10 -mt-10" />
  <div className="absolute bottom-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl -mr-10 -mb-10" />
