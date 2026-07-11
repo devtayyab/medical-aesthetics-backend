@@ -189,7 +189,9 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  serviceId: selectedService,
  date: selectedDate
  });
- setSlots(res.data.slots || []);
+ const slotsData = res.data?.slots || res.data?.data?.slots || res.data?.data || res.data;
+ const slotsArray = Array.isArray(slotsData) ? slotsData : [];
+ setSlots(slotsArray);
  } catch (err) {
  console.error("Failed to fetch slots", err);
  } finally {
