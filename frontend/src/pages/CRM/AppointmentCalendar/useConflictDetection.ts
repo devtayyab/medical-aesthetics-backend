@@ -47,7 +47,8 @@ export function useConflictDetection(
         if (!activeStatuses.includes(apt.status)) continue;
 
         const aptProviderId = apt.providerId || (apt.provider as any)?.id;
-        if (aptProviderId !== salesPersonId) continue;
+        // Check removed to prevent any double bookings at the clinic, regardless of provider
+        // if (aptProviderId !== salesPersonId) continue;
         if (apt.clinicId !== clinicId) continue;
 
         const aptStart = new Date(apt.startTime).getTime();

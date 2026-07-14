@@ -1817,4 +1817,30 @@ export class ClinicsService {
       return [];
     }
   }
+
+  async autoConnectTreatmentCategories() {
+    const treatments = await this.treatmentsRepository.find({ where: { categoryId: IsNull() } });
+    const categories = await this.categoryRepository.find();
+    let updated = 0;
+
+    const normalize = (str: string) => {
+      if (!str) return '';
+      return str.toLowerCase().trim()
+        .replace(/ά/g, 'α').replace(/έ/g, 'ε').replace(/ή/g, 'η').replace(/ί/g, 'ι')
+        .replace(/ό/g, 'ο').replace(/ύ/g, 'υ').replace(/ώ/g, 'ω').replace(/ϊ/g, 'ι')
+        .replace(/ϋ/g, 'υ').replace(/ΐ/g, 'ι').replace(/ΰ/g, 'υ');
+    };
+
+    for (const t of treatments) {
+      if (!t.category) continue;
+      const normCat = normalize(t.category);
+      const matchedCat = categories.find(c => normalize(c.name) === normCat);
+      if (matchedCat) {
+        t.categoryId = matchedCat.id;
+        await this.treatmentsRepository.save(t);
+        updated++;
+      }
+    }
+    return { success: true, updated };
+  }
 }

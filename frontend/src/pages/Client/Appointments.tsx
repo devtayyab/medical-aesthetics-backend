@@ -135,15 +135,23 @@ export const Appointments: React.FC = () => {
  };
 
  const allAppointments = bookingAppointments.length > 0 ? bookingAppointments : clientAppointments;
- 
- const filteredAppointments = allAppointments.filter(apt => {
- const status = apt.status.toLowerCase();
- // Permanently exclude cancelled and no_show
- if (status === 'cancelled' || status === 'no_show') return false;
- 
- if (activeFilter === 'all') return true;
- return status === activeFilter;
- });
+  const filteredAppointments = allAppointments.filter(apt => {
+    const status = apt.status.toLowerCase();
+    // Permanently exclude cancelled and no_show
+    if (status === 'cancelled' || status === 'no_show') return false;
+    
+    const isPast = new Date(apt.startTime).getTime() < new Date().getTime();
+
+    // Permanently exclude past pending appointments
+    if (status === 'pending' && isPast) return false;
+
+    if (activeFilter === 'confirmed') {
+      if (isPast) return false;
+    }
+
+    if (activeFilter === 'all') return true;
+    return status === activeFilter;
+  }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
  return (
  <div className={sectionStyles}>
