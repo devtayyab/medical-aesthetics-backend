@@ -87,9 +87,13 @@ export const Reviews: React.FC = () => {
  setSuccessMessage("Thank you! Your review is pending approval.");
  setSelectedAppointment(null);
  setTimeout(() => setSuccessMessage(null), 5000);
- } catch (error) {
+ } catch (error: any) {
  console.error("Failed to submit review:", error);
- alert("Failed to submit review. Please try again.");
+ const errorMessage = typeof error === 'string' ? error : (error?.message || "Failed to submit review. Please try again.");
+ alert(errorMessage);
+ if (errorMessage.toLowerCase().includes("already reviewed")) {
+ setSelectedAppointment(null);
+ }
  }
  };
 

@@ -159,7 +159,7 @@ export const GiftCard: React.FC = () => {
  BEAUTY GIFT <span className="text-[#CBFF38]">CARDS</span>
  </h1>
 
- <p className="text-gray-500 mt-6 font-bold text-lg max-w-lg leading-relaxed">
+ <p className="text-gray-500 mt-6 font-bold text-2xl max-w-lg leading-relaxed">
  Give the gift of excellence with a digital gift card instantly and elevate someone's confidence.
  </p>
  </div>

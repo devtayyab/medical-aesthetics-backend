@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from"react";
 import { Link, useNavigate } from"react-router-dom";
 import { css } from"@emotion/css";
-import { ChevronRight, ArrowRight, Sparkles, Wand2, Syringe, Scissors, Pill, Microscope, Loader2 } from"lucide-react";
+import { ChevronRight, ArrowRight, Sparkles, Wand2, Syringe, Scissors, Pill, Microscope, Loader2, Smile, User } from"lucide-react";
 import { motion, AnimatePresence } from"framer-motion";
 import { useCategoryTree, PublicCategory, PublicTreatment } from"@/hooks/useCategoryTree";
 import { getImageUrl } from"@/utils/imageUrl";
@@ -34,9 +34,11 @@ const getFallbackImg = (name: string): string => {
 
 const getCategoryIcon = (name: string) => {
  const n = (name || '').toLowerCase();
- if (n.includes('hair')) return <Scissors size={24} />;
- if (n.includes('derm') || n.includes('skin')) return <Microscope size={24} />;
- if (n.includes('plastic') || n.includes('cosmet') || n.includes('surgical')) return <Wand2 size={24} />;
+ if (n.includes('hair') || n.includes('μαλλιά') || n.includes('τριχωτό')) return <Scissors size={24} />;
+ if (n.includes('derm') || n.includes('skin') || n.includes('δέρμα') || n.includes('δερματολογ')) return <Microscope size={24} />;
+ if (n.includes('plastic') || n.includes('cosmet') || n.includes('surgical') || n.includes('πλαστική') || n.includes('χειρουργική')) return <Wand2 size={24} />;
+ if (n.includes('προσώπου') || n.includes('face')) return <Smile size={24} />;
+ if (n.includes('σώματος') || n.includes('body')) return <User size={24} />;
  return <Syringe size={24} />;
 };
 
@@ -52,6 +54,8 @@ const glassCard = css`
  border: 1px solid #F1F5F9;
  position: relative;
  overflow: hidden;
+ display: flex;
+ flex-direction: column;
  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
  
  &:hover {
@@ -67,8 +71,8 @@ const subTreatmentCard = css`
  overflow: hidden;
  display: flex;
  align-items: center;
- gap: 16px;
- padding: 12px;
+ gap: 20px;
+ padding: 16px;
  transition: all 0.2s ease;
  cursor: pointer;
  border: 1px solid transparent;
@@ -103,7 +107,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
  transition={{ delay: idx * 0.1 }}
  className={glassCard}
  >
- <div className="p-6 sm:p-10 md:p-12">
+ <div className="p-6 sm:p-10 md:p-12 flex flex-col flex-grow">
  <div className="flex items-center justify-between mb-6 sm:mb-10">
  <div className="flex items-center gap-4 sm:gap-6 w-[80%] sm:w-auto">
  <div className="size-12 sm:size-16 shrink-0 rounded-2xl sm:rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl text-xl sm:text-2xl font-black">
@@ -146,22 +150,22 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  {treatments.map((t) => (
  <div key={t.id} className={subTreatmentCard} onClick={() => navigate(`/search?query=${encodeURIComponent(t.name)}`)}>
- <div className="size-12 rounded-xl overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center">
+ <div className="size-16 rounded-xl overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center shadow-sm">
  <img
  src={t.imageUrl ? getImageUrl(t.imageUrl) : getFallbackImg(t.name)}
  onError={(e: any) => { e.target.src = getFallbackImg(t.name); }}
- className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500"
+ className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
  alt={t.name}
  />
  </div>
- <span className="text-[10px] font-black tracking-widest text-gray-900">{t.name}</span>
+ <span className="text-xs font-black tracking-widest text-gray-900 leading-tight">{t.name}</span>
  </div>
  ))}
  </div>
  </div>
  )}
 
- <div className="mt-12 pt-8 border-t border-gray-50">
+ <div className="mt-auto pt-8 border-t border-gray-50">
  <button
  onClick={() => navigate(`/search?category=${encodeURIComponent(category.name)}`)}
  className="w-full h-14 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center gap-4 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-lime-500 hover:text-black transition-all active:scale-95 shadow-2xl"
