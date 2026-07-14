@@ -249,6 +249,17 @@ export const TherapyCatalog: React.FC = () => {
  }
  };
 
+  const handleAutoConnect = async () => {
+    try {
+      if (!confirm("This will automatically link unconnected treatments to categories based on name matching. Proceed?")) return;
+      const res = await adminAPI.autoConnectCategories();
+      alert(`Auto-connect complete. Updated ${res.data.updated} treatments.`);
+      fetchData();
+    } catch (err: any) {
+      alert("Failed to auto-connect categories: " + (err.response?.data?.message || err.message));
+    }
+  };
+
  return (
  <div className="p-8 max-w-7xl mx-auto space-y-8">
  <div className="flex justify-between items-end">
@@ -261,6 +272,12 @@ export const TherapyCatalog: React.FC = () => {
  </p>
  </div>
  <div className="flex gap-3">
+  <button
+  onClick={handleAutoConnect}
+  className="flex items-center gap-2 px-6 py-3 bg-blue-100 text-blue-700 font-black rounded-2xl hover:bg-blue-200 transition-all shadow-lg shadow-blue-50 uppercase text-xs tracking-widest"
+  >
+  <Check size={16} /> Auto-Connect
+  </button>
  <button
  onClick={() => openTreatmentModal()}
  className="flex items-center gap-2 px-6 py-3 bg-[#CBFF38] text-black font-black rounded-2xl hover:bg-lime-400 transition-all shadow-lg shadow-lime-100 uppercase text-xs tracking-widest"

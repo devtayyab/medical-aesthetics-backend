@@ -360,8 +360,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const validateAndCheckConflict = useCallback((): boolean => {
     if (!form.isNewPatient && !form.patientId) { toast.error('Please select a patient.'); return false; }
-    if (form.isNewPatient && (!form.newPatientDetails?.fullName || (!form.newPatientDetails?.phone && !form.newPatientDetails?.email))) {
-      toast.error('Please provide at least a name and either a phone number or email for the new patient.');
+    if (form.isNewPatient && (!form.newPatientDetails?.fullName || !form.newPatientDetails?.phone)) {
+      toast.error('Please provide at least a name and a phone number for the new patient.');
       return false;
     }
     if (!form.serviceId) { toast.error('Please select a treatment.'); return false; }
@@ -601,7 +601,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   <div className="grid grid-cols-2 gap-2">
                     <input
                       type="text"
-                      placeholder="Phone"
+                      placeholder="Phone *"
                       value={form.newPatientDetails?.phone || ''}
                       onChange={e => setForm(prev => ({ ...prev, newPatientDetails: { ...prev.newPatientDetails!, phone: e.target.value } }))}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -977,7 +977,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          {mode === 'edit' ? (
+          {mode === 'edit' && form.paymentStatus === 'UNPAID' ? (
             <button
               onClick={handleDelete}
               disabled={isDeleting}

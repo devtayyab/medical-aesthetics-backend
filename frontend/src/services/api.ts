@@ -579,6 +579,7 @@ export const adminAPI = {
  createMasterTreatment: (data: any) => api.post("/clinic/master/treatments", data),
  updateMasterTreatment: (id: string, data: any) => api.put(`/clinic/master/treatments/${id}`, data),
  deleteMasterTreatment: (id: string) => api.delete(`/clinic/master/treatments/${id}`),
+ autoConnectCategories: () => api.post("/clinic/master/treatments/auto-connect-categories"),
 
  getPendingTreatments: () => api.get("/clinics/treatments/pending"),
  setTreatmentStatus: (id: string, status: string) => api.patch(`/clinics/treatments/${id}/status`, { status }),
@@ -650,10 +651,11 @@ export const adminSettingsAPI = {
 };
 
 export const adminSystemListsAPI = {
- getCategories: () => api.get("/admin/categories"),
- createCategory: (data: any) => api.post("/admin/categories", data),
- updateCategory: (id: string, data: any) => api.put(`/admin/categories/${id}`, data),
- deleteCategory: (id: string) => api.delete(`/admin/categories/${id}`),
+  getCategories: () => api.get("/admin/categories"),
+  createCategory: (data: any) => api.post("/admin/categories", data),
+  updateCategory: (id: string, data: any) => api.put(`/admin/categories/${id}`, data),
+  deleteCategory: (id: string) => api.delete(`/admin/categories/${id}`),
+  autoConnectCategories: () => api.post("/clinic/master/treatments/auto-connect-categories"),
 
  getTreatments: (params?: any) => api.get("/admin/treatments", { params }),
  createTreatment: (data: any) => api.post("/admin/treatments", data),

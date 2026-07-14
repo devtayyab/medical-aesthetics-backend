@@ -830,6 +830,13 @@ export class ClinicManagementController {
   async deleteTreatmentAdmin(@Param('id') id: string) {
     return this.clinicsService.deleteTreatment(id);
   }
+
+  @Post('master/treatments/auto-connect-categories')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Auto-connect treatments to categories by name' })
+  async autoConnectCategories() {
+    return this.clinicsService.autoConnectTreatmentCategories();
+  }
 }
 
 
