@@ -147,6 +147,7 @@ export const Appointments: React.FC = () => {
 
     if (activeFilter === 'confirmed') {
       if (isPast) return false;
+      return ['confirmed', 'pending', 'pending_payment'].includes(status);
     }
 
     if (activeFilter === 'all') return true;
