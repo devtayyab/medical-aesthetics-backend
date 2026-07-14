@@ -18,6 +18,38 @@ import { RescheduleModal } from"@/components/organisms/RescheduleModal";
 // Aesthetic Assets
 import HeroBg from"@/assets/Appointments_Hero.png";
 
+const formatClinicTime = (dateStr: string | Date, timezone?: string) => {
+    const d = new Date(dateStr);
+    try {
+        if (!timezone) throw new Error("No timezone");
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        return formatter.format(d);
+    } catch {
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+    }
+};
+
+const formatClinicDate = (dateStr: string | Date, timezone?: string) => {
+    const d = new Date(dateStr);
+    try {
+        if (!timezone) throw new Error("No timezone");
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+        return formatter.format(d);
+    } catch {
+        return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+    }
+};
+
 const sectionStyles = css`
  min-height: 100vh;
  background: radial-gradient(circle at top right, rgba(203, 255, 56, 0.05), transparent), #FFFFFF;
@@ -261,14 +293,14 @@ export const Appointments: React.FC = () => {
  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">Date</span>
  <div className="flex items-center gap-2 text-gray-900 font-black text-[11px] uppercase">
  <CalendarDays size={14} className="text-lime-500" />
- {new Date(apt.startTime).toLocaleDateString(undefined, { day:"2-digit", month:"short", year:"numeric" })}
+ {formatClinicDate(apt.startTime, apt.clinic?.timezone)}
  </div>
  </div>
  <div className="flex flex-col gap-2">
  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">Session Time</span>
  <div className="flex items-center gap-2 text-gray-900 font-black text-[11px] uppercase">
  <Clock size={14} className="text-lime-500" />
- {new Date(apt.startTime).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit", hour12: false })}
+ {formatClinicTime(apt.startTime, apt.clinic?.timezone)}
  </div>
  </div>
  </div>
