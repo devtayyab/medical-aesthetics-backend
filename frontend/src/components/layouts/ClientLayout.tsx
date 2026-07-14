@@ -7,7 +7,8 @@ import {
  TbCalendarClock,
  TbSettings,
  TbReceipt2,
- TbHome
+ TbHome,
+ TbMessage
 } from"react-icons/tb";
 import { ImProfile } from"react-icons/im";
 import { HiOutlineGift } from"react-icons/hi2";
@@ -76,10 +77,11 @@ const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
  { title:"Payments", icon: <TbReceipt2 size={15} />, link:"/payments" },
  { title:"Gift Cards", icon: <HiOutlineGift size={15} />, link:"/gift-card" },
  { title:"Invite & Earn", icon: <IoPersonAddOutline size={15} />, link:"/invite-friend" },
- { title:"My Reviews", icon: <FaStar size={14} />, link:"/reviews" },
- { title:"Blog", icon: <FaBookOpen size={14} />, link:"/blog" },
- { title:"Settings", icon: <TbSettings size={15} />, link:"/settings" },
- { title:"My Account", icon: <TbHome size={15} />, link:"/my-account" },
+ { title: "My Reviews", icon: <FaStar size={14} />, link: "/reviews" },
+ { title: "Messages", icon: <TbMessage size={15} />, link: "/messages" },
+ { title: "Blog", icon: <FaBookOpen size={14} />, link: "/blog" },
+ { title: "Settings", icon: <TbSettings size={15} />, link: "/settings" },
+ { title: "My Account", icon: <TbHome size={15} />, link: "/my-account" },
  ];
 
  return (
