@@ -11,6 +11,7 @@ import {
  FaTh,
  FaMapMarkerAlt
 } from"react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
 import { SearchBar } from"@/components/organisms/SearchBar";
 import {
  ArrowRight,
@@ -116,11 +117,12 @@ const mainCategories = [
  }
 ];
 
-export const HomePage: React.FC = () => {
- const navigate = useNavigate();
- const dispatch = useDispatch<AppDispatch>();
+ export const HomePage: React.FC = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const [showConsultModal, setShowConsultModal] = useState(false);
 
- const { featuredClinics, isLoading, treatments, error } = useSelector(
+  const { featuredClinics, isLoading, treatments, error } = useSelector(
  (state: RootState) => state.client
  );
 
@@ -154,6 +156,52 @@ export const HomePage: React.FC = () => {
 
  return (
  <div>
+ <AnimatePresence>
+ {showConsultModal && (
+ <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+ <motion.div
+ initial={{ opacity: 0 }}
+ animate={{ opacity: 1 }}
+ exit={{ opacity: 0 }}
+ onClick={() => setShowConsultModal(false)}
+ className="absolute inset-0 bg-black/60 backdrop-blur-md"
+ />
+ <motion.div
+ initial={{ opacity: 0, scale: 0.9, y: 20 }}
+ animate={{ opacity: 1, scale: 1, y: 0 }}
+ exit={{ opacity: 0, scale: 0.9, y: 20 }}
+ className="bg-white w-[90%] sm:w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 relative z-10 shadow-2xl overflow-hidden border border-gray-100"
+ >
+ <div className="absolute top-0 right-0 p-6">
+ <button onClick={() => setShowConsultModal(false)} className="text-gray-400 hover:text-black transition-colors">
+ <Sparkles size={24} className="text-[#CBFF38]" />
+ </button>
+ </div>
+
+ <h2 className="text-3xl font-black uppercase tracking-tighter text-gray-900 mb-2">Connect with us</h2>
+ <p className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-10">Professional Consultation Protocols</p>
+
+ <div className="space-y-4">
+ <a
+ href="mailto:info@beautydoctors.gr?subject=Professional Consultation Request"
+ className="w-full group p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent"
+ >
+ <div className="size-14 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform shadow-sm">
+ <Syringe size={24} />
+ </div>
+ <div className="text-left">
+ <h4 className="font-black uppercase text-gray-900 text-lg group-hover:text-[#CBFF38]">Email Inquiry</h4>
+ <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-300">Official Correspondence</p>
+ </div>
+ </a>
+ </div>
+
+ <p className="text-center mt-10 text-[9px] font-black uppercase tracking-widest text-gray-300">Beauty & Doctors Official Network</p>
+ </motion.div>
+ </div>
+ )}
+ </AnimatePresence>
+
  {/* Hero Section */}
  <section 
  className="relative w-full bg-cover bg-no-repeat flex items-center bg-[position:80%_top] md:bg-[position:center_top]"
@@ -561,6 +609,33 @@ export const HomePage: React.FC = () => {
  View More <ArrowRight className="h-4 w-4" />
  </button>
  </div>
+ </div>
+
+ <div className="py-12">
+ <motion.div
+ initial={{ opacity: 0, scale: 0.95 }}
+ animate={{ opacity: 1, scale: 1 }}
+ className="bg-black rounded-[2rem] sm:rounded-[40px] p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden flex flex-col justify-center min-h-[300px] sm:min-h-[400px]"
+ >
+ <div className="relative z-10">
+ <Sparkles className="text-[#CBFF38] mx-auto mb-8" size={40} />
+ <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white mb-8 leading-tight">
+ Not sure which <br /> <span className="text-[#CBFF38]">path fits you?</span>
+ </h2>
+ <p className="text-gray-400 font-bold max-w-sm mx-auto mb-10 text-sm">
+ Receive a professional clinical assessment with our lead medical practitioners.
+ </p>
+ <button
+ onClick={() => setShowConsultModal(true)}
+ className="px-12 h-16 bg-[#CBFF38] text-black rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-white transition-all shadow-xl active:scale-95 mx-auto"
+ >
+ Get Professional Consultant
+ </button>
+ </div>
+ <div className="absolute inset-0 opacity-10">
+ <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover grayscale" alt="Microscope" />
+ </div>
+ </motion.div>
  </div>
 
  <div className="pt-12 grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
