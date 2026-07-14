@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Appointment } from '../../types/clinic.types';
-import { X, User, Calendar, Clock, Euro, FileText, Shield, Info, ExternalLink } from 'lucide-react';
+import { X, User, Calendar, Clock, Euro, FileText, Shield, Info, ExternalLink, CheckCircle } from 'lucide-react';
 
 interface AppointmentDetailModalProps {
  appointment: Appointment;
@@ -30,7 +30,7 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
  };
 
  return (
- <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+ <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-300">
  <div className="bg-white rounded-[40px] shadow-2xl max-w-2xl w-full overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
  
  {/* Visual Header */}
