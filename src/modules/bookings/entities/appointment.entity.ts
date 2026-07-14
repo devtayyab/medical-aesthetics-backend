@@ -102,8 +102,8 @@ export class Appointment {
   appointmentSource: 'clinic_own' | 'platform_broker';
 
   @Column({
-    type: 'enum',
-    enum: ['showed_up', 'no_show', 'pending'],
+    type: 'varchar',
+    length: 50,
     nullable: true,
   })
   showStatus?: 'showed_up' | 'no_show' | 'pending'; // Patient attendance status
