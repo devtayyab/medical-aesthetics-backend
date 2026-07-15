@@ -34,18 +34,24 @@ export const FacebookIntegration: React.FC = () => {
  phone:""
  });
 
- const handleTestConnection = async () => {
- setConnectionStatus("");
- setConnectionError("");
- try {
- const result = await dispatch(testFacebookConnection()).unwrap();
- setConnectionStatus(result?.message ||"Connection successful!");
- console.log("Facebook connection test result:", result);
- } catch (error: any) {
- setConnectionError(error?.message ||"Connection failed!");
- console.error("Facebook connection test failed:", error);
- }
- };
+  const handleTestConnection = async () => {
+    setConnectionStatus("");
+    setConnectionError("");
+    try {
+      const result = await dispatch(testFacebookConnection()).unwrap();
+      setConnectionStatus(result?.message || "Connection successful!");
+      
+      // Auto-fill the Facebook Page ID if returned from the backend
+      if (result?.pageId) {
+        setPageId(result.pageId);
+      }
+      
+      console.log("Facebook connection test result:", result);
+    } catch (error: any) {
+      setConnectionError(error?.message || "Connection failed!");
+      console.error("Facebook connection test failed:", error);
+    }
+  };
 
  const handleGetForms = async () => {
  setFormsError("");
