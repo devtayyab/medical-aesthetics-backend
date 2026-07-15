@@ -240,10 +240,27 @@ export class FacebookService {
       });
 
       if (response.data && response.data.id) {
+        let pageIdToReturn = response.data.id;
+        let message = `Facebook API connection successful. Connected as: ${response.data.name || response.data.id}`;
+
+        // Check if this is a user token by trying to fetch accounts (Pages)
+        try {
+          const accountsResponse = await this.axiosInstance.get('/me/accounts', {
+            params: { access_token: creds.accessToken }
+          });
+          if (accountsResponse.data && accountsResponse.data.data && accountsResponse.data.data.length > 0) {
+            const firstPage = accountsResponse.data.data[0];
+            pageIdToReturn = firstPage.id;
+            message += `. Auto-selected Page: ${firstPage.name}`;
+          }
+        } catch (accountErr) {
+          // Ignore error, it might already be a page token
+        }
+
         return {
           success: true,
-          message: `Facebook API connection successful. Connected as: ${response.data.name || response.data.id}`,
-          pageId: response.data.id,
+          message: message,
+          pageId: pageIdToReturn,
         };
       }
 
