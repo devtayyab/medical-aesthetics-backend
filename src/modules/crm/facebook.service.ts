@@ -221,7 +221,7 @@ export class FacebookService {
     };
   }
 
-  async testFacebookConnection(): Promise<{ success: boolean; message: string }> {
+  async testFacebookConnection(): Promise<{ success: boolean; message: string; pageId?: string }> {
     const creds = await this.getFacebookCredentials();
     try {
       if (creds.accessToken === 'MOCK_TOKEN' || creds.accessToken === 'your-facebook-access-token') {
@@ -243,6 +243,7 @@ export class FacebookService {
         return {
           success: true,
           message: `Facebook API connection successful. Connected as: ${response.data.name || response.data.id}`,
+          pageId: response.data.id,
         };
       }
 
