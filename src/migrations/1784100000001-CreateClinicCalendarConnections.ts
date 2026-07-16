@@ -13,6 +13,7 @@ export class CreateClinicCalendarConnections1784100000001
         "provider" character varying(20) NOT NULL DEFAULT 'google',
         "googleAccountEmail" character varying,
         "calendarId" character varying,
+        "calendarSummary" character varying,
         "refreshTokenEnc" text,
         "accessTokenEnc" text,
         "tokenExpiry" TIMESTAMP WITH TIME ZONE,

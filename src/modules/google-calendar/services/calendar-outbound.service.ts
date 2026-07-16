@@ -8,6 +8,7 @@ import { CalendarConnectionService } from './calendar-connection.service';
 import { GoogleCalendarClientService } from './google-calendar-client.service';
 import { ClinicCalendarConnection } from '../entities/clinic-calendar-connection.entity';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { GoogleCalendarConfig } from '../google-calendar.config';
 
 // Statuses whose appointments should NOT appear on the calendar — the event is
 // deleted if it exists.
@@ -30,6 +31,7 @@ export class CalendarOutboundService {
     private readonly connectionService: CalendarConnectionService,
     private readonly calendarClient: GoogleCalendarClientService,
     private readonly notificationsService: NotificationsService,
+    private readonly config: GoogleCalendarConfig,
   ) {}
 
   /**
@@ -194,16 +196,19 @@ export class CalendarOutboundService {
       : null;
     const timeZone = appointment.clinic?.timezone || undefined;
 
+    // Data minimization: by default we export only service, client name,
+    // provider and status. Phone and free-text notes (which may hold clinical
+    // detail) are included ONLY when explicitly enabled via config.
+    const includeContact = this.config.includeClientContactInEvents;
+    const phone =
+      appointment.clientDetails?.phone || appointment.client?.phone || null;
+
     const descriptionLines = [
       `Client: ${clientName}`,
       providerName ? `Provider: ${providerName}` : null,
-      appointment.clientDetails?.phone
-        ? `Phone: ${appointment.clientDetails.phone}`
-        : appointment.client?.phone
-          ? `Phone: ${appointment.client.phone}`
-          : null,
+      includeContact && phone ? `Phone: ${phone}` : null,
       `Status: ${appointment.status}`,
-      appointment.notes ? `Notes: ${appointment.notes}` : null,
+      includeContact && appointment.notes ? `Notes: ${appointment.notes}` : null,
       `— Synced from Beauty Doctors (do not edit; changes are overwritten)`,
     ].filter(Boolean);
 

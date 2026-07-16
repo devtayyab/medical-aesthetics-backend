@@ -15,9 +15,11 @@ Calendar.
   project / OAuth client shared by every clinic. Each clinic authorizes with
   *its own* Google account; we store a per-clinic refresh token (encrypted).
   Clinics never need their own API keys.
-- **One dedicated calendar per clinic.** On connect we create a calendar named
-  `Beauty Doctors — <Clinic Name>` in the clinic's Google account and sync into
-  it (we never touch their primary calendar). Disconnecting is clean.
+- **The clinic picks which calendar to sync.** After connecting, the clinic
+  chooses one of its Google calendars (e.g. its "Clinic Bookings" calendar), or
+  has the app create a new one. Both sync directions use that chosen calendar.
+  This avoids dragging personal events into the app as fake "busy" time.
+  Disconnecting is clean.
 - **Real-time inbound** via Google push notifications (watch channels), with a
   **10-minute polling fallback** and **hourly watch-channel renewal** so it keeps
   working even if a webhook is dropped or the callback URL isn't set yet.
@@ -100,16 +102,24 @@ All under the global `/api` prefix.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| `GET` | `/google-calendar/clinics/:clinicId/status` | owner/admin | Connection status for the UI |
+| `GET` | `/google-calendar/clinics/:clinicId/status` | owner/admin | Connection status (`connected`, `needsCalendarSelection`, `calendarSummary`, …) |
 | `GET` | `/google-calendar/clinics/:clinicId/connect` | owner/admin | Returns `{ url }` — the Google consent URL to redirect to |
+| `GET` | `/google-calendar/clinics/:clinicId/calendars` | owner/admin | Lists the account's writable calendars to choose from |
+| `PUT` | `/google-calendar/clinics/:clinicId/calendar` | owner/admin | Body `{ calendarId }` or `{ createNewName }` — pick the calendar to sync; starts backfill + inbound |
 | `DELETE`| `/google-calendar/clinics/:clinicId` | owner/admin | Disconnect (stops watch, revokes token, deletes row) |
 | `GET` | `/google-calendar/oauth/callback` | public (signed `state`) | Google redirect target |
 | `POST` | `/google-calendar/webhook` | public (channel token) | Google push receiver |
 
-**Frontend flow:** call `connect` → redirect the browser to the returned `url`
-→ user approves on Google → Google redirects to `oauth/callback` → the app
-provisions the calendar + watch channel + backfills, then redirects to
-`APP_FRONTEND_URL/settings/calendar?google=connected`.
+**Frontend flow:**
+1. Call `connect` → redirect the browser to the returned `url`.
+2. User approves on Google → Google redirects to `oauth/callback` → the app
+   stores tokens and redirects to
+   `APP_FRONTEND_URL/settings/calendar?google=connected&select=1`.
+3. Because `select=1` (and `status` returns `needsCalendarSelection: true`), the
+   UI calls `GET …/calendars`, shows the list, and the clinic picks one.
+4. UI calls `PUT …/calendar` with the chosen `calendarId` (or `createNewName`).
+   The app registers the watch channel, backfills existing appointments → Google,
+   and pulls current Google events in. Sync is now live both ways.
 
 ## 6. How it behaves (operational notes)
 

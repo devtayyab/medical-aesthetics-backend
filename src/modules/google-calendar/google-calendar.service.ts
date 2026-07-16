@@ -54,6 +54,11 @@ export class GoogleCalendarService {
       status: connection?.status ?? 'disconnected',
       googleAccountEmail: connection?.googleAccountEmail ?? null,
       calendarId: connection?.calendarId ?? null,
+      calendarSummary: connection?.calendarSummary ?? null,
+      // True when connected but the clinic still needs to pick a calendar.
+      needsCalendarSelection: Boolean(
+        connection && connection.status === 'connected' && !connection.calendarId,
+      ),
       syncEnabled: connection?.syncEnabled ?? false,
       lastSyncedAt: connection?.lastSyncedAt ?? null,
       lastError: connection?.status === 'error' ? connection?.lastError : null,
@@ -91,36 +96,78 @@ export class GoogleCalendarService {
       );
     }
 
-    let connection = await this.connectionService.upsertFromTokens(
+    const connection = await this.connectionService.upsertFromTokens(
       clinicId,
       tokens,
       existing,
     );
 
+    // Resolve the authorizing account's email (primary calendar id == email) for display.
     const client = this.connectionService.getCalendarClient(connection);
-
-    // Resolve the authorizing account's email (primary calendar id == email).
     const email = await this.calendarClient.getAccountEmail(client);
-
-    // Create the dedicated calendar once.
-    if (!connection.calendarId) {
-      const clinic = await this.clinicsService.findById(clinicId).catch(() => null);
-      const calendarId = await this.calendarClient.createDedicatedCalendar(
-        client,
-        `Beauty Doctors — ${clinic?.name || 'Bookings'}`,
-        clinic?.timezone,
-      );
-      await this.connectionService.update(connection.id, { calendarId });
-      connection.calendarId = calendarId;
-    }
-
     if (email) {
       await this.connectionService.update(connection.id, {
         googleAccountEmail: email,
       });
     }
 
-    // Register the push channel for real-time inbound sync (non-fatal).
+    // The clinic now chooses WHICH calendar to sync (see listCalendars/selectCalendar).
+    // No watch registration, backfill or inbound sync happens until a calendar is selected.
+    return { clinicId };
+  }
+
+  /** Lists the connected account's writable calendars so the clinic can choose one. */
+  async listCalendars(clinicId: string) {
+    const connection = await this.connectionService.findByClinicId(clinicId);
+    if (!connection) throw new NotFoundException('No Google Calendar connection');
+    const client = this.connectionService.getCalendarClient(connection);
+    return this.calendarClient.listWritableCalendars(client);
+  }
+
+  /**
+   * Sets the calendar the clinic wants to sync (an existing one, or a brand-new
+   * one we create), then kicks off watch registration + backfill + initial inbound sync.
+   */
+  async selectCalendar(
+    clinicId: string,
+    opts: { calendarId?: string; createNewName?: string },
+  ) {
+    const connection = await this.connectionService.findByClinicId(clinicId);
+    if (!connection) throw new NotFoundException('No Google Calendar connection');
+
+    const client = this.connectionService.getCalendarClient(connection);
+
+    let calendarId: string;
+    let calendarSummary: string;
+
+    if (opts.createNewName) {
+      const created = await this.calendarClient.createCalendar(client, opts.createNewName);
+      calendarId = created.id;
+      calendarSummary = created.summary;
+    } else {
+      if (!opts.calendarId) {
+        throw new BadRequestException('calendarId or createNewName is required');
+      }
+      const calendars = await this.calendarClient.listWritableCalendars(client);
+      const chosen = calendars.find((c) => c.id === opts.calendarId);
+      if (!chosen) {
+        throw new BadRequestException(
+          'Calendar not found or not writable by the connected account',
+        );
+      }
+      calendarId = chosen.id;
+      calendarSummary = chosen.summary;
+    }
+
+    await this.connectionService.update(connection.id, {
+      calendarId,
+      calendarSummary,
+      status: 'connected',
+      lastError: null,
+    });
+    connection.calendarId = calendarId;
+
+    // Register the push channel (if configured) and sync both directions.
     try {
       await this.registerWatch(connection);
     } catch (err) {
@@ -128,12 +175,10 @@ export class GoogleCalendarService {
         `Watch registration failed for clinic ${clinicId} (polling will cover it): ${err.message}`,
       );
     }
-
-    // Backfill existing appointments → Google, and pull current Google events in.
     await this.syncQueue.add(JOB_BACKFILL_CLINIC, { clinicId });
     await this.syncQueue.add(JOB_INBOUND_CLINIC, { clinicId });
 
-    return { clinicId };
+    return this.getStatus(clinicId);
   }
 
   /** Disconnects a clinic: stops the watch channel, revokes + deletes the row. */

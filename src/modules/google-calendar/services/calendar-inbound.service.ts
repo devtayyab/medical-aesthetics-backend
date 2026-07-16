@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import { calendar_v3 } from 'googleapis';
 import { BlockedTimeSlot } from '../../bookings/entities/blocked-time-slot.entity';
 import { CalendarConnectionService } from './calendar-connection.service';
@@ -45,14 +45,16 @@ export class CalendarInboundService {
     );
 
     // Expired sync token → restart from a bounded full listing.
+    let fullResyncFrom: Date | null = null;
     if (result.syncTokenExpired) {
       this.logger.warn(
         `Sync token expired for clinic ${clinicId}; performing full resync`,
       );
+      fullResyncFrom = new Date();
       result = await this.calendarClient.listChangedEvents(
         client,
         connection.calendarId,
-        { syncToken: null, timeMin: new Date() },
+        { syncToken: null, timeMin: fullResyncFrom },
       );
     }
 
@@ -66,11 +68,51 @@ export class CalendarInboundService {
       }
     }
 
+    // After a full resync, a plain listing does not surface events deleted while
+    // the token was expired as 'cancelled', so their blocked slots would linger.
+    // Reconcile: drop google-sourced blocks (in the resync window) not present live.
+    if (fullResyncFrom) {
+      await this.reconcileStaleBlocks(
+        connection.clinicId,
+        result.events,
+        fullResyncFrom,
+      );
+    }
+
     // Persist the new cursor only after processing so nothing is skipped on failure.
     await this.connectionService.markSynced(
       connection.id,
       result.nextSyncToken ?? undefined,
     );
+  }
+
+  /** Removes google-sourced blocks (from `from` onward) whose events are gone. */
+  private async reconcileStaleBlocks(
+    clinicId: string,
+    liveEvents: calendar_v3.Schema$Event[],
+    from: Date,
+  ): Promise<void> {
+    const liveIds = new Set(
+      liveEvents
+        .filter((e) => e.status !== 'cancelled' && e.id)
+        .map((e) => e.id),
+    );
+    const existing = await this.blockedRepo.find({
+      where: {
+        clinicId,
+        source: 'google_calendar',
+        startTime: MoreThanOrEqual(from),
+      },
+    });
+    const stale = existing.filter(
+      (s) => s.externalEventId && !liveIds.has(s.externalEventId),
+    );
+    if (stale.length) {
+      await this.blockedRepo.remove(stale);
+      this.logger.log(
+        `Reconcile removed ${stale.length} stale Google-sourced block(s) for clinic ${clinicId}`,
+      );
+    }
   }
 
   private async processEvent(

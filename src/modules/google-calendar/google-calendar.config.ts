@@ -36,6 +36,16 @@ export class GoogleCalendarConfig {
     return raw.split(/[\s,]+/).filter(Boolean);
   }
 
+  /**
+   * When true, appointment events synced to Google include client phone and
+   * free-text notes. Default false (data minimization): only service, client
+   * name, provider and status are included. Free-text/clinical notes are NEVER
+   * exported unless this is explicitly enabled.
+   */
+  get includeClientContactInEvents(): boolean {
+    return this.configService.get<string>('GOOGLE_CALENDAR_INCLUDE_CONTACT') === 'true';
+  }
+
   /** Where to send the clinic owner's browser after OAuth completes. */
   get frontendUrl(): string {
     return (

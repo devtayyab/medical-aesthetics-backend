@@ -35,9 +35,14 @@ export class ClinicCalendarConnection {
   @Column({ nullable: true })
   googleAccountEmail: string;
 
-  // The dedicated Google calendar we create/write into for this clinic.
+  // The Google calendar the clinic chose to sync (both directions).
+  // Null until the clinic selects one after connecting.
   @Column({ nullable: true })
   calendarId: string;
+
+  // Human-readable name of the selected calendar (for display in the UI).
+  @Column({ nullable: true })
+  calendarSummary: string;
 
   // Encrypted OAuth tokens (AES-256-GCM). Never serialized in API responses.
   @Exclude()

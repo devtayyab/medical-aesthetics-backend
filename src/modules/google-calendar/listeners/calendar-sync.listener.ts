@@ -46,8 +46,11 @@ export class CalendarSyncListener {
   }
 
   @OnEvent('appointment.rescheduled')
-  async onRescheduled(appointment: any) {
-    await this.enqueue(appointment?.id);
+  async onRescheduled(payload: any) {
+    // Two emit shapes exist in bookings.service.ts: the bare appointment
+    // (reschedule()) and a wrapped { appointment, oldStartTime, ... }
+    // (rescheduleAppointment(), the clinic-facing path). Handle both.
+    await this.enqueue(payload?.id ?? payload?.appointment?.id);
   }
 
   @OnEvent('appointment.status.changed')

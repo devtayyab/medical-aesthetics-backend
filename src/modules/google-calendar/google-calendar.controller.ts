@@ -1,12 +1,15 @@
 import {
   Controller,
   Get,
+  Put,
   Delete,
   Param,
   Query,
+  Body,
   Req,
   Res,
   UseGuards,
+  Logger,
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
@@ -20,10 +23,20 @@ import { UserRole } from '../../common/enums/user-role.enum';
 import { GoogleCalendarService } from './google-calendar.service';
 import { GoogleCalendarConfig } from './google-calendar.config';
 import { ClinicsService } from '../clinics/clinics.service';
+import { SelectCalendarDto } from './dto/select-calendar.dto';
+
+const CLINIC_MANAGER_ROLES = [
+  UserRole.ADMIN,
+  UserRole.SUPER_ADMIN,
+  UserRole.MANAGER,
+  UserRole.CLINIC_OWNER,
+] as const;
 
 @ApiTags('Google Calendar')
 @Controller('google-calendar')
 export class GoogleCalendarController {
+  private readonly logger = new Logger(GoogleCalendarController.name);
+
   constructor(
     private readonly googleCalendarService: GoogleCalendarService,
     private readonly config: GoogleCalendarConfig,
@@ -79,6 +92,36 @@ export class GoogleCalendarController {
     return { url };
   }
 
+  @Get('clinics/:clinicId/calendars')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @Roles(...CLINIC_MANAGER_ROLES)
+  @ApiOperation({ summary: 'List the connected account\'s writable calendars to choose from' })
+  async listCalendars(@Param('clinicId') clinicId: string, @Req() req: any) {
+    await this.assertClinicAccess(req, clinicId);
+    return this.googleCalendarService.listCalendars(clinicId);
+  }
+
+  @Put('clinics/:clinicId/calendar')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @Roles(...CLINIC_MANAGER_ROLES)
+  @ApiOperation({ summary: 'Choose which calendar to sync (starts backfill + inbound sync)' })
+  async selectCalendar(
+    @Param('clinicId') clinicId: string,
+    @Body() dto: SelectCalendarDto,
+    @Req() req: any,
+  ) {
+    await this.assertClinicAccess(req, clinicId);
+    if (!dto.calendarId && !dto.createNewName) {
+      throw new BadRequestException('Provide calendarId or createNewName');
+    }
+    return this.googleCalendarService.selectCalendar(clinicId, {
+      calendarId: dto.calendarId,
+      createNewName: dto.createNewName,
+    });
+  }
+
   @Delete('clinics/:clinicId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
@@ -122,12 +165,15 @@ export class GoogleCalendarController {
         code,
         state,
       );
+      // Connected, but the clinic must now pick which calendar to sync.
       return res.redirect(
-        `${base}/settings/calendar?google=connected&clinicId=${clinicId}`,
+        `${base}/settings/calendar?google=connected&select=1&clinicId=${clinicId}`,
       );
     } catch (err) {
+      // Log details server-side; never reflect raw internal error text into the URL.
+      this.logger.error(`OAuth callback failed: ${err?.message}`);
       return res.redirect(
-        `${base}/settings/calendar?google=error&reason=${encodeURIComponent(err.message || 'unknown')}`,
+        `${base}/settings/calendar?google=error&reason=connection_failed`,
       );
     }
   }

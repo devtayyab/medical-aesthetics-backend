@@ -33,16 +33,42 @@ export class GoogleCalendarClientService {
     }
   }
 
-  /** Creates the dedicated calendar the app syncs appointments into. */
-  async createDedicatedCalendar(
+  /**
+   * Lists the calendars the authorized account can WRITE to (owner/writer),
+   * so the clinic can choose which one to sync. `primary` marks the account's
+   * main calendar.
+   */
+  async listWritableCalendars(
+    client: calendar_v3.Calendar,
+  ): Promise<Array<{ id: string; summary: string; primary: boolean; accessRole: string }>> {
+    const items: calendar_v3.Schema$CalendarListEntry[] = [];
+    let pageToken: string | undefined;
+    do {
+      const res = await client.calendarList.list({ maxResults: 250, pageToken });
+      (res.data.items ?? []).forEach((c) => items.push(c));
+      pageToken = res.data.nextPageToken ?? undefined;
+    } while (pageToken);
+
+    return items
+      .filter((c) => c.accessRole === 'owner' || c.accessRole === 'writer')
+      .map((c) => ({
+        id: c.id,
+        summary: c.summaryOverride || c.summary || c.id,
+        primary: Boolean(c.primary),
+        accessRole: c.accessRole,
+      }));
+  }
+
+  /** Optionally create a brand-new calendar (offered as a picker option). */
+  async createCalendar(
     client: calendar_v3.Calendar,
     summary: string,
     timeZone?: string,
-  ): Promise<string> {
+  ): Promise<{ id: string; summary: string }> {
     const res = await client.calendars.insert({
       requestBody: { summary, timeZone: timeZone || undefined },
     });
-    return res.data.id;
+    return { id: res.data.id, summary: res.data.summary || summary };
   }
 
   async insertEvent(
