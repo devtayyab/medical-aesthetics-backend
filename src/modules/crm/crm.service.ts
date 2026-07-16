@@ -116,7 +116,7 @@ export class CrmService {
   }
 
   async scheduleRecurringAppointment(data: any): Promise<any> {
-    const { customerId, serviceId, frequency } = data;
+    const { customerId, serviceId, frequency, clinicId } = data;
 
     // Validate customer exists
     const customer = await this.usersRepository.findOne({ where: { id: customerId } });
@@ -135,6 +135,7 @@ export class CrmService {
       serviceId, // we treat serviceId as templateId/service description for now
       frequency,
       customerId,
+      clinicId,
     );
 
     return {
@@ -514,7 +515,7 @@ export class CrmService {
     // Get appointments
     const appointments = await this.appointmentsRepository.find({
       where: { clientId: customerId },
-      relations: ['service', 'clinic'],
+      relations: ['service', 'service.treatment', 'clinic'],
       order: { startTime: 'DESC' },
     });
 
@@ -549,7 +550,7 @@ export class CrmService {
       record,
       appointments: appointments.map(apt => ({
         id: apt.id,
-        serviceName: apt.service?.name,
+        serviceName: apt.service?.treatment?.name,
         clinicName: apt.clinic?.name,
         startTime: apt.startTime,
         status: apt.status,
