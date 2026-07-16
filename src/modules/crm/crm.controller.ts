@@ -18,7 +18,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { Response } from 'express';
+
 import { ValidationPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CrmService } from './crm.service';
@@ -731,7 +731,7 @@ export class CrmController {
     @Query('hub.mode') mode: string,
     @Query('hub.challenge') challenge: string,
     @Query('hub.verify_token') verifyToken: string,
-    @Res() res: Response,
+    @Res() res: any,
   ) {
     const expectedToken = process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN || 'fb_verify_secure_928374_live';
     if (mode === 'subscribe' && verifyToken === expectedToken) {
