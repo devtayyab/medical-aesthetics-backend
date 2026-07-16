@@ -154,7 +154,7 @@ export class GoogleCalendarController {
     const base = this.config.frontendUrl.replace(/\/$/, '');
     if (error) {
       return res.redirect(
-        `${base}/settings/calendar?google=error&reason=${encodeURIComponent(error)}`,
+        `${base}/clinic/settings?google=error&reason=${encodeURIComponent(error)}`,
       );
     }
     if (!code || !state) {
@@ -167,13 +167,13 @@ export class GoogleCalendarController {
       );
       // Connected, but the clinic must now pick which calendar to sync.
       return res.redirect(
-        `${base}/settings/calendar?google=connected&select=1&clinicId=${clinicId}`,
+        `${base}/clinic/settings?google=connected&select=1&clinicId=${clinicId}`,
       );
     } catch (err) {
       // Log details server-side; never reflect raw internal error text into the URL.
       this.logger.error(`OAuth callback failed: ${err?.message}`);
       return res.redirect(
-        `${base}/settings/calendar?google=error&reason=connection_failed`,
+        `${base}/clinic/settings?google=error&reason=connection_failed`,
       );
     }
   }
