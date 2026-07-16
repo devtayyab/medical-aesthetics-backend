@@ -440,48 +440,7 @@ export class CrmController {
     return this.crmService.getCrmMetrics();
   }
 
-  // Facebook Integration
-  @Get('facebook/webhook')
-  @Public()
-  @ApiOperation({ summary: 'Verify Messenger/Lead Ads Webhook' })
-  verifyFacebookWebhook(
-    @Query('hub.mode') mode: string,
-    @Query('hub.verify_token') verifyToken: string,
-    @Query('hub.challenge') challenge: string,
-  ) {
-    return this.crmService.verifyWebhook(mode, verifyToken, challenge);
-  }
 
-  @Post('facebook/webhook')
-  @Public()
-  @ApiOperation({ summary: 'Messenger/Lead Ads Webhook' })
-  async handleFacebookWebhook(
-    @Body() data: FacebookWebhookDto,
-    @Headers('x-hub-signature-256') signature: string,
-  ) {
-    // Verify the payload actually came from Facebook before processing attacker-supplied leadgen ids.
-    // (validateFacebookSignature safely skips when FACEBOOK_APP_SECRET is unset during testing.)
-    const valid = await this.crmService.validateFacebookSignature(signature, data);
-    if (!valid) {
-      throw new ForbiddenException('Invalid webhook signature');
-    }
-    return this.crmService.handleFacebookWebhook(data);
-  }
-
-  @Post('facebook/import/:formId')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Manual lead import' })
-  importFacebookLeads(@Param('formId') formId: string, @Query('limit') limit?: number) {
-    return this.crmService.importFacebookLeads(formId, limit);
-  }
-
-  @Get('facebook/forms')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  getFacebookForms(@Query('pageId') pageId?: string) {
-    return this.crmService.getFacebookForms(pageId);
-  }
 
   @Post('actions/bulk')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
@@ -737,13 +696,7 @@ export class CrmController {
     return this.crmService.scheduleRecurringAppointment(body);
   }
 
-  @Get('facebook/test')
-  @ApiOperation({ summary: 'Test Facebook API connection' })
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @UseGuards(RolesGuard)
-  testFacebookConnection() {
-    return this.crmService.testFacebookConnection();
-  }
+
 
   @Post('customers/:id/reassign')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
@@ -826,6 +779,6 @@ export class CrmController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
   getFacebookForms() {
-    return this.crmService.getFacebookPageForms();
+    return this.crmService.getFacebookForms();
   }
 }

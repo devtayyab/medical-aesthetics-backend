@@ -34,6 +34,7 @@ export interface ParsedFacebookLead {
   facebookAdSetId?: string;
   facebookAdId?: string;
   facebookLeadData: any;
+  notes?: string;
 }
 
 @Injectable()
@@ -52,11 +53,23 @@ export class FacebookService {
     });
   }
 
+  async validateSignature(signature: string, payload: any): Promise<boolean> {
+    const appSecret = this.configService.get<string>('FACEBOOK_APP_SECRET');
+    if (!appSecret) {
+      return true; // Skip validation if secret is not set
+    }
+    const crypto = require('crypto');
+    const hmac = crypto.createHmac('sha256', appSecret);
+    const digest = 'sha256=' + hmac.update(JSON.stringify(payload)).digest('hex');
+    return signature === digest;
+  }
+
   // Fetch ALL lead forms from the Facebook Page (with pagination)
-  async getPageForms(): Promise<FacebookFormData[]> {
+  async getForms(pageId?: string): Promise<FacebookFormData[]> {
     const allForms: FacebookFormData[] = [];
+    const targetPageId = pageId || this.pageId;
     let nextUrl: string | null =
-      `/${this.pageId}/leadgen_forms?fields=id,name,status,leads_count,created_time&limit=100&access_token=${this.accessToken}`;
+      `/${targetPageId}/leadgen_forms?fields=id,name,status,leads_count,created_time&limit=100&access_token=${this.accessToken}`;
 
     try {
       while (nextUrl) {
