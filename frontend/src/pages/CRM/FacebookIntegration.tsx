@@ -6,6 +6,7 @@ import { Input } from"@/components/atoms/Input/Input";
 import {
  testFacebookConnection,
  getFacebookForms,
+ getFacebookStats,
  importFacebookLeads,
  handleFacebookWebhook
 } from"@/store/slices/crmSlice";
@@ -17,6 +18,7 @@ export const FacebookIntegration: React.FC = () => {
  const [connectionStatus, setConnectionStatus] = useState<string>("");
  const [connectionError, setConnectionError] = useState<string>("");
  const [facebookForms, setFacebookForms] = useState<any[]>([]);
+ const [facebookStats, setFacebookStats] = useState<any>(null);
  const [pageId, setPageId] = useState("");
  const [formsError, setFormsError] = useState("");
  const [importData, setImportData] = useState({
@@ -76,6 +78,14 @@ export const FacebookIntegration: React.FC = () => {
  try {
  const result = await dispatch(getFacebookForms(pageId.trim())).unwrap();
  setFacebookForms(result || []);
+ 
+ try {
+   const stats = await dispatch(getFacebookStats(pageId.trim())).unwrap();
+   setFacebookStats(stats);
+ } catch (e) {
+   console.error("Failed to fetch Facebook stats", e);
+ }
+
  if (!result || result.length === 0) {
  setFormsError("No forms found for this Page ID. Make sure the Page ID is correct and the token has leadgen permissions.");
  }
@@ -199,8 +209,28 @@ export const FacebookIntegration: React.FC = () => {
  </div>
  )}
  {facebookForms.length > 0 && (
- <div className="space-y-2">
- <h4 className="font-semibold">Available Forms ({facebookForms.length}):</h4>
+ <div className="space-y-4 mt-6">
+ {facebookStats && (
+   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+     <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex flex-col items-center justify-center text-center">
+       <div className="text-xs text-blue-500 font-semibold uppercase tracking-wider mb-1">Total FB Forms</div>
+       <div className="text-2xl font-bold text-blue-700">{facebookStats.totalFbForms}</div>
+     </div>
+     <div className="bg-green-50 p-4 rounded-lg border border-green-100 flex flex-col items-center justify-center text-center">
+       <div className="text-xs text-green-500 font-semibold uppercase tracking-wider mb-1">Total FB Leads</div>
+       <div className="text-2xl font-bold text-green-700">{facebookStats.totalFbLeads}</div>
+     </div>
+     <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 flex flex-col items-center justify-center text-center">
+       <div className="text-xs text-purple-500 font-semibold uppercase tracking-wider mb-1">Manual Import</div>
+       <div className="text-2xl font-bold text-purple-700">{facebookStats.manualLeads}</div>
+     </div>
+     <div className="bg-orange-50 p-4 rounded-lg border border-orange-100 flex flex-col items-center justify-center text-center">
+       <div className="text-xs text-orange-500 font-semibold uppercase tracking-wider mb-1">Webhook Leads</div>
+       <div className="text-2xl font-bold text-orange-700">{facebookStats.webhookLeads}</div>
+     </div>
+   </div>
+ )}
+ <h4 className="font-semibold text-lg border-b pb-2">Available Forms ({facebookForms.length}):</h4>
  {facebookForms.map((form: any) => (
  <div key={form.id} className="border rounded p-2 text-sm flex justify-between items-center">
  <div>

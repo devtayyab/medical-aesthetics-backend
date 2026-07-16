@@ -130,7 +130,7 @@ export class CrmService implements OnModuleInit {
     }
 
     if (!user) return false;
-    
+
     // Explicitly allow high-level roles
     if ([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.SALESPERSON].includes(user.role)) {
       return true;
@@ -139,9 +139,9 @@ export class CrmService implements OnModuleInit {
     if (user.role === UserRole.SALESPERSON) {
       return true; // We already returned true above, but just in case
       // First check if it's a lead
-      const lead = await this.leadsRepository.findOne({ 
+      const lead = await this.leadsRepository.findOne({
         where: { id: customerId },
-        withDeleted: true 
+        withDeleted: true
       });
       if (lead) {
         return !lead.assignedSalesId || lead.assignedSalesId === userId;
@@ -197,7 +197,7 @@ export class CrmService implements OnModuleInit {
         // Update existing customer record instead of creating duplicate lead
         return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
       }
-      
+
       if (duplicateCheck.existingLead) {
         // Update existing lead instead of creating duplicate
         return this.updateExistingLead(duplicateCheck.existingLead, createLeadDto);
@@ -328,7 +328,7 @@ export class CrmService implements OnModuleInit {
   async scheduleRecurringAppointment(data: any): Promise<any> {
     console.log('🚀 [CrmService] scheduleRecurringAppointment request received');
     console.log('Payload Data:', JSON.stringify(data, null, 2));
-    
+
     const { customerId, serviceId, frequency, clinicId, startDate, providerId, bookedById } = data;
 
     // Descriptive check for required fields
@@ -338,7 +338,7 @@ export class CrmService implements OnModuleInit {
       if (!clinicId) missing.push('clinicId');
       if (!serviceId) missing.push('serviceId');
       if (!frequency) missing.push('frequency');
-      
+
       console.error('❌ [CrmService] Validation failed. Missing:', missing.join(', '));
       throw new BadRequestException(`Missing required fields: ${missing.join(', ')}`);
     }
@@ -367,8 +367,8 @@ export class CrmService implements OnModuleInit {
         const end = new Date(start.getTime() + 60 * 60 * 1000);
 
         if (!customer.phone) {
-             console.error('❌ [CrmService] Phone number missing for recurring sequence');
-             throw new BadRequestException('Customer must have a phone number to schedule appointments.');
+          console.error('❌ [CrmService] Phone number missing for recurring sequence');
+          throw new BadRequestException('Customer must have a phone number to schedule appointments.');
         }
 
         try {
@@ -384,9 +384,9 @@ export class CrmService implements OnModuleInit {
             appointmentSource: 'platform_broker',
             bookedById: bookedById,
             clientDetails: {
-                fullName: `${customer.firstName} ${customer.lastName}`,
-                email: customer.email,
-                phone: customer.phone
+              fullName: `${customer.firstName} ${customer.lastName}`,
+              email: customer.email,
+              phone: customer.phone
             }
           });
           console.log('[CrmService] First appointment created successfully');
@@ -394,7 +394,7 @@ export class CrmService implements OnModuleInit {
           console.error('❌ [CrmService] BookingsService.createAppointment failed:', bookingError);
           // Preserve the original error (like ConflictException) if it already has a status
           if (bookingError.status && bookingError.status >= 400) {
-              throw bookingError;
+            throw bookingError;
           }
           throw new BadRequestException(`Failed to create the first appointment: ${bookingError.message}`);
         }
@@ -464,9 +464,9 @@ export class CrmService implements OnModuleInit {
           );
 
           if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-            await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData);
+            await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, true);
           } else {
-            await this.createLeadFromFacebook(parsedLead, leadData);
+            await this.createLeadFromFacebook(parsedLead, leadData, true);
           }
         } catch (error) {
           console.error(`Error processing Facebook lead ${leadgenId}:`, error);
@@ -498,9 +498,9 @@ export class CrmService implements OnModuleInit {
         );
 
         if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-          await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData);
+          await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, false);
         } else {
-          const lead = await this.createLeadFromFacebook(parsedLead, leadData);
+          const lead = await this.createLeadFromFacebook(parsedLead, leadData, false);
           createdLeads.push(lead);
         }
       } catch (error) {
@@ -580,7 +580,7 @@ export class CrmService implements OnModuleInit {
   private async updateExistingLead(existingLead: Lead, leadDto: CreateLeadDto): Promise<Lead> {
     // Determine if we should reset status (e.g. from LOST to NEW)
     const shouldResetStatus = existingLead.status === LeadStatus.LOST;
-    
+
     // Update existing lead with new information
     const updatedLead = await this.leadsRepository.save({
       ...existingLead,
@@ -590,7 +590,7 @@ export class CrmService implements OnModuleInit {
       lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt || new Date(),
       lastMetaFormName: leadDto.lastMetaFormName || existingLead.lastMetaFormName,
       lastContactedAt: new Date(),
-      notes: existingLead.notes 
+      notes: existingLead.notes
         ? `${existingLead.notes}\n\n[Re-inquiry ${new Date().toLocaleDateString()}]: ${leadDto.notes || 'No new notes'}`
         : leadDto.notes,
       metadata: {
@@ -603,14 +603,15 @@ export class CrmService implements OnModuleInit {
 
     // Emit event for updates
     this.eventEmitter.emit('lead.updated', updatedLead);
-    
+
     return updatedLead;
   }
 
   private async updateExistingCustomerWithFacebookLead(
     existingCustomer: User,
     parsedLead: ParsedFacebookLead,
-    leadData: any
+    leadData: any,
+    isWebhook: boolean = false
   ): Promise<void> {
     // Get the customer record to find assigned salesperson
     const customerRecord = await this.customerRecordsRepository.findOne({
@@ -679,7 +680,7 @@ export class CrmService implements OnModuleInit {
     });
   }
 
-  private async createLeadFromFacebook(parsedLead: ParsedFacebookLead, leadData: any): Promise<Lead> {
+  private async createLeadFromFacebook(parsedLead: ParsedFacebookLead, leadData: any, isWebhook: boolean = false): Promise<Lead> {
     // Extract Facebook Ad Name from form fields if available (multiple-choice answer rule)
     const facebookAdNameField = parsedLead.facebookLeadData?.field_data?.find(
       (f: any) => f.name.toLowerCase().includes('ad_name') || f.name.toLowerCase().includes('campaign')
@@ -705,6 +706,7 @@ export class CrmService implements OnModuleInit {
         importedFromFacebook: true,
         importDate: new Date(),
         facebookAdName: facebookAdName, // Sourced from form submission as requested
+        fromWebhook: isWebhook,
       },
       lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
       lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
@@ -1192,7 +1194,7 @@ export class CrmService implements OnModuleInit {
       whereConditions.push({ phone: data.phone });
     }
 
-    const existingUser = whereConditions.length > 0 
+    const existingUser = whereConditions.length > 0
       ? await this.usersRepository.findOne({ where: whereConditions })
       : null;
 
@@ -1701,13 +1703,13 @@ export class CrmService implements OnModuleInit {
       }
 
       const isCallAction = data.actionType === 'follow_up_call' || data.actionType === 'call';
-      
+
       await this.notificationsService.create(
         data.salespersonId,
         NotificationType.PUSH,
         isCallAction ? `📞 Call Back: ${customerName}` : 'New Task Created',
         isCallAction ? `Call ${customerPhone} now regarding ${data.title}` : `${data.title} - Due: ${data.dueDate}`,
-        { 
+        {
           actionId: savedAction.id,
           trigger: isCallAction ? 'DIALER_CALLBACK' : 'TASK_OPEN',
           phoneNumber: customerPhone,
@@ -4453,6 +4455,41 @@ export class CrmService implements OnModuleInit {
       appointments: { total: totalApts, completed: parseInt(completedApts as any) },
       tasks: { overdue: overdueTasks },
       salesPerformance
+    };
+  }
+
+  async getFacebookStats(pageId?: string) {
+    const totalCrmLeads = await this.leadsRepository.count({
+      where: { source: 'facebook_ads' }
+    });
+
+    let webhookLeadsCount = 0;
+    try {
+      const webhookQuery = await this.leadsRepository.query(
+        `SELECT COUNT(*) FROM leads WHERE source = 'facebook_ads' AND metadata->>'fromWebhook' = 'true'`
+      );
+      webhookLeadsCount = parseInt(webhookQuery[0].count);
+    } catch (e) {
+      this.logger.warn('Failed to query JSON metadata for webhook leads', e.message);
+    }
+
+    let fbForms = [];
+    try {
+      fbForms = await this.facebookService.getForms(pageId);
+    } catch (e) { }
+
+    const totalFbForms = fbForms.length;
+    let totalFbLeads = 0;
+    fbForms.forEach(form => {
+      totalFbLeads += form.leads_count || 0;
+    });
+
+    return {
+      totalCrmLeads,
+      totalFbForms,
+      totalFbLeads,
+      webhookLeads: webhookLeadsCount,
+      manualLeads: totalCrmLeads - webhookLeadsCount
     };
   }
 }

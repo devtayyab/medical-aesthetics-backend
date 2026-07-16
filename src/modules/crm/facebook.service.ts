@@ -100,7 +100,8 @@ export class FacebookService {
     }
 
     const hmac = crypto.createHmac(algorithm, creds.appSecret);
-    const digest = hmac.update(JSON.stringify(payload)).digest('hex');
+    const payloadBuffer = Buffer.isBuffer(payload) ? payload : JSON.stringify(payload);
+    const digest = hmac.update(payloadBuffer).digest('hex');
 
     return signatureHash === digest;
   }
@@ -325,14 +326,27 @@ export class FacebookService {
     }
 
     try {
-      const response = await this.axiosInstance.get(`/${targetPageId}/leadgen_forms`, {
-        params: {
-          access_token: creds.accessToken,
-          fields: 'id,name,status,leads_count',
-        },
-      });
+      let allForms = [];
+      let nextPageUrl = `/${targetPageId}/leadgen_forms`;
+      let params: any = {
+        access_token: creds.accessToken,
+        fields: 'id,name,status,leads_count',
+      };
 
-      return response.data.data || [];
+      while (nextPageUrl) {
+        const response = await this.axiosInstance.get(nextPageUrl, { params });
+        const data = response.data.data || [];
+        allForms = [...allForms, ...data];
+
+        if (response.data.paging && response.data.paging.next) {
+          nextPageUrl = response.data.paging.next;
+          params = {}; // Clear params since absolute URL contains query params
+        } else {
+          nextPageUrl = null;
+        }
+      }
+
+      return allForms;
     } catch (error) {
       this.logger.error(`Failed to fetch Facebook forms: ${error.message}`);
       if (axios.isAxiosError(error)) {

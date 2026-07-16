@@ -429,6 +429,13 @@ export const getFacebookForms = createAsyncThunk("crm/getFacebookForms",
  }
 );
 
+export const getFacebookStats = createAsyncThunk("crm/getFacebookStats",
+ async (pageId?: string) => {
+ const response = await crmAPI.getFacebookStats(pageId);
+ return response.data;
+ }
+);
+
 // Analytics
 export const fetchSalespersonAnalytics = createAsyncThunk("crm/fetchSalespersonAnalytics",
  async (data: { salespersonId: string; dateRange?: { startDate: string; endDate: string } }) => {

@@ -4,7 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Enforce @Exclude() on entities (passwordHash, refreshToken, etc.) in all responses.
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));

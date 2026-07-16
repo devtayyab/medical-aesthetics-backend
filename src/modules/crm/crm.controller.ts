@@ -454,10 +454,12 @@ export class CrmController {
   async handleFacebookWebhook(
     @Body() data: FacebookWebhookDto,
     @Headers('x-hub-signature-256') signature: string,
+    @Request() req: any,
   ) {
     // Verify the payload actually came from Facebook before processing attacker-supplied leadgen ids.
     // (validateFacebookSignature safely skips when FACEBOOK_APP_SECRET is unset during testing.)
-    const valid = await this.crmService.validateFacebookSignature(signature, data);
+    const payloadToVerify = req.rawBody ? req.rawBody : data;
+    const valid = await this.crmService.validateFacebookSignature(signature, payloadToVerify);
     if (!valid) {
       throw new ForbiddenException('Invalid webhook signature');
     }
@@ -477,6 +479,14 @@ export class CrmController {
   @UseGuards(RolesGuard)
   getFacebookForms(@Query('pageId') pageId?: string) {
     return this.crmService.getFacebookForms(pageId);
+  }
+
+  @Get('facebook/stats')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get Facebook Integration Stats' })
+  getFacebookStats(@Query('pageId') pageId?: string) {
+    return this.crmService.getFacebookStats(pageId);
   }
 
   @Post('actions/bulk')
