@@ -14,7 +14,11 @@ import {
   ParseUUIDPipe,
   Headers,
   ForbiddenException,
+  Res,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ValidationPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CrmService } from './crm.service';
@@ -762,5 +766,66 @@ export class CrmController {
       endDate: query.endDate ? new Date(query.endDate) : undefined,
     };
     return this.crmService.getSuperAdminDashboardStats(filters);
+  }
+
+  // ─── Facebook Webhook — NO AUTH (Facebook calls these directly) ──────────────
+
+  // Step 1: Facebook verifies the webhook by sending a GET with hub.challenge
+  @Public()   // Skip JWT — Facebook has no token
+  @Get('facebook/webhook')
+  @ApiOperation({ summary: 'Facebook webhook verification (hub.challenge)' })
+  verifyFacebookWebhook(
+    @Query('hub.mode') mode: string,
+    @Query('hub.challenge') challenge: string,
+    @Query('hub.verify_token') verifyToken: string,
+    @Res() res: Response,
+  ) {
+    const expectedToken = process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN || 'fb_verify_secure_928374_live';
+    if (mode === 'subscribe' && verifyToken === expectedToken) {
+      console.log('[FB Webhook] Verification successful');
+      return res.status(200).send(challenge);
+    }
+    console.warn('[FB Webhook] Verification failed — token mismatch');
+    return res.status(403).json({ message: 'Verification failed' });
+  }
+
+  // Step 2: Facebook sends real lead events here
+  @Public()   // Skip JWT — Facebook has no token
+  @Post('facebook/webhook')
+  @ApiOperation({ summary: 'Receive real-time Facebook lead events' })
+  @HttpCode(HttpStatus.OK)
+  async handleFacebookWebhook(@Body() webhookData: FacebookWebhookDto) {
+    // Respond with 200 immediately — Facebook needs fast ACK (< 20 s)
+    this.crmService.handleFacebookWebhook(webhookData).catch((err) =>
+      console.error('[FB Webhook] Background processing error:', err),
+    );
+    return { status: 'ok' };
+  }
+
+  @Post('facebook/import/:formId')
+  @ApiOperation({ summary: 'Import leads from Facebook form' })
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER)
+  @UseGuards(RolesGuard)
+  importFacebookLeads(
+    @Param('formId') formId: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.crmService.importFacebookLeads(formId, limit);
+  }
+
+  @Get('facebook/test')
+  @ApiOperation({ summary: 'Test Facebook API connection' })
+  @Roles(UserRole.ADMIN)
+  @UseGuards(RolesGuard)
+  testFacebookConnection() {
+    return this.crmService.testFacebookConnection();
+  }
+
+  @Get('facebook/forms')
+  @ApiOperation({ summary: 'Get all lead forms from the connected Facebook Page (paginated)' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  getFacebookForms() {
+    return this.crmService.getFacebookPageForms();
   }
 }
