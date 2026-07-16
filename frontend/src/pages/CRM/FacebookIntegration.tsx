@@ -34,6 +34,20 @@ export const FacebookIntegration: React.FC = () => {
  phone:""
  });
 
+  useEffect(() => {
+    // Silently test connection on mount to auto-fill pageId
+    dispatch(testFacebookConnection())
+      .unwrap()
+      .then((result) => {
+        if (result?.pageId) {
+          setPageId(result.pageId);
+        }
+      })
+      .catch(() => {
+        // Ignore silent failure on mount
+      });
+  }, [dispatch]);
+
   const handleTestConnection = async () => {
     setConnectionStatus("");
     setConnectionError("");

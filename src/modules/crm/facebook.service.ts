@@ -47,10 +47,11 @@ export class FacebookService {
     });
   }
 
-  private async getFacebookCredentials(): Promise<{ accessToken: string; appSecret: string; appId?: string }> {
+  private async getFacebookCredentials(): Promise<{ accessToken: string; appSecret: string; appId?: string; pageId?: string }> {
     let accessToken = this.configService.get<string>('FACEBOOK_ACCESS_TOKEN');
     let appSecret = this.configService.get<string>('FACEBOOK_APP_SECRET');
     let appId = this.configService.get<string>('FACEBOOK_APP_ID');
+    let pageId = this.configService.get<string>('FACEBOOK_PAGE_ID');
 
     try {
       const dbSettings = await this.entityManager.query(
@@ -71,11 +72,14 @@ export class FacebookService {
       if (settingsMap['facebook_app_id']) {
         appId = settingsMap['facebook_app_id'];
       }
+      if (settingsMap['facebook_page_id']) {
+        pageId = settingsMap['facebook_page_id'];
+      }
     } catch (err) {
       this.logger.error('Failed to load facebook settings from DB, falling back to env', err.stack);
     }
 
-    return { accessToken, appSecret, appId };
+    return { accessToken, appSecret, appId, pageId };
   }
 
   async validateSignature(signature: string, payload: any): Promise<boolean> {
@@ -228,6 +232,7 @@ export class FacebookService {
         return {
           success: true,
           message: 'Facebook API connection successful (MOCK MODE). Connected as: Mock User',
+          pageId: creds.pageId || 'mock_page_id',
         };
       }
 
@@ -260,7 +265,7 @@ export class FacebookService {
         return {
           success: true,
           message: message,
-          pageId: pageIdToReturn,
+          pageId: pageIdToReturn || creds.pageId,
         };
       }
 
