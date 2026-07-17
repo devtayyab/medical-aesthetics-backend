@@ -47,7 +47,7 @@ export class FacebookService {
     });
   }
 
-  private async getFacebookCredentials(): Promise<{ accessToken: string; appSecret: string; appId?: string; pageId?: string }> {
+  async getFacebookCredentials(): Promise<{ accessToken: string; appSecret: string; appId?: string; pageId?: string }> {
     let accessToken = this.configService.get<string>('FACEBOOK_ACCESS_TOKEN');
     let appSecret = this.configService.get<string>('FACEBOOK_APP_SECRET');
     let appId = this.configService.get<string>('FACEBOOK_APP_ID');
