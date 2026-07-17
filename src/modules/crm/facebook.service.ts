@@ -83,7 +83,44 @@ export class FacebookService {
   }
 
   async validateSignature(signature: string, payload: any): Promise<boolean> {
-    return true;
+    const creds = await this.getFacebookCredentials();
+
+    // If no app secret configured, skip validation (useful for local dev)
+    if (!creds.appSecret) {
+      this.logger.warn('FACEBOOK_APP_SECRET not set - skipping webhook signature check');
+      return true;
+    }
+
+    // If no signature provided by Facebook, reject
+    if (!signature) {
+      this.logger.warn('No x-hub-signature-256 header found in webhook request');
+      return false;
+    }
+
+    // Get raw body as string for hashing
+    let payloadString: string;
+    if (Buffer.isBuffer(payload)) {
+      payloadString = payload.toString('utf8');
+    } else if (typeof payload === 'string') {
+      payloadString = payload;
+    } else {
+      payloadString = JSON.stringify(payload);
+    }
+
+    // Compute expected signature
+    const hmac = crypto.createHmac('sha256', creds.appSecret);
+    const expectedSignature = 'sha256=' + hmac.update(payloadString).digest('hex');
+
+    // Timing-safe comparison to prevent timing attacks
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expectedSignature),
+      );
+    } catch {
+      // Buffer lengths differ = invalid signature
+      return false;
+    }
   }
 
   async getLead(leadId: string): Promise<FacebookLeadData> {
