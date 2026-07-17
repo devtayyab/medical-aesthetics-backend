@@ -370,6 +370,7 @@ export const crmAPI = {
  api.post(`/crm/facebook/import/${formId}`, {}, { params: { limit } }),
  getFacebookForms: (pageId?: string) => api.get("/crm/facebook/forms", { params: pageId ? { pageId } : undefined }),
  getFacebookStats: (pageId?: string) => api.get("/crm/facebook/stats", { params: pageId ? { pageId } : undefined }),
+ getWebhookLeads: (params?: { days?: number; page?: number; limit?: number }) => api.get("/crm/facebook/webhook-leads", { params }),
  testFacebookConnection: () => api.get("/crm/facebook/test"),
  assignFormsToDay: (data: { formNames: string[]; scheduledAt: string }) => api.post('/crm/facebook/forms/assign', data),
  bulkCreateTasks: (data: { leadIds: string[]; salespersonId: string; dueDate: string; title: string }) => api.post('/crm/actions/bulk', data),

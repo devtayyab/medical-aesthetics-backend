@@ -4492,4 +4492,48 @@ export class CrmService implements OnModuleInit {
       manualLeads: totalCrmLeads - webhookLeadsCount
     };
   }
+
+  async getWebhookLeads({ days = 30, page = 1, limit = 50 }: { days?: number; page?: number; limit?: number }) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const offset = (page - 1) * limit;
+
+    // Get total count
+    const countResult = await this.leadsRepository.query(
+      `SELECT COUNT(*) FROM leads WHERE source = 'facebook_ads' AND metadata->>'fromWebhook' = 'true' AND "createdAt" >= $1`,
+      [since]
+    );
+    const total = parseInt(countResult[0].count);
+
+    // Get paginated leads
+    const leads = await this.leadsRepository.query(
+      `SELECT id, "firstName", "lastName", email, phone, "createdAt", metadata, "facebookAdName", status
+       FROM leads
+       WHERE source = 'facebook_ads' AND metadata->>'fromWebhook' = 'true' AND "createdAt" >= $1
+       ORDER BY "createdAt" DESC
+       LIMIT $2 OFFSET $3`,
+      [since, limit, offset]
+    );
+
+    // Group by date
+    const grouped: Record<string, any[]> = {};
+    for (const lead of leads) {
+      const dateKey = new Date(lead.createdAt).toISOString().split('T')[0];
+      if (!grouped[dateKey]) grouped[dateKey] = [];
+      grouped[dateKey].push(lead);
+    }
+
+    const dailyGroups = Object.entries(grouped)
+      .map(([date, items]) => ({ date, count: items.length, leads: items }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    return {
+      total,
+      page,
+      limit,
+      days,
+      dailyGroups,
+    };
+  }
 }

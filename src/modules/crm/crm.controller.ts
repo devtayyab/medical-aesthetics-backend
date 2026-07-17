@@ -489,6 +489,18 @@ export class CrmController {
     return this.crmService.getFacebookStats(pageId);
   }
 
+  @Get('facebook/webhook-leads')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Get webhook leads grouped by date' })
+  getWebhookLeads(
+    @Query('days') days?: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.crmService.getWebhookLeads({ days: days || 30, page: page || 1, limit: limit || 50 });
+  }
+
   @Post('actions/bulk')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)
