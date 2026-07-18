@@ -325,52 +325,6 @@ export const bankDetailsApi = {
  },
 };
 
-// Google Calendar sync API (backend resolves access via the :clinicId path param)
-export interface GoogleCalendarStatus {
- enabled: boolean;
- connected: boolean;
- status: 'connected' | 'error' | 'disconnected';
- googleAccountEmail: string | null;
- calendarId: string | null;
- calendarSummary: string | null;
- needsCalendarSelection: boolean;
- syncEnabled: boolean;
- lastSyncedAt: string | null;
- lastError: string | null;
-}
-
-export interface GoogleCalendarItem {
- id: string;
- summary: string;
- primary: boolean;
- accessRole: string;
-}
-
-export const googleCalendarApi = {
- getStatus: async (clinicId: string): Promise<GoogleCalendarStatus> => {
- const response = await apiClient.get(`/google-calendar/clinics/${clinicId}/status`);
- return response.data;
- },
- getConnectUrl: async (clinicId: string): Promise<string> => {
- const response = await apiClient.get(`/google-calendar/clinics/${clinicId}/connect`);
- return response.data.url;
- },
- listCalendars: async (clinicId: string): Promise<GoogleCalendarItem[]> => {
- const response = await apiClient.get(`/google-calendar/clinics/${clinicId}/calendars`);
- return response.data;
- },
- selectCalendar: async (
- clinicId: string,
- body: { calendarId?: string; createNewName?: string },
- ): Promise<GoogleCalendarStatus> => {
- const response = await apiClient.put(`/google-calendar/clinics/${clinicId}/calendar`, body);
- return response.data;
- },
- disconnect: async (clinicId: string): Promise<void> => {
- await apiClient.delete(`/google-calendar/clinics/${clinicId}`);
- },
-};
-
 export default {
  clinicProfile: clinicProfileApi,
  services: servicesApi,
@@ -382,6 +336,5 @@ export default {
  availability: availabilityApi,
  staff: staffApi,
  bankDetails: bankDetailsApi,
- googleCalendar: googleCalendarApi,
 };
 

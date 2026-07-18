@@ -149,16 +149,6 @@ export class Appointment {
   @Column({ type: 'boolean', default: false })
   isReturned: boolean; // True if client had a previous COMPLETED appointment before this one
 
-  // --- Google Calendar sync ---
-  @Column({ nullable: true })
-  googleCalendarEventId?: string; // Event id in the clinic's Google Calendar
-
-  @Column({ type: 'timestamptz', nullable: true })
-  googleCalendarSyncedAt?: Date;
-
-  @Column({ type: 'varchar', length: 20, nullable: true })
-  googleCalendarSyncStatus?: 'synced' | 'pending' | 'failed'; // null = not applicable / never attempted
-
   @CreateDateColumn()
   createdAt: Date;
 

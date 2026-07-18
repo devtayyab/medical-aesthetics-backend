@@ -456,13 +456,13 @@ export class CrmController {
     @Headers('x-hub-signature-256') signature: string,
     @Request() req: any,
   ) {
-    // TEMP: Signature verification disabled for manual lead import
-    // TODO: Re-enable after import is complete
-    // const payloadToVerify = req.rawBody ? req.rawBody : data;
-    // const valid = await this.crmService.validateFacebookSignature(signature, payloadToVerify);
-    // if (!valid) {
-    //   throw new ForbiddenException('Invalid webhook signature');
-    // }
+    // Verify the payload actually came from Facebook before processing attacker-supplied leadgen ids.
+    // (validateFacebookSignature safely skips when FACEBOOK_APP_SECRET is unset during testing.)
+    const payloadToVerify = req.rawBody ? req.rawBody : data;
+    const valid = await this.crmService.validateFacebookSignature(signature, payloadToVerify);
+    if (!valid) {
+      throw new ForbiddenException('Invalid webhook signature');
+    }
     return this.crmService.handleFacebookWebhook(data);
   }
 

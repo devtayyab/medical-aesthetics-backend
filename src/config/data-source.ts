@@ -31,7 +31,6 @@ import { AgentClinicAccess } from '../modules/crm/entities/agent-clinic-access.e
 import { Conversation } from '../modules/messages/entities/conversation.entity';
 import { Message } from '../modules/messages/entities/message.entity';
 import { ConversationParticipant } from '../modules/messages/entities/conversation-participant.entity';
-import { ClinicCalendarConnection } from '../modules/google-calendar/entities/clinic-calendar-connection.entity';
 import * as path from 'path';
 
 config();
@@ -79,7 +78,6 @@ const AppDataSource = new DataSource({
         ClinicOwnership,
         PlatformSettings,
         PaymentRecord,
-        ClinicCalendarConnection,
     ],
 
     migrations: [path.join(__dirname, '../migrations/*{.ts,.js}')],

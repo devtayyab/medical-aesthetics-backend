@@ -9,7 +9,6 @@ import { ClinicProfile } from"../../types/clinic.types";
 import { Building2, Mail, Phone, Globe, MapPin, Save, Info, ArrowRight, Camera, Landmark, CheckCircle, AlertCircle } from"lucide-react";
 import ImageUpload from"../../components/atoms/ImageUpload";
 import { bankDetailsApi } from"../../services/api/clinicApi";
-import GoogleCalendarSection from "../../components/organisms/GoogleCalendarSection/GoogleCalendarSection";
 
 const getImageUrl = (path: string) => {
  if (!path) return '';
@@ -431,9 +430,6 @@ const SettingsPage: React.FC = () => {
  </div>
  </div>
  {/* ─────────────────────────────────────────────────────── */}
-
- {/* Google Calendar Sync */}
- <GoogleCalendarSection clinicId={profile?.id} />
 
  </div>
 
