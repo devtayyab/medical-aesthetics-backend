@@ -527,7 +527,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
       {/* Modal Container */}
       <div
-        className={`fixed inset-y-0 right-0 z-[10000] w-full max-w-2xl bg-white shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-y-0 right-0 z-[10000] w-full max-w-2xl bg-white shadow-2xl flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
       >
         {/* Header */}
