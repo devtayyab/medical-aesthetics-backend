@@ -978,8 +978,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  </Card>
 
  {/* Task Creation/Edit Modal */}
- {(showCreateForm || isEditing) && (
- <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+ {(showCreateForm || isEditing) && createPortal(
+ <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" style={{ zIndex: 99999 }}>
  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
  <div>
@@ -1013,12 +1013,13 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  </div>
  </div>
  </div>
- </div>
+ </div>,
+ document.body
  )}
 
  {/* Task View Modal */}
- {viewingTask && (
- <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+ {viewingTask && createPortal(
+ <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" style={{ zIndex: 99999 }}>
  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
  <div>
@@ -1221,7 +1222,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  </Button>
  </div>
  </div>
- </div>
+ </div>,
+ document.body
  )}
 
  {/* Task Edit Modal */}
@@ -1388,13 +1390,31 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  {['call_later', 'no_answer'].includes(interactionOutcome) && (
  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-in slide-in-from-top-4">
  <p className="text-[9px] font-black text-blue-800 uppercase tracking-widest mb-3">Recall Schedule</p>
+ <div className="flex items-center gap-2">
  <Input 
- type="datetime-local" 
- lang="en-GB"
- value={callbackDate}
- onChange={(e) => setCallbackDate(e.target.value)}
- className="h-10 text-[11px] font-black rounded-lg border-blue-200 bg-white"
+ type="date" 
+ value={callbackDate ? callbackDate.split('T')[0] : ''}
+ onChange={(e) => {
+ const date = e.target.value;
+ const time = callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '12:00';
+ setCallbackDate(date ? `${date}T${time}` : '');
+ }}
+ className="h-10 flex-1 text-[11px] font-black rounded-lg border-blue-200 bg-white"
  />
+ <Select
+ value={callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '12:00'}
+ onChange={(time) => {
+ const date = callbackDate ? callbackDate.split('T')[0] : new Date().toISOString().split('T')[0];
+ setCallbackDate(`${date}T${time}`);
+ }}
+ options={Array.from({ length: 48 }, (_, i) => {
+ const hour = String(Math.floor(i / 2)).padStart(2, '0');
+ const min = i % 2 === 0 ? '00' : '30';
+ return { value: `${hour}:${min}`, label: `${hour}:${min}` };
+ })}
+ className="h-10 w-32 text-[11px] font-black rounded-lg border-blue-200 bg-white"
+ />
+ </div>
  </div>
  )}
 
@@ -1602,8 +1622,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  />
  )}
  {/* Quick Assign Modal */}
- {showAssignModal && assigningTask && (
- <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+ {showAssignModal && assigningTask && createPortal(
+ <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" style={{ zIndex: 99999 }}>
  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
  <div>
@@ -1645,11 +1665,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  </Button>
  </div>
  </div>
- </div>
+ </div>,
+ document.body
  )}
  {/* Messaging Modal */}
- {showEmailModal && interactionTask && (
- <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+ {showEmailModal && interactionTask && createPortal(
+ <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 99999 }}>
  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
  <div>
@@ -1715,7 +1736,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  </Button>
  </div>
  </div>
- </div>
+ </div>,
+ document.body
  )}
  </div>
  );
