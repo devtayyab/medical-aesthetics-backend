@@ -46,6 +46,10 @@ export const Customers: React.FC = () => {
  const [showModal, setShowModal] = useState(false);
  const [editingLead, setEditingLead] = useState<Lead | null>(null);
 
+ // Pagination state
+ const [currentPage, setCurrentPage] = useState(1);
+ const [customersPerPage, setCustomersPerPage] = useState(50);
+
  // Initial form state
  const initialFormState = {
  source:"manual",
@@ -93,6 +97,11 @@ export const Customers: React.FC = () => {
  }, 500);
  return () => clearTimeout(timer);
  }, [searchTerm]);
+
+ // Reset pagination on filters change
+ useEffect(() => {
+ setCurrentPage(1);
+ }, [searchTerm, leadFilters]);
 
  const handleCreateCustomer = async () => {
  if (!formData.firstName || !formData.lastName || !formData.phone) {
@@ -281,23 +290,6 @@ export const Customers: React.FC = () => {
  <CardContent className="p-4">
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
  <div className="space-y-1.5">
- <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Customer Status</label>
- <Select
- value={leadFilters.status || ''}
- onChange={(val) => handleFilterChange('status', val)}
- options={[
- { value: '', label: 'All Statuses' },
- { value: 'new', label: 'New' },
- { value: 'contacted', label: 'Contacted' },
- { value: 'qualified', label: 'Qualified' },
- { value: 'converted', label: 'Converted' },
- { value: 'lost', label: 'Lost' },
- ]}
- className="h-9 text-xs border-gray-200"
- />
- </div>
-
- <div className="space-y-1.5">
  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
  <Select
  value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
@@ -446,20 +438,36 @@ export const Customers: React.FC = () => {
  <CardContent className="p-0">
  {isLoading ? (
  <div className="p-8 text-center text-xs text-gray-500">Loading customers...</div>
- ) : leads.length === 0 ? (
+ ) : leads.filter(l => l.status === 'converted').length === 0 ? (
  <div className="p-8 text-center flex flex-col items-center justify-center text-gray-400">
  <Users className="w-8 h-8 mb-2 opacity-20" />
  <p className="text-xs">No records found.</p>
  </div>
  ) : (
+ (() => {
+ const customersList = leads.filter(l => l.status === 'converted');
+ const indexOfLastCustomer = currentPage * customersPerPage;
+ const indexOfFirstCustomer = indexOfLastCustomer - customersPerPage;
+ const currentCustomers = customersList.slice(indexOfFirstCustomer, indexOfLastCustomer);
+ const totalPages = Math.ceil(customersList.length / customersPerPage);
+
+ return (
+ <div className="flex flex-col">
  <Table>
  <TableHeader className="bg-gray-50/50">
  <TableRow className="h-10">
  <TableHead className="w-[40px] px-3">
  <input
  type="checkbox"
- checked={selectedLeads.length === leads.length}
- onChange={(e) => setSelectedLeads(e.target.checked ? leads.map(l => l.id) : [])}
+ checked={selectedLeads.length > 0 && currentCustomers.every(l => selectedLeads.includes(l.id))}
+ onChange={(e) => {
+ const currentPageIds = currentCustomers.map(l => l.id);
+ if (e.target.checked) {
+ setSelectedLeads([...new Set([...selectedLeads, ...currentPageIds])]);
+ } else {
+ setSelectedLeads(selectedLeads.filter(id => !currentPageIds.includes(id)));
+ }
+ }}
  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
  />
  </TableHead>
@@ -471,7 +479,7 @@ export const Customers: React.FC = () => {
  </TableRow>
  </TableHeader>
  <TableBody>
- {leads.map((lead) => (
+ {currentCustomers.map((lead) => (
  <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0 h-10">
  <TableCell className="py-2 px-3 text-xs">
  <input
@@ -539,6 +547,73 @@ export const Customers: React.FC = () => {
  ))}
  </TableBody>
  </Table>
+
+ {/* Pagination Controls */}
+ {customersList.length > 0 && (
+ <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-white">
+ <div className="flex items-center gap-2">
+ <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Customers per page:</span>
+ <select
+ value={customersPerPage}
+ onChange={(e) => {
+ setCustomersPerPage(Number(e.target.value));
+ setCurrentPage(1);
+ }}
+ className="h-8 px-2 text-[11px] font-bold text-gray-900 border border-gray-200 rounded-lg focus:ring-[#CBFF38] focus:border-[#CBFF38] bg-white cursor-pointer"
+ >
+ <option value={25}>25</option>
+ <option value={50}>50</option>
+ <option value={100}>100</option>
+ </select>
+ <span className="text-[10px] text-gray-400 font-medium ml-4 uppercase tracking-widest hidden sm:inline">
+ Showing {indexOfFirstCustomer + 1} to {Math.min(indexOfLastCustomer, customersList.length)} of {customersList.length}
+ </span>
+ </div>
+ <div className="flex items-center gap-1.5">
+ <Button
+ variant="outline"
+ size="sm"
+ onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+ disabled={currentPage === 1}
+ className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-50"
+ >
+ Prev
+ </Button>
+ <div className="flex items-center gap-1 mx-2 hidden sm:flex">
+ {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+ let pageNum = i + 1;
+ if (totalPages > 5 && currentPage > 3) {
+ pageNum = currentPage - 2 + i;
+ if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+ }
+ return (
+ <Button
+ key={pageNum}
+ variant="ghost"
+ size="sm"
+ onClick={() => setCurrentPage(pageNum)}
+ className={`h-8 w-8 p-0 text-[11px] font-bold rounded-lg transition-all ${currentPage === pageNum ? 'bg-slate-900 text-[#CBFF38] shadow-md' : 'text-gray-500 hover:bg-gray-100'}`}
+ >
+ {pageNum}
+ </Button>
+ );
+ })}
+ </div>
+ <Button
+ variant="outline"
+ size="sm"
+ onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+ disabled={currentPage === totalPages}
+ className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-50"
+ >
+ Next
+ </Button>
+ </div>
+ </div>
+ )}
+ </div>
+ );
+ })()
  )}
  </CardContent>
  </Card>
