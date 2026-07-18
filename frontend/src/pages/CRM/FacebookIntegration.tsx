@@ -28,6 +28,8 @@ export const FacebookIntegration: React.FC = () => {
   const [formsError, setFormsError] = useState("");
   const [importData, setImportData] = useState({ formId: "" });
   const [importingFormId, setImportingFormId] = useState<string | null>(null);
+  const [formsPage, setFormsPage] = useState(1);
+  const FORMS_PER_PAGE = 10;
 
   // Webhook leads tab state
   const [webhookLeads, setWebhookLeads] = useState<any>(null);
@@ -80,6 +82,7 @@ export const FacebookIntegration: React.FC = () => {
     try {
       const result = await dispatch(getFacebookForms(pageId.trim())).unwrap();
       setFacebookForms(result || []);
+      setFormsPage(1); // reset to page 1 on new fetch
       const stats = await dispatch(getFacebookStats(pageId.trim())).unwrap();
       setFacebookStats(stats);
       if (!result || result.length === 0) {
@@ -231,36 +234,96 @@ export const FacebookIntegration: React.FC = () => {
               {formsError && (
                 <div className="p-3 rounded bg-red-100 text-red-800 text-sm">⚠️ {formsError}</div>
               )}
-              {facebookForms.length > 0 && (
-                <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
-                  <h4 className="font-semibold text-sm border-b pb-1">Available Forms ({facebookForms.length}):</h4>
-                  {facebookForms.map((form: any) => (
-                    <div key={form.id} className="border rounded p-2 text-sm flex justify-between items-center">
-                      <div>
-                        <div className="font-medium text-xs">{form.name}</div>
-                        <div className="text-gray-400 text-xs">ID: {form.id}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {form.leads_count !== undefined && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                            {form.leads_count} leads
+              {facebookForms.length > 0 && (() => {
+                const totalPages = Math.ceil(facebookForms.length / FORMS_PER_PAGE);
+                const pageForms = facebookForms.slice(
+                  (formsPage - 1) * FORMS_PER_PAGE,
+                  formsPage * FORMS_PER_PAGE
+                );
+                return (
+                  <div className="mt-2 space-y-2">
+                    {/* Header */}
+                    <div className="flex justify-between items-center border-b pb-1">
+                      <h4 className="font-semibold text-sm">Available Forms ({facebookForms.length}):</h4>
+                      <span className="text-xs text-gray-400">Page {formsPage} of {totalPages}</span>
+                    </div>
+
+                    {/* Forms List */}
+                    {pageForms.map((form: any) => (
+                      <div key={form.id} className="border rounded p-2 text-sm flex justify-between items-center">
+                        <div>
+                          <div className="font-medium text-xs">{form.name}</div>
+                          <div className="text-gray-400 text-xs">ID: {form.id}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {form.leads_count !== undefined && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                              {form.leads_count} leads
+                            </span>
+                          )}
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${form.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {form.status}
                           </span>
-                        )}
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${form.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {form.status}
-                        </span>
+                          <button
+                            className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                            disabled={importingFormId === form.id}
+                            onClick={() => handleImportForm(form.id)}
+                          >
+                            {importingFormId === form.id ? "Importing..." : "Import"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex justify-between items-center pt-2">
                         <button
-                          className="text-xs text-blue-600 hover:underline disabled:opacity-50"
-                          disabled={importingFormId === form.id}
-                          onClick={() => handleImportForm(form.id)}
+                          onClick={() => setFormsPage(p => Math.max(1, p - 1))}
+                          disabled={formsPage === 1}
+                          className="px-3 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          {importingFormId === form.id ? "Importing..." : "Import"}
+                          ← Prev
+                        </button>
+                        <div className="flex gap-1">
+                          {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter(p => p === 1 || p === totalPages || Math.abs(p - formsPage) <= 1)
+                            .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                              if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                              acc.push(p);
+                              return acc;
+                            }, [])
+                            .map((p, idx) =>
+                              p === '...' ? (
+                                <span key={`dot-${idx}`} className="px-2 py-1 text-xs text-gray-400">...</span>
+                              ) : (
+                                <button
+                                  key={p}
+                                  onClick={() => setFormsPage(p as number)}
+                                  className={`px-2 py-1 text-xs border rounded ${
+                                    formsPage === p
+                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      : 'hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {p}
+                                </button>
+                              )
+                            )
+                          }
+                        </div>
+                        <button
+                          onClick={() => setFormsPage(p => Math.min(totalPages, p + 1))}
+                          disabled={formsPage === totalPages}
+                          className="px-3 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Next →
                         </button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 
