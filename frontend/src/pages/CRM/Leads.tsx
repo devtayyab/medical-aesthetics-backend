@@ -75,6 +75,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  const [showModal, setShowModal] = useState(false);
  const [editingLead, setEditingLead] = useState<Lead | null>(null);
 
+ // Pagination state
+ const [currentPage, setCurrentPage] = useState(1);
+ const [leadsPerPage, setLeadsPerPage] = useState(50);
+
  // Bulk import state
  const [showBulkImport, setShowBulkImport] = useState(false);
  const [csvRows, setCsvRows] = useState<Record<string, string>[]>([]);
@@ -178,6 +182,11 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  }, 500);
  return () => clearTimeout(timer);
  }, [searchTerm]);
+
+ // Reset pagination on filters change
+ useEffect(() => {
+ setCurrentPage(1);
+ }, [searchTerm, leadFilters]);
 
  const handleCreateLead = async () => {
  if (!formData.firstName || !formData.lastName || !formData.phone) {
@@ -883,14 +892,29 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <p className="text-xs">No leads found matching your filters.</p>
  </div>
  ) : (
+ (() => {
+ const indexOfLastLead = currentPage * leadsPerPage;
+ const indexOfFirstLead = indexOfLastLead - leadsPerPage;
+ const currentLeads = leads.slice(indexOfFirstLead, indexOfLastLead);
+ const totalPages = Math.ceil(leads.length / leadsPerPage);
+
+ return (
+ <div className="flex flex-col">
  <Table className="min-w-full">
  <TableHeader className="bg-gray-50/50">
  <TableRow className="h-10">
  <TableHead className="w-[40px] px-2 text-center">
  <input
  type="checkbox"
- checked={selectedLeads.length === leads.length}
- onChange={(e) => setSelectedLeads(e.target.checked ? leads.map(l => l.id) : [])}
+ checked={selectedLeads.length > 0 && currentLeads.every(l => selectedLeads.includes(l.id))}
+ onChange={(e) => {
+ const currentPageIds = currentLeads.map(l => l.id);
+ if (e.target.checked) {
+ setSelectedLeads([...new Set([...selectedLeads, ...currentPageIds])]);
+ } else {
+ setSelectedLeads(selectedLeads.filter(id => !currentPageIds.includes(id)));
+ }
+ }}
  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
  />
  </TableHead>
@@ -906,7 +930,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </TableRow>
  </TableHeader>
  <TableBody>
- {leads.map((lead) => (
+ {currentLeads.map((lead) => (
  <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0 h-14">
  <TableCell className="py-2 px-2 text-center">
  <input
@@ -1039,6 +1063,73 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  ))}
  </TableBody>
  </Table>
+ 
+ {/* Pagination Controls */}
+ {leads.length > 0 && (
+ <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-white">
+ <div className="flex items-center gap-2">
+ <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Leads per page:</span>
+ <select
+ value={leadsPerPage}
+ onChange={(e) => {
+ setLeadsPerPage(Number(e.target.value));
+ setCurrentPage(1);
+ }}
+ className="h-8 px-2 text-[11px] font-bold text-gray-900 border border-gray-200 rounded-lg focus:ring-[#CBFF38] focus:border-[#CBFF38] bg-white cursor-pointer"
+ >
+ <option value={25}>25</option>
+ <option value={50}>50</option>
+ <option value={100}>100</option>
+ </select>
+ <span className="text-[10px] text-gray-400 font-medium ml-4 uppercase tracking-widest hidden sm:inline">
+ Showing {indexOfFirstLead + 1} to {Math.min(indexOfLastLead, leads.length)} of {leads.length}
+ </span>
+ </div>
+ <div className="flex items-center gap-1.5">
+ <Button
+ variant="outline"
+ size="sm"
+ onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+ disabled={currentPage === 1}
+ className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-50"
+ >
+ Prev
+ </Button>
+ <div className="flex items-center gap-1 mx-2 hidden sm:flex">
+ {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+ let pageNum = i + 1;
+ if (totalPages > 5 && currentPage > 3) {
+ pageNum = currentPage - 2 + i;
+ if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+ }
+ return (
+ <Button
+ key={pageNum}
+ variant="ghost"
+ size="sm"
+ onClick={() => setCurrentPage(pageNum)}
+ className={`h-8 w-8 p-0 text-[11px] font-bold rounded-lg transition-all ${currentPage === pageNum ? 'bg-slate-900 text-[#CBFF38] shadow-md' : 'text-gray-500 hover:bg-gray-100'}`}
+ >
+ {pageNum}
+ </Button>
+ );
+ })}
+ </div>
+ <Button
+ variant="outline"
+ size="sm"
+ onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+ disabled={currentPage === totalPages}
+ className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-50"
+ >
+ Next
+ </Button>
+ </div>
+ </div>
+ )}
+ </div>
+ );
+ })()
  )}
  </CardContent>
  </Card>
