@@ -425,9 +425,10 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  })).unwrap();
 
         // 2. Create follow-up task
-        const shouldCreateTask = (effectiveOutcome === 'not_interested') || (effectiveOutcome === 'call_later') || (followUpData.title && followUpData.dueDate && followUpData.therapy);
+        // We do NOT create a new task for 'call_later' or 'no_answer' because the current task stays pending.
+        const shouldCreateTask = (effectiveOutcome === 'not_interested') || (followUpData.title && followUpData.dueDate && followUpData.therapy);
  
- if (shouldCreateTask && effectiveOutcome !== 'wrong_number') {
+        if (shouldCreateTask && effectiveOutcome !== 'wrong_number') {
  const safeISO = (d: string) => {
  if (!d) return undefined;
  const date = new Date(d);
@@ -458,23 +459,23 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
  // 3. Complete or update the current task (Reschedule if needed)
         if (interactionTask?.id) {
-            const nextStatus = (effectiveOutcome === 'no_answer') ? 'pending' : 'completed';
+            const nextStatus = (effectiveOutcome === 'no_answer' || effectiveOutcome === 'call_later') ? 'pending' : 'completed';
  
- const updates: any = { 
- status: nextStatus,
- metadata: { 
- ...(interactionTask.metadata || {}), 
- callOutcome: effectiveOutcome,
- ...(effectiveOutcome === 'interested' && interestedRemarks.trim() ? { completionReason: interestedRemarks.trim() } : {})
- }
- };
+            const updates: any = { 
+                status: nextStatus,
+                metadata: { 
+                    ...(interactionTask.metadata || {}), 
+                    callOutcome: effectiveOutcome,
+                    ...(effectiveOutcome === 'interested' && interestedRemarks.trim() ? { completionReason: interestedRemarks.trim() } : {})
+                }
+            };
 
-            // If rescheduling (No Answer), update the dates to clear"OVERDUE" status
-            if ((effectiveOutcome === 'no_answer')) {
+            // If rescheduling (No Answer or Call Later), update the dates to clear "OVERDUE" status
+            if (effectiveOutcome === 'no_answer' || effectiveOutcome === 'call_later') {
                 const newDate = callbackDate ? new Date(callbackDate).toISOString() : new Date(Date.now() + 3600000).toISOString(); // Default 1h later if no date selected
- updates.dueDate = newDate;
- updates.reminderDate = newDate;
- }
+                updates.dueDate = newDate;
+                updates.reminderDate = newDate;
+            }
 
  await dispatch(updateAction({
  id: interactionTask.id,
@@ -1383,8 +1384,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  ))}
  </div>
 
- {/* Outcome specific logic like"Call Later" date picker */}
- {interactionOutcome === 'call_later' && (
+ {/* Outcome specific logic for date picking */}
+ {['call_later', 'no_answer'].includes(interactionOutcome) && (
  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-in slide-in-from-top-4">
  <p className="text-[9px] font-black text-blue-800 uppercase tracking-widest mb-3">Recall Schedule</p>
  <Input 
