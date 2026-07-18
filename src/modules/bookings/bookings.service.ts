@@ -1371,6 +1371,16 @@ export class BookingsService {
       });
     }
 
+    // This clinic-scoped path previously only emitted `appointment.executed`. Emit a
+    // dedicated calendar-sync signal (not the shared status.changed event, to avoid
+    // altering existing listeners) so Google Calendar reliably reflects confirmations,
+    // cancellations and no-shows made here too.
+    if (oldStatus !== status) {
+      this.eventEmitter.emit('appointment.calendar.dirty', {
+        appointmentId: updated.id,
+      });
+    }
+
     return updated;
   }
 
@@ -1668,6 +1678,10 @@ export class BookingsService {
         therapyName: appointment.service?.treatment?.name || 'Treatment'
       },
     });
+
+    // Dedicated calendar-sync signal (not the shared status.changed event, to avoid
+    // altering existing notification/loyalty listeners) so Google Calendar removes the event.
+    this.eventEmitter.emit('appointment.calendar.dirty', { appointmentId });
 
     return this.findById(appointmentId);
   }

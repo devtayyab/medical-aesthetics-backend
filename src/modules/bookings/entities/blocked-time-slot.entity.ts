@@ -33,6 +33,16 @@ export class BlockedTimeSlot {
   @Column({ nullable: true })
   blockedById: string; // User who blocked this time
 
+  // --- Source tracking (Google Calendar sync) ---
+  @Column({ type: 'varchar', length: 30, default: 'manual' })
+  source: 'manual' | 'google_calendar'; // Where this block originated
+
+  @Column({ nullable: true })
+  externalEventId?: string; // Google Calendar event id when source = google_calendar
+
+  @Column({ type: 'timestamptz', nullable: true })
+  externalSyncedAt?: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 
