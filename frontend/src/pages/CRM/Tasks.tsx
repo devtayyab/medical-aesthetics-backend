@@ -1557,8 +1557,30 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  onChange={(e) => setFollowUpData({...followUpData, title: e.target.value})}
  className="h-10 text-[11px] font-bold rounded-lg border-amber-200"
  />
- <div className="grid grid-cols-1 gap-2">
- <Input type="datetime-local" lang="en-GB" value={followUpData.dueDate} onChange={(e) => setFollowUpData({...followUpData, dueDate: e.target.value})} className="h-10 text-[10px] font-bold rounded-lg border-amber-200" />
+ <div className="flex items-center gap-2">
+ <Input 
+ type="date" 
+ value={followUpData.dueDate ? followUpData.dueDate.split('T')[0] : ''}
+ onChange={(e) => {
+ const date = e.target.value;
+ const time = followUpData.dueDate && followUpData.dueDate.includes('T') ? followUpData.dueDate.split('T')[1].substring(0, 5) : '12:00';
+ setFollowUpData({...followUpData, dueDate: date ? `${date}T${time}` : ''});
+ }}
+ className="h-10 flex-1 text-[10px] font-bold rounded-lg border-amber-200 bg-white"
+ />
+ <Select
+ value={followUpData.dueDate && followUpData.dueDate.includes('T') ? followUpData.dueDate.split('T')[1].substring(0, 5) : '12:00'}
+ onChange={(time) => {
+ const date = followUpData.dueDate ? followUpData.dueDate.split('T')[0] : new Date().toISOString().split('T')[0];
+ setFollowUpData({...followUpData, dueDate: `${date}T${time}`});
+ }}
+ options={Array.from({ length: 48 }, (_, i) => {
+ const hour = String(Math.floor(i / 2)).padStart(2, '0');
+ const min = i % 2 === 0 ? '00' : '30';
+ return { value: `${hour}:${min}`, label: `${hour}:${min}` };
+ })}
+ className="h-10 w-32 text-[10px] font-bold rounded-lg border-amber-200 bg-white"
+ />
  </div>
  </div>
  )}
