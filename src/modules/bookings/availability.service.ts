@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 // Riverside: missing ForbiddenException import.
 import * as fs from 'fs';
 import * as path from 'path';
@@ -25,6 +26,7 @@ export class AvailabilityService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private clinicsService: ClinicsService,
+    private eventEmitter: EventEmitter2,
   ) { }
 
   async getAvailableSlots(
@@ -449,7 +451,9 @@ export class AvailabilityService {
       blockedById,
     });
 
-    return this.blockedTimeSlotsRepository.save(blockedSlot);
+    const saved = await this.blockedTimeSlotsRepository.save(blockedSlot);
+    this.eventEmitter.emit('blocked_slot.created', saved);
+    return saved;
   }
 
   async unblockTimeSlot(blockedSlotId: string, userId: string, userRole: string): Promise<void> {
@@ -474,7 +478,9 @@ export class AvailabilityService {
       }
     }
 
+    const copy = { ...blockedSlot };
     await this.blockedTimeSlotsRepository.remove(blockedSlot);
+    this.eventEmitter.emit('blocked_slot.deleted', copy);
   }
 
   async updateBlockedTimeSlot(
@@ -504,7 +510,9 @@ export class AvailabilityService {
     if (updates.reason) blockedSlot.reason = updates.reason;
     if (updates.providerId !== undefined) blockedSlot.providerId = updates.providerId;
 
-    return this.blockedTimeSlotsRepository.save(blockedSlot);
+    const saved = await this.blockedTimeSlotsRepository.save(blockedSlot);
+    this.eventEmitter.emit('blocked_slot.updated', saved);
+    return saved;
   }
 
   async getBlockedTimeSlots(

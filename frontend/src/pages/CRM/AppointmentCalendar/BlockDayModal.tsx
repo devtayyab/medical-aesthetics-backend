@@ -95,9 +95,9 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-red-600 to-orange-600">
+        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-red-600 to-orange-600 shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
               <Calendar className="w-4 h-4 text-white" />
@@ -112,16 +112,18 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
           </button>
         </div>
 
-        {/* Warning Banner */}
-        <div className="mx-6 mt-5 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-          <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-          <p className="text-[11px] text-amber-700 font-medium">
-            Blocking an entire day will prevent any new appointments from being booked on that date. Existing appointments will not be affected.
-          </p>
-        </div>
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto p-0 m-0">
+          {/* Warning Banner */}
+          <div className="mx-6 mt-5 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-[11px] text-amber-700 font-medium">
+              Blocking an entire day will prevent any new appointments from being booked on that date. Existing appointments will not be affected.
+            </p>
+          </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+          {/* Body */}
+          <div className="px-6 py-5 space-y-4">
           {/* Clinic */}
           <div>
             <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide mb-1.5">Clinic</label>
@@ -192,9 +194,10 @@ export const BlockDayModal: React.FC<BlockDayModalProps> = ({
             </p>
           </div>
         </div>
+        </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-slate-50">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-slate-50 shrink-0">
           <button onClick={onClose} className="px-4 py-2.5 text-[12px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
             Cancel
           </button>
