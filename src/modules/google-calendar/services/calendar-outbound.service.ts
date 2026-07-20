@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, MoreThan } from 'typeorm';
 import { calendar_v3 } from 'googleapis';
 import { Appointment } from '../../bookings/entities/appointment.entity';
+import { BlockedTimeSlot } from '../../bookings/entities/blocked-time-slot.entity';
 import { AppointmentStatus } from '../../../common/enums/appointment-status.enum';
 import { CalendarConnectionService } from './calendar-connection.service';
 import { GoogleCalendarClientService } from './google-calendar-client.service';
@@ -28,6 +29,8 @@ export class CalendarOutboundService {
   constructor(
     @InjectRepository(Appointment)
     private readonly appointmentsRepo: Repository<Appointment>,
+    @InjectRepository(BlockedTimeSlot)
+    private readonly blockedRepo: Repository<BlockedTimeSlot>,
     private readonly connectionService: CalendarConnectionService,
     private readonly calendarClient: GoogleCalendarClientService,
     private readonly notificationsService: NotificationsService,
@@ -67,6 +70,80 @@ export class CalendarOutboundService {
       await this.handleSyncError(appointment, connection, err);
       throw err; // let the Bull job retry
     }
+  }
+
+  async syncBlockedSlot(
+    slotId: string,
+    deleted?: boolean,
+    clinicIdOverride?: string,
+    externalEventId?: string,
+  ): Promise<void> {
+    let slot: BlockedTimeSlot | null = null;
+    let clinicId = clinicIdOverride;
+    
+    if (!deleted) {
+      slot = await this.blockedRepo.findOne({ where: { id: slotId } });
+      if (!slot) return;
+      clinicId = slot.clinicId;
+    }
+    
+    if (!clinicId) return;
+    
+    const connection = await this.connectionService.findByClinicId(clinicId);
+    if (!this.isSyncable(connection)) return;
+    const client = this.connectionService.getCalendarClient(connection);
+
+    try {
+      if (deleted) {
+        if (!externalEventId) return;
+        try {
+          await this.calendarClient.deleteEvent(client, connection.calendarId, externalEventId);
+        } catch (err: any) {
+          if (err?.code !== 404 && err?.response?.status !== 404 && err?.code !== 410) throw err;
+        }
+      } else if (slot) {
+        const eventIdToPatch = slot.externalEventId;
+        const event: calendar_v3.Schema$Event = {
+          summary: slot.reason || 'Blocked Time',
+          start: { dateTime: slot.startTime.toISOString() },
+          end: { dateTime: slot.endTime.toISOString() },
+          extendedProperties: {
+            private: {
+              appBlockedSlotId: slot.id,
+              appClinicId: slot.clinicId,
+              appSource: 'beauty-doctors',
+            },
+          },
+        };
+
+        if (eventIdToPatch) {
+          try {
+            await this.calendarClient.patchEvent(client, connection.calendarId, eventIdToPatch, event);
+          } catch (err: any) {
+            if (err?.code === 404 || err?.response?.status === 404) {
+              const newId = await this.calendarClient.insertEvent(client, connection.calendarId, event);
+              await this.markBlockedSlotSynced(slot.id, newId);
+            } else {
+              throw err;
+            }
+          }
+        } else {
+          const newId = await this.calendarClient.insertEvent(client, connection.calendarId, event);
+          await this.markBlockedSlotSynced(slot.id, newId);
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Outbound sync failed for blocked slot ${slotId}: ${err.message}`);
+      throw err;
+    }
+  }
+
+  private async markBlockedSlotSynced(slotId: string, eventId: string): Promise<void> {
+    await this.blockedRepo.update(slotId, {
+      externalEventId: eventId,
+      externalSyncedAt: new Date(),
+      source: 'manual', // since it's outbound
+    });
   }
 
   /** Pushes all future non-removed appointments for a clinic (used on connect). */

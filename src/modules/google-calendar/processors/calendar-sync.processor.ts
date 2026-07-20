@@ -6,6 +6,7 @@ import { CalendarInboundService } from '../services/calendar-inbound.service';
 import {
   CALENDAR_SYNC_QUEUE,
   JOB_OUTBOUND_APPOINTMENT,
+  JOB_OUTBOUND_BLOCKED_SLOT,
   JOB_INBOUND_CLINIC,
   JOB_BACKFILL_CLINIC,
 } from '../calendar-sync.constants';
@@ -32,5 +33,15 @@ export class CalendarSyncProcessor {
   @Process(JOB_BACKFILL_CLINIC)
   async handleBackfill(job: Job<{ clinicId: string }>) {
     await this.outbound.backfillClinic(job.data.clinicId);
+  }
+
+  @Process(JOB_OUTBOUND_BLOCKED_SLOT)
+  async handleOutboundBlockedSlot(job: Job<{ slotId?: string, deleted?: boolean, clinicId?: string, externalEventId?: string }>) {
+    await this.outbound.syncBlockedSlot(
+      job.data.slotId || '',
+      job.data.deleted,
+      job.data.clinicId,
+      job.data.externalEventId,
+    );
   }
 }
