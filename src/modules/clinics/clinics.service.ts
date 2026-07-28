@@ -382,6 +382,19 @@ export class ClinicsService {
     });
   }
 
+  async getPublicCities(): Promise<string[]> {
+    const clinics = await this.clinicsRepository.find({
+      where: { isActive: true },
+      select: ['address'],
+    });
+    const citySet = new Set<string>();
+    for (const clinic of clinics) {
+      const city = clinic.address?.city?.trim();
+      if (city) citySet.add(city);
+    }
+    return Array.from(citySet).sort();
+  }
+
   async findById(id: string): Promise<Clinic> {
     const clinic = await this.clinicsRepository.findOne({
       where: { id, isActive: true },

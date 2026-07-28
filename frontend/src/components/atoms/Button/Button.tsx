@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { css } from '@emotion/css';
 import { Loader2 } from 'lucide-react';
 
@@ -75,11 +75,11 @@ const variantStyles = {
  `,
  ghost: css`
  background-color: transparent;
- color: var(--color-medical-text);
+ color: inherit;
  font-weight: var(--font-weight-medium);
  
  &:hover:not(:disabled) {
- background-color: var(--color-medical-bg);
+ background-color: rgba(0, 0, 0, 0.05);
  }
  `,
  danger: css`

@@ -45,6 +45,12 @@ export class ClinicsController {
     return this.clinicsService.getFeaturedTreatments(Number.isFinite(parsed) ? parsed : undefined);
   }
 
+  @Get('cities')
+  @ApiOperation({ summary: 'Get distinct cities from all active clinics' })
+  getPublicCities() {
+    return this.clinicsService.getPublicCities();
+  }
+
   // Admin Treatment Approval
   @Get('treatments/pending')
   @UseGuards(JwtAuthGuard, RolesGuard)

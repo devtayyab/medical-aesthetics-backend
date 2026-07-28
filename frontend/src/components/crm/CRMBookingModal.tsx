@@ -528,9 +528,15 @@ export const CRMBookingModal: React.FC<CRMBookingModalProps> = ({
  <p className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Booking Interface v2.5</p>
  </div>
  </div>
- <Button variant="ghost" size="sm" onClick={onClose} className="h-10 w-10 p-0 rounded-2xl bg-slate-50 hover:bg-slate-100">
- <X className="w-5 h-5 text-slate-400" />
- </Button>
+ <button
+    type="button"
+    onClick={onClose}
+    className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center cursor-pointer border border-slate-200 shadow-sm shrink-0"
+    title="Close"
+    aria-label="Close modal"
+  >
+    <X className="w-5 h-5 stroke-[2.5]" />
+  </button>
  </div>
 
  <div className="flex-1 overflow-y-auto p-8 pt-4">
