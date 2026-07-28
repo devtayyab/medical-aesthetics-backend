@@ -1137,7 +1137,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  {/* Logic for Edit Modal */}
  {
  showModal && editingLead && (
- <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-500">
+ <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xl flex items-center justify-center z-[99999] p-4 animate-in fade-in duration-500">
  <Card className="w-full max-w-lg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] border border-slate-800 overflow-hidden rounded-[2.5rem] bg-slate-900">
  {/* Premium Header */}
  <CardHeader className="px-10 py-8 flex flex-row items-center justify-between bg-gradient-to-br from-slate-900 to-slate-800 border-b border-slate-800/50">
@@ -1227,7 +1227,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  {/* Create Modal Logic - Revamped Design */}
  {
  showCreateForm && (
- <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+ <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md flex items-center justify-center z-[99999] p-4 animate-in fade-in duration-200">
  <Card className="w-full max-w-2xl shadow-2xl border-0 overflow-hidden rounded-2xl flex flex-col max-h-[85vh]">
  {/* Header */}
  <div className="px-8 py-6 border-b border-gray-100 bg-white flex items-start justify-between flex-none">

@@ -1427,7 +1427,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  {/* Diary Modal */}
  {showDiaryModal && (
- <div className="fixed inset-0 z-[1001] bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4">
+ <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4">
  <div className="bg-gray-50 flex flex-col w-[95vw] h-[95vh] rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
  <div className="bg-white border-b border-gray-100 flex items-center justify-between px-6 py-4">
  <h3 className="font-black text-xl text-gray-900">Clinic Sales Diary</h3>
@@ -1450,7 +1450,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  {/* Phone Call Notes Modal */}
  {showPhoneCallModal && (
- <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1001] flex items-center justify-center p-4 animate-in fade-in">
+ <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in">
  <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
  <div className="flex justify-between items-center mb-2">
  <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -1485,7 +1485,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  {/* Email Log Modal */}
  {showEmailModal && (
- <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1001] flex items-center justify-center p-4 animate-in fade-in">
+ <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in">
  <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
  <div className="flex justify-between items-center mb-2">
  <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -1525,7 +1525,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
   {/* Note Modal */}
   {showNoteModal && (
-  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1001] flex items-center justify-center p-4 animate-in fade-in">
+  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in">
   <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
   <div className="flex justify-between items-center mb-2">
   <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -1561,7 +1561,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  {/* Tag Modal */}
  {showTagModal && (
- <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1001] flex items-center justify-center p-4 animate-in fade-in">
+ <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in">
  <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm border border-slate-200 p-6 space-y-4">
  <div className="flex justify-between items-center mb-2">
  <h3 className="font-bold text-slate-800">Add Customer Tag</h3>
@@ -1593,7 +1593,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  {/* Task Modal */}
  {showTaskModal && (
- <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1001] flex items-center justify-center p-4 animate-in fade-in">
+ <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in">
  <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
  <div className="p-5 border-b border-slate-100 flex items-center justify-between">
  <h2 className="text-lg font-bold text-slate-800">New Follow-up Task</h2>
@@ -1618,7 +1618,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  {/* Payment Prompt Modal */}
  {isPaymentPrompt && (
- <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[1001] flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
+ <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[99999] flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
  <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col">
  <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
  <div>

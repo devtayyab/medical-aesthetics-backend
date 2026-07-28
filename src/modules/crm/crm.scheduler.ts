@@ -89,4 +89,25 @@ export class CrmScheduler {
       this.logger.error('Failed to run task reminders', error as any);
     }
   }
+
+  // Every 30 minutes: Automated background sync for active Facebook lead forms
+  @Cron('*/30 * * * *')
+  async autoSyncFacebookLeads() {
+    try {
+      this.logger.log('Starting automated Facebook lead sync...');
+      const forms = await this.crmService.getFacebookForms();
+      let importedCount = 0;
+      for (const form of forms || []) {
+        if (form.status === 'ACTIVE' && form.leads_count > 0) {
+          const leads = await this.crmService.importFacebookLeads(form.id, 100);
+          importedCount += leads.length;
+        }
+      }
+      if (importedCount > 0) {
+        this.logger.log(`Automated Facebook sync completed. Imported ${importedCount} new leads.`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to auto-sync Facebook leads', error as any);
+    }
+  }
 }
