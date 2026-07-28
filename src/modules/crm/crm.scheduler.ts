@@ -1,10 +1,10 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CrmService } from './crm.service';
 import { AdAttributionService } from './services/ad-attribution.service';
 
 @Injectable()
-export class CrmScheduler {
+export class CrmScheduler implements OnModuleInit {
   private readonly logger = new Logger(CrmScheduler.name);
 
   constructor(
@@ -12,6 +12,15 @@ export class CrmScheduler {
     @Inject(AdAttributionService)
     private readonly adAttributionService: AdAttributionService,
   ) { }
+
+  onModuleInit() {
+    // Run FB lead auto-sync immediately 3 seconds after backend startup
+    setTimeout(() => {
+      this.autoSyncFacebookLeads().catch((err) =>
+        this.logger.error('Startup FB lead auto-sync failed', err),
+      );
+    }, 3000);
+  }
 
   // Every Monday at 08:00
   @Cron(CronExpression.EVERY_WEEK)

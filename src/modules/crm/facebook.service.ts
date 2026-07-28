@@ -51,11 +51,11 @@ export class FacebookService {
     let accessToken = this.configService.get<string>('FACEBOOK_ACCESS_TOKEN');
     let appSecret = this.configService.get<string>('FACEBOOK_APP_SECRET');
     let appId = this.configService.get<string>('FACEBOOK_APP_ID');
-    let pageId = this.configService.get<string>('FACEBOOK_PAGE_ID');
+    let pageId = this.configService.get<string>('FACEBOOK_PAGE_ID') || '100432975354813';
 
     try {
       const dbSettings = await this.entityManager.query(
-        `SELECT key, value FROM platform_settings WHERE key IN ('facebook_access_token', 'facebook_app_secret', 'facebook_app_id')`
+        `SELECT key, value FROM platform_settings WHERE key IN ('facebook_access_token', 'facebook_app_secret', 'facebook_app_id', 'facebook_page_id')`
       );
       
       const settingsMap: Record<string, any> = {};
@@ -327,7 +327,7 @@ export class FacebookService {
         for (const row of dbSettings) {
           settingsMap[row.key] = row.value;
         }
-        targetPageId = settingsMap['facebook_page_id'];
+        targetPageId = settingsMap['facebook_page_id'] || creds.pageId || process.env.FACEBOOK_PAGE_ID || '100432975354813';
         // If a page-specific access token exists, use it (page tokens have leadgen permissions)
         if (settingsMap['facebook_page_access_token']) {
           creds.accessToken = settingsMap['facebook_page_access_token'];
@@ -336,6 +336,8 @@ export class FacebookService {
         this.logger.warn('Could not load facebook_page_id from DB settings');
       }
     }
+
+    targetPageId = targetPageId || creds.pageId || process.env.FACEBOOK_PAGE_ID || '100432975354813';
 
     if (!targetPageId) {
       this.logger.error('No Facebook Page ID configured. Set facebook_page_id in platform_settings or pass pageId explicitly.');
