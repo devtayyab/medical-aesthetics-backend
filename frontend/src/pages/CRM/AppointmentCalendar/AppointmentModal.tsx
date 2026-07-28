@@ -53,12 +53,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const { user } = useSelector((state: RootState) => state.auth);
 
-  const displaySalespersons = React.useMemo(() => {
-    if (user?.role === 'salesperson') {
-      return salespersons.filter(sp => sp.id === user.id);
-    }
-    return salespersons;
-  }, [salespersons, user]);
+ 
 
   // Patient search
   const [patientSearch, setPatientSearch] = useState('');
@@ -532,7 +527,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
       {/* Modal Container */}
       <div
-        className={`fixed inset-y-0 right-0 z-[10000] w-full max-w-2xl bg-white shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-y-0 right-0 z-[10000] w-full max-w-2xl bg-white shadow-2xl flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
       >
         {/* Header */}
@@ -767,9 +762,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
                 <option value="">Unassigned</option>
-                {displaySalespersons.map(sp => (
-                  <option key={sp.id} value={sp.id}>{sp.name}</option>
-                ))}
+                 {salespersons.map(sp => (
+                   <option key={sp.id} value={sp.id}>{sp.name}</option>
+                 ))}
               </select>
             </div>
 
