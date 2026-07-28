@@ -979,7 +979,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
  {/* Task Creation/Edit Modal */}
  {(showCreateForm || isEditing) && (
- <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+ <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
  <div>
@@ -1023,7 +1023,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
  {/* Task View Modal */}
  {viewingTask && (
- <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+ <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
  <div>
@@ -1613,7 +1613,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  )}
  {/* Quick Assign Modal */}
  {showAssignModal && assigningTask && (
- <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+ <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
  <div>
