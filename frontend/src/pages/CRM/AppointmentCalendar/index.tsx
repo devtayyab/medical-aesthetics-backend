@@ -187,7 +187,7 @@ export const AppointmentCalendar: React.FC = () => {
         currentUserName={
           user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : undefined
         }
-        isManager={isSuperAdmin}
+        isManager={canSeeAll}
         onSelect={setSelectedSalesPersonId}
       />
 

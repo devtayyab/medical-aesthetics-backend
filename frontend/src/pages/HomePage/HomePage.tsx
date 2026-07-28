@@ -3,7 +3,6 @@ import { useNavigate } from"react-router-dom";
 import { useDispatch, useSelector } from"react-redux";
 import { publicCatalogAPI } from"@/services/api";
 import {
- FaStethoscope,
  FaApple,
  FaGooglePlay,
  FaStar,
@@ -129,6 +128,13 @@ const mainCategories = [
  // Super-admin-managed categories + top treatments (replaces hardcoded lists)
  const { categories: dynamicCategories, loading: categoriesLoading } = useCategoryTree();
  const { treatments: topTreatments, loading: topLoading } = useTopTreatments(8);
+ const [clinicCities, setClinicCities] = useState<string[]>([]);
+
+ useEffect(() => {
+   publicCatalogAPI.getCities()
+     .then(res => setClinicCities(res.data || []))
+     .catch(() => setClinicCities(['Athens', 'Thessaloniki', 'Patras', 'Heraklion', 'Larissa', 'Volos', 'Ioannina']));
+ }, []);
  // Prefer the curated"Top Treatments"; fall back to live search results when none are featured.
  const displayTreatments: any[] = topTreatments.length > 0 ? topTreatments : (treatments || []);
 
@@ -568,7 +574,7 @@ const mainCategories = [
  ) : (
  dynamicCategories.slice(0, 6).map((category) => {
  const subs = category.children || [];
- const cities = ["Athens","Thessaloniki","Patras","Heraklion","Larissa","Volos","Ioannina"];
+ const citiesToShow = clinicCities.length > 0 ? clinicCities : ['Athens', 'Thessaloniki', 'Patras', 'Heraklion', 'Larissa', 'Volos', 'Ioannina'];
  return (
  <div key={category.id} className="space-y-3">
  <div
@@ -591,8 +597,15 @@ const mainCategories = [
  ? subs.map((sub) => (
  <li key={sub.id} className="hover:text-lime-600 cursor-pointer" onClick={() => handleCategoryClick(sub.name)}>{sub.name}</li>
  ))
- : cities.map((city, i) => (
- <li key={i} className="hover:text-lime-600 cursor-pointer" onClick={() => navigate(`/search?category=${encodeURIComponent(category.name)}&location=${city}`)}>{city}</li>
+ : citiesToShow.map((city, i) => (
+ <li
+ key={i}
+ className="flex items-center gap-1.5 hover:text-lime-600 cursor-pointer group/city transition-colors duration-150"
+ onClick={() => navigate(`/search?category=${encodeURIComponent(category.name)}&location=${encodeURIComponent(city)}`)}
+ >
+ <FaMapMarkerAlt className="w-2.5 h-2.5 text-gray-300 group-hover/city:text-lime-500 flex-shrink-0 transition-colors" />
+ <span>{city}</span>
+ </li>
  ))}
  </ul>
  </div>

@@ -35,38 +35,36 @@ export const SalesPersonSidebar: React.FC<SalesPersonSidebarProps> = ({
       {/* List */}
       <div className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
         {/* All Staff */}
-        {_isManager && (
-          <button
-            onClick={() => onSelect('all')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left group ${selectedId === 'all'
-                ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
-                : 'text-slate-600 hover:bg-slate-50'
+        <button
+          onClick={() => onSelect('all')}
+          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left group ${selectedId === 'all'
+              ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
+              : 'text-slate-600 hover:bg-slate-50'
+            }`}
+        >
+          <div
+            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedId === 'all' ? 'bg-white/20' : 'bg-slate-100'
               }`}
           >
-            <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedId === 'all' ? 'bg-white/20' : 'bg-slate-100'
+            <Users
+              className={`w-4 h-4 ${selectedId === 'all' ? 'text-white' : 'text-slate-500'}`}
+            />
+          </div>
+          <div className="min-w-0">
+            <p
+              className={`text-[11px] font-bold truncate ${selectedId === 'all' ? 'text-white' : 'text-slate-700'
                 }`}
             >
-              <Users
-                className={`w-4 h-4 ${selectedId === 'all' ? 'text-white' : 'text-slate-500'}`}
-              />
-            </div>
-            <div className="min-w-0">
-              <p
-                className={`text-[11px] font-bold truncate ${selectedId === 'all' ? 'text-white' : 'text-slate-700'
-                  }`}
-              >
-                All Staff
-              </p>
-              <p
-                className={`text-[9px] ${selectedId === 'all' ? 'text-white/70' : 'text-slate-400'
-                  }`}
-              >
-                Full roster
-              </p>
-            </div>
-          </button>
-        )}
+              All / All Staff
+            </p>
+            <p
+              className={`text-[9px] ${selectedId === 'all' ? 'text-white/70' : 'text-slate-400'
+                }`}
+            >
+              Full team roster
+            </p>
+          </div>
+        </button>
 
         {/* Divider */}
         {(salespersons.length > 0 || currentUserId) && (

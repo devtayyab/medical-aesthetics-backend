@@ -1008,6 +1008,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <span className="text-[11px] font-bold text-slate-700">
  via {customer.source || 'Manual Entry'} &nbsp;·&nbsp; {new Date(customer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
  </span>
+ {(customer as any).facebookAdName && (
+ <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1 mt-0.5">
+ <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+ Ad: {(customer as any).facebookAdName}
+ </span>
+ )}
  </div>
  </div>
  <Badge className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${isConverted ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
@@ -1450,9 +1456,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <h3 className="font-bold text-slate-800 flex items-center gap-2">
  <PhoneCall className="w-4 h-4 text-slate-400" /> {editingLogId ?"Edit Phone Call Notes" :"Add Phone Call Notes"}
  </h3>
- <Button variant="ghost" size="sm" onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); setEditingLogId(null); }} className="h-8 w-8 p-0">
- <X className="w-4 h-4" />
- </Button>
+  <button
+    type="button"
+    onClick={() => { setShowPhoneCallModal(false); setPhoneCallNotes(""); setEditingLogId(null); }}
+    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center cursor-pointer border border-slate-200 shadow-sm shrink-0"
+    title="Close"
+  >
+    <X className="w-4 h-4 stroke-[2.5]" />
+  </button>
  </div>
  <div className="space-y-4">
  <Textarea
@@ -1480,9 +1491,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <h3 className="font-bold text-slate-800 flex items-center gap-2">
  <Mail className="w-4 h-4 text-slate-400" /> {editingLogId ?"Edit Email Log" :"Log Sent Email"}
  </h3>
- <Button variant="ghost" size="sm" onClick={() => { setShowEmailModal(false); setEmailNotes(""); setEditingLogId(null); }} className="h-8 w-8 p-0">
- <X className="w-4 h-4" />
- </Button>
+  <button
+    type="button"
+    onClick={() => { setShowEmailModal(false); setEmailNotes(""); setEditingLogId(null); }}
+    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center cursor-pointer border border-slate-200 shadow-sm shrink-0"
+    title="Close"
+  >
+    <X className="w-4 h-4 stroke-[2.5]" />
+  </button>
  </div>
  <div className="space-y-4">
  <div>
@@ -1515,9 +1531,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   <h3 className="font-bold text-slate-800 flex items-center gap-2">
   <FileText className="w-4 h-4 text-slate-400" /> {editingLogId ?"Edit Note" :"Add a Note"}
   </h3>
-  <Button variant="ghost" size="sm" onClick={() => { setShowNoteModal(false); setNoteContent(""); setEditingLogId(null); }} className="h-8 w-8 p-0">
-  <X className="w-4 h-4" />
-  </Button>
+  <button
+    type="button"
+    onClick={() => { setShowNoteModal(false); setNoteContent(""); setEditingLogId(null); }}
+    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center cursor-pointer border border-slate-200 shadow-sm shrink-0"
+    title="Close"
+  >
+    <X className="w-4 h-4 stroke-[2.5]" />
+  </button>
   </div>
   <div className="space-y-4">
   <div>

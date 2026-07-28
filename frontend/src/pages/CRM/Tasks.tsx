@@ -988,9 +988,14 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  </h3>
  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Operation Workflow</p>
  </div>
- <Button variant="ghost" onClick={resetForm} className="h-10 w-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
- <X className="h-6 w-6" />
- </Button>
+  <button
+    type="button"
+    onClick={resetForm}
+    className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center cursor-pointer border border-slate-200 shadow-sm shrink-0"
+    title="Close"
+  >
+    <X className="w-5 h-5 stroke-[2.5]" />
+  </button>
  </div>
 
  <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
@@ -1028,9 +1033,14 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  </h3>
  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{viewingTask.actionType.replace(/_/g, ' ')}</p>
  </div>
- <Button variant="ghost" onClick={() => setViewingTask(null)} className="h-10 w-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
- <X className="h-6 w-6" />
- </Button>
+  <button
+    type="button"
+    onClick={() => setViewingTask(null)}
+    className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center cursor-pointer border border-slate-200 shadow-sm shrink-0"
+    title="Close"
+  >
+    <X className="w-5 h-5 stroke-[2.5]" />
+  </button>
  </div>
  <div className="flex-1 overflow-y-auto p-6 space-y-4 text-sm">
 
@@ -1652,9 +1662,14 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  <h3 className="text-md font-black text-slate-800">Quick Assign</h3>
  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reassign Task Owner</p>
  </div>
- <Button variant="ghost" onClick={() => setShowAssignModal(false)} className="h-8 w-8 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
- <X className="h-5 w-5" />
- </Button>
+  <button
+    type="button"
+    onClick={() => setShowAssignModal(false)}
+    className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center cursor-pointer border border-slate-200 shadow-sm shrink-0"
+    title="Close"
+  >
+    <X className="w-4 h-4 stroke-[2.5]" />
+  </button>
  </div>
  <div className="p-6 space-y-4">
  <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
@@ -1699,9 +1714,14 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
  <h3 className="text-lg font-black text-slate-800">Direct Messaging</h3>
  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Logging Email/SMS Communication</p>
  </div>
- <Button variant="ghost" onClick={() => setShowEmailModal(false)} className="h-10 w-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
- <X className="h-6 w-6" />
- </Button>
+  <button
+    type="button"
+    onClick={() => setShowEmailModal(false)}
+    className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center cursor-pointer border border-slate-200 shadow-sm shrink-0"
+    title="Close"
+  >
+    <X className="w-5 h-5 stroke-[2.5]" />
+  </button>
  </div>
  <div className="flex-1 overflow-y-auto p-6 space-y-6">
  <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-center gap-4">

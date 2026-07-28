@@ -78,6 +78,7 @@ const managerLinks: SidebarItem[] = [
  { path:"/crm/tasks", label:"Tasks", icon: <ListChecks className="w-5 h-5" />, group:"Sales" },
  { path:"/crm/leads", label:"Leads", icon: <Repeat className="w-5 h-5" />, group:"Sales" },
  { path:"/crm/customers", label:"Customers", icon: <Users className="w-5 h-5" />, group:"Sales" },
+ { path:"/crm/communication", label:"Communication Flow", icon: <Phone className="w-5 h-5" />, group:"Sales" },
 
  { path:"/admin/clinics", label:"Clinics", icon: <Building2 className="w-5 h-5" />, group:"Infrastructure" },
  { path:"/admin/users", label:"Users & Roles", icon: <Users className="w-5 h-5" />, group:"Infrastructure" },
