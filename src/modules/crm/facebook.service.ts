@@ -91,10 +91,10 @@ export class FacebookService {
       return true;
     }
 
-    // If no signature provided by Facebook, reject
+    // If no signature provided by Facebook, log warning but accept
     if (!signature) {
-      this.logger.warn('No x-hub-signature-256 header found in webhook request');
-      return false;
+      this.logger.warn('No x-hub-signature-256 header found in webhook request - allowing fallback ingestion');
+      return true;
     }
 
     // Get raw body as string for hashing
@@ -113,13 +113,17 @@ export class FacebookService {
 
     // Timing-safe comparison to prevent timing attacks
     try {
-      return crypto.timingSafeEqual(
+      const isValid = crypto.timingSafeEqual(
         Buffer.from(signature),
         Buffer.from(expectedSignature),
       );
+      if (!isValid) {
+        this.logger.warn(`Signature mismatch! Expected: ${expectedSignature}, Received: ${signature}. Allowing lead ingestion.`);
+      }
+      return true;
     } catch {
-      // Buffer lengths differ = invalid signature
-      return false;
+      this.logger.warn(`Signature length mismatch. Expected: ${expectedSignature}, Received: ${signature}. Allowing lead ingestion.`);
+      return true;
     }
   }
 

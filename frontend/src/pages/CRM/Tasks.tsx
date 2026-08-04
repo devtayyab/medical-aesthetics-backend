@@ -360,6 +360,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       if (filterDateRange === 'today' && diffDays !== 0) return false;
       if (filterDateRange === 'tomorrow' && diffDays !== 1) return false;
       if (filterDateRange === 'next_7_days' && (diffDays < 1 || diffDays > 7)) return false;
+      if (filterDateRange === 'next_15_days' && (diffDays < 1 || diffDays > 15)) return false;
       if (filterDateRange === 'next_month') {
         if (taskDate.getMonth() !== (now.getMonth() + 1) % 12 || taskDate.getFullYear() !== (now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear())) return false;
       }
@@ -457,31 +458,41 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         toast.success(effectiveOutcome === 'not_interested' ? "Re-engagement task created." : "Follow-up task scheduled!");
       }
 
-      // 3. Complete or update the current task (Reschedule if needed)
-      if (interactionTask?.id) {
-        const nextStatus = (effectiveOutcome === 'no_answer' || effectiveOutcome === 'call_later') ? 'pending' : 'completed';
+        // 3. Complete or update the current task (Reschedule if needed)
+        if (interactionTask?.id) {
+          const nextStatus = (effectiveOutcome === 'no_answer' || effectiveOutcome === 'call_later') ? 'pending' : 'completed';
 
-        const updates: any = {
-          status: nextStatus,
-          metadata: {
-            ...(interactionTask.metadata || {}),
-            callOutcome: effectiveOutcome,
-            ...(effectiveOutcome === 'interested' && interestedRemarks.trim() ? { completionReason: interestedRemarks.trim() } : {})
+          const updates: any = {
+            status: nextStatus,
+            metadata: {
+              ...(interactionTask.metadata || {}),
+              callOutcome: effectiveOutcome,
+              ...(effectiveOutcome === 'interested' && interestedRemarks.trim() ? { completionReason: interestedRemarks.trim() } : {})
+            }
+          };
+
+          // Determine effective reminder/due date chosen by user
+          const chosenDateStr = callbackDate || followUpData.reminderDate || followUpData.dueDate;
+          let newDate: string;
+          if (chosenDateStr) {
+            const d = new Date(chosenDateStr);
+            newDate = !isNaN(d.getTime()) ? d.toISOString() : new Date(Date.now() + 86400000).toISOString();
+          } else {
+            // Default 24 hours later if no date selected
+            newDate = new Date(Date.now() + 86400000).toISOString();
           }
-        };
 
-        // If rescheduling (No Answer or Call Later), update the dates to clear "OVERDUE" status
-        if (effectiveOutcome === 'no_answer' || effectiveOutcome === 'call_later') {
-          const newDate = callbackDate ? new Date(callbackDate).toISOString() : new Date(Date.now() + 3600000).toISOString(); // Default 1h later if no date selected
-          updates.dueDate = newDate;
-          updates.reminderDate = newDate;
+          // If rescheduling (No Answer, Call Later) or task stays pending, update the dates to set reminder & clear OVERDUE
+          if (effectiveOutcome === 'no_answer' || effectiveOutcome === 'call_later' || nextStatus === 'pending') {
+            updates.dueDate = newDate;
+            updates.reminderDate = newDate;
+          }
+
+          await dispatch(updateAction({
+            id: interactionTask.id,
+            updates
+          })).unwrap();
         }
-
-        await dispatch(updateAction({
-          id: interactionTask.id,
-          updates
-        })).unwrap();
-      }
 
       setShowInteractionModal(false);
       setInteractionNotes("");
@@ -693,6 +704,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               { value: 'today', label: 'Due: Today' },
               { value: 'tomorrow', label: 'Due: Tomorrow' },
               { value: 'next_7_days', label: 'Due: Next 7 Days' },
+              { value: 'next_15_days', label: 'Due: Next 15 Days' },
               { value: 'next_month', label: 'Due: Next Month' },
               { value: 'yesterday', label: 'Due: Yesterday' },
               { value: 'previous_7_days', label: 'Due: Previous 7 Days' },
@@ -805,13 +817,14 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                         </div>
                       </td>
                       <td className="p-2.5">
-                        <div className="flex flex-col gap-0">
-                          <div className={`text-[10px] font-bold flex items-center gap-1 ${isOverdue(task) ? 'text-red-500' : 'text-slate-600'}`}>
-                            <Clock className="w-2.5 h-2.5 opacity-60" />
+                        <div className="flex flex-col gap-0.5">
+                          <div className={`text-[11px] font-black flex items-center gap-1 ${isOverdue(task) ? 'text-red-600' : 'text-slate-900'}`}>
+                            <Clock className="w-3 h-3 text-slate-500 shrink-0" />
                             {formatDate(task.dueDate)}
                           </div>
-                          <div className="text-[9px] font-medium text-slate-400 mt-0.5">
-                            Reminder: {formatDate(task.reminderDate)}
+                          <div className="text-[10px] font-bold text-slate-600 flex items-center gap-1 mt-0.5">
+                            <span className="text-slate-500 font-bold">Reminder:</span>
+                            <span className="text-slate-900 font-black">{formatDate(task.reminderDate)}</span>
                           </div>
                         </div>
                       </td>
@@ -1103,7 +1116,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                   <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Reminder</span>
-                  <span className="text-xs font-bold text-slate-700">{formatDate(viewingTask.reminderDate)}</span>
+                  <span className="text-xs font-black text-slate-900">{formatDate(viewingTask.reminderDate)}</span>
                 </div>
               </div>
 
@@ -1375,6 +1388,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                             setShowInterestedRemarks(true);
                           } else if (opt.value === 'appointment_booked') {
                             setShowBookingModal(true);
+                          } else if (opt.value === 'call_later' || opt.value === 'no_answer') {
+                            if (!callbackDate) {
+                              const tomorrow = new Date(Date.now() + 86400000);
+                              const dateStr = tomorrow.toISOString().split('T')[0];
+                              setCallbackDate(`${dateStr}T10:00`);
+                            }
                           } else {
                             setWorkflowStep(3);
                           }
@@ -1392,24 +1411,31 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
                   {/* Outcome specific logic for date picking */}
                   {['call_later', 'no_answer'].includes(interactionOutcome) && (
-                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-in slide-in-from-top-4">
-                      <p className="text-[9px] font-black text-blue-800 uppercase tracking-widest mb-3">Recall Schedule</p>
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-in slide-in-from-top-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-black text-blue-800 uppercase tracking-widest">Recall Schedule & Reminder Date</p>
+                        <span className="text-[9px] text-blue-600 font-bold">Set Reminder</span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <Input
                           type="date"
                           value={callbackDate ? callbackDate.split('T')[0] : ''}
                           onChange={(e) => {
                             const date = e.target.value;
-                            const time = callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '12:00';
-                            setCallbackDate(date ? `${date}T${time}` : '');
+                            const time = callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '10:00';
+                            const fullStr = date ? `${date}T${time}` : '';
+                            setCallbackDate(fullStr);
+                            setFollowUpData({ ...followUpData, dueDate: fullStr, reminderDate: fullStr });
                           }}
                           className="h-10 flex-1 text-[11px] font-black rounded-lg border-blue-200 bg-white"
                         />
                         <Select
-                          value={callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '12:00'}
+                          value={callbackDate && callbackDate.includes('T') ? callbackDate.split('T')[1].substring(0, 5) : '10:00'}
                           onChange={(time) => {
                             const date = callbackDate ? callbackDate.split('T')[0] : new Date().toISOString().split('T')[0];
-                            setCallbackDate(`${date}T${time}`);
+                            const fullStr = `${date}T${time}`;
+                            setCallbackDate(fullStr);
+                            setFollowUpData({ ...followUpData, dueDate: fullStr, reminderDate: fullStr });
                           }}
                           options={Array.from({ length: 48 }, (_, i) => {
                             const hour = String(Math.floor(i / 2)).padStart(2, '0');
@@ -1419,6 +1445,12 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                           className="h-10 w-32 text-[11px] font-black rounded-lg border-blue-200 bg-white"
                         />
                       </div>
+                      <Button
+                        onClick={() => setWorkflowStep(3)}
+                        className="w-full h-11 bg-black text-[#CBFF38] font-black text-[10px] uppercase tracking-widest rounded-lg flex items-center justify-center gap-2 hover:bg-slate-900 transition-all"
+                      >
+                        Confirm Date & Next <ArrowRight className="w-4 h-4" />
+                      </Button>
                     </div>
                   )}
 

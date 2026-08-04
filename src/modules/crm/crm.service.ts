@@ -1753,14 +1753,22 @@ export class CrmService implements OnModuleInit {
     if (!action.reminderDate && !updateData.reminderDate &&
       action.status !== 'completed' && action.status !== 'cancelled' &&
       updateData.status !== 'completed' && updateData.status !== 'cancelled') {
-      this.logger.log(`[updateAction] Action ${id} missing reminderDate. Auto-assigning current time.`);
-      updateData.reminderDate = now;
+      if (updateData.dueDate) {
+        updateData.reminderDate = new Date(updateData.dueDate);
+      } else {
+        this.logger.log(`[updateAction] Action ${id} missing reminderDate. Auto-assigning current time.`);
+        updateData.reminderDate = now;
+      }
+    }
+
+    if (updateData.dueDate && !updateData.reminderDate && updateData.status !== 'completed' && updateData.status !== 'cancelled') {
+      updateData.reminderDate = new Date(updateData.dueDate);
     }
 
     if (updateData.reminderDate) {
       const reminderDate = new Date(updateData.reminderDate);
-      const oneYearFromNow = new Date(action.createdAt || now);
-      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+      const oneYearFromNow = new Date(now);
+      oneYearFromNow.setFullYear(now.getFullYear() + 1);
 
       // Allow 15 minutes grace period (consistent with createAction)
       const gracePeriodMs = 15 * 60 * 1000;
@@ -1770,9 +1778,7 @@ export class CrmService implements OnModuleInit {
         // Auto-fix past dates instead of failing for better UX
         this.logger.warn(`[updateAction] Reminder date in the past for action ${id}. Auto-fixing to current time.`);
         updateData.reminderDate = now;
-      }
-
-      if (reminderDate > oneYearFromNow) {
+      } else if (reminderDate > oneYearFromNow) {
         // If it's too far in the future, cap it at 1 year rather than failing
         this.logger.warn(`[updateAction] Reminder date too far in future for action ${id}. Capping at 1 year.`);
         updateData.reminderDate = oneYearFromNow;
