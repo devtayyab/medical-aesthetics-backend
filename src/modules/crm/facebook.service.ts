@@ -426,6 +426,7 @@ export class FacebookService {
    * (re)subscribe any page that isn't.
    */
   async checkWebhookSubscription(subscribe: boolean = false): Promise<{
+    subscribed: boolean;
     pages: Array<{
       pageId: string;
       pageName?: string;
@@ -478,7 +479,10 @@ export class FacebookService {
       }
     }
 
-    return { pages: results };
+    return {
+      subscribed: results.length > 0 && results.every((r) => r.subscribed),
+      pages: results,
+    };
   }
 
   async getForms(pageId?: string, accessTokenOverride?: string): Promise<any[]> {
@@ -506,9 +510,15 @@ export class FacebookService {
       for (const row of dbSettings) {
         settingsMap[row.key] = row.value;
       }
-      // The stored token belongs to the primary page — don't clobber a
-      // caller-provided per-page token
-      if (settingsMap['facebook_page_access_token'] && !accessTokenOverride) {
+      // The stored token belongs to the PRIMARY page only — apply it neither
+      // over a caller-provided per-page token nor to a different page id
+      // (a page-scoped token used on another page returns an error, silently
+      // hiding that page's forms)
+      if (
+        settingsMap['facebook_page_access_token'] &&
+        !accessTokenOverride &&
+        (!pageId || pageId === settingsMap['facebook_page_id'])
+      ) {
         creds.accessToken = settingsMap['facebook_page_access_token'];
       }
       if (!targetPageId) {

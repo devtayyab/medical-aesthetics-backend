@@ -2692,10 +2692,14 @@ export class CrmService implements OnModuleInit {
       .groupBy('lead.lastMetaFormName')
       .getRawMany();
 
-    // Combine them, preferring real API data but enriching with DB counts
+    // Combine them, preferring real API data but enriching with DB counts.
+    // Track which DB stats were matched so the pseudo-form fallback below
+    // doesn't emit the same form a second time under its DB name.
+    const usedDbNames = new Set<string>();
     const processedForms = (fbForms || []).map(f => {
       // Leads store lastMetaFormName as "Facebook Form <id>" — match on either
       const dbStat = dbFormStats.find(d => d.name === f.name || d.name === `Facebook Form ${f.id}`);
+      if (dbStat) usedDbNames.add(dbStat.name);
       return {
         ...f,
         // Keep the real Facebook leads_count (including a genuine 0);
@@ -2706,13 +2710,15 @@ export class CrmService implements OnModuleInit {
     });
 
     dbFormStats.forEach(dbf => {
+      if (usedDbNames.has(dbf.name)) return;
       if (!processedForms.some(f => f.name === dbf.name)) {
         processedForms.push({
           id: `db_${dbf.name}`,
           name: dbf.name,
           status: 'READY',
           source: 'database',
-          leads_count: parseInt(dbf.count || '0')
+          leads_count: parseInt(dbf.count || '0'),
+          imported_count: parseInt(dbf.count || '0'),
         });
       }
     });
