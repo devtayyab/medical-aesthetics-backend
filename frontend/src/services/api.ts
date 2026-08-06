@@ -662,6 +662,7 @@ export const adminSystemListsAPI = {
  getTreatments: (params?: any) => api.get("/admin/treatments", { params }),
  createTreatment: (data: any) => api.post("/admin/treatments", data),
  updateTreatment: (id: string, data: any) => api.put(`/admin/treatments/${id}`, data),
+ deleteTreatment: (id: string) => api.delete(`/admin/treatments/${id}`),
 };
 
 // Public catalog API — no authentication required

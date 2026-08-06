@@ -151,13 +151,20 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  }, [forceShowCreateForm, onFormShown]);
 
  useEffect(() => {
- // Set default status filter to 'new' for Leads page
- dispatch(setLeadFilters({ ...leadFilters, status: 'new' }));
+ // No forced default status filter — hiding non-'new' leads made users think leads were missing
  dispatch(fetchSalespersons());
  }, [dispatch]);
 
  useEffect(() => {
  dispatch(fetchLeads(leadFilters));
+ }, [dispatch, leadFilters]);
+
+ // Refetch when the tab regains focus so leads imported by the background
+ // Facebook sync (or another user) show up without a manual reload
+ useEffect(() => {
+ const onFocus = () => dispatch(fetchLeads(leadFilters));
+ window.addEventListener('focus', onFocus);
+ return () => window.removeEventListener('focus', onFocus);
  }, [dispatch, leadFilters]);
 
  // Handlers

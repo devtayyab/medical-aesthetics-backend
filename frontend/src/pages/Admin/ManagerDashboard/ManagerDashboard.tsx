@@ -466,6 +466,7 @@ export const ManagerDashboard = () => {
  <CardContent>
  <div className="rounded-md border">
  {clinicServices && clinicServices.length > 0 ? (
+ <div className="overflow-x-auto">
  <table className="w-full text-sm">
  <thead>
  <tr className="border-b bg-muted/50">
@@ -486,6 +487,7 @@ export const ManagerDashboard = () => {
  ))}
  </tbody>
  </table>
+ </div>
  ) : (
  <div className="p-8 text-center text-muted-foreground">
  No services found for this clinic.

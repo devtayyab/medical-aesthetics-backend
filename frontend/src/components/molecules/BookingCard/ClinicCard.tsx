@@ -17,7 +17,7 @@ const ClinicCard: React.FC<ClinicCardProps> = ({ name, price, location }) => {
  <div className="flex w-full h-auto gap-[12px]">
  {/* Image */}
  <div className="bg-gray-200 flex items-center justify-center h-auto w-full md:w-96 md:h-52 rounded">
- <img src="./yourimage.jpg" className="object-cover w-full h-full rounded" />
+ <img src="./yourimage.jpg" alt={name} onError={(e) => { e.currentTarget.style.display = 'none'; }} className="object-contain w-full h-full rounded" />
  </div>
  <div className="flex-1 flex flex-col w-full h-auto mt-2 md:mt-0 gap-[10px]">
  <h2 className="text-lg font-semibold">{name}</h2>

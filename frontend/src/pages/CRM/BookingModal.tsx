@@ -7,6 +7,7 @@ import { createAppointment } from '@/store/slices/bookingSlice';
 import { X, Calendar, Clock, User, Scissors, Building2 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { format, addMinutes } from 'date-fns';
+import toast from 'react-hot-toast';
 
 interface BookingModalProps {
  isOpen: boolean;
@@ -102,7 +103,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
  // Reset state or show success
  } catch (error: any) {
  console.error('Booking error:', error);
- alert(error?.message || 'Failed to book appointment');
+ toast.error(error?.response?.data?.message || 'Booking failed');
  }
  };
 

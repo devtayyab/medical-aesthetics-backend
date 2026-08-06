@@ -353,7 +353,7 @@ const mainCategories = [
  onError={(e: any) => {
  e.target.src = getFallbackImage(treatment.name);
  }}
- className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+ className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
  />
  {treatment.rating ? (
  <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1">
@@ -475,7 +475,7 @@ const mainCategories = [
  <img
  src={GiftConfidenceImg}
  alt="Gift Confidence"
- className="w-full h-[200px] sm:h-[240px] object-cover"
+ className="w-full h-[200px] sm:h-[240px] object-contain bg-gray-50"
  />
  <div className="p-6 sm:p-8 flex flex-col flex-1">
  <h3 className="text-xl font-bold text-gray-900 mb-3">
@@ -499,7 +499,7 @@ const mainCategories = [
  <img
  src={TopRatedClinicImg}
  alt="Discover Treatments"
- className="w-full h-[200px] sm:h-[240px] object-cover"
+ className="w-full h-[200px] sm:h-[240px] object-contain bg-gray-50"
  />
  <div className="p-6 sm:p-8 flex flex-col flex-1">
  <h3 className="text-xl font-bold text-gray-900 mb-3">

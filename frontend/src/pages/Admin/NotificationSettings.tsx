@@ -135,6 +135,7 @@ export const NotificationSettings: React.FC = () => {
  </div>
  ) : (
  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+ <div className="overflow-x-auto">
  <table className="w-full text-left border-collapse">
  <thead>
  <tr className="bg-gray-50 border-bottom border-gray-100">
@@ -146,6 +147,9 @@ export const NotificationSettings: React.FC = () => {
  </tr>
  </thead>
  <tbody className="divide-y divide-gray-50">
+ {templates.length === 0 && (
+ <tr><td colSpan={5} className="text-center py-8 text-gray-400">No records found</td></tr>
+ )}
  {templates.map((template) => (
  <tr key={template.id} className="hover:bg-gray-50 transition-colors">
  <td className="px-6 py-4">
@@ -183,6 +187,7 @@ export const NotificationSettings: React.FC = () => {
  ))}
  </tbody>
  </table>
+ </div>
  </div>
  )}
  </div>

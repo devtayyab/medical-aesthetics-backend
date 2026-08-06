@@ -1,7 +1,7 @@
 import React, { useState } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import { useNavigate, Link } from"react-router-dom";
-import { register } from"@/store/slices/authSlice";
+import { register, restoreSession } from"@/store/slices/authSlice";
 import { Button } from"@/components/atoms/Button/Button";
 import { Input } from"@/components/atoms/Input/Input";
 import { Card } from"@/components/atoms/Card/Card";
@@ -172,12 +172,13 @@ export const Register: React.FC = () => {
  otp,
  });
 
- const { accessToken, refreshToken, user } = res.data;
- // Store tokens and redirect — use the same mechanism as login
+ const { accessToken, refreshToken } = res.data;
+ // Store tokens and hydrate auth state, then redirect — no full reload needed
  localStorage.setItem("accessToken", accessToken);
  localStorage.setItem("refreshToken", refreshToken);
+ sessionStorage.setItem("refreshToken", refreshToken);
+ await dispatch(restoreSession());
  navigate("/", { replace: true });
- window.location.reload(); // Refresh to pick up auth state
  } catch (err: any) {
  setOtpError(
  err?.response?.data?.message ||"Invalid or expired code. Please try again."

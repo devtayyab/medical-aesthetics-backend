@@ -156,8 +156,9 @@ const ServiceCard = ({ service, canManage, onToggle, onEdit }: any) => {
  {service.imageUrl || service.treatment?.imageUrl ? (
  <img
  src={getImageUrl(service.imageUrl || service.treatment?.imageUrl)}
- alt={service.treatment?.name}
- className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+ alt={service.treatment?.name || 'Service image'}
+ onError={(e) => { e.currentTarget.style.display = 'none'; }}
+ className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-110"
  />
  ) : (
  <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-200">
@@ -260,7 +261,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
  } else if (selectedCategoryId ==="manual_cat") {
  setTreatments([]);
  }
- }, [selectedCategoryId]);
+ // categories is a dependency: on the edit path selectedCategoryId can be set
+ // before categories has loaded, and the name lookup must re-run once it has
+ }, [selectedCategoryId, categories]);
 
  const fetchCategories = async () => {
  try {

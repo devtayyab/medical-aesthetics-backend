@@ -38,6 +38,7 @@ import {
 import { openDialer } from"@/store/slices/dialerSlice";
 import { AuthState } from"@/store/slices/authSlice";
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
+import toast from 'react-hot-toast';
 import { updateAppointmentStatus, completeAppointment } from"@/store/slices/bookingSlice";
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
@@ -330,7 +331,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
  <h3 className="text-red-800 font-bold mb-1">Load Error</h3>
  <p className="text-red-600/70 text-sm font-medium">{error}</p>
- <Button onClick={() => window.location.reload()} variant="outline" className="mt-4 border-red-200 text-red-700 bg-white">Retry</Button>
+ <Button onClick={() => {
+ const idToFetch = SelectedCustomer?.id || customerId;
+ if (idToFetch) {
+ dispatch(fetchCustomerRecord({ customerId: idToFetch, salespersonId: user?.id }));
+ }
+ }} variant="outline" className="mt-4 border-red-200 text-red-700 bg-white">Retry</Button>
  </div>
  );
  }
@@ -361,7 +367,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
  } catch (error) {
  console.error("Failed to add tag", error);
- alert("Failed to add tag.");
+ toast.error("Failed to add tag.");
  }
  };
 
@@ -404,7 +410,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  dispatch(fetchCustomerRecord({ customerId: customer.id, salespersonId: user?.id }));
  } catch (error) {
  console.error("Failed to save phone call note", error);
- alert("Failed to save.");
+ toast.error("Failed to save phone call note.");
  }
  };
 

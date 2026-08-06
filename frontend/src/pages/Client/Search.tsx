@@ -123,6 +123,16 @@ export const Search: React.FC = () => {
  const [searchDate, setSearchDate] = useState<string | null>(searchParams.get("search_date") || null);
  const [searchTimeWindow, setSearchTimeWindow] = useState<string | null>(searchParams.get("search_time_window") || null);
 
+ // Keep filter state in sync with the URL: header/home/treatments links navigate to
+ // /search?... while this page is already mounted, so state must follow searchParams.
+ useEffect(() => {
+ setQuery(searchParams.get("query") || searchParams.get("q") ||"");
+ setLocation(searchParams.get("location") ||"");
+ setCategory(searchParams.get("category") || undefined);
+ setSearchDate(searchParams.get("search_date") || null);
+ setSearchTimeWindow(searchParams.get("search_time_window") || null);
+ }, [searchParams]);
+
  // Filter states
  const [sortBy, setSortBy] = useState<'recommended' | 'distance' | 'price-asc' | 'price-desc' | 'rating'>('recommended');
  const [ratingFilter, setRatingFilter] = useState<'any' | '4.5-plus' | '4.0-plus'>('any');

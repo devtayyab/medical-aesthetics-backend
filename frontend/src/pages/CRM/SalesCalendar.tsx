@@ -37,6 +37,7 @@ export const SalesCalendar: React.FC = () => {
  return saved ? JSON.parse(saved) : [];
  });
  const [timeRange, setTimeRange] = useState('this_month');
+ const [isFetching, setIsFetching] = useState(false);
 
  // Admin: Selected Salesperson
  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string>('');
@@ -81,16 +82,18 @@ export const SalesCalendar: React.FC = () => {
  endDate = endOfMonth(new Date());
  }
 
+ setIsFetching(true);
+ Promise.allSettled([
  dispatch(fetchSalespersonAnalytics({
  salespersonId: selectedSalespersonId,
  dateRange: {
  startDate: startDate.toISOString(),
  endDate: endDate.toISOString()
  }
- }));
-
+ })),
  // Also refetch tasks for this person
- dispatch(fetchTasks(selectedSalespersonId));
+ dispatch(fetchTasks(selectedSalespersonId))
+ ]).finally(() => setIsFetching(false));
  }
  }, [dispatch, selectedSalespersonId, timeRange]);
 
@@ -231,7 +234,12 @@ export const SalesCalendar: React.FC = () => {
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
  {/* Calendar Area */}
  <div className="lg:col-span-2">
- <Card className="shadow-xl shadow-gray-100/50 border-none ring-1 ring-gray-100 bg-white">
+ <Card className="shadow-xl shadow-gray-100/50 border-none ring-1 ring-gray-100 bg-white relative">
+ {isFetching && (
+ <div className="absolute inset-0 z-40 bg-white/60 backdrop-blur-[1px] flex items-center justify-center rounded-2xl">
+ <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-800 rounded-full animate-spin" />
+ </div>
+ )}
  <CardContent className="p-6">
  {renderHeader()}
 

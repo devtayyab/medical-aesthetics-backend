@@ -451,6 +451,12 @@ export class CrmService implements OnModuleInit {
         if (!leadgenId) continue;
 
         try {
+          // Skip if this Facebook lead was already ingested (webhook retries / overlap with cron sync)
+          const alreadyImported = await this.leadsRepository.findOne({
+            where: { facebookLeadId: leadgenId },
+            select: ['id'],
+          });
+          if (alreadyImported) continue;
           // Get full lead data from Facebook using the lead ID from the webhook
           const leadData = await this.facebookService.getLead(leadgenId);
           const parsedLead = this.facebookService.parseLeadData(leadData);
@@ -488,6 +494,13 @@ export class CrmService implements OnModuleInit {
     for (const leadData of leadsData) {
       try {
         const parsedLead = this.facebookService.parseLeadData(leadData);
+
+        // Skip leads already imported (dedup on the Facebook lead ID, not name/email heuristics)
+        const alreadyImported = await this.leadsRepository.findOne({
+          where: { facebookLeadId: parsedLead.facebookLeadId },
+          select: ['id'],
+        });
+        if (alreadyImported) continue;
 
         // Use enhanced duplicate detection
         const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
@@ -633,7 +646,36 @@ export class CrmService implements OnModuleInit {
         lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
         lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
         lastContactedAt: new Date(),
+        facebookLeadId: existingLead.facebookLeadId || parsedLead.facebookLeadId,
       });
+    } else {
+      // No Lead row exists for this customer — create one so the submission is
+      // visible in the Leads list instead of only in the communication log
+      const mergedLead = this.leadsRepository.create({
+        source: 'facebook_ads',
+        firstName: parsedLead.firstName || existingCustomer.firstName || '',
+        lastName: parsedLead.lastName || existingCustomer.lastName || '',
+        email: parsedLead.email || existingCustomer.email || '',
+        phone: parsedLead.phone || existingCustomer.phone,
+        facebookLeadId: parsedLead.facebookLeadId,
+        facebookFormId: parsedLead.facebookFormId,
+        facebookCampaignId: parsedLead.facebookCampaignId,
+        facebookAdSetId: parsedLead.facebookAdSetId,
+        facebookAdId: parsedLead.facebookAdId,
+        facebookLeadData: parsedLead.facebookLeadData,
+        notes: parsedLead.notes,
+        status: LeadStatus.CONTACTED,
+        lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
+        lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
+        lastContactedAt: new Date(),
+        metadata: {
+          importedFromFacebook: true,
+          fromWebhook: isWebhook,
+          existingCustomerId: existingCustomer.id,
+          mergedLead: true,
+        },
+      });
+      await this.leadsRepository.save(mergedLead);
     }
 
     // Create a communication log entry for the Facebook form submission
@@ -2545,7 +2587,9 @@ export class CrmService implements OnModuleInit {
       const dbStat = dbFormStats.find(d => d.name === f.name);
       return {
         ...f,
-        leads_count: parseInt(dbStat?.count || '0')
+        // Keep the real Facebook leads_count; DB count is exposed separately as imported_count
+        leads_count: parseInt(f.leads_count ?? '0') || parseInt(dbStat?.count || '0'),
+        imported_count: parseInt(dbStat?.count || '0'),
       };
     });
 

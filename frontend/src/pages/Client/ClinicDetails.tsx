@@ -134,11 +134,12 @@ export const ClinicDetails: React.FC = () => {
 
  return (
  <div className="min-h-screen bg-[#F7FAFC] pb-20">
- <div className={heroSection}>
+ <div className={`${heroSection} bg-gray-100`}>
  <img
  src={clinicData.images?.[0] ? getImageUrl(clinicData.images[0]) : (clinicData.photoUrl ? getImageUrl(clinicData.photoUrl) : BotoxImg)}
- className="w-full h-full object-cover"
+ className="w-full h-full object-contain"
  alt={clinicData.name}
+ onError={(e) => { e.currentTarget.style.display = 'none'; }}
  />
  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
  <div className="absolute bottom-10 left-0 w-full px-6 sm:px-8">

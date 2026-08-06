@@ -68,8 +68,12 @@ export const Settings: React.FC = () => {
  };
 
  const [settings, setSettings] = useState(defaultSettings);
+ const [loaded, setLoaded] = useState(false);
 
  useEffect(() => {
+ if (user) {
+ setLoaded(true);
+ }
  if (user?.profile?.settings) {
  // Merge saved settings with default to ensure all keys exist
  setSettings((prev) => ({
@@ -132,6 +136,17 @@ export const Settings: React.FC = () => {
  console.error("Failed to save settings:", err);
  }
  };
+
+ if (!loaded) {
+ return (
+ <div className={sectionStyles}>
+ <div className="flex flex-col items-center justify-center py-40 gap-4">
+ <div className="size-10 border-4 border-gray-200 border-t-black rounded-full animate-spin" />
+ <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">Loading settings...</p>
+ </div>
+ </div>
+ );
+ }
 
  return (
  <div className={sectionStyles}>

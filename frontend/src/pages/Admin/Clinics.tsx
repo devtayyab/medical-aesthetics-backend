@@ -10,6 +10,7 @@ import type { RootState, AppDispatch } from "@/store";
 import type { Clinic } from "@/types";
 import ImageUpload from "@/components/atoms/ImageUpload";
 import { PhoneInput } from "@/components/atoms/PhoneInput/PhoneInput";
+import toast from "react-hot-toast";
 
 const getImageUrl = (path: string) => {
   if (!path) return '';
@@ -93,6 +94,7 @@ export const Clinics: React.FC = () => {
   const { clinics, isLoading, error, users } = useSelector((state: RootState) => state.admin);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingClinic, setEditingClinic] = useState<Clinic | null>(null);
   const [activeTab, setActiveTab] = useState<"profile" | "hours" | "staff" | "blocked" | "services" | "bank">("profile");
   const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
@@ -332,7 +334,7 @@ export const Clinics: React.FC = () => {
     setEditingClinic(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const currentOwnerIds = formData.ownerIds && formData.ownerIds.length > 0
       ? formData.ownerIds
@@ -346,12 +348,20 @@ export const Clinics: React.FC = () => {
       ownerIds: currentOwnerIds,
       ownerId: currentOwnerIds[0] || formData.ownerId || "",
     };
-    if (editingClinic) {
-      dispatch(updateAdminClinic({ id: editingClinic.id, data: submissionData }));
-    } else {
-      dispatch(createAdminClinic(submissionData));
+    setSaving(true);
+    try {
+      if (editingClinic) {
+        await dispatch(updateAdminClinic({ id: editingClinic.id, data: submissionData })).unwrap();
+      } else {
+        await dispatch(createAdminClinic(submissionData)).unwrap();
+      }
+      handleCloseModal();
+      toast.success(editingClinic ? "Clinic updated" : "Clinic created");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save clinic");
+    } finally {
+      setSaving(false);
     }
-    handleCloseModal();
   };
 
   const handleToggleStatus = (clinic: Clinic) => {
@@ -585,8 +595,8 @@ export const Clinics: React.FC = () => {
                                 <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group bg-white">
                                   <img
                                     src={getImageUrl(imgUrl)}
-                                    alt=""
-                                    className="w-full h-full object-cover"
+                                    alt={`Gallery image ${idx + 1}`}
+                                    className="w-full h-full object-contain"
                                   />
                                   <button
                                     type="button"
@@ -1349,9 +1359,10 @@ export const Clinics: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-8 py-2.5 bg-[#0B1120] text-white rounded-xl hover:bg-black font-bold transition-all shadow-lg"
+                  disabled={saving}
+                  className="flex items-center gap-2 px-8 py-2.5 bg-[#0B1120] text-white rounded-xl hover:bg-black font-bold transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Save className="w-5 h-5" /> {editingClinic ? "Update Clinic" : "Create Clinic"}
+                  <Save className="w-5 h-5" /> {saving ? "Saving…" : editingClinic ? "Update Clinic" : "Create Clinic"}
                 </button>
               </div>
             </form>

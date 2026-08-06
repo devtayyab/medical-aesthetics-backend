@@ -6,6 +6,7 @@ import { X, Euro, CreditCard, Banknote, Gift } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import type { Appointment } from '@/types';
 import { adminAPI } from '@/services/api';
+import toast from 'react-hot-toast';
 
 interface CheckoutModalProps {
  appointment: Appointment | null;
@@ -45,7 +46,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
  });
  } catch (err: any) {
  console.error("Gift card redemption failed:", err);
- alert(err?.response?.data?.message || err?.message || 'Invalid or inactive Gift Card code.');
+ toast.error(err?.response?.data?.message || err?.message || 'Invalid or inactive Gift Card code.');
  return;
  }
  }
@@ -64,7 +65,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpe
  onClose();
  } catch (error: any) {
  console.error('Checkout error:', error);
- alert(error?.message || 'Failed to complete checkout');
+ toast.error(error?.message || 'Failed to complete checkout');
  }
  };
 

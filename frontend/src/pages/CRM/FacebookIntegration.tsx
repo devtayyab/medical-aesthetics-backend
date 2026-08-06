@@ -8,8 +8,10 @@ import {
   getFacebookForms,
   getFacebookStats,
   importFacebookLeads,
+  fetchLeads,
   handleFacebookWebhook
 } from "@/store/slices/crmSlice";
+import toast from "react-hot-toast";
 import type { RootState, AppDispatch } from "@/store";
 import { crmAPI } from "@/services/api";
 
@@ -97,10 +99,12 @@ export const FacebookIntegration: React.FC = () => {
     setImportingFormId(formId);
     try {
       const result = await dispatch(importFacebookLeads({ formId })).unwrap();
-      alert(`Successfully imported ${result.length || 0} leads from this form!`);
+      toast.success(`Imported ${result.length || 0} new leads from this form`);
       if (pageId) loadStats(pageId);
+      // Refresh the leads list in the store so the Leads page shows the new imports
+      dispatch(fetchLeads({}));
     } catch (error) {
-      alert("Failed to import leads from this form");
+      toast.error("Failed to import leads from this form");
     } finally {
       setImportingFormId(null);
     }

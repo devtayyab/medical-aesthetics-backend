@@ -314,6 +314,10 @@ export class AdminService {
     return this.treatmentsRepository.save(treatment);
   }
 
+  async deleteTreatment(id: string): Promise<void> {
+    await this.treatmentsRepository.delete(id);
+  }
+
   async updateTreatment(id: string, data: Partial<Treatment> & { description?: string }): Promise<Treatment> {
     const { description, ...rest } = data;
     const finalData = { ...rest };

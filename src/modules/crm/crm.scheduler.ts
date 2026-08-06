@@ -107,9 +107,15 @@ export class CrmScheduler implements OnModuleInit {
       const forms = await this.crmService.getFacebookForms();
       let importedCount = 0;
       for (const form of forms || []) {
-        if (form.status === 'ACTIVE' && form.leads_count > 0) {
-          const leads = await this.crmService.importFacebookLeads(form.id, 100);
+        // Skip DB-only pseudo forms (id: 'db_<name>') — they have no Facebook form to fetch from
+        if (!form.id || String(form.id).startsWith('db_')) continue;
+        if (form.status !== 'ACTIVE') continue;
+        try {
+          const leads = await this.crmService.importFacebookLeads(form.id, 500);
           importedCount += leads.length;
+        } catch (err) {
+          // One failing form must not abort the sync of the remaining forms
+          this.logger.error(`FB lead sync failed for form ${form.id} (${form.name})`, err as any);
         }
       }
       if (importedCount > 0) {
