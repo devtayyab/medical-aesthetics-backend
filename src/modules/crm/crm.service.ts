@@ -475,13 +475,44 @@ export class CrmService implements OnModuleInit {
             await this.createLeadFromFacebook(parsedLead, leadData, true);
           }
         } catch (error) {
-          console.error(`Error processing Facebook lead ${leadgenId}:`, error);
+          this.logger.error(`Error processing Facebook lead ${leadgenId}: ${error.message}`);
           this.eventEmitter.emit('audit.log', {
             action: 'META_INGESTION_ERROR',
             resource: 'leads',
             resourceId: leadgenId,
             data: { error: error.message, leadgen_id: leadgenId },
           });
+          // Persist a stub so the lead is not permanently lost: the webhook
+          // returns 200 (Facebook won't redeliver), so the leadgen_id must be
+          // recorded somewhere replayable. The stub also lets the cron's
+          // facebookLeadId dedup coexist with a later successful re-import.
+          try {
+            const stubExists = await this.leadsRepository.findOne({
+              where: { facebookLeadId: leadgenId },
+              select: ['id'],
+            });
+            if (!stubExists) {
+              await this.leadsRepository.save(
+                this.leadsRepository.create({
+                  source: 'facebook_ads',
+                  firstName: 'Facebook',
+                  lastName: `Lead ${leadgenId}`,
+                  facebookLeadId: leadgenId,
+                  facebookFormId: change.value.form_id,
+                  status: LeadStatus.NEW,
+                  notes: `Automatic fetch of this lead's details failed (${error.message}). Raw webhook payload preserved in metadata — re-import the form or look up leadgen_id ${leadgenId} in Facebook.`,
+                  metadata: {
+                    importedFromFacebook: true,
+                    fromWebhook: true,
+                    fetchFailed: true,
+                    rawWebhookValue: change.value,
+                  },
+                }),
+              );
+            }
+          } catch (stubErr) {
+            this.logger.error(`Could not persist stub for FB lead ${leadgenId}: ${stubErr.message}`);
+          }
         }
       }
     }
@@ -491,16 +522,46 @@ export class CrmService implements OnModuleInit {
     const leadsData = await this.facebookService.getLeadsByForm(formId, limit);
     const createdLeads: Lead[] = [];
 
+    // Dedup on the Facebook lead ID (not name/email heuristics) with one batched
+    // query instead of a findOne per lead
+    const fbIds = leadsData.map((l) => l.id).filter(Boolean);
+    const existingRows = fbIds.length
+      ? await this.leadsRepository.find({
+          where: { facebookLeadId: In(fbIds) },
+          select: ['id', 'facebookLeadId', 'metadata'],
+        })
+      : [];
+    const alreadyImportedIds = new Set(existingRows.map((r) => r.facebookLeadId));
+    // Stubs persisted after a failed webhook fetch get healed with real data
+    const stubsByFbId = new Map(
+      existingRows
+        .filter((r) => (r.metadata as any)?.fetchFailed)
+        .map((r) => [r.facebookLeadId, r.id]),
+    );
+
     for (const leadData of leadsData) {
       try {
         const parsedLead = this.facebookService.parseLeadData(leadData);
 
-        // Skip leads already imported (dedup on the Facebook lead ID, not name/email heuristics)
-        const alreadyImported = await this.leadsRepository.findOne({
-          where: { facebookLeadId: parsedLead.facebookLeadId },
-          select: ['id'],
-        });
-        if (alreadyImported) continue;
+        const stubId = stubsByFbId.get(parsedLead.facebookLeadId);
+        if (stubId) {
+          await this.leadsRepository.update(stubId, {
+            firstName: parsedLead.firstName || '',
+            lastName: parsedLead.lastName || '',
+            email: parsedLead.email || undefined,
+            phone: parsedLead.phone,
+            facebookFormId: parsedLead.facebookFormId,
+            facebookCampaignId: parsedLead.facebookCampaignId,
+            facebookAdSetId: parsedLead.facebookAdSetId,
+            facebookAdId: parsedLead.facebookAdId,
+            facebookLeadData: parsedLead.facebookLeadData,
+            notes: parsedLead.notes,
+            metadata: { importedFromFacebook: true, fromWebhook: true, fetchFailed: false, healedBySync: true } as any,
+            lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
+          });
+          continue;
+        }
+        if (alreadyImportedIds.has(parsedLead.facebookLeadId)) continue;
 
         // Use enhanced duplicate detection
         const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
@@ -665,7 +726,8 @@ export class CrmService implements OnModuleInit {
         source: 'facebook_ads',
         firstName: parsedLead.firstName || existingCustomer.firstName || '',
         lastName: parsedLead.lastName || existingCustomer.lastName || '',
-        email: parsedLead.email || existingCustomer.email || '',
+        // undefined, never '': email has a unique index and a second '' would collide
+        email: parsedLead.email || existingCustomer.email || undefined,
         phone: parsedLead.phone || existingCustomer.phone,
         facebookLeadId: parsedLead.facebookLeadId,
         facebookFormId: parsedLead.facebookFormId,
@@ -2578,6 +2640,10 @@ export class CrmService implements OnModuleInit {
 
   async testFacebookConnection(): Promise<{ success: boolean; message: string }> {
     return this.facebookService.testFacebookConnection();
+  }
+
+  async checkFacebookWebhookSubscription(subscribe: boolean = false) {
+    return this.facebookService.checkWebhookSubscription(subscribe);
   }
 
   async getFacebookForms(pageId?: string) {

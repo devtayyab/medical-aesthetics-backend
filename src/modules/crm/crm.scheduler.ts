@@ -105,22 +105,34 @@ export class CrmScheduler implements OnModuleInit {
     try {
       this.logger.log('Starting automated Facebook lead sync...');
       const forms = await this.crmService.getFacebookForms();
+
+      // DB-only pseudo forms (id: 'db_<name>') have no Facebook form to fetch from
+      const liveForms = (forms || []).filter(
+        (f) => f.id && !String(f.id).startsWith('db_'),
+      );
+      if (liveForms.length === 0) {
+        // getForms() returns [] on API errors, so an all-pseudo list usually
+        // means an expired token / permission problem — surface it loudly
+        this.logger.error(
+          'FB sync: zero live forms returned from the Facebook API — check access token, permissions, and page ID.',
+        );
+        return;
+      }
+
       let importedCount = 0;
-      for (const form of forms || []) {
-        // Skip DB-only pseudo forms (id: 'db_<name>') — they have no Facebook form to fetch from
-        if (!form.id || String(form.id).startsWith('db_')) continue;
-        if (form.status !== 'ACTIVE') continue;
+      for (const form of liveForms) {
+        // Paused/archived forms can still hold unimported leads — only skip deleted ones.
+        // facebookLeadId dedup makes re-fetching cheap and idempotent.
+        if (form.status === 'DELETED') continue;
         try {
-          const leads = await this.crmService.importFacebookLeads(form.id, 500);
+          const leads = await this.crmService.importFacebookLeads(form.id, 10000);
           importedCount += leads.length;
         } catch (err) {
           // One failing form must not abort the sync of the remaining forms
           this.logger.error(`FB lead sync failed for form ${form.id} (${form.name})`, err as any);
         }
       }
-      if (importedCount > 0) {
-        this.logger.log(`Automated Facebook sync completed. Imported ${importedCount} new leads.`);
-      }
+      this.logger.log(`Automated Facebook sync completed. Forms checked: ${liveForms.length}, new leads imported: ${importedCount}.`);
     } catch (error) {
       this.logger.error('Failed to auto-sync Facebook leads', error as any);
     }

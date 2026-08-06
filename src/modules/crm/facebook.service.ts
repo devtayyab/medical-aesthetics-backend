@@ -232,11 +232,27 @@ export class FacebookService {
 
     const notes = extraFields.length > 0 ? extraFields.join('\n') : undefined;
 
+    // Tolerant field lookup: forms use custom/localized keys (VORNAME, e-mail,
+    // work_email, Telefonnummer, …) — match case-insensitively by substring so
+    // those leads don't land with empty name/email/phone and become unsearchable
+    const findField = (...needles: string[]): string | undefined => {
+      for (const needle of needles) {
+        for (const [key, value] of fieldMap) {
+          if (key.toLowerCase().includes(needle)) return value;
+        }
+      }
+      return undefined;
+    };
+
+    const fullName = fieldMap.get('full_name') || findField('full_name', 'name');
+    const firstName = fieldMap.get('first_name') || findField('first_name', 'vorname');
+    const lastName = fieldMap.get('last_name') || findField('last_name', 'nachname');
+
     return {
-      firstName: fieldMap.get('full_name')?.split(' ')[0] || fieldMap.get('first_name'),
-      lastName: fieldMap.get('full_name')?.split(' ').slice(1).join(' ') || fieldMap.get('last_name'),
-      email: fieldMap.get('email'),
-      phone: fieldMap.get('phone_number') || fieldMap.get('phone'),
+      firstName: firstName || fullName?.split(' ')[0],
+      lastName: lastName || fullName?.split(' ').slice(1).join(' '),
+      email: fieldMap.get('email') || findField('email', 'e-mail', 'mail'),
+      phone: fieldMap.get('phone_number') || fieldMap.get('phone') || findField('phone', 'telefon', 'mobil', 'handy'),
       facebookLeadId: leadData.id,
       facebookFormId: leadData.form_id,
       facebookCampaignId: leadData.campaign_id,
@@ -310,6 +326,53 @@ export class FacebookService {
     }
   }
 
+  /**
+   * Diagnose whether the app is subscribed to the page's leadgen webhook —
+   * without a subscription the webhook path delivers zero leads and everything
+   * rests on the 30-min cron. Pass subscribe=true to (re)subscribe.
+   */
+  async checkWebhookSubscription(subscribe: boolean = false): Promise<{
+    pageId: string;
+    subscribed: boolean;
+    subscribedFields: string[];
+    repaired?: boolean;
+    error?: string;
+  }> {
+    const creds = await this.getFacebookCredentials();
+    const pageId = creds.pageId;
+    try {
+      // Prefer the page access token if one is stored (required for subscribed_apps)
+      let accessToken = creds.accessToken;
+      try {
+        const rows = await this.entityManager.query(
+          `SELECT value FROM platform_settings WHERE key = 'facebook_page_access_token'`
+        );
+        if (rows?.[0]?.value) accessToken = rows[0].value;
+      } catch { /* fall back to the default token */ }
+
+      const res = await this.axiosInstance.get(`/${pageId}/subscribed_apps`, {
+        params: { access_token: accessToken },
+      });
+      const apps = res.data?.data || [];
+      const fields: string[] = apps.flatMap((a: any) => a.subscribed_fields || []);
+      const subscribed = fields.includes('leadgen');
+
+      if (!subscribed && subscribe) {
+        await this.axiosInstance.post(`/${pageId}/subscribed_apps`, null, {
+          params: { access_token: accessToken, subscribed_fields: 'leadgen' },
+        });
+        return { pageId, subscribed: true, subscribedFields: ['leadgen'], repaired: true };
+      }
+
+      return { pageId, subscribed, subscribedFields: fields };
+    } catch (error) {
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.error?.message || error.message
+        : error.message;
+      return { pageId, subscribed: false, subscribedFields: [], error: message };
+    }
+  }
+
   async getForms(pageId?: string): Promise<any[]> {
     const creds = await this.getFacebookCredentials();
     if (!creds.accessToken || creds.accessToken === 'MOCK_TOKEN' || creds.accessToken === 'your-facebook-access-token') {
@@ -320,25 +383,26 @@ export class FacebookService {
       ];
     }
 
-    // Load page ID from DB settings if not provided
+    // Load page settings from DB. The page access token must be used whenever
+    // available (page tokens carry the leadgen permissions), regardless of
+    // whether the caller passed an explicit pageId.
     let targetPageId = pageId;
-    if (!targetPageId) {
-      try {
-        const dbSettings = await this.entityManager.query(
-          `SELECT key, value FROM platform_settings WHERE key IN ('facebook_page_id', 'facebook_page_access_token')`
-        );
-        const settingsMap: Record<string, any> = {};
-        for (const row of dbSettings) {
-          settingsMap[row.key] = row.value;
-        }
-        targetPageId = settingsMap['facebook_page_id'] || creds.pageId || process.env.FACEBOOK_PAGE_ID || '100432975354813';
-        // If a page-specific access token exists, use it (page tokens have leadgen permissions)
-        if (settingsMap['facebook_page_access_token']) {
-          creds.accessToken = settingsMap['facebook_page_access_token'];
-        }
-      } catch (err) {
-        this.logger.warn('Could not load facebook_page_id from DB settings');
+    try {
+      const dbSettings = await this.entityManager.query(
+        `SELECT key, value FROM platform_settings WHERE key IN ('facebook_page_id', 'facebook_page_access_token')`
+      );
+      const settingsMap: Record<string, any> = {};
+      for (const row of dbSettings) {
+        settingsMap[row.key] = row.value;
       }
+      if (settingsMap['facebook_page_access_token']) {
+        creds.accessToken = settingsMap['facebook_page_access_token'];
+      }
+      if (!targetPageId) {
+        targetPageId = settingsMap['facebook_page_id'] || creds.pageId || process.env.FACEBOOK_PAGE_ID || '100432975354813';
+      }
+    } catch (err) {
+      this.logger.warn('Could not load facebook page settings from DB');
     }
 
     targetPageId = targetPageId || creds.pageId || process.env.FACEBOOK_PAGE_ID || '100432975354813';

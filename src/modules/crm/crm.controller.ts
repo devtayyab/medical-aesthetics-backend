@@ -761,6 +761,14 @@ export class CrmController {
     return this.crmService.testFacebookConnection();
   }
 
+  @Get('facebook/webhook-subscription')
+  @ApiOperation({ summary: 'Check (and optionally repair) the leadgen webhook subscription for the page' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  checkWebhookSubscription(@Query('subscribe') subscribe?: string) {
+    return this.crmService.checkFacebookWebhookSubscription(subscribe === 'true');
+  }
+
   @Post('customers/:id/reassign')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)
