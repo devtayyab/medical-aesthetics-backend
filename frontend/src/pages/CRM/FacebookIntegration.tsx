@@ -261,8 +261,16 @@ export const FacebookIntegration: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           {form.leads_count !== undefined && (
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                              {form.leads_count} leads
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full" title="Total leads on Facebook">
+                              {form.leads_count} on FB
+                            </span>
+                          )}
+                          {form.imported_count !== undefined && (
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full ${Number(form.imported_count) >= Number(form.leads_count || 0) ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
+                              title={Number(form.imported_count) >= Number(form.leads_count || 0) ? 'All leads imported into the CRM' : 'Some Facebook leads are not in the CRM yet — click Import'}
+                            >
+                              {form.imported_count} imported
                             </span>
                           )}
                           <span className={`text-xs px-2 py-0.5 rounded-full ${form.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>

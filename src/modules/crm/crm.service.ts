@@ -2694,7 +2694,8 @@ export class CrmService implements OnModuleInit {
 
     // Combine them, preferring real API data but enriching with DB counts
     const processedForms = (fbForms || []).map(f => {
-      const dbStat = dbFormStats.find(d => d.name === f.name);
+      // Leads store lastMetaFormName as "Facebook Form <id>" — match on either
+      const dbStat = dbFormStats.find(d => d.name === f.name || d.name === `Facebook Form ${f.id}`);
       return {
         ...f,
         // Keep the real Facebook leads_count (including a genuine 0);
