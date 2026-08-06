@@ -187,9 +187,9 @@ export const BlogManagement: React.FC = () => {
  <div className="size-10 rounded-lg overflow-hidden mr-3 bg-gray-50 flex-shrink-0">
  {post.imageUrl ? (
  <img 
- src={getImageUrl(post.imageUrl)} 
- alt="" 
- className="w-full h-full object-cover"
+ src={getImageUrl(post.imageUrl)}
+ alt={post.title || 'Blog post thumbnail'}
+ className="w-full h-full object-contain"
  />
  ) : (
  <div className="w-full h-full flex items-center justify-center text-blue-600 bg-blue-50">

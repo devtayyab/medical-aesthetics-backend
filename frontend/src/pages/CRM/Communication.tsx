@@ -9,6 +9,7 @@ import {
 } from"lucide-react";
 import { motion, AnimatePresence } from"framer-motion";
 import { css } from"@emotion/css";
+import toast from"react-hot-toast";
 
 import { fetchCommunicationHistory } from"@/store/slices/crmSlice";
 import { CommunicationForm } from"@/components/organisms/CommunicationForm/CommunicationForm";
@@ -193,7 +194,7 @@ export const Communication: React.FC = () => {
  await fetchContacts(); // Refresh list to see them as Customer
  } catch (err) {
  console.error("Conversion failed:", err);
- alert("Failed to convert lead. Please check network logs.");
+ toast.error("Failed to convert lead. Please check network logs.");
  }
  };
 
@@ -212,7 +213,7 @@ export const Communication: React.FC = () => {
  setPushData({ title: '', message: '' });
  } catch (err) {
  console.error("Push failed:", err);
- alert("Failed to deliver notification. Check console.");
+ toast.error("Failed to deliver notification. Check console.");
  } finally {
  setIsPushing(false);
  }

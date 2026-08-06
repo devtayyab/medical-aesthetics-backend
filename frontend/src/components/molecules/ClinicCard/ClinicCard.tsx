@@ -98,12 +98,13 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
  {/* Left: Image Segment (Always Visible) */}
  <div 
  onClick={handleClick}
- className={`relative cursor-pointer transition-all duration-500 overflow-hidden ${isExpanded || isMapExpanded ? 'w-full lg:w-[35%] h-[300px] lg:h-[480px]' : 'w-full h-[400px] lg:h-[480px]'}`}
+ className={`relative cursor-pointer transition-all duration-500 overflow-hidden bg-gray-100 ${isExpanded || isMapExpanded ? 'w-full lg:w-[35%] h-[300px] lg:h-[480px]' : 'w-full h-[400px] lg:h-[480px]'}`}
  >
  <img
  src={imageUrl}
  alt={clinic.name}
- className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+ onError={(e) => { e.currentTarget.style.display = 'none'; }}
+ className="w-full h-full object-contain transition-transform duration-700 hover:scale-110"
  />
  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
  

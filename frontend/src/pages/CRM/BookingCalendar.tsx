@@ -38,7 +38,7 @@ const statusLabels: Record<string, { label: string, color: string, icon: any }> 
 
 export const BookingCalendar: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
- const { appointments } = useSelector((state: RootState) => state.booking);
+ const { appointments, isLoading } = useSelector((state: RootState) => state.booking);
  const { salespersons } = useSelector((state: RootState) => state.crm);
  const [viewDate, setViewDate] = useState(new Date());
  const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
@@ -139,7 +139,12 @@ export const BookingCalendar: React.FC = () => {
  </div>
 
  {/* Calendar Multi-View Grid */}
- <div className="flex-1 overflow-auto flex scrollbar-hide">
+ <div className="flex-1 overflow-auto flex scrollbar-hide relative">
+ {isLoading && (
+ <div className="absolute inset-0 z-40 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
+ <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+ </div>
+ )}
  {/* Time Strip */}
  <div className="w-16 flex-shrink-0 border-r border-gray-100 bg-gray-50/50 pt-10 sticky left-0 z-20">
  {hours.map(hour => (

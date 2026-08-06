@@ -86,7 +86,21 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  const [isDragging, setIsDragging] = useState(false);
  const [importLoading, setImportLoading] = useState(false);
  const [importResult, setImportResult] = useState<{ success: number; errors: { row: number; message: string }[] } | null>(null);
- const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const bottomScrollRef = useRef<HTMLDivElement>(null);
+
+  const handleTopScroll = () => {
+    if (topScrollRef.current && bottomScrollRef.current) {
+      bottomScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+  };
+
+  const handleBottomScroll = () => {
+    if (topScrollRef.current && bottomScrollRef.current) {
+      topScrollRef.current.scrollLeft = bottomScrollRef.current.scrollLeft;
+    }
+  };
 
  // Facebook Form Schedule State
  const [showFormScheduleModal, setShowFormScheduleModal] = useState(false);
@@ -151,13 +165,20 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  }, [forceShowCreateForm, onFormShown]);
 
  useEffect(() => {
- // Set default status filter to 'new' for Leads page
- dispatch(setLeadFilters({ ...leadFilters, status: 'new' }));
+ // No forced default status filter — hiding non-'new' leads made users think leads were missing
  dispatch(fetchSalespersons());
  }, [dispatch]);
 
  useEffect(() => {
  dispatch(fetchLeads(leadFilters));
+ }, [dispatch, leadFilters]);
+
+ // Refetch when the tab regains focus so leads imported by the background
+ // Facebook sync (or another user) show up without a manual reload
+ useEffect(() => {
+ const onFocus = () => dispatch(fetchLeads(leadFilters));
+ window.addEventListener('focus', onFocus);
+ return () => window.removeEventListener('focus', onFocus);
  }, [dispatch, leadFilters]);
 
  // Handlers
@@ -882,7 +903,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  )}
 
  {/* Table Section */}
- <Card className="border-none shadow-md overflow-hidden bg-white rounded-2xl">
+ <Card className="border-none shadow-md overflow-visible bg-white rounded-2xl">
  <CardContent className="p-0">
  {isLoading ? (
  <div className="p-8 text-center text-xs text-gray-500">Loading leads...</div>
@@ -899,76 +920,99 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  const totalPages = Math.ceil(leads.length / leadsPerPage);
 
  return (
- <div className="flex flex-col">
- <Table className="min-w-full">
- <TableHeader className="bg-gray-50/50">
- <TableRow className="h-10">
- <TableHead className="w-[40px] px-2 text-center">
- <input
- type="checkbox"
- checked={selectedLeads.length > 0 && currentLeads.every(l => selectedLeads.includes(l.id))}
- onChange={(e) => {
- const currentPageIds = currentLeads.map(l => l.id);
- if (e.target.checked) {
- setSelectedLeads([...new Set([...selectedLeads, ...currentPageIds])]);
- } else {
- setSelectedLeads(selectedLeads.filter(id => !currentPageIds.includes(id)));
- }
- }}
- className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
- />
- </TableHead>
- <TableHead className="w-[130px] px-2">Lead Name</TableHead>
- <TableHead className="w-[160px] px-2">Contact Info</TableHead>
- <TableHead className="w-[100px] px-2">Assigned To</TableHead>
- <TableHead className="w-[80px] px-2 text-center">Status</TableHead>
- <TableHead className="w-[100px] px-2">Source</TableHead>
- <TableHead className="w-[120px] px-2 text-emerald-600 bg-emerald-50/50">Last Form</TableHead>
- <TableHead className="w-[85px] px-2">Contacted</TableHead>
- <TableHead className="w-[85px] px-2">Added</TableHead>
- <TableHead className="text-right px-2">Actions</TableHead>
- </TableRow>
- </TableHeader>
- <TableBody>
- {currentLeads.map((lead) => (
- <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0 h-14">
- <TableCell className="py-2 px-2 text-center">
- <input
- type="checkbox"
- checked={selectedLeads.includes(lead.id)}
- onChange={(e) => {
- setSelectedLeads(e.target.checked
- ? [...selectedLeads, lead.id]
- : selectedLeads.filter(id => id !== lead.id)
- );
- }}
- className="rounded border-gray-300 text-primary focus:ring-primary h-3.5 w-3.5 transition-all"
- />
- </TableCell>
- <TableCell className="py-2 px-2">
- <div className="flex items-center gap-2">
- <div className="w-7 h-7 shrink-0 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-[10px] uppercase shadow-sm">
- {lead.firstName[0]}{lead.lastName[0]}
- </div>
- <div className="flex-1 min-w-0 flex items-center gap-2">
- <div className="truncate max-w-[90px]">
- <div className="font-bold text-gray-900 text-[11px] truncate" title={`${lead.firstName} ${lead.lastName}`}>{lead.firstName} {lead.lastName}</div>
- <div className="text-[8px] text-gray-400 font-mono tracking-tighter uppercase">
- {lead.id.slice(0, 6)}
- </div>
- </div>
- <Button
- size="xs"
- variant="white"
- onClick={(e) => {
- e.stopPropagation();
- handleEditLead(lead);
- }}
- className="h-6 w-6 p-0 bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all shadow-sm shrink-0"
- title="Edit Lead"
- >
- <Edit className="h-3 w-3" />
- </Button>
+  <div className="flex flex-col w-full">
+  {/* TOP HORIZONTAL SCROLLBAR */}
+  <div 
+  ref={topScrollRef} 
+  onScroll={handleTopScroll} 
+  className="w-full overflow-x-auto visible-scrollbar bg-slate-100/80 p-1.5 rounded-t-2xl border-b border-slate-200"
+  >
+  <div className="h-1.5 min-w-[1360px]" />
+  </div>
+
+  <Table 
+  containerRef={bottomScrollRef}
+  onContainerScroll={handleBottomScroll}
+  className="min-w-[1360px] w-full"
+  >
+  <TableHeader className="bg-gray-50/50">
+  <TableRow className="h-10">
+  <TableHead className="w-[40px] min-w-[40px] px-2 text-center">
+  <input
+  type="checkbox"
+  checked={selectedLeads.length > 0 && currentLeads.every(l => selectedLeads.includes(l.id))}
+  onChange={(e) => {
+  const currentPageIds = currentLeads.map(l => l.id);
+  if (e.target.checked) {
+  setSelectedLeads([...new Set([...selectedLeads, ...currentPageIds])]);
+  } else {
+  setSelectedLeads(selectedLeads.filter(id => !currentPageIds.includes(id)));
+  }
+  }}
+  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+  />
+  </TableHead>
+  <TableHead className="w-[160px] min-w-[160px] px-2">Lead Name</TableHead>
+  <TableHead className="w-[200px] min-w-[200px] px-2">Contact Info</TableHead>
+  <TableHead className="w-[140px] min-w-[140px] px-2">Assigned To</TableHead>
+  <TableHead className="w-[100px] min-w-[100px] px-2 text-center">Status</TableHead>
+  <TableHead className="w-[140px] min-w-[140px] px-2">Source</TableHead>
+  <TableHead className="w-[170px] min-w-[170px] px-2 text-emerald-600 bg-emerald-50/50">Last Form</TableHead>
+  <TableHead className="w-[120px] min-w-[120px] px-2">Contacted</TableHead>
+  <TableHead className="w-[120px] min-w-[120px] px-2">Added</TableHead>
+  <TableHead className="w-[140px] min-w-[140px] text-right px-2">Actions</TableHead>
+  </TableRow>
+  </TableHeader>
+  <TableBody>
+  {currentLeads.map((lead) => (
+  <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0 h-14">
+  <TableCell className="py-2 px-2 text-center">
+  <input
+  type="checkbox"
+  checked={selectedLeads.includes(lead.id)}
+  onChange={(e) => {
+  setSelectedLeads(e.target.checked
+  ? [...selectedLeads, lead.id]
+  : selectedLeads.filter(id => id !== lead.id)
+  );
+  }}
+  className="rounded border-gray-300 text-primary focus:ring-primary h-3.5 w-3.5 transition-all"
+  />
+  </TableCell>
+  <TableCell className="py-2 px-2">
+  <div className="flex items-center gap-2">
+  <div 
+  onClick={() => onViewLead ? onViewLead(lead) : navigate(`/crm/customer/${lead.id}`)}
+  className="w-7 h-7 shrink-0 rounded-lg bg-[#CBFF38]/20 border border-[#CBFF38]/50 text-slate-900 flex items-center justify-center font-black text-[10px] uppercase shadow-sm cursor-pointer hover:scale-105 transition-all"
+  title="View Lead Details"
+  >
+  {lead.firstName[0]}{lead.lastName[0]}
+  </div>
+  <div className="flex-1 min-w-0 flex items-center gap-2">
+  <div 
+  onClick={() => onViewLead ? onViewLead(lead) : navigate(`/crm/customer/${lead.id}`)}
+  className="truncate max-w-[110px] cursor-pointer group/leadname"
+  title={`View Lead: ${lead.firstName} ${lead.lastName}`}
+  >
+  <div className="font-bold text-gray-900 text-[11px] truncate group-hover/leadname:text-blue-600 group-hover/leadname:underline">
+  {lead.firstName} {lead.lastName}
+  </div>
+  <div className="text-[8px] text-gray-400 font-mono tracking-tighter uppercase group-hover/leadname:text-blue-500">
+  {lead.id.slice(0, 6)}
+  </div>
+  </div>
+  <Button
+  size="xs"
+  variant="white"
+  onClick={(e) => {
+  e.stopPropagation();
+  handleEditLead(lead);
+  }}
+  className="h-6 w-6 p-0 bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all shadow-sm shrink-0 ml-auto"
+  title="Edit Lead"
+  >
+  <Edit className="h-3 w-3" />
+  </Button>
  </div>
  </div>
  </TableCell>

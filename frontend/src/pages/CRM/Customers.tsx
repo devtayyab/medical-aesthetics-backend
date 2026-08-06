@@ -66,13 +66,13 @@ export const Customers: React.FC = () => {
  const [formData, setFormData] = useState(initialFormState);
 
  useEffect(() => {
- // Default to 'converted' for Customers page
- dispatch(setLeadFilters({ ...leadFilters, status: 'converted' }));
  dispatch(fetchSalespersons());
  }, [dispatch]);
 
  useEffect(() => {
- dispatch(fetchLeads(leadFilters));
+ // Keep the 'converted' constraint local to this page instead of writing it
+ // into the shared leadFilters (which would leak into the Leads page)
+ dispatch(fetchLeads({ ...leadFilters, status: 'converted' }));
  }, [dispatch, leadFilters]);
 
  // Handlers

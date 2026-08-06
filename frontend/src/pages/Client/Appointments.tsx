@@ -10,6 +10,7 @@ import {
 import { fetchUserAppointments, cancelAppointment } from"@/store/slices/bookingSlice";
 import { bookingAPI } from"@/services/api";
 import { motion, AnimatePresence } from"framer-motion";
+import toast from"react-hot-toast";
 
 import { RootState, AppDispatch } from"@/store";
 import { Appointment, AppointmentStatus } from"@/types";
@@ -147,8 +148,14 @@ export const Appointments: React.FC = () => {
 
  const handleCancelClick = async (apt: Appointment) => {
  if (window.confirm("Are you sure you want to cancel this reservation?")) {
- await dispatch(cancelAppointment(apt.id));
+ try {
+ await dispatch(cancelAppointment(apt.id)).unwrap();
+ toast.success("Appointment cancelled");
+ } catch (err: any) {
+ toast.error(err?.message ||"Could not cancel this appointment. Please try again or contact the clinic.");
+ } finally {
  dispatch(fetchUserAppointments());
+ }
  }
  };
 

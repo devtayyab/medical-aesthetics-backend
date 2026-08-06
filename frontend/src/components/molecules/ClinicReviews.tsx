@@ -393,7 +393,7 @@ className="w-full h-[300px] object-cover rounded-lg"
  <img
  src={ClinicImg1}
  alt={clinic.name}
- className="w-full h-[200px] object-cover"
+ className="w-full h-[200px] object-contain bg-gray-50"
  />
  <div className="p-4">
  <h3 className="text-lg font-semibold text-gray-800">

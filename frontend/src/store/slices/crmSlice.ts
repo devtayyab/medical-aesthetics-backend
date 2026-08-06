@@ -74,6 +74,7 @@ export interface CrmState {
  diaryActivities: any[];
  // UI State
  isLoading: boolean;
+ pendingCount?: number;
  error: string | null;
  lastUpdated: string | null;
 }
@@ -84,6 +85,7 @@ const initialState: CrmState = {
  leadFilters: {},
  actions: [],
  isLoading: false,
+ pendingCount: 0,
  error: null,
  customerRecord: null,
  customerFilters: {},
@@ -810,10 +812,13 @@ const crmSlice = createSlice({
  state.diaryActivities = action.payload;
  })
 
- // Generic loading state handlers
+ // Generic loading state handlers. A counter tracks concurrent thunks so the
+ // first one to finish doesn't clear isLoading (hiding skeletons / flashing
+ // empty states) while others are still in flight.
  .addMatcher(
  (action) => action.type.startsWith('crm/') && action.type.endsWith('/pending'),
  (state) => {
+ state.pendingCount = (state.pendingCount || 0) + 1;
  state.isLoading = true;
  state.error = null;
  }
@@ -821,15 +826,16 @@ const crmSlice = createSlice({
  .addMatcher(
  (action) => action.type.startsWith('crm/') && action.type.endsWith('/rejected'),
  (state, action: Action & { error: { message: string } }) => {
- state.isLoading = false;
+ state.pendingCount = Math.max(0, (state.pendingCount || 0) - 1);
+ state.isLoading = state.pendingCount > 0;
  state.error = action.error?.message || 'An error occurred';
  }
  )
  .addMatcher(
  (action) => action.type.startsWith('crm/') && action.type.endsWith('/fulfilled'),
  (state) => {
- state.isLoading = false;
- state.error = null;
+ state.pendingCount = Math.max(0, (state.pendingCount || 0) - 1);
+ state.isLoading = state.pendingCount > 0;
  state.lastUpdated = new Date().toISOString();
  }
  );

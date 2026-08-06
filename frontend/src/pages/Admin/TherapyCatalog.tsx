@@ -20,6 +20,8 @@ import {
 import { format } from"date-fns";
 import { Button } from"@/components/atoms/Button/Button";
 import ImageUpload from"@/components/atoms/ImageUpload";
+import { toast } from"react-hot-toast";
+import { invalidateCategoryTree } from"@/hooks/useCategoryTree";
 
 const getImageUrl = (path: string) => {
  if (!path) return '';
@@ -130,8 +132,18 @@ export const TherapyCatalog: React.FC = () => {
  fetchData();
  }, []);
 
+ const [isSaving, setIsSaving] = useState(false);
+
+ const resetForms = () => {
+ setEditingItem(null);
+ setTreatmentForm({ name:"", categoryId:"", shortDescription:"", fullDescription:"", imageUrl:"", isFeatured: false, isActive: true, clinicIds: [] });
+ setCategoryForm({ name:"", description:"", icon:"", parentId:"", isActive: true });
+ };
+
  const handleCreateTreatment = async (e: React.FormEvent) => {
  e.preventDefault();
+ if (isSaving) return;
+ setIsSaving(true);
  try {
  if (editingItem) {
  await adminAPI.updateMasterTreatment(editingItem.id, treatmentForm);
@@ -139,14 +151,21 @@ export const TherapyCatalog: React.FC = () => {
  await adminAPI.createMasterTreatment(treatmentForm);
  }
  setIsTreatmentModalOpen(false);
+ resetForms();
+ toast.success(editingItem ?"Therapy updated" :"Therapy created");
+ invalidateCategoryTree();
  fetchData();
  } catch (err: any) {
- alert(err.response?.data?.message ||"Operation failed");
+ toast.error(err.response?.data?.message ||"Operation failed");
+ } finally {
+ setIsSaving(false);
  }
  };
 
  const handleCreateCategory = async (e: React.FormEvent) => {
  e.preventDefault();
+ if (isSaving) return;
+ setIsSaving(true);
  try {
  // Send parentId only when a parent is chosen; null on edit clears it to top-level.
  const payload: any = { ...categoryForm };
@@ -157,9 +176,14 @@ export const TherapyCatalog: React.FC = () => {
  await adminAPI.createMasterCategory(payload);
  }
  setIsCategoryModalOpen(false);
+ resetForms();
+ toast.success(editingItem ?"Category updated" :"Category created");
+ invalidateCategoryTree();
  fetchData();
  } catch (err: any) {
- alert(err.response?.data?.message ||"Operation failed");
+ toast.error(err.response?.data?.message ||"Operation failed");
+ } finally {
+ setIsSaving(false);
  }
  };
 
@@ -167,9 +191,11 @@ export const TherapyCatalog: React.FC = () => {
  if (!confirm("Are you sure you want to delete this therapy? If it has historical booking records, it will be safely archived (deactivated) instead of hard-deleted to preserve history.")) return;
  try {
  await adminAPI.deleteMasterTreatment(id);
+ toast.success("Therapy deleted");
+ invalidateCategoryTree();
  fetchData();
  } catch (err: any) {
- alert(err.response?.data?.message ||"Failed to delete");
+ toast.error(err.response?.data?.message ||"Failed to delete");
  }
  };
 
@@ -179,11 +205,14 @@ export const TherapyCatalog: React.FC = () => {
  const res = await adminAPI.deleteMasterCategory(cat.id);
  const unmapped = res.data?.unmappedTreatments ?? 0;
  if (unmapped > 0) {
- alert(`Category deleted. ${unmapped} treatment(s) were unmapped — re-assign them to a category from the Treatments tab.`);
+ toast(`Category deleted. ${unmapped} treatment(s) were unmapped — re-assign them from the Treatments tab.`, { icon: 'ℹ️' });
+ } else {
+ toast.success("Category deleted");
  }
+ invalidateCategoryTree();
  fetchData();
  } catch (err: any) {
- alert(err.response?.data?.message ||"Failed to delete category");
+ toast.error(err.response?.data?.message ||"Failed to delete category");
  }
  };
 
@@ -337,7 +366,7 @@ export const TherapyCatalog: React.FC = () => {
  <div className="flex justify-between items-start mb-6">
  <div className="flex items-center gap-3">
  <div className="size-12 bg-gray-50 text-gray-800 rounded-2xl flex items-center justify-center border border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black transition-all overflow-hidden">
- {t.imageUrl ? <img src={getImageUrl(t.imageUrl)} className="w-full h-full object-cover" /> : <ImageIcon size={20} />}
+ {t.imageUrl ? <img src={getImageUrl(t.imageUrl)} alt={t.name} className="w-full h-full object-contain" /> : <ImageIcon size={20} />}
  </div>
  <div>
  <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{t.categoryRef?.name || t.category}</span>
@@ -444,7 +473,7 @@ export const TherapyCatalog: React.FC = () => {
 
  <div className="md:w-64 space-y-4">
  <div className="size-24 bg-gray-50 rounded-3xl flex items-center justify-center border border-gray-100 shadow-inner overflow-hidden">
- {item.imageUrl ? <img src={getImageUrl(item.imageUrl)} className="w-full h-full object-cover" /> : <ImageIcon size={32} className="text-gray-300" />}
+ {item.imageUrl ? <img src={getImageUrl(item.imageUrl)} alt={item.name} className="w-full h-full object-contain" /> : <ImageIcon size={32} className="text-gray-300" />}
  </div>
  <div>
  <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Suggested Category</p>
@@ -620,7 +649,7 @@ export const TherapyCatalog: React.FC = () => {
 
  <div className="flex gap-4 pt-6">
  <button type="button" onClick={() => setIsTreatmentModalOpen(false)} className="flex-1 h-14 bg-gray-50 text-gray-500 font-black uppercase text-xs tracking-widest rounded-2xl hover:bg-gray-100">Cancel</button>
- <button type="submit" className="flex-1 h-14 bg-[#CBFF38] text-black font-black uppercase text-xs tracking-widest rounded-2xl hover:bg-lime-400">Save Therapy</button>
+ <button type="submit" disabled={isSaving} className="flex-1 h-14 bg-[#CBFF38] text-black font-black uppercase text-xs tracking-widest rounded-2xl hover:bg-lime-400 disabled:opacity-60 disabled:cursor-not-allowed">{isSaving ?"Saving…" :"Save Therapy"}</button>
  </div>
  </form>
  </div>
@@ -669,8 +698,8 @@ export const TherapyCatalog: React.FC = () => {
  onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })}
  />
  </div>
- <button type="submit" className="w-full h-14 bg-[#0B1120] text-white font-black uppercase text-xs tracking-widest rounded-2xl hover:bg-gray-800">
- {editingItem ?"Update Category" :"Create Category"}
+ <button type="submit" disabled={isSaving} className="w-full h-14 bg-[#0B1120] text-white font-black uppercase text-xs tracking-widest rounded-2xl hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed">
+ {isSaving ?"Saving…" : editingItem ?"Update Category" :"Create Category"}
  </button>
  </form>
  </div>

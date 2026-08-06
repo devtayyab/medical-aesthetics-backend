@@ -109,11 +109,6 @@ export const Search: React.FC = () => {
  return () => window.removeEventListener("scroll", handleScroll);
  }, []);
 
- const filterPill = (isActive: boolean) => `
- px-5 py-2.5 rounded-full border text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 transition-all duration-300
- ${isActive ? 'bg-[#121212] text-[#CBFF38] border-black shadow-lg scale-105' : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300 hover:bg-gray-50'}
- `;
-
  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('treatments');
 
  // Search states
@@ -122,6 +117,16 @@ export const Search: React.FC = () => {
  const [category, setCategory] = useState<string | undefined>(searchParams.get("category") || undefined);
  const [searchDate, setSearchDate] = useState<string | null>(searchParams.get("search_date") || null);
  const [searchTimeWindow, setSearchTimeWindow] = useState<string | null>(searchParams.get("search_time_window") || null);
+
+ // Keep filter state in sync with the URL: header/home/treatments links navigate to
+ // /search?... while this page is already mounted, so state must follow searchParams.
+ useEffect(() => {
+ setQuery(searchParams.get("query") || searchParams.get("q") ||"");
+ setLocation(searchParams.get("location") ||"");
+ setCategory(searchParams.get("category") || undefined);
+ setSearchDate(searchParams.get("search_date") || null);
+ setSearchTimeWindow(searchParams.get("search_time_window") || null);
+ }, [searchParams]);
 
  // Filter states
  const [sortBy, setSortBy] = useState<'recommended' | 'distance' | 'price-asc' | 'price-desc' | 'rating'>('recommended');
@@ -139,6 +144,15 @@ export const Search: React.FC = () => {
  );
  }
  }, []);
+
+ // Sync states whenever searchParams URL parameter changes (e.g. clicking category link in navbar)
+ useEffect(() => {
+    setQuery(searchParams.get("query") || searchParams.get("q") || "");
+    setLocation(searchParams.get("location") || "");
+    setCategory(searchParams.get("category") || undefined);
+    setSearchDate(searchParams.get("search_date") || null);
+    setSearchTimeWindow(searchParams.get("search_time_window") || null);
+ }, [searchParams]);
 
  useEffect(() => {
  dispatch(
@@ -158,16 +172,21 @@ export const Search: React.FC = () => {
  }, [dispatch, query, location, category, searchDate, searchTimeWindow, userCoords, sortBy, ratingFilter, salonsFilter]);
 
  const handleSearch = (filters: any) => {
- if (filters.query !== undefined) setQuery(filters.query);
- if (filters.location !== undefined) setLocation(filters.location);
- if (filters.category !== undefined) setCategory(filters.category);
- if (filters.search_date !== undefined) setSearchDate(filters.search_date);
- if (filters.search_time_window !== undefined) setSearchTimeWindow(filters.search_time_window);
- 
+ // Merge with current state so filters the SearchBar doesn't manage
+ // (category, location) survive a search instead of being dropped from the URL
+ const merged: Record<string, any> = {
+ query,
+ location,
+ category,
+ search_date: searchDate,
+ search_time_window: searchTimeWindow,
+ ...filters,
+ };
  const params = new URLSearchParams();
- Object.keys(filters).forEach(key => {
- if (filters[key]) params.set(key === 'query' ? 'q' : key, filters[key]);
+ Object.keys(merged).forEach(key => {
+ if (merged[key]) params.set(key === 'query' ? 'q' : key, merged[key]);
  });
+ // State syncs from searchParams via the effect above
  setSearchParams(params);
  };
 
@@ -214,7 +233,7 @@ export const Search: React.FC = () => {
  {!isScrolled && <div className="h-1 w-20 bg-[#CBFF38] mx-auto lg:mx-0 mb-8 rounded-full hidden sm:block"></div>}
  <div className={`w-full transition-all ${isScrolled ? 'max-w-[150px] sm:max-w-md' : 'max-w-2xl mx-auto lg:mx-0'}`}>
  <SearchBar 
- initialFilters={{ query, location, category, search_date: searchDate }}
+ initialFilters={{ query, location, category, search_date: searchDate, search_time_window: searchTimeWindow }}
  onSearch={handleSearch}
  className={`transition-all duration-700 !max-w-none shadow-2xl ${isScrolled ? 'scale-90 origin-right' : ''}`}
  />

@@ -189,10 +189,10 @@ export const Blog: React.FC = () => {
  transition={{ delay: i * 0.05 }}
  >
  <Link to={`/blog/${encodeURIComponent(post.slug)}`} className={`${glassCard} group block h-full hover:border-[#CBFF38] transition-all`}>
- <div className="h-56 overflow-hidden relative">
+ <div className="h-56 overflow-hidden relative bg-gray-100">
  <img
  src={getImageUrl(post.imageUrl) || `https://placehold.co/600x400/1A1A1A/CBFF38?text=${encodeURIComponent(post.title.charAt(0))}`}
- className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+ className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-1000"
  alt={post.title}
  onError={(e) => { e.currentTarget.src = `https://placehold.co/600x400/1A1A1A/CBFF38?text=${encodeURIComponent(post.title.charAt(0))}` }}
  />

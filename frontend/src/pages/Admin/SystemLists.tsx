@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { List, Plus, Edit2, Trash2, Search, Filter, Stethoscope, Tag as TagIcon, Building, Loader2 } from 'lucide-react';
 import { adminSystemListsAPI } from '@/services/api';
 import { toast } from 'react-hot-toast';
+import { invalidateCategoryTree } from '@/hooks/useCategoryTree';
 
 interface Category {
  id: string;
@@ -33,13 +34,13 @@ export const SystemLists: React.FC = () => {
  const fetchData = async () => {
  try {
  setIsLoading(true);
- if (activeTab === 'categories') {
- const res = await adminSystemListsAPI.getCategories();
- setCategories(res.data);
- } else {
- const res = await adminSystemListsAPI.getTreatments();
- setTreatments(res.data);
- }
+ // Always refresh categories: the treatments modal needs an up-to-date category dropdown
+ const [catRes, trRes] = await Promise.all([
+ adminSystemListsAPI.getCategories(),
+ activeTab === 'treatments' ? adminSystemListsAPI.getTreatments() : Promise.resolve(null),
+ ]);
+ setCategories(catRes.data);
+ if (trRes) setTreatments(trRes.data);
  } catch (error) {
  toast.error('Failed to load data');
  } finally {
@@ -47,12 +48,16 @@ export const SystemLists: React.FC = () => {
  }
  };
 
+ const [isSaving, setIsSaving] = useState(false);
+
  const handleCreateOrUpdate = async (e: React.FormEvent) => {
  e.preventDefault();
+ if (isSaving) return;
  const formData = new FormData(e.target as HTMLFormElement);
  const data = Object.fromEntries(formData.entries());
 
  try {
+ setIsSaving(true);
  if (activeTab === 'categories') {
  if (editingItem) {
  await adminSystemListsAPI.updateCategory(editingItem.id, data);
@@ -72,9 +77,12 @@ export const SystemLists: React.FC = () => {
  }
  setIsModalOpen(false);
  setEditingItem(null);
+ invalidateCategoryTree();
  fetchData();
  } catch (error) {
  toast.error('Operation failed');
+ } finally {
+ setIsSaving(false);
  }
  };
 
@@ -83,8 +91,11 @@ export const SystemLists: React.FC = () => {
  try {
  if (activeTab === 'categories') {
  await adminSystemListsAPI.deleteCategory(id);
+ } else {
+ await adminSystemListsAPI.deleteTreatment(id);
  }
  toast.success('Deleted successfully');
+ invalidateCategoryTree();
  fetchData();
  } catch (error) {
  toast.error('Failed to delete. It might be in use.');
@@ -270,11 +281,12 @@ export const SystemLists: React.FC = () => {
  >
  Discard
  </button>
- <button 
+ <button
  type="submit"
- className="flex-1 px-6 py-4 bg-[#CBFF38] text-gray-900 font-extrabold rounded-2xl shadow-xl shadow-[#CBFF38]/30 hover:shadow-[#CBFF38]/50 hover:-translate-y-0.5 transition-all active:scale-95"
+ disabled={isSaving}
+ className="flex-1 px-6 py-4 bg-[#CBFF38] text-gray-900 font-extrabold rounded-2xl shadow-xl shadow-[#CBFF38]/30 hover:shadow-[#CBFF38]/50 hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
  >
- Save Global Record
+ {isSaving ? 'Saving…' : 'Save Global Record'}
  </button>
  </div>
  </form>

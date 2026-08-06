@@ -451,6 +451,12 @@ export class CrmService implements OnModuleInit {
         if (!leadgenId) continue;
 
         try {
+          // Skip if this Facebook lead was already ingested (webhook retries / overlap with cron sync)
+          const alreadyImported = await this.leadsRepository.findOne({
+            where: { facebookLeadId: leadgenId },
+            select: ['id'],
+          });
+          if (alreadyImported) continue;
           // Get full lead data from Facebook using the lead ID from the webhook
           const leadData = await this.facebookService.getLead(leadgenId);
           const parsedLead = this.facebookService.parseLeadData(leadData);
@@ -489,6 +495,13 @@ export class CrmService implements OnModuleInit {
       try {
         const parsedLead = this.facebookService.parseLeadData(leadData);
 
+        // Skip leads already imported (dedup on the Facebook lead ID, not name/email heuristics)
+        const alreadyImported = await this.leadsRepository.findOne({
+          where: { facebookLeadId: parsedLead.facebookLeadId },
+          select: ['id'],
+        });
+        if (alreadyImported) continue;
+
         // Use enhanced duplicate detection
         const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
           parsedLead.email,
@@ -498,7 +511,8 @@ export class CrmService implements OnModuleInit {
         );
 
         if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
-          await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, false);
+          const mergedLead = await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, false);
+          if (mergedLead) createdLeads.push(mergedLead);
         } else {
           const lead = await this.createLeadFromFacebook(parsedLead, leadData, false);
           createdLeads.push(lead);
@@ -612,7 +626,7 @@ export class CrmService implements OnModuleInit {
     parsedLead: ParsedFacebookLead,
     leadData: any,
     isWebhook: boolean = false
-  ): Promise<void> {
+  ): Promise<Lead | null> {
     // Get the customer record to find assigned salesperson
     const customerRecord = await this.customerRecordsRepository.findOne({
       where: { customerId: existingCustomer.id },
@@ -627,13 +641,54 @@ export class CrmService implements OnModuleInit {
     // or just rely on the new lead logic. Ah, wait. Over here we are merging with a User (Existing Customer).
     // The Lead table needs to be updated. Since it's a Customer, maybe there is a Lead associated?
     // Let's find an existing lead for this customer.
-    const existingLead = await this.leadsRepository.findOne({ where: { email: existingCustomer.email } });
+    let createdLeadRow: Lead | null = null;
+
+    // Guard against an undefined email: TypeORM drops undefined where-values,
+    // which would turn this into an unfiltered findOne returning an arbitrary lead
+    const existingLead = existingCustomer.email
+      ? await this.leadsRepository.findOne({ where: { email: existingCustomer.email } })
+      : null;
     if (existingLead) {
       await this.leadsRepository.update(existingLead.id, {
         lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
         lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
         lastContactedAt: new Date(),
+        facebookLeadId: existingLead.facebookLeadId || parsedLead.facebookLeadId,
       });
+    } else {
+      // No Lead row exists for this customer — create one so the submission is
+      // visible in the Leads list instead of only in the communication log.
+      // Non-fatal: a unique-email collision (duplicate matched on phone while the
+      // email belongs to another lead) must not abort the comm log/action below.
+      try {
+      const mergedLead: Lead = this.leadsRepository.create({
+        source: 'facebook_ads',
+        firstName: parsedLead.firstName || existingCustomer.firstName || '',
+        lastName: parsedLead.lastName || existingCustomer.lastName || '',
+        email: parsedLead.email || existingCustomer.email || '',
+        phone: parsedLead.phone || existingCustomer.phone,
+        facebookLeadId: parsedLead.facebookLeadId,
+        facebookFormId: parsedLead.facebookFormId,
+        facebookCampaignId: parsedLead.facebookCampaignId,
+        facebookAdSetId: parsedLead.facebookAdSetId,
+        facebookAdId: parsedLead.facebookAdId,
+        facebookLeadData: parsedLead.facebookLeadData,
+        notes: parsedLead.notes,
+        status: LeadStatus.CONTACTED,
+        lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
+        lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
+        lastContactedAt: new Date(),
+        metadata: {
+          importedFromFacebook: true,
+          fromWebhook: isWebhook,
+          existingCustomerId: existingCustomer.id,
+          mergedLead: true,
+        },
+      });
+      createdLeadRow = await this.leadsRepository.save(mergedLead);
+      } catch (err) {
+        this.logger.warn(`Could not create merged lead row for FB lead ${parsedLead.facebookLeadId}: ${err.message}`);
+      }
     }
 
     // Create a communication log entry for the Facebook form submission
@@ -678,6 +733,8 @@ export class CrmService implements OnModuleInit {
       facebookLead: parsedLead,
       action,
     });
+
+    return createdLeadRow;
   }
 
   private async createLeadFromFacebook(parsedLead: ParsedFacebookLead, leadData: any, isWebhook: boolean = false): Promise<Lead> {
@@ -2545,7 +2602,10 @@ export class CrmService implements OnModuleInit {
       const dbStat = dbFormStats.find(d => d.name === f.name);
       return {
         ...f,
-        leads_count: parseInt(dbStat?.count || '0')
+        // Keep the real Facebook leads_count (including a genuine 0);
+        // DB count is exposed separately as imported_count
+        leads_count: f.leads_count != null ? Number(f.leads_count) : parseInt(dbStat?.count || '0'),
+        imported_count: parseInt(dbStat?.count || '0'),
       };
     });
 
