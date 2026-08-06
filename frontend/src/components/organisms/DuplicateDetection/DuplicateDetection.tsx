@@ -20,6 +20,7 @@ import {
  mergeDuplicates
 } from '@/store/slices/crmSlice';
 import type { RootState, AppDispatch } from '@/store';
+import toast from 'react-hot-toast';
 import type { DuplicateCheckResult } from '@/types';
 
 interface DuplicateDetectionProps {
@@ -62,9 +63,11 @@ export const DuplicateDetection: React.FC<DuplicateDetectionProps> = ({
  targetId: targetCustomerId,
  sourceId: searchData.email // Using email as source identifier
  })).unwrap();
+ toast.success('Records merged');
  onClose?.();
- } catch (error) {
+ } catch (error: any) {
  console.error('Failed to merge duplicates:', error);
+ toast.error(error?.message || 'Merge failed — this feature requires backend support that is not yet available.');
  }
  };
 

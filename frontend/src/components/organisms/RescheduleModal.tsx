@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { X, Calendar, Clock, ArrowRight, CheckCircle2 } from "lucide-react";
 import { AppDispatch, RootState } from "@/store";
 import { fetchAvailability, rescheduleAppointment, fetchUserAppointments } from "@/store/slices/bookingSlice";
+import toast from "react-hot-toast";
 import { Appointment } from "@/types";
 
 interface RescheduleModalProps {
@@ -21,6 +22,7 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedSlot, setSelectedSlot] = useState<{ startTime: string; endTime: string } | null>(null);
   const [rescheduleNotes, setRescheduleNotes] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { availableSlots, isLoading, error: bookingError } = useSelector((state: RootState) => state.booking);
 
   useEffect(() => {
@@ -47,7 +49,8 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   };
 
   const handleConfirm = async () => {
-    if (!selectedSlot) return;
+    if (!selectedSlot || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await dispatch(
         rescheduleAppointment({
@@ -58,11 +61,13 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
         })
       ).unwrap();
       dispatch(fetchUserAppointments());
-      alert("Appointment rescheduled successfully!");
+      toast.success("Appointment rescheduled successfully!");
       onClose();
-    } catch (error) {
-      alert("Failed to reschedule appointment. Please try again.");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to reschedule appointment. Please try again.");
       console.error("Reschedule Error:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -362,29 +367,29 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
 
           <button
             onClick={handleConfirm}
-            disabled={!selectedSlot || isLoading}
+            disabled={!selectedSlot || isLoading || isSubmitting}
             style={{
               flex: 2,
               height: 52,
               borderRadius: 14,
               border: "none",
-              background: !selectedSlot || isLoading ? "#f1f5f9" : "#CBFF38",
+              background: !selectedSlot || isLoading || isSubmitting ? "#f1f5f9" : "#CBFF38",
               fontSize: 11,
               fontWeight: 900,
-              color: !selectedSlot || isLoading ? "#d1d5db" : "#000",
+              color: !selectedSlot || isLoading || isSubmitting ? "#d1d5db" : "#000",
               textTransform: "uppercase",
               letterSpacing: "0.15em",
-              cursor: !selectedSlot || isLoading ? "not-allowed" : "pointer",
+              cursor: !selectedSlot || isLoading || isSubmitting ? "not-allowed" : "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
               transition: "all 0.2s",
-              boxShadow: !selectedSlot || isLoading ? "none" : "0 8px 24px rgba(203,255,56,0.35)",
+              boxShadow: !selectedSlot || isLoading || isSubmitting ? "none" : "0 8px 24px rgba(203,255,56,0.35)",
             }}
           >
-            Confirm Slot
-            {selectedSlot && !isLoading && <ArrowRight size={14} />}
+            {isSubmitting ? "Rescheduling…" : "Confirm Slot"}
+            {selectedSlot && !isLoading && !isSubmitting && <ArrowRight size={14} />}
           </button>
         </div>
       </div>

@@ -53,7 +53,7 @@ export const Settings: React.FC = () => {
  const navigate = useNavigate();
 
  const dispatch = useDispatch<AppDispatch>();
- const { user } = useSelector((state: RootState) => state.auth);
+ const { user, isLoading: authLoading } = useSelector((state: RootState) => state.auth);
 
  const defaultSettings = {
  inspirationOffers: {
@@ -71,7 +71,9 @@ export const Settings: React.FC = () => {
  const [loaded, setLoaded] = useState(false);
 
  useEffect(() => {
- if (user) {
+ // Consider loading finished once auth has settled, even without a user,
+ // so a failed session restore doesn't leave the page spinning forever
+ if (user || !authLoading) {
  setLoaded(true);
  }
  if (user?.profile?.settings) {
@@ -89,7 +91,7 @@ export const Settings: React.FC = () => {
  }
  }));
  }
- }, [user]);
+ }, [user, authLoading]);
 
  const [saveSuccess, setSaveSuccess] = useState(false);
  const [isDeactivating, setIsDeactivating] = useState(false);

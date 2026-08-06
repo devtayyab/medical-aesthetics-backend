@@ -358,7 +358,7 @@ export const Clinics: React.FC = () => {
       handleCloseModal();
       toast.success(editingClinic ? "Clinic updated" : "Clinic created");
     } catch (err: any) {
-      toast.error(err?.message || "Failed to save clinic");
+      toast.error(typeof err === "string" ? err : err?.message || "Failed to save clinic");
     } finally {
       setSaving(false);
     }

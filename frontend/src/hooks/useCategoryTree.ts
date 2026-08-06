@@ -49,7 +49,9 @@ function fetchTree(withTreatments: boolean): Promise<PublicCategory[]> {
  .getCategoryTree(withTreatments)
  .then((res) => (res.data || []) as PublicCategory[])
  .catch((err) => {
- treeCache.delete(key); // allow retry on next mount
+ // Allow retry on next mount — but only evict our own entry, not a
+ // newer one written while this request was in flight
+ if (treeCache.get(key)?.promise === p) treeCache.delete(key);
  throw err;
  });
  treeCache.set(key, { ts: Date.now(), promise: p });

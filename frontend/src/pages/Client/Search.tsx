@@ -168,16 +168,21 @@ export const Search: React.FC = () => {
  }, [dispatch, query, location, category, searchDate, searchTimeWindow, userCoords, sortBy, ratingFilter, salonsFilter]);
 
  const handleSearch = (filters: any) => {
- if (filters.query !== undefined) setQuery(filters.query);
- if (filters.location !== undefined) setLocation(filters.location);
- if (filters.category !== undefined) setCategory(filters.category);
- if (filters.search_date !== undefined) setSearchDate(filters.search_date);
- if (filters.search_time_window !== undefined) setSearchTimeWindow(filters.search_time_window);
- 
+ // Merge with current state so filters the SearchBar doesn't manage
+ // (category, location) survive a search instead of being dropped from the URL
+ const merged: Record<string, any> = {
+ query,
+ location,
+ category,
+ search_date: searchDate,
+ search_time_window: searchTimeWindow,
+ ...filters,
+ };
  const params = new URLSearchParams();
- Object.keys(filters).forEach(key => {
- if (filters[key]) params.set(key === 'query' ? 'q' : key, filters[key]);
+ Object.keys(merged).forEach(key => {
+ if (merged[key]) params.set(key === 'query' ? 'q' : key, merged[key]);
  });
+ // State syncs from searchParams via the effect above
  setSearchParams(params);
  };
 
@@ -224,7 +229,7 @@ export const Search: React.FC = () => {
  {!isScrolled && <div className="h-1 w-20 bg-[#CBFF38] mx-auto lg:mx-0 mb-8 rounded-full hidden sm:block"></div>}
  <div className={`w-full transition-all ${isScrolled ? 'max-w-[150px] sm:max-w-md' : 'max-w-2xl mx-auto lg:mx-0'}`}>
  <SearchBar 
- initialFilters={{ query, location, category, search_date: searchDate }}
+ initialFilters={{ query, location, category, search_date: searchDate, search_time_window: searchTimeWindow }}
  onSearch={handleSearch}
  className={`transition-all duration-700 !max-w-none shadow-2xl ${isScrolled ? 'scale-90 origin-right' : ''}`}
  />

@@ -75,6 +75,11 @@ api.interceptors.response.use(
  },
  async (error: AxiosError) => {
  const originalRequest = error.config as any;
+ // Auth endpoints answer 401 for bad credentials — never treat that as an
+ // expired session (would hard-redirect and wipe the error message)
+ if (typeof originalRequest?.url ==="string" && originalRequest.url.includes("/auth/")) {
+ return Promise.reject(error);
+ }
  if (error.response?.status === 401 && !originalRequest._retry) {
  if (!store) return Promise.reject(error);
 

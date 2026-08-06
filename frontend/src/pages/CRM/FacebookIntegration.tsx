@@ -19,7 +19,7 @@ type Tab = "overview" | "forms" | "webhook-leads";
 
 export const FacebookIntegration: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { isLoading } = useSelector((state: RootState) => state.crm);
+  const { isLoading, leadFilters } = useSelector((state: RootState) => state.crm);
 
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [connectionStatus, setConnectionStatus] = useState<string>("");
@@ -101,8 +101,9 @@ export const FacebookIntegration: React.FC = () => {
       const result = await dispatch(importFacebookLeads({ formId })).unwrap();
       toast.success(`Imported ${result.length || 0} new leads from this form`);
       if (pageId) loadStats(pageId);
-      // Refresh the leads list in the store so the Leads page shows the new imports
-      dispatch(fetchLeads({}));
+      // Refresh the leads list in the store (with the active filters, so the
+      // Leads page stays consistent with its filter chips)
+      dispatch(fetchLeads(leadFilters));
     } catch (error) {
       toast.error("Failed to import leads from this form");
     } finally {

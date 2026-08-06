@@ -281,8 +281,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
  try {
  const ts = await clinicApi.services.getTreatmentsByCategory(catId);
  setTreatments(ts);
+ // Only seed from the edited service — never clobber a selection the user made
  if (service?.treatmentId) {
- setSelectedTreatmentId(service.treatmentId);
+ setSelectedTreatmentId((prev) => prev || service.treatmentId);
  }
  } catch (err) {
  console.error("Failed to fetch treatments", err);
