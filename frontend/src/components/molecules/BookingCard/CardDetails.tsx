@@ -16,7 +16,7 @@ const CardDetails: React.FC<CardDetailsProps> = ({ name, price, location }) => {
  <div className="flex w-full h-auto gap-[12px]">
  {/* Image */}
  <div className="bg-gray-200 flex items-center justify-center h-auto w-full md:w-96 md:h-52 rounded">
- <img src="./yourimage.jpg" className="justify-center items-center w-full h-full rounded" />
+ <img src="./yourimage.jpg" alt={name} onError={(e) => { e.currentTarget.style.display = 'none'; }} className="object-contain w-full h-full rounded" />
  </div>
 
 

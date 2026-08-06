@@ -75,6 +75,11 @@ api.interceptors.response.use(
  },
  async (error: AxiosError) => {
  const originalRequest = error.config as any;
+ // Auth endpoints answer 401 for bad credentials — never treat that as an
+ // expired session (would hard-redirect and wipe the error message)
+ if (typeof originalRequest?.url ==="string" && originalRequest.url.includes("/auth/")) {
+ return Promise.reject(error);
+ }
  if (error.response?.status === 401 && !originalRequest._retry) {
  if (!store) return Promise.reject(error);
 
@@ -662,6 +667,7 @@ export const adminSystemListsAPI = {
  getTreatments: (params?: any) => api.get("/admin/treatments", { params }),
  createTreatment: (data: any) => api.post("/admin/treatments", data),
  updateTreatment: (id: string, data: any) => api.put(`/admin/treatments/${id}`, data),
+ deleteTreatment: (id: string) => api.delete(`/admin/treatments/${id}`),
 };
 
 // Public catalog API — no authentication required

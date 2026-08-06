@@ -314,6 +314,12 @@ export class AdminService {
     return this.treatmentsRepository.save(treatment);
   }
 
+  async deleteTreatment(id: string): Promise<void> {
+    // Delegate to the safe deletion logic: archives instead of deleting when
+    // the treatment has booking history, and cleans up unbooked offerings
+    await this.clinicsService.deleteTreatment(id);
+  }
+
   async updateTreatment(id: string, data: Partial<Treatment> & { description?: string }): Promise<Treatment> {
     const { description, ...rest } = data;
     const finalData = { ...rest };

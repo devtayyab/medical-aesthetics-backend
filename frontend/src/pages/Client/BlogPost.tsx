@@ -234,11 +234,11 @@ export const BlogPost: React.FC = () => {
  animate={{ opacity: 1, scale: 1 }}
  className={`${glassCard} mb-12`}
  >
- <div className="aspect-[21/9] overflow-hidden">
+ <div className="aspect-[16/9] overflow-hidden bg-gray-100">
  <img
  src={getImageUrl(post.imageUrl) || `https://placehold.co/1200x600/1A1A1A/CBFF38?text=${encodeURIComponent(post.title)}`}
  alt={post.title}
- className="w-full h-full object-cover"
+ className="w-full h-full object-contain"
  />
  </div>
  

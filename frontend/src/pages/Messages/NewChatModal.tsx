@@ -15,6 +15,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  const [searchTerm, setSearchTerm] = useState('');
  const [results, setResults] = useState<any[]>([]);
  const [isLoading, setIsLoading] = useState(false);
+ const [searchError, setSearchError] = useState(false);
  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
 
  useEffect(() => {
@@ -31,12 +32,15 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
 
  const searchUsers = async () => {
  setIsLoading(true);
+ setSearchError(false);
  try {
  const response = await userAPI.getAllUsers({ search: searchTerm, limit: 50 });
  const users = Array.isArray(response.data) ? response.data : response.data.users || [];
  setResults(users);
  } catch (error) {
  console.error('Failed to search users:', error);
+ setSearchError(true);
+ setResults([]);
  } finally {
  setIsLoading(false);
  }
@@ -164,6 +168,14 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  >
  <div className="size-10 border-4 border-black border-t-transparent rounded-full animate-spin" />
  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Scanning clinical registry...</p>
+ </motion.div>
+ ) : searchError ? (
+ <motion.div
+ initial={{ opacity: 0 }}
+ animate={{ opacity: 1 }}
+ className="flex flex-col items-center justify-center py-20 gap-4"
+ >
+ <p className="text-[10px] font-black uppercase tracking-widest text-red-400">Couldn't load users. Try again.</p>
  </motion.div>
  ) : results.length > 0 ? (
  results.map((user, idx) => {

@@ -82,6 +82,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  const dateRef = useRef<HTMLDivElement>(null);
  const searchRef = useRef<HTMLDivElement>(null);
 
+ // Keep inputs in sync when the parent's filters change (e.g. URL-driven navigation)
+ useEffect(() => {
+ setQuery(initialFilters?.query ||"");
+ setSearchDate(initialFilters?.search_date || null);
+ setSearchTimeWindow(initialFilters?.search_time_window || null);
+ }, [initialFilters?.query, initialFilters?.search_date, initialFilters?.search_time_window]);
+
  useEffect(() => {
  const handleClickOutside = (e: MouseEvent) => {
  if (dateRef.current && !dateRef.current.contains(e.target as Node)) setShowDatePicker(false);

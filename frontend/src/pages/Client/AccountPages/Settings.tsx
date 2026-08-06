@@ -53,7 +53,7 @@ export const Settings: React.FC = () => {
  const navigate = useNavigate();
 
  const dispatch = useDispatch<AppDispatch>();
- const { user } = useSelector((state: RootState) => state.auth);
+ const { user, isLoading: authLoading } = useSelector((state: RootState) => state.auth);
 
  const defaultSettings = {
  inspirationOffers: {
@@ -68,8 +68,14 @@ export const Settings: React.FC = () => {
  };
 
  const [settings, setSettings] = useState(defaultSettings);
+ const [loaded, setLoaded] = useState(false);
 
  useEffect(() => {
+ // Consider loading finished once auth has settled, even without a user,
+ // so a failed session restore doesn't leave the page spinning forever
+ if (user || !authLoading) {
+ setLoaded(true);
+ }
  if (user?.profile?.settings) {
  // Merge saved settings with default to ensure all keys exist
  setSettings((prev) => ({
@@ -85,7 +91,7 @@ export const Settings: React.FC = () => {
  }
  }));
  }
- }, [user]);
+ }, [user, authLoading]);
 
  const [saveSuccess, setSaveSuccess] = useState(false);
  const [isDeactivating, setIsDeactivating] = useState(false);
@@ -132,6 +138,17 @@ export const Settings: React.FC = () => {
  console.error("Failed to save settings:", err);
  }
  };
+
+ if (!loaded) {
+ return (
+ <div className={sectionStyles}>
+ <div className="flex flex-col items-center justify-center py-40 gap-4">
+ <div className="size-10 border-4 border-gray-200 border-t-black rounded-full animate-spin" />
+ <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">Loading settings...</p>
+ </div>
+ </div>
+ );
+ }
 
  return (
  <div className={sectionStyles}>

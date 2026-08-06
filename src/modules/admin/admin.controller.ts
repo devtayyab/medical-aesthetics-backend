@@ -194,6 +194,13 @@ export class AdminController {
     return this.adminService.updateTreatment(id, body);
   }
 
+  @Delete('treatments/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Delete therapy/treatment' })
+  deleteTreatment(@Param('id') id: string) {
+    return this.adminService.deleteTreatment(id);
+  }
+
   // Clinic Management
   @Get('clinics')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)

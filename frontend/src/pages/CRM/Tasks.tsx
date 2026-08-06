@@ -535,6 +535,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       dispatch(fetchTaskKpis(sid));
     } catch (error) {
       console.error("Failed to complete task after booking:", error);
+      toast.error("Failed to complete task after booking.");
     }
   };
 
@@ -561,6 +562,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         dispatch(fetchTaskKpis(sid));
       } catch (err) {
         console.error("Failed to revert task status:", err);
+        toast.error("Failed to revert task status.");
       }
     }
     setShowInteractionModal(false);

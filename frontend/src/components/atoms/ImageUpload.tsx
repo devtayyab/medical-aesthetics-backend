@@ -66,8 +66,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ value, onChange, label, class
  <div className="relative rounded-2xl overflow-hidden border-2 border-gray-100 aspect-video bg-gray-50">
  <img 
  src={getImageUrl(preview)} 
- alt="Preview" 
- className="w-full h-full object-cover"
+ alt="Preview"
+ className="w-full h-full object-contain"
  />
  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
  <button

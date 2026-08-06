@@ -108,7 +108,7 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
  src={imageUrl}
  alt={treatment.name}
  onError={() => setImgError(true)}
- className={`w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 ${imgError ? 'opacity-50' : ''}`}
+ className={`w-full h-full object-contain transition-transform duration-1000 group-hover:scale-110 ${imgError ? 'opacity-50' : ''}`}
  />
  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
  
@@ -170,8 +170,8 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
  exit={{ opacity: 0, y: 40, scale: 0.95 }}
  className={explanationModalStyle}
  >
- <div className="relative h-64">
- <img src={imageUrl} className="w-full h-full object-cover" />
+ <div className="relative h-64 bg-gray-50">
+ <img src={imageUrl} alt={treatment.name} className="w-full h-full object-contain" />
  <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
  <button onClick={() => setShowExplanation(false)} className="absolute top-6 right-6 size-12 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center"><X size={20} /></button>
  </div>
