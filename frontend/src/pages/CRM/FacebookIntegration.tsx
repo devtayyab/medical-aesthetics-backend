@@ -49,14 +49,12 @@ export const FacebookIntegration: React.FC = () => {
       .catch(() => {});
   }, [dispatch]);
 
-  // Auto-load stats on mount
+  // Auto-load stats on mount (no page ID needed — stats cover all pages)
   useEffect(() => {
-    if (pageId) {
-      loadStats(pageId);
-    }
+    loadStats(pageId || undefined);
   }, [pageId]);
 
-  const loadStats = async (pid: string) => {
+  const loadStats = async (pid?: string) => {
     try {
       const stats = await dispatch(getFacebookStats(pid)).unwrap();
       setFacebookStats(stats);
@@ -77,18 +75,16 @@ export const FacebookIntegration: React.FC = () => {
 
   const handleGetForms = async () => {
     setFormsError("");
-    if (!pageId.trim()) {
-      setFormsError("Please enter your Facebook Page ID to fetch forms.");
-      return;
-    }
+    // Empty page ID = fetch forms from ALL pages the token can access
+    const pid = pageId.trim() || undefined;
     try {
-      const result = await dispatch(getFacebookForms(pageId.trim())).unwrap();
+      const result = await dispatch(getFacebookForms(pid)).unwrap();
       setFacebookForms(result || []);
       setFormsPage(1); // reset to page 1 on new fetch
-      const stats = await dispatch(getFacebookStats(pageId.trim())).unwrap();
+      const stats = await dispatch(getFacebookStats(pid)).unwrap();
       setFacebookStats(stats);
       if (!result || result.length === 0) {
-        setFormsError("No forms found for this Page ID.");
+        setFormsError(pid ? "No forms found for this Page ID." : "No forms found on any accessible page.");
       }
     } catch (error: any) {
       setFormsError(error?.message || "Failed to fetch Facebook forms");
@@ -100,7 +96,7 @@ export const FacebookIntegration: React.FC = () => {
     try {
       const result = await dispatch(importFacebookLeads({ formId })).unwrap();
       toast.success(`Imported ${result.length || 0} new leads from this form`);
-      if (pageId) loadStats(pageId);
+      loadStats(pageId || undefined);
       // Refresh the leads list in the store (with the active filters, so the
       // Leads page stays consistent with its filter chips)
       dispatch(fetchLeads(leadFilters));
@@ -258,14 +254,29 @@ export const FacebookIntegration: React.FC = () => {
                       <div key={form.id} className="border rounded p-2 text-sm flex justify-between items-center">
                         <div>
                           <div className="font-medium text-xs">{form.name}</div>
-                          <div className="text-gray-400 text-xs">ID: {form.id}</div>
+                          <div className="text-gray-400 text-xs">
+                            ID: {form.id}
+                            {form.page_name && <span className="ml-2 text-purple-500">• Page: {form.page_name}</span>}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           {form.leads_count !== undefined && (
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                              {form.leads_count} leads
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full" title="Total leads on Facebook">
+                              {form.leads_count} on FB
                             </span>
                           )}
+                          {form.imported_count !== undefined && (() => {
+                            const fbKnown = form.leads_count !== undefined && form.leads_count !== null;
+                            const complete = fbKnown && Number(form.imported_count) >= Number(form.leads_count);
+                            return (
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full ${!fbKnown ? 'bg-gray-100 text-gray-600' : complete ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
+                                title={!fbKnown ? 'Facebook total unknown — coverage cannot be verified' : complete ? 'All leads imported into the CRM' : 'Some Facebook leads are not in the CRM yet — click Import'}
+                              >
+                                {form.imported_count} imported
+                              </span>
+                            );
+                          })()}
                           <span className={`text-xs px-2 py-0.5 rounded-full ${form.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                             {form.status}
                           </span>
