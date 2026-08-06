@@ -129,7 +129,9 @@ export class DuplicateDetectionService {
     }
 
     return {
-      isDuplicate: confidence > 0.5,
+      // A duplicate verdict must always carry the matched record — confidence
+      // accumulated from rejected (name-conflicting) matches alone doesn't count
+      isDuplicate: confidence > 0.5 && !!(existingCustomer || existingLead),
       existingCustomer,
       existingLead,
       confidence,

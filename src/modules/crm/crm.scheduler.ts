@@ -125,7 +125,9 @@ export class CrmScheduler implements OnModuleInit {
         // facebookLeadId dedup makes re-fetching cheap and idempotent.
         if (form.status === 'DELETED') continue;
         try {
-          const leads = await this.crmService.importFacebookLeads(form.id, 10000);
+          // Pass the page token resolved during form discovery so the import
+          // doesn't have to re-enumerate pages per form
+          const leads = await this.crmService.importFacebookLeads(form.id, 10000, form.page_access_token);
           importedCount += leads.length;
         } catch (err) {
           // One failing form must not abort the sync of the remaining forms

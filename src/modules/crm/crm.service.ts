@@ -447,7 +447,7 @@ export class CrmService implements OnModuleInit {
       for (const change of entry.changes) {
         if (change.field !== 'leadgen') continue;
 
-        const leadgenId = change.value.leadgen_id;
+        const leadgenId = change.value?.leadgen_id;
         if (!leadgenId) continue;
 
         try {
@@ -518,8 +518,18 @@ export class CrmService implements OnModuleInit {
     }
   }
 
-  async importFacebookLeads(formId: string, limit: number = 10000): Promise<Lead[]> {
-    const leadsData = await this.facebookService.getLeadsByForm(formId, limit);
+  async importFacebookLeads(formId: string, limit: number = 10000, pageAccessToken?: string): Promise<Lead[]> {
+    // Manual imports don't know which page the form belongs to — resolve the
+    // page token so forms on secondary pages import correctly too
+    if (!pageAccessToken) {
+      try {
+        const allForms = await this.facebookService.getAllForms();
+        pageAccessToken = allForms.find((f) => String(f.id) === String(formId))?.page_access_token;
+      } catch (e) {
+        this.logger.warn(`Could not resolve page token for form ${formId}: ${e.message}`);
+      }
+    }
+    const leadsData = await this.facebookService.getLeadsByForm(formId, limit, pageAccessToken);
     const createdLeads: Lead[] = [];
 
     // Dedup on the Facebook lead ID (not name/email heuristics) with one batched
@@ -559,6 +569,9 @@ export class CrmService implements OnModuleInit {
             metadata: { importedFromFacebook: true, fromWebhook: true, fetchFailed: false, healedBySync: true } as any,
             lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
           });
+          // Count the healed stub as an import so logs/toasts reflect the recovery
+          const healed = await this.leadsRepository.findOne({ where: { id: stubId } });
+          if (healed) createdLeads.push(healed);
           continue;
         }
         if (alreadyImportedIds.has(parsedLead.facebookLeadId)) continue;
@@ -710,12 +723,24 @@ export class CrmService implements OnModuleInit {
       ? await this.leadsRepository.findOne({ where: { email: existingCustomer.email } })
       : null;
     if (existingLead) {
+      // Always store the NEWEST facebookLeadId (older ones are archived in
+      // metadata). The sync's dedup keys on facebookLeadId — if the new id is
+      // never persisted, this submission is re-ingested on every cron run,
+      // creating a duplicate follow-up task and comm log every 30 minutes.
       await this.leadsRepository.update(existingLead.id, {
         lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
         lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
         lastContactedAt: new Date(),
-        facebookLeadId: existingLead.facebookLeadId || parsedLead.facebookLeadId,
+        facebookLeadId: parsedLead.facebookLeadId,
+        metadata: {
+          ...(existingLead.metadata || {}),
+          previousFacebookLeadIds: [
+            ...(((existingLead.metadata as any)?.previousFacebookLeadIds) || []),
+            existingLead.facebookLeadId,
+          ].filter((id) => id && id !== parsedLead.facebookLeadId),
+        } as any,
       });
+      createdLeadRow = null;
     } else {
       // No Lead row exists for this customer — create one so the submission is
       // visible in the Leads list instead of only in the communication log.
@@ -2649,7 +2674,11 @@ export class CrmService implements OnModuleInit {
   async getFacebookForms(pageId?: string) {
     let fbForms = [];
     try {
-      fbForms = await this.facebookService.getForms(pageId);
+      // With an explicit pageId fetch that page only; otherwise sweep ALL
+      // discoverable pages so no page's forms (and leads) are invisible
+      fbForms = pageId
+        ? await this.facebookService.getForms(pageId)
+        : await this.facebookService.getAllForms();
     } catch (e) {
       this.logger.warn('Failed to fetch forms from Facebook API, using DB fallback only');
     }
@@ -4623,7 +4652,9 @@ export class CrmService implements OnModuleInit {
 
     let fbForms = [];
     try {
-      fbForms = await this.facebookService.getForms(pageId);
+      fbForms = pageId
+        ? await this.facebookService.getForms(pageId)
+        : await this.facebookService.getAllForms();
     } catch (e) { }
 
     const totalFbForms = fbForms.length;

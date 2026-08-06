@@ -475,8 +475,10 @@ export class CrmController {
   @Get('facebook/forms')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)
-  getFacebookForms(@Query('pageId') pageId?: string) {
-    return this.crmService.getFacebookForms(pageId);
+  async getFacebookForms(@Query('pageId') pageId?: string) {
+    const forms = await this.crmService.getFacebookForms(pageId);
+    // Never expose page access tokens to the client
+    return (forms || []).map(({ page_access_token, ...rest }) => rest);
   }
 
   @Get('facebook/stats')
