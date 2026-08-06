@@ -91,6 +91,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  return () => document.removeEventListener("mousedown", handleClickOutside);
  }, []);
 
+ // Sync internal state when initialFilters change from parent
+ useEffect(() => {
+   setQuery(initialFilters?.query || "");
+   setSearchDate(initialFilters?.search_date || null);
+   setSearchTimeWindow(initialFilters?.search_time_window || null);
+ }, [initialFilters?.query, initialFilters?.search_date, initialFilters?.search_time_window]);
+
  // Fetch suggestions when query changes
  useEffect(() => {
  const fetchSuggestions = async () => {

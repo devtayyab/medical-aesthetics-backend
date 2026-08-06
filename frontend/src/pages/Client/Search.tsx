@@ -109,11 +109,6 @@ export const Search: React.FC = () => {
  return () => window.removeEventListener("scroll", handleScroll);
  }, []);
 
- const filterPill = (isActive: boolean) => `
- px-5 py-2.5 rounded-full border text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 transition-all duration-300
- ${isActive ? 'bg-[#121212] text-[#CBFF38] border-black shadow-lg scale-105' : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300 hover:bg-gray-50'}
- `;
-
  const [activeTab, setActiveTab] = useState<'treatments' | 'clinics'>('treatments');
 
  // Search states
@@ -139,6 +134,15 @@ export const Search: React.FC = () => {
  );
  }
  }, []);
+
+ // Sync states whenever searchParams URL parameter changes (e.g. clicking category link in navbar)
+ useEffect(() => {
+    setQuery(searchParams.get("query") || searchParams.get("q") || "");
+    setLocation(searchParams.get("location") || "");
+    setCategory(searchParams.get("category") || undefined);
+    setSearchDate(searchParams.get("search_date") || null);
+    setSearchTimeWindow(searchParams.get("search_time_window") || null);
+ }, [searchParams]);
 
  useEffect(() => {
  dispatch(

@@ -59,6 +59,34 @@
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Explicit, prominent horizontal scrollbar utility */
+.visible-scrollbar {
+  overflow-x: auto !important;
+  scrollbar-width: auto !important;
+  scrollbar-color: #94a3b8 #f1f5f9 !important;
+}
+
+.visible-scrollbar::-webkit-scrollbar {
+  height: 10px !important;
+  width: 10px !important;
+  display: block !important;
+}
+
+.visible-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 8px !important;
+}
+
+.visible-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 8px !important;
+  border: 2px solid #f1f5f9 !important;
+}
+
+.visible-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+
 a {
   font-weight: 500;
   color: #646cff;

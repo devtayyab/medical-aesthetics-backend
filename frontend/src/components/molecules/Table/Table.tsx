@@ -25,20 +25,39 @@ interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
  className?: string;
 }
 
+interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
+  children: React.ReactNode;
+  className?: string;
+  containerRef?: React.Ref<HTMLDivElement>;
+  onContainerScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+  containerClassName?: string;
+}
+
 interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
  children: React.ReactNode;
  className?: string;
 }
 
-export const Table: React.FC<TableProps> = ({ children, className = '', ...props }) => (
- <div className="relative w-full overflow-auto no-scrollbar">
- <table
- className={`caption-bottom text-sm border-collapse ${className}`}
- {...props}
- >
- {children}
- </table>
- </div>
+export const Table: React.FC<TableProps> = ({ 
+  children, 
+  className = '', 
+  containerRef, 
+  onContainerScroll, 
+  containerClassName = '',
+  ...props 
+}) => (
+  <div 
+    ref={containerRef} 
+    onScroll={onContainerScroll} 
+    className={`relative w-full overflow-x-auto visible-scrollbar pb-2 ${containerClassName}`}
+  >
+    <table
+      className={`caption-bottom text-sm border-collapse ${className}`}
+      {...props}
+    >
+      {children}
+    </table>
+  </div>
 );
 
 export const TableHeader: React.FC<TableHeaderProps> = ({ children, className = '', ...props }) => (
