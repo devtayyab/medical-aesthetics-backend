@@ -19,13 +19,6 @@ const containerStyle = css`
 
 const extraServices = [
  {
- id:"loyalty",
- name:"Loyalty Program",
- description:"Earn points for every treatment and redeem them for exclusive discounts and free services.",
- icon: <FaStar size={30} />,
- link:"/loyalty"
- },
- {
  id:"gift-cards",
  name:"Gift Cards",
  description:"Surprise your loved ones with the gift of confidence. Available for all treatments and clinics.",

@@ -384,17 +384,17 @@ export const Header: React.FC = () => {
  <>
  <header className="bg-[#2D3748] py-2 sm:py-3 sticky top-0 z-[999] border-b border-white/5 backdrop-blur-md">
  <div className={containerStyle}>
- <div className="flex items-center gap-4">
+ <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
  <button
  onClick={() => navigate(-1)}
- className="size-10 rounded-xl text-gray-400 border border-white/10 flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all font-black"
+ className="hidden sm:flex size-9 sm:size-10 rounded-xl text-gray-400 border border-white/10 items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all font-black shrink-0"
  title="Go Back"
  >
  <ChevronLeft size={18} />
  </button>
  <button
  onClick={() => navigate(1)}
- className="size-10 rounded-xl text-gray-400 border border-white/10 flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all font-black"
+ className="hidden sm:flex size-9 sm:size-10 rounded-xl text-gray-400 border border-white/10 items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all font-black shrink-0"
  title="Go Forward"
  >
  <ChevronRight size={18} />
@@ -403,9 +403,9 @@ export const Header: React.FC = () => {
  to={
  clinicRoles.includes(user?.role ||"") ?"/clinic/dashboard" : (user?.role ==="SUPER_ADMIN" || user?.role ==="manager") ?"/admin/manager-dashboard" :"/"
  }
- className={`flex items-center ml-2 no-underline ${clinicRoles.includes(user?.role ||"") ?"justify-center" :""}`}
+ className={`flex items-center no-underline ${clinicRoles.includes(user?.role ||"") ?"justify-center" :""}`}
  >
- <div className="w-[140px] sm:w-[180px] h-10 sm:h-12 relative flex items-center justify-center mr-2 lg:mr-4">
+ <div className="w-[130px] sm:w-[190px] h-10 sm:h-14 relative flex items-center justify-center mr-1 sm:mr-4">
  <img src={SiteLogo} alt="Site Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] pointer-events-none" />
  </div>
  </Link>
@@ -680,18 +680,18 @@ export const Header: React.FC = () => {
  )}
  </header>
 
- {isMobileMenuOpen && (
- <div className={mobileMenuStyle}>
- <div className={mobileMenuHeaderStyle}>
- <Link to="/" className={logoStyle}>
- <div className="w-[140px] h-10 relative flex items-center justify-center">
- <img src={SiteLogo} alt="Site Logo" className="w-full h-full object-contain pointer-events-none" />
- </div>
- </Link>
- <button onClick={() => setIsMobileMenuOpen(false)}>
- <X size={24} className="text-black" />
- </button>
- </div>
+  {isMobileMenuOpen && (
+  <div className={mobileMenuStyle}>
+  <div className={mobileMenuHeaderStyle}>
+  <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className={logoStyle}>
+  <div className="w-[185px] sm:w-[210px] h-12 sm:h-14 bg-[#2D3748] px-3.5 py-1.5 rounded-xl border border-white/10 relative flex items-center justify-center shadow-md">
+  <img src={SiteLogo} alt="Site Logo" className="w-full h-full object-contain pointer-events-none drop-shadow-[0_0_10px_rgba(203,255,56,0.2)]" />
+  </div>
+  </Link>
+  <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 rounded-xl bg-gray-100 hover:bg-black hover:text-white transition-colors">
+  <X size={24} className="text-gray-700" />
+  </button>
+  </div>
 
  {isAuthenticated ? (
  <>

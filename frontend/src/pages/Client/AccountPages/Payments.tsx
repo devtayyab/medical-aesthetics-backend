@@ -17,36 +17,52 @@ const sectionStyles = css`
 
 const heroSection = css`
  position: relative;
+ min-height: 240px;
+ @media (min-width: 640px) {
+ height: 380px;
+ }
+ @media (min-width: 1024px) {
  height: 520px;
+ }
  width: 100%;
  display: flex;
  align-items: center;
  overflow: hidden;
+ padding: 24px 0 50px;
+ @media (min-width: 640px) {
+ padding: 0;
+ }
  
  &::after {
  content: '';
  position: absolute;
  inset: 0;
- background: linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 30%, transparent 60%);
+ background: linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0.85) 40%, transparent 80%);
  z-index: 1;
  }
 
- @media (max-width: 768px) {
- height: 400px;
+ @media (max-width: 640px) {
  &::after {
- background: linear-gradient(to top, rgba(255,255,255,1) 0%, transparent 100%);
+ background: linear-gradient(to top, rgba(255,255,255,1) 15%, rgba(255,255,255,0.92) 75%, transparent 100%);
  }
  }
 `;
 
 const glassCard = css`
  background: white;
- border-radius: 40px;
- box-shadow: 0 40px 100px rgba(0, 0, 0, 0.03);
+ border-radius: 20px;
+ box-shadow: 0 20px 80px rgba(0, 0, 0, 0.03);
  border: 1px solid #F1F5F9;
  width: 100%;
  max-width: 1100px;
+ margin: -30px auto 40px;
+ @media (min-width: 640px) {
+ border-radius: 40px;
+ margin: -80px auto 50px;
+ }
+ @media (min-width: 1024px) {
  margin: -140px auto 60px;
+ }
  position: relative;
  z-index: 10;
  overflow: hidden;

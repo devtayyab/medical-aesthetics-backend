@@ -20,46 +20,66 @@ const sectionStyles = css`
 
 const heroSection = css`
  position: relative;
- height: 520px;
+ min-height: 240px;
+ @media (min-width: 640px) {
+ height: 380px;
+ }
+ @media (min-width: 1024px) {
+ height: 480px;
+ }
  width: 100%;
  display: flex;
  align-items: center;
  overflow: hidden;
+ padding: 24px 0 50px;
+ @media (min-width: 640px) {
+ padding: 0;
+ }
  
  &::after {
  content: '';
  position: absolute;
  inset: 0;
- background: linear-gradient(to right, #FFFFFF 40%, rgba(255,255,255,0.4) 60%, transparent 100%);
+ background: linear-gradient(to right, #FFFFFF 45%, rgba(255,255,255,0.85) 75%, transparent 100%);
  z-index: 1;
  }
 
- @media (max-width: 768px) {
- height: 350px;
+ @media (max-width: 640px) {
  &::after {
- background: linear-gradient(to top, #FFFFFF 20%, transparent 100%);
+ background: linear-gradient(to top, #FFFFFF 15%, rgba(255,255,255,0.92) 75%, transparent 100%);
  }
  }
 `;
 
 const glassCard = css`
  background: white;
- border-radius: 40px;
- box-shadow: 0 20px 80px rgba(0, 0, 0, 0.05);
+ border-radius: 20px;
+ box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
  border: 1px solid #F1F5F9;
- padding: 32px;
+ padding: 20px 16px;
  @media (min-width: 640px) {
+ border-radius: 40px;
  padding: 48px;
+ box-shadow: 0 20px 80px rgba(0, 0, 0, 0.05);
  }
  width: 100%;
  max-width: 1000px;
+ margin: -30px auto 40px;
+ @media (min-width: 640px) {
+ margin: -80px auto 40px;
+ }
+ @media (min-width: 1024px) {
  margin: -120px auto 40px;
+ }
  position: relative;
  z-index: 10;
 `;
 
 const inputGroup = css`
+ margin-bottom: 20px;
+ @media (min-width: 640px) {
  margin-bottom: 32px;
+ }
  
  label {
  display: block;
@@ -68,7 +88,7 @@ const inputGroup = css`
  text-transform: uppercase;
  letter-spacing: 0.15em;
  color: #94A3B8;
- margin-bottom: 12px;
+ margin-bottom: 8px;
  margin-left: 2px;
  }
 
@@ -79,15 +99,25 @@ const inputGroup = css`
  
  input {
  width: 100%;
+ height: 52px;
+ padding: 0 18px 0 48px;
+ @media (min-width: 640px) {
  height: 64px;
  padding: 0 28px 0 60px;
+ }
  background: #F8FAFC;
  border: 1px solid #F1F5F9;
+ border-radius: 14px;
+ @media (min-width: 640px) {
  border-radius: 20px;
+ }
  font-weight: 700;
  color: #1E293B;
  transition: all 0.3s ease;
+ font-size: 14px;
+ @media (min-width: 640px) {
  font-size: 16px;
+ }
 
  &:focus {
  background: white;
@@ -105,15 +135,25 @@ const inputGroup = css`
 
  .icon {
  position: absolute;
+ left: 16px;
+ @media (min-width: 640px) {
  left: 24px;
+ }
  color: #CBD5E1;
+ width: 18px;
+ height: 18px;
+ @media (min-width: 640px) {
  width: 20px;
  height: 20px;
+ }
  }
  
  .lock-icon {
  position: absolute;
+ right: 16px;
+ @media (min-width: 640px) {
  right: 24px;
+ }
  color: #CBD5E1;
  }
  }
@@ -191,17 +231,17 @@ export const PersonalDetails: React.FC = () => {
 
  <div className="container mx-auto px-4 sm:px-8 relative z-10">
  <div className="max-w-2xl">
- <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em]">
+ <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-6 text-gray-400 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em]">
  <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
- <ChevronRight size={12} className="text-lime-500" />
- <span className="text-lime-500">PROFILE MANAGEMENT</span>
+ <ChevronRight size={12} className="text-lime-600" />
+ <span className="text-lime-600 font-extrabold">PROFILE MANAGEMENT</span>
  </div>
 
- <h1 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-tight text-gray-900">
- PERSONAL <span className="text-[#CBFF38]">DETAILS</span>
+ <h1 className="text-2xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter leading-tight text-gray-900">
+ PERSONAL <span className="text-[#84cc16] sm:text-[#CBFF38]">DETAILS</span>
  </h1>
 
- <p className="text-gray-500 mt-6 font-bold text-lg max-w-lg leading-relaxed">
+ <p className="text-gray-600 mt-2 sm:mt-4 font-semibold text-xs sm:text-base max-w-lg leading-snug sm:leading-relaxed">
  Keep your account details up to date to receive the best service and personalized treatment plans.
  </p>
  </div>
@@ -209,21 +249,21 @@ export const PersonalDetails: React.FC = () => {
  </div>
 
  {/* Details Card */}
- <div className="px-4 sm:px-8">
+ <div className="px-3 sm:px-8">
  <motion.div
  initial={{ opacity: 0, y: 30 }}
  animate={{ opacity: 1, y: 0 }}
  className={glassCard}
  >
  <form onSubmit={handleSave}>
- <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12 pb-8 border-b border-gray-100/80">
- <div className="flex items-center gap-6">
- <div className="size-16 sm:size-20 rounded-[24px] bg-lime-500/10 flex items-center justify-center text-lime-600 shadow-inner">
- <User size={32} />
+ <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 mb-6 sm:mb-12 pb-6 sm:pb-8 border-b border-gray-100/80">
+ <div className="flex items-center gap-4 sm:gap-6">
+ <div className="size-12 sm:size-20 rounded-[16px] sm:rounded-[24px] bg-lime-500/10 flex items-center justify-center text-lime-600 shadow-inner shrink-0">
+ <User className="size-6 sm:size-8" />
  </div>
  <div>
- <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Information</h3>
- <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Profile Identity Settings</p>
+ <h3 className="text-lg sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Information</h3>
+ <p className="text-[10px] sm:text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] sm:tracking-[0.2em] mt-0.5 sm:mt-1">Profile Identity Settings</p>
  </div>
  </div>
 
@@ -231,24 +271,24 @@ export const PersonalDetails: React.FC = () => {
  <button
  type="button"
  onClick={() => setIsEditing(true)}
- className="h-14 px-10 bg-gradient-to-br from-[#CBFF38] to-[#B6EF2B] hover:from-black hover:to-gray-900 hover:text-[#CBFF38] text-black text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all duration-300 shadow-xl shadow-lime-500/10 flex items-center gap-3 group"
+ className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-10 bg-gradient-to-br from-[#A3E635] to-[#86efac] sm:from-[#CBFF38] sm:to-[#B6EF2B] hover:from-black hover:to-gray-900 hover:text-[#CBFF38] text-black text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] rounded-xl sm:rounded-2xl transition-all duration-300 shadow-lg flex items-center justify-center gap-2.5 sm:gap-3 group"
  >
- <Edit3 size={18} className="group-hover:rotate-12 transition-transform" />
+ <Edit3 size={16} className="group-hover:rotate-12 transition-transform" />
  Edit Profile
  </button>
  ) : (
- <div className="flex items-center gap-4">
+ <div className="w-full sm:w-auto flex items-center justify-end gap-3 sm:gap-4">
  <button
  type="button"
  onClick={() => setIsEditing(false)}
- className="h-14 px-8 text-gray-400 hover:text-red-500 text-xs font-black uppercase tracking-[0.2em] transition-colors font-bold"
+ className="h-12 sm:h-14 px-4 sm:px-8 text-gray-400 hover:text-red-500 text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] transition-colors"
  >
  Cancel
  </button>
  <button
  type="submit"
  disabled={isLoading}
- className="h-14 px-10 bg-gradient-to-br from-black to-gray-800 text-[#CBFF38] hover:from-[#CBFF38] hover:to-[#B6EF2B] hover:text-black text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all duration-300 shadow-2xl flex items-center gap-3"
+ className="h-12 sm:h-14 px-6 sm:px-10 bg-gradient-to-br from-black to-gray-800 text-[#CBFF38] hover:from-[#CBFF38] hover:to-[#B6EF2B] hover:text-black text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] rounded-xl sm:rounded-2xl transition-all duration-300 shadow-2xl flex items-center gap-3"
  >
  {isLoading ?"Saving..." :"Save Changes"}
  </button>

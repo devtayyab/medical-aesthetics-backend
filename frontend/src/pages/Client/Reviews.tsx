@@ -20,30 +20,52 @@ const sectionStyles = css`
 
 const heroSection = css`
  position: relative;
+ min-height: 240px;
+ @media (min-width: 640px) {
+ height: 380px;
+ }
+ @media (min-width: 1024px) {
  height: 520px;
+ }
  width: 100%;
  display: flex;
  align-items: flex-start;
- padding-top: 80px;
+ padding-top: 24px;
+ @media (min-width: 640px) {
+ padding-top: 60px;
+ }
  overflow: hidden;
  
  &::after {
  content: '';
  position: absolute;
  inset: 0;
- background: linear-gradient(to right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.2) 50%, transparent 90%);
+ background: linear-gradient(to right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, transparent 90%);
  z-index: 1;
+ }
+
+ @media (max-width: 640px) {
+ &::after {
+ background: linear-gradient(to top, rgba(255,255,255,1) 15%, rgba(255,255,255,0.9) 75%, transparent 100%);
+ }
  }
 `;
 
 const glassCard = css`
  background: white;
- border-radius: 40px;
- box-shadow: 0 50px 100px rgba(0, 0, 0, 0.04);
+ border-radius: 20px;
+ box-shadow: 0 20px 80px rgba(0, 0, 0, 0.04);
  border: 1px solid #F1F5F9;
  width: 100%;
  max-width: 1100px;
+ margin: -30px auto 40px;
+ @media (min-width: 640px) {
+ border-radius: 40px;
+ margin: -80px auto 50px;
+ }
+ @media (min-width: 1024px) {
  margin: -170px auto 60px;
+ }
  position: relative;
  z-index: 10;
  overflow: hidden;
@@ -117,24 +139,24 @@ export const Reviews: React.FC = () => {
 
  <div className="container mx-auto px-4 sm:px-8 relative z-10">
  <div className="max-w-4xl">
- <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em]">
+ <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-6 text-gray-400 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em]">
  <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
- <ChevronRight size={12} className="text-lime-500" />
- <span className="text-lime-500">RATINGS & FEEDBACK</span>
+ <ChevronRight size={12} className="text-lime-600" />
+ <span className="text-lime-600 font-extrabold">RATINGS & FEEDBACK</span>
  </div>
 
- <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none text-gray-900">
- YOUR EXCELLENCE <span className="text-[#CBFF38]">FEEDBACK</span>
+ <h1 className="text-2xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-tight sm:leading-none text-gray-900">
+ YOUR EXCELLENCE <span className="text-[#84cc16] sm:text-[#CBFF38]">FEEDBACK</span>
  </h1>
 
- <p className="text-gray-500 mt-6 font-bold text-lg max-w-lg leading-relaxed">
+ <p className="text-gray-600 mt-2 sm:mt-6 font-semibold text-xs sm:text-lg max-w-lg leading-snug sm:leading-relaxed">
  Share your treatment journey with our community. Your reviews help us maintain the highest standards of care.
  </p>
  </div>
  </div>
  </div>
 
- <div className="max-w-6xl mx-auto px-4 sm:px-8 relative z-20">
+ <div className="max-w-6xl mx-auto px-3 sm:px-8 relative z-20">
  {/* Success Banner */}
  <AnimatePresence>
  {successMessage && (
@@ -201,7 +223,7 @@ export const Reviews: React.FC = () => {
  initial={{ opacity: 0, y: 20 }}
  animate={{ opacity: 1, y: 0 }}
  exit={{ opacity: 0 }}
- className="relative -mt-[170px] z-20"
+ className="relative -mt-[30px] sm:-mt-[100px] lg:-mt-[170px] z-20"
  >
  {isLoading ? (
  <div className="flex flex-col items-center py-32 gap-6">
@@ -236,7 +258,7 @@ export const Reviews: React.FC = () => {
  <Sparkles size={24} />
  </div>
  <div className="text-right">
- <span className="block text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38] mb-1">Status Verified</span>
+ <span className="block text-[9px] font-black uppercase tracking-[0.2em] text-lime-600 mb-1">Status Verified</span>
  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
  {format(new Date(apt.startTime),"MMM dd, yyyy")}
  </span>

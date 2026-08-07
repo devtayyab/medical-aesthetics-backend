@@ -1,4 +1,4 @@
-﻿import React from"react";
+import React from"react";
 import { Link, useLocation } from"react-router-dom";
 import { useSelector } from"react-redux";
 import type { RootState } from"@/store";
@@ -15,7 +15,6 @@ const clientLinks: SidebarItem[] = [
  { path:"/appointments", label:"Appointments" },
  { path:"/history", label:"History" },
  { path:"/reviews", label:"Reviews" },
- { path:"/loyalty", label:"Loyalty" },
 ];
 
 const clinicLinks: SidebarItem[] = [

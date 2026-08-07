@@ -220,10 +220,10 @@ const mainCategories = [
  <div className="relative z-10 w-full">
  <div className="max-w-[1200px] mx-auto w-full px-6">
  <div className="flex flex-col max-w-xl">
- <h1 className="text-black text-2xl sm:text-[40px] font-black mb-1 leading-tight uppercase tracking-tight">
- BOOK YOUR NEXT <br />
- <span className="text-[#A3E635] whitespace-nowrap">BEAUTY TREATMENT</span>
- </h1>
+  <h1 className="text-black text-xl sm:text-3xl md:text-[40px] font-black mb-2 leading-tight uppercase tracking-tight">
+  BOOK YOUR NEXT <br />
+  <span className="text-[#A3E635] inline-block">BEAUTY TREATMENT</span>
+  </h1>
 
  <p className="text-gray-700 text-sm mb-4 max-w-md leading-snug font-medium">
  Book your appointment easily and quickly

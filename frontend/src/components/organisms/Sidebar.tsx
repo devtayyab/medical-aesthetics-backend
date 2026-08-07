@@ -26,7 +26,6 @@ const clientLinks: SidebarItem[] = [
  { path:"/appointments", label:"Appointments", icon: <Calendar className="w-5 h-5" /> },
  { path:"/history", label:"History", icon: <ClipboardList className="w-5 h-5" /> },
  { path:"/reviews", label:"Reviews", icon: <Eye className="w-5 h-5" /> },
- { path:"/loyalty", label:"Loyalty", icon: <Tag className="w-5 h-5" /> },
  { path:"/change-password", label:"Change Password", icon: <Key className="w-5 h-5" />, group:"Account" },
 ];
 
