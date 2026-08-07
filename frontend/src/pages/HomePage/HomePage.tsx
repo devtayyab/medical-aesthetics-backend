@@ -13,15 +13,10 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { SearchBar } from"@/components/organisms/SearchBar";
 import {
- ArrowRight,
- ShieldCheck,
- Stethoscope,
- Sparkles,
- CalendarCheck,
- MousePointerClick,
- Lock,
- Syringe
-} from"lucide-react";
+  ArrowRight,
+  Sparkles,
+  Syringe
+} from "lucide-react";
 
 
 
