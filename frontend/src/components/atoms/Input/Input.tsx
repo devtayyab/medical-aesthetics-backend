@@ -144,9 +144,15 @@ export const Input: React.FC<InputProps> = ({
  const describedById = props.id
  ? (error ? `${props.id}-error` : helperText ? `${props.id}-helper` : undefined)
  : undefined;
+
+  // Extract height and background classes so they apply to input, preventing label overlap
+  const heightAndBgRegex = /\b(h-\d+|h-\[.*?\]|bg-[^\s]+)\b/g;
+  const heightAndBgClasses = className ? (className.match(heightAndBgRegex) || []).join(' ') : '';
+  const containerClasses = className ? className.replace(heightAndBgRegex, '').trim() : '';
+
  return (
  <div
- className={`${containerStyle} ${fullWidth ? fullWidthStyle :""} ${className ||""}`}
+ className={`${containerStyle} ${fullWidth ? fullWidthStyle :""} ${containerClasses}`}
  >
  {label && <label className={labelStyle}>{label}</label>}
 
@@ -154,7 +160,7 @@ export const Input: React.FC<InputProps> = ({
  {leftIcon && <div className={leftIconStyle}>{leftIcon}</div>}
 
  <input
- className={`p-3 rounded-[12px] bg-white ${inputStyle} ${leftIcon ? inputWithLeftIconStyle :""} ${rightIcon || (isPassword && passwordToggle) ? inputWithRightIconStyle :""
+ className={`p-3 rounded-[12px] bg-white ${inputStyle} ${heightAndBgClasses} ${leftIcon ? inputWithLeftIconStyle :""} ${rightIcon || (isPassword && passwordToggle) ? inputWithRightIconStyle :""
  } ${error ? inputErrorStyle :""}`}
  type={effectiveType}
  aria-invalid={!!error}

@@ -135,36 +135,36 @@ const ClinicBookingModal: React.FC<ClinicBookingModalProps> = ({ isOpen, onClose
  if (!isOpen) return null;
 
  return (
- <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
- <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+ <div className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
+ <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]">
  {/* Header */}
- <div className="p-6 border-b flex items-center justify-between bg-gray-50">
+ <div className="p-3 sm:p-6 border-b flex items-center justify-between bg-gray-50">
  <div>
- <h2 className="text-xl font-bold text-gray-900">Direct Booking</h2>
- <p className="text-sm text-gray-500">Add a walk-in or phone appointment</p>
+ <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">Direct Booking</h2>
+ <p className="text-xs sm:text-sm text-gray-500">Add a walk-in or phone appointment</p>
  </div>
- <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
- <X className="w-6 h-6 text-gray-500" />
+ <button onClick={onClose} className="p-1.5 sm:p-2 hover:bg-gray-200 rounded-full transition-colors">
+ <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500" />
  </button>
  </div>
 
  {/* Content */}
- <div className="flex-1 overflow-y-auto p-6 space-y-8">
+ <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-8">
  {error && (
- <div className="bg-red-50 border-l-4 border-red-500 p-4 text-red-700 text-sm">
+ <div className="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 text-red-700 text-xs sm:text-sm">
  {error}
  </div>
  )}
 
  {/* Progress Indicators */}
- <div className="flex items-center justify-center gap-4">
+ <div className="flex items-center justify-center gap-2 sm:gap-4">
  {[1, 2, 3].map((s) => (
- <div key={s} className="flex items-center gap-2">
- <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${step === s ? 'bg-blue-600 text-white' : step > s ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
+ <div key={s} className="flex items-center gap-1.5 sm:gap-2">
+ <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold ${step === s ? 'bg-blue-600 text-white' : step > s ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
  }`}>
- {step > s ? <CheckCircle className="w-5 h-5" /> : s}
+ {step > s ? <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" /> : s}
  </div>
- {s < 3 && <div className={`w-12 h-0.5 ${step > s ? 'bg-green-500' : 'bg-gray-200'}`} />}
+ {s < 3 && <div className={`w-6 sm:w-12 h-0.5 ${step > s ? 'bg-green-500' : 'bg-gray-200'}`} />}
  </div>
  ))}
  </div>

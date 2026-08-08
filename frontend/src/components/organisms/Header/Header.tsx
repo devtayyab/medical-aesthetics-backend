@@ -74,10 +74,9 @@ const mobileMenuStyle = css`
  bottom: 0;
  background-color: var(--color-white);
  z-index: 9999;
- padding: 1rem;
+ padding: 0;
  display: flex;
  flex-direction: column;
- gap: 1.5rem;
  overflow-y: auto;
 `;
 
@@ -85,8 +84,12 @@ const mobileMenuHeaderStyle = css`
  display: flex;
  justify-content: space-between;
  align-items: center;
- padding-bottom: 1rem;
- border-bottom: 1px solid #e2e8f0;
+ padding: 1rem 1.25rem;
+ background-color: #0B1120;
+ border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+ position: sticky;
+ top: 0;
+ z-index: 10;
 `;
 
 const userMenuStyle = css`
@@ -320,7 +323,6 @@ export const Header: React.FC = () => {
 
  if (user.role ==="client") {
  return [
- { to:"/search", label:"Treatments" },
  { to:"/appointments", label:"My Appointments" },
  { to:"/my-account", label:"My Account" },
  { to:"/messages", label:"Messages" },
@@ -684,14 +686,19 @@ export const Header: React.FC = () => {
   <div className={mobileMenuStyle}>
   <div className={mobileMenuHeaderStyle}>
   <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className={logoStyle}>
-  <div className="w-[185px] sm:w-[210px] h-12 sm:h-14 bg-[#2D3748] px-3.5 py-1.5 rounded-xl border border-white/10 relative flex items-center justify-center shadow-md">
-  <img src={SiteLogo} alt="Site Logo" className="w-full h-full object-contain pointer-events-none drop-shadow-[0_0_10px_rgba(203,255,56,0.2)]" />
+  <div className="w-[150px] sm:w-[180px] h-9 sm:h-11 relative flex items-center justify-start">
+  <img src={SiteLogo} alt="Site Logo" className="w-full h-full object-contain pointer-events-none drop-shadow-[0_0_10px_rgba(203,255,56,0.15)]" />
   </div>
   </Link>
-  <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 rounded-xl bg-gray-100 hover:bg-black hover:text-white transition-colors">
-  <X size={24} className="text-gray-700" />
+  <button 
+  onClick={() => setIsMobileMenuOpen(false)} 
+  className="size-9 rounded-xl bg-white/10 text-white hover:bg-[#CBFF38] hover:text-black transition-all flex items-center justify-center"
+  >
+  <X size={20} />
   </button>
   </div>
+
+  <div className="p-4 sm:p-6 flex flex-col gap-4 flex-1 overflow-y-auto">
 
  {isAuthenticated ? (
  <>
@@ -852,6 +859,7 @@ export const Header: React.FC = () => {
  </Link>
  </div>
  )}
+ </div>
  </div>
  )}
  </>
