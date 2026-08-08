@@ -27,7 +27,7 @@ export const Footer: React.FC = () => {
  </div>
 
  {/* Right Side */}
- <div className="grid grid-cols-3 gap-2 sm:gap-4 lg:gap-8 text-left w-full max-w-[100vw] overflow-hidden">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-4 lg:gap-8 text-left w-full max-w-[100vw] overflow-hidden">
  {/* Overview */}
  <div>
  <strong className="font-semibold text-[12px] sm:text-[14px] text-[#CBFF38]">

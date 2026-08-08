@@ -27,6 +27,7 @@ const glassCard = css`
 
 const toggleSwitch = (active: boolean) => css`
  width: 52px;
+ min-width: 52px;
  height: 28px;
  background: ${active ? '#CBFF38' : '#F1F5F9'};
  border-radius: 24px;
@@ -172,11 +173,11 @@ export const Settings: React.FC = () => {
  <span className="text-lime-500">PREFERENCES</span>
  </div>
  
- <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none text-gray-900">
+ <h1 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none text-gray-900">
  SYSTEM CONTROLS
  </h1>
  
- <p className="text-gray-500 mt-6 font-bold text-lg max-w-lg leading-relaxed">
+ <p className="text-gray-500 mt-4 sm:mt-6 font-bold text-sm sm:text-lg max-w-lg leading-relaxed">
  Fine-tune your clinical journey. Manage communications, security protocols, and privacy data.
  </p>
  </div>
@@ -207,12 +208,12 @@ export const Settings: React.FC = () => {
  className={glassCard}
  >
  <div className="p-6 sm:p-8 md:p-12">
- <div className="flex items-center gap-6 mb-12">
- <div className="size-16 rounded-3xl bg-[#CBFF38]/10 flex items-center justify-center text-black border border-[#CBFF38]/20 shadow-sm">
+ <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-12">
+ <div className="size-12 sm:size-16 shrink-0 rounded-3xl bg-[#CBFF38]/10 flex items-center justify-center text-black border border-[#CBFF38]/20 shadow-sm">
  <Bell size={24} />
  </div>
  <div>
- <h3 className="text-2xl font-black uppercase text-gray-900 tracking-tight">Notification Feed</h3>
+ <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Notification Feed</h3>
  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Configure clinical alerts & offers</p>
  </div>
  </div>
@@ -249,12 +250,12 @@ export const Settings: React.FC = () => {
  className={glassCard}
  >
  <div className="p-6 sm:p-8 md:p-12 text-gray-900">
- <div className="flex items-center gap-6 mb-12">
- <div className="size-16 rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl">
+ <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-12">
+ <div className="size-12 sm:size-16 shrink-0 rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl">
  <ShieldOff size={24} />
  </div>
  <div>
- <h3 className="text-2xl font-black uppercase text-gray-900 tracking-tight">Data Intelligence</h3>
+ <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Data Intelligence</h3>
  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Manage your digital footprint</p>
  </div>
  </div>
@@ -280,19 +281,19 @@ export const Settings: React.FC = () => {
  className="bg-white rounded-[2rem] sm:rounded-[40px] border-2 border-red-50 p-6 sm:p-10 shadow-sm overflow-hidden relative group"
  >
  <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
- <div className="flex items-center gap-6">
- <div className="size-16 rounded-3xl bg-red-50 flex items-center justify-center text-red-500 shadow-sm group-hover:bg-red-500 group-hover:text-white transition-all">
+ <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6">
+ <div className="size-12 md:size-16 shrink-0 rounded-3xl bg-red-50 flex items-center justify-center text-red-500 shadow-sm group-hover:bg-red-500 group-hover:text-white transition-all">
  <Trash2 size={24} />
  </div>
  <div className="text-center md:text-left">
- <h3 className="text-2xl font-black uppercase text-red-600 tracking-tighter">Deactivate Access</h3>
+ <h3 className="text-xl md:text-2xl font-black uppercase text-red-600 tracking-tighter">Deactivate Access</h3>
  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Permanently remove clinical profile</p>
  </div>
  </div>
  <button 
  onClick={handleDeactivate}
  disabled={isDeactivating}
- className="h-14 px-10 rounded-2xl bg-black text-white hover:bg-red-600 font-black uppercase text-[10px] tracking-[0.3em] transition-all shadow-2xl border border-white/10"
+ className="w-full md:w-auto h-14 px-6 md:px-10 rounded-2xl bg-black text-white hover:bg-red-600 font-black uppercase text-[10px] tracking-[0.3em] transition-all shadow-2xl border border-white/10"
  >
  {isDeactivating ? "PROCESSING..." : "Request Termination"}
  </button>

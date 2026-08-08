@@ -269,7 +269,7 @@ export const AppointmentBooking: React.FC = () => {
  return (
  <div className="min-h-screen bg-[#FDFDFD]">
  <div className={containerStyle}>
- <div className="flex items-center justify-between mb-8">
+ <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
  <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
  <div className="size-8 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-[#CBFF38] group-hover:text-black transition-all shadow-sm">
  <FaChevronLeft size={10} />
@@ -282,7 +282,7 @@ export const AppointmentBooking: React.FC = () => {
  <div className="size-8 rounded-xl bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-xs shadow-xl shadow-black/10">1</div>
  <span className="text-[8px] font-black uppercase mt-1 tracking-widest">Time</span>
  </div>
- <div className="w-12 h-[2px] bg-gray-100 -mt-4" />
+ <div className="w-6 sm:w-12 h-[2px] bg-gray-100 -mt-4" />
  <div className="flex flex-col items-center">
  <div className="size-8 rounded-xl bg-white border border-gray-100 text-gray-400 flex items-center justify-center font-black text-xs shadow-sm">2</div>
  <span className="text-[8px] font-black uppercase mt-1 tracking-widest">Details</span>

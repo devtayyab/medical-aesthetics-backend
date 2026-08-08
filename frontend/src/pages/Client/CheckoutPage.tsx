@@ -266,7 +266,7 @@ export const CheckoutPage: React.FC = () => {
  <button
  type="button"
  onClick={() => setPaymentMethod('card')}
- className={`w-full flex items-center justify-between p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'card' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
+ className={`w-full flex flex-wrap items-center justify-between gap-y-2 p-4 sm:p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'card' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
  >
  <div className="flex items-center gap-4">
  <div className={`size-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'card' ? 'border-black bg-black' : 'border-gray-300'}`}>
@@ -291,7 +291,7 @@ export const CheckoutPage: React.FC = () => {
  <button
  type="button"
  onClick={() => setPaymentMethod('venue')}
- className={`w-full flex items-center justify-between p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'venue' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
+ className={`w-full flex flex-wrap items-center justify-between gap-y-2 p-4 sm:p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'venue' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
  >
  <div className="flex items-center gap-4">
  <div className={`size-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'venue' ? 'border-black bg-black' : 'border-gray-300'}`}>
@@ -355,7 +355,7 @@ export const CheckoutPage: React.FC = () => {
  </div>
 
  {/* Policies */}
- <div className="flex gap-4 p-6 rounded-2xl bg-white border border-gray-100 shadow-sm">
+ <div className="flex gap-4 p-4 sm:p-6 rounded-2xl bg-white border border-gray-100 shadow-sm">
  <FaInfoCircle className="text-gray-400 shrink-0" size={20} />
  <div className="space-y-4">
  <div>
@@ -421,7 +421,7 @@ export const CheckoutPage: React.FC = () => {
  )}
  <div className="flex justify-between items-center pt-3 border-t border-gray-100">
  <span className="text-sm font-black uppercase text-gray-900 tracking-widest">Payable Amount</span>
- <span className="text-3xl font-black text-gray-900"><span className="font-sans mr-1">€</span>{payableAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+ <span className="text-2xl md:text-3xl font-black text-gray-900"><span className="font-sans mr-1">€</span>{payableAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
  </div>
  </div>
 

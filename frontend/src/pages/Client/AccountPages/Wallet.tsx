@@ -54,7 +54,7 @@ export const Wallet: React.FC = () => {
  </div>
 
  {/* Title */}
- <h2 className="text-[#33373F] text-[30px] font-semibold mb-8">
+ <h2 className="text-[#33373F] text-2xl sm:text-[30px] font-semibold mb-8">
  Wallet
  </h2>
 
@@ -70,7 +70,7 @@ export const Wallet: React.FC = () => {
  turpis dui et massa cras morbi sit.
  </p>
 
- <div className="flex gap-3">
+ <div className="flex flex-col sm:flex-row gap-3">
  <div className="flex items-center flex-1 bg-white border border-[#D1D5DB] rounded-[12px] pl-4 focus-within:border-[#D1E9FF]">
  <BiSolidDiscount size={22} className="text-[#586271] pt-0.5 mr-2" />
  <input
@@ -83,7 +83,7 @@ export const Wallet: React.FC = () => {
  </div>
  <Button
  onClick={handleAddGiftCard}
- className="bg-[#CBFF38] hover:bg-[#7CB342] text-[#203400] rounded-[12px] px-6 py-3"
+ className="w-full sm:w-auto bg-[#CBFF38] hover:bg-[#7CB342] text-[#203400] rounded-[12px] px-6 py-3"
  >
  Add it
  </Button>

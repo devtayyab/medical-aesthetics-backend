@@ -239,7 +239,7 @@ export const Reviews: React.FC = () => {
  <p className="text-gray-400 max-w-sm mx-auto text-base font-bold leading-relaxed">
  Your feedback loop opens automatically after every successful treatment at our clinics.
  </p>
- <Link to="/search" className="inline-flex items-center gap-3 mt-12 bg-black text-[#CBFF38] px-12 h-16 rounded-[20px] font-black uppercase text-xs tracking-[0.2em] hover:bg-gray-900 transition-all shadow-2xl">
+ <Link to="/search" className="inline-flex items-center gap-3 mt-12 bg-black text-[#CBFF38] px-8 sm:px-12 h-16 rounded-[20px] font-black uppercase text-xs tracking-[0.2em] hover:bg-gray-900 transition-all shadow-2xl">
  Schedule Visit <Sparkles size={18} />
  </Link>
  </div>
@@ -265,7 +265,7 @@ export const Reviews: React.FC = () => {
  </div>
  </div>
 
- <h3 className="font-black text-2xl uppercase text-gray-900 mb-3 leading-tight tracking-tight">
+ <h3 className="font-black text-xl sm:text-2xl uppercase text-gray-900 mb-3 leading-tight tracking-tight">
  {apt.service?.name ||"Premium Treatment"}
  </h3>
  <div className="flex items-center gap-2 text-xs text-gray-400 font-bold uppercase tracking-widest mb-8">

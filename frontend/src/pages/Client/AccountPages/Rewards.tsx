@@ -19,11 +19,15 @@ const sectionStyles = css`
 
 const heroSection = css`
  position: relative;
+ height: 400px;
+ padding-top: 48px;
+ @media (min-width: 768px) {
  height: 520px;
+ padding-top: 80px;
+ }
  width: 100%;
  display: flex;
  align-items: flex-start;
- padding-top: 80px;
  overflow: hidden;
  
  &::after {
@@ -170,18 +174,18 @@ export const Rewards: React.FC = () => {
  <span className="text-lime-500">LOYALTY PROGRAM</span>
  </div>
  
- <h1 className="text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tighter leading-none text-gray-900">
+ <h1 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tighter leading-none text-gray-900">
  REWARDS & <span className="text-[#CBFF38]">BENEFITS</span>
  </h1>
  
- <p className="text-gray-500 mt-4 font-bold text-base max-w-md leading-relaxed">
+ <p className="text-gray-500 mt-3 sm:mt-4 font-bold text-sm sm:text-base max-w-md leading-relaxed">
  Experience the rewards of excellence. Earn points with every session to unlock complimentary treatments.
  </p>
  </div>
  </div>
  </div>
 
- <div className="max-w-6xl mx-auto px-4 sm:px-8 relative z-20 -mt-[170px]">
+ <div className="max-w-6xl mx-auto px-4 sm:px-8 relative z-20 -mt-[100px] md:-mt-[170px]">
  <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-20">
  
  {/* Points Overview Dashboard */}
@@ -248,7 +252,7 @@ export const Rewards: React.FC = () => {
  key={reward.id}
  initial={{ opacity: 0, y: 15 }}
  animate={{ opacity: 1, y: 0 }}
- className={`${glassCard} p-4 sm:p-6 flex flex-col justify-between group h-[220px] ${isLocked ? 'opacity-60 bg-gray-50/50' : 'hover:border-[#CBFF38] shadow-sm transition-all'}`}
+ className={`${glassCard} p-4 sm:p-6 flex flex-col justify-between group min-h-[220px] md:h-[220px] ${isLocked ? 'opacity-60 bg-gray-50/50' : 'hover:border-[#CBFF38] shadow-sm transition-all'}`}
  >
  <div>
  <div className="flex justify-between items-start mb-4">
