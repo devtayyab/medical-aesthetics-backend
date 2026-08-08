@@ -74,6 +74,7 @@ import { BlogPost } from"@/pages/Client/BlogPost";
 import { Treatments } from"@/pages/Client/Treatments";
 import { Services } from"@/pages/Client/Services";
 import { Legal, SupportCenter, ChatSupport } from"@/pages/Client/InfoPages/InfoPages";
+import { ContactUs } from"@/pages/Client/InfoPages/ContactUs";
 import { InviteFriend } from"@/pages/Client/AccountPages/InviteFriend";
 import { Settings } from "@/pages/Client/AccountPages/Settings";
 import { Reviews } from "@/pages/Client/Reviews";
@@ -381,6 +382,10 @@ function AppContent() {
  <Route
  path="/support"
  element={<ClientLayout><SupportCenter /></ClientLayout>}
+ />
+ <Route
+ path="/contact"
+ element={<ClientLayout><ContactUs /></ClientLayout>}
  />
  {/* <Route
  path="/chat"
