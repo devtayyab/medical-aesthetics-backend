@@ -61,7 +61,7 @@ export const Services: React.FC = () => {
  return (
  <div className="min-h-screen bg-[#FDFDFD] pb-24">
  {/* Hero Header */}
- <div className="bg-[#1A1A1A] text-white pt-16 pb-28 px-6 relative overflow-hidden h-[500px] flex items-center">
+ <div className="bg-[#1A1A1A] text-white pt-16 pb-28 px-4 sm:px-6 relative overflow-hidden min-h-[420px] md:min-h-0 md:h-[500px] flex items-center">
  {/* Background Image with Overlay */}
  <div className="absolute inset-0 z-0">
  <img 
@@ -79,11 +79,11 @@ export const Services: React.FC = () => {
  <FaChevronRight size={10} />
  <span>Other Services</span>
  </div>
- <h1 className="text-4xl sm:text-6xl md:text-8xl font-black uppercase tracking-tighter leading-tight mb-6">
+ <h1 className="text-3xl sm:text-6xl md:text-8xl font-black uppercase tracking-tighter leading-tight mb-6">
  Explore<br/>
  <span className="text-[#CBFF38]">Services</span>
  </h1>
- <p className="text-gray-200 font-bold max-w-2xl mx-auto text-xl leading-relaxed">
+ <p className="text-gray-200 font-bold max-w-2xl mx-auto text-base sm:text-xl leading-relaxed">
  Beyond world-class treatments, we offer full-spectrum services to enhance your aesthetics journey and reward your loyalty.
  </p>
  </div>
@@ -110,7 +110,7 @@ export const Services: React.FC = () => {
  </p>
  <button
  onClick={() => navigate(service.link)}
- className="w-fit h-12 bg-gray-50 text-black px-8 rounded-full flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all active:scale-95"
+ className="w-fit max-w-full h-12 bg-gray-50 text-black px-5 sm:px-8 rounded-full flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all active:scale-95"
  >
  Explore {service.name} <FaArrowRight size={10} />
  </button>
@@ -138,7 +138,7 @@ export const Services: React.FC = () => {
  </h2>
  <button 
  onClick={() => navigate('/search')}
- className="px-12 h-16 bg-[#CBFF38] text-black rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-white transition-all shadow-xl active:scale-95"
+ className="px-8 md:px-12 h-16 bg-[#CBFF38] text-black rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-white transition-all shadow-xl active:scale-95"
  >
  Get Started Now
  </button>

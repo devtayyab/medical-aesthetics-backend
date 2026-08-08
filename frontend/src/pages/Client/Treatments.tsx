@@ -206,13 +206,13 @@ export const Treatments: React.FC = () => {
  </button>
  </div>
 
- <h2 className="text-3xl font-black uppercase tracking-tighter text-gray-900 mb-2">Connect with us</h2>
+ <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-gray-900 mb-2">Connect with us</h2>
  <p className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-10">Professional Consultation Protocols</p>
 
  <div className="space-y-4">
  <a
  href="mailto:info@beautydoctors.gr?subject=Professional Consultation Request"
- className="w-full group p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent"
+ className="w-full group p-4 sm:p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-4 sm:gap-6 transition-all duration-300 border border-transparent"
  >
  <div className="size-14 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform shadow-sm">
  <Syringe size={24} />
@@ -296,7 +296,7 @@ export const Treatments: React.FC = () => {
  </p>
  <button
  onClick={() => setShowConsultModal(true)}
- className="px-12 h-16 bg-[#CBFF38] text-black rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-white transition-all shadow-xl active:scale-95"
+ className="px-6 md:px-12 h-16 bg-[#CBFF38] text-black rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-white transition-all shadow-xl active:scale-95"
  >
  Get Professional Consultant
  </button>

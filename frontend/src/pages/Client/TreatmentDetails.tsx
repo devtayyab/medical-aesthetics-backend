@@ -190,7 +190,7 @@ export const TreatmentDetails: React.FC = () => {
  <span className="text-[9px] font-black text-[#CBFF38] uppercase tracking-[0.4em] mb-2 block opacity-70">
  {treatment.category || 'Aesthetic Protocol'}
  </span>
- <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white leading-[0.85]">
+ <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-white leading-[0.85]">
  {treatment.name}
  </h1>
  </motion.div>
@@ -218,7 +218,7 @@ export const TreatmentDetails: React.FC = () => {
  {treatment.shortDescription ||"Precision clinical implementation with results optimized for individual anatomical structures."}
  </p>
 
- <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-8">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 mb-8">
  <div className="flex items-center gap-2 text-[9px] font-black text-white uppercase tracking-widest">
  <Check size={12} className="text-[#CBFF38]" /> Dynamic Rejuvenation
  </div>
@@ -233,7 +233,7 @@ export const TreatmentDetails: React.FC = () => {
  const element = document.getElementById('clinics-list');
  element?.scrollIntoView({ behavior: 'smooth' });
  }}
- className="px-8 h-12 bg-[#CBFF38] text-black rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg"
+ className="w-full sm:w-auto px-6 sm:px-8 h-12 bg-[#CBFF38] text-black rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg"
  >
  Find Clinicians <ChevronRight size={14} />
  </button>

@@ -71,8 +71,12 @@ const glassCard = css`
 const giftInput = css`
  background: #F8FAFC;
  border-radius: 20px;
+ padding: 0 16px;
+ height: 64px;
+ @media (min-width: 640px) {
  padding: 0 32px;
  height: 90px;
+ }
  display: flex;
  align-items: center;
  justify-content: space-between;
@@ -90,7 +94,10 @@ const voucherStyle = css`
  background: #1A1A1A;
  color: white;
  border-radius: 32px;
+ padding: 24px;
+ @media (min-width: 640px) {
  padding: 48px;
+ }
  position: relative;
  overflow: hidden;
  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.25);
@@ -178,11 +185,11 @@ export const GiftCard: React.FC = () => {
  <span className="text-lime-500">GIFT VOUCHERS</span>
  </div>
 
- <h1 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none text-gray-900">
+ <h1 className="text-3xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none text-gray-900">
  BEAUTY GIFT <span className="text-[#CBFF38]">CARDS</span>
  </h1>
 
- <p className="text-gray-500 mt-6 font-bold text-2xl max-w-lg leading-relaxed">
+ <p className="text-gray-500 mt-3 sm:mt-6 font-bold text-base sm:text-2xl max-w-lg leading-relaxed">
  Give the gift of excellence with a digital gift card instantly and elevate someone's confidence.
  </p>
  </div>
@@ -200,7 +207,7 @@ export const GiftCard: React.FC = () => {
  className={glassCard}
  >
  {/* Card Header matching mockup */}
- <div className="px-10 py-6 border-b border-gray-50 bg-gray-50/20 flex items-center gap-3">
+ <div className="px-5 sm:px-10 py-6 border-b border-gray-50 bg-gray-50/20 flex items-center gap-3">
  <Gift className="text-lime-500" size={18} />
  <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400">GIFTS S4-P098G <span className="text-lime-500/50">· 1160</span></span>
  </div>
@@ -239,7 +246,7 @@ export const GiftCard: React.FC = () => {
  </div>
 
  <div className="w-full lg:w-[420px] p-4 sm:p-8">
- <div className="bg-[#CBFF38] rounded-[32px] p-10 h-full flex flex-col justify-between shadow-2xl relative overflow-hidden group">
+ <div className="bg-[#CBFF38] rounded-[32px] p-6 sm:p-10 h-full flex flex-col justify-between shadow-2xl relative overflow-hidden group">
  <div>
  <div className="size-14 rounded-2xl bg-black flex items-center justify-center text-[#CBFF38] mb-8">
  <Gift size={28} />
@@ -279,10 +286,10 @@ export const GiftCard: React.FC = () => {
  <Sparkles size={120} />
  </div>
 
- <div className="flex justify-between items-start mb-16 relative z-10">
+ <div className="flex flex-col-reverse sm:flex-row gap-6 sm:gap-0 justify-between items-start mb-10 sm:mb-16 relative z-10">
  <div>
  <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#CBFF38] mb-3">DIGITAL BEAUTY VOUCHER</h3>
- <h4 className="text-6xl font-black uppercase tracking-tighter leading-none">Value €{amount}</h4>
+ <h4 className="text-4xl sm:text-6xl font-black uppercase tracking-tighter leading-none">Value €{amount}</h4>
  </div>
  <div className="size-20 rounded-3xl bg-[#CBFF38] flex items-center justify-center text-black shadow-xl shadow-lime-500/20">
  <CheckCircle size={40} />
@@ -291,8 +298,8 @@ export const GiftCard: React.FC = () => {
 
  <div className="border-2 border-dashed border-white/10 pt-10 pb-10 text-center bg-white/5 rounded-3xl relative z-10">
  <p className="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-6">Secure Voucher Code</p>
- <div className="flex flex-col sm:flex-row items-center justify-center gap-6 px-10">
- <span className="text-3xl sm:text-5xl font-black tracking-[0.25em] text-white tabular-nums text-center">{giftCardCode}</span>
+ <div className="flex flex-col sm:flex-row items-center justify-center gap-6 px-4 sm:px-10">
+ <span className="text-xl sm:text-5xl font-black tracking-[0.15em] sm:tracking-[0.25em] text-white tabular-nums text-center break-all">{giftCardCode}</span>
  <button
  onClick={copyToClipboard}
  className={`w-full sm:w-auto h-16 px-8 rounded-2xl flex items-center justify-center gap-3 transition-all font-black uppercase text-[10px] tracking-widest ${copied ? 'bg-[#CBFF38] text-black shadow-xl shadow-lime-500/20' : 'bg-white/10 hover:bg-white/20 text-white'}`}

@@ -119,7 +119,7 @@ export const MyAccount: React.FC = () => {
  return (
  <div className={sectionStyles}>
  {/* Immersive Dashboard Hero */}
- <div className="relative pt-24 pb-48 overflow-hidden">
+ <div className="relative pt-16 sm:pt-24 pb-48 overflow-hidden">
  <div className="absolute inset-0 z-0">
  <img
  src={AccountHero}
@@ -135,7 +135,7 @@ export const MyAccount: React.FC = () => {
  <motion.div
  initial={{ opacity: 0, x: -20 }}
  animate={{ opacity: 1, x: 0 }}
- className="flex items-center gap-3 mb-8 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em]"
+ className="flex flex-wrap items-center gap-2 sm:gap-3 mb-6 sm:mb-8 text-gray-400 text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em]"
  >
  <Link to="/" className="text-gray-900 border-b border-gray-900 pb-0.5">ELITE CLINIC</Link>
  <span className="text-lime-500"> MEMBER_LOUNGE</span>
@@ -144,20 +144,20 @@ export const MyAccount: React.FC = () => {
  <motion.div
  initial={{ opacity: 0, y: 30 }}
  animate={{ opacity: 1, y: 0 }}
- className="flex items-center gap-6 md:gap-8"
+ className="flex items-center gap-4 sm:gap-6 md:gap-8"
  >
- <div className="size-20 md:size-28 rounded-[2rem] sm:rounded-[38px] bg-black text-[#CBFF38] flex items-center justify-center text-4xl md:text-5xl font-black shadow-2xl relative overflow-hidden group">
+ <div className="size-16 sm:size-20 md:size-28 rounded-[1.5rem] sm:rounded-[38px] bg-black text-[#CBFF38] flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-black shadow-2xl relative overflow-hidden group shrink-0">
  <span className="relative z-10">{userInitial.toUpperCase()}</span>
  <div className="absolute inset-0 bg-gradient-to-tr from-lime-500/20 to-transparent" />
  </div>
 
- <div>
- <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none text-gray-900">
+ <div className="min-w-0">
+ <h1 className="text-2xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none text-gray-900 break-words">
  Hello, <span className="text-[#CBFF38]">{user?.firstName || 'Valued Member'}</span>
  </h1>
- <p className="text-gray-400 mt-4 font-bold text-xs uppercase tracking-[0.2em] flex items-center gap-2">
- <span className="size-1.5 rounded-full bg-lime-500 animate-pulse" />
- {user?.email}
+ <p className="text-gray-400 mt-3 sm:mt-4 font-bold text-[10px] sm:text-xs uppercase tracking-[0.2em] flex items-center gap-2 min-w-0">
+ <span className="size-1.5 rounded-full bg-lime-500 animate-pulse shrink-0" />
+ <span className="truncate">{user?.email}</span>
  </p>
  </div>
  </motion.div>
@@ -167,8 +167,8 @@ export const MyAccount: React.FC = () => {
  </div>
  </div>
 
- <main className="max-w-7xl mx-auto px-4 sm:px-8 relative z-20 -mt-[180px] pb-32">
- <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+ <main className="max-w-7xl mx-auto px-4 sm:px-8 relative z-20 -mt-[180px] pb-16 md:pb-32">
+ <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-10">
 
  {/* Main Dashboard Actions */}
  <div className="xl:col-span-8">
@@ -260,8 +260,8 @@ export const MyAccount: React.FC = () => {
  </div>
 
  {/* Footer Insignia */}
- <div className="mt-32 pt-12 border-t border-gray-50 flex flex-col md:flex-row justify-between items-center gap-8">
- <div className="flex items-center gap-8">
+ <div className="mt-16 md:mt-32 pt-8 md:pt-12 border-t border-gray-50 flex flex-col md:flex-row justify-between items-center gap-6 md:gap-8">
+ <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-8">
  <Link to="/support" className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-300 hover:text-black transition-colors">Clinical Support</Link>
  <Link to="/legal" className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-300 hover:text-black transition-colors">Privacy Standards</Link>
  </div>

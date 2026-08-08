@@ -14,7 +14,10 @@ const container = css`
 const card = css`
  background: white;
  border-radius: 24px;
+ padding: 32px 20px;
+ @media (min-width: 640px) {
  padding: 48px 40px;
+ }
  text-align: center;
  max-width: 480px;
  width: 100%;

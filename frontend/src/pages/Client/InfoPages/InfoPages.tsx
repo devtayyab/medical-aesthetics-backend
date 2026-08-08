@@ -22,8 +22,8 @@ export const Legal: React.FC = () => {
  <span className="px-3"><FaChevronRight size={11} className="pt-[1px] text-[#767676]" /></span>
  Legal
  </div>
- <h2 className="text-[#33373F] text-[30px] font-black uppercase mb-8">Legal & <span className="text-lime-700">Policies</span></h2>
- <Card className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 space-y-6">
+ <h2 className="text-[#33373F] text-2xl sm:text-[30px] font-black uppercase mb-8">Legal & <span className="text-lime-700">Policies</span></h2>
+ <Card className="bg-white p-5 sm:p-8 rounded-2xl shadow-lg border border-gray-100 space-y-6">
  <div><h3 className="text-xl font-bold mb-2">Terms of Service</h3><p className="text-gray-600">Our terms of service provide detailed information about our commitment to your privacy and the rules governing the use of our aesthetics platform.</p></div>
  <div className="border-t pt-6"><h3 className="text-xl font-bold mb-2">Privacy Policy</h3><p className="text-gray-600">Your data security is our priority. We treat your personal information with the highest standards of confidentiality.</p></div>
  <div className="border-t pt-6"><h3 className="text-xl font-bold mb-2">Cookie Policy</h3><p className="text-gray-600">Experience a more personalized browsing experience with our transparent cookie policy.</p></div>
@@ -42,8 +42,8 @@ export const SupportCenter: React.FC = () => {
  <span className="px-3"><FaChevronRight size={11} className="pt-[1px] text-[#767676]" /></span>
  Support
  </div>
- <h2 className="text-[#33373F] text-[30px] font-black uppercase mb-8">Help <span className="text-lime-700">Center</span></h2>
- <Card className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 space-y-6">
+ <h2 className="text-[#33373F] text-2xl sm:text-[30px] font-black uppercase mb-8">Help <span className="text-lime-700">Center</span></h2>
+ <Card className="bg-white p-5 sm:p-8 rounded-2xl shadow-lg border border-gray-100 space-y-6">
  <div><h3 className="text-xl font-bold mb-2">How to Book an Appointment?</h3><p className="text-gray-600">Booking is easy! Simply navigate to the search page, select your preferred treatment, and choose a time slot that works for you.</p></div>
  <div className="border-t pt-6"><h3 className="text-xl font-bold mb-2">Rescheduling & Cancellations</h3><p className="text-gray-600">Need to change your plans? You can manage your appointments directly from your dashboard up to 24 hours before your session.</p></div>
  <div className="border-t pt-6"><h3 className="text-xl font-bold mb-2">Payment Options</h3><p className="text-gray-600">We accept all major credit cards, Stripe payments, and cash on-site at our certified clinics.</p></div>
@@ -62,8 +62,8 @@ export const ChatSupport: React.FC = () => {
  <span className="px-3"><FaChevronRight size={11} className="pt-[1px] text-[#767676]" /></span>
  Chat
  </div>
- <h2 className="text-[#33373F] text-[30px] font-black uppercase mb-8">Live <span className="text-lime-700">Chat</span></h2>
- <Card className="bg-white p-12 rounded-2xl shadow-2xl border border-gray-100 text-center max-w-lg mx-auto">
+ <h2 className="text-[#33373F] text-2xl sm:text-[30px] font-black uppercase mb-8">Live <span className="text-lime-700">Chat</span></h2>
+ <Card className="bg-white p-6 sm:p-12 rounded-2xl shadow-2xl border border-gray-100 text-center max-w-lg mx-auto">
  <div className="size-20 bg-lime-50 rounded-full flex items-center justify-center mx-auto mb-6"><MessageCircle size={32} className="text-lime-600 shrink-0" /></div>
  <h3 className="text-2xl font-black uppercase text-gray-900 mb-4">Connect with an Expert</h3>
  <p className="text-gray-500 mb-8">Our support specialists are available 24/7 to help you with your booking or any questions about our treatments.</p>

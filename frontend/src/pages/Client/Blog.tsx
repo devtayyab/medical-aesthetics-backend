@@ -24,11 +24,15 @@ const getImageUrl = (path: string) => {
 
 const heroSection = css`
  position: relative;
+ height: 400px;
+ padding-top: 48px;
+ @media (min-width: 768px) {
  height: 520px;
+ padding-top: 80px;
+ }
  width: 100%;
  display: flex;
  align-items: flex-start;
- padding-top: 80px;
  overflow: hidden;
  
  &::after {
@@ -94,7 +98,7 @@ export const Blog: React.FC = () => {
  />
  </div>
 
- <div className="container mx-auto px-8 relative z-10">
+ <div className="container mx-auto px-4 sm:px-8 relative z-10">
  <div className="max-w-4xl">
  <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em]">
  <Link to="/" className="text-gray-900 border-b border-gray-900 pb-0.5">HOME</Link>
@@ -102,18 +106,18 @@ export const Blog: React.FC = () => {
  <span className="text-lime-500">ARTICLES & INSIGHTS</span>
  </div>
 
- <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none text-gray-900">
+ <h1 className="text-3xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none text-gray-900">
  AESTHETIC <br /> <span className="text-[#CBFF38]">INTELLIGENCE</span>
  </h1>
 
- <p className="text-gray-500 mt-6 font-bold text-lg max-w-lg leading-relaxed">
+ <p className="text-gray-500 mt-4 sm:mt-6 font-bold text-sm sm:text-lg max-w-lg leading-relaxed">
  Expert treatment guides, clinical science, and beauty philosophy from our leading aesthetic professionals.
  </p>
  </div>
  </div>
  </div>
 
- <main className="max-w-7xl mx-auto px-8 relative z-20 -mt-[170px]">
+ <main className="max-w-7xl mx-auto px-4 sm:px-8 relative z-20 -mt-[100px] md:-mt-[170px]">
  <div className="flex flex-col xl:flex-row gap-8">
  {/* Left Column: Filter by Protocol */}
  <aside className="xl:w-64 shrink-0">
@@ -201,7 +205,7 @@ export const Blog: React.FC = () => {
  </div>
  </div>
 
- <div className="p-8">
+ <div className="p-5 sm:p-8">
  <div className="flex items-center gap-4 mb-4">
  <div className="flex items-center gap-1.5 text-[8.5px] font-black text-gray-400 uppercase tracking-widest">
  <Clock size={10} className="text-lime-500" />

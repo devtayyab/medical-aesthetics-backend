@@ -33,7 +33,11 @@ const glassCard = css`
 
 const articleBody = css`
  font-family: 'Manrope', sans-serif;
+ font-size: 1rem;
+ @media (min-width: 768px) {
  font-size: 1.15rem;
+ }
+ overflow-wrap: break-word;
  line-height: 2;
  color: #4B5563;
 
@@ -48,8 +52,12 @@ const articleBody = css`
  line-height: 1.1;
  }
 
+ h2 { font-size: 1.5rem; }
+ h3 { font-size: 1.25rem; }
+ @media (min-width: 768px) {
  h2 { font-size: 2.25rem; }
  h3 { font-size: 1.75rem; }
+ }
 
  p { margin-bottom: 2rem; }
 
@@ -205,7 +213,7 @@ export const BlogPost: React.FC = () => {
  {post.title}
  </h1>
  
- <div className="flex flex-wrap items-center gap-8 pt-6">
+ <div className="flex flex-wrap items-center gap-4 sm:gap-8 pt-6">
  <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-400">
  <Calendar size={14} className="text-lime-500" />
  {new Date(post.publishedAt || post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}

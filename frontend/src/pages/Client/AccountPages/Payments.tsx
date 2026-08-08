@@ -167,11 +167,11 @@ export const Payments: React.FC = () => {
  <span className="text-lime-500">BILLING & FINANCE</span>
  </div>
 
- <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase tracking-tighter leading-none text-gray-900 sm:whitespace-nowrap">
+ <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase tracking-tighter leading-none text-gray-900 md:whitespace-nowrap">
  PAYMENTS & <span className="text-[#CBFF38]">INVOICES</span>
  </h1>
 
- <p className="text-gray-500 mt-6 font-bold text-lg max-w-lg leading-relaxed">
+ <p className="text-gray-500 mt-3 sm:mt-6 font-bold text-sm sm:text-lg max-w-lg leading-relaxed">
  Your complete financial history across all clinics and treatments. Track every deposit and transaction.
  </p>
 
@@ -197,12 +197,12 @@ export const Payments: React.FC = () => {
  className={glassCard}
  >
  <div className="p-6 sm:p-10 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gray-50/30">
- <div className="flex items-center gap-6">
- <div className="size-16 rounded-[20px] bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl">
+ <div className="flex items-center gap-4 sm:gap-6">
+ <div className="size-12 sm:size-16 shrink-0 rounded-[20px] bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl">
  <History size={24} />
  </div>
  <div>
- <h3 className="text-2xl font-black uppercase text-gray-900 tracking-tight">Financial Ledger</h3>
+ <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Financial Ledger</h3>
  <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Transaction History & Verification</p>
  </div>
  </div>
@@ -232,10 +232,10 @@ export const Payments: React.FC = () => {
  {payment.method ==="gift_card" ? <Gift size={24} /> : payment.method ==="cash" ? <Wallet size={24} /> : <CreditCard size={24} />}
  </div>
  <div>
- <p className="font-black text-xl text-gray-900 tracking-tight leading-none uppercase">
+ <p className="font-black text-base sm:text-xl text-gray-900 tracking-tight leading-none uppercase">
  {payment.appointment?.service?.treatment?.name || payment.notes ||"Treatment Payment"}
  </p>
- <div className="flex items-center gap-4 mt-3">
+ <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3">
  <span className="flex items-center gap-2 text-[10px] text-gray-400 font-extrabold uppercase tracking-widest">
  <Building2 size={12} className="text-lime-500" /> {payment.clinic?.name ||"Clinic"}
  </span>

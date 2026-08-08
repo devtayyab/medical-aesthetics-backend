@@ -356,11 +356,11 @@ export const Search: React.FC = () => {
  animate={{ opacity: 1, y: 0 }}
  className="max-w-4xl mb-10 pt-6"
  >
- <h1 className="text-5xl font-black uppercase tracking-tighter text-white leading-tight mb-4">
+ <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter text-white leading-tight mb-4">
  Find the <span className="text-[#CBFF38]">therapy</span> <br/>
  that fits you
  </h1>
- <p className="text-lg font-medium text-gray-400 max-w-2xl leading-relaxed">
+ <p className="text-base md:text-lg font-medium text-gray-400 max-w-2xl leading-relaxed">
  Discover invasive and non-invasive treatments by specialty, need, and outcome. 
  Experience premium aesthetic excellence.
  </p>
@@ -371,7 +371,7 @@ export const Search: React.FC = () => {
  {/* Results Header for Clinics */}
  {activeTab === 'clinics' && (
  <div className="mb-8">
- <h3 className="text-3xl font-black text-gray-900 tracking-tighter uppercase">
+ <h3 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tighter uppercase">
  {total} <span className="text-gray-400 font-bold">Results for</span> {query || 'Aesthetic Venues'}
  </h3>
  <p className="text-xs font-bold text-[#CBFF38] uppercase tracking-[0.3em] mt-2 bg-black inline-block px-4 py-2 rounded-lg">
@@ -420,7 +420,7 @@ export const Search: React.FC = () => {
  <div className="size-10 bg-[#CBFF38]/10 rounded-xl flex items-center justify-center text-[#CBFF38] border border-[#CBFF38]/20">
  <Sparkles size={16} />
  </div>
- <h2 className="text-2xl font-black text-white tracking-tighter">{category}</h2>
+ <h2 className="text-xl md:text-2xl font-black text-white tracking-tighter">{category}</h2>
  </div>
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
  {items.map((t: any) => (

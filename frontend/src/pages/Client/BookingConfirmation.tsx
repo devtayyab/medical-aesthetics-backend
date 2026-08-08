@@ -112,7 +112,7 @@ const BookingConfirmation: React.FC = () => {
  <h1 className="text-2xl font-black uppercase tracking-tighter text-gray-900 mb-2 px-2">
  Booking Confirmed!
  </h1>
- <div className="flex justify-center gap-4 mb-8">
+ <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
  <p className="text-gray-500 font-bold uppercase text-[9px] tracking-[0.2em] bg-gray-50 px-3 py-1 rounded-md">
  Status: Confirmed
  </p>

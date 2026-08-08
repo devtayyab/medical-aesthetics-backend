@@ -220,7 +220,7 @@ export const InviteFriend: React.FC = () => {
  </div>
  </div>
 
- <div className="mt-16 pt-12 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+ <div className="mt-10 sm:mt-16 pt-8 sm:pt-12 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
  <div className="text-center">
  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Total Invited</p>
  <div className="text-4xl font-black text-gray-900">
@@ -280,7 +280,7 @@ export const InviteFriend: React.FC = () => {
  <div key={idx} className="group">
  <button
  onClick={() => toggleFAQ(idx)}
- className="w-full flex items-center justify-between px-8 py-6 text-left hover:bg-gray-50/50 transition-colors"
+ className="w-full flex items-center justify-between gap-3 px-5 sm:px-8 py-6 text-left hover:bg-gray-50/50 transition-colors"
  >
  <span className="text-[11px] font-black uppercase text-gray-900 tracking-tight">{faq.q}</span>
  {faqOpen === idx ? <Minus size={14} className="text-[#CBFF38]" /> : <Plus size={14} className="text-gray-300" />}
@@ -291,7 +291,7 @@ export const InviteFriend: React.FC = () => {
  initial={{ height: 0, opacity: 0 }}
  animate={{ height:"auto", opacity: 1 }}
  exit={{ height: 0, opacity: 0 }}
- className="px-8 pb-6 overflow-hidden"
+ className="px-5 sm:px-8 pb-6 overflow-hidden"
  >
  <p className="text-xs font-bold text-gray-400 leading-relaxed uppercase tracking-tighter">{faq.a}</p>
  </motion.div>
