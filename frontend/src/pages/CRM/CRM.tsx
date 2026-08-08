@@ -118,8 +118,8 @@ export const CRM: React.FC = () => {
  <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/30 rounded-full -mr-32 -mt-32 blur-3xl" />
  </div>
- <div className="px-8 py-10 flex flex-col md:flex-row justify-between items-center gap-6 relative z-10 bg-white/40 backdrop-blur-sm rounded-xl border border-slate-100/50">
- <div className="flex items-center gap-6">
+ <div className="px-4 py-6 sm:px-8 sm:py-10 flex flex-col md:flex-row justify-between items-center gap-6 relative z-10 bg-white/40 backdrop-blur-sm rounded-xl border border-slate-100/50">
+ <div className="flex items-center gap-4 sm:gap-6">
  <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-200 animate-in zoom-in-50 duration-700">
  <Users className="text-white w-8 h-8" />
  </div>

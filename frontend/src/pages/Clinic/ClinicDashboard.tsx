@@ -133,7 +133,7 @@ const ClinicDashboard: React.FC = () => {
  initial={{ opacity: 0, scale: 0.9 }}
  animate={{ opacity: 1, scale: 1 }}
  transition={{ delay: 0.3 }}
- className="flex items-center gap-3"
+ className="flex flex-wrap items-center gap-3"
  >
  <button
  onClick={() => navigate('/clinic/appointments')}
@@ -207,8 +207,8 @@ const ClinicDashboard: React.FC = () => {
 
  {/* Active Queue Control */}
  <div className="lg:col-span-8 space-y-10">
- <section className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-sm">
- <div className="flex items-center justify-between mb-8">
+ <section className="bg-white rounded-[40px] p-5 md:p-8 border border-gray-100 shadow-sm">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
  <div>
  <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Treatment Queue</h2>
  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">Live Clinical Feed</p>

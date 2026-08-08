@@ -53,7 +53,10 @@ const containerStyle = css`
 const cardStyle = css`
  width: 100%;
  max-width: 480px;
+ padding: 24px;
+ @media (min-width: 768px) {
  padding: 40px;
+ }
  border-radius: 32px;
  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
  background: white;
@@ -186,7 +189,7 @@ const ForgotPassword: React.FC = () => {
  <div className={containerStyle}>
  <Link 
  to="/login"
- className="absolute top-8 left-8 flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-bold uppercase text-[11px] tracking-widest group"
+ className="absolute top-4 left-4 md:top-8 md:left-8 flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-bold uppercase text-[11px] tracking-widest group"
  >
  <div className="size-8 bg-white rounded-full flex items-center justify-center shadow-sm group-hover:-translate-x-1 transition-transform">
  <ArrowLeft size={14} />

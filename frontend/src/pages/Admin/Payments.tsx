@@ -141,10 +141,10 @@ export const Payments: React.FC = () => {
  <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
  <div>
- <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Payments & Financial Control</h1>
+ <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Payments & Financial Control</h1>
  <p className="text-sm text-gray-500 mt-1">Audit transactions, manage refunds, and track clinic turnover</p>
  </div>
- <div className="flex gap-3">
+ <div className="flex flex-wrap gap-3">
  <button onClick={handleExportCSV} className="flex items-center gap-2 border border-gray-200 bg-white text-gray-700 px-4 py-2.5 font-semibold rounded-xl hover:bg-gray-50 shadow-sm transition-all text-sm">
  <Download className="w-4 h-4" /> Export CSV
  </button>
@@ -156,8 +156,8 @@ export const Payments: React.FC = () => {
 
  {/* Manual Record Modal */}
  {showManualModal && (
- <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
- <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4">
+ <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+ <div className="bg-white rounded-3xl shadow-2xl p-4 md:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
  <h2 className="text-xl font-bold text-gray-900 mb-6">New Manual Record</h2>
  <form onSubmit={handleManualSubmit} className="space-y-4">
  <div>
@@ -199,7 +199,7 @@ export const Payments: React.FC = () => {
  required
  />
  </div>
- <div className="grid grid-cols-2 gap-3">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
  <div>
  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Type</label>
  <select
@@ -226,7 +226,7 @@ export const Payments: React.FC = () => {
  </select>
  </div>
  </div>
- <div className="grid grid-cols-2 gap-3">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
  <div>
  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Doctor / Provider</label>
  <select
@@ -453,7 +453,7 @@ export const Payments: React.FC = () => {
 
  {/* Pagination Placeholder */}
  {totalCount > filters.limit && (
- <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+ <div className="px-4 md:px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
  <p className="text-xs text-gray-500 font-medium">Showing {filters.offset + 1} to {Math.min(filters.offset + filters.limit, totalCount)} of {totalCount} transactions</p>
  <div className="flex gap-2">
  <button

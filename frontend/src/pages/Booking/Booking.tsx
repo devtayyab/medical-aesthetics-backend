@@ -99,7 +99,7 @@ export const Booking: React.FC = () => {
  
  
  {/* Clinics List */}
- <div className="container">
+ <div className="container px-4 md:px-0">
  {cards.map((card) => (
  <CardDetails
  key={card.id}

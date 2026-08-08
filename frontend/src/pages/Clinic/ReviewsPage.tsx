@@ -140,7 +140,7 @@ const ReviewsPage: React.FC = () => {
  <div className="flex-1">
  <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-6">
  <div>
- <div className="flex items-center gap-3 mb-1">
+ <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1">
  <h3 className="text-lg font-black uppercase tracking-tighter text-gray-900 capitalize">
  {review.client.firstName} {review.client.lastName}
  </h3>
@@ -171,7 +171,7 @@ const ReviewsPage: React.FC = () => {
  <motion.div 
  initial={{ opacity: 0, scale: 0.95 }}
  animate={{ opacity: 1, scale: 1 }}
- className="bg-black text-white p-8 rounded-[32px] relative overflow-hidden"
+ className="bg-black text-white p-5 md:p-8 rounded-[32px] relative overflow-hidden"
  >
  <div className="absolute top-0 right-0 p-4 opacity-5">
  <ShieldCheck size={80} className="text-[#CBFF38]" />

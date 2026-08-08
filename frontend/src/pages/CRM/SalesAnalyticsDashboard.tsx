@@ -497,13 +497,13 @@ export const SalesAnalyticsDashboard = () => {
  </h3>
  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Real-time Daily Record</p>
  </div>
- <div className="flex gap-3">
+ <div className="flex flex-wrap gap-3">
  <div className="relative">
  <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
  <input
  type="text"
  placeholder="Quick Search..."
- className="pl-9 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold w-64 shadow-sm"
+ className="pl-9 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold w-full max-w-[16rem] sm:w-64 shadow-sm"
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
  />

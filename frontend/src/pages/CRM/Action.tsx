@@ -83,7 +83,7 @@ export const Actions: React.FC<ActionsPageProps> = ({ salespersonId, onViewActio
  <div className="space-y-6">
  {/* Header */}
  <Card>
- <div className="flex items-center justify-between">
+ <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
  <div>
  <h2 className="text-2xl font-bold">Action Management</h2>
  <p className="text-gray-500 mt-1">Manage your actions and follow-ups</p>
@@ -105,13 +105,13 @@ export const Actions: React.FC<ActionsPageProps> = ({ salespersonId, onViewActio
  ) : (
  <div className="space-y-10">
  {filteredActions.map(action => (
- <div key={action.id} className="p-4 border rounded-lg flex justify-between items-center">
- <div>
+ <div key={action.id} className="p-4 border rounded-lg flex justify-between items-center gap-2">
+ <div className="min-w-0">
  <h3 className="font-medium">{action.title}</h3>
  <p className="text-sm text-gray-500">{action.description}</p>
  <p className="text-xs text-gray-400">Due: {formatDate(action.dueDate)}</p>
  </div>
- <div className="flex gap-2">
+ <div className="flex gap-2 flex-shrink-0">
  <Button size="sm" variant="ghost" onClick={() => onViewAction?.(action)}>
  <Eye className="h-4 w-4" />
  </Button>

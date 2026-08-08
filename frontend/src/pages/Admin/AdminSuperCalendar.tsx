@@ -218,7 +218,7 @@ export const AdminSuperCalendar: React.FC = () => {
  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm" onClick={() => setViewDate(d => viewMode === 'week' ? subWeeks(d, 1) : subDays(d, 1))}>
  <ChevronLeft className="w-4 h-4" />
  </Button>
- <span className="text-[11px] font-black text-gray-700 min-w-[140px] text-center uppercase px-2">
+ <span className="text-[11px] font-black text-gray-700 min-w-[100px] md:min-w-[140px] text-center uppercase px-2">
  {viewMode === 'week'
  ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[weekDays.length - 1], 'MMM d')}`
  : format(viewDate, 'EEEE, MMM d')}
@@ -228,8 +228,8 @@ export const AdminSuperCalendar: React.FC = () => {
  </Button>
  </div>
 
- <div className="flex items-center gap-3 flex-1 lg:flex-none">
- <div className="relative group min-w-[180px]">
+ <div className="flex items-center gap-3 flex-1 lg:flex-none flex-wrap md:flex-nowrap">
+ <div className="relative group min-w-[140px] md:min-w-[180px] flex-1 md:flex-none">
  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
  <select
  value={selectedClinicId}
@@ -241,7 +241,7 @@ export const AdminSuperCalendar: React.FC = () => {
  </select>
  </div>
 
- <div className="relative group min-w-[180px]">
+ <div className="relative group min-w-[140px] md:min-w-[180px] flex-1 md:flex-none">
  <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
  <select
  value={selectedProviderId}
@@ -322,7 +322,7 @@ export const AdminSuperCalendar: React.FC = () => {
 
  {/* Sidebar Details Drawer */}
  {isDetailDrawerOpen && selectedApt && (
- <div className="fixed inset-y-0 right-0 w-[400px] bg-white shadow-2xl z-[100] border-l border-gray-100 flex flex-col transform transition-transform duration-300">
+ <div className="fixed inset-y-0 right-0 w-full max-w-[400px] bg-white shadow-2xl z-[100] border-l border-gray-100 flex flex-col transform transition-transform duration-300">
  <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-black text-[#CBFF38]">
  <div className="flex items-center gap-3">
  <Shield className="w-5 h-5" />
@@ -412,7 +412,7 @@ export const AdminSuperCalendar: React.FC = () => {
  {/* Reassign Modal */}
  {isReassignModalOpen && (
  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
- <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
+ <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
  <div className="p-6 bg-black text-[#CBFF38] flex items-center justify-between">
  <h3 className="text-xl font-black uppercase">Reassign Customer</h3>
  <button onClick={() => setIsReassignModalOpen(false)}><X className="w-6 h-6" /></button>
@@ -441,7 +441,7 @@ export const AdminSuperCalendar: React.FC = () => {
  {/* Recurring Modal */}
  {isRecurringModalOpen && (
  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
- <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
+ <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
  <div className="p-6 bg-black text-[#CBFF38] flex items-center justify-between">
  <h3 className="text-xl font-black uppercase">Schedule Recurring</h3>
  <button onClick={() => setIsRecurringModalOpen(false)}><X className="w-6 h-6" /></button>

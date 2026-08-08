@@ -68,7 +68,7 @@ const AnalyticsPage: React.FC = () => {
  <Filter size={12} className="text-gray-400" />
  <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Matrix Range</span>
  </div>
- <div className="flex items-center gap-2">
+ <div className="flex flex-wrap items-center justify-center gap-2">
  <input
  type="date"
  value={dateRange.startDate}
@@ -143,7 +143,7 @@ const AnalyticsPage: React.FC = () => {
 
  {/* Loyalty Integration */}
  <div className="lg:col-span-4 space-y-8">
- <section className="bg-black text-white rounded-[40px] p-10 shadow-2xl relative overflow-hidden">
+ <section className="bg-black text-white rounded-[40px] p-6 md:p-10 shadow-2xl relative overflow-hidden">
  <div className="absolute top-0 right-0 p-6 opacity-10">
  <Award size={100} className="text-[#CBFF38]" />
  </div>
@@ -177,7 +177,7 @@ const AnalyticsPage: React.FC = () => {
  </div>
  </section>
 
- <div className="bg-[#CBFF38] p-10 rounded-[40px] shadow-xl shadow-lime-500/10">
+ <div className="bg-[#CBFF38] p-6 md:p-10 rounded-[40px] shadow-xl shadow-lime-500/10">
  <h4 className="text-[10px] font-black uppercase tracking-widest text-black mb-4">Optimization Pulse</h4>
  <p className="text-xs font-bold text-black leading-tight opacity-70">
  Current resource throughput is suboptimal for category 'Injectables'. Consider increasing protocol velocity.

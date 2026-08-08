@@ -86,7 +86,7 @@ export const ArchivedLeads: React.FC = () => {
  <p className="text-gray-500 text-xs font-medium">Manage and review your inactive or lost contacts</p>
  </div>
 
- <div className="flex flex-1 max-w-md mx-4 relative">
+ <div className="flex flex-1 max-w-md mx-0 md:mx-4 relative">
  <Input
  placeholder="Search archive by Name, Email or Phone..."
  value={searchTerm}
@@ -259,7 +259,7 @@ export const ArchivedLeads: React.FC = () => {
  </div>
  </div>
 
- <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50 text-[10px]">
+ <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-4 border-t border-gray-50 text-[10px]">
  <button
  onClick={() => {
  dispatch(setLeadFilters({ status: 'lost' }));

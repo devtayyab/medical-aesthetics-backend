@@ -206,7 +206,7 @@ export const Customers: React.FC = () => {
  <p className="text-gray-500 text-xs font-medium">Manage your active clients and their interactions</p>
  </div>
 
- <div className="flex flex-1 max-w-md mx-4 relative">
+ <div className="flex flex-1 max-w-md mx-0 md:mx-4 relative">
  <Input
  placeholder="Search by Name, Email or Phone..."
  value={searchTerm}
@@ -217,7 +217,7 @@ export const Customers: React.FC = () => {
  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
  </div>
 
- <div className="flex items-center gap-2">
+ <div className="flex flex-wrap items-center gap-2">
  <Button
  variant="outline"
  onClick={() => setShowFilters(!showFilters)}
@@ -621,7 +621,7 @@ export const Customers: React.FC = () => {
  {/* Edit Modal */}
  {showModal && editingLead && (
  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[99999] p-4 animate-in fade-in">
- <Card className="w-full max-w-lg shadow-2xl">
+ <Card className="w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
  <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 pb-4">
  <CardTitle className="text-xl">Edit Record</CardTitle>
  <Button variant="ghost" size="icon" onClick={() => setShowModal(false)}><X className="w-4 h-4" /></Button>
@@ -645,7 +645,7 @@ export const Customers: React.FC = () => {
  {/* Create Modal */}
  {showCreateForm && (
  <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md flex items-center justify-center z-[99999] p-4 animate-in fade-in">
- <Card className="w-full max-w-xl shadow-2xl border-0 overflow-hidden rounded-2xl">
+ <Card className="w-full max-w-xl shadow-2xl border-0 overflow-hidden rounded-2xl max-h-[90vh] overflow-y-auto">
  <div className="px-8 py-6 border-b border-gray-100 bg-white flex items-center justify-between">
  <h2 className="text-xl font-bold text-gray-900">Add New Record</h2>
  <button onClick={() => setShowCreateForm(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>

@@ -691,7 +691,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </div>
  </div>
 
- <div className="flex items-center gap-3 order-2 xl:order-none ml-auto xl:ml-0">
+ <div className="flex flex-wrap items-center gap-3 order-2 xl:order-none ml-auto xl:ml-0">
  <div className="flex items-center bg-slate-100/50 p-1.5 rounded-[1.5rem] border border-slate-100 shadow-sm">
  <select
  value={leadFilters.status || ''}
@@ -988,7 +988,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  {/* Bulk Actions Bar */}
  {/* 3. Bulk Actions Floating Bar */}
  {selectedLeads.length > 0 && (
- <div className="sticky top-2 z-50 bg-slate-900 border border-slate-800 p-2.5 px-6 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4 shadow-2xl shadow-black/40 backdrop-blur-md mb-6">
+ <div className="sticky top-2 z-50 bg-slate-900 border border-slate-800 p-2.5 px-6 rounded-2xl flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 shadow-2xl shadow-black/40 backdrop-blur-md mb-6">
  <div className="flex items-center gap-4">
  <div className="bg-[#CBFF38] p-2 rounded-xl shadow-[0_0_15px_rgba(203,255,56,0.2)]">
  <Zap className="w-4 h-4 text-black font-black" />
@@ -999,7 +999,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </div>
  </div>
 
- <div className="flex gap-2.5 items-center">
+ <div className="flex flex-wrap gap-2.5 items-center">
  {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
  <Select
  placeholder="Assign Owner"
@@ -1354,7 +1354,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  {
  showModal && editingLead && (
  <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xl flex items-center justify-center z-[99999] p-4 animate-in fade-in duration-500">
- <Card className="w-full max-w-lg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] border border-slate-800 overflow-hidden rounded-[2.5rem] bg-slate-900">
+ <Card className="w-full max-w-lg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] border border-slate-800 overflow-hidden rounded-[2.5rem] bg-slate-900 max-h-[90vh] overflow-y-auto">
  {/* Premium Header */}
  <CardHeader className="px-10 py-8 flex flex-row items-center justify-between bg-gradient-to-br from-slate-900 to-slate-800 border-b border-slate-800/50">
  <div className="flex items-center gap-4">
@@ -1609,7 +1609,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  {
  showDuplicateResults && duplicateCheck && (
  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
- <Card className="w-full max-w-md shadow-2xl border-t-4 border-amber-400">
+ <Card className="w-full max-w-md shadow-2xl border-t-4 border-amber-400 max-h-[90vh] overflow-y-auto">
  <div className="p-6">
  <div className="flex items-center gap-3 mb-4">
  <div className="p-2 bg-amber-100 rounded-full text-amber-600">

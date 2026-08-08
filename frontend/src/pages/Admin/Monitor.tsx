@@ -38,7 +38,7 @@ export const Monitor: React.FC = () => {
  <div className="space-y-6">
  <div className="flex justify-between items-center">
  <div>
- <h1 className="text-3xl font-bold tracking-tight text-gray-900">System Monitor</h1>
+ <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">System Monitor</h1>
  <p className="text-muted-foreground mt-2 text-gray-500">
  View real-time system activity and audit logs.
  </p>

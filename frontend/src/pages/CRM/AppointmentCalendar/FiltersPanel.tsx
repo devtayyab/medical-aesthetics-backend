@@ -58,7 +58,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
 
       {/* Panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-80 bg-white border-l border-slate-200 shadow-2xl z-[9999] flex flex-col transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed top-0 right-0 h-full w-full max-w-[20rem] bg-white border-l border-slate-200 shadow-2xl z-[9999] flex flex-col transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
       >
         {/* Header */}

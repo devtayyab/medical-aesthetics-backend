@@ -136,8 +136,8 @@ export const SalesCalendar: React.FC = () => {
 
  const renderHeader = () => {
  return (
- <div className="flex items-center justify-between mb-6">
- <div className="flex items-center gap-4">
+ <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+ <div className="flex flex-wrap items-center gap-4">
  <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
  {format(currentMonth, 'MMMM yyyy')}
  </h2>
@@ -168,12 +168,12 @@ export const SalesCalendar: React.FC = () => {
  <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none"></div>
 
  <CardContent className="p-8 relative z-10">
- <div className="flex justify-between items-start mb-8">
+ <div className="flex flex-wrap justify-between items-start gap-4 mb-8">
  <div>
  <h3 className="text-xl font-bold tracking-tight">Personal Dashboard</h3>
  <p className="text-blue-100 mt-1.5 text-sm font-medium opacity-90">Track your daily wins and upcoming targets.</p>
  </div>
- <div className="flex items-center gap-2">
+ <div className="flex flex-wrap items-center gap-2">
  {user?.role === 'admin' && (
  <select
  value={selectedSalespersonId}
@@ -201,7 +201,7 @@ export const SalesCalendar: React.FC = () => {
  </select>
  </div>
  </div>
- <div className="grid grid-cols-3 gap-12">
+ <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-12">
  <div className="text-center md:text-left group cursor-default">
  <div className="text-4xl font-extrabold tracking-tight group-hover:scale-105 transition-transform duration-300">{progress.sales.toLocaleString('de-DE')} {'€'}</div>
  <div className="text-xs font-bold uppercase tracking-widest text-blue-200 mt-2">Total Sales</div>
@@ -243,6 +243,8 @@ export const SalesCalendar: React.FC = () => {
  <CardContent className="p-6">
  {renderHeader()}
 
+ <div className="overflow-x-auto">
+ <div className="min-w-[560px] md:min-w-0">
  <div className="grid grid-cols-7 mb-4">
  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
  <div key={day} className="text-center text-xs font-bold text-gray-400 uppercase tracking-widest py-2">
@@ -291,6 +293,8 @@ export const SalesCalendar: React.FC = () => {
  </div>
  );
  })}
+ </div>
+ </div>
  </div>
  </CardContent>
  </Card>

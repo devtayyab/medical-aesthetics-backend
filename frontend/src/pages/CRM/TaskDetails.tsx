@@ -33,7 +33,7 @@ export const TaskDetails: React.FC<OneCustomerDetailProps> = ({
  {assignee && assignee.email && assignee.email !== 'No email' && <Card className="border border-gray-200 shadow-md">
 
  <CardContent className="pt-6">
- <div className="flex items-start justify-between">
+ <div className="flex flex-wrap items-start justify-between gap-4">
  <div className="flex items-center gap-4">
  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
  <User className="h-8 w-8 text-blue-600" />

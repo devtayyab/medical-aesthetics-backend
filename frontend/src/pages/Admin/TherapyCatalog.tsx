@@ -290,32 +290,32 @@ export const TherapyCatalog: React.FC = () => {
   };
 
  return (
- <div className="p-8 max-w-7xl mx-auto space-y-8">
- <div className="flex justify-between items-end">
+ <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8">
+ <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-end">
  <div>
- <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tighter leading-none">
+ <h1 className="text-3xl md:text-4xl font-black text-gray-900 uppercase tracking-tighter leading-none">
  Therapy Catalog
  </h1>
  <p className="text-gray-500 uppercase text-xs font-bold tracking-widest mt-2 flex items-center gap-2">
  <Tag className="text-[#CBFF38]" size={14} /> Master therapy catalog & category management
  </p>
  </div>
- <div className="flex gap-3">
+ <div className="flex flex-wrap gap-3">
   <button
   onClick={handleAutoConnect}
-  className="flex items-center gap-2 px-6 py-3 bg-blue-100 text-blue-700 font-black rounded-2xl hover:bg-blue-200 transition-all shadow-lg shadow-blue-50 uppercase text-xs tracking-widest"
+  className="flex items-center gap-2 px-4 md:px-6 py-3 bg-blue-100 text-blue-700 font-black rounded-2xl hover:bg-blue-200 transition-all shadow-lg shadow-blue-50 uppercase text-xs tracking-widest"
   >
   <Check size={16} /> Auto-Connect
   </button>
  <button
  onClick={() => openTreatmentModal()}
- className="flex items-center gap-2 px-6 py-3 bg-[#CBFF38] text-black font-black rounded-2xl hover:bg-lime-400 transition-all shadow-lg shadow-lime-100 uppercase text-xs tracking-widest"
+ className="flex items-center gap-2 px-4 md:px-6 py-3 bg-[#CBFF38] text-black font-black rounded-2xl hover:bg-lime-400 transition-all shadow-lg shadow-lime-100 uppercase text-xs tracking-widest"
  >
  <Plus size={16} /> New Therapy
  </button>
  <button
  onClick={() => { setEditingItem(null); setCategoryForm({ name:"", description:"", icon:"", parentId:"", isActive: true }); setIsCategoryModalOpen(true); }}
- className="flex items-center gap-2 px-6 py-3 bg-[#0B1120] text-white font-black rounded-2xl hover:bg-gray-800 transition-all shadow-lg shadow-gray-200 uppercase text-xs tracking-widest"
+ className="flex items-center gap-2 px-4 md:px-6 py-3 bg-[#0B1120] text-white font-black rounded-2xl hover:bg-gray-800 transition-all shadow-lg shadow-gray-200 uppercase text-xs tracking-widest"
  >
  <Plus size={16} /> New Category
  </button>
@@ -323,12 +323,12 @@ export const TherapyCatalog: React.FC = () => {
  </div>
 
  {/* Tabs */}
- <div className="flex gap-1 bg-gray-100 p-1.5 rounded-2xl w-fit">
+ <div className="flex gap-1 bg-gray-100 p-1.5 rounded-2xl w-fit max-w-full overflow-x-auto">
  {(['treatments', 'categories', 'approval'] as const).map(tab => (
  <button
  key={tab}
  onClick={() => setActiveTab(tab)}
- className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab
+ className={`px-4 md:px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all ${activeTab === tab
  ?"bg-white text-gray-900 shadow-sm"
  :"text-gray-500 hover:text-gray-800"
  }`}
@@ -468,7 +468,7 @@ export const TherapyCatalog: React.FC = () => {
  ) : (
  <div className="grid gap-6">
  {pendingItems.map(item => (
- <div key={item.id} className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row gap-8 relative overflow-hidden">
+ <div key={item.id} className="bg-white rounded-[32px] p-4 md:p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row gap-6 md:gap-8 relative overflow-hidden">
  <div className="absolute top-0 right-0 px-6 py-2 bg-amber-100 text-amber-700 font-black uppercase text-[10px] tracking-widest rounded-bl-3xl">Pending Request</div>
 
  <div className="md:w-64 space-y-4">
@@ -487,7 +487,7 @@ export const TherapyCatalog: React.FC = () => {
 
  <div className="flex-1 space-y-6">
  <div>
- <h3 className="text-3xl font-black text-gray-900 uppercase tracking-tighter mb-4">{item.name}</h3>
+ <h3 className="text-2xl md:text-3xl font-black text-gray-900 uppercase tracking-tighter mb-4">{item.name}</h3>
  <div className="grid gap-4">
  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
  <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Short Summary</p>
@@ -502,7 +502,7 @@ export const TherapyCatalog: React.FC = () => {
  </div>
  </div>
 
- <div className="flex gap-4 pt-4">
+ <div className="flex flex-col sm:flex-row gap-3 md:gap-4 pt-4">
  <button
  onClick={() => handleSetStatus(item.id, 'approved')}
  className="flex-1 h-16 bg-[#CBFF38] text-black font-black uppercase text-xs tracking-widest rounded-2xl hover:bg-lime-400 shadow-lg shadow-lime-100 flex items-center justify-center gap-2"
@@ -527,7 +527,7 @@ export const TherapyCatalog: React.FC = () => {
  {/* Treatment Modal */}
  {isTreatmentModalOpen && (
  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]">
- <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl p-10 relative max-h-[90vh] overflow-y-auto">
+ <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl p-5 md:p-10 relative max-h-[90vh] overflow-y-auto">
  <button onClick={() => setIsTreatmentModalOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-gray-900 p-2 hover:bg-gray-100 rounded-full transition-all">
  <X size={24} />
  </button>
@@ -540,7 +540,7 @@ export const TherapyCatalog: React.FC = () => {
  </div>
 
  <form onSubmit={handleCreateTreatment} className="space-y-6">
- <div className="grid grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
  <div className="space-y-2">
  <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Therapy Name *</label>
  <input
@@ -597,7 +597,7 @@ export const TherapyCatalog: React.FC = () => {
 
  <div className="space-y-2">
  <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Link Clinics (Select one or more)</label>
- <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto p-4 bg-gray-50 rounded-2xl border border-gray-100">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-40 overflow-y-auto p-4 bg-gray-50 rounded-2xl border border-gray-100">
  {clinics.map(clinic => {
  const isSelected = treatmentForm.clinicIds.includes(clinic.id);
  return (
@@ -659,7 +659,7 @@ export const TherapyCatalog: React.FC = () => {
  {/* Category Modal */}
  {isCategoryModalOpen && (
  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]">
- <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md p-10 relative">
+ <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md p-5 md:p-10 relative max-h-[90vh] overflow-y-auto">
  <button onClick={() => setIsCategoryModalOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-gray-900"><X size={20} /></button>
 
  <div className="mb-8 text-center">

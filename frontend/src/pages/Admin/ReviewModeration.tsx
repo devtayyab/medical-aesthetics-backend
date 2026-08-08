@@ -44,9 +44,9 @@ export const ReviewModeration: React.FC = () => {
  }
 
  return (
- <div className="p-8 max-w-6xl mx-auto">
+ <div className="p-4 md:p-8 max-w-6xl mx-auto">
  <div className="mb-8">
- <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">
+ <h1 className="text-2xl md:text-3xl font-black text-gray-900 uppercase tracking-tight">
  Review Moderation
  </h1>
  <p className="text-gray-500 uppercase text-xs font-bold tracking-widest mt-1">
@@ -111,7 +111,7 @@ export const ReviewModeration: React.FC = () => {
  </div>
 
  {/* Content */}
- <div className="flex-1 p-8 flex flex-col justify-between">
+ <div className="flex-1 p-4 md:p-8 flex flex-col justify-between">
  <div>
  <div className="flex items-center gap-1 mb-4">
  {[...Array(5)].map((_, i) => (
@@ -130,7 +130,7 @@ export const ReviewModeration: React.FC = () => {
  </p>
  </div>
 
- <div className="mt-8 flex items-center gap-4">
+ <div className="mt-8 flex flex-wrap items-center gap-3 md:gap-4">
  <Button
  onClick={() => handleModerate(review.id, 'APPROVED')}
  variant="primary"

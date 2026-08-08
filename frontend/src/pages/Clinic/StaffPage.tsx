@@ -187,22 +187,22 @@ const StaffPage: React.FC = () => {
  {/* Premium Add Staff Modal */}
  {showAddModal && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
- <div className="w-full max-w-lg bg-white rounded-[48px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
- <div className="p-10 border-b border-gray-100 flex justify-between items-center bg-black text-white">
+ <div className="w-full max-w-lg bg-white rounded-3xl md:rounded-[48px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+ <div className="p-6 md:p-10 border-b border-gray-100 flex justify-between items-center bg-black text-white">
  <div>
- <h2 className="text-3xl font-black uppercase tracking-tighter">Personnel Intake</h2>
+ <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter">Personnel Intake</h2>
  <p className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] mt-1">Credential Provisioning</p>
  </div>
  <button
  onClick={() => setShowAddModal(false)}
- className="size-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center transition-all"
+ className="size-11 md:size-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center transition-all shrink-0"
  >
  <X className="w-6 h-6" />
  </button>
  </div>
 
- <form onSubmit={handleAddStaff} className="p-10 space-y-6">
- <div className="grid grid-cols-2 gap-4">
+ <form onSubmit={handleAddStaff} className="p-6 md:p-10 space-y-6">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <div className="space-y-1.5">
  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Identity Alpha</label>
  <input
@@ -252,7 +252,7 @@ const StaffPage: React.FC = () => {
  />
  </div>
 
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <div className="space-y-1.5">
  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Expertise Tier</label>
  <select

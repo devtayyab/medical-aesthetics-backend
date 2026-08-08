@@ -108,8 +108,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
  };
 
  return (
- <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm">
- <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+ <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+ <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
  <h2 className="text-xl font-bold text-gray-900">New Appointment</h2>
  <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors bg-white hover:bg-gray-100 rounded-full p-2 border border-gray-200/50">

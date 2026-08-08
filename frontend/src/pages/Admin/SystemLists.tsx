@@ -110,7 +110,7 @@ export const SystemLists: React.FC = () => {
  <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
  <div>
- <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+ <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
  System-wide Lists
  </h1>
  <p className="text-sm text-gray-500 mt-1">Manage global dropdowns, therapy catalogs, and treatment categories</p>
@@ -124,16 +124,16 @@ export const SystemLists: React.FC = () => {
  </div>
 
  {/* Tabs */}
- <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm self-start p-1.5 rounded-2xl border border-gray-100 mb-8 w-fit">
+ <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm self-start p-1.5 rounded-2xl border border-gray-100 mb-8 w-fit max-w-full overflow-x-auto">
  <button
  onClick={() => setActiveTab('categories')}
- className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'categories' ? 'bg-[#0B1120] text-white shadow-lg' : 'text-gray-500 hover:text-gray-900 hover:bg-white'}`}
+ className={`flex items-center gap-2 px-4 md:px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${activeTab === 'categories' ? 'bg-[#0B1120] text-white shadow-lg' : 'text-gray-500 hover:text-gray-900 hover:bg-white'}`}
  >
  <TagIcon size={18} /> Categories
  </button>
  <button
  onClick={() => setActiveTab('treatments')}
- className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'treatments' ? 'bg-[#0B1120] text-white shadow-lg' : 'text-gray-500 hover:text-gray-900 hover:bg-white'}`}
+ className={`flex items-center gap-2 px-4 md:px-6 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${activeTab === 'treatments' ? 'bg-[#0B1120] text-white shadow-lg' : 'text-gray-500 hover:text-gray-900 hover:bg-white'}`}
  >
  <Stethoscope size={18} /> Therapy Catalog
  </button>
@@ -225,14 +225,14 @@ export const SystemLists: React.FC = () => {
  {/* Modal CRUD */}
  {isModalOpen && (
  <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
- <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
- <div className="p-8 border-b border-gray-100 bg-[#0B1120] text-white">
+ <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
+ <div className="p-4 md:p-8 border-b border-gray-100 bg-[#0B1120] text-white">
  <h2 className="text-2xl font-bold">{editingItem ? 'Edit Existing' : 'Add New'} {activeTab === 'categories' ? 'Category' : 'Therapy'}</h2>
  <p className="text-sm text-gray-400 mt-1">Updates will propagate across all clinics instantly</p>
  </div>
 
  <form onSubmit={handleCreateOrUpdate}>
- <div className="p-8 space-y-6">
+ <div className="p-4 md:p-8 space-y-6">
  <div className="space-y-2">
  <label className="text-xs font-extrabold text-gray-500 uppercase tracking-widest pl-1">Name</label>
  <input 
@@ -273,7 +273,7 @@ export const SystemLists: React.FC = () => {
  )}
  </div>
 
- <div className="p-8 pt-4 bg-gray-50 flex gap-4">
+ <div className="p-4 md:p-8 md:pt-4 pt-4 bg-gray-50 flex flex-col sm:flex-row gap-3 md:gap-4">
  <button 
  type="button"
  onClick={() => setIsModalOpen(false)}
