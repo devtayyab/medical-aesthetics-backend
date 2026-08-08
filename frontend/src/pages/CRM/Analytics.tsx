@@ -151,53 +151,53 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
  </div>
  </div>
 
- {/* Filter Bar */}
- <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100 flex flex-col md:flex-row items-end md:items-center gap-3">
- {user?.role !== 'salesperson' && (
- <div className="flex-1 w-full relative">
- <label className="text-[9px] font-bold text-gray-400 uppercase mb-0.5 block">Salesperson</label>
- <Select
- options={[
- { label: 'All Salespeople', value: 'all' },
- ...(salespersons || [])
- .filter((s: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(s.role))
- .map(s => ({
- label: `${s.firstName} ${s.lastName}`,
- value: s.id
- }))
- ]}
- value={salespersonId}
- onChange={(val) => setSalespersonId(val)}
- className="h-8 text-xs"
- />
- </div>
- )}
+  {/* Filter Bar */}
+  <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-stretch md:items-center gap-3">
+  {user?.role !== 'salesperson' && (
+  <div className="flex-1 w-full relative">
+  <label className="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Salesperson</label>
+  <Select
+  options={[
+  { label: 'All Salespeople', value: 'all' },
+  ...(salespersons || [])
+  .filter((s: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(s.role))
+  .map(s => ({
+  label: `${s.firstName} ${s.lastName}`,
+  value: s.id
+  }))
+  ]}
+  value={salespersonId}
+  onChange={(val) => setSalespersonId(val)}
+  className="h-9 text-xs w-full"
+  />
+  </div>
+  )}
 
- <div className="flex items-center gap-3 w-full md:w-auto">
- <div className="flex-1 md:w-36">
- <label className="text-[10px] font-medium text-gray-500 mb-1 block flex items-center gap-1">
- <Calendar className="w-3 h-3" /> Start
- </label>
- <Input
- type="date"
- value={dateRange.startDate}
- onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
- className="bg-gray-50 border-gray-200 h-9 text-xs"
- />
- </div>
- <div className="flex-1 md:w-36">
- <label className="text-[10px] font-medium text-gray-500 mb-1 block flex items-center gap-1">
- <Calendar className="w-3 h-3" /> End
- </label>
- <Input
- type="date"
- value={dateRange.endDate}
- onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
- className="bg-gray-50 border-gray-200 h-9 text-xs"
- />
- </div>
- </div>
- </div>
+  <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full md:w-auto md:flex md:items-center">
+  <div className="w-full md:w-36 min-w-0">
+  <label className="text-[10px] font-bold text-gray-500 mb-1 block flex items-center gap-1">
+  <Calendar className="w-3 h-3 text-gray-400" /> Start
+  </label>
+  <Input
+  type="date"
+  value={dateRange.startDate}
+  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+  className="bg-gray-50 border-gray-200 h-9 text-xs w-full min-w-0 px-2"
+  />
+  </div>
+  <div className="w-full md:w-36 min-w-0">
+  <label className="text-[10px] font-bold text-gray-500 mb-1 block flex items-center gap-1">
+  <Calendar className="w-3 h-3 text-gray-400" /> End
+  </label>
+  <Input
+  type="date"
+  value={dateRange.endDate}
+  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+  className="bg-gray-50 border-gray-200 h-9 text-xs w-full min-w-0 px-2"
+  />
+  </div>
+  </div>
+  </div>
 
  {/* Turnover KPI Section */}
  {canSeeFinancials && (
@@ -568,13 +568,13 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
 const MetricCard = ({ title, value, icon, trend, color }: any) => (
  <Card className="border-none shadow-sm hover:shadow-md transition-shadow">
  <CardContent className="p-3">
- <div className="flex items-center gap-3">
+ <div className="flex items-center gap-2 sm:gap-3">
  <div className={`p-2 rounded-lg flex-shrink-0 ${color}`}>
  {React.cloneElement(icon as React.ReactElement, { className: 'w-3.5 h-3.5' })}
  </div>
- <div className="min-w-0">
- <h3 className="text-[10px] font-medium text-gray-500 uppercase tracking-wider truncate">{title}</h3>
- <p className="text-lg font-bold text-gray-900 leading-tight">{value}</p>
+ <div className="min-w-0 flex-1">
+ <h3 className="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate" title={title}>{title}</h3>
+ <p className="text-base sm:text-lg font-bold text-gray-900 leading-tight truncate">{value}</p>
  </div>
  </div>
  <p className="text-[9px] text-gray-400 mt-1 truncate">{trend}</p>
