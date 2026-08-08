@@ -8,17 +8,18 @@ import { format } from"date-fns";
 const containerStyle = css`
  max-width: 650px;
  margin: 0 auto;
- padding: 24px 1rem;
+ padding: 12px 0.75rem 32px 0.75rem;
  @media (min-width: 640px) {
- padding: 40px 1rem;
+ padding: 32px 1rem;
  }
 `;
 
 const successCard = css`
  background: white;
- border-radius: 24px;
- padding: 24px;
+ border-radius: 20px;
+ padding: 16px 14px;
  @media (min-width: 640px) {
+ border-radius: 24px;
  padding: 32px;
  }
  text-align: center;
@@ -31,10 +32,17 @@ const successCard = css`
 const detailRow = css`
  display: flex;
  align-items: center;
- gap: 12px;
+ gap: 10px;
+ padding: 10px 12px;
+ @media (min-width: 640px) {
  padding: 16px;
+ gap: 12px;
+ }
  background: #fdfdfd;
+ border-radius: 14px;
+ @media (min-width: 640px) {
  border-radius: 16px;
+ }
  border: 1px solid #f7f7f7;
 `;
 
@@ -88,79 +96,79 @@ const BookingConfirmation: React.FC = () => {
  return (
  <div className="min-h-screen bg-[#F7FAFC]">
  <div className={containerStyle}>
- <div className="mb-8">
- <button onClick={() => navigate('/search')} className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
- <div className="size-8 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-black transition-all">
- <FaChevronLeft size={10} />
- </div>
- Back to Search
- </button>
- </div>
+  <div className="mb-4 sm:mb-8">
+  <button onClick={() => navigate('/search')} className="group flex items-center gap-2 sm:gap-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
+  <div className="size-7 sm:size-8 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-black transition-all">
+  <FaChevronLeft size={9} />
+  </div>
+  Back to Search
+  </button>
+  </div>
 
- <div className={successCard}>
- <div className="absolute top-0 left-0 w-full h-1.5 bg-[#CBFF38]" />
+  <div className={successCard}>
+  <div className="absolute top-0 left-0 w-full h-1.5 bg-[#CBFF38]" />
 
- <div className="relative mb-6">
- <div className="size-16 rounded-full bg-lime-50 flex items-center justify-center mx-auto animate-in zoom-in-50 duration-500">
- <FaCheckCircle className="text-[#CBFF38]" size={32} />
- </div>
- <div className="absolute -top-1 right-[calc(50%-2rem)] size-6 bg-black text-white rounded-full flex items-center justify-center animate-bounce shadow-xl">
- <FaStar size={10} className="text-[#CBFF38]" />
- </div>
- </div>
+  <div className="relative mb-4 sm:mb-6">
+  <div className="size-12 sm:size-16 rounded-full bg-lime-50 flex items-center justify-center mx-auto animate-in zoom-in-50 duration-500">
+  <FaCheckCircle className="text-[#CBFF38]" size={28} />
+  </div>
+  <div className="absolute -top-1 left-1/2 translate-x-2 size-5 sm:size-6 bg-black text-white rounded-full flex items-center justify-center animate-bounce shadow-xl">
+  <FaStar size={9} className="text-[#CBFF38]" />
+  </div>
+  </div>
 
- <h1 className="text-2xl font-black uppercase tracking-tighter text-gray-900 mb-2 px-2">
- Booking Confirmed!
- </h1>
- <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
- <p className="text-gray-500 font-bold uppercase text-[9px] tracking-[0.2em] bg-gray-50 px-3 py-1 rounded-md">
- Status: Confirmed
- </p>
- <p className="text-gray-500 font-bold uppercase text-[9px] tracking-[0.2em] bg-gray-50 px-3 py-1 rounded-md">
- Ref: #{appointment.id.slice(-8).toUpperCase()}
- </p>
- </div>
+  <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-gray-900 mb-2 px-2">
+  Booking Confirmed!
+  </h1>
+  <div className="flex flex-wrap justify-center gap-2 mb-4 sm:mb-8">
+  <p className="text-gray-500 font-bold uppercase text-[8px] sm:text-[9px] tracking-[0.2em] bg-gray-50 px-2.5 py-1 rounded-md">
+  Status: Confirmed
+  </p>
+  <p className="text-gray-500 font-bold uppercase text-[8px] sm:text-[9px] tracking-[0.2em] bg-gray-50 px-2.5 py-1 rounded-md">
+  Ref: #{appointment.id.slice(-8).toUpperCase()}
+  </p>
+  </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8 text-left">
- <div className={detailRow}>
- <div className="size-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
- <FaCalendarAlt className="text-gray-400" size={14} />
- </div>
- <div>
- <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Date</p>
- <p className="font-black text-black uppercase">
- {format(new Date(appointment.startTime),"EEEE, MMM d")}
- </p>
- </div>
- </div>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3 mb-4 sm:mb-8 text-left">
+  <div className={detailRow}>
+  <div className="size-9 sm:size-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
+  <FaCalendarAlt className="text-gray-400" size={13} />
+  </div>
+  <div>
+  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Date</p>
+  <p className="font-black text-black uppercase text-xs sm:text-sm">
+  {format(new Date(appointment.startTime),"EEEE, MMM d")}
+  </p>
+  </div>
+  </div>
 
- <div className={detailRow}>
- <div className="size-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
- <FaClock className="text-gray-400" size={14} />
- </div>
- <div>
- <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Time</p>
- <p className="font-black text-black uppercase">
- {appointment.startTimeDisplay || format(new Date(appointment.startTime),"HH:mm")}
- </p>
- </div>
- </div>
+  <div className={detailRow}>
+  <div className="size-9 sm:size-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
+  <FaClock className="text-gray-400" size={13} />
+  </div>
+  <div>
+  <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Time</p>
+  <p className="font-black text-black uppercase text-xs sm:text-sm">
+  {appointment.startTimeDisplay || format(new Date(appointment.startTime),"HH:mm")}
+  </p>
+  </div>
+  </div>
 
- <div className={`${detailRow} md:col-span-2`}>
- <div className="size-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
- <FaMapMarkerAlt className="text-gray-400" size={14} />
- </div>
- <div className="min-w-0 flex-1">
- <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Appointment Details</p>
- <p className="font-black text-black uppercase truncate text-sm">{appointment.service?.name || appointment.serviceName || 'Treatment'}</p>
- <p className="text-[10px] font-bold text-gray-500 uppercase">{appointment.clinic?.name || 'Clinic'}</p>
- </div>
- </div>
- </div>
+  <div className={`${detailRow} md:col-span-2`}>
+  <div className="size-9 sm:size-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
+  <FaMapMarkerAlt className="text-gray-400" size={13} />
+  </div>
+  <div className="min-w-0 flex-1">
+  <p className="text-[8px] sm:text-[9px] font-black uppercase text-gray-400 tracking-widest">Appointment Details</p>
+  <p className="font-black text-black uppercase truncate text-xs sm:text-sm">{appointment.service?.name || appointment.serviceName || 'Treatment'}</p>
+  <p className="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase">{appointment.clinic?.name || 'Clinic'}</p>
+  </div>
+  </div>
+  </div>
 
- <div className="space-y-4 mb-8 border-t border-gray-100 pt-8">
- <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">What happens next?</h3>
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8 border-t border-gray-100 pt-4 sm:pt-8">
+  <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 sm:mb-4">What happens next?</h3>
+  <div className="grid grid-cols-3 gap-2 sm:gap-4">
  <div>
  <div className="size-6 rounded-full bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-[10px] mx-auto mb-2">1</div>
  <p className="text-[9px] font-black uppercase tracking-tighter leading-tight text-gray-600">Confirmation <br /> Email Sent</p>

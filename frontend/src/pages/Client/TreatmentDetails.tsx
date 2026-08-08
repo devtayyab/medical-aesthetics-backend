@@ -102,7 +102,7 @@ const treatmentCardImage = css`
  @media (min-width: 768px) {
  width: 40%;
  }
- height: 250px;
+ height: 180px;
  @media (min-width: 768px) {
  height: 100%;
  }
@@ -277,12 +277,13 @@ export const TreatmentDetails: React.FC = () => {
  </div>
 
  {/* Clinic List - Practitioners First */}
- <section id="clinics-list" className="py-16 bg-white">
+ <section id="clinics-list" className="py-8 sm:py-16 bg-white">
  <div className="container mx-auto px-4 sm:px-8">
- <div className="mb-12">
- <span className="text-[9px] font-black text-[#CBFF38] uppercase tracking-[0.3em] mb-2 block">Premium Selection</span>
- <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-gray-900 leading-none">
- Verified <span className="text-[#CBFF38] bg-black px-3 py-1">Practitioners</span>
+ <div className="mb-6 sm:mb-12">
+ <span className="text-[9px] font-black text-lime-600 uppercase tracking-[0.3em] mb-1.5 block">Premium Selection</span>
+ <h2 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tighter text-gray-900 leading-snug flex flex-wrap items-center gap-2">
+ <span>Verified</span>
+ <span className="text-[#CBFF38] bg-black px-2.5 py-0.5 rounded-lg">Practitioners</span>
  </h2>
  </div>
 

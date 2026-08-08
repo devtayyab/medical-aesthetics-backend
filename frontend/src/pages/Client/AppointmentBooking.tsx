@@ -57,28 +57,30 @@ const formatClinicTime = (dateStr: string | Date, timezone?: string) => {
 const containerStyle = css`
  max-width: 1100px;
  margin: 0 auto;
- padding: 24px 1rem;
+ padding: 12px 0.75rem 32px 0.75rem;
  @media (min-width: 640px) {
- padding: 40px 1rem;
+ padding: 32px 1rem;
  }
 `;
 
 const cardStyle = css`
  background: white;
- border-radius: 32px;
- padding: 24px;
+ border-radius: 20px;
+ padding: 16px 14px;
  @media (min-width: 640px) {
+ border-radius: 32px;
  padding: 32px;
  }
- box-shadow: 0 20px 40px rgba(0,0,0,0.02);
- border: 1px solid rgba(0,0,0,0.02);
+ box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+ border: 1px solid rgba(0,0,0,0.04);
 `;
 
 const sidebarCardStyle = css`
  background: #121212;
- border-radius: 32px;
- padding: 24px;
+ border-radius: 20px;
+ padding: 16px;
  @media (min-width: 640px) {
+ border-radius: 32px;
  padding: 32px;
  }
  color: white;
@@ -93,9 +95,15 @@ const dayStyle = (isCurrentMonth: boolean, isSelected: boolean, isPast: boolean)
  align-items: center;
  justify-content: center;
  cursor: ${isPast ? 'not-allowed' : 'pointer'};
+ border-radius: 10px;
+ @media (min-width: 640px) {
  border-radius: 16px;
+ }
  font-weight: ${isSelected ? '900' : '700'};
+ font-size: 12px;
+ @media (min-width: 640px) {
  font-size: 14px;
+ }
  background: ${isSelected ? '#121212' : 'transparent'};
  color: ${isPast ? '#e2e8f0' : isSelected ? '#CBFF38' : isCurrentMonth ? '#1a202c' : '#cbd5e0'};
  transform: ${isSelected ? 'scale(1.05)' : 'scale(1)'};
@@ -107,11 +115,20 @@ const dayStyle = (isCurrentMonth: boolean, isSelected: boolean, isPast: boolean)
 `;
 
 const slotButton = (isSelected: boolean, isAvailable: boolean) => css`
-  padding: 16px 10px;
+  padding: 10px 6px;
+  @media (min-width: 640px) {
+    padding: 16px 10px;
+  }
   text-align: center;
-  border-radius: 16px;
+  border-radius: 12px;
+  @media (min-width: 640px) {
+    border-radius: 16px;
+  }
   font-weight: 900;
-  font-size: 14px;
+  font-size: 12px;
+  @media (min-width: 640px) {
+    font-size: 14px;
+  }
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: ${isAvailable ? 'pointer' : 'not-allowed'};
   border: 2px solid ${isSelected ? '#000' : isAvailable ? '#f1f5f9' : '#fee2e2'};
@@ -269,42 +286,42 @@ export const AppointmentBooking: React.FC = () => {
  return (
  <div className="min-h-screen bg-[#FDFDFD]">
  <div className={containerStyle}>
- <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
- <button onClick={() => navigate(-1)} className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
- <div className="size-8 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-[#CBFF38] group-hover:text-black transition-all shadow-sm">
- <FaChevronLeft size={10} />
- </div>
- Back to Search
- </button>
- 
- <div className="flex items-center gap-2 sm:gap-4">
- <div className="flex flex-col items-center">
- <div className="size-8 rounded-xl bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-xs shadow-xl shadow-black/10">1</div>
- <span className="text-[8px] font-black uppercase mt-1 tracking-widest">Time</span>
- </div>
- <div className="w-6 sm:w-12 h-[2px] bg-gray-100 -mt-4" />
- <div className="flex flex-col items-center">
- <div className="size-8 rounded-xl bg-white border border-gray-100 text-gray-400 flex items-center justify-center font-black text-xs shadow-sm">2</div>
- <span className="text-[8px] font-black uppercase mt-1 tracking-widest">Details</span>
- </div>
- </div>
- </div>
+  <div className="flex items-center justify-between mb-4 sm:mb-8 flex-wrap gap-2 sm:gap-4">
+  <button onClick={() => navigate(-1)} className="group flex items-center gap-2 sm:gap-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
+  <div className="size-7 sm:size-8 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-[#CBFF38] group-hover:text-black transition-all shadow-sm">
+  <FaChevronLeft size={10} />
+  </div>
+  Back to Search
+  </button>
+  
+  <div className="flex items-center gap-2 sm:gap-4">
+  <div className="flex flex-col items-center">
+  <div className="size-7 sm:size-8 rounded-xl bg-[#121212] text-[#CBFF38] flex items-center justify-center font-black text-xs shadow-xl shadow-black/10">1</div>
+  <span className="text-[7px] sm:text-[8px] font-black uppercase mt-1 tracking-widest">Time</span>
+  </div>
+  <div className="w-4 sm:w-12 h-[2px] bg-gray-100 -mt-4" />
+  <div className="flex flex-col items-center">
+  <div className="size-7 sm:size-8 rounded-xl bg-white border border-gray-100 text-gray-400 flex items-center justify-center font-black text-xs shadow-sm">2</div>
+  <span className="text-[7px] sm:text-[8px] font-black uppercase mt-1 tracking-widest">Details</span>
+  </div>
+  </div>
+  </div>
 
- <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
- {/* Calendar Section */}
- <div className="lg:col-span-8 space-y-8">
- <div className={cardStyle}>
- <div className="flex items-center justify-between mb-6">
- <div>
- <h4 className="text-[9px] font-black tracking-[0.2em] uppercase text-gray-400 mb-1">Select the Exact Time</h4>
- <h2 className="text-xl font-black uppercase text-gray-900">{format(currentMonth,"MMMM yyyy")}</h2>
- </div>
- <div className="flex gap-2">
- <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="size-10 rounded-xl border border-gray-100 flex items-center justify-center hover:bg-[#121212] hover:text-[#CBFF38] hover:border-[#121212] transition-colors"><FaChevronLeft size={12} /></button>
- <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="size-10 rounded-xl border border-gray-100 flex items-center justify-center hover:bg-[#121212] hover:text-[#CBFF38] hover:border-[#121212] transition-colors"><FaChevronRight size={12} /></button>
- </div>
- </div>
- <div className="grid grid-cols-7 gap-1 mb-4">
+  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
+  {/* Calendar Section */}
+  <div className="lg:col-span-8 space-y-4 sm:space-y-8">
+  <div className={cardStyle}>
+  <div className="flex items-center justify-between mb-4 sm:mb-6">
+  <div>
+  <h4 className="text-[8px] sm:text-[9px] font-black tracking-[0.2em] uppercase text-gray-400 mb-0.5 sm:mb-1">Select the Exact Time</h4>
+  <h2 className="text-base sm:text-xl font-black uppercase text-gray-900">{format(currentMonth,"MMMM yyyy")}</h2>
+  </div>
+  <div className="flex gap-1.5 sm:gap-2">
+  <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="size-8 sm:size-10 rounded-lg sm:rounded-xl border border-gray-100 flex items-center justify-center hover:bg-[#121212] hover:text-[#CBFF38] hover:border-[#121212] transition-colors"><FaChevronLeft size={10} /></button>
+  <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="size-8 sm:size-10 rounded-lg sm:rounded-xl border border-gray-100 flex items-center justify-center hover:bg-[#121212] hover:text-[#CBFF38] hover:border-[#121212] transition-colors"><FaChevronRight size={10} /></button>
+  </div>
+  </div>
+  <div className="grid grid-cols-7 gap-1 mb-4">
  {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
  <div key={d} className="text-center text-[9px] font-bold text-gray-300 uppercase tracking-widest py-1">{d}</div>
  ))}
@@ -434,21 +451,21 @@ export const AppointmentBooking: React.FC = () => {
 
  {/* Mobile Bottom Sheet for Time Slots */}
  {showMobileTimes && (
- <div className="fixed inset-0 z-[100] bg-black/40 lg:hidden flex flex-col justify-end transition-opacity">
- <div className="bg-white rounded-t-3xl p-6 w-full max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom">
- <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-6 shrink-0">
+ <div className="fixed inset-0 z-[1001] bg-black/60 backdrop-blur-sm lg:hidden flex flex-col justify-end transition-opacity">
+ <div className="bg-white rounded-t-3xl p-4 sm:p-6 w-full max-h-[75vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom">
+ <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4 shrink-0">
  <div>
- <h3 className="text-xl font-black uppercase text-gray-900">Select Time</h3>
- <p className="text-xs font-bold text-gray-500 mt-1">{format(selectedDateState,"EEEE, MMMM d")}</p>
+ <h3 className="text-lg font-black uppercase text-gray-900 leading-tight">Select Time</h3>
+ <p className="text-[11px] font-bold text-gray-500 mt-0.5">{format(selectedDateState,"EEEE, MMMM d")}</p>
  </div>
- <button onClick={() => setShowMobileTimes(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 hover:bg-gray-200">
+ <button onClick={() => setShowMobileTimes(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 hover:bg-gray-200 shrink-0">
  <X className="w-4 h-4" />
  </button>
  </div>
 
- <div className="flex-1 overflow-y-auto no-scrollbar pb-6 space-y-4">
+ <div className="flex-1 overflow-y-auto no-scrollbar pb-4 space-y-3">
  {availableSlots.length > 0 ? (
- <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+ <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
  {availableSlots.map((slot) => (
  <button
  key={slot.startTime}
@@ -465,19 +482,19 @@ export const AppointmentBooking: React.FC = () => {
  ))}
  </div>
  ) : (
- <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
- <p className="text-sm font-black uppercase text-gray-400">No availability for this date. Try another day.</p>
+ <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+ <p className="text-xs font-black uppercase text-gray-400">No availability for this date. Try another day.</p>
  </div>
  )}
  </div>
 
  {selectedSlot && (
- <div className="shrink-0 pt-4 border-t border-gray-100">
+ <div className="shrink-0 pt-3 border-t border-gray-100">
  <Button
  fullWidth
  disabled={bookingLoading}
  onClick={() => { setShowMobileTimes(false); handleProceed(); }}
- className="bg-[#CBFF38] text-black hover:bg-lime-400 h-16 rounded-2xl font-black uppercase tracking-widest text-base shadow-lg shadow-lime-200"
+ className="bg-[#CBFF38] text-black hover:bg-lime-400 h-12 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg"
  >
  {bookingLoading ?"Establishing..." :"Continue"}
  </Button>
