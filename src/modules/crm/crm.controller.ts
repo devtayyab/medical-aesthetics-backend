@@ -475,8 +475,10 @@ export class CrmController {
   @Get('facebook/forms')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)
-  getFacebookForms(@Query('pageId') pageId?: string) {
-    return this.crmService.getFacebookForms(pageId);
+  async getFacebookForms(@Query('pageId') pageId?: string) {
+    const forms = await this.crmService.getFacebookForms(pageId);
+    // Never expose page access tokens to the client
+    return (forms || []).map(({ page_access_token, ...rest }) => rest);
   }
 
   @Get('facebook/stats')
@@ -759,6 +761,14 @@ export class CrmController {
   @UseGuards(RolesGuard)
   testFacebookConnection() {
     return this.crmService.testFacebookConnection();
+  }
+
+  @Get('facebook/webhook-subscription')
+  @ApiOperation({ summary: 'Check (and optionally repair) the leadgen webhook subscription for the page' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @UseGuards(RolesGuard)
+  checkWebhookSubscription(@Query('subscribe') subscribe?: string) {
+    return this.crmService.checkFacebookWebhookSubscription(subscribe === 'true');
   }
 
   @Post('customers/:id/reassign')

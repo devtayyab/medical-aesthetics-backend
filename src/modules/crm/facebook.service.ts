@@ -159,8 +159,11 @@ export class FacebookService {
     }
   }
 
-  async getLeadsByForm(formId: string, limit: number = 10000): Promise<FacebookLeadData[]> {
+  async getLeadsByForm(formId: string, limit: number = 10000, accessTokenOverride?: string): Promise<FacebookLeadData[]> {
     const creds = await this.getFacebookCredentials();
+    if (accessTokenOverride) {
+      creds.accessToken = accessTokenOverride;
+    }
     if (creds.accessToken === 'MOCK_TOKEN' || creds.accessToken === 'your-facebook-access-token') {
       const mockCount = Math.min(limit, 50);
       return Array(mockCount).fill(null).map((_, i) => ({
@@ -232,11 +235,32 @@ export class FacebookService {
 
     const notes = extraFields.length > 0 ? extraFields.join('\n') : undefined;
 
+    // Tolerant field lookup: forms use custom/localized keys (VORNAME, e-mail,
+    // work_email, Telefonnummer, …) — match case-insensitively by substring so
+    // those leads don't land with empty name/email/phone and become unsearchable
+    // Keys that contain the needle but are never about the person themselves
+    const EXCLUDED_KEY_PARTS = ['ad_name', 'adset', 'campaign', 'company', 'business', 'clinic', 'page_name', 'form_name'];
+    const findField = (...needles: string[]): string | undefined => {
+      for (const needle of needles) {
+        for (const [key, value] of fieldMap) {
+          const k = key.toLowerCase();
+          if (k.includes(needle) && !EXCLUDED_KEY_PARTS.some((ex) => k.includes(ex))) {
+            return value;
+          }
+        }
+      }
+      return undefined;
+    };
+
+    const fullName = fieldMap.get('full_name') || findField('full_name', 'name');
+    const firstName = fieldMap.get('first_name') || findField('first_name', 'vorname');
+    const lastName = fieldMap.get('last_name') || findField('last_name', 'nachname');
+
     return {
-      firstName: fieldMap.get('full_name')?.split(' ')[0] || fieldMap.get('first_name'),
-      lastName: fieldMap.get('full_name')?.split(' ').slice(1).join(' ') || fieldMap.get('last_name'),
-      email: fieldMap.get('email'),
-      phone: fieldMap.get('phone_number') || fieldMap.get('phone'),
+      firstName: firstName || fullName?.split(' ')[0],
+      lastName: lastName || fullName?.split(' ').slice(1).join(' '),
+      email: fieldMap.get('email') || findField('email', 'e-mail', 'mail'),
+      phone: fieldMap.get('phone_number') || fieldMap.get('phone') || findField('phone', 'telefon', 'mobil', 'handy'),
       facebookLeadId: leadData.id,
       facebookFormId: leadData.form_id,
       facebookCampaignId: leadData.campaign_id,
@@ -310,8 +334,162 @@ export class FacebookService {
     }
   }
 
-  async getForms(pageId?: string): Promise<any[]> {
+  /**
+   * Discover every Facebook page leads can come from:
+   * - all pages the access token can manage (/me/accounts), each with its own
+   *   page access token (page tokens carry the leadgen permissions), plus
+   * - explicitly configured page IDs (platform_settings facebook_page_ids /
+   *   facebook_page_id, env FACEBOOK_PAGE_ID) that /me/accounts didn't return.
+   */
+  async getPages(): Promise<Array<{ id: string; name?: string; access_token?: string }>> {
     const creds = await this.getFacebookCredentials();
+    const pages = new Map<string, { id: string; name?: string; access_token?: string }>();
+
+    if (creds.accessToken && creds.accessToken !== 'MOCK_TOKEN' && creds.accessToken !== 'your-facebook-access-token') {
+      try {
+        let nextUrl: string | null = '/me/accounts';
+        let params: any = { access_token: creds.accessToken, fields: 'id,name,access_token' };
+        while (nextUrl) {
+          const res = await this.axiosInstance.get(nextUrl, { params });
+          for (const p of res.data?.data || []) {
+            pages.set(String(p.id), { id: String(p.id), name: p.name, access_token: p.access_token });
+          }
+          if (res.data?.paging?.next) {
+            nextUrl = res.data.paging.next;
+            params = {};
+          } else {
+            nextUrl = null;
+          }
+        }
+      } catch (err) {
+        this.logger.warn(`Could not enumerate pages via /me/accounts: ${err.message}`);
+      }
+    }
+
+    // Merge explicitly configured page IDs (supports comma-separated facebook_page_ids)
+    const configuredIds = new Set<string>();
+    try {
+      const rows = await this.entityManager.query(
+        `SELECT key, value FROM platform_settings WHERE key IN ('facebook_page_id', 'facebook_page_ids', 'facebook_page_access_token')`
+      );
+      const map: Record<string, string> = {};
+      for (const r of rows) map[r.key] = r.value;
+      (map['facebook_page_ids'] || '').split(',').map((s) => s.trim()).filter(Boolean).forEach((id) => configuredIds.add(id));
+      if (map['facebook_page_id']) configuredIds.add(map['facebook_page_id'].trim());
+      // A stored page token belongs to the configured primary page
+      if (map['facebook_page_id'] && map['facebook_page_access_token'] && !pages.has(map['facebook_page_id'].trim())) {
+        pages.set(map['facebook_page_id'].trim(), {
+          id: map['facebook_page_id'].trim(),
+          access_token: map['facebook_page_access_token'],
+        });
+      }
+    } catch { /* settings table unavailable — fall through */ }
+    if (creds.pageId) configuredIds.add(creds.pageId);
+
+    for (const id of configuredIds) {
+      if (!pages.has(id)) pages.set(id, { id });
+    }
+
+    return [...pages.values()];
+  }
+
+  /**
+   * Fetch leadgen forms across ALL discoverable pages, each queried with its own
+   * page access token when available. Forms are tagged with page_id/page_name
+   * and page_access_token so lead retrieval can use the right token.
+   */
+  async getAllForms(): Promise<any[]> {
+    const pages = await this.getPages();
+    if (pages.length === 0) {
+      this.logger.error('No Facebook pages discoverable — check access token and facebook_page_id settings.');
+      return [];
+    }
+
+    const allForms: any[] = [];
+    for (const page of pages) {
+      try {
+        const forms = await this.getForms(page.id, page.access_token);
+        for (const f of forms) {
+          allForms.push({ ...f, page_id: page.id, page_name: page.name, page_access_token: page.access_token });
+        }
+      } catch (err) {
+        this.logger.error(`Failed to fetch forms for page ${page.id} (${page.name || 'unnamed'}): ${err.message}`);
+      }
+    }
+    return allForms;
+  }
+
+  /**
+   * Diagnose whether the app is subscribed to the leadgen webhook on EVERY
+   * discoverable page — without a subscription the webhook path delivers zero
+   * leads and everything rests on the 30-min cron. Pass subscribe=true to
+   * (re)subscribe any page that isn't.
+   */
+  async checkWebhookSubscription(subscribe: boolean = false): Promise<{
+    subscribed: boolean;
+    pages: Array<{
+      pageId: string;
+      pageName?: string;
+      subscribed: boolean;
+      subscribedFields: string[];
+      repaired?: boolean;
+      error?: string;
+    }>;
+  }> {
+    const creds = await this.getFacebookCredentials();
+    const pages = await this.getPages();
+    if (pages.length === 0 && creds.pageId) {
+      pages.push({ id: creds.pageId });
+    }
+
+    // Stored primary-page token as a fallback for pages /me/accounts didn't return
+    let storedPageToken: string | undefined;
+    try {
+      const rows = await this.entityManager.query(
+        `SELECT value FROM platform_settings WHERE key = 'facebook_page_access_token'`
+      );
+      storedPageToken = rows?.[0]?.value || undefined;
+    } catch { /* fall back to the default token */ }
+
+    const results = [];
+    for (const page of pages) {
+      const accessToken = page.access_token || storedPageToken || creds.accessToken;
+      try {
+        const res = await this.axiosInstance.get(`/${page.id}/subscribed_apps`, {
+          params: { access_token: accessToken },
+        });
+        const apps = res.data?.data || [];
+        const fields: string[] = apps.flatMap((a: any) => a.subscribed_fields || []);
+        const subscribed = fields.includes('leadgen');
+
+        if (!subscribed && subscribe) {
+          await this.axiosInstance.post(`/${page.id}/subscribed_apps`, null, {
+            params: { access_token: accessToken, subscribed_fields: 'leadgen' },
+          });
+          results.push({ pageId: page.id, pageName: page.name, subscribed: true, subscribedFields: ['leadgen'], repaired: true });
+          continue;
+        }
+
+        results.push({ pageId: page.id, pageName: page.name, subscribed, subscribedFields: fields });
+      } catch (error) {
+        const message = axios.isAxiosError(error)
+          ? error.response?.data?.error?.message || error.message
+          : error.message;
+        results.push({ pageId: page.id, pageName: page.name, subscribed: false, subscribedFields: [], error: message });
+      }
+    }
+
+    return {
+      subscribed: results.length > 0 && results.every((r) => r.subscribed),
+      pages: results,
+    };
+  }
+
+  async getForms(pageId?: string, accessTokenOverride?: string): Promise<any[]> {
+    const creds = await this.getFacebookCredentials();
+    if (accessTokenOverride) {
+      creds.accessToken = accessTokenOverride;
+    }
     if (!creds.accessToken || creds.accessToken === 'MOCK_TOKEN' || creds.accessToken === 'your-facebook-access-token') {
       return [
         { id: '12', name: 'Newsletter Signup', status: 'ACTIVE' },
@@ -320,25 +498,34 @@ export class FacebookService {
       ];
     }
 
-    // Load page ID from DB settings if not provided
+    // Load page settings from DB. The page access token must be used whenever
+    // available (page tokens carry the leadgen permissions), regardless of
+    // whether the caller passed an explicit pageId.
     let targetPageId = pageId;
-    if (!targetPageId) {
-      try {
-        const dbSettings = await this.entityManager.query(
-          `SELECT key, value FROM platform_settings WHERE key IN ('facebook_page_id', 'facebook_page_access_token')`
-        );
-        const settingsMap: Record<string, any> = {};
-        for (const row of dbSettings) {
-          settingsMap[row.key] = row.value;
-        }
-        targetPageId = settingsMap['facebook_page_id'] || creds.pageId || process.env.FACEBOOK_PAGE_ID || '100432975354813';
-        // If a page-specific access token exists, use it (page tokens have leadgen permissions)
-        if (settingsMap['facebook_page_access_token']) {
-          creds.accessToken = settingsMap['facebook_page_access_token'];
-        }
-      } catch (err) {
-        this.logger.warn('Could not load facebook_page_id from DB settings');
+    try {
+      const dbSettings = await this.entityManager.query(
+        `SELECT key, value FROM platform_settings WHERE key IN ('facebook_page_id', 'facebook_page_access_token')`
+      );
+      const settingsMap: Record<string, any> = {};
+      for (const row of dbSettings) {
+        settingsMap[row.key] = row.value;
       }
+      // The stored token belongs to the PRIMARY page only — apply it neither
+      // over a caller-provided per-page token nor to a different page id
+      // (a page-scoped token used on another page returns an error, silently
+      // hiding that page's forms)
+      if (
+        settingsMap['facebook_page_access_token'] &&
+        !accessTokenOverride &&
+        (!pageId || pageId === settingsMap['facebook_page_id'])
+      ) {
+        creds.accessToken = settingsMap['facebook_page_access_token'];
+      }
+      if (!targetPageId) {
+        targetPageId = settingsMap['facebook_page_id'] || creds.pageId || process.env.FACEBOOK_PAGE_ID || '100432975354813';
+      }
+    } catch (err) {
+      this.logger.warn('Could not load facebook page settings from DB');
     }
 
     targetPageId = targetPageId || creds.pageId || process.env.FACEBOOK_PAGE_ID || '100432975354813';

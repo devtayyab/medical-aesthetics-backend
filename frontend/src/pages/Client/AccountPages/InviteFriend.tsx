@@ -17,29 +17,47 @@ const sectionStyles = css`
 
 const heroSection = css`
  position: relative;
+ min-height: 240px;
+ @media (min-width: 640px) {
+ height: 380px;
+ }
+ @media (min-width: 1024px) {
  height: 520px;
+ }
  width: 100%;
  display: flex;
  align-items: flex-start;
- padding-top: 80px;
+ padding-top: 24px;
+ @media (min-width: 640px) {
+ padding-top: 60px;
+ }
  overflow: hidden;
  
  &::after {
  content: '';
  position: absolute;
  inset: 0;
- background: linear-gradient(to right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.2) 50%, transparent 90%);
+ background: linear-gradient(to right, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, transparent 90%);
  z-index: 1;
+ }
+
+ @media (max-width: 640px) {
+ &::after {
+ background: linear-gradient(to top, rgba(255,255,255,1) 15%, rgba(255,255,255,0.9) 75%, transparent 100%);
+ }
  }
 `;
 
 const glassCard = css`
  background: white;
- border-radius: 40px;
- box-shadow: 0 50px 100px rgba(0, 0, 0, 0.04);
+ border-radius: 20px;
+ box-shadow: 0 20px 80px rgba(0, 0, 0, 0.04);
  border: 1px solid #F1F5F9;
  position: relative;
  overflow: hidden;
+ @media (min-width: 640px) {
+ border-radius: 40px;
+ }
 `;
 
 export const InviteFriend: React.FC = () => {
@@ -133,25 +151,25 @@ export const InviteFriend: React.FC = () => {
 
  <div className="container mx-auto px-4 sm:px-8 relative z-10">
  <div className="max-w-4xl">
- <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em]">
+ <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-6 text-gray-400 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em]">
  <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
- <ChevronRight size={12} className="text-lime-500" />
- <span className="text-lime-500">REFERRAL PROGRAM</span>
+ <ChevronRight size={12} className="text-lime-600" />
+ <span className="text-lime-600 font-extrabold">REFERRAL PROGRAM</span>
  </div>
 
- <h1 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none text-gray-900">
- INVITE FRIENDS <span className="text-[#CBFF38]">EARN €5</span>
+ <h1 className="text-2xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-tight sm:leading-none text-gray-900">
+ INVITE FRIENDS <span className="text-[#84cc16] sm:text-[#CBFF38]">EARN €5</span>
  </h1>
 
- <p className="text-gray-500 mt-6 font-bold text-lg max-w-lg leading-relaxed">
+ <p className="text-gray-600 mt-2 sm:mt-6 font-semibold text-xs sm:text-lg max-w-lg leading-snug sm:leading-relaxed">
  Share the excellence with your inner circle. Both of you receive a €5 credit when they complete their first aesthetic treatment.
  </p>
  </div>
  </div>
  </div>
 
- <div className="max-w-6xl mx-auto px-4 sm:px-8 relative z-20 -mt-[170px]">
- <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-20">
+ <div className="max-w-6xl mx-auto px-3 sm:px-8 relative z-20 -mt-[30px] sm:-mt-[100px] lg:-mt-[170px]">
+ <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 sm:gap-8 mb-12 sm:mb-20">
 
  {/* Main Action Card */}
  <motion.div
@@ -159,14 +177,14 @@ export const InviteFriend: React.FC = () => {
  animate={{ opacity: 1, y: 0 }}
  className={`${glassCard} lg:col-span-3`}
  >
- <div className="p-6 sm:p-10 md:p-16">
- <div className="mb-12 flex items-center justify-between">
+ <div className="p-4 sm:p-10 md:p-16">
+ <div className="mb-6 sm:mb-12 flex items-start sm:items-center justify-between gap-3 sm:gap-4">
  <div>
- <h3 className="text-3xl font-black uppercase text-gray-900 mb-2">Personal Link</h3>
- <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">Your unique gateway to shared rewards</p>
+ <h3 className="text-lg sm:text-3xl font-black uppercase text-gray-900 mb-1 sm:mb-2 tracking-tight">Personal Link</h3>
+ <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">Your unique gateway to shared rewards</p>
  </div>
- <div className="size-16 rounded-2xl bg-[#CBFF38] flex items-center justify-center text-black">
- <Gift size={28} />
+ <div className="size-11 sm:size-16 rounded-xl sm:rounded-2xl bg-[#CBFF38] flex items-center justify-center text-black shrink-0">
+ <Gift className="size-5 sm:size-7" />
  </div>
  </div>
 

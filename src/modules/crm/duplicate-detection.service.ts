@@ -59,15 +59,30 @@ export class DuplicateDetectionService {
       }
     }
 
+    // A phone number can be shared (couples, families, office lines), so a
+    // phone-only match with a clearly different name must not absorb the record
+    const nameConflicts = (record: { firstName?: string; lastName?: string }): boolean => {
+      if (!firstName || !record?.firstName) return false; // nothing to compare
+      const a = `${firstName} ${lastName || ''}`.trim().toLowerCase();
+      const b = `${record.firstName} ${record.lastName || ''}`.trim().toLowerCase();
+      return a !== b && !a.includes(b) && !b.includes(a);
+    };
+
     // Check for phone match
     if (phone && !existingCustomer) {
-      existingCustomer = await this.usersRepository.findOne({
+      const phoneCustomer = await this.usersRepository.findOne({
         where: { phone },
       });
 
-      if (existingCustomer) {
-        matchReasons.push('Phone match');
-        confidence += 0.8;
+      if (phoneCustomer) {
+        if (nameConflicts(phoneCustomer)) {
+          matchReasons.push('Phone match (different name — not treated as duplicate)');
+          confidence += 0.4;
+        } else {
+          existingCustomer = phoneCustomer;
+          matchReasons.push('Phone match');
+          confidence += 0.8;
+        }
       }
     }
 
@@ -96,19 +111,27 @@ export class DuplicateDetectionService {
       }
 
       if (phone && !existingLead) {
-        existingLead = await this.leadsRepository.findOne({
+        const phoneLead = await this.leadsRepository.findOne({
           where: { phone },
         });
 
-        if (existingLead) {
-          matchReasons.push('Lead phone match');
-          confidence += 0.6;
+        if (phoneLead) {
+          if (nameConflicts(phoneLead)) {
+            matchReasons.push('Lead phone match (different name — not treated as duplicate)');
+            confidence += 0.4;
+          } else {
+            existingLead = phoneLead;
+            matchReasons.push('Lead phone match');
+            confidence += 0.6;
+          }
         }
       }
     }
 
     return {
-      isDuplicate: confidence > 0.5,
+      // A duplicate verdict must always carry the matched record — confidence
+      // accumulated from rejected (name-conflicting) matches alone doesn't count
+      isDuplicate: confidence > 0.5 && !!(existingCustomer || existingLead),
       existingCustomer,
       existingLead,
       confidence,

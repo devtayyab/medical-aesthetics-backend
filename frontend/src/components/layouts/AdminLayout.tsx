@@ -8,11 +8,11 @@ const AdminLayout: React.FC<Props> = ({ children }) => {
  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
  return (
- <div className="flex h-[calc(100vh-64px)] bg-[#F8FAFC] overflow-hidden relative">
+ <div className="flex h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] bg-[#F8FAFC] overflow-hidden relative">
  {/* Mobile Toggle Button */}
  <button 
  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
- className="lg:hidden fixed bottom-6 right-6 z-[60] size-14 bg-black text-[#CBFF38] rounded-full shadow-2xl flex items-center justify-center transition-transform active:scale-95 shadow-lime-500/20"
+ className="lg:hidden fixed bottom-6 right-6 z-[1001] size-14 bg-black text-[#CBFF38] rounded-full shadow-2xl flex items-center justify-center transition-transform active:scale-95 shadow-lime-500/20"
  >
  {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
  </button>
@@ -20,14 +20,14 @@ const AdminLayout: React.FC<Props> = ({ children }) => {
  {/* Backdrop for mobile */}
  {isSidebarOpen && (
  <div 
- className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity"
+ className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] lg:hidden transition-opacity"
  onClick={() => setIsSidebarOpen(false)}
  />
  )}
 
  {/* Sidebar Container */}
  <div className={`
- fixed lg:relative inset-y-0 lg:inset-y-auto lg:top-0 left-0 z-[40] lg:z-10 transform lg:translate-x-0 transition-transform duration-300 ease-in-out
+ fixed lg:relative top-[56px] sm:top-[64px] lg:top-0 bottom-0 left-0 z-[1001] lg:z-10 transform lg:translate-x-0 transition-transform duration-300 ease-in-out h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] lg:h-full
  ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
  `}>
  <Sidebar onNavigate={() => setIsSidebarOpen(false)} />

@@ -30,7 +30,14 @@ import {
  FileText,
  AlertCircle,
  CheckCircle2,
- ChevronRight
+ ChevronRight,
+ Info,
+ Facebook,
+ Megaphone,
+ FormInput,
+ History,
+ Webhook,
+ RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button/Button';
 import { Input } from '@/components/atoms/Input/Input';
@@ -61,6 +68,153 @@ interface LeadsPageProps {
  onFormShown?: () => void;
 }
 
+/** Rich detail view for a lead — surfaces Meta/Facebook provenance, form answers and history. */
+const LeadDetailModal: React.FC<{ lead: Lead; onClose: () => void }> = ({ lead, onClose }) => {
+ const l = lead as any;
+ const meta = l.metadata || {};
+ const isFacebook = l.source === 'facebook_ads' || !!l.facebookLeadId;
+ const fieldData: Array<{ name: string; values: string[] }> = l.facebookLeadData?.field_data || [];
+ const previousIds: string[] = meta.previousFacebookLeadIds || [];
+
+ const fmt = (d?: string | Date) => (d ? new Date(d).toLocaleString() : '—');
+ const prettyKey = (k: string) => k.replace(/[_?]/g, ' ').replace(/\s+/g, ' ').trim();
+
+ const idRows: Array<[string, string | undefined]> = [
+ ['Lead ID', l.facebookLeadId],
+ ['Form ID', l.facebookFormId],
+ ['Campaign ID', l.facebookCampaignId],
+ ['Ad Set ID', l.facebookAdSetId],
+ ['Ad ID', l.facebookAdId],
+ ];
+
+ return (
+ <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+ <div
+ className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+ onClick={(e) => e.stopPropagation()}
+ >
+ {/* Header */}
+ <div className="bg-[#0B1120] text-white px-6 py-5 flex items-start justify-between shrink-0">
+ <div className="min-w-0">
+ <div className="flex items-center gap-2 flex-wrap">
+ <h2 className="text-lg font-black tracking-tight truncate">{l.firstName} {l.lastName}</h2>
+ <Badge className="bg-white/10 text-white border border-white/20 px-2 py-0.5 rounded-full capitalize text-[9px] font-bold">{l.status}</Badge>
+ {isFacebook && (
+ <span className="flex items-center gap-1 bg-blue-500/20 text-blue-300 border border-blue-400/30 px-2 py-0.5 rounded-full text-[9px] font-bold">
+ <Facebook className="h-2.5 w-2.5" /> Facebook Lead
+ </span>
+ )}
+ {meta.fromWebhook === true && (
+ <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2 py-0.5 rounded-full text-[9px] font-bold" title="Delivered in real time by the Facebook webhook">
+ <Webhook className="h-2.5 w-2.5" /> Real-time
+ </span>
+ )}
+ {isFacebook && meta.fromWebhook === false && (
+ <span className="flex items-center gap-1 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-2 py-0.5 rounded-full text-[9px] font-bold" title="Imported by the automatic background sync">
+ <RefreshCw className="h-2.5 w-2.5" /> Auto-sync
+ </span>
+ )}
+ {meta.healedBySync && (
+ <span className="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full text-[9px] font-bold" title="Initial webhook fetch failed; details were recovered by the background sync">
+ Recovered
+ </span>
+ )}
+ {meta.fetchFailed && (
+ <span className="bg-red-500/20 text-red-300 border border-red-400/30 px-2 py-0.5 rounded-full text-[9px] font-bold" title="Facebook details could not be fetched yet — re-import this form to fill in the data">
+ Details pending
+ </span>
+ )}
+ </div>
+ <p className="text-[10px] text-gray-400 font-mono mt-1 truncate">#{l.id}</p>
+ </div>
+ <button onClick={onClose} className="w-8 h-8 shrink-0 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+ <X className="h-4 w-4" />
+ </button>
+ </div>
+
+ <div className="overflow-y-auto p-6 space-y-5">
+ {/* Contact + key dates */}
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+ <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+ <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Contact</p>
+ <div className="space-y-1.5">
+ <div className="flex items-center gap-2 text-xs font-semibold text-gray-800"><Mail className="h-3 w-3 text-gray-400 shrink-0" /> {l.email || <span className="text-gray-300">No email</span>}</div>
+ <div className="flex items-center gap-2 text-xs font-semibold text-gray-800"><Phone className="h-3 w-3 text-gray-400 shrink-0" /> {l.phone || <span className="text-gray-300">No phone</span>}</div>
+ <div className="flex items-center gap-2 text-xs font-semibold text-gray-800"><Globe className="h-3 w-3 text-gray-400 shrink-0" /> <span className="capitalize">{(l.source || 'unknown').replace(/_/g, ' ')}</span></div>
+ </div>
+ </div>
+ <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+ <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Timeline</p>
+ <div className="space-y-1.5 text-xs font-semibold text-gray-800">
+ <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Added</span><span>{fmt(l.createdAt)}</span></div>
+ <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Form submitted</span><span className="text-emerald-600">{fmt(l.lastMetaFormSubmittedAt)}</span></div>
+ <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Last contacted</span><span>{fmt(l.lastContactedAt)}</span></div>
+ </div>
+ </div>
+ </div>
+
+ {/* Facebook / Meta provenance */}
+ {isFacebook && (
+ <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100">
+ <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+ <Megaphone className="h-3 w-3" /> Meta Campaign Details
+ </p>
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+ <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Ad</span><span className="font-bold text-gray-800 truncate" title={l.facebookAdName}>{l.facebookAdName || '—'}</span></div>
+ <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Form</span><span className="font-bold text-gray-800 truncate" title={l.lastMetaFormName}>{l.lastMetaFormName || '—'}</span></div>
+ {idRows.filter(([, v]) => v).map(([label, value]) => (
+ <div key={label} className="flex justify-between gap-2">
+ <span className="text-gray-400 font-medium">{label}</span>
+ <span className="font-mono text-[10px] text-gray-600 truncate" title={value}>{value}</span>
+ </div>
+ ))}
+ </div>
+ {previousIds.length > 0 && (
+ <div className="mt-3 pt-3 border-t border-blue-100 flex items-start gap-2">
+ <History className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5" />
+ <p className="text-[11px] text-blue-700 font-semibold">
+ Submitted {previousIds.length + 1} times — this person re-submitted a Facebook form {previousIds.length} time{previousIds.length > 1 ? 's' : ''} before.
+ </p>
+ </div>
+ )}
+ {meta.mergedLead && (
+ <p className="mt-2 text-[11px] text-blue-700 font-semibold">Linked to an existing customer record.</p>
+ )}
+ </div>
+ )}
+
+ {/* Form answers */}
+ {fieldData.length > 0 && (
+ <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+ <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+ <FormInput className="h-3 w-3" /> Form Answers ({fieldData.length})
+ </p>
+ <div className="space-y-2">
+ {fieldData.map((f, i) => (
+ <div key={i} className="bg-white rounded-xl px-3 py-2 border border-gray-100">
+ <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide capitalize">{prettyKey(f.name)}</p>
+ <p className="text-xs font-semibold text-gray-900 break-words">{(f.values || []).join(', ') || '—'}</p>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+
+ {/* Notes */}
+ {l.notes && (
+ <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+ <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+ <FileText className="h-3 w-3" /> Notes
+ </p>
+ <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{l.notes}</p>
+ </div>
+ )}
+ </div>
+ </div>
+ </div>
+ );
+};
+
 export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreateForm = false, onFormShown }) => {
  const navigate = useNavigate();
  const dispatch = useDispatch<AppDispatch>();
@@ -71,6 +225,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  const [showFilters, setShowFilters] = useState(false);
  const [showCreateForm, setShowCreateForm] = useState(false);
  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+ const [detailLead, setDetailLead] = useState<Lead | null>(null);
  const [showDuplicateResults, setShowDuplicateResults] = useState(false);
  const [showModal, setShowModal] = useState(false);
  const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -1060,12 +1215,26 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </TableCell>
  <TableCell className="py-2 px-2 bg-emerald-50/10">
  {lead.lastMetaFormSubmittedAt ? (
- <div className="flex flex-col">
+ <button
+ className="flex flex-col text-left hover:bg-emerald-50 rounded-md px-1 -mx-1 transition-colors cursor-pointer"
+ onClick={() => setDetailLead(lead)}
+ title="View full lead details and form answers"
+ >
  <span className="text-[10px] font-bold text-gray-900 truncate max-w-[120px]" title={lead.lastMetaFormName || 'Form'}>
  {lead.lastMetaFormName || 'Meta Form'}
  </span>
- <span className="text-[9px] font-semibold text-emerald-600">{formatDate(lead.lastMetaFormSubmittedAt)}</span>
- </div>
+ <span className="text-[9px] font-semibold text-emerald-600 flex items-center gap-1">
+ {formatDate(lead.lastMetaFormSubmittedAt)}
+ {(((lead as any).metadata?.previousFacebookLeadIds?.length) || 0) > 0 && (
+ <span className="bg-blue-100 text-blue-700 px-1 rounded-full text-[8px] font-black" title="Repeat submissions">
+ ×{((lead as any).metadata.previousFacebookLeadIds.length) + 1}
+ </span>
+ )}
+ {(lead as any).metadata?.fetchFailed && (
+ <span className="bg-red-100 text-red-600 px-1 rounded-full text-[8px] font-black" title="Details pending — re-import this form">!</span>
+ )}
+ </span>
+ </button>
  ) : <span className="text-gray-300 text-[10px]">No submission</span>}
  </TableCell>
  <TableCell className="py-2 px-2">
@@ -1079,6 +1248,9 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <TableCell className="py-2 px-2 text-right">
  <div className="flex justify-end gap-1 items-center">
  <div className="flex items-center bg-white border border-gray-100 rounded-lg shadow-sm p-0.5">
+ <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md" title="Lead details & form answers" onClick={() => setDetailLead(lead)}>
+ <Info className="h-3.5 w-3.5" />
+ </Button>
  <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => {
  if (onViewLead) {
  onViewLead(lead);
@@ -1906,6 +2078,9 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </Card>
  </div>
  )}
+
+ {/* Lead Detail Modal */}
+ {detailLead && <LeadDetailModal lead={detailLead} onClose={() => setDetailLead(null)} />}
  </div>
  );
 };

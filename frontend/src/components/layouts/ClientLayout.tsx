@@ -19,23 +19,43 @@ const navContainer = css`
  background: white;
  border-bottom: 1px solid #f1f5f9;
  position: sticky;
- top: 72px;
+ top: 52px;
+ @media (min-width: 640px) {
+ top: 64px;
+ }
  @media (min-width: 768px) {
- top: 88px;
+ top: 76px;
  }
  z-index: 990;
- overflow: hidden; /* Prevent horizontal scrolling */
+ width: 100%;
+ max-width: 100vw;
+ box-sizing: border-box;
+ overflow: hidden;
+`;
+
+const navScroller = css`
+ width: 100%;
+ overflow-x: auto;
+ overflow-y: hidden;
+ -webkit-overflow-scrolling: touch;
+ scrollbar-width: none;
+ scroll-behavior: smooth;
+ &::-webkit-scrollbar {
+ display: none;
+ }
 `;
 
 const navContent = css`
- max-width: 1250px;
- margin: 0 auto;
- display: flex;
+ display: inline-flex;
  padding: 0 1rem;
  gap: 1rem;
- height: 3.5rem;
+ @media (min-width: 640px) {
+ gap: 1.25rem;
+ }
+ height: 3.25rem;
  align-items: center;
- justify-content: center;
+ white-space: nowrap;
+ min-width: max-content;
 `;
 
 const navItem = css`
@@ -87,6 +107,7 @@ const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
  return (
  <div className="min-h-screen bg-[#f8fafc]">
  <div className={navContainer}>
+ <div className={navScroller}>
  <div className={navContent}>
  {menuItems.map((item) => (
  <NavLink
@@ -99,6 +120,7 @@ const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
  <span>{item.title}</span>
  </NavLink>
  ))}
+ </div>
  </div>
  </div>
  <main>
