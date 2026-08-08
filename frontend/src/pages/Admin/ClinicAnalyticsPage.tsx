@@ -107,7 +107,7 @@ export const ClinicAnalyticsPage = () => {
  ], [clinics]);
 
  return (
- <div className="p-6 space-y-6 animate-in fade-in bg-[#fdfdfd] min-h-screen">
+ <div className="p-4 md:p-6 space-y-6 animate-in fade-in bg-[#fdfdfd] min-h-screen">
  {/* Header */}
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
  <div className="flex items-center gap-4">
@@ -115,13 +115,13 @@ export const ClinicAnalyticsPage = () => {
  <Building2 className="w-6 h-6 text-white" />
  </div>
  <div>
- <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Clinic Intelligence</h1>
+ <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter">Clinic Intelligence</h1>
  <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">Platform Distribution & Performance</p>
  </div>
  </div>
  <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
  {/* Clinic Selector */}
- <div className="px-2 border-r border-slate-100 min-w-[200px]">
+ <div className="px-2 border-r border-slate-100 min-w-0 w-full md:w-auto md:min-w-[200px]">
  <Select
  placeholder="Select Clinic"
  options={clinicOptions}
@@ -131,7 +131,7 @@ export const ClinicAnalyticsPage = () => {
  />
  </div>
 
- <div className="flex items-center gap-2 px-2 border-r border-slate-100">
+ <div className="flex flex-wrap items-center gap-2 px-2 border-r border-slate-100">
  <input
  type="date"
  value={dateRange.startDate}

@@ -305,11 +305,11 @@ export const Calls: React.FC = () => {
  const successRate = rows.length > 0 ? Math.round((rows.filter(r => r.outcome === 'answered').length / rows.length) * 100) : 0;
 
  return (
- <div className="p-6 space-y-8 bg-gray-50/50 min-h-screen">
+ <div className="p-4 md:p-6 space-y-8 bg-gray-50/50 min-h-screen">
  {/* Header */}
  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
  <div>
- <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-3">
+ <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-3">
  <Headphones className="h-8 w-8 text-[#CBFF38]" />
  Communication Hub
  </h1>
@@ -318,7 +318,7 @@ export const Calls: React.FC = () => {
 
  <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
  {/* Date Range Picker */}
- <div className="flex items-center gap-2 px-3 border-r border-slate-100">
+ <div className="flex flex-wrap items-center gap-2 px-3 border-r border-slate-100">
  <Calendar className="w-3.5 h-3.5 text-slate-400" />
  <input
  type="date"
@@ -336,7 +336,7 @@ export const Calls: React.FC = () => {
  </div>
 
  {/* Salesperson Filter */}
- <div className="flex items-center gap-2 px-3 border-r border-slate-100 min-w-[180px]">
+ <div className="flex items-center gap-2 px-3 border-r border-slate-100 min-w-[140px] md:min-w-[180px] flex-1 md:flex-none">
  <Users className="w-3.5 h-3.5 text-slate-400" />
  <select
  value={selectedAgent}

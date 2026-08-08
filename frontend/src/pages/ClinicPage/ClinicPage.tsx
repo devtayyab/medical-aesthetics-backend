@@ -38,7 +38,7 @@ export const Clinic: React.FC = () => {
  return (
  <div className="flex flex-col w-full">
  {/* Top row */}
- <div className="flex flex-col md:flex-row justify-between items-center ml-2 md:px-44">
+ <div className="flex flex-col md:flex-row justify-between items-center px-4 md:px-44 md:ml-2">
  {/* Left side */}
  <div className="flex flex-col w-full">
  <h2 className="text-black pt-9 font-semibold items-center text-2xl">Botox Treatment</h2>
@@ -54,7 +54,7 @@ export const Clinic: React.FC = () => {
  </p>
  </div>
  {/* Right side */}
- <div className="flex flex-nowwrap gap-3 md:mt-0">
+ <div className="flex flex-wrap md:flex-nowrap w-full md:w-auto gap-3 mt-4 md:mt-0">
  <Button className="px-6 py-3 rounded-xl text-xs text-black bg-white border border-blue-900 hover:!bg-blue-950 hover:!text-white">
  Book Now
  </Button>
@@ -125,7 +125,7 @@ export const Clinic: React.FC = () => {
  </div>
  {/* Services */}
  <div >
- <h3 className='text-lg text-green-500 whitespace-nowrap pr-24 mt-12 mb-4 text-end '>Some of these services contain OFF peaks discounts
+ <h3 className='text-lg text-green-500 md:whitespace-nowrap md:pr-24 mt-4 md:mt-12 mb-4 text-start md:text-end '>Some of these services contain OFF peaks discounts
  </h3>
  <div className="flex flex-col md:flex-col md:flex-wrap justify-between gap-2">
  {services.map((service) => (

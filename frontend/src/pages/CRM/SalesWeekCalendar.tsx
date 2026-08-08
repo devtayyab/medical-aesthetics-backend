@@ -631,7 +631,7 @@ export const SalesWeekCalendar: React.FC = () => {
       </div>
 
       {/* Main Calendar View */}
-      <div className={`flex flex-col flex-1 transition-all duration-300 ${isAddWizardOpen || (isDetailDrawerOpen && selectedApt) ? 'mr-96 lg:mr-[400px]' : ''}`}>
+      <div className={`flex flex-col flex-1 transition-all duration-300 ${isAddWizardOpen || (isDetailDrawerOpen && selectedApt) ? 'mr-0 md:mr-96 lg:mr-[400px]' : ''}`}>
         <div className="bg-white border-b border-gray-200 z-10 sticky top-0">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between px-4 lg:px-6 py-4 gap-4">
             <div className="flex items-center gap-3">
@@ -1199,7 +1199,7 @@ export const SalesWeekCalendar: React.FC = () => {
 
           {/* Appointment Detail Drawer */}
           {isDetailDrawerOpen && selectedApt && (
-            <div className="fixed top-0 right-0 w-[400px] h-screen bg-white border-l border-gray-200 shadow-2xl flex flex-col z-[1000] animate-in slide-in-from-right">
+            <div className="fixed top-0 right-0 w-full sm:w-[400px] h-screen bg-white border-l border-gray-200 shadow-2xl flex flex-col z-[1000] animate-in slide-in-from-right">
               <div className="p-6 text-white bg-gradient-to-br from-slate-800 to-indigo-900">
                 <div className="flex justify-between items-start mb-4">
                   <h2 className="text-xl font-black text-white">{selectedApt.client?.firstName} {selectedApt.client?.lastName}</h2>

@@ -127,12 +127,12 @@ export const BlogManagement: React.FC = () => {
 
  return (
  <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
- <div className="flex justify-between items-center mb-8">
+ <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center mb-8">
  <div>
- <h1 className="text-3xl font-bold text-gray-900">Blog & Content</h1>
+ <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Blog & Content</h1>
  <p className="text-sm text-gray-500 mt-1">Manage blog articles and dynamic app content (categories, FAQs)</p>
  </div>
- <div className="flex gap-3">
+ <div className="flex flex-wrap gap-3">
  <button
  onClick={() => setShowCategoryModal(true)}
  className="flex items-center gap-2 border border-gray-300 bg-white text-gray-700 px-4 py-2 font-bold rounded-lg hover:bg-gray-50 transition-colors"
@@ -149,7 +149,7 @@ export const BlogManagement: React.FC = () => {
  </div>
 
  <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
- <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+ <div className="p-4 md:p-6 border-b border-gray-100 flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
  <div>
  <h3 className="text-lg font-bold text-gray-800 mb-1">Publications List</h3>
  <p className="text-sm text-gray-500">Manage all published or draft articles</p>
@@ -293,7 +293,7 @@ export const BlogManagement: React.FC = () => {
  <div className="fixed inset-0 bg-black/50 z-[10000] flex items-center justify-center p-4">
  <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
  <h3 className="text-lg font-bold text-gray-900 mb-4">{editingPostId ? 'Edit Article' : 'New Article'}</h3>
- <div className="grid grid-cols-2 gap-4 mb-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
  <div>
  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
  <input
@@ -316,7 +316,7 @@ export const BlogManagement: React.FC = () => {
  </div>
  </div>
 
- <div className="grid grid-cols-2 gap-4 mb-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
  <div>
  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
  <select

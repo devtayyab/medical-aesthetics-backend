@@ -424,11 +424,11 @@ export const ManagerDashboard = () => {
  if (selectedClinic) {
  return (
  <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
- <div className="flex items-center gap-4">
+ <div className="flex flex-wrap items-center gap-3 md:gap-4">
  <Button variant="ghost" onClick={() => setSelectedClinic(null)}>
  <ArrowLeft className="h-4 w-4 mr-2" /> Back to dashboard
  </Button>
- <h1 className="text-2xl font-bold flex items-center gap-2">
+ <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
  <Building2 className="w-6 h-6 text-gray-400" />
  {selectedClinic.clinicName}
  </h1>
@@ -440,7 +440,7 @@ export const ManagerDashboard = () => {
  </div>
 
  <Tabs defaultValue="calendar" className="space-y-4">
- <TabsList>
+ <TabsList className="max-w-full overflow-x-auto justify-start md:justify-center">
  <TabsTrigger value="calendar">Calendar</TabsTrigger>
  <TabsTrigger value="services">Services</TabsTrigger>
  <TabsTrigger value="availability">Availability</TabsTrigger>
@@ -595,8 +595,8 @@ export const ManagerDashboard = () => {
  return (
  <div className="space-y-8 animate-in slide-in-from-right-8 duration-500 ease-out pb-20">
  {/* Premium Header Architecture */}
- <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/20">
- <div className="flex items-center gap-6">
+ <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/50 backdrop-blur-xl p-4 md:p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/20">
+ <div className="flex items-center gap-4 md:gap-6">
  <button
  onClick={() => {
  setSelectedAgent(null);
@@ -611,7 +611,7 @@ export const ManagerDashboard = () => {
  <div className="p-2 bg-slate-100 rounded-lg">
  <Users className="w-5 h-5 text-slate-500" />
  </div>
- <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+ <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight break-words">
  {selectedAgent.agentName}
  </h1>
  </div>
@@ -619,8 +619,8 @@ export const ManagerDashboard = () => {
  </div>
  </div>
 
- <div className="flex items-center gap-4">
- <div className="px-6 py-4 bg-slate-900 rounded-[1.5rem] shadow-2xl shadow-slate-900/10 border border-slate-800">
+ <div className="flex flex-wrap items-center gap-4">
+ <div className="px-4 md:px-6 py-4 bg-slate-900 rounded-[1.5rem] shadow-2xl shadow-slate-900/10 border border-slate-800">
  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Generated Revenue</p>
  <div className="flex items-center gap-3">
  <div className="size-8 rounded-full bg-[#CBFF38] flex items-center justify-center text-black">
@@ -645,23 +645,23 @@ export const ManagerDashboard = () => {
  {/* High-Contrast Tab Navigation */}
  <div className="space-y-6">
  <Tabs defaultValue="diary" className="w-full">
- <div className="flex items-center justify-center lg:justify-start mb-8">
+ <div className="flex items-center justify-start lg:justify-start mb-8 overflow-x-auto md:justify-center">
  <TabsList className="bg-slate-100/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/50">
  <TabsTrigger
  value="diary"
- className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
+ className="px-4 md:px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
  >
  Sales Diary
  </TabsTrigger>
  <TabsTrigger
  value="leads"
- className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
+ className="px-4 md:px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
  >
  Assigned Leads
  </TabsTrigger>
  <TabsTrigger
  value="performance"
- className="px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
+ className="px-4 md:px-8 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-[#CBFF38] data-[state=active]:shadow-2xl transition-all duration-300"
  >
  Analytics
  </TabsTrigger>
@@ -703,11 +703,11 @@ export const ManagerDashboard = () => {
  <BarChart3 className="h-8 w-8 text-gray-900" />
  </div>
  <div>
- <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">Manager Dashboard</h1>
+ <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900">Manager Dashboard</h1>
  <p className="text-muted-foreground font-medium mt-1">Real-time performance analytics across your clinic network</p>
  </div>
  </div>
- <div className="flex items-center gap-3 relative">
+ <div className="flex flex-wrap items-center gap-3 relative">
  <div className="relative">
  <Button 
  variant="outline" 
@@ -781,20 +781,20 @@ export const ManagerDashboard = () => {
  </div>
 
  <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
- <TabsList className="bg-gray-100/50 p-1.5 rounded-xl border border-gray-200/50 w-full max-w-[650px]">
- <TabsTrigger value="overview" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
+ <TabsList className="bg-gray-100/50 p-1.5 rounded-xl border border-gray-200/50 w-full max-w-[650px] overflow-x-auto justify-start md:justify-center">
+ <TabsTrigger value="overview" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
  <BarChart3 className="h-4 w-4" />
  Overview
  </TabsTrigger>
- <TabsTrigger value="clinics" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
+ <TabsTrigger value="clinics" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
  <Building2 className="h-4 w-4" />
  Clinics
  </TabsTrigger>
- <TabsTrigger value="calendar-global" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
+ <TabsTrigger value="calendar-global" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
  <Calendar className="h-4 w-4" />
  Global Calendar
  </TabsTrigger>
- <TabsTrigger value="agents" className="flex items-center gap-2 rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
+ <TabsTrigger value="agents" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
  <Users className="h-4 w-4" />
  Agents
  </TabsTrigger>
@@ -822,7 +822,7 @@ export const ManagerDashboard = () => {
 
  <TabsContent value="overview" className="space-y-4">
  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
- <Card className="col-span-4">
+ <Card className="md:col-span-2 lg:col-span-4">
  <CardHeader>
  <CardTitle>Revenue Overview</CardTitle>
  <CardDescription>Revenue trends over time</CardDescription>
@@ -853,7 +853,7 @@ export const ManagerDashboard = () => {
  )}
  </CardContent>
  </Card>
- <Card className="col-span-3">
+ <Card className="md:col-span-2 lg:col-span-3">
  <CardHeader>
  <CardTitle>Top Performing Services</CardTitle>
  <CardDescription>By revenue and appointments</CardDescription>
@@ -889,7 +889,7 @@ export const ManagerDashboard = () => {
 
  <TabsContent value="agents">
  <Card className="border-none shadow-lg overflow-hidden">
- <CardHeader className="flex flex-row items-center justify-between border-b bg-gray-50/50 px-6 py-4">
+ <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center justify-between border-b bg-gray-50/50 px-4 md:px-6 py-4">
  <div>
  <CardTitle className="text-xl">Agent Performance</CardTitle>
  <CardDescription>Detailed breakdown of agent KPIs and metrics</CardDescription>
@@ -913,7 +913,7 @@ export const ManagerDashboard = () => {
  {/* Add Agent Modal */}
  {showAddAgentModal && (
  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[10000] p-4 animate-in fade-in">
- <Card className="w-full max-w-lg shadow-2xl">
+ <Card className="w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
  <CardHeader>
  <CardTitle>Add New Agent</CardTitle>
  <CardDescription>Create a new salesperson account</CardDescription>

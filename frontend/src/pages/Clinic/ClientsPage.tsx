@@ -245,16 +245,16 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  exit={{ scale: 0.95, opacity: 0, y: 20 }}
  className="bg-white rounded-[48px] shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
  >
- <div className="bg-black text-white p-10 flex items-center justify-between relative overflow-hidden shrink-0">
+ <div className="bg-black text-white p-6 md:p-10 flex items-center justify-between relative overflow-hidden shrink-0">
  <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#CBFF38]/20 to-transparent" />
- <div className="relative z-10 flex items-center justify-between w-full">
- <div className="flex items-center gap-6">
- <div className="size-20 rounded-[32px] bg-[#CBFF38] text-black flex items-center justify-center font-black text-3xl shadow-lg">
+ <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between w-full gap-6">
+ <div className="flex items-center gap-4 md:gap-6 min-w-0">
+ <div className="size-14 md:size-20 rounded-2xl md:rounded-[32px] bg-[#CBFF38] text-black flex items-center justify-center font-black text-xl md:text-3xl shadow-lg shrink-0">
  {innerClient.firstName?.[0] ||"?"}
  </div>
- <div>
- <h2 className="text-3xl font-black uppercase tracking-tighter leading-none mb-1">{clientName}</h2>
- <div className="flex items-center gap-4 text-gray-400">
+ <div className="min-w-0">
+ <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter leading-none mb-1 truncate">{clientName}</h2>
+ <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-400">
  <div className="flex items-center gap-2">
  <Mail size={12} className="text-[#CBFF38]" />
  <a href={`mailto:${innerClient.email}`} className="text-[10px] font-black uppercase tracking-widest hover:text-[#CBFF38] transition-colors">{innerClient.email}</a>
@@ -268,32 +268,32 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  </div>
  </div>
  </div>
- <div className="flex items-center gap-4">
- <button 
+ <div className="flex flex-wrap items-center gap-3 md:gap-4">
+ <button
  onClick={handleBook}
- className="px-6 py-3 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all flex items-center gap-2"
+ className="px-4 md:px-6 py-3 bg-[#CBFF38] text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all flex items-center gap-2"
  >
  <Plus size={14} /> New Appointment
  </button>
- <button onClick={onClose} className="size-14 bg-white/10 hover:bg-[#CBFF38] text-white hover:text-black rounded-2xl flex items-center justify-center transition-all relative z-10">
+ <button onClick={onClose} className="size-11 md:size-14 bg-white/10 hover:bg-[#CBFF38] text-white hover:text-black rounded-2xl flex items-center justify-center transition-all relative z-10">
  <X size={24} />
  </button>
  </div>
  </div>
  </div>
 
- <div className="p-10 flex-1 overflow-y-auto no-scrollbar grid grid-cols-1 lg:grid-cols-3 gap-10">
+ <div className="p-5 md:p-10 flex-1 overflow-y-auto no-scrollbar grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
  <div className="lg:col-span-2 space-y-8">
  <section>
- <div className="flex items-center justify-between mb-6">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
  <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900 border-l-4 border-[#CBFF38] pl-4">Treatment History</h3>
  <div className="px-4 py-1.5 bg-gray-50 rounded-full font-black text-[10px] uppercase tracking-widest">{appointments.length} Total Procedures</div>
  </div>
  
  <div className="space-y-4">
  {appointments.length > 0 ? appointments.map((apt: any) => (
- <div key={apt.id} className="p-6 bg-gray-50/50 border border-gray-100 rounded-3xl group hover:border-black transition-all">
- <div className="flex items-center justify-between">
+ <div key={apt.id} className="p-4 md:p-6 bg-gray-50/50 border border-gray-100 rounded-3xl group hover:border-black transition-all">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
  <div className="flex items-center gap-5">
  <div className="size-12 bg-black text-[#CBFF38] rounded-2xl flex flex-col items-center justify-center shadow-lg group-hover:rotate-3 transition-transform">
  <span className="text-[8px] font-black uppercase">{new Date(apt.startTime).toLocaleDateString([], { month: 'short' })}</span>
@@ -333,7 +333,7 @@ const ClientDetailsModal = ({ client, onClose, onBookAppointment }: any) => {
  </div>
 
  <div className="space-y-8">
- <section className="bg-gray-50 rounded-[32px] p-8 border border-gray-100">
+ <section className="bg-gray-50 rounded-[32px] p-5 md:p-8 border border-gray-100">
  <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6">Financial Metrics</h4>
  <div className="space-y-6">
  <div>

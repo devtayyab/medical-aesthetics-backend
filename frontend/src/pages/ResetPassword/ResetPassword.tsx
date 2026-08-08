@@ -21,7 +21,10 @@ const containerStyle = css`
 const cardStyle = css`
  width: 100%;
  max-width: 480px;
+ padding: 24px;
+ @media (min-width: 768px) {
  padding: 40px;
+ }
  border-radius: 32px;
  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
  background: white;

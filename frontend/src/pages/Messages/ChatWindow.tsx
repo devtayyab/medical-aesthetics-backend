@@ -50,7 +50,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  <header className="shrink-0 p-3 sm:p-6 md:p-8 bg-black text-white flex items-center justify-between border-b border-white/5 relative overflow-hidden">
  <div className="absolute top-0 right-0 w-64 h-full bg-[#CBFF38]/5 blur-3xl rounded-full translate-x-1/2" />
  
- <div className="flex items-center gap-3 sm:gap-6 relative z-10">
+ <div className="flex items-center gap-3 sm:gap-6 relative z-10 min-w-0">
  {onBack && (
  <button
  onClick={onBack}
@@ -67,12 +67,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  <div className="absolute -bottom-1 -right-1 size-4 bg-lime-500 rounded-full border-4 border-black animate-pulse" />
  </div>
  
- <div>
- <div className="flex items-center gap-3">
- <h3 className="font-black text-white uppercase tracking-tighter leading-none text-base sm:text-xl">
+ <div className="min-w-0">
+ <div className="flex items-center gap-3 min-w-0">
+ <h3 className="font-black text-white uppercase tracking-tighter leading-none text-base sm:text-xl truncate">
  {conversation.title || `${otherUser?.firstName} ${otherUser?.lastName}`}
  </h3>
- <div className="px-2 py-0.5 bg-white/5 backdrop-blur-md rounded-md border border-white/10">
+ <div className="hidden sm:block px-2 py-0.5 bg-white/5 backdrop-blur-md rounded-md border border-white/10 shrink-0">
  <span className="text-[8px] font-black uppercase tracking-widest text-[#CBFF38]">Encrypted</span>
  </div>
  </div>

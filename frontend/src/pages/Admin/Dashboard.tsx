@@ -123,7 +123,7 @@ export const Dashboard: React.FC = () => {
  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-6">
  <CalendarCheck className="w-5 h-5 text-blue-600" /> Appointments Overview (Date Range)
  </h3>
- <div className="grid grid-cols-5 gap-4">
+ <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
  <div className="text-center p-4 bg-gray-50 rounded-lg">
  <p className="text-2xl font-bold text-gray-900">{expandedMetrics.appointmentsDateRange.booked}</p>
  <p className="text-xs text-gray-500 uppercase mt-1">Booked</p>
@@ -152,7 +152,7 @@ export const Dashboard: React.FC = () => {
  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
  <AlertTriangle className="w-5 h-5 text-orange-500" /> Action Required
  </h3>
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
  {actionWidgets.map((widget, idx) => (
  <div key={idx} className={`flex items-center justify-between p-4 rounded-lg border ${widget.color}`}>
  <div className="flex items-center gap-3">

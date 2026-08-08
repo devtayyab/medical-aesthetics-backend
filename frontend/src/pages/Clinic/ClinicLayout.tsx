@@ -77,6 +77,23 @@ const ClinicLayout: React.FC = () => {
 
  return (
  <div className="flex h-[calc(100vh-56px)] lg:h-[calc(100vh-64px)] bg-[#F8FAFC] overflow-hidden font-sans">
+ {/* Mobile sidebar toggle */}
+ <button
+ onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+ aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
+ className="lg:hidden fixed bottom-5 right-5 z-[1002] size-12 bg-black text-[#CBFF38] rounded-2xl shadow-2xl flex items-center justify-center active:scale-95 transition-all"
+ >
+ {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+ </button>
+
+ {/* Mobile overlay */}
+ {isSidebarOpen && (
+ <div
+ className="lg:hidden fixed inset-0 top-[56px] sm:top-[64px] bg-black/40 z-[1000]"
+ onClick={closeSidebar}
+ />
+ )}
+
  {/* Sidebar */}
  <aside
  className={`fixed lg:static top-[56px] sm:top-[64px] lg:top-0 bottom-0 left-0 z-[1001] lg:z-10 w-72 bg-white flex flex-col transition-all duration-500 ease-in-out border-r border-gray-100 h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] lg:h-full

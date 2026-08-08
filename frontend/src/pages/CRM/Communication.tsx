@@ -435,11 +435,11 @@ export const Communication: React.FC = () => {
  {showPushModal && (
  <motion.div 
  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
- className="fixed inset-0 z-[1001] flex items-center justify-center p-6 bg-[#121212]/95 backdrop-blur-md"
+ className="fixed inset-0 z-[1001] flex items-center justify-center p-4 sm:p-6 bg-[#121212]/95 backdrop-blur-md"
  >
- <motion.div 
+ <motion.div
  initial={{ scale: 0.9 }} animate={{ scale: 1 }}
- className="bg-[#1C1C1C] rounded-[40px] border border-white/5 p-10 max-w-lg w-full shadow-2xl relative"
+ className="bg-[#1C1C1C] rounded-[40px] border border-white/5 p-6 sm:p-10 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
  >
  <button onClick={() => setShowPushModal(false)} className="absolute top-8 right-8 text-white/20 hover:text-white"><X/></button>
  <h2 className="text-2xl font-black uppercase tracking-tighter mb-8 text-[#CBFF38]">Direct Transmission</h2>
@@ -480,12 +480,12 @@ export const Communication: React.FC = () => {
  initial={{ opacity: 0 }} 
  animate={{ opacity: 1 }} 
  exit={{ opacity: 0 }}
- className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-[#121212]/90 backdrop-blur-sm"
+ className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6 bg-[#121212]/90 backdrop-blur-sm"
  >
- <motion.div 
+ <motion.div
  initial={{ scale: 0.9, y: 20 }}
  animate={{ scale: 1, y: 0 }}
- className="bg-[#1C1C1C] rounded-[40px] border border-white/5 p-10 max-w-2xl w-full shadow-2xl relative"
+ className="bg-[#1C1C1C] rounded-[40px] border border-white/5 p-6 sm:p-10 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
  >
  <button onClick={() => setShowForm(false)} className="absolute top-8 right-8 text-white/20 hover:text-white transition-colors"><X/></button>
  <h2 className="text-2xl font-black uppercase tracking-tighter mb-8 text-[#CBFF38]">

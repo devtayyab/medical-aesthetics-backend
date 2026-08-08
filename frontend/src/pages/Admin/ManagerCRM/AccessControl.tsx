@@ -158,7 +158,7 @@ export const AccessControl: React.FC = () => {
  const totalClinicsCount = rows[0]?.clinics.length || 0;
 
  return (
- <div className="p-8 space-y-10 bg-[#f8fafc] min-h-screen">
+ <div className="p-4 md:p-8 space-y-10 bg-[#f8fafc] min-h-screen">
  {/* Header */}
  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
  <div>
@@ -167,7 +167,7 @@ export const AccessControl: React.FC = () => {
  <ShieldCheck className="h-8 w-8 text-[#CBFF38]" />
  </div>
  <div>
- <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">
+ <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 uppercase">
  Access Control <span className="text-blue-600">Matrix</span>
  </h1>
  <div className="flex items-center gap-2 mt-1">
@@ -237,7 +237,7 @@ export const AccessControl: React.FC = () => {
 
  {/* Main Matrix Table */}
  <Card className="rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border-none overflow-hidden bg-white">
- <CardHeader className="bg-slate-50/50 px-8 py-8 border-b border-slate-100/60">
+ <CardHeader className="bg-slate-50/50 px-4 py-5 md:px-8 md:py-8 border-b border-slate-100/60">
  <div className="flex items-center gap-3">
  <div className="h-10 w-10 rounded-2xl bg-slate-900 flex items-center justify-center">
  <Lock className="h-5 w-5 text-white" />

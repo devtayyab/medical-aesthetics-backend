@@ -46,17 +46,17 @@ export const TreatmentApproval: React.FC = () => {
  }
 
  return (
- <div className="p-8 max-w-6xl mx-auto">
- <div className="mb-8 flex justify-between items-end">
+ <div className="p-4 md:p-8 max-w-6xl mx-auto">
+ <div className="mb-8 flex flex-col gap-4 md:flex-row md:justify-between md:items-end">
  <div>
- <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">
+ <h1 className="text-2xl md:text-3xl font-black text-gray-900 uppercase tracking-tight">
  Therapy Approvals
  </h1>
  <p className="text-gray-500 uppercase text-xs font-bold tracking-widest mt-1">
  Review and approve new medical treatments proposed by doctors
  </p>
  </div>
- <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 flex items-center gap-2 text-blue-700">
+ <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 flex items-center gap-2 text-blue-700 self-start md:self-auto">
  <AlertCircle size={16} />
  <span className="text-xs font-bold uppercase tracking-wider">{treatments.length} Pending Requests</span>
  </div>
@@ -116,9 +116,9 @@ export const TreatmentApproval: React.FC = () => {
  </div>
 
  {/* Content */}
- <div className="flex-1 p-8">
+ <div className="flex-1 p-4 md:p-8">
  <div className="mb-6">
- <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight mb-2">
+ <h3 className="text-xl md:text-2xl font-black text-gray-900 uppercase tracking-tight mb-2">
  {treatment.name}
  </h3>
  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
@@ -134,7 +134,7 @@ export const TreatmentApproval: React.FC = () => {
  </p>
  </div>
 
- <div className="flex items-center gap-4">
+ <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:gap-4">
  <Button
  onClick={() => handleSetStatus(treatment.id, TreatmentStatus.APPROVED)}
  className="flex-1 h-12 rounded-xl bg-[#CBFF38] text-black hover:bg-lime-400 font-black uppercase text-xs tracking-widest shadow-lg shadow-lime-100 border-none"

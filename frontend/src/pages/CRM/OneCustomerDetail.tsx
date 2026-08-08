@@ -109,7 +109,7 @@ const DialerModal = ({
  if (!isOpen) return null;
 
  return (
- <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+ <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 p-4">
  <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-gray-700 relative">
  {/* Decorative blobs */}
  <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -ml-10 -mt-10" />
@@ -999,14 +999,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <>
  <div className="max-w-[1600px] mx-auto pb-10 animate-in fade-in slide-in-from-top-4 duration-700 bg-slate-50 min-h-screen">
  {/* Top Navigation Bar */}
- <div className="px-6 py-3 border-b border-slate-200 bg-white flex items-center gap-4 shadow-sm relative z-10 rounded-t-xl md:rounded-none">
+ <div className="px-6 py-3 border-b border-slate-200 bg-white flex flex-wrap items-center gap-4 shadow-sm relative z-10 rounded-t-xl md:rounded-none">
  <Button variant="ghost" onClick={() => window.history.back()} className="text-blue-600 font-bold hover:bg-blue-50 px-3 h-8">
  <ArrowLeft className="w-4 h-4 mr-2" /> Back to Contacts
  </Button>
  <div className="h-6 w-px bg-slate-200"></div>
  <h2 className="text-base font-black text-slate-800 tracking-tight">{customer.firstName} {customer.lastName}</h2>
  {/* Right side - Contact creation info */}
- <div className="ml-auto flex items-center gap-3">
+ <div className="ml-auto flex flex-wrap items-center gap-3">
  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
  <UserPlus className="w-3.5 h-3.5 text-emerald-500" />
  <div className="flex flex-col leading-none">
@@ -1177,7 +1177,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
  {/* Tabs / Feed Container */}
  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
- <div className="flex border-b border-slate-200 px-2 bg-slate-50/50">
+ <div className="flex overflow-x-auto border-b border-slate-200 px-2 bg-slate-50/50">
  {['overview', 'activities', 'notes'].map(tab => (
  <button
  key={tab}
@@ -1457,7 +1457,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  {/* Phone Call Notes Modal */}
  {showPhoneCallModal && (
  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in">
- <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
+ <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
  <div className="flex justify-between items-center mb-2">
  <h3 className="font-bold text-slate-800 flex items-center gap-2">
  <PhoneCall className="w-4 h-4 text-slate-400" /> {editingLogId ?"Edit Phone Call Notes" :"Add Phone Call Notes"}
@@ -1492,7 +1492,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  {/* Email Log Modal */}
  {showEmailModal && (
  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in">
- <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
+ <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
  <div className="flex justify-between items-center mb-2">
  <h3 className="font-bold text-slate-800 flex items-center gap-2">
  <Mail className="w-4 h-4 text-slate-400" /> {editingLogId ?"Edit Email Log" :"Log Sent Email"}
@@ -1532,7 +1532,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   {/* Note Modal */}
   {showNoteModal && (
   <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in">
-  <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4">
+  <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-200 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
   <div className="flex justify-between items-center mb-2">
   <h3 className="font-bold text-slate-800 flex items-center gap-2">
   <FileText className="w-4 h-4 text-slate-400" /> {editingLogId ?"Edit Note" :"Add a Note"}
@@ -1568,7 +1568,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  {/* Tag Modal */}
  {showTagModal && (
  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in">
- <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm border border-slate-200 p-6 space-y-4">
+ <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm border border-slate-200 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
  <div className="flex justify-between items-center mb-2">
  <h3 className="font-bold text-slate-800">Add Customer Tag</h3>
  <Button variant="ghost" size="sm" onClick={() => { setShowTagModal(false); setQuickTagInput(""); }} className="h-8 w-8 p-0">
@@ -1625,7 +1625,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  {/* Payment Prompt Modal */}
  {isPaymentPrompt && (
  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[99999] flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
- <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col">
+ <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] overflow-y-auto">
  <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
  <div>
  <h3 className="text-xl font-black text-slate-800 tracking-tight">Finalize Transaction</h3>

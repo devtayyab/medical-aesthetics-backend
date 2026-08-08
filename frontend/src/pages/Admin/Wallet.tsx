@@ -18,7 +18,7 @@ export const Wallet: React.FC = () => {
  return (
  <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
  <div className="mb-8">
- <h1 className="text-3xl font-bold text-gray-900">Loyalty & Wallet Management</h1>
+ <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Loyalty & Wallet Management</h1>
  <p className="text-sm text-gray-500 mt-1">Manage consumer wallets, loyalty points, and redemptions</p>
  </div>
 

@@ -199,10 +199,10 @@ export const Integrations: React.FC = () => {
  {/* Configuration Modal */}
  {activeConfig && (
  <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
- <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden">
- <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-[#0B1120] text-white">
+ <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+ <div className="p-5 md:p-8 border-b border-gray-100 flex justify-between items-center gap-3 bg-[#0B1120] text-white">
  <div>
- <h2 className="text-2xl font-bold">Configure {integrationList.find(i => i.id === activeConfig)?.title}</h2>
+ <h2 className="text-xl md:text-2xl font-bold">Configure {integrationList.find(i => i.id === activeConfig)?.title}</h2>
  <p className="text-sm text-gray-400 mt-1">Manage API keys and sync behavior</p>
  </div>
  <button 
@@ -213,7 +213,7 @@ export const Integrations: React.FC = () => {
  </button>
  </div>
 
- <div className="p-8 space-y-6">
+ <div className="p-5 md:p-8 space-y-6">
  {activeConfig === 'payments' && (
  <>
  <div className="space-y-4">
@@ -313,7 +313,7 @@ export const Integrations: React.FC = () => {
  )}
  </div>
 
- <div className="p-8 bg-gray-50 flex gap-4">
+ <div className="p-5 md:p-8 bg-gray-50 flex flex-wrap gap-4">
  <button 
  onClick={() => setActiveConfig(null)}
  className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-600 font-bold rounded-2xl hover:bg-gray-100 transition-all"

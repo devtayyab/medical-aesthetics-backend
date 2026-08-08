@@ -635,7 +635,7 @@ const mainCategories = [
  </p>
  <button
  onClick={() => setShowConsultModal(true)}
- className="px-12 h-16 bg-[#CBFF38] text-black rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-white transition-all shadow-xl active:scale-95 mx-auto"
+ className="px-6 py-4 h-auto md:px-12 md:py-0 md:h-16 max-w-full bg-[#CBFF38] text-black rounded-2xl font-black text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] hover:bg-white transition-all shadow-xl active:scale-95 mx-auto"
  >
  Get Professional Consultant
  </button>

@@ -81,10 +81,10 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  initial={{ opacity: 0, scale: 0.9, y: 20 }}
  animate={{ opacity: 1, scale: 1, y: 0 }}
  exit={{ opacity: 0, scale: 0.9, y: 20 }}
- className="bg-white rounded-[48px] w-full max-w-2xl shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative z-10 flex flex-col h-[750px] border border-white/20"
+ className="bg-white rounded-3xl md:rounded-[48px] w-full max-w-2xl shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative z-10 flex flex-col h-[750px] max-h-full border border-white/20"
  >
  {/* Header Section */}
- <header className="p-8 md:p-12 bg-black text-white relative overflow-hidden shrink-0">
+ <header className="p-5 sm:p-8 md:p-12 bg-black text-white relative overflow-hidden shrink-0">
  <div className="absolute top-0 right-0 w-64 h-full bg-[#CBFF38]/10 blur-3xl rounded-full translate-x-1/2" />
  
  <div className="flex items-center justify-between relative z-10">
@@ -93,18 +93,18 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38]">Neural Handshake</span>
  </div>
- <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter leading-none">Initialize Channel</h2>
+ <h2 className="text-xl sm:text-3xl md:text-4xl font-black uppercase tracking-tighter leading-none">Initialize Channel</h2>
  </div>
  <button 
  onClick={onClose} 
- className="size-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all group shadow-xl"
+ className="size-10 sm:size-14 shrink-0 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all group shadow-xl"
  >
  <X size={24} className="group-hover:rotate-90 transition-transform" />
  </button>
  </div>
  </header>
 
- <div className="p-8 md:p-12 flex-1 flex flex-col overflow-hidden bg-gray-50/30">
+ <div className="p-4 sm:p-8 md:p-12 flex-1 flex flex-col overflow-hidden bg-gray-50/30">
  {/* Selected Users HUD */}
  <AnimatePresence>
  {selectedUsers.length > 0 && (
@@ -145,13 +145,13 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  </AnimatePresence>
 
  {/* Search Bar */}
- <div className="relative group mb-10">
- <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-black transition-colors" size={20} />
+ <div className="relative group mb-5 sm:mb-10">
+ <Search className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-black transition-colors" size={20} />
  <input
  autoFocus
  type="text"
  placeholder="FIND PEER OR PATIENT VECTOR..."
- className="w-full h-20 pl-16 pr-8 bg-white border-none rounded-[32px] text-sm font-black tracking-widest text-gray-900 placeholder:text-gray-200 focus:ring-2 focus:ring-black transition-all shadow-xl shadow-gray-200/50 uppercase"
+ className="w-full h-14 sm:h-20 pl-12 sm:pl-16 pr-4 sm:pr-8 bg-white border-none rounded-2xl sm:rounded-[32px] text-xs sm:text-sm font-black tracking-widest text-gray-900 placeholder:text-gray-200 focus:ring-2 focus:ring-black transition-all shadow-xl shadow-gray-200/50 uppercase"
  value={searchTerm}
  onChange={(e) => setSearchTerm(e.target.value)}
  />
@@ -187,13 +187,13 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  transition={{ delay: idx * 0.05 }}
  key={user.id}
  onClick={() => toggleUser(user)}
- className={`w-full p-6 bg-white rounded-[32px] border flex items-center gap-6 group transition-all shadow-sm hover:shadow-2xl hover:-translate-y-1 ${isSelected ? 'border-black bg-gray-50' : 'border-gray-100 hover:bg-black hover:text-[#CBFF38]'}`}
+ className={`w-full p-4 sm:p-6 bg-white rounded-2xl sm:rounded-[32px] border flex items-center gap-3 sm:gap-6 group transition-all shadow-sm hover:shadow-2xl hover:-translate-y-1 ${isSelected ? 'border-black bg-gray-50' : 'border-gray-100 hover:bg-black hover:text-[#CBFF38]'}`}
  >
- <div className={`size-16 rounded-2xl flex items-center justify-center font-black text-xl border transition-all shadow-inner ${isSelected ? 'bg-black text-[#CBFF38] border-black scale-110' : 'bg-gray-50 text-gray-400 border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black group-hover:rotate-6'}`}>
+ <div className={`size-12 sm:size-16 shrink-0 rounded-2xl flex items-center justify-center font-black text-base sm:text-xl border transition-all shadow-inner ${isSelected ? 'bg-black text-[#CBFF38] border-black scale-110' : 'bg-gray-50 text-gray-400 border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black group-hover:rotate-6'}`}>
  {isSelected ? <Check size={28} /> : `${user.firstName[0]}${user.lastName[0]}`}
  </div>
  <div className="text-left flex-1 min-w-0">
- <div className="font-black uppercase tracking-tighter text-lg leading-none mb-1 truncate">
+ <div className="font-black uppercase tracking-tighter text-sm sm:text-lg leading-none mb-1 truncate">
  {user.firstName} {user.lastName}
  </div>
  <div className="flex items-center gap-3">
@@ -201,7 +201,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  <span className={`text-[10px] font-bold truncate transition-colors ${isSelected ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'}`}>{user.email}</span>
  </div>
  </div>
- <div className={`size-10 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-black border-black text-[#CBFF38]' : 'border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black group-hover:border-[#CBFF38] transition-all'}`}>
+ <div className={`hidden sm:flex size-10 shrink-0 rounded-full border items-center justify-center transition-all ${isSelected ? 'bg-black border-black text-[#CBFF38]' : 'border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black group-hover:border-[#CBFF38] transition-all'}`}>
  {isSelected ? <X size={20} /> : <ArrowRight size={20} />}
  </div>
  </motion.button>
@@ -228,7 +228,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  </div>
 
  {/* Footer Tip */}
- <footer className="p-8 bg-black/5 flex items-center justify-center shrink-0">
+ <footer className="p-4 sm:p-8 bg-black/5 flex items-center justify-center shrink-0">
  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
  <Users size={12} className="text-[#CBFF38]" />
  Multi-Participant channels enabled. Select targets to establish link.

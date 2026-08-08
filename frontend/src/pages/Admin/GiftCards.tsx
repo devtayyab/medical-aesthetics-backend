@@ -64,12 +64,12 @@ export const GiftCards: React.FC = () => {
 
  return (
  <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
- <div className="flex justify-between items-center mb-8">
+ <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center mb-8">
  <div>
- <h1 className="text-3xl font-bold text-gray-900">Gift Cards</h1>
+ <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Gift Cards</h1>
  <p className="text-sm text-gray-500 mt-1">Manage global gift cards, purchases, and redemption status</p>
  </div>
- <div className="flex gap-3">
+ <div className="flex flex-wrap gap-3">
  <button
  onClick={() => setShowRedeemModal(true)}
  className="flex items-center gap-2 bg-white border border-gray-200 text-gray-900 px-4 py-2 font-bold rounded-lg hover:bg-gray-50 transition-colors"
@@ -122,12 +122,12 @@ export const GiftCards: React.FC = () => {
  </div>
 
  <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
- <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+ <div className="p-4 md:p-6 border-b border-gray-100 flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
  <div>
  <h3 className="text-lg font-bold text-gray-800 mb-1">Issued Gift Cards</h3>
  <p className="text-sm text-gray-500">List of all gift cards created and sold.</p>
  </div>
- <div className="flex border border-gray-200 rounded-lg overflow-hidden max-w-md w-72">
+ <div className="flex border border-gray-200 rounded-lg overflow-hidden max-w-md w-full md:w-72">
  <div className="bg-gray-50 px-3 flex items-center border-r border-gray-200">
  <Search className="w-5 h-5 text-gray-400" />
  </div>

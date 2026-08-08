@@ -58,7 +58,7 @@ export const Reports: React.FC = () => {
  <div className="space-y-8">
  {/* Stats Bento */}
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div className="bg-white p-10 rounded-[48px] shadow-xl border border-gray-100 group">
+ <div className="bg-white p-6 md:p-10 rounded-[48px] shadow-xl border border-gray-100 group">
  <div className="flex items-center justify-between mb-8">
  <div className="size-12 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform">
  <Star size={24} />
@@ -76,7 +76,7 @@ export const Reports: React.FC = () => {
  <p className="text-xs font-bold text-gray-400">Aggregated from clinical data streams.</p>
  </div>
 
- <div className="bg-black text-white p-10 rounded-[48px] shadow-2xl relative overflow-hidden">
+ <div className="bg-black text-white p-6 md:p-10 rounded-[48px] shadow-2xl relative overflow-hidden">
  <div className="absolute top-0 right-0 p-8 opacity-10">
  <BarChart3 size={120} className="text-[#CBFF38]" />
  </div>
@@ -98,16 +98,16 @@ export const Reports: React.FC = () => {
  </div>
 
  {/* Distribution Analysis */}
- <div className="bg-white rounded-[48px] p-10 shadow-xl border border-gray-100">
- <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900 border-l-4 border-[#CBFF38] pl-6 mb-10">Sentiment Distribution</h2>
- 
+ <div className="bg-white rounded-[48px] p-6 md:p-10 shadow-xl border border-gray-100">
+ <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900 border-l-4 border-[#CBFF38] pl-4 md:pl-6 mb-10">Sentiment Distribution</h2>
+
  <div className="space-y-8">
  {[5, 4, 3, 2, 1].map((rating) => {
  const count = reviewStats?.distribution?.[rating] || 0;
  const percentage = reviewStats?.totalReviews ? (count / reviewStats.totalReviews) * 100 : 0;
  
  return (
- <div key={rating} className="group flex items-center gap-6">
+ <div key={rating} className="group flex items-center gap-3 md:gap-6">
  <div className="flex items-center gap-2 w-12 shrink-0">
  <span className="text-lg font-black">{rating}</span>
  <Star size={12} className="fill-[#CBFF38] text-[#CBFF38]" />
@@ -129,7 +129,7 @@ export const Reports: React.FC = () => {
  </div>
  </div>
 
- <div className="bg-[#CBFF38] p-10 rounded-[48px] shadow-xl shadow-lime-500/10 flex flex-col md:flex-row items-center justify-between gap-8 group cursor-pointer hover:bg-black hover:text-[#CBFF38] transition-all">
+ <div className="bg-[#CBFF38] p-6 md:p-10 rounded-[48px] shadow-xl shadow-lime-500/10 flex flex-col md:flex-row items-center justify-between gap-8 group cursor-pointer hover:bg-black hover:text-[#CBFF38] transition-all">
  <div className="flex items-center gap-6">
  <div className="size-14 bg-white text-black rounded-2xl flex items-center justify-center shadow-lg group-hover:bg-[#CBFF38]">
  <ArrowUpRight size={24} />

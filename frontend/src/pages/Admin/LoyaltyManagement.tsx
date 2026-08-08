@@ -60,9 +60,9 @@ export const LoyaltyManagement: React.FC = () => {
 
  return (
  <div className="space-y-6">
- <div className="flex justify-between items-center">
+ <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
  <div>
- <h1 className="text-3xl font-bold tracking-tight text-gray-900">Loyalty Management</h1>
+ <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">Loyalty Management</h1>
  <p className="text-muted-foreground mt-2 text-gray-500">
  Configure customer loyalty tiers, point thresholds, and rewards.
  </p>

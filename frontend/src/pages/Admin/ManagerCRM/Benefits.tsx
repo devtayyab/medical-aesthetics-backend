@@ -169,11 +169,11 @@ export const Benefits: React.FC = () => {
  ];
 
  return (
- <div className="p-6 space-y-8 bg-gray-50/50 min-h-screen">
+ <div className="p-4 md:p-6 space-y-8 bg-gray-50/50 min-h-screen">
  {/* Header */}
  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
  <div>
- <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-3">
+ <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-3">
  <Star className="h-8 w-8 text-[#CBFF38]" />
  Customer Benefits &amp; Loyalty
  </h1>

@@ -139,10 +139,10 @@ const AppointmentsPage: React.FC = () => {
  </div>
 
  {/* Tabs Section moved here from the incorrect location */}
- <div className="mt-12 flex items-center gap-2 p-1.5 bg-gray-50 rounded-2xl w-fit border border-gray-100">
+ <div className="mt-12 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-1.5 bg-gray-50 rounded-2xl w-full sm:w-fit border border-gray-100">
  <button
  onClick={() => setActiveTab('active')}
- className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+ className={`px-4 sm:px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center sm:justify-start gap-2 ${
  activeTab === 'active' 
  ? 'bg-black text-white shadow-xl shadow-black/10' 
  : 'text-gray-400 hover:text-gray-900'
@@ -155,7 +155,7 @@ const AppointmentsPage: React.FC = () => {
  </button>
  <button
  onClick={() => setActiveTab('completed')}
- className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+ className={`px-4 sm:px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center sm:justify-start gap-2 ${
  activeTab === 'completed' 
  ? 'bg-black text-white shadow-xl shadow-black/10' 
  : 'text-gray-400 hover:text-gray-900'
@@ -355,7 +355,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
  </div>
 
  {/* Content */}
- <div className="flex-1 min-w-0 py-5">
+ <div className="flex-1 min-w-0 py-5 px-4 md:px-0">
  <div className="flex items-center gap-2 mb-2">
  <span className="px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest border bg-red-500 text-white border-red-500">
  Blocked
@@ -378,7 +378,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
  </div>
 
  {/* No action buttons — just overview */}
- <div className="shrink-0 md:border-l border-red-200 md:pl-6 pr-5 py-5">
+ <div className="shrink-0 md:border-l border-red-200 pl-4 md:pl-6 pr-5 py-5">
  <button
  onClick={onOverview}
  className="h-9 px-4 bg-red-100 text-red-600 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
@@ -423,7 +423,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
  </div>
 
  {/* Content Cluster */}
- <div className="flex-1 min-w-0">
+ <div className="flex-1 min-w-0 px-4 md:px-0">
  <div className="flex items-center gap-2 mb-3">
  <span className={`px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest border ${
  status === 'confirmed' ? 'bg-[#CBFF38] text-black border-[#CBFF38]' :
@@ -472,7 +472,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
  </div>
 
  {/* Control Layer */}
- <div className="flex items-center gap-2 shrink-0 md:border-l border-gray-100 md:pl-6 pr-5 py-5">
+ <div className="flex flex-wrap items-center gap-2 shrink-0 md:border-l border-gray-100 pl-4 md:pl-6 pr-5 py-5">
  {!isBlocked && (
  <>
  {status === 'pending' && hasPermission(user?.role, 'canConfirmAppointments') && (

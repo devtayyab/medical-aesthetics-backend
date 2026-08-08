@@ -51,13 +51,13 @@ export const ChangePassword = () => {
  };
 
  return (
- <div className="p-6 max-w-2xl mx-auto space-y-6">
+ <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
  <div className="flex items-center gap-4 mb-6">
  <div className="p-3 bg-[#CBFF38] rounded-2xl shadow-xl shadow-[#CBFF38]/20 group hover:rotate-6 transition-transform">
  <Key className="h-8 w-8 text-gray-900" />
  </div>
  <div>
- <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">Security Settings</h1>
+ <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900">Security Settings</h1>
  <p className="text-muted-foreground font-medium mt-1">Update your account password to keep your account secure</p>
  </div>
  </div>

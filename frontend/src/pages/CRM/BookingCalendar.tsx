@@ -72,8 +72,8 @@ export const BookingCalendar: React.FC = () => {
  return (
  <div className="flex flex-col h-full bg-white overflow-hidden border border-gray-100 rounded-2xl shadow-xl">
  {/* Header / Toolbar */}
- <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-30">
- <div className="flex items-center gap-4">
+ <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-y-2 px-4 py-2.5 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-30">
+ <div className="flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-4">
  <div className="flex items-center gap-2">
  <Scissors className="w-5 h-5 text-indigo-600" />
  <h1 className="text-lg font-bold text-gray-900 tracking-tight">Booking Calendar</h1>
@@ -99,7 +99,7 @@ export const BookingCalendar: React.FC = () => {
  </div>
  </div>
 
- <div className="flex items-center gap-3">
+ <div className="flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-3">
  <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2 py-0.5">
  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewDate(d => viewMode === 'week' ? subWeeks(d, 1) : subDays(d, 1))}>
  <ChevronLeft className="w-3.5 h-3.5" />

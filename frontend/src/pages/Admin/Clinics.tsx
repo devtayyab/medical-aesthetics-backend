@@ -533,7 +533,7 @@ export const Clinics: React.FC = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8">
               {activeTab === 'profile' && (
                 <>
                   <div className="space-y-4">
@@ -884,8 +884,8 @@ export const Clinics: React.FC = () => {
                   <h4 className="font-bold text-gray-900 border-l-4 border-[#CBFF38] pl-3">Business Hours</h4>
                   <div className="grid gap-4">
                     {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(day => (
-                      <div key={day} className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                        <div className="w-28 capitalize font-bold text-gray-700">{day}</div>
+                      <div key={day} className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div className="w-20 md:w-28 capitalize font-bold text-gray-700">{day}</div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
@@ -903,7 +903,7 @@ export const Clinics: React.FC = () => {
                           <span className="ml-3 text-sm font-medium text-gray-600">{formData.businessHours?.[day]?.isOpen ? 'Open' : 'Closed'}</span>
                         </label>
                         {formData.businessHours?.[day]?.isOpen && (
-                          <div className="flex items-center gap-2 ml-auto">
+                          <div className="flex flex-wrap items-center gap-2 ml-auto">
                             <input
                               type="time"
                               className="p-2 border rounded-lg text-sm outline-none focus:ring-1 focus:ring-[#CBFF38]"
@@ -939,7 +939,7 @@ export const Clinics: React.FC = () => {
 
               {activeTab === 'services' && (
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-wrap justify-between items-center gap-3">
                     <div>
                       <h4 className="font-bold text-gray-900 text-lg">Clinic Services</h4>
                       <p className="text-sm text-gray-500">Add or manage services offered at this location</p>
@@ -1125,7 +1125,7 @@ export const Clinics: React.FC = () => {
 
               {activeTab === 'staff' && (
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-wrap justify-between items-center gap-3">
                     <h4 className="font-bold text-gray-900 border-l-4 border-[#CBFF38] pl-3">Assigned Staff</h4>
                     <div className="relative">
                       <select
@@ -1223,7 +1223,7 @@ export const Clinics: React.FC = () => {
 
                   {isBlocking && (
                     <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-xs font-bold text-gray-500 uppercase">Start Time</label>
                           <input

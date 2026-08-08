@@ -63,7 +63,7 @@ export const Settings: React.FC = () => {
  return (
  <div className="space-y-6 p-6">
  <Card>
- <CardHeader className="flex flex-row items-center justify-between">
+ <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
  <CardTitle className="text-2xl font-bold flex items-center gap-2">
  <User className="h-6 w-6 text-blue-600" />
  My Profile
