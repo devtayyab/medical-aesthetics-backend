@@ -115,11 +115,20 @@ const dayStyle = (isCurrentMonth: boolean, isSelected: boolean, isPast: boolean)
 `;
 
 const slotButton = (isSelected: boolean, isAvailable: boolean) => css`
-  padding: 16px 10px;
+  padding: 10px 6px;
+  @media (min-width: 640px) {
+    padding: 16px 10px;
+  }
   text-align: center;
-  border-radius: 16px;
+  border-radius: 12px;
+  @media (min-width: 640px) {
+    border-radius: 16px;
+  }
   font-weight: 900;
-  font-size: 14px;
+  font-size: 12px;
+  @media (min-width: 640px) {
+    font-size: 14px;
+  }
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: ${isAvailable ? 'pointer' : 'not-allowed'};
   border: 2px solid ${isSelected ? '#000' : isAvailable ? '#f1f5f9' : '#fee2e2'};
@@ -442,21 +451,21 @@ export const AppointmentBooking: React.FC = () => {
 
  {/* Mobile Bottom Sheet for Time Slots */}
  {showMobileTimes && (
- <div className="fixed inset-0 z-[100] bg-black/40 lg:hidden flex flex-col justify-end transition-opacity">
- <div className="bg-white rounded-t-3xl p-6 w-full max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom">
- <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-6 shrink-0">
+ <div className="fixed inset-0 z-[1001] bg-black/60 backdrop-blur-sm lg:hidden flex flex-col justify-end transition-opacity">
+ <div className="bg-white rounded-t-3xl p-4 sm:p-6 w-full max-h-[75vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom">
+ <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4 shrink-0">
  <div>
- <h3 className="text-xl font-black uppercase text-gray-900">Select Time</h3>
- <p className="text-xs font-bold text-gray-500 mt-1">{format(selectedDateState,"EEEE, MMMM d")}</p>
+ <h3 className="text-lg font-black uppercase text-gray-900 leading-tight">Select Time</h3>
+ <p className="text-[11px] font-bold text-gray-500 mt-0.5">{format(selectedDateState,"EEEE, MMMM d")}</p>
  </div>
- <button onClick={() => setShowMobileTimes(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 hover:bg-gray-200">
+ <button onClick={() => setShowMobileTimes(false)} className="size-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 hover:bg-gray-200 shrink-0">
  <X className="w-4 h-4" />
  </button>
  </div>
 
- <div className="flex-1 overflow-y-auto no-scrollbar pb-6 space-y-4">
+ <div className="flex-1 overflow-y-auto no-scrollbar pb-4 space-y-3">
  {availableSlots.length > 0 ? (
- <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+ <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
  {availableSlots.map((slot) => (
  <button
  key={slot.startTime}
@@ -473,19 +482,19 @@ export const AppointmentBooking: React.FC = () => {
  ))}
  </div>
  ) : (
- <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
- <p className="text-sm font-black uppercase text-gray-400">No availability for this date. Try another day.</p>
+ <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+ <p className="text-xs font-black uppercase text-gray-400">No availability for this date. Try another day.</p>
  </div>
  )}
  </div>
 
  {selectedSlot && (
- <div className="shrink-0 pt-4 border-t border-gray-100">
+ <div className="shrink-0 pt-3 border-t border-gray-100">
  <Button
  fullWidth
  disabled={bookingLoading}
  onClick={() => { setShowMobileTimes(false); handleProceed(); }}
- className="bg-[#CBFF38] text-black hover:bg-lime-400 h-16 rounded-2xl font-black uppercase tracking-widest text-base shadow-lg shadow-lime-200"
+ className="bg-[#CBFF38] text-black hover:bg-lime-400 h-12 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg"
  >
  {bookingLoading ?"Establishing..." :"Continue"}
  </Button>
