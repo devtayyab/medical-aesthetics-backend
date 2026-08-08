@@ -8,32 +8,32 @@ import SiteLogo from"@/assets/SiteLogo.png";
 export const Footer: React.FC = () => {
  return (
  <footer className="bg-[#2D3748]">
- <div className="mx-auto max-w-[1200px] px-4 pt-6 pb-4 sm:px-6 lg:px-8">
+ <div className="mx-auto max-w-[1200px] px-4 pt-8 pb-16 sm:pb-8 sm:px-6 lg:px-8">
  {/* Middle Content */}
- <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-8">
+ <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
  {/* Left Side */}
- <div className="mx-auto max-w-sm lg:max-w-none">
+ <div className="flex flex-col items-start max-w-sm lg:max-w-none">
  <Link
  to="/"
  className="inline-block"
  >
- <div className="w-[120px] sm:w-[150px] relative flex items-center justify-start">
+ <div className="w-[140px] sm:w-[160px] relative flex items-center justify-start">
  <img src={SiteLogo} alt="Site Logo" className="w-full h-auto object-contain drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] pointer-events-none" />
  </div>
  </Link>
- <p className="mt-2 text-[12px] text-center text-white lg:text-left leading-relaxed max-w-sm">
+ <p className="mt-3 text-xs text-white text-left leading-relaxed max-w-sm opacity-90">
  Our aesthetics platform is dedicated to providing high-quality treatments and personalized care. Explore our range of services to find the perfect solution for your beauty and wellness needs.
  </p>
  </div>
 
  {/* Right Side */}
- <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-4 lg:gap-8 text-left w-full max-w-[100vw] overflow-hidden">
+ <div className="grid grid-cols-3 gap-2 sm:gap-4 lg:gap-8 text-left w-full overflow-hidden">
  {/* Overview */}
  <div>
- <strong className="font-semibold text-[12px] sm:text-[14px] text-[#CBFF38]">
+ <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
  Overview
  </strong>
- <ul className="mt-3 space-y-[4px] text-[10px] sm:text-[12px]">
+ <ul className="mt-2.5 space-y-[4px] text-[9px] sm:text-[12px]">
  <li>
  <Link
  to="/treatments"
@@ -63,10 +63,10 @@ export const Footer: React.FC = () => {
 
  {/* Company */}
  <div>
- <strong className="font-semibold text-[12px] sm:text-[14px] text-[#CBFF38]">
+ <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
  Company
  </strong>
- <ul className="mt-3 space-y-[4px] text-[10px] sm:text-[12px]">
+ <ul className="mt-2.5 space-y-[4px] text-[9px] sm:text-[12px]">
  <li>
  <Link
  to="/"
@@ -95,19 +95,19 @@ export const Footer: React.FC = () => {
  </div>
 
  {/* Contact */}
- <div className="break-all">
- <strong className="font-semibold text-[12px] sm:text-[14px] text-[#CBFF38]">
+ <div className="min-w-0">
+ <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
  Contact Us
  </strong>
- <ul className="mt-3 space-y-[4px] text-[10px] sm:text-[12px]">
+ <ul className="mt-2.5 space-y-[4px] text-[9px] sm:text-[12px]">
  <li>
  <a
  href="tel:6948880498"
  className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
  style={{ textDecoration: 'none' }}
  >
- <span className="flex items-center justify-start gap-1 sm:gap-2">
- <Phone size={12} className="text-[#CBFF38] shrink-0" /> 
+ <span className="flex items-center justify-start gap-1">
+ <Phone size={10} className="text-[#CBFF38] shrink-0" /> 
  <span>6948880498</span>
  </span>
  </a>
@@ -118,9 +118,9 @@ export const Footer: React.FC = () => {
  className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
  style={{ textDecoration: 'none' }}
  >
- <span className="flex items-center justify-start gap-1 sm:gap-2">
- <Mail size={12} className="text-[#CBFF38] shrink-0" /> 
- <span>info@beautydoctors.gr</span>
+ <span className="flex items-center justify-start gap-1">
+ <Mail size={10} className="text-[#CBFF38] shrink-0" /> 
+ <span className="truncate">info@beautydoctors.gr</span>
  </span>
  </a>
  </li>
