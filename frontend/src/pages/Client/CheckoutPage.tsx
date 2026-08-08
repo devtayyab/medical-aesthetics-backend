@@ -36,32 +36,38 @@ const formatClinicTime = (dateStr: string | Date, timezone?: string) => {
 const containerStyle = css`
  max-width: 1200px;
  margin: 0 auto;
- padding: 24px 1rem;
+ padding: 12px 0.75rem 32px 0.75rem;
  @media (min-width: 640px) {
- padding: 40px 1rem;
+ padding: 32px 1rem;
  }
 `;
 
 const cardStyle = css`
  background: white;
- border-radius: 24px;
- padding: 24px;
+ border-radius: 20px;
+ padding: 16px 14px;
  @media (min-width: 640px) {
+ border-radius: 24px;
  padding: 32px;
  }
- box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+ box-shadow: 0 10px 40px rgba(0,0,0,0.04);
  border: 1px solid #f0f0f0;
 `;
 
 const sectionTitle = css`
+ font-size: 16px;
+ @media (min-width: 640px) {
  font-size: 20px;
+ }
  font-weight: 900;
  text-transform: uppercase;
- font-style: ;
+ margin-bottom: 16px;
+ @media (min-width: 640px) {
  margin-bottom: 24px;
+ }
  display: flex;
  align-items: center;
- gap: 12px;
+ gap: 10px;
  color: #1a202c;
 `;
 
@@ -193,55 +199,54 @@ export const CheckoutPage: React.FC = () => {
  return (
  <div className="min-h-screen bg-[#F7FAFC]">
  <div className={containerStyle}>
- <div className="flex items-center justify-between mb-8 sm:mb-12">
- <button onClick={() => navigate(-1)} className="group flex items-center gap-2 sm:gap-3 text-[10px] sm:text-sm font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
- <div className="size-6 sm:size-8 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-black transition-all">
- <FaChevronLeft size={8} />
- </div>
- <span className="hidden sm:inline">Back to Time</span>
- <span className="sm:hidden">Back</span>
- </button>
- <div className="flex items-center gap-2 sm:gap-4">
- <div className="flex flex-col items-center">
- <div className="size-6 sm:size-8 rounded-full bg-black text-white flex items-center justify-center font-black text-[10px] sm:text-xs"><FaCheckCircle className="text-[#CBFF38]" /></div>
- <span className="text-[8px] sm:text-[10px] font-black uppercase mt-1">Time</span>
- </div>
- <div className="w-8 sm:w-12 h-px bg-black -mt-4 opacity-20" />
- <div className="flex flex-col items-center border-2 border-[#CBFF38] rounded-2xl p-1 bg-[#CBFF38]/5">
- <div className="size-6 sm:size-8 rounded-full bg-[#CBFF38] text-black flex items-center justify-center font-black text-[10px] sm:text-xs">2</div>
- <span className="text-[8px] sm:text-[10px] font-black uppercase mt-1">Details</span>
- </div>
- </div>
- </div>
+  <div className="flex items-center justify-between mb-4 sm:mb-8 flex-wrap gap-2 sm:gap-4">
+  <button onClick={() => navigate(-1)} className="group flex items-center gap-2 sm:gap-3 text-[9px] sm:text-xs font-black uppercase tracking-widest text-gray-400 hover:text-black transition-all">
+  <div className="size-7 sm:size-8 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-black transition-all">
+  <FaChevronLeft size={8} />
+  </div>
+  <span>Back</span>
+  </button>
+  <div className="flex items-center gap-2 sm:gap-4">
+  <div className="flex flex-col items-center">
+  <div className="size-7 sm:size-8 rounded-full bg-black text-white flex items-center justify-center font-black text-[10px] sm:text-xs"><FaCheckCircle className="text-[#CBFF38]" /></div>
+  <span className="text-[7px] sm:text-[9px] font-black uppercase mt-1 tracking-widest">Time</span>
+  </div>
+  <div className="w-4 sm:w-12 h-px bg-black -mt-4 opacity-20" />
+  <div className="flex flex-col items-center">
+  <div className="size-7 sm:size-8 rounded-full bg-[#CBFF38] text-black flex items-center justify-center font-black text-xs shadow-md">2</div>
+  <span className="text-[7px] sm:text-[9px] font-black uppercase mt-1 tracking-widest">Details</span>
+  </div>
+  </div>
+  </div>
 
- <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
- <div className="lg:col-span-8 space-y-8">
- {/* Personal Details */}
- <div className={cardStyle}>
- <h3 className={sectionTitle}><FaCheckCircle size={18} className="text-lime-500" /> Personal Details</h3>
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <Input
- label="Full Name"
- value={formData.fullName}
- onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
- placeholder="Enter your full name"
- className="rounded-2xl h-14"
- />
- <Input
- label="Email Address"
- value={formData.email}
- onChange={(e) => setFormData({ ...formData, email: e.target.value })}
- placeholder="your@email.com"
- className="rounded-2xl h-14"
- />
- <div className="md:col-span-2 space-y-4">
- <Input
- label="Phone Number"
- value={formData.phone}
- onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
- placeholder="+44 7000 000000"
- className="rounded-2xl h-14"
- />
+  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8 items-start">
+  <div className="lg:col-span-8 space-y-4 sm:space-y-8">
+  {/* Personal Details */}
+  <div className={cardStyle}>
+  <h3 className={sectionTitle}><FaCheckCircle size={18} className="text-lime-500" /> Personal Details</h3>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+  <Input
+  label="Full Name"
+  value={formData.fullName}
+  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+  placeholder="Enter your full name"
+  className="rounded-xl sm:rounded-2xl h-11 sm:h-14"
+  />
+  <Input
+  label="Email Address"
+  value={formData.email}
+  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+  placeholder="your@email.com"
+  className="rounded-xl sm:rounded-2xl h-11 sm:h-14"
+  />
+  <div className="md:col-span-2 space-y-3 sm:space-y-4">
+  <Input
+  label="Phone Number"
+  value={formData.phone}
+  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+  placeholder="+44 7000 000000"
+  className="rounded-xl sm:rounded-2xl h-11 sm:h-14"
+  />
 
  <label className="flex items-start gap-3 cursor-pointer mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors group">
  <input
