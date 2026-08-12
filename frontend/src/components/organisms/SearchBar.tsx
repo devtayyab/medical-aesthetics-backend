@@ -56,6 +56,7 @@ const inputLabel = css`
  font-weight: 700;
  color: #1E293B;
  display: block;
+ text-align: center;
 `;
 
 const inputSubLabel = css`
@@ -63,6 +64,7 @@ const inputSubLabel = css`
  font-weight: 500;
  color: #94A3B8;
  display: block;
+ text-align: center;
 `;
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -153,9 +155,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  <div className="size-12 bg-[#F8FAFC] rounded-2xl flex items-center justify-center text-gray-500">
  <Search size={20} />
  </div>
- <div className="flex-1">
+ <div className="flex-1 text-center">
  <input
- className="w-full bg-transparent outline-none font-bold text-gray-900 placeholder:text-gray-900"
+ className="w-full bg-transparent outline-none font-bold text-gray-900 placeholder:text-gray-900 text-center"
  placeholder="Search Treatments"
  autoComplete="one-time-code"
  value={query}
@@ -234,7 +236,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  <div className="size-12 bg-[#F8FAFC] rounded-2xl flex items-center justify-center text-gray-500">
  <CalendarIcon size={20} />
  </div>
- <div className="flex-1">
+ <div className="flex-1 text-center">
  <span className={inputLabel}>
  {searchDate ? new Date(searchDate).toLocaleDateString() :"Select Date"}
  </span>
