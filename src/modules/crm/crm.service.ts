@@ -985,6 +985,19 @@ export class CrmService implements OnModuleInit {
     qb.orderBy('lead.lastMetaFormSubmittedAt', 'DESC', 'NULLS LAST');
     qb.addOrderBy('lead.createdAt', 'DESC');
 
+    // High performance limit & pagination (default limit 1000 if not specified to prevent 30k row payload lag)
+    const limit = filters.limit
+      ? parseInt(filters.limit, 10)
+      : filters.take
+      ? parseInt(filters.take, 10)
+      : (filters.all === 'true' || filters.all === true)
+      ? 50000
+      : 1000;
+
+    const page = filters.page ? Math.max(1, parseInt(filters.page, 10)) : 1;
+    qb.take(limit);
+    qb.skip((page - 1) * limit);
+
     return qb.getMany();
   }
 
