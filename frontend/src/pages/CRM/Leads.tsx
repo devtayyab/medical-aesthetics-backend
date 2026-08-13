@@ -734,7 +734,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </Button>
 
  {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
- <div className="hidden sm:flex items-center gap-1 border-l border-slate-200 ml-1.5 pl-1.5">
+ <div className="flex items-center gap-1 border-l border-slate-200 ml-1.5 pl-1.5">
  <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white" onClick={() => setShowBulkImport(true)}>
  <Upload size={16} className="text-slate-400" />
  </Button>
@@ -1679,7 +1679,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  {/* Duplicate Results Modal Logic */}
  {
  showDuplicateResults && duplicateCheck && (
- <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+ <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[1000] p-4 animate-in fade-in">
  <Card className="w-full max-w-md shadow-2xl border-t-4 border-amber-400 max-h-[90vh] overflow-y-auto">
  <div className="p-6">
  <div className="flex items-center gap-3 mb-4">
@@ -1719,7 +1719,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
  {/* ── Bulk CSV Import Modal ── */}
  {showBulkImport && (
- <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+ <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4 animate-in fade-in duration-200">
  <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
 
  {/* Header */}
@@ -1949,7 +1949,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
  {/* Facebook Form Schedule Modal */}
  {showFormScheduleModal && (
- <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+ <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[1000] p-4 animate-in fade-in">
  <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
  <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-blue-600 text-white flex-none">
  <div className="flex items-center gap-3">
@@ -2069,7 +2069,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  )}
  {/* Bulk Task Modal */}
  {showBulkTaskModal && (
- <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[70] p-4 animate-in fade-in transition-all duration-500">
+ <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[1000] p-4 animate-in fade-in transition-all duration-500">
  <Card className="w-full max-w-md shadow-2xl rounded-[2.5rem] overflow-hidden border border-slate-800 bg-slate-900 shadow-black/50">
  <div className="px-10 py-8 border-b border-slate-800 flex items-center justify-between bg-gradient-to-br from-slate-900 to-slate-800">
  <div className="flex items-center gap-4">
