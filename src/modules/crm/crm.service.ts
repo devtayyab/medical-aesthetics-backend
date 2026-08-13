@@ -174,7 +174,7 @@ export class CrmService implements OnModuleInit {
     return false;
   }
 
-  async create(createLeadDto: CreateLeadDto): Promise<Lead> {
+  async create(createLeadDto: CreateLeadDto, allowDuplicates: boolean = false): Promise<Lead> {
     if (createLeadDto.email && createLeadDto.email.trim() === '') {
       createLeadDto.email = undefined;
     }
@@ -184,23 +184,25 @@ export class CrmService implements OnModuleInit {
       (createLeadDto as any).assignedSalesId = undefined;
     }
 
-    // Use enhanced duplicate detection
-    const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
-      createLeadDto.email,
-      createLeadDto.phone,
-      createLeadDto.firstName,
-      createLeadDto.lastName,
-    );
+    if (!allowDuplicates && !(createLeadDto as any).allowDuplicates) {
+      // Use enhanced duplicate detection
+      const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+        createLeadDto.email,
+        createLeadDto.phone,
+        createLeadDto.firstName,
+        createLeadDto.lastName,
+      );
 
-    if (duplicateCheck.isDuplicate) {
-      if (duplicateCheck.existingCustomer) {
-        // Update existing customer record instead of creating duplicate lead
-        return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
-      }
+      if (duplicateCheck.isDuplicate) {
+        if (duplicateCheck.existingCustomer) {
+          // Update existing customer record instead of creating duplicate lead
+          return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
+        }
 
-      if (duplicateCheck.existingLead) {
-        // Update existing lead instead of creating duplicate
-        return this.updateExistingLead(duplicateCheck.existingLead, createLeadDto);
+        if (duplicateCheck.existingLead) {
+          // Update existing lead instead of creating duplicate
+          return this.updateExistingLead(duplicateCheck.existingLead, createLeadDto);
+        }
       }
     }
 
@@ -219,14 +221,14 @@ export class CrmService implements OnModuleInit {
     return finalLead;
   }
 
-  async bulkCreate(leads: CreateLeadDto[]): Promise<{ created: number; skipped: number; results: any[] }> {
+  async bulkCreate(leads: CreateLeadDto[], allowDuplicates: boolean = true): Promise<{ created: number; skipped: number; results: any[] }> {
     const results = [];
     let createdCount = 0;
     let skippedCount = 0;
 
     for (const leadDto of leads) {
       try {
-        const lead = await this.create(leadDto);
+        const lead = await this.create(leadDto, allowDuplicates);
         results.push({ status: 'success', email: leadDto.email, id: lead.id });
         createdCount++;
       } catch (error) {
