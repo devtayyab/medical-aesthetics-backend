@@ -29,7 +29,7 @@ import {
   PhoneCall, MoreHorizontal, User, Eye, Plus, Edit, X,
   CornerUpRight, Calendar, Phone, Trash2, UserPlus, Mail,
   Target, Tag, ArrowLeft, ArrowRight, Building2, MousePointer2, Check, MessageSquare,
-  Star, PhoneOff, XCircle, CheckCircle2, Search
+  Star, PhoneOff, XCircle, CheckCircle2, Search, Bell, ListTodo
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -721,241 +721,280 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       </div>
 
       {/* Task List */}
-      <Card padding="none" className="overflow-hidden">
-        <CardHeader className="p-3 border-b border-gray-100">
-          <CardTitle className="text-sm font-bold">Global Task List ({filteredTasks.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+      <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 rounded-3xl shadow-xl shadow-slate-200/40 overflow-hidden animate-in slide-in-from-bottom-2 duration-300">
+        {/* Table Header Bar */}
+        <div className="px-6 py-4 bg-white border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="size-9 rounded-2xl bg-[#CBFF38]/20 text-slate-900 flex items-center justify-center font-black">
+              <ListTodo size={18} />
+            </div>
+            <div>
+              <h3 className="text-base font-black tracking-tight text-slate-900">Global Task List</h3>
+              <p className="text-xs font-medium text-slate-500">Track and execute all CRM action items</p>
+            </div>
+          </div>
+          <span className="px-3 py-1 bg-slate-100 text-slate-800 rounded-xl text-xs font-black">
+            {filteredTasks.length} {filteredTasks.length === 1 ? 'Task' : 'Tasks'}
+          </span>
+        </div>
+
+        <div>
           {isLoading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="text-center py-12 text-xs font-bold text-slate-500">Loading tasks...</div>
           ) : filteredTasks.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No tasks found</div>
+            <div className="text-center py-12 text-xs font-bold text-slate-400">No tasks found.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b bg-gray-50/50">
-                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Status</th>
-                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Task Details</th>
-                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Associated Contact</th>
-                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Type & Therapy</th>
-                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Due/Reminder</th>
-                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Latest Outcome</th>
-                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Owner</th>
-                    <th className="p-2.5 font-bold text-[10px] uppercase tracking-wider text-slate-500">Actions</th>
+                  <tr className="border-b border-slate-100 bg-slate-50/80">
+                    <th className="px-4 py-3.5 font-black text-[10px] uppercase tracking-wider text-slate-400 whitespace-nowrap text-center">Status</th>
+                    <th className="px-4 py-3.5 font-black text-[10px] uppercase tracking-wider text-slate-400 whitespace-nowrap">Task Details</th>
+                    <th className="px-4 py-3.5 font-black text-[10px] uppercase tracking-wider text-slate-400 whitespace-nowrap">Associated Contact</th>
+                    <th className="px-4 py-3.5 font-black text-[10px] uppercase tracking-wider text-slate-400 whitespace-nowrap">Type & Therapy</th>
+                    <th className="px-4 py-3.5 font-black text-[10px] uppercase tracking-wider text-slate-400 whitespace-nowrap">Due / Reminder</th>
+                    <th className="px-4 py-3.5 font-black text-[10px] uppercase tracking-wider text-slate-400 whitespace-nowrap">Latest Outcome</th>
+                    <th className="px-4 py-3.5 font-black text-[10px] uppercase tracking-wider text-slate-400 whitespace-nowrap">Owner</th>
+                    <th className="px-4 py-3.5 font-black text-[10px] uppercase tracking-wider text-slate-400 whitespace-nowrap text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredTasks.map((task) => (
-                    <tr
-                      key={task.id}
-                      className={`border-b hover:bg-slate-50/50 transition-colors group ${isOverdue(task) ? 'bg-red-50/30' : ''}`}
-                    >
-                      <td className="p-2.5">
-                        <div className="flex justify-center">
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-tight
- ${task.status === 'completed' ? 'bg-green-100 text-green-700 border border-green-200' :
-                              isOverdue(task) ? 'bg-red-100 text-red-700 border border-red-200' :
-                                task.status === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                                  task.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border border-slate-200' :
-                                    'bg-blue-100 text-blue-700 border border-blue-200'}`}
-                          >
-                            {isOverdue(task) ? 'overdue' : task.status}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-2.5">
-                        <div className="font-bold text-slate-800 text-xs">{task.title}</div>
-                        {task.description && (
-                          <div className="text-[10px] text-slate-400 line-clamp-1 font-medium mt-0.5">{task.description}</div>
-                        )}
-                      </td>
-                      <td className="p-2.5">
-                        {(task.customerId || task.relatedLeadId) ? (
-                          onViewTask ? (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                onViewTask(task);
-                              }}
-                              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-bold text-[10px] transition-all
- ${task.customerId ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}
-                            >
-                              <Users className="h-2.5 w-2.5 opacity-60" />
-                              {task.customer?.customer
-                                ? `${task.customer.customer.firstName || ''} ${task.customer.customer.lastName || ''}`
-                                : task.relatedLead
-                                  ? `${task.relatedLead.firstName || ''} ${task.relatedLead.lastName || ''}`
-                                  : 'View Profile'}
-                            </button>
-                          ) : (
-                            <Link
-                              to={`/crm/customer/${task.customerId || task.relatedLeadId}`}
-                              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-bold text-[10px] transition-all
- ${task.customerId ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}
-                            >
-                              <Users className="h-2.5 w-2.5 opacity-60" />
-                              {task.customer?.customer
-                                ? `${task.customer.customer.firstName || ''} ${task.customer.customer.lastName || ''}`
-                                : task.relatedLead
-                                  ? `${task.relatedLead.firstName || ''} ${task.relatedLead.lastName || ''}`
-                                  : 'View Profile'}
-                            </Link>
-                          )
-                        ) : (
-                          <span className="text-slate-300 text-[10px] font-medium">Unassigned</span>
-                        )}
-                      </td>
-                      <td className="p-2.5">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-blue-700 text-[9px] font-bold uppercase border border-blue-100 bg-blue-50 w-fit">
-                            {task.actionType.replace(/_/g, ' ')}
-                          </span>
-                          {task.therapy && (
-                            <span className="text-[9px] text-slate-400 font-bold">
-                              Re: {task.therapy}
+                <tbody className="divide-y divide-slate-100">
+                  {filteredTasks.map((task) => {
+                    const overdue = isOverdue(task);
+                    return (
+                      <tr
+                        key={task.id}
+                        className={`hover:bg-slate-50/80 transition-colors group ${overdue ? 'bg-rose-50/20' : ''}`}
+                      >
+                        {/* Status */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <div className="flex justify-center">
+                            <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border shadow-2xs ${
+                              task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' :
+                              overdue ? 'bg-rose-50 text-rose-600 border-rose-200/80' :
+                              task.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200/80' :
+                              task.status === 'cancelled' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                              'bg-blue-50 text-blue-700 border-blue-200/80'
+                            }`}>
+                              <span className={`size-1.5 rounded-full ${
+                                task.status === 'completed' ? 'bg-emerald-500' :
+                                overdue ? 'bg-rose-500 animate-pulse' :
+                                task.status === 'pending' ? 'bg-amber-500' : 'bg-blue-500'
+                              }`} />
+                              {overdue ? 'OVERDUE' : task.status?.replace(/_/g, ' ')}
                             </span>
+                          </div>
+                        </td>
+
+                        {/* Task Details */}
+                        <td className="px-4 py-3.5 min-w-[180px]">
+                          <div className="font-black text-slate-900 text-xs tracking-tight">{task.title}</div>
+                          {task.description && (
+                            <div className="text-[11px] text-slate-400 font-semibold line-clamp-1 mt-0.5">{task.description}</div>
                           )}
-                        </div>
-                      </td>
-                      <td className="p-2.5">
-                        <div className="flex flex-col gap-0.5">
-                          <div className={`text-[11px] font-black flex items-center gap-1 ${isOverdue(task) ? 'text-red-600' : 'text-slate-900'}`}>
-                            <Clock className="w-3 h-3 text-slate-500 shrink-0" />
-                            {formatDate(task.dueDate)}
-                          </div>
-                          <div className="text-[10px] font-bold text-slate-600 flex items-center gap-1 mt-0.5">
-                            <span className="text-slate-500 font-bold">Reminder:</span>
-                            <span className="text-slate-900 font-black">{formatDate(task.reminderDate)}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-2.5">
-                        {(() => {
-                          const outcome = task.metadata?.callOutcome || task.metadata?.outcome || (task as any).outcome;
-                          if (!outcome) {
-                            return <span className="text-slate-400 text-[10px] font-medium">-</span>;
-                          }
-                          return (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-tight
- ${outcome === 'interested' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                                outcome === 'not_interested' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
-                                  outcome === 'no_answer' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                                    outcome === 'call_later' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                                      'bg-slate-100 text-slate-700 border border-slate-200'}`}
-                            >
-                              {outcome.replace(/_/g, ' ')}
+                        </td>
+
+                        {/* Associated Contact */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          {(task.customerId || task.relatedLeadId) ? (
+                            onViewTask ? (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  onViewTask(task);
+                                }}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl font-bold text-xs transition-all ${
+                                  task.customerId ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                }`}
+                              >
+                                <Users className="h-3 w-3 opacity-60" />
+                                {task.customer?.customer
+                                  ? `${task.customer.customer.firstName || ''} ${task.customer.customer.lastName || ''}`
+                                  : task.relatedLead
+                                    ? `${task.relatedLead.firstName || ''} ${task.relatedLead.lastName || ''}`
+                                    : 'View Profile'}
+                              </button>
+                            ) : (
+                              <Link
+                                to={`/crm/customer/${task.customerId || task.relatedLeadId}`}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl font-bold text-xs transition-all ${
+                                  task.customerId ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                }`}
+                              >
+                                <Users className="h-3 w-3 opacity-60" />
+                                {task.customer?.customer
+                                  ? `${task.customer.customer.firstName || ''} ${task.customer.customer.lastName || ''}`
+                                  : task.relatedLead
+                                    ? `${task.relatedLead.firstName || ''} ${task.relatedLead.lastName || ''}`
+                                    : 'View Profile'}
+                              </Link>
+                            )
+                          ) : (
+                            <span className="text-slate-300 text-xs font-semibold">Unassigned</span>
+                          )}
+                        </td>
+
+                        {/* Type & Therapy */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-blue-700 text-[10px] font-extrabold uppercase border border-blue-100 bg-blue-50/80 w-fit">
+                              {task.actionType?.replace(/_/g, ' ')}
                             </span>
-                          );
-                        })()}
-                      </td>
-                      <td className="p-2.5">
-                        {(() => {
-                          const sp = salespersons?.find(s => s.id === task.salespersonId);
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[9px] font-black text-slate-600 uppercase border border-slate-300">
-                                {sp ? sp.firstName?.charAt(0) : <User className="w-3 h-3" />}
-                              </div>
-                              <span className="text-[10px] font-bold text-slate-700 whitespace-nowrap">
-                                {sp ? `${sp.firstName} ${sp.lastName}` : 'Unknown'}
+                            {task.therapy && (
+                              <span className="text-[10px] text-slate-400 font-bold">
+                                Re: {task.therapy}
                               </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Due / Reminder */}
+                        <td className="px-4 py-3.5 whitespace-nowrap min-w-[170px]">
+                          <div className="flex flex-col gap-1">
+                            <div className={`text-xs font-black flex items-center gap-1.5 ${overdue ? 'text-rose-600' : 'text-slate-900'}`}>
+                              <Clock className={`w-3.5 h-3.5 shrink-0 ${overdue ? 'text-rose-500' : 'text-slate-400'}`} />
+                              {formatDate(task.dueDate)}
                             </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="p-2.5">
-                        <div className="flex gap-1 items-center justify-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setViewingTask(task);
-                            }}
-                            title="View Task Detail"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            size="xs"
-                            variant="white"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedTask(task);
-                              setTaskFormData({
-                                id: task.id,
-                                customerId: task.customerId || '',
-                                relatedLeadId: task.relatedLeadId || '',
-                                title: task.title || '',
-                                description: task.description || '',
-                                actionType: task.actionType,
-                                status: task.status as any,
-                                dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : '',
-                                reminderDate: task.reminderDate ? new Date(task.reminderDate).toISOString().slice(0, 16) : '',
-                                priority: task.priority as any,
-                                isRecurring: task.isRecurring || false,
-                                recurrenceType: task.recurrenceType as any || 'weekly',
-                                recurrenceInterval: task.recurrenceInterval || 1
-                              });
-                              setIsEditing(true);
-                            }}
-                            className="h-8 w-8 p-0 bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all shadow-sm"
-                            title="Edit Strategy"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          {task.actionType === 'appointment' && (
+                            {task.reminderDate && (
+                              <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                <Bell className="w-3 h-3 text-amber-500 shrink-0" />
+                                <span>Reminder:</span>
+                                <span className="text-slate-700 font-bold">{formatDate(task.reminderDate)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Latest Outcome */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          {(() => {
+                            const outcome = task.metadata?.callOutcome || task.metadata?.outcome || (task as any).outcome;
+                            if (!outcome) {
+                              return <span className="text-slate-300 text-xs font-bold">-</span>;
+                            }
+                            return (
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border ${
+                                outcome === 'interested' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                outcome === 'not_interested' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                outcome === 'no_answer' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                outcome === 'call_later' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}>
+                                {outcome.replace(/_/g, ' ')}
+                              </span>
+                            );
+                          })()}
+                        </td>
+
+                        {/* Owner */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          {(() => {
+                            const sp = salespersons?.find(s => s.id === task.salespersonId);
+                            return (
+                              <div className="flex items-center gap-2">
+                                <div className="size-7 rounded-full bg-slate-900 text-[#CBFF38] flex items-center justify-center text-[10px] font-black uppercase shadow-xs">
+                                  {sp ? sp.firstName?.charAt(0) : <User className="w-3.5 h-3.5 text-[#CBFF38]" />}
+                                </div>
+                                <span className="text-xs font-bold text-slate-800">
+                                  {sp ? `${sp.firstName} ${sp.lastName}` : 'Unknown'}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-1.5">
                             <Button
-                              size="xs"
-                              variant="white"
-                              className="h-8 w-8 p-0 bg-white border-slate-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-all shadow-sm"
-                              title="Open Sales Plan"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate('/crm/calendar');
+                                setViewingTask(task);
                               }}
+                              title="View Task Detail"
                             >
-                              <Calendar className="h-4 w-4" />
+                              <Eye className="h-4 w-4" />
                             </Button>
-                          )}
-                          <Button
-                            size="xs"
-                            variant="white"
-                            className="h-8 w-8 p-0 bg-white border-slate-200 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all shadow-sm"
-                            title="Log Interaction"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              try {
-                                await dispatch(updateAction({
-                                  id: task.id,
-                                  updates: { status: 'in_progress' }
-                                })).unwrap();
-
-                                setInteractionTask({ ...task, status: 'in_progress' });
-                                setInteractionNotes(task.description || "");
-                                setWorkflowStep(1);
-                                setSelectedTags([]);
-                                setShowInteractionModal(true);
-
-                                if (true) {
-                                  const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
-                                  dispatch(fetchActions({ salespersonId: sid }));
-                                }
-                              } catch (err) {
-                                console.error("Failed to start interaction:", err);
-                              }
-                            }}
-                          >
-                            <CornerUpRight className="h-4 w-4" />
-                          </Button>
-
-                          <div className="flex gap-1 items-center">
                             <Button
                               size="xs"
                               variant="white"
-                              className="h-8 w-8 p-0 bg-white border-slate-200 text-amber-500 hover:text-amber-700 hover:bg-amber-50 hover:border-amber-300 transition-all shadow-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTask(task);
+                                setTaskFormData({
+                                  id: task.id,
+                                  customerId: task.customerId || '',
+                                  relatedLeadId: task.relatedLeadId || '',
+                                  title: task.title || '',
+                                  description: task.description || '',
+                                  actionType: task.actionType,
+                                  status: task.status as any,
+                                  dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : '',
+                                  reminderDate: task.reminderDate ? new Date(task.reminderDate).toISOString().slice(0, 16) : '',
+                                  priority: task.priority as any,
+                                  isRecurring: task.isRecurring || false,
+                                  recurrenceType: task.recurrenceType as any || 'weekly',
+                                  recurrenceInterval: task.recurrenceInterval || 1
+                                });
+                                setIsEditing(true);
+                              }}
+                              className="h-8 w-8 p-0 bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 rounded-xl transition-all shadow-xs"
+                              title="Edit Task"
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            {task.actionType === 'appointment' && (
+                              <Button
+                                size="xs"
+                                variant="white"
+                                className="h-8 w-8 p-0 bg-white border border-slate-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-300 rounded-xl transition-all shadow-xs"
+                                title="Open Sales Plan"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate('/crm/calendar');
+                                }}
+                              >
+                                <Calendar className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            <Button
+                              size="xs"
+                              variant="white"
+                              className="h-8 w-8 p-0 bg-white border border-slate-200 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 rounded-xl transition-all shadow-xs"
+                              title="Log Interaction"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await dispatch(updateAction({
+                                    id: task.id,
+                                    updates: { status: 'in_progress' }
+                                  })).unwrap();
+
+                                  setInteractionTask({ ...task, status: 'in_progress' });
+                                  setInteractionNotes(task.description || "");
+                                  setWorkflowStep(1);
+                                  setSelectedTags([]);
+                                  setShowInteractionModal(true);
+
+                                  if (true) {
+                                    const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
+                                    dispatch(fetchActions({ salespersonId: sid }));
+                                  }
+                                } catch (err) {
+                                  console.error("Failed to start interaction:", err);
+                                }
+                              }}
+                            >
+                              <CornerUpRight className="h-3.5 w-3.5" />
+                            </Button>
+
+                            <Button
+                              size="xs"
+                              variant="white"
+                              className="h-8 w-8 p-0 bg-white border border-slate-200 text-amber-600 hover:text-amber-700 hover:bg-amber-50 hover:border-amber-300 rounded-xl transition-all shadow-xs"
                               title="Quick Assign"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -964,33 +1003,33 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                                 setShowAssignModal(true);
                               }}
                             >
-                              <UserPlus className="h-4 w-4" />
+                              <UserPlus className="h-3.5 w-3.5" />
                             </Button>
                             {user?.role === 'SUPER_ADMIN' && (
                               <Button
                                 size="xs"
                                 variant="white"
-                                className="h-8 w-8 p-0 bg-white border-slate-200 text-red-500 hover:text-red-700 hover:bg-red-50 hover:border-red-300 transition-all shadow-sm"
+                                className="h-8 w-8 p-0 bg-white border border-slate-200 text-rose-500 hover:text-rose-700 hover:bg-rose-50 hover:border-rose-300 rounded-xl transition-all shadow-xs"
                                 title="Delete Task"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDelete(task.id);
                                 }}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             )}
                           </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Task Creation/Edit Modal */}
       {(showCreateForm || isEditing) && createPortal(

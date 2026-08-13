@@ -364,20 +364,21 @@ export const Header: React.FC = () => {
  ];
  }
 
- if (user.role ==="salesperson") {
- return [
- { to:"/crm", label:"CRM" },
- { to:"/crm/customers", label:"Customers" },
- { to:"/crm/tasks", label:"Tasks" },
- { to:"/crm/repeat-management", label:"Repeat Management" },
- { to:"/crm/leads", label:"Leads" },
- { to:"/messages", label:"Messages" },
- { to:"/crm/communication", label:"Communication" },
- { to:"/crm/tag", label:"Tags" },
- { to:"/crm/settings", label:"Settings" },
- { action: handleLogout, label:"Logout" },
- ];
- }
+  if (user.role ==="salesperson") {
+  return [
+  { to:"/crm", label:"CRM" },
+  { to:"/crm/customers", label:"Customers" },
+  { to:"/crm/tasks", label:"Tasks" },
+  { to:"/crm/repeat-management", label:"Repeat Management" },
+  { to:"/crm/leads", label:"Leads" },
+  { to:"/crm/lost-leads", label:"Lost Leads" },
+  { to:"/messages", label:"Messages" },
+  { to:"/crm/communication", label:"Communication" },
+  { to:"/crm/tag", label:"Tags" },
+  { to:"/crm/settings", label:"Settings" },
+  { action: handleLogout, label:"Logout" },
+  ];
+  }
 
  return [{ action: handleLogout, label:"Logout" }]; // Default case
  };

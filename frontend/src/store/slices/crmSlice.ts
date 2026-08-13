@@ -20,6 +20,7 @@ export interface CrmState {
  leads: Lead[];
  selectedLead: Lead | null;
  leadFilters: CrmFilters;
+ stats: { total: number; newInquiries: number; inConversation: number; converted: number; lost?: number } | null;
  customer: Customer | null;
  // Customer Management
  customerRecord: CustomerSummary | null;
@@ -83,6 +84,7 @@ const initialState: CrmState = {
  leads: [],
  selectedLead: null,
  leadFilters: {},
+ stats: null,
  actions: [],
  isLoading: false,
  pendingCount: 0,
@@ -145,6 +147,13 @@ export const fetchLeads = createAsyncThunk("crm/fetchLeads",
  const response = await crmAPI.getLeads(filters);
  return response.data;
  }
+);
+
+export const fetchLeadStats = createAsyncThunk("crm/fetchLeadStats",
+  async (filters?: CrmFilters | void) => {
+    const response = await crmAPI.getLeadStats(filters || undefined);
+    return response.data;
+  }
 );
 
 export const fetchLead = createAsyncThunk("crm/fetchLead",
@@ -576,6 +585,9 @@ const crmSlice = createSlice({
  }
  });
  state.leads = Array.from(uniqueLeadsMap.values());
+ })
+ .addCase(fetchLeadStats.fulfilled, (state, action) => {
+ state.stats = action.payload;
  })
  .addCase(fetchCustomer.fulfilled, (state, action) => {
  state.customer = action.payload;

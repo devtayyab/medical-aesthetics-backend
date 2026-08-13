@@ -168,7 +168,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
  className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
  >
  <option value="">Any Provider</option>
- {salespersons.map(s => (
+ {salespersons.filter(s => s.role?.toLowerCase() === 'salesperson').map(s => (
  <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
  ))}
  </select>

@@ -10,7 +10,7 @@ import {
  Building2,
  Calendar, CalendarRange, FileText, BarChart, Shield, DollarSign,
  ClipboardList, Repeat, UserCog, ListChecks, Clock,
- Phone, Search, LogOut, MessageSquare, Archive, Bell, Key
+ Phone, Search, LogOut, MessageSquare, Archive, Bell, Key, UserX
 } from"lucide-react";
 
 interface SidebarItem {
@@ -59,6 +59,7 @@ const crmLinks: SidebarItem[] = [
  { path:"/messages", label:"Messages", icon: <MessageSquare className="w-5 h-5" />, group:"CRM" },
  { path:"/crm/tasks", label:"Tasks", icon: <ListChecks className="w-5 h-5" />, group:"CRM" },
  { path:"/crm/leads", label:"Leads", icon: <Repeat className="w-5 h-5" />, group:"CRM" },
+ { path:"/crm/lost-leads", label:"Lost Leads", icon: <UserX className="w-5 h-5" />, group:"CRM" },
  { path:"/crm/customers", label:"Customers", icon: <Users className="w-5 h-5" />, group:"CRM" },
  { path:"/crm/calendar", label:"Sales Week Calendar", icon: <Calendar className="w-5 h-5" />, group:"Operations" },
  { path:"/crm/repeat-management", label:"Repeat Management", icon: <Repeat className="w-5 h-5" />, group:"Operations" },
@@ -76,6 +77,7 @@ const managerLinks: SidebarItem[] = [
  { path:"/messages", label:"Messages", icon: <MessageSquare className="w-5 h-5" />, group:"Sales" },
  { path:"/crm/tasks", label:"Tasks", icon: <ListChecks className="w-5 h-5" />, group:"Sales" },
  { path:"/crm/leads", label:"Leads", icon: <Repeat className="w-5 h-5" />, group:"Sales" },
+ { path:"/crm/lost-leads", label:"Lost Leads", icon: <UserX className="w-5 h-5" />, group:"Sales" },
  { path:"/crm/customers", label:"Customers", icon: <Users className="w-5 h-5" />, group:"Sales" },
  { path:"/crm/communication", label:"Communication Flow", icon: <Phone className="w-5 h-5" />, group:"Sales" },
 

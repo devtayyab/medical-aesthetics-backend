@@ -13,7 +13,7 @@ export interface Lead {
  facebookAdSetId?: string;
  facebookAdId?: string;
  facebookLeadData?: any;
- status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+ status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost' | 'follow_up' | 'appointment_scheduled' | 'merged' | string;
  priority: 'low' | 'medium' | 'high' | 'urgent';
  assignedSalesId?: string;
  assignedSales?: User;
@@ -304,19 +304,21 @@ export interface ParsedFacebookLead {
 }
 
 export interface CrmFilters {
- status?: string | string[];
- assignedSalesId?: string;
- source?: string;
- search?: string;
- startDate?: string;
- endDate?: string;
- tags?: string[];
- priority?: string;
- formNames?: string[];
- submissionDateFrom?: string;
- submissionDateTo?: string;
- lastContactedFrom?: string;
- lastContactedTo?: string;
+  status?: string | string[];
+  assignedSalesId?: string;
+  source?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  tags?: string[];
+  priority?: string;
+  formNames?: string[];
+  submissionDateFrom?: string;
+  submissionDateTo?: string;
+  lastContactedFrom?: string;
+  lastContactedTo?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface CrmAnalytics {

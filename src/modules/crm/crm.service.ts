@@ -939,6 +939,8 @@ export class CrmService implements OnModuleInit {
     if (filters.status) {
       if (Array.isArray(filters.status)) {
         qb.andWhere('lead.status IN (:...status)', { status: filters.status });
+      } else if (filters.status === 'in_conversation') {
+        qb.andWhere("lead.status IN ('contacted', 'follow_up')");
       } else {
         qb.andWhere('lead.status = :status', { status: filters.status });
       }
@@ -985,20 +987,53 @@ export class CrmService implements OnModuleInit {
     qb.orderBy('lead.lastMetaFormSubmittedAt', 'DESC', 'NULLS LAST');
     qb.addOrderBy('lead.createdAt', 'DESC');
 
-    // High performance limit & pagination (default limit 1000 if not specified to prevent 30k row payload lag)
+    // High performance limit & pagination (default limit 50 per page if not specified for instant loading)
     const limit = filters.limit
       ? parseInt(filters.limit, 10)
       : filters.take
       ? parseInt(filters.take, 10)
       : (filters.all === 'true' || filters.all === true)
       ? 50000
-      : 1000;
+      : 50;
 
     const page = filters.page ? Math.max(1, parseInt(filters.page, 10)) : 1;
     qb.take(limit);
     qb.skip((page - 1) * limit);
 
     return qb.getMany();
+  }
+
+  async getLeadStats(filters: any = {}): Promise<{ total: number; newInquiries: number; inConversation: number; converted: number; lost: number }> {
+    const qb = this.leadsRepository.createQueryBuilder('lead');
+
+    // Note: Do not filter by filters.status in getLeadStats so overall status breakdown counters remain intact across tabs
+
+    if (filters.source) {
+      qb.andWhere('lead.source = :source', { source: filters.source });
+    }
+
+    if (filters.search) {
+      qb.andWhere(
+        '(lead.firstName ILIKE :search OR lead.lastName ILIKE :search OR lead.email ILIKE :search OR lead.phone ILIKE :search)',
+        { search: `%${filters.search}%` },
+      );
+    }
+
+    const rawStats = await qb
+      .select('COUNT(lead.id)', 'total')
+      .addSelect("COUNT(CASE WHEN lead.status = 'new' THEN 1 END)", 'newInquiries')
+      .addSelect("COUNT(CASE WHEN lead.status IN ('contacted', 'follow_up') THEN 1 END)", 'inConversation')
+      .addSelect("COUNT(CASE WHEN lead.status = 'converted' THEN 1 END)", 'converted')
+      .addSelect("COUNT(CASE WHEN lead.status = 'lost' THEN 1 END)", 'lost')
+      .getRawOne();
+
+    return {
+      total: parseInt(rawStats?.total || '0', 10),
+      newInquiries: parseInt(rawStats?.newInquiries || '0', 10),
+      inConversation: parseInt(rawStats?.inConversation || '0', 10),
+      converted: parseInt(rawStats?.converted || '0', 10),
+      lost: parseInt(rawStats?.lost || '0', 10),
+    };
   }
 
   async getLead(id: string): Promise<Lead> {

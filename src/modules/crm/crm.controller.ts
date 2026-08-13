@@ -66,6 +66,15 @@ export class CrmController {
     return this.crmService.findAll({ ...filters, _requesterId: req.user.id });
   }
 
+  @Get('leads/stats')
+  @ApiOperation({ summary: 'Get aggregate lead statistics' })
+  @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.SECRETARIAT)
+  @UseGuards(RolesGuard)
+  getLeadStats(@Query() filters: any, @Request() req) {
+    return this.crmService.getLeadStats({ ...filters, _requesterId: req.user.id });
+  }
+
+
   @Get('leads/:id')
   @ApiOperation({ summary: 'Get lead details' })
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.SECRETARIAT)

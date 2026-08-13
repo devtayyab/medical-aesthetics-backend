@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
  ChevronLeft,
@@ -123,7 +123,7 @@ export const BookingCalendar: React.FC = () => {
  className="appearance-none bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 pr-8 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
  >
  <option value="all">All Professionals</option>
- {salespersons.map(s => (
+ {salespersons.filter(s => s.role?.toLowerCase() === 'salesperson').map(s => (
  <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
  ))}
  </select>
