@@ -164,7 +164,7 @@ export const SalesAnalyticsDashboard = () => {
  className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 min-w-[150px] shadow-sm"
  >
  <option value="">All Agents</option>
- {salespersons.map(sp => (
+ {salespersons.filter(sp => sp.role?.toLowerCase() === 'salesperson').map(sp => (
  <option key={sp.id} value={sp.id}>{sp.firstName} {sp.lastName}</option>
  ))}
  </select>

@@ -42,8 +42,9 @@ import ReviewsPage from"@/pages/Clinic/ReviewsPage";
 import NotificationsPage from"@/pages/Clinic/NotificationsPage";
 import SettingsPage from"@/pages/Clinic/SettingsPage";
 import StaffPage from"@/pages/Clinic/StaffPage";
-import { Customers } from"@/pages/CRM/Customers";
-import { ArchivedLeads } from"@/pages/CRM/ArchivedLeads";
+import { Customers } from "@/pages/CRM/Customers";
+import { ArchivedLeads } from "@/pages/CRM/ArchivedLeads";
+import { LostLeadsPage } from "@/pages/CRM/LostLeads";
 import { CustomerDetails } from"@/pages/CRM/CustomerDetails";
 import { Tasks } from"@/pages/CRM/Tasks";
 import { Actions } from"@/pages/CRM/Action";
@@ -611,6 +612,16 @@ function AppContent() {
  <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
  <AdminLayout>
  <LeadsPage />
+ </AdminLayout>
+ </ProtectedLayout>
+ }
+ />
+ <Route
+ path="/crm/lost-leads"
+ element={
+ <ProtectedLayout allowedRoles={["salesperson","manager","admin","clinic_owner","SUPER_ADMIN"]}>
+ <AdminLayout>
+ <LostLeadsPage />
  </AdminLayout>
  </ProtectedLayout>
  }

@@ -14,6 +14,7 @@ import {
  Trash2,
  Copy,
  Users,
+ UserX,
  X,
  Eye,
  User,
@@ -48,6 +49,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/molecules/Table/Table';
 import {
  fetchLeads,
+ fetchLeadStats,
  createLead,
  updateLead,
  deleteLead,
@@ -218,7 +220,7 @@ const LeadDetailModal: React.FC<{ lead: Lead; onClose: () => void }> = ({ lead, 
 export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreateForm = false, onFormShown }) => {
  const navigate = useNavigate();
  const dispatch = useDispatch<AppDispatch>();
- const { leads, leadFilters, duplicateCheck, isLoading, salespersons } = useSelector((state: RootState) => state.crm);
+ const { leads, leadFilters, duplicateCheck, isLoading, salespersons, stats } = useSelector((state: RootState) => state.crm);
  const { user } = useSelector((state: RootState) => state.auth);
 
  const [searchTerm, setSearchTerm] = useState('');
@@ -325,16 +327,24 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  }, [dispatch]);
 
  useEffect(() => {
- dispatch(fetchLeads(leadFilters));
- }, [dispatch, leadFilters]);
+  dispatch(fetchLeads({
+    ...leadFilters,
+    page: currentPage,
+    limit: leadsPerPage,
+  }));
+  dispatch(fetchLeadStats(leadFilters));
+  }, [dispatch, leadFilters, currentPage, leadsPerPage]);
 
  // Refetch when the tab regains focus so leads imported by the background
  // Facebook sync (or another user) show up without a manual reload
  useEffect(() => {
- const onFocus = () => dispatch(fetchLeads(leadFilters));
- window.addEventListener('focus', onFocus);
- return () => window.removeEventListener('focus', onFocus);
- }, [dispatch, leadFilters]);
+  const onFocus = () => {
+    dispatch(fetchLeads({ ...leadFilters, page: currentPage, limit: leadsPerPage }));
+    dispatch(fetchLeadStats(leadFilters));
+  };
+  window.addEventListener('focus', onFocus);
+  return () => window.removeEventListener('focus', onFocus);
+ }, [dispatch, leadFilters, currentPage, leadsPerPage]);
 
  // Handlers
  const handleFilterChange = (key: string, value: string | string[]) => {
@@ -444,7 +454,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  toast.success(`Successfully updated ${count} leads`, { id: toastId });
  setSelectedLeads([]);
  // Refresh list to be sure
- dispatch(fetchLeads(leadFilters));
+ dispatch(fetchLeads({ ...leadFilters, page: currentPage, limit: leadsPerPage }));
  } catch (error: any) {
  console.error(`Bulk ${action} failed:`, error);
  toast.error(`Failed to update some leads: ${error.message || 'Unknown error'}`, { id: toastId });
@@ -468,7 +478,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  toast.success(`Successfully created tasks for ${selectedLeads.length} leads`, { id: toastId });
  setShowBulkTaskModal(false);
  setSelectedLeads([]);
- dispatch(fetchLeads(leadFilters));
+ dispatch(fetchLeads({ ...leadFilters, page: currentPage, limit: leadsPerPage }));
  } catch (error: any) {
  toast.error(error.response?.data?.message || 'Failed to create bulk tasks', { id: toastId });
  }
@@ -517,7 +527,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  // Reset action states
  setCreateFollowUpTask(false);
 
- dispatch(fetchLeads(leadFilters));
+ dispatch(fetchLeads({ ...leadFilters, page: currentPage, limit: leadsPerPage }));
  } catch (error: any) {
  console.error("Update failed:", error);
  // Try to extract detailed message if available
@@ -573,7 +583,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  .filter(Boolean);
 
  setImportResult({ success: succeeded, errors });
- dispatch(fetchLeads(leadFilters));
+ dispatch(fetchLeads({ ...leadFilters, page: currentPage, limit: leadsPerPage }));
  } catch (err: any) {
  const msg = err?.response?.data?.message || err?.message || 'Import failed';
  setImportResult({ success: 0, errors: [{ row: 0, message: msg }] });
@@ -605,7 +615,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  toast.success(res.data?.message || `Succesfully scheduled leads`);
  setShowFormScheduleModal(false);
  setSelectedForms([]);
- dispatch(fetchLeads(leadFilters));
+ dispatch(fetchLeads({ ...leadFilters, page: currentPage, limit: leadsPerPage }));
  } catch (error: any) {
  toast.error(error.response?.data?.message || 'Failed to assign forms');
  } finally {
@@ -630,8 +640,13 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  };
 
  // Render Stats Card
- const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
- <Card className="border-none shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative">
+ const StatCard = ({ title, value, icon: Icon, color, trend, onClick, isActive }: any) => (
+ <Card
+ onClick={onClick}
+ className={`border-none shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative ${onClick ? 'cursor-pointer' : ''} ${
+ isActive ? 'ring-2 ring-slate-900 shadow-md scale-[1.02]' : ''
+ }`}
+ >
  <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-[0.03] group-hover:scale-110 transition-transform duration-500 ${color.split(' ')[1]}`} style={{ backgroundColor: 'currentColor' }} />
  <CardContent className="p-3 flex items-start justify-between relative z-10">
  <div className="space-y-1">
@@ -668,7 +683,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </h1>
  <div className="flex items-center gap-2 px-3 py-1.5 bg-[#CBFF38] text-black rounded-xl shadow-xl shadow-[#CBFF38]/20">
  <Users size={14} strokeWidth={3} />
- <span className="text-[11px] font-black uppercase tracking-widest">{leads.length} Leads</span>
+ <span className="text-[11px] font-black uppercase tracking-widest">{stats ? stats.total.toLocaleString() : leads.length} Leads</span>
  </div>
  </div>
  <div className="flex items-center gap-2">
@@ -700,6 +715,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  >
  <option value="">All Statuses</option>
  <option value="new">New</option>
+ <option value="in_conversation">In Conversation</option>
  <option value="contacted">Contacted</option>
  <option value="qualified">Qualified</option>
  <option value="converted">Converted</option>
@@ -788,34 +804,87 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  )}
 
  {/* Stats Grid */}
- <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+ <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
  <StatCard
  title="Total Leads"
- value={leads.length}
+ value={stats ? stats.total : leads.length}
  icon={Users}
  color="bg-[#CBFF38]/20 text-gray-900"
  trend="+12%"
+ isActive={!leadFilters.status}
+ onClick={() => handleFilterChange('status', '')}
  />
  <StatCard
  title="New Inquiries"
- value={leads.filter(l => l.status === 'new').length}
+ value={stats ? stats.newInquiries : leads.filter(l => l.status === 'new').length}
  icon={AlertTriangle}
  color="bg-amber-50 text-amber-600"
+ isActive={leadFilters.status === 'new'}
+ onClick={() => handleFilterChange('status', 'new')}
  />
  <StatCard
  title="In Conversation"
- value={leads.filter(l => l.status === 'contacted').length}
+ value={stats ? stats.inConversation : leads.filter(l => (l.status as string) === 'contacted' || (l.status as string) === 'follow_up').length}
  icon={Clock}
  color="bg-purple-50 text-purple-600"
+ isActive={leadFilters.status === 'in_conversation'}
+ onClick={() => handleFilterChange('status', 'in_conversation')}
  />
  <StatCard
  title="Converted"
- value={leads.filter(l => l.status === 'converted').length}
+ value={stats ? stats.converted : leads.filter(l => l.status === 'converted').length}
  icon={CheckCircle}
  color="bg-[#b3d81b] text-white"
  trend="4.5%"
+ isActive={leadFilters.status === 'converted'}
+ onClick={() => handleFilterChange('status', 'converted')}
+ />
+ <StatCard
+ title="Lost Leads"
+ value={stats?.lost ?? leads.filter(l => l.status === 'lost').length}
+ icon={UserX}
+ color="bg-rose-50 text-rose-600"
+ isActive={leadFilters.status === 'lost'}
+ onClick={() => handleFilterChange('status', 'lost')}
  />
  </div>
+
+ {/* Status Tabs Bar */}
+ <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-none border-b border-slate-100">
+ {[
+ { key: '', label: 'All Leads', count: stats?.total },
+ { key: 'new', label: 'New Inquiries', count: stats?.newInquiries },
+ { key: 'in_conversation', label: 'In Conversation', count: stats?.inConversation },
+ { key: 'contacted', label: 'Contacted' },
+ { key: 'converted', label: 'Converted', count: stats?.converted },
+ { key: 'lost', label: 'Lost', count: stats?.lost },
+ ].map((tab) => {
+ const isActive = (leadFilters.status || '') === tab.key;
+ return (
+ <button
+ key={tab.key}
+ onClick={() => handleFilterChange('status', tab.key)}
+ className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+ isActive
+ ? 'bg-slate-900 text-[#CBFF38] shadow-md'
+ : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60'
+ }`}
+ >
+ <span>{tab.label}</span>
+ {tab.count !== undefined && (
+ <span
+ className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+ isActive ? 'bg-[#CBFF38] text-slate-900' : 'bg-slate-100 text-slate-600'
+ }`}
+ >
+ {tab.count}
+ </span>
+ )}
+ </button>
+ );
+ })}
+ </div>
+
  {/* Filters Drawer-style */}
  {showFilters && (
  <Card className="border-none shadow-md bg-white animate-in slide-in-from-top-2 duration-300">
@@ -829,6 +898,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  options={[
  { value: '', label: 'All Statuses' },
  { value: 'new', label: 'New' },
+ { value: 'in_conversation', label: 'In Conversation' },
  { value: 'contacted', label: 'Contacted' },
  { value: 'qualified', label: 'Qualified' },
  { value: 'converted', label: 'Converted' },
@@ -1069,10 +1139,11 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </div>
  ) : (
  (() => {
- const indexOfLastLead = currentPage * leadsPerPage;
- const indexOfFirstLead = indexOfLastLead - leadsPerPage;
- const currentLeads = leads.slice(indexOfFirstLead, indexOfLastLead);
- const totalPages = Math.ceil(leads.length / leadsPerPage);
+  const totalLeadsCount = stats ? stats.total : leads.length;
+  const totalPages = Math.ceil(totalLeadsCount / leadsPerPage);
+  const indexOfFirstLead = (currentPage - 1) * leadsPerPage;
+  const indexOfLastLead = indexOfFirstLead + leads.length;
+  const currentLeads = leads;
 
  return (
   <div className="flex flex-col w-full">
@@ -1297,9 +1368,9 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <option value={50}>50</option>
  <option value={100}>100</option>
  </select>
- <span className="text-[10px] text-gray-400 font-medium ml-4 uppercase tracking-widest hidden sm:inline">
- Showing {indexOfFirstLead + 1} to {Math.min(indexOfLastLead, leads.length)} of {leads.length}
- </span>
+  <span className="text-[10px] text-gray-400 font-medium ml-4 uppercase tracking-widest hidden sm:inline">
+  Showing {indexOfFirstLead + 1} to {indexOfLastLead} of {totalLeadsCount.toLocaleString()}
+  </span>
  </div>
  <div className="flex items-center gap-1.5">
  <Button

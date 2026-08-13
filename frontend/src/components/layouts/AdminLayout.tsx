@@ -8,7 +8,7 @@ const AdminLayout: React.FC<Props> = ({ children }) => {
  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
  return (
- <div className="flex h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] bg-[#F8FAFC] overflow-hidden relative">
+ <div className="flex h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] bg-[#F8FAFC] relative">
  {/* Mobile Toggle Button */}
  <button 
  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -34,8 +34,8 @@ const AdminLayout: React.FC<Props> = ({ children }) => {
  </div>
 
  {/* Main Content Area */}
- <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
- <main className="flex-1 overflow-y-auto no-scrollbar p-4 md:p-8">
+ <div className="flex-1 flex flex-col min-w-0 overflow-auto relative">
+ <main className="flex-1 overflow-y-auto p-4 md:p-8" style={{ WebkitOverflowScrolling: 'touch' }}>
  <div className="max-w-[1600px] mx-auto h-full">
  {children}
  </div>

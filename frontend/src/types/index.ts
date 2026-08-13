@@ -211,7 +211,7 @@ export interface Lead {
  lastName: string;
  email: string;
  phone?: string;
- status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+ status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost' | 'follow_up' | 'appointment_scheduled' | 'merged' | string;
  tags?: string[];
  createdAt: string;
  updatedAt: string;

@@ -584,7 +584,7 @@ export const SalesWeekCalendar: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full w-full bg-gray-50 relative overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+    <div className="flex w-full bg-gray-50 relative overflow-y-auto rounded-xl border border-gray-200 shadow-sm" style={{ minHeight: '100vh', WebkitOverflowScrolling: 'touch' }}>
       {/* Left Sidebar: Team List - MANAGER ONLY */}
       {/* Team List Sidebar - Visible for Managers and Salespeople (to see all) */}
       <div className="w-48 bg-white border-r border-gray-100 flex flex-col hidden lg:flex">

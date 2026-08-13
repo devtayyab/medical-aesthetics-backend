@@ -364,20 +364,21 @@ export const Header: React.FC = () => {
  ];
  }
 
- if (user.role ==="salesperson") {
- return [
- { to:"/crm", label:"CRM" },
- { to:"/crm/customers", label:"Customers" },
- { to:"/crm/tasks", label:"Tasks" },
- { to:"/crm/repeat-management", label:"Repeat Management" },
- { to:"/crm/leads", label:"Leads" },
- { to:"/messages", label:"Messages" },
- { to:"/crm/communication", label:"Communication" },
- { to:"/crm/tag", label:"Tags" },
- { to:"/crm/settings", label:"Settings" },
- { action: handleLogout, label:"Logout" },
- ];
- }
+  if (user.role ==="salesperson") {
+  return [
+  { to:"/crm", label:"CRM" },
+  { to:"/crm/customers", label:"Customers" },
+  { to:"/crm/tasks", label:"Tasks" },
+  { to:"/crm/repeat-management", label:"Repeat Management" },
+  { to:"/crm/leads", label:"Leads" },
+  { to:"/crm/lost-leads", label:"Lost Leads" },
+  { to:"/messages", label:"Messages" },
+  { to:"/crm/communication", label:"Communication" },
+  { to:"/crm/tag", label:"Tags" },
+  { to:"/crm/settings", label:"Settings" },
+  { action: handleLogout, label:"Logout" },
+  ];
+  }
 
  return [{ action: handleLogout, label:"Logout" }]; // Default case
  };
@@ -702,73 +703,46 @@ export const Header: React.FC = () => {
 
  {isAuthenticated ? (
  <>
- <form onSubmit={handleSearch}>
- <Input
- placeholder="Search treatments, clinics..."
- leftIcon={<Search size={16} />}
- value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- fullWidth
- />
- </form>
- <div
- className={css`
- display: flex;
- flex-direction: column;
- gap: var(--spacing-md);
- `}
- >
- {!clinicRoles.includes(user?.role ||"") && (
- <>
- <Link
- to="/"
- onClick={() => setIsMobileMenuOpen(false)}
- className={userMenuItemStyle}
- >
- Home
- </Link>
- <Link
- to="/search"
- onClick={() => setIsMobileMenuOpen(false)}
- className={userMenuItemStyle}
- >
- Treatments
- </Link>
+ {/* ✅ Logged-in: Show role-specific menu only */}
+ <div className="flex flex-col gap-1">
+ {/* User info badge */}
+ <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl mb-2">
+ <div className="size-10 rounded-full bg-[#0B1120] flex items-center justify-center">
+ <User size={18} className="text-[#CBFF38]" />
+ </div>
+ <div>
+ <p className="text-sm font-black text-gray-900 uppercase tracking-tight">
+ {user?.firstName} {user?.lastName}
+ </p>
+ <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+ {user?.role?.replace('_', ' ')}
+ </p>
+ </div>
+ </div>
 
- <button
- onClick={() => setIsMobileMenuOpen(false)}
- className={userMenuItemStyle}
- >
- How It Works
- </button>
- <button
- onClick={() => setIsMobileMenuOpen(false)}
- className={userMenuItemStyle}
- >
- Features
- </button>
- <button
- onClick={() => setIsMobileMenuOpen(false)}
- className={userMenuItemStyle}
- >
- Support
- </button>
- </>
- )}
+ {/* Role-specific nav links */}
  {getMenuItems().map((item, index) =>
  item.to ? (
  <Link
  key={index}
  to={item.to}
  onClick={() => setIsMobileMenuOpen(false)}
- className={userMenuItemStyle}
+ className={`flex items-center gap-3 px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${
+ location.pathname === item.to
+ ? 'bg-[#CBFF38] text-black'
+ : 'text-gray-700 hover:bg-gray-100'
+ }`}
  >
  {item.label}
  </Link>
  ) : (
  <button
  key={item.label}
- className={userMenuItemStyle}
+ className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all text-left ${
+ item.label === 'Logout'
+ ? 'mt-2 text-red-500 hover:bg-red-50'
+ : 'text-gray-700 hover:bg-gray-100'
+ }`}
  onClick={() => {
  item.action();
  setIsMobileMenuOpen(false);
@@ -781,13 +755,9 @@ export const Header: React.FC = () => {
  </div>
  </>
  ) : (
- <div
- className={css`
- display: flex;
- flex-direction: column;
- gap: var(--spacing-md);
- `}
- >
+ <>
+ {/* ✅ Not logged-in: Show public website links */}
+ <div className="flex gap-2">
  <Button
  fullWidth
  onClick={() => {
@@ -806,58 +776,62 @@ export const Header: React.FC = () => {
  >
  Sign Up
  </Button>
+ </div>
 
+ <div className="flex flex-col gap-1 mt-2">
  <Link
  to="/"
- className="text-black font-bold text-sm uppercase"
+ className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname === '/' ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
  onClick={() => setIsMobileMenuOpen(false)}
  >
  Home
  </Link>
  <Link
+ to="/search"
+ className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/search') || location.pathname.startsWith('/treatments') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
+ onClick={() => setIsMobileMenuOpen(false)}
+ >
+ Treatments
+ </Link>
+ <Link
  to="/blog"
- className="text-black font-bold text-sm uppercase"
+ className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/blog') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
  onClick={() => setIsMobileMenuOpen(false)}
  >
  Articles
  </Link>
-
- <div className="flex flex-col gap-3 pl-4 border-l-2 border-gray-100">
- <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Hair Removal</span>
- <Link to="/search?q=Laser Alexandrite" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Laser Alexandrite</Link>
- <Link to="/search?q=Triple Wave Laser" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Triple Wave Laser</Link>
- </div>
-
- <div className="flex flex-col gap-3 pl-4 border-l-2 border-gray-100">
- <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Facial Aesthetics</span>
- <Link to="/search?q=Botox" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Botox-Dysport</Link>
- <Link to="/search?q=Hyaluronic Acid" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Hyaluronic Acid</Link>
- <Link to="/search?q=Fractional Laser" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Fractional Laser</Link>
- <Link to="/search?q=Thread Lift" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Thread Lift (Threads)</Link>
- </div>
-
- <div className="flex flex-col gap-3 pl-4 border-l-2 border-gray-100">
- <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Body Aesthetics</span>
- <Link to="/search?q=Aqualyx" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Aqualyx (Lipolysis)</Link>
- <Link to="/search?q=Cryolipolysis" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Cryolipolysis</Link>
- <Link to="/search?q=Mesotherapy" className="text-black pl-2 text-sm" onClick={() => setIsMobileMenuOpen(false)}>Mesotherapy</Link>
- </div>
-
  <Link
- to="/search?q=Clinical Dermatology"
- className="text-black font-bold text-sm uppercase"
+ to="/services"
+ className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/services') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
  onClick={() => setIsMobileMenuOpen(false)}
  >
- Clinical Dermatology
- </Link>
- <Link
- to="/search?q=Plastic Surgery"
- className="text-black font-bold text-sm uppercase"
- onClick={() => setIsMobileMenuOpen(false)}
- >
- Plastic Surgery
+ Privileges
  </Link>
  </div>
+
+ <div className="flex flex-col gap-2 mt-2">
+ <span className="text-gray-400 font-black text-[10px] uppercase tracking-widest px-4">Treatments</span>
+ <div className="flex flex-col gap-1 pl-2">
+ <span className="text-gray-500 font-bold text-[10px] uppercase tracking-widest px-4 py-1">Hair Removal</span>
+ <Link to="/search?q=Laser Alexandrite" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Laser Alexandrite</Link>
+ <Link to="/search?q=Triple Wave Laser" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Triple Wave Laser</Link>
+ </div>
+ <div className="flex flex-col gap-1 pl-2">
+ <span className="text-gray-500 font-bold text-[10px] uppercase tracking-widest px-4 py-1">Facial Aesthetics</span>
+ <Link to="/search?q=Botox" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Botox-Dysport</Link>
+ <Link to="/search?q=Hyaluronic Acid" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Hyaluronic Acid</Link>
+ <Link to="/search?q=Fractional Laser" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Fractional Laser</Link>
+ </div>
+ <div className="flex flex-col gap-1 pl-2">
+ <span className="text-gray-500 font-bold text-[10px] uppercase tracking-widest px-4 py-1">Body Aesthetics</span>
+ <Link to="/search?q=Aqualyx" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Aqualyx (Lipolysis)</Link>
+ <Link to="/search?q=Cryolipolysis" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Cryolipolysis</Link>
+ <Link to="/search?q=Mesotherapy" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Mesotherapy</Link>
+ </div>
+ <Link to="/search?q=Plastic Surgery" className="px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 rounded-xl" onClick={() => setIsMobileMenuOpen(false)}>Plastic Surgery</Link>
+ <Link to="/search?q=Clinical Dermatology" className="px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 rounded-xl" onClick={() => setIsMobileMenuOpen(false)}>Clinical Dermatology</Link>
+ </div>
+ </>
  )}
  </div>
  </div>

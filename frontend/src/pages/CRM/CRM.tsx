@@ -16,6 +16,7 @@ import { Input } from '@/components/atoms/Input/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules/Card/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/molecules/Tabs';
 import { LeadsPage } from '@/pages/CRM/Leads';
+import { LostLeadsPage } from '@/pages/CRM/LostLeads';
 import { Customers } from '@/pages/CRM/Customers';
 import { Tasks } from '@/pages/CRM/Tasks';
 import { OneCustomerDetail } from '@/pages/CRM/OneCustomerDetail';
@@ -202,10 +203,11 @@ export const CRM: React.FC = () => {
  className='w-full'
  >
  <Card className="border-none shadow-sm p-1 bg-slate-100/80 rounded-lg mb-8">
- <TabsList className="grid grid-cols-2 lg:grid-cols-7 bg-transparent h-auto gap-1">
+ <TabsList className="grid grid-cols-2 lg:grid-cols-8 bg-transparent h-auto gap-1">
  <TabsTrigger value="messages" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Messages</TabsTrigger>
  <TabsTrigger value="tasks" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Tasks</TabsTrigger>
  <TabsTrigger value="leads" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Leads</TabsTrigger>
+ <TabsTrigger value="lost-leads" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-sm transition-all">Lost Leads</TabsTrigger>
  <TabsTrigger value="customers" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Customers</TabsTrigger>
  <TabsTrigger value="tracker" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">My Tracker</TabsTrigger>
  <TabsTrigger value="dashboard" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Statistics</TabsTrigger>

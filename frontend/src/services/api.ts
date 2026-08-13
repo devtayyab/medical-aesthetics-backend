@@ -363,6 +363,7 @@ export const crmAPI = {
  estimatedValue?: number;
  }) => api.post("/crm/leads", data),
  getLeads: (filters?: CrmFilters) => api.get("/crm/leads", { params: filters }),
+ getLeadStats: (filters?: CrmFilters) => api.get("/crm/leads/stats", { params: filters }),
  getLead: (id: string) => api.get(`/crm/leads/${id}`),
  updateLead: (id: string, data: Partial<Lead>) =>
  api.patch(`/crm/leads/${id}`, data),
