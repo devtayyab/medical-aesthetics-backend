@@ -50,10 +50,8 @@ export class CrmController {
   @ApiOperation({ summary: 'Create multiple leads' })
   @Roles(UserRole.SALESPERSON, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @UseGuards(RolesGuard)
-  bulkCreate(@Body() body: any) {
-    const leads = Array.isArray(body) ? body : (body.leads || []);
-    const allowDuplicates = Array.isArray(body) ? true : (body.allowDuplicates ?? true);
-    return this.crmService.bulkCreate(leads, allowDuplicates);
+  bulkCreate(@Body() leads: CreateLeadDto[]) {
+    return this.crmService.bulkCreate(leads);
   }
 
   @Get('leads')
