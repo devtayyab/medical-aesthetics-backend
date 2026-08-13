@@ -471,6 +471,8 @@ export class CrmService implements OnModuleInit {
 
           if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
             await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, true);
+          } else if (duplicateCheck.isDuplicate && duplicateCheck.existingLead) {
+            await this.updateExistingLead(duplicateCheck.existingLead, parsedLead as CreateLeadDto);
           } else {
             await this.createLeadFromFacebook(parsedLead, leadData, true);
           }
@@ -587,6 +589,9 @@ export class CrmService implements OnModuleInit {
         if (duplicateCheck.isDuplicate && duplicateCheck.existingCustomer) {
           const mergedLead = await this.updateExistingCustomerWithFacebookLead(duplicateCheck.existingCustomer, parsedLead, leadData, false);
           if (mergedLead) createdLeads.push(mergedLead);
+        } else if (duplicateCheck.isDuplicate && duplicateCheck.existingLead) {
+          const updatedLead = await this.updateExistingLead(duplicateCheck.existingLead, parsedLead as CreateLeadDto);
+          createdLeads.push(updatedLead);
         } else {
           const lead = await this.createLeadFromFacebook(parsedLead, leadData, false);
           createdLeads.push(lead);
