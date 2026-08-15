@@ -571,6 +571,7 @@ export const TherapyCatalog: React.FC = () => {
  </div>
  </div>
 
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <label className="flex items-center gap-3 px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer">
  <input
  type="checkbox"
@@ -579,9 +580,22 @@ export const TherapyCatalog: React.FC = () => {
  onChange={e => setTreatmentForm({ ...treatmentForm, isFeatured: e.target.checked })}
  />
  <span className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-700">
- <Star size={14} className="text-amber-500" fill="currentColor" /> Feature in"Top Treatments"
+ <Star size={14} className="text-amber-500" fill="currentColor" /> Feature
  </span>
  </label>
+
+ <label className="flex items-center gap-3 px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer">
+ <input
+ type="checkbox"
+ className="size-5 accent-[#CBFF38]"
+ checked={treatmentForm.isActive}
+ onChange={e => setTreatmentForm({ ...treatmentForm, isActive: e.target.checked })}
+ />
+ <span className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-700">
+ <Check size={14} className="text-green-500" /> Publish (Active)
+ </span>
+ </label>
+ </div>
 
  <div className="space-y-2">
  <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Therapy Photo</label>
