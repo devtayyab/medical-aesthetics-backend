@@ -39,7 +39,14 @@ export const ClinicMap: React.FC<ClinicMapProps> = ({
 
  mapInstanceRef.current = map;
 
+ // Fix for Leaflet grey screen in animated containers
+ const resizeObserver = new ResizeObserver(() => {
+ if (map) map.invalidateSize();
+ });
+ resizeObserver.observe(mapContainerRef.current);
+
  return () => {
+ resizeObserver.disconnect();
  map.remove();
  mapInstanceRef.current = null;
  };
