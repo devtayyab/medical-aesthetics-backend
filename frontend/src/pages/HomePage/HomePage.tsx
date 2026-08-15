@@ -205,11 +205,12 @@ const mainCategories = [
 
  {/* Hero Section */}
  <section 
- className="relative w-full bg-cover bg-no-repeat flex items-center bg-[position:80%_top] md:bg-[position:center_top]"
+ className="relative w-full bg-cover bg-no-repeat flex items-center"
  style={{ 
  backgroundImage: `url(${HeaderBanner})`,
  backgroundSize: 'cover',
  backgroundRepeat: 'no-repeat',
+ backgroundPosition: 'center top',
  height: '70vh',
  minHeight: '520px'
  }}
