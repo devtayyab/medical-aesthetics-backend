@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
  Search,
@@ -1207,16 +1207,27 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   </TableCell>
   <TableCell className="py-2 px-2">
   <div className="flex items-center gap-2">
+  {onViewLead ? (
   <div 
-  onClick={() => onViewLead ? onViewLead(lead) : navigate(`/crm/customer/${lead.id}`)}
+  onClick={() => onViewLead(lead)}
   className="w-7 h-7 shrink-0 rounded-lg bg-[#CBFF38]/20 border border-[#CBFF38]/50 text-slate-900 flex items-center justify-center font-black text-[10px] uppercase shadow-sm cursor-pointer hover:scale-105 transition-all"
   title="View Lead Details"
   >
   {lead.firstName[0]}{lead.lastName[0]}
   </div>
+  ) : (
+  <Link 
+  to={`/crm/customer/${lead.id}`}
+  className="w-7 h-7 shrink-0 rounded-lg bg-[#CBFF38]/20 border border-[#CBFF38]/50 text-slate-900 flex items-center justify-center font-black text-[10px] uppercase shadow-sm cursor-pointer hover:scale-105 transition-all"
+  title="View Lead Details"
+  >
+  {lead.firstName[0]}{lead.lastName[0]}
+  </Link>
+  )}
   <div className="flex-1 min-w-0 flex items-center gap-2">
+  {onViewLead ? (
   <div 
-  onClick={() => onViewLead ? onViewLead(lead) : navigate(`/crm/customer/${lead.id}`)}
+  onClick={() => onViewLead(lead)}
   className="truncate max-w-[110px] cursor-pointer group/leadname"
   title={`View Lead: ${lead.firstName} ${lead.lastName}`}
   >
@@ -1227,6 +1238,20 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   {lead.id.slice(0, 6)}
   </div>
   </div>
+  ) : (
+  <Link 
+  to={`/crm/customer/${lead.id}`}
+  className="truncate max-w-[110px] cursor-pointer group/leadname block"
+  title={`View Lead: ${lead.firstName} ${lead.lastName}`}
+  >
+  <div className="font-bold text-gray-900 text-[11px] truncate group-hover/leadname:text-blue-600 group-hover/leadname:underline">
+  {lead.firstName} {lead.lastName}
+  </div>
+  <div className="text-[8px] text-gray-400 font-mono tracking-tighter uppercase group-hover/leadname:text-blue-500">
+  {lead.id.slice(0, 6)}
+  </div>
+  </Link>
+  )}
   <Button
   size="xs"
   variant="white"
