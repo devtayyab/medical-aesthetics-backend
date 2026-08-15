@@ -91,11 +91,12 @@ export class ClinicsService {
         .replace(/ϊ/g, 'ι')
         .replace(/ϋ/g, 'υ')
         .replace(/ΐ/g, 'ι')
-        .replace(/ΰ/g, 'υ');
+        .replace(/ΰ/g, 'υ')
+        .replace(/ς/g, 'σ');
     };
 
     const sqlTranslate = (field: string) => 
-      `TRANSLATE(LOWER(${field}), 'άέήίόύώϊϋΐΰ', 'αεηιουωιυιυ')`;
+      `TRANSLATE(LOWER(${field}), 'άέήίόύώϊϋΐΰς', 'αεηιουωιυιυσ')`;
 
     if (params.search) {
       const normalizedSearch = normalizeGreek(params.search);
