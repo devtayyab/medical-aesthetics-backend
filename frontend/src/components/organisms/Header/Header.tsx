@@ -15,7 +15,7 @@ import SiteLogo from"@/assets/SiteLogo.png";
 import { NotificationDropdown } from"@/components/molecules/NotificationDropdown";
 
 const containerStyle = css`
- max-width: 1200px;
+ max-width: 1440px;
  margin: 0 auto;
  padding: 0 1rem;
  display: flex;
@@ -408,7 +408,7 @@ export const Header: React.FC = () => {
  }
  className={`flex items-center no-underline ${clinicRoles.includes(user?.role ||"") ?"justify-center" :""}`}
  >
- <div className="w-[130px] sm:w-[190px] h-10 sm:h-14 relative flex items-center justify-center mr-1 sm:mr-4">
+ <div className="w-[150px] sm:w-[190px] 2xl:w-[220px] h-10 sm:h-14 relative flex items-center justify-center mr-1 sm:mr-4 transition-all">
  <img src={SiteLogo} alt="Site Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] pointer-events-none" />
  </div>
  </Link>
@@ -418,7 +418,7 @@ export const Header: React.FC = () => {
  <>
  {user?.role !== 'salesperson' && (
  <div className={searchContainerStyle}>
- <ul className="flex justify-center items-center gap-4 lg:gap-8 text-white whitespace-nowrap">
+ <ul className="flex justify-center items-center gap-3 lg:gap-4 2xl:gap-8 text-white whitespace-nowrap transition-all">
  <li
  className="cursor-pointer relative"
  onMouseEnter={() => setIsCategoriesOpen(true)}
@@ -491,14 +491,14 @@ export const Header: React.FC = () => {
  )}
 
  {user?.role !== 'salesperson' && (
- <div className="hidden xl:flex items-center gap-4 mr-4">
+ <div className="hidden xl:flex items-center gap-4 2xl:gap-6 mr-6 2xl:mr-10 transition-all">
  <div className="flex items-center gap-2">
- <div className="size-10 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
- <Phone className="h-4 w-4 text-white" />
+ <div className="size-9 2xl:size-11 bg-white/5 rounded-full flex items-center justify-center border border-white/10 transition-all">
+ <Phone className="h-3.5 w-3.5 2xl:h-4 2xl:w-4 text-white" />
  </div>
  <div className="flex flex-col">
- <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Call Us</span>
- <div className="text-xs font-black text-white leading-none flex gap-1">
+ <span className="text-[10px] 2xl:text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1 transition-all">Call Us</span>
+ <div className="text-[11px] 2xl:text-[13px] font-black text-white leading-none flex gap-1 transition-all">
  <a href="tel:6948880498" className="hover:text-[#CBFF38] transition-colors">6948880498</a>
  <span className="text-gray-600">/</span>
  <a href="tel:2112184564" className="hover:text-[#CBFF38] transition-colors">2112184564</a>
@@ -507,12 +507,12 @@ export const Header: React.FC = () => {
  </div>
 
  <div className="flex items-center gap-2">
- <div className="size-10 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
- <MessageCircle size={18} className="text-white" />
+ <div className="size-9 2xl:size-11 bg-white/5 rounded-full flex items-center justify-center border border-white/10 transition-all">
+ <MessageCircle className="h-4 w-4 2xl:h-5 2xl:w-5 text-white" />
  </div>
  <div className="flex flex-col">
- <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Email</span>
- <a href="mailto:info@beautydoctors.gr" className="text-xs font-black text-white leading-none hover:text-[#CBFF38] transition-colors">
+ <span className="text-[10px] 2xl:text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1 transition-all">Email</span>
+ <a href="mailto:info@beautydoctors.gr" className="text-[11px] 2xl:text-[13px] font-black text-white leading-none hover:text-[#CBFF38] transition-colors">
  info@beautydoctors.gr
  </a>
  </div>
