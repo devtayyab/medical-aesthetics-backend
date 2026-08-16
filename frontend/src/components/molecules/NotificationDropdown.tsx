@@ -30,9 +30,11 @@ const dropdownStyle = css`
  }
 
  @media (max-width: 480px) {
+ position: fixed;
+ top: 70px;
+ left: 16px;
+ right: 16px;
  width: calc(100vw - 32px);
- right: 0;
- left: auto;
  }
 `;
 

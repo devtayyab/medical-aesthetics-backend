@@ -372,8 +372,9 @@ export const crmAPI = {
 
  // Facebook Integration
  handleFacebookWebhook: (data: any) => api.post("/crm/facebook/webhook", data),
- importFacebookLeads: (formId: string, limit?: number) =>
- api.post(`/crm/facebook/import/${formId}`, {}, { params: { limit } }),
+  importFacebookLeads: (formId: string, limit?: number) =>
+    api.post(`/crm/facebook/import/${formId}`, {}, { params: { limit } }),
+  importAllFacebookLeads: () => api.post("/crm/facebook/import-all"),
  getFacebookForms: (pageId?: string) => api.get("/crm/facebook/forms", { params: pageId ? { pageId } : undefined }),
  getFacebookStats: (pageId?: string) => api.get("/crm/facebook/stats", { params: pageId ? { pageId } : undefined }),
  getWebhookLeads: (params?: { days?: number; page?: number; limit?: number }) => api.get("/crm/facebook/webhook-leads", { params }),

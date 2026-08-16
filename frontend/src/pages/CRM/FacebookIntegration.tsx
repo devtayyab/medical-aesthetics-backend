@@ -8,6 +8,7 @@ import {
   getFacebookForms,
   getFacebookStats,
   importFacebookLeads,
+  importAllFacebookLeads,
   fetchLeads,
   handleFacebookWebhook
 } from "@/store/slices/crmSlice";
@@ -30,6 +31,7 @@ export const FacebookIntegration: React.FC = () => {
   const [formsError, setFormsError] = useState("");
   const [importData, setImportData] = useState({ formId: "" });
   const [importingFormId, setImportingFormId] = useState<string | null>(null);
+  const [isImportingAll, setIsImportingAll] = useState(false);
   const [formsPage, setFormsPage] = useState(1);
   const FORMS_PER_PAGE = 10;
 
@@ -104,6 +106,22 @@ export const FacebookIntegration: React.FC = () => {
       toast.error("Failed to import leads from this form");
     } finally {
       setImportingFormId(null);
+    }
+  };
+
+  const handleImportAllForms = async () => {
+    setIsImportingAll(true);
+    try {
+      const result = await dispatch(importAllFacebookLeads()).unwrap();
+      toast.success(`Imported ${result.totalImported || 0} leads from ${result.totalForms || 0} forms`);
+      loadStats(pageId || undefined);
+      dispatch(fetchLeads(leadFilters));
+      // Refresh forms list to update counts
+      handleGetForms();
+    } catch (error) {
+      toast.error("Failed to import leads from all forms");
+    } finally {
+      setIsImportingAll(false);
     }
   };
 
@@ -245,7 +263,16 @@ export const FacebookIntegration: React.FC = () => {
                   <div className="mt-2 space-y-2">
                     {/* Header */}
                     <div className="flex justify-between items-center border-b pb-1">
-                      <h4 className="font-semibold text-sm">Available Forms ({facebookForms.length}):</h4>
+                      <div className="flex items-center gap-3">
+                        <h4 className="font-semibold text-sm">Available Forms ({facebookForms.length}):</h4>
+                        <Button 
+                          onClick={handleImportAllForms} 
+                          disabled={isImportingAll || isLoading} 
+                          className="h-7 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none"
+                        >
+                          {isImportingAll ? "Importing All..." : "Import All Remaining"}
+                        </Button>
+                      </div>
                       <span className="text-xs text-gray-400">Page {formsPage} of {totalPages}</span>
                     </div>
 

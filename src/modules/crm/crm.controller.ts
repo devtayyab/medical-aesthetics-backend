@@ -473,6 +473,36 @@ export class CrmController {
     return this.crmService.handleFacebookWebhook(data);
   }
 
+  @Post('facebook/import-all')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Import remaining leads from ALL active Facebook forms at once' })
+  async importAllFacebookLeads() {
+    const forms = await this.crmService.getFacebookForms();
+    const liveForms = (forms || []).filter(
+      (f: any) => f.id && !String(f.id).startsWith('db_') && f.status !== 'DELETED',
+    );
+
+    let totalImported = 0;
+    const results: { formId: string; formName: string; imported: number; error?: string }[] = [];
+
+    for (const form of liveForms) {
+      try {
+        const leads = await this.crmService.importFacebookLeads(form.id, 10000, form.page_access_token);
+        totalImported += leads.length;
+        results.push({ formId: form.id, formName: form.name, imported: leads.length });
+      } catch (err: any) {
+        results.push({ formId: form.id, formName: form.name, imported: 0, error: err?.message || 'Failed' });
+      }
+    }
+
+    return {
+      totalForms: liveForms.length,
+      totalImported,
+      results,
+    };
+  }
+
   @Post('facebook/import/:formId')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @UseGuards(RolesGuard)

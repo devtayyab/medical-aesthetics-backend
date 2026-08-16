@@ -184,7 +184,9 @@ const mainCategories = [
 
  <div className="space-y-4">
  <a
- href="mailto:info@beautydoctors.gr?subject=Professional Consultation Request"
+ href="mailto:info@beautydoctors.gr?subject=Professional%20Consultation%20Request"
+ target="_blank"
+ rel="noopener noreferrer"
  className="w-full group p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent"
  >
  <div className="size-14 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform shadow-sm">
@@ -205,11 +207,12 @@ const mainCategories = [
 
  {/* Hero Section */}
  <section 
- className="relative w-full bg-cover bg-no-repeat flex items-center bg-[position:80%_top] md:bg-[position:center_top]"
+ className="relative w-full bg-cover bg-no-repeat flex items-center"
  style={{ 
  backgroundImage: `url(${HeaderBanner})`,
  backgroundSize: 'cover',
  backgroundRepeat: 'no-repeat',
+ backgroundPosition: 'center top',
  height: '70vh',
  minHeight: '520px'
  }}

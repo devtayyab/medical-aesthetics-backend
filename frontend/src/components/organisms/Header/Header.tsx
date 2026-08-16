@@ -811,25 +811,27 @@ export const Header: React.FC = () => {
 
  <div className="flex flex-col gap-2 mt-2">
  <span className="text-gray-400 font-black text-[10px] uppercase tracking-widest px-4">Treatments</span>
- <div className="flex flex-col gap-1 pl-2">
- <span className="text-gray-500 font-bold text-[10px] uppercase tracking-widest px-4 py-1">Hair Removal</span>
- <Link to="/search?q=Laser Alexandrite" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Laser Alexandrite</Link>
- <Link to="/search?q=Triple Wave Laser" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Triple Wave Laser</Link>
+ {navCategories.length > 0 ? (
+ navCategories.map((cat) => {
+ const hasChildren = cat.children && cat.children.length > 0;
+ return (
+ <div key={cat.id} className="flex flex-col gap-1 pl-2">
+ {hasChildren ? (
+ <>
+ <span className="text-gray-500 font-bold text-[10px] uppercase tracking-widest px-4 py-1">{cat.name}</span>
+ {cat.children!.map((sub) => (
+ <Link key={sub.id} to={`/search?category=${encodeURIComponent(sub.name)}`} className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ {sub.name}</Link>
+ ))}
+ </>
+ ) : (
+ <Link to={`/search?category=${encodeURIComponent(cat.name)}`} className="px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 rounded-xl" onClick={() => setIsMobileMenuOpen(false)}>{cat.name}</Link>
+ )}
  </div>
- <div className="flex flex-col gap-1 pl-2">
- <span className="text-gray-500 font-bold text-[10px] uppercase tracking-widest px-4 py-1">Facial Aesthetics</span>
- <Link to="/search?q=Botox" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Botox-Dysport</Link>
- <Link to="/search?q=Hyaluronic Acid" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Hyaluronic Acid</Link>
- <Link to="/search?q=Fractional Laser" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Fractional Laser</Link>
- </div>
- <div className="flex flex-col gap-1 pl-2">
- <span className="text-gray-500 font-bold text-[10px] uppercase tracking-widest px-4 py-1">Body Aesthetics</span>
- <Link to="/search?q=Aqualyx" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Aqualyx (Lipolysis)</Link>
- <Link to="/search?q=Cryolipolysis" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Cryolipolysis</Link>
- <Link to="/search?q=Mesotherapy" className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ Mesotherapy</Link>
- </div>
- <Link to="/search?q=Plastic Surgery" className="px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 rounded-xl" onClick={() => setIsMobileMenuOpen(false)}>Plastic Surgery</Link>
- <Link to="/search?q=Clinical Dermatology" className="px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 rounded-xl" onClick={() => setIsMobileMenuOpen(false)}>Clinical Dermatology</Link>
+ );
+ })
+ ) : (
+ <div className="px-4 py-2 text-xs text-gray-500">Loading categories...</div>
+ )}
  </div>
  </>
  )}

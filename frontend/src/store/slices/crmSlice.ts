@@ -426,6 +426,13 @@ export const importFacebookLeads = createAsyncThunk("crm/importFacebookLeads",
  }
 );
 
+export const importAllFacebookLeads = createAsyncThunk("crm/importAllFacebookLeads",
+  async () => {
+    const response = await crmAPI.importAllFacebookLeads();
+    return response.data;
+  }
+);
+
 export const testFacebookConnection = createAsyncThunk("crm/testFacebookConnection",
  async () => {
  const response = await crmAPI.testFacebookConnection();
