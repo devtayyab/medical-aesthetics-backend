@@ -207,20 +207,17 @@ const mainCategories = [
 
  {/* Hero Section */}
  <section 
- className="relative w-full bg-cover bg-no-repeat flex items-center"
+ className="relative w-full bg-cover bg-no-repeat bg-[85%_top] md:bg-[center_top] flex items-center"
  style={{ 
  backgroundImage: `url(${HeaderBanner})`,
- backgroundSize: 'cover',
- backgroundRepeat: 'no-repeat',
- backgroundPosition: 'center top',
- height: '70vh',
- minHeight: '520px'
+ height: '95vh',
+ minHeight: '850px'
  }}
  >
  <div className="absolute inset-0 bg-white/10 lg:bg-transparent" />
 
  {/* Content Overlay */}
- <div className="relative z-10 w-full">
+ <div className="relative z-10 w-full -mt-24 md:-mt-40">
  <div className="max-w-[1200px] mx-auto w-full px-6">
  <div className="flex flex-col max-w-xl">
   <h1 className="text-black text-xl sm:text-3xl md:text-[40px] font-black mb-2 leading-tight uppercase tracking-tight">
