@@ -206,14 +206,18 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  // The ID to use for CRM updates (Must be the Lead/User ID, not the Record ID)
  const effectiveId = SelectedCustomer?.id || (customerRecord?.record?.customerId) || (customerRecord?.record?.id) || customerId;
 
- const firstName = customer?.firstName || (customerRecord?.record?.customer as any)?.firstName || (customerRecord?.record as any)?.firstName ||"";
- const lastName = customer?.lastName || (customerRecord?.record?.customer as any)?.lastName || (customerRecord?.record as any)?.lastName ||"";
+ const firstName = customer?.firstName || (customerRecord?.record?.customer as any)?.firstName || (customerRecord?.record as any)?.firstName || "";
+ const lastName = customer?.lastName || (customerRecord?.record?.customer as any)?.lastName || (customerRecord?.record as any)?.lastName || "";
  const fullName = `${firstName} ${lastName}`.trim();
- const email = customer?.email || (customerRecord?.record?.customer as any)?.email || (customerRecord?.record as any)?.email ||"";
- const phone = customer?.phone || (customerRecord?.record?.customer as any)?.phone || (customerRecord?.record as any)?.phone ||"";
+ const email = customer?.email || (customerRecord?.record?.customer as any)?.email || (customerRecord?.record as any)?.email || "";
+ const phone = customer?.phone || (customerRecord?.record?.customer as any)?.phone || (customerRecord?.record as any)?.phone || "";
 
- // Status can be in Lead record, or on the Customer profile if synced
- const displayStatus = customer?.status || (customerRecord as any)?.record?.status || 'new';
+ // Status can be in Lead record, on the Customer profile, or in customerStatus (synthetic lead record)
+ // customerStatus is what the backend maps from lead.status in the synthetic lead record response
+ const derivedStatus = customer?.status ||
+ (customerRecord?.record as any)?.customerStatus ||
+ (customerRecord as any)?.summary?.status ||
+ 'new';
 
  // State for Workflow
  const [workflowStep, setWorkflowStep] = useState<1 | 2 | 3 | 4>(1);
@@ -345,7 +349,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
 
   useEffect(() => {
     fetchHubSpotData();
-  }, [customer?.email, customer?.phone]);
+  }, [email, phone]);
 
  if (isLoading && !customer) {
  return (
@@ -1054,7 +1058,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  </div>
  <Badge className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${isConverted ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
- {customer.status}
+ {derivedStatus}
  </Badge>
  </div>
  </div>
@@ -1182,7 +1186,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  <div>
  <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Lead Status</span>
- <Badge className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border shadow-sm ${isConverted ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{customer.status}</Badge>
+ <Badge className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border shadow-sm ${isConverted ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{derivedStatus}</Badge>
  </div>
  <div className="group relative">
  <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Source</span>
@@ -1478,7 +1482,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <h3 className="font-black text-indigo-900 text-sm tracking-tight">Breeze Record Summary</h3>
  </div>
  <p className="text-xs text-indigo-900/80 font-medium leading-relaxed relative z-10">
- {customer.status === 'converted' 
+ {derivedStatus === 'converted'
  ? 'This contact has successfully converted and engaged with appointments. Strong potential for repeat visits. Keep following up for post-treatment care.'
  : 'This is an active prospect. Review the timeline and schedule a call or meeting to drive conversion. No appointments booked yet.'}
  </p>
