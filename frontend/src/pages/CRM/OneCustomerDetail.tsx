@@ -340,7 +340,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
         setHubspotData(res.data.data);
       } else {
         setHubspotData(null);
-        setHubspotError('No data returned from HubSpot');
+        setHubspotError('No HubSpot data found for this contact');
       }
     } catch (err: any) {
       setHubspotError(err.response?.data?.message || 'Failed to fetch HubSpot data');
@@ -349,9 +349,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     }
   };
 
+  // Re-fetch HubSpot data whenever the effective customer changes (including after page refresh)
   useEffect(() => {
-    fetchHubSpotData();
-  }, [email, phone]);
+    if (email || phone) {
+      fetchHubSpotData();
+    }
+  }, [email, phone, effectiveId]);
 
  if (isLoading && !customer) {
  return (
@@ -1215,13 +1218,23 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  {/* Tabs / Feed Container */}
  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
  <div className="flex overflow-x-auto border-b border-slate-200 px-2 bg-slate-50/50">
- {['overview', 'activities', 'notes'].map(tab => (
+ {(['overview', 'activities', 'notes', 'appointments'] as const).map(tab => (
  <button
  key={tab}
  onClick={() => setActiveTab(tab)}
- className={`px-6 py-4 text-xs font-black uppercase tracking-widest transition-colors relative ${activeTab === tab ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+ className={`px-5 py-4 text-xs font-black uppercase tracking-widest transition-colors relative whitespace-nowrap ${activeTab === tab ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
  >
- {tab}
+ {tab === 'appointments' ? (
+ <span className="flex items-center gap-1.5">
+ <CalendarDays className="w-3.5 h-3.5" />
+ Appointments
+ {hubspotData?.deals?.length > 0 && (
+ <span className="bg-[#ff7a59] text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">
+ {hubspotData.deals.length}
+ </span>
+ )}
+ </span>
+ ) : tab}
  {activeTab === tab && <div className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-blue-600" />}
  </button>
  ))}
@@ -1232,7 +1245,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <div className="space-y-6">
   <div className="flex justify-between items-center mb-8">
   <h3 className="font-black text-slate-800 text-base flex items-center gap-2">
-  <Activity className="w-5 h-5 text-blue-600" /> {activeTab === 'overview' ? 'Activity Feed' : activeTab === 'activities' ? 'Activities' : 'Notes'}
+   <Activity className="w-5 h-5 text-blue-600" />
+   {activeTab === 'overview' ? 'Activity Feed' : activeTab === 'activities' ? 'Activities' : activeTab === 'notes' ? 'Notes' : 'HubSpot Appointments'}
   </h3>
   <div className="flex items-center gap-3">
     {hubspotError && <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded">{hubspotError}</span>}
@@ -1240,7 +1254,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
       size="sm" 
       variant="outline" 
       onClick={fetchHubSpotData}
-      disabled={hubspotLoading || (!customer?.email && !customer?.phone)}
+      disabled={hubspotLoading || (!email && !phone && !customer?.email && !customer?.phone)}
       className="h-8 text-[11px] font-bold text-[#ff7a59] border-[#ff7a59]/30 hover:bg-[#ff7a59]/10 shadow-sm"
     >
       <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${hubspotLoading ? 'animate-spin' : ''}`} />
@@ -1284,6 +1298,21 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
       summary.appointments.forEach(a => timelineItems.push({ type: 'appointment', date: new Date(a.startTime || Date.now()), data: a }));
     }
   }
+
+  // Appointments tab: show local CRM appointments even if HubSpot isn't loaded yet
+  if (activeTab === 'appointments' && !hubspotData && summary?.appointments) {
+    summary.appointments.forEach(a => timelineItems.push({ type: 'appointment', date: new Date(a.startTime || Date.now()), data: a }));
+  }
+
+  // Inject raw "Form Comments / Notes" field as a timeline card in Notes tab
+  const rawNotes = customer?.notes || (customerRecord?.record as any)?.notes;
+  if (rawNotes && (activeTab === 'overview' || activeTab === 'notes')) {
+    timelineItems.push({
+      type: 'form_note',
+      date: new Date(customer?.createdAt || (customerRecord?.record as any)?.createdAt || Date.now()),
+      data: { content: rawNotes }
+    });
+  }
   
   if (activeTab === 'overview') {
     // Create a lead created event
@@ -1301,6 +1330,20 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
           data: deal
         });
       });
+    }
+    // Dedicated Appointments tab: show ALL HubSpot deals + local appointments
+    if (activeTab === 'appointments') {
+      hubspotData.deals?.forEach((deal: any) => {
+        timelineItems.push({
+          type: 'hubspot_deal',
+          date: new Date(deal.date),
+          data: deal
+        });
+      });
+      // Also add local CRM appointments in this tab
+      if (summary?.appointments) {
+        summary.appointments.forEach(a => timelineItems.push({ type: 'appointment', date: new Date(a.startTime || Date.now()), data: a }));
+      }
     }
     if (activeTab === 'overview' || activeTab === 'notes') {
       hubspotData.summaryNotes?.forEach((note: any) => {
@@ -1348,6 +1391,23 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   </div>
   <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-lg border border-slate-100">{item.data.content || item.data.text || item.data.note || item.data.notes}</p>
   </div>
+  );
+  } else if (item.type === 'form_note') {
+  icon = <FileText className="w-5 h-5 text-emerald-600" />;
+  iconBg = "bg-emerald-50 border-emerald-200";
+  content = (
+    <div className="bg-white border border-emerald-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all">
+      <div className="flex justify-between items-center mb-3">
+        <span className="font-bold text-slate-900 text-sm flex items-center gap-2">
+          <span className="bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded">Form</span>
+          Form Comments / Notes
+        </span>
+        <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+      </div>
+      <div className="text-sm text-slate-700 leading-relaxed bg-emerald-50 p-4 rounded-lg border border-emerald-100 whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">
+        {item.data.content}
+      </div>
+    </div>
   );
   } else if (item.type === 'comm') {
   const isCall = item.data.type === 'call';
