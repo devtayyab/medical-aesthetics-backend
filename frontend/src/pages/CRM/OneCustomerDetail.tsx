@@ -1287,7 +1287,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   // Inject HubSpot Data
   if (hubspotData) {
     if (activeTab === 'overview' || activeTab === 'activities') {
-      hubspotData.deals?.forEach((deal: any) => {
+      const bookedDeals = hubspotData.deals?.filter((d: any) => !d.stage?.toLowerCase().includes('lost'));
+      bookedDeals?.forEach((deal: any) => {
         timelineItems.push({
           type: 'hubspot_deal',
           date: new Date(deal.date),
@@ -1388,13 +1389,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   </div>
   );
   } else if (item.type === 'hubspot_deal') {
-    icon = <Briefcase className="w-5 h-5 text-[#ff7a59]" />;
+    icon = <CalendarDays className="w-5 h-5 text-[#ff7a59]" />;
     iconBg = "bg-[#ff7a59]/10 border-[#ff7a59]/20";
     content = (
       <div className="bg-white border border-[#ff7a59]/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
         <div className="absolute top-0 right-0 w-8 h-8 bg-[#ff7a59]/10 flex items-center justify-center rounded-bl-xl font-black text-[#ff7a59] text-[10px]">HS</div>
         <div className="flex justify-between items-center mb-3 pr-6">
-          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Deal: {item.data.name}</span>
+          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Appointment: {item.data.name}</span>
           <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
         </div>
         <div className="flex flex-wrap gap-3 text-xs font-medium text-slate-600 mb-3">
