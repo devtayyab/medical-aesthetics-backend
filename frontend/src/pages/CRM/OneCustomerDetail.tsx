@@ -42,6 +42,7 @@ import toast from 'react-hot-toast';
 import { updateAppointmentStatus, completeAppointment } from"@/store/slices/bookingSlice";
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
+import { HubSpotWidget } from '@/components/organisms/HubSpotWidget';
 
 interface OneCustomerDetailProps {
  SelectedCustomer?: Customer | Lead;
@@ -1359,13 +1360,12 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   });
   })()}
   </div>
-  </div>
- </div>
- </div>
- </div>
-
  {/* --- RIGHT COLUMN (~25% width) --- */}
  <div className="col-span-1 md:col-span-3 space-y-6">
+
+ {/* HubSpot Sync Widget */}
+ <HubSpotWidget email={customer.email} phone={customer.phone} />
+
  {/* Breeze Summary Card */}
  <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl border border-indigo-100 shadow-sm p-6 relative overflow-hidden group">
  <div className="absolute top-0 right-0 w-32 h-32 bg-white/40 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
