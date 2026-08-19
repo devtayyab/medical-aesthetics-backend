@@ -1287,20 +1287,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   // Inject HubSpot Data
   if (hubspotData) {
     if (activeTab === 'overview' || activeTab === 'activities') {
-      hubspotData.deals?.forEach((deal: any) => {
+      // Filter out deals that are explicitly lost, or just show all
+      const bookedDeals = hubspotData.deals?.filter((d: any) => !d.stage?.toLowerCase().includes('lost'));
+      bookedDeals?.forEach((deal: any) => {
         timelineItems.push({
           type: 'hubspot_deal',
           date: new Date(deal.date),
           data: deal
-        });
-      });
-    }
-    if (activeTab === 'overview' || activeTab === 'notes') {
-      hubspotData.summaryNotes?.forEach((note: any) => {
-        timelineItems.push({
-          type: 'hubspot_note',
-          date: new Date(note.date),
-          data: note
         });
       });
     }
@@ -1388,13 +1381,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   </div>
   );
   } else if (item.type === 'hubspot_deal') {
-    icon = <Briefcase className="w-5 h-5 text-[#ff7a59]" />;
+    icon = <CalendarDays className="w-5 h-5 text-[#ff7a59]" />;
     iconBg = "bg-[#ff7a59]/10 border-[#ff7a59]/20";
     content = (
       <div className="bg-white border border-[#ff7a59]/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
         <div className="absolute top-0 right-0 w-8 h-8 bg-[#ff7a59]/10 flex items-center justify-center rounded-bl-xl font-black text-[#ff7a59] text-[10px]">HS</div>
         <div className="flex justify-between items-center mb-3 pr-6">
-          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Deal: {item.data.name}</span>
+          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Appointment: {item.data.name}</span>
           <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
         </div>
         <div className="flex flex-wrap gap-3 text-xs font-medium text-slate-600 mb-3">
@@ -1402,23 +1395,6 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
           <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> Pipeline: {item.data.pipeline}</span>
         </div>
         <Badge className="bg-[#ff7a59]/10 text-[#ff7a59] border-0 text-[10px] font-bold uppercase tracking-wider">{item.data.stage}</Badge>
-      </div>
-    );
-  } else if (item.type === 'hubspot_note') {
-    icon = <FileText className="w-5 h-5 text-[#ff7a59]" />;
-    iconBg = "bg-[#ff7a59]/10 border-[#ff7a59]/20";
-    content = (
-      <div className="bg-white border border-[#ff7a59]/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-8 h-8 bg-[#ff7a59]/10 flex items-center justify-center rounded-bl-xl font-black text-[#ff7a59] text-[10px]">HS</div>
-        <div className="flex justify-between items-center mb-3 pr-6">
-          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Activity: {item.data.title}</span>
-          <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
-        </div>
-        {item.data.body ? (
-          <div className="text-sm text-slate-700 leading-relaxed bg-[#ff7a59]/5 p-4 rounded-lg border border-[#ff7a59]/10 prose prose-sm max-w-none prose-p:my-1" dangerouslySetInnerHTML={{ __html: item.data.body }} />
-        ) : (
-          <div className="text-sm text-slate-400 italic">No detailed notes.</div>
-        )}
       </div>
     );
   } else if (item.type === 'action') {
