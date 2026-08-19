@@ -42,6 +42,7 @@ import toast from 'react-hot-toast';
 import { updateAppointmentStatus, completeAppointment } from"@/store/slices/bookingSlice";
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
+import api from '@/services/api';
 
 interface OneCustomerDetailProps {
  SelectedCustomer?: Customer | Lead;
@@ -321,27 +322,30 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  dispatch(fetchClinics());
  }, [SelectedCustomer, customerId, dispatch, user]);
 
- useEffect(() => {
-   if (customer?.email || customer?.phone) {
-     const fetchHubSpotData = async () => {
-       setHubspotLoading(true);
-       setHubspotError(null);
-       try {
-         const res = await api.get('/hubspot/contact-overview', {
-           params: { email: customer.email, phone: customer.phone }
-         });
-         if (res.data?.data) {
-           setHubspotData(res.data.data);
-         }
-       } catch (err: any) {
-         setHubspotError(err.response?.data?.message || 'Failed to fetch HubSpot data');
-       } finally {
-         setHubspotLoading(false);
-       }
-     };
-     fetchHubSpotData();
-   }
- }, [customer?.email, customer?.phone]);
+ const fetchHubSpotData = async () => {
+    if (!customer?.email && !customer?.phone) return;
+    setHubspotLoading(true);
+    setHubspotError(null);
+    try {
+      const res = await api.get('/hubspot/contact-overview', {
+        params: { email: customer.email, phone: customer.phone }
+      });
+      if (res.data?.data) {
+        setHubspotData(res.data.data);
+      } else {
+        setHubspotData(null);
+        setHubspotError('No data returned from HubSpot');
+      }
+    } catch (err: any) {
+      setHubspotError(err.response?.data?.message || 'Failed to fetch HubSpot data');
+    } finally {
+      setHubspotLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHubSpotData();
+  }, [customer?.email, customer?.phone]);
 
  if (isLoading && !customer) {
  return (
@@ -1224,6 +1228,19 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   <h3 className="font-black text-slate-800 text-base flex items-center gap-2">
   <Activity className="w-5 h-5 text-blue-600" /> {activeTab === 'overview' ? 'Activity Feed' : activeTab === 'activities' ? 'Activities' : 'Notes'}
   </h3>
+  <div className="flex items-center gap-3">
+    {hubspotError && <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded">{hubspotError}</span>}
+    <Button 
+      size="sm" 
+      variant="outline" 
+      onClick={fetchHubSpotData}
+      disabled={hubspotLoading || (!customer?.email && !customer?.phone)}
+      className="h-8 text-[11px] font-bold text-[#ff7a59] border-[#ff7a59]/30 hover:bg-[#ff7a59]/10 shadow-sm"
+    >
+      <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${hubspotLoading ? 'animate-spin' : ''}`} />
+      {hubspotLoading ? 'Syncing...' : 'Sync HubSpot'}
+    </Button>
+  </div>
   </div>
   
   {/* Unified Timeline */}
@@ -1394,7 +1411,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
       <div className="bg-white border border-[#ff7a59]/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
         <div className="absolute top-0 right-0 w-8 h-8 bg-[#ff7a59]/10 flex items-center justify-center rounded-bl-xl font-black text-[#ff7a59] text-[10px]">HS</div>
         <div className="flex justify-between items-center mb-3 pr-6">
-          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Note: {item.data.title}</span>
+          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Activity: {item.data.title}</span>
           <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
         </div>
         {item.data.body ? (

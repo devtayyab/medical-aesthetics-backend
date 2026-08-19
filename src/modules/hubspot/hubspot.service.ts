@@ -22,13 +22,19 @@ export class HubspotService {
       const contactId = contact.id;
 
       // Fetch Associations concurrently
-      const [dealsAssoc, meetingsAssoc] = await Promise.all([
+      const [dealsAssoc, meetingsAssoc, notesAssoc, emailsAssoc, callsAssoc] = await Promise.all([
         this.getAssociations(contactId, 'contacts', 'deals'),
         this.getAssociations(contactId, 'contacts', 'meetings'),
+        this.getAssociations(contactId, 'contacts', 'notes'),
+        this.getAssociations(contactId, 'contacts', 'emails'),
+        this.getAssociations(contactId, 'contacts', 'calls'),
       ]);
 
       const dealIds = dealsAssoc.map(a => a.toObjectId);
       const meetingIds = meetingsAssoc.map(a => a.toObjectId);
+      const noteIds = notesAssoc.map(a => a.toObjectId);
+      const emailIds = emailsAssoc.map(a => a.toObjectId);
+      const callIds = callsAssoc.map(a => a.toObjectId);
 
       // Fetch Deals details
       const deals = await this.getBatchObjects('deals', dealIds, [
@@ -38,6 +44,21 @@ export class HubspotService {
       // Fetch Meetings details
       const meetings = await this.getBatchObjects('meetings', meetingIds, [
         'hs_meeting_body', 'hs_meeting_title', 'hs_createdate'
+      ]);
+
+      // Fetch Notes details
+      const notes = await this.getBatchObjects('notes', noteIds, [
+        'hs_note_body', 'hs_createdate'
+      ]);
+
+      // Fetch Emails details
+      const emails = await this.getBatchObjects('emails', emailIds, [
+        'hs_email_subject', 'hs_email_text', 'hs_createdate'
+      ]);
+
+      // Fetch Calls details
+      const calls = await this.getBatchObjects('calls', callIds, [
+        'hs_call_title', 'hs_call_body', 'hs_createdate'
       ]);
 
       return {
@@ -52,12 +73,32 @@ export class HubspotService {
             pipeline: d.properties.pipeline,
             date: d.properties.closedate || d.properties.createdate,
           })),
-          summaryNotes: meetings.map(m => ({
-            id: m.id,
-            title: m.properties.hs_meeting_title || 'Meeting',
-            body: m.properties.hs_meeting_body,
-            date: m.properties.hs_createdate,
-          })),
+          summaryNotes: [
+            ...meetings.map(m => ({
+              id: m.id,
+              title: m.properties.hs_meeting_title || 'Meeting',
+              body: m.properties.hs_meeting_body,
+              date: m.properties.hs_createdate,
+            })),
+            ...notes.map(n => ({
+              id: n.id,
+              title: 'Note',
+              body: n.properties.hs_note_body,
+              date: n.properties.hs_createdate,
+            })),
+            ...emails.map(e => ({
+              id: e.id,
+              title: e.properties.hs_email_subject || 'Email',
+              body: e.properties.hs_email_text,
+              date: e.properties.hs_createdate,
+            })),
+            ...calls.map(c => ({
+              id: c.id,
+              title: c.properties.hs_call_title || 'Call',
+              body: c.properties.hs_call_body,
+              date: c.properties.hs_createdate,
+            }))
+          ],
         },
       };
     } catch (error) {
@@ -93,21 +134,31 @@ export class HubspotService {
   }
 
   private async getAssociations(fromId: string, fromType: string, toType: string) {
-    const response = await axios.get(`${this.BASE_URL}/v4/objects/${fromType}/${fromId}/associations/${toType}`, {
-      headers: { Authorization: `Bearer ${this.HUBSPOT_TOKEN}` },
-    });
-    return response.data.results || [];
+    try {
+      const response = await axios.get(`${this.BASE_URL}/v4/objects/${fromType}/${fromId}/associations/${toType}`, {
+        headers: { Authorization: `Bearer ${this.HUBSPOT_TOKEN}` },
+      });
+      return response.data.results || [];
+    } catch (e) {
+      this.logger.warn(`Failed to fetch associations for ${toType}: ${e.message}`);
+      return [];
+    }
   }
 
-  private async getBatchObjects(objectType: string, ids: string[], properties: string[]) {
-    if (ids.length === 0) return [];
-
-    const inputs = ids.map(id => ({ id }));
-    const response = await axios.post(
-      `${this.BASE_URL}/v3/objects/${objectType}/batch/read`,
-      { inputs, properties },
-      { headers: { Authorization: `Bearer ${this.HUBSPOT_TOKEN}` } }
-    );
-    return response.data.results || [];
+  private async getBatchObjects(type: string, ids: string[], properties: string[]) {
+    if (!ids.length) return [];
+    try {
+      const payload = {
+        inputs: ids.map(id => ({ id })),
+        properties,
+      };
+      const response = await axios.post(`${this.BASE_URL}/v3/objects/${type}/batch/read`, payload, {
+        headers: { Authorization: `Bearer ${this.HUBSPOT_TOKEN}` },
+      });
+      return response.data.results || [];
+    } catch (e) {
+      this.logger.warn(`Failed to fetch batch objects for ${type}: ${e.message}`);
+      return [];
+    }
   }
 }
