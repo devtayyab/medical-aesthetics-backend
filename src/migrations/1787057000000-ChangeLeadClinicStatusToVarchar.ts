@@ -13,8 +13,11 @@ export class ChangeLeadClinicStatusToVarchar1787057000000 implements MigrationIn
         // Map old English statuses to HubSpot Greek statuses (or their uppercase codes)
         // Hubspot API gave us: NEW, OPEN, OPEN_DEAL, UNQUALIFIED, etc.
         await queryRunner.query(`UPDATE "lead_clinic_statuses" SET "status" = 'NEW' WHERE "status" = 'new'`);
+        await queryRunner.query(`UPDATE "lead_clinic_statuses" SET "status" = 'OPEN' WHERE "status" = 'contacted'`);
         await queryRunner.query(`UPDATE "lead_clinic_statuses" SET "status" = 'OPEN' WHERE "status" = 'in_conversation'`);
+        await queryRunner.query(`UPDATE "lead_clinic_statuses" SET "status" = 'ATTEMPTED_TO_CONTACT' WHERE "status" = 'follow_up'`);
         await queryRunner.query(`UPDATE "lead_clinic_statuses" SET "status" = 'OPEN_DEAL' WHERE "status" = 'converted'`);
+        await queryRunner.query(`UPDATE "lead_clinic_statuses" SET "status" = 'OPEN_DEAL' WHERE "status" = 'appointment_scheduled'`);
         await queryRunner.query(`UPDATE "lead_clinic_statuses" SET "status" = 'UNQUALIFIED' WHERE "status" = 'lost'`);
 
         // Set default to NEW
