@@ -1010,7 +1010,7 @@ export class CrmService implements OnModuleInit {
     return qb.getMany();
   }
 
-  async getLeadStats(filters: any = {}): Promise<{ total: number; newInquiries: number; inConversation: number; converted: number; lost: number }> {
+  async getLeadStats(filters: any = {}): Promise<Record<string, number>> {
     const qb = this.leadsRepository.createQueryBuilder('lead');
 
     // Note: Do not filter by filters.status in getLeadStats so overall status breakdown counters remain intact across tabs
@@ -1027,20 +1027,19 @@ export class CrmService implements OnModuleInit {
     }
 
     const rawStats = await qb
-      .select('COUNT(lead.id)', 'total')
-      .addSelect("COUNT(CASE WHEN lead.status = 'new' THEN 1 END)", 'newInquiries')
-      .addSelect("COUNT(CASE WHEN lead.status IN ('contacted', 'follow_up') THEN 1 END)", 'inConversation')
-      .addSelect("COUNT(CASE WHEN lead.status = 'converted' THEN 1 END)", 'converted')
-      .addSelect("COUNT(CASE WHEN lead.status = 'lost' THEN 1 END)", 'lost')
-      .getRawOne();
+      .select('lead.status', 'status')
+      .addSelect('COUNT(lead.id)', 'count')
+      .groupBy('lead.status')
+      .getRawMany();
 
-    return {
-      total: parseInt(rawStats?.total || '0', 10),
-      newInquiries: parseInt(rawStats?.newInquiries || '0', 10),
-      inConversation: parseInt(rawStats?.inConversation || '0', 10),
-      converted: parseInt(rawStats?.converted || '0', 10),
-      lost: parseInt(rawStats?.lost || '0', 10),
-    };
+    const stats: Record<string, number> = { total: 0 };
+    rawStats.forEach(row => {
+      const count = parseInt(row.count, 10);
+      stats[row.status] = count;
+      stats.total += count;
+    });
+
+    return stats;
   }
 
   async getLead(id: string): Promise<Lead> {

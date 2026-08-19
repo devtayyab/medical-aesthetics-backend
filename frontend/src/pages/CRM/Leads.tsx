@@ -849,41 +849,59 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  />
  </div>
 
- {/* Status Tabs Bar */}
- <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-none border-b border-slate-100">
- {[
- { key: '', label: 'All Leads', count: stats?.total },
- { key: 'new', label: 'New Inquiries', count: stats?.newInquiries },
- { key: 'in_conversation', label: 'In Conversation', count: stats?.inConversation },
- { key: 'contacted', label: 'Contacted' },
- { key: 'converted', label: 'Converted', count: stats?.converted },
- { key: 'lost', label: 'Lost', count: stats?.lost },
- ].map((tab) => {
- const isActive = (leadFilters.status || '') === tab.key;
- return (
- <button
- key={tab.key}
- onClick={() => handleFilterChange('status', tab.key)}
- className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
- isActive
- ? 'bg-slate-900 text-[#CBFF38] shadow-md'
- : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60'
- }`}
- >
- <span>{tab.label}</span>
- {tab.count !== undefined && (
- <span
- className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
- isActive ? 'bg-[#CBFF38] text-slate-900' : 'bg-slate-100 text-slate-600'
- }`}
- >
- {tab.count}
- </span>
- )}
- </button>
- );
- })}
- </div>
+ {(() => {
+    const HUBSPOT_STATUSES = [
+        { key: '', label: 'All Leads' },
+        { key: 'NEW', label: 'Νέο Lead' },
+        { key: 'OPEN', label: 'Ενεργός Πελάτης' },
+        { key: 'OPEN_DEAL', label: 'Κλεισμένο Ραντεβού' },
+        { key: 'IN_PROGRESS', label: 'Ξ/Τ' },
+        { key: 'UNQUALIFIED', label: 'Δεν Ενδιαφερεται- Το Κλεινει' },
+        { key: 'ATTEMPTED_TO_CONTACT', label: 'Μελλοντική Επικοινωνία' },
+        { key: 'CONNECTED', label: 'Δυσαρεστημένη' },
+        { key: 'BAD_TIMING', label: 'Επαρχία' },
+        { key: 'Δ.Α', label: 'Δ.Α' },
+        { key: 'ΔΑΣΣ', label: 'ΔΑΣΣ' },
+        { key: 'Δεν θα ξαναπάει', label: 'Δεν θα ξαναπάει' },
+        { key: 'Κακός Υποψήφιος Πελάτης', label: 'Κακός Υποψήφιος Πελάτης' },
+        { key: 'Άλλος Διαφημιστής', label: 'Άλλος Διαφημιστής' },
+        { key: 'Άλλο', label: 'Άλλο' },
+        { key: 'Θα το σκεφτεί', label: 'Θα το σκεφτεί' },
+        { key: 'Άλλη Ανάγκη', label: 'Άλλη Ανάγκη' },
+        { key: 'Πολλαπλές Φόρμες', label: 'Πολλαπλές Φόρμες' },
+      ];
+
+      return (
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-none border-b border-slate-100">
+          {HUBSPOT_STATUSES.map((tab) => {
+            const isActive = (leadFilters.status || '') === tab.key;
+            const count = tab.key === '' ? stats?.total : stats?.[tab.key];
+            return (
+              <button
+                key={tab.key}
+                onClick={() => handleFilterChange('status', tab.key)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  isActive
+                    ? 'bg-slate-900 text-[#CBFF38] shadow-md'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60'
+                }`}
+              >
+                <span>{tab.label}</span>
+                {count !== undefined && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                      isActive ? 'bg-[#CBFF38] text-slate-900' : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      );
+  })()}
 
  {/* Filters Drawer-style */}
  {showFilters && (
