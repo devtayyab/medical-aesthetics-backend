@@ -20,7 +20,7 @@ export interface CrmState {
  leads: Lead[];
  selectedLead: Lead | null;
  leadFilters: CrmFilters;
- stats: Record<string, number> | null;
+ stats: { total: number; newInquiries: number; inConversation: number; converted: number; lost?: number } | null;
  customer: Customer | null;
  // Customer Management
  customerRecord: CustomerSummary | null;
