@@ -7,7 +7,7 @@ import {
  MoreHorizontal, Trash2, PhoneCall,
  Activity, CheckCircle, Repeat, RefreshCw, Bell,
  ClipboardCheck, ShieldCheck, MessageSquare, MessageCircle,
- ChevronDown, ArrowLeft, Sparkles, UserPlus
+ ChevronDown, ArrowLeft, Sparkles, UserPlus, DollarSign, CalendarDays, Briefcase
 } from"lucide-react";
 import { Button } from"@/components/atoms/Button/Button";
 import { Card, CardContent, CardHeader, CardTitle } from"@/components/molecules/Card/Card";
@@ -42,7 +42,6 @@ import toast from 'react-hot-toast';
 import { updateAppointmentStatus, completeAppointment } from"@/store/slices/bookingSlice";
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
-import { HubSpotWidget } from '@/components/organisms/HubSpotWidget';
 
 interface OneCustomerDetailProps {
  SelectedCustomer?: Customer | Lead;
@@ -275,6 +274,11 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  const [callSearchTerm, setCallSearchTerm] = useState('');
  const [timelineFilter, setTimelineFilter] = useState('all');
 
+ // HubSpot Data State
+ const [hubspotData, setHubspotData] = useState<any>(null);
+ const [hubspotLoading, setHubspotLoading] = useState(false);
+ const [hubspotError, setHubspotError] = useState<string | null>(null);
+
  const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager';
  const canSeeFinancials = ['admin', 'SUPER_ADMIN', 'doctor', 'ADMIN', 'DOCTOR', 'manager'].includes(user?.role);
 
@@ -316,6 +320,28 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  dispatch(fetchSalespersons());
  dispatch(fetchClinics());
  }, [SelectedCustomer, customerId, dispatch, user]);
+
+ useEffect(() => {
+   if (customer?.email || customer?.phone) {
+     const fetchHubSpotData = async () => {
+       setHubspotLoading(true);
+       setHubspotError(null);
+       try {
+         const res = await api.get('/hubspot/contact-overview', {
+           params: { email: customer.email, phone: customer.phone }
+         });
+         if (res.data?.data) {
+           setHubspotData(res.data.data);
+         }
+       } catch (err: any) {
+         setHubspotError(err.response?.data?.message || 'Failed to fetch HubSpot data');
+       } finally {
+         setHubspotLoading(false);
+       }
+     };
+     fetchHubSpotData();
+   }
+ }, [customer?.email, customer?.phone]);
 
  if (isLoading && !customer) {
  return (
@@ -1241,6 +1267,28 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
     timelineItems.push({ type: 'created', date: new Date(customer.createdAt), data: null });
   }
 
+  // Inject HubSpot Data
+  if (hubspotData) {
+    if (activeTab === 'overview' || activeTab === 'activities') {
+      hubspotData.deals?.forEach((deal: any) => {
+        timelineItems.push({
+          type: 'hubspot_deal',
+          date: new Date(deal.date),
+          data: deal
+        });
+      });
+    }
+    if (activeTab === 'overview' || activeTab === 'notes') {
+      hubspotData.summaryNotes?.forEach((note: any) => {
+        timelineItems.push({
+          type: 'hubspot_note',
+          date: new Date(note.date),
+          data: note
+        });
+      });
+    }
+  }
+
   timelineItems.sort((a, b) => b.date.getTime() - a.date.getTime());
 
   if (timelineItems.length === 0) {
@@ -1322,6 +1370,40 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   </div>
   </div>
   );
+  } else if (item.type === 'hubspot_deal') {
+    icon = <Briefcase className="w-5 h-5 text-[#ff7a59]" />;
+    iconBg = "bg-[#ff7a59]/10 border-[#ff7a59]/20";
+    content = (
+      <div className="bg-white border border-[#ff7a59]/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-8 h-8 bg-[#ff7a59]/10 flex items-center justify-center rounded-bl-xl font-black text-[#ff7a59] text-[10px]">HS</div>
+        <div className="flex justify-between items-center mb-3 pr-6">
+          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Deal: {item.data.name}</span>
+          <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs font-medium text-slate-600 mb-3">
+          <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded"><DollarSign className="w-3.5 h-3.5 text-[#ff7a59]" /> {item.data.amount || '0'}</span>
+          <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> Pipeline: {item.data.pipeline}</span>
+        </div>
+        <Badge className="bg-[#ff7a59]/10 text-[#ff7a59] border-0 text-[10px] font-bold uppercase tracking-wider">{item.data.stage}</Badge>
+      </div>
+    );
+  } else if (item.type === 'hubspot_note') {
+    icon = <FileText className="w-5 h-5 text-[#ff7a59]" />;
+    iconBg = "bg-[#ff7a59]/10 border-[#ff7a59]/20";
+    content = (
+      <div className="bg-white border border-[#ff7a59]/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-8 h-8 bg-[#ff7a59]/10 flex items-center justify-center rounded-bl-xl font-black text-[#ff7a59] text-[10px]">HS</div>
+        <div className="flex justify-between items-center mb-3 pr-6">
+          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Note: {item.data.title}</span>
+          <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+        </div>
+        {item.data.body ? (
+          <div className="text-sm text-slate-700 leading-relaxed bg-[#ff7a59]/5 p-4 rounded-lg border border-[#ff7a59]/10 prose prose-sm max-w-none prose-p:my-1" dangerouslySetInnerHTML={{ __html: item.data.body }} />
+        ) : (
+          <div className="text-sm text-slate-400 italic">No detailed notes.</div>
+        )}
+      </div>
+    );
   } else if (item.type === 'action') {
   icon = <CheckCircle className="w-5 h-5 text-slate-600" />;
   iconBg ="bg-slate-100 border-slate-300";
@@ -1369,7 +1451,6 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <div className="col-span-1 md:col-span-3 space-y-6">
 
  {/* HubSpot Sync Widget */}
- <HubSpotWidget email={customer.email} phone={customer.phone} />
 
  {/* Breeze Summary Card */}
  <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl border border-indigo-100 shadow-sm p-6 relative overflow-hidden group">
