@@ -1360,6 +1360,11 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   });
   })()}
   </div>
+  </div>
+ </div>
+</div>
+ </div>
+
  {/* --- RIGHT COLUMN (~25% width) --- */}
  <div className="col-span-1 md:col-span-3 space-y-6">
 
