@@ -327,12 +327,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  }, [SelectedCustomer, customerId, dispatch, user]);
 
  const fetchHubSpotData = async () => {
-    if (!customer?.email && !customer?.phone) return;
+    const emailToUse = email || customer?.email;
+    const phoneToUse = phone || customer?.phone;
+    if (!emailToUse && !phoneToUse) return;
     setHubspotLoading(true);
     setHubspotError(null);
     try {
       const res = await api.get('/hubspot/contact-overview', {
-        params: { email: customer.email, phone: customer.phone }
+        params: { email: emailToUse, phone: phoneToUse }
       });
       if (res.data?.data) {
         setHubspotData(res.data.data);
@@ -1047,7 +1049,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <div className="flex flex-col leading-none">
  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Contact Created</span>
  <span className="text-[11px] font-bold text-slate-700">
- via {customer.source || 'Manual Entry'} &nbsp;·&nbsp; {new Date(customer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+ via {customer.source || (customerRecord?.record as any)?.source || 'Manual Entry'} &nbsp;·&nbsp; {customer.createdAt || (customerRecord?.record as any)?.createdAt ? new Date(customer.createdAt || (customerRecord?.record as any)?.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
  </span>
  {(customer as any).facebookAdName && (
  <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1 mt-0.5">
