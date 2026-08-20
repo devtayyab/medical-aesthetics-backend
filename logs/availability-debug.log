@@ -6460,3 +6460,143 @@
 [2026-07-11T09:48:10.352Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
 [2026-07-11T09:48:10.355Z] 🔵 Checking availability for 1 providers 
 [2026-07-11T09:48:10.558Z] ✅ Found 17 slots for clinic: muneeb 
+[2026-08-08T10:56:40.494Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-08"}
+[2026-08-08T10:56:40.525Z] 🔵 Using date: "2026-08-08"
+[2026-08-08T10:56:40.559Z] 🔵 Clinic: "muneeb"
+[2026-08-08T10:56:40.568Z] 🔵 Total duration: 60
+[2026-08-08T10:56:40.569Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T10:56:40.579Z] 🔵 Day of week: "saturday"
+[2026-08-08T10:56:40.580Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-08-08T10:56:40.581Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T10:56:40.582Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
+[2026-08-08T10:56:40.631Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T10:56:40.686Z] ✅ Found 3 slots for clinic: muneeb 
+[2026-08-08T10:56:44.947Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-09"}
+[2026-08-08T10:56:44.947Z] 🔵 Using date: "2026-08-09"
+[2026-08-08T10:56:44.974Z] 🔵 Clinic: "muneeb"
+[2026-08-08T10:56:44.981Z] 🔵 Total duration: 60
+[2026-08-08T10:56:44.983Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T10:56:44.984Z] 🔵 Day of week: "sunday"
+[2026-08-08T10:56:44.985Z] 🔵 Business hours for sunday: {"open":"09:00","close":"18:00","isOpen":false}
+[2026-08-08T10:56:44.987Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T10:56:48.718Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-11"}
+[2026-08-08T10:56:48.719Z] 🔵 Using date: "2026-08-11"
+[2026-08-08T10:56:48.731Z] 🔵 Clinic: "muneeb"
+[2026-08-08T10:56:48.769Z] 🔵 Total duration: 60
+[2026-08-08T10:56:48.769Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T10:56:48.781Z] 🔵 Day of week: "tuesday"
+[2026-08-08T10:56:48.782Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-08-08T10:56:48.785Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T10:56:48.840Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-08-08T10:56:48.889Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T10:56:48.939Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-08-08T10:58:22.642Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-11"}
+[2026-08-08T10:58:22.643Z] 🔵 Using date: "2026-08-11"
+[2026-08-08T10:58:22.655Z] 🔵 Clinic: "muneeb"
+[2026-08-08T10:58:22.659Z] 🔵 Total duration: 60
+[2026-08-08T10:58:22.659Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T10:58:22.660Z] 🔵 Day of week: "tuesday"
+[2026-08-08T10:58:22.661Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-08-08T10:58:22.661Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T10:58:22.662Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-08-08T10:58:22.684Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T10:58:22.710Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-08-08T10:58:51.469Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-11"}
+[2026-08-08T10:58:51.470Z] 🔵 Using date: "2026-08-11"
+[2026-08-08T10:58:51.482Z] 🔵 Clinic: "muneeb"
+[2026-08-08T10:58:51.486Z] 🔵 Total duration: 60
+[2026-08-08T10:58:51.486Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T10:58:51.487Z] 🔵 Day of week: "tuesday"
+[2026-08-08T10:58:51.488Z] 🔵 Business hours for tuesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-08-08T10:58:51.488Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T10:58:51.489Z] ✅ Clinic is open on tuesday from 09:00 to 23:00 
+[2026-08-08T10:58:51.510Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T10:58:51.528Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-08-08T10:59:19.944Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-12"}
+[2026-08-08T10:59:19.944Z] 🔵 Using date: "2026-08-12"
+[2026-08-08T10:59:19.964Z] 🔵 Clinic: "muneeb"
+[2026-08-08T10:59:19.973Z] 🔵 Total duration: 60
+[2026-08-08T10:59:19.974Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T10:59:19.975Z] 🔵 Day of week: "wednesday"
+[2026-08-08T10:59:19.975Z] 🔵 Business hours for wednesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-08-08T10:59:19.975Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T10:59:19.976Z] ✅ Clinic is open on wednesday from 09:00 to 23:00 
+[2026-08-08T10:59:20.011Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T10:59:20.045Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-08-08T11:00:00.671Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-13"}
+[2026-08-08T11:00:00.672Z] 🔵 Using date: "2026-08-13"
+[2026-08-08T11:00:00.688Z] 🔵 Clinic: "muneeb"
+[2026-08-08T11:00:00.692Z] 🔵 Total duration: 60
+[2026-08-08T11:00:00.693Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T11:00:00.695Z] 🔵 Day of week: "thursday"
+[2026-08-08T11:00:00.696Z] 🔵 Business hours for thursday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-08-08T11:00:00.697Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T11:00:00.698Z] ✅ Clinic is open on thursday from 09:00 to 23:00 
+[2026-08-08T11:00:00.723Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T11:00:00.754Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-08-08T11:01:22.670Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-13"}
+[2026-08-08T11:01:22.671Z] 🔵 Using date: "2026-08-13"
+[2026-08-08T11:01:22.682Z] 🔵 Clinic: "muneeb"
+[2026-08-08T11:01:22.688Z] 🔵 Total duration: 60
+[2026-08-08T11:01:22.688Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T11:01:22.689Z] 🔵 Day of week: "thursday"
+[2026-08-08T11:01:22.690Z] 🔵 Business hours for thursday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-08-08T11:01:22.690Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T11:01:22.691Z] ✅ Clinic is open on thursday from 09:00 to 23:00 
+[2026-08-08T11:01:22.714Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T11:01:22.744Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-08-08T11:01:31.556Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-12"}
+[2026-08-08T11:01:31.557Z] 🔵 Using date: "2026-08-12"
+[2026-08-08T11:01:31.576Z] 🔵 Clinic: "muneeb"
+[2026-08-08T11:01:31.583Z] 🔵 Total duration: 60
+[2026-08-08T11:01:31.583Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T11:01:31.584Z] 🔵 Day of week: "wednesday"
+[2026-08-08T11:01:31.584Z] 🔵 Business hours for wednesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-08-08T11:01:31.585Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T11:01:31.585Z] ✅ Clinic is open on wednesday from 09:00 to 23:00 
+[2026-08-08T11:01:31.607Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T11:01:31.634Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-08-08T11:01:38.042Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-12"}
+[2026-08-08T11:01:38.043Z] 🔵 Using date: "2026-08-12"
+[2026-08-08T11:01:38.636Z] 🔵 Clinic: "muneeb"
+[2026-08-08T11:01:38.642Z] 🔵 Total duration: 60
+[2026-08-08T11:01:38.642Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T11:01:38.643Z] 🔵 Day of week: "wednesday"
+[2026-08-08T11:01:38.643Z] 🔵 Business hours for wednesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-08-08T11:01:38.644Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T11:01:38.653Z] ✅ Clinic is open on wednesday from 09:00 to 23:00 
+[2026-08-08T11:01:38.801Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T11:01:38.970Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-08-08T11:01:40.388Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["967e0ea6-9422-4579-93e6-23ea3201b1c9"],"providerId":null,"date":"2026-08-13"}
+[2026-08-08T11:01:40.389Z] 🔵 Using date: "2026-08-13"
+[2026-08-08T11:01:40.419Z] 🔵 Clinic: "muneeb"
+[2026-08-08T11:01:40.428Z] 🔵 Total duration: 60
+[2026-08-08T11:01:40.429Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T11:01:40.429Z] 🔵 Day of week: "thursday"
+[2026-08-08T11:01:40.430Z] 🔵 Business hours for thursday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-08-08T11:01:40.431Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T11:01:40.431Z] ✅ Clinic is open on thursday from 09:00 to 23:00 
+[2026-08-08T11:01:40.453Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T11:01:40.490Z] ✅ Found 27 slots for clinic: muneeb 
+[2026-08-08T11:49:05.609Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-08-08"}
+[2026-08-08T11:49:05.643Z] 🔵 Using date: "2026-08-08"
+[2026-08-08T11:49:05.720Z] 🔵 Clinic: "muneeb"
+[2026-08-08T11:49:05.735Z] 🔵 Total duration: 60
+[2026-08-08T11:49:05.736Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T11:49:05.738Z] 🔵 Day of week: "saturday"
+[2026-08-08T11:49:05.740Z] 🔵 Business hours for saturday: {"open":"09:00","close":"18:00","isOpen":true}
+[2026-08-08T11:49:05.740Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T11:49:05.741Z] ✅ Clinic is open on saturday from 09:00 to 18:00 
+[2026-08-08T11:49:05.835Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T11:49:05.867Z] ✅ Found 1 slots for clinic: muneeb 
+[2026-08-08T11:49:08.025Z] 🔵 Availability Request: {"clinicId":"4ca4e344-a7c6-473c-b3be-21b90c1ae067","serviceIds":["24484414-7772-4f7f-8d9c-26d45503d5fc"],"providerId":null,"date":"2026-08-12"}
+[2026-08-08T11:49:08.026Z] 🔵 Using date: "2026-08-12"
+[2026-08-08T11:49:08.038Z] 🔵 Clinic: "muneeb"
+[2026-08-08T11:49:08.048Z] 🔵 Total duration: 60
+[2026-08-08T11:49:08.049Z] 🔵 Using timezone: "Asia/Karachi"
+[2026-08-08T11:49:08.052Z] 🔵 Day of week: "wednesday"
+[2026-08-08T11:49:08.052Z] 🔵 Business hours for wednesday: {"open":"09:00","close":"23:00","isOpen":true}
+[2026-08-08T11:49:08.053Z] 🔵 All business hours: {"monday":{"open":"09:00","close":"23:00","isOpen":true},"tuesday":{"open":"09:00","close":"23:00","isOpen":true},"wednesday":{"open":"09:00","close":"23:00","isOpen":true},"thursday":{"open":"09:00","close":"23:00","isOpen":true},"friday":{"open":"09:00","close":"23:00","isOpen":true},"saturday":{"open":"09:00","close":"18:00","isOpen":true},"sunday":{"open":"09:00","close":"18:00","isOpen":false}}
+[2026-08-08T11:49:08.053Z] ✅ Clinic is open on wednesday from 09:00 to 23:00 
+[2026-08-08T11:49:08.073Z] 🔵 Checking availability for 6 providers 
+[2026-08-08T11:49:08.230Z] ✅ Found 27 slots for clinic: muneeb 

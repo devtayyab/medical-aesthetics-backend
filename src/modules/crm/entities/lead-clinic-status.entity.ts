@@ -9,7 +9,6 @@ import {
 } from 'typeorm';
 import { Lead } from './lead.entity';
 import { Clinic } from '../../clinics/entities/clinic.entity';
-import { LeadStatus } from '../../../common/enums/lead-status.enum';
 
 @Entity('lead_clinic_statuses')
 export class LeadClinicStatus {
@@ -22,12 +21,8 @@ export class LeadClinicStatus {
     @Column()
     clinicId: string;
 
-    @Column({
-        type: 'enum',
-        enum: LeadStatus,
-        default: LeadStatus.NEW,
-    })
-    status: LeadStatus;
+    @Column({ type: 'varchar', default: 'NEW' })
+    status: string;
 
     @CreateDateColumn()
     createdAt: Date;

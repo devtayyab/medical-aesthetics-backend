@@ -184,25 +184,23 @@ export class CrmService implements OnModuleInit {
       (createLeadDto as any).assignedSalesId = undefined;
     }
 
-    // Use enhanced duplicate detection (bypass for CSV import)
-    if (createLeadDto.source !== 'csv_import') {
-      const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
-        createLeadDto.email,
-        createLeadDto.phone,
-        createLeadDto.firstName,
-        createLeadDto.lastName,
-      );
+    // Use enhanced duplicate detection
+    const duplicateCheck = await this.duplicateDetectionService.checkForDuplicates(
+      createLeadDto.email,
+      createLeadDto.phone,
+      createLeadDto.firstName,
+      createLeadDto.lastName,
+    );
 
-      if (duplicateCheck.isDuplicate) {
-        if (duplicateCheck.existingCustomer) {
-          // Update existing customer record instead of creating duplicate lead
-          return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
-        }
+    if (duplicateCheck.isDuplicate) {
+      if (duplicateCheck.existingCustomer) {
+        // Update existing customer record instead of creating duplicate lead
+        return this.updateExistingCustomerWithNewLead(duplicateCheck.existingCustomer, createLeadDto);
+      }
 
-        if (duplicateCheck.existingLead) {
-          // Update existing lead instead of creating duplicate
-          return this.updateExistingLead(duplicateCheck.existingLead, createLeadDto);
-        }
+      if (duplicateCheck.existingLead) {
+        // Update existing lead instead of creating duplicate
+        return this.updateExistingLead(duplicateCheck.existingLead, createLeadDto);
       }
     }
 

@@ -26,6 +26,7 @@ import { EventsModule } from './modules/events/events.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.module';
+import { HubspotModule } from './modules/hubspot/hubspot.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -69,6 +70,7 @@ import { join } from 'path';
     MessagesModule,
     UploadModule,
     GoogleCalendarModule,
+    HubspotModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public', 'uploads'),
       serveRoot: '/api/uploads',

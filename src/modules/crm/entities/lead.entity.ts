@@ -11,7 +11,7 @@ import {
   JoinColumn,
   JoinTable,
 } from 'typeorm';
-import { LeadStatus } from '../../../common/enums/lead-status.enum';
+
 import { User } from '../../users/entities/user.entity';
 import { Tag } from '../../admin/entities/tag.entity';
 import { Task } from '../../tasks/entities/task.entity';
@@ -57,13 +57,8 @@ export class Lead {
   @Column({ nullable: true })
   phone: string;
 
-  @Column({
-    type: 'enum',
-    enum: LeadStatus,
-    default: LeadStatus.NEW,
-    nullable: false,
-  })
-  status: LeadStatus;
+  @Column({ type: 'varchar', default: 'NEW' })
+  status: string;
 
   @Column('text', { nullable: true })
   notes: string;

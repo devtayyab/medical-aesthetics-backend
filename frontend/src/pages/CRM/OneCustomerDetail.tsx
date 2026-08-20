@@ -7,7 +7,7 @@ import {
  MoreHorizontal, Trash2, PhoneCall,
  Activity, CheckCircle, Repeat, RefreshCw, Bell,
  ClipboardCheck, ShieldCheck, MessageSquare, MessageCircle,
- ChevronDown, ArrowLeft, Sparkles, UserPlus
+ ChevronDown, ArrowLeft, Sparkles, UserPlus, DollarSign, CalendarDays, Briefcase
 } from"lucide-react";
 import { Button } from"@/components/atoms/Button/Button";
 import { Card, CardContent, CardHeader, CardTitle } from"@/components/molecules/Card/Card";
@@ -42,6 +42,7 @@ import toast from 'react-hot-toast';
 import { updateAppointmentStatus, completeAppointment } from"@/store/slices/bookingSlice";
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
 import { StaffDiary } from '@/components/organisms/StaffDiary/StaffDiary';
+import api from '@/services/api';
 
 interface OneCustomerDetailProps {
  SelectedCustomer?: Customer | Lead;
@@ -205,14 +206,18 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  // The ID to use for CRM updates (Must be the Lead/User ID, not the Record ID)
  const effectiveId = SelectedCustomer?.id || (customerRecord?.record?.customerId) || (customerRecord?.record?.id) || customerId;
 
- const firstName = customer?.firstName || (customerRecord?.record?.customer as any)?.firstName || (customerRecord?.record as any)?.firstName ||"";
- const lastName = customer?.lastName || (customerRecord?.record?.customer as any)?.lastName || (customerRecord?.record as any)?.lastName ||"";
+ const firstName = customer?.firstName || (customerRecord?.record?.customer as any)?.firstName || (customerRecord?.record as any)?.firstName || "";
+ const lastName = customer?.lastName || (customerRecord?.record?.customer as any)?.lastName || (customerRecord?.record as any)?.lastName || "";
  const fullName = `${firstName} ${lastName}`.trim();
- const email = customer?.email || (customerRecord?.record?.customer as any)?.email || (customerRecord?.record as any)?.email ||"";
- const phone = customer?.phone || (customerRecord?.record?.customer as any)?.phone || (customerRecord?.record as any)?.phone ||"";
+ const email = customer?.email || (customerRecord?.record?.customer as any)?.email || (customerRecord?.record as any)?.email || "";
+ const phone = customer?.phone || (customerRecord?.record?.customer as any)?.phone || (customerRecord?.record as any)?.phone || "";
 
- // Status can be in Lead record, or on the Customer profile if synced
- const displayStatus = customer?.status || (customerRecord as any)?.record?.status || 'new';
+ // Status can be in Lead record, on the Customer profile, or in customerStatus (synthetic lead record)
+ // customerStatus is what the backend maps from lead.status in the synthetic lead record response
+ const derivedStatus = customer?.status ||
+ (customerRecord?.record as any)?.customerStatus ||
+ (customerRecord as any)?.summary?.status ||
+ 'new';
 
  // State for Workflow
  const [workflowStep, setWorkflowStep] = useState<1 | 2 | 3 | 4>(1);
@@ -274,6 +279,11 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  const [callSearchTerm, setCallSearchTerm] = useState('');
  const [timelineFilter, setTimelineFilter] = useState('all');
 
+ // HubSpot Data State
+ const [hubspotData, setHubspotData] = useState<any>(null);
+ const [hubspotLoading, setHubspotLoading] = useState(false);
+ const [hubspotError, setHubspotError] = useState<string | null>(null);
+
  const isAdmin = user?.role === 'admin' || user?.role === 'SUPER_ADMIN' || user?.role === 'manager';
  const canSeeFinancials = ['admin', 'SUPER_ADMIN', 'doctor', 'ADMIN', 'DOCTOR', 'manager'].includes(user?.role);
 
@@ -315,6 +325,36 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  dispatch(fetchSalespersons());
  dispatch(fetchClinics());
  }, [SelectedCustomer, customerId, dispatch, user]);
+
+ const fetchHubSpotData = async () => {
+    const emailToUse = email || customer?.email;
+    const phoneToUse = phone || customer?.phone;
+    if (!emailToUse && !phoneToUse) return;
+    setHubspotLoading(true);
+    setHubspotError(null);
+    try {
+      const res = await api.get('/hubspot/contact-overview', {
+        params: { email: emailToUse, phone: phoneToUse }
+      });
+      if (res.data?.data) {
+        setHubspotData(res.data.data);
+      } else {
+        setHubspotData(null);
+        setHubspotError('No HubSpot data found for this contact');
+      }
+    } catch (err: any) {
+      setHubspotError(err.response?.data?.message || 'Failed to fetch HubSpot data');
+    } finally {
+      setHubspotLoading(false);
+    }
+  };
+
+  // Re-fetch HubSpot data whenever the effective customer changes (including after page refresh)
+  useEffect(() => {
+    if (email || phone) {
+      fetchHubSpotData();
+    }
+  }, [email, phone, effectiveId]);
 
  if (isLoading && !customer) {
  return (
@@ -1012,7 +1052,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <div className="flex flex-col leading-none">
  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Contact Created</span>
  <span className="text-[11px] font-bold text-slate-700">
- via {customer.source || 'Manual Entry'} &nbsp;·&nbsp; {new Date(customer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+ via {customer.source || (customerRecord?.record as any)?.source || 'Manual Entry'} &nbsp;·&nbsp; {customer.createdAt || (customerRecord?.record as any)?.createdAt ? new Date(customer.createdAt || (customerRecord?.record as any)?.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
  </span>
  {(customer as any).facebookAdName && (
  <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1 mt-0.5">
@@ -1023,7 +1063,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  </div>
  <Badge className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${isConverted ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
- {customer.status}
+ {derivedStatus}
  </Badge>
  </div>
  </div>
@@ -1151,7 +1191,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  </div>
  <div>
  <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Lead Status</span>
- <Badge className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border shadow-sm ${isConverted ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{customer.status}</Badge>
+ <Badge className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border shadow-sm ${isConverted ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{derivedStatus}</Badge>
  </div>
  <div className="group relative">
  <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Source</span>
@@ -1178,13 +1218,23 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  {/* Tabs / Feed Container */}
  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
  <div className="flex overflow-x-auto border-b border-slate-200 px-2 bg-slate-50/50">
- {['overview', 'activities', 'notes'].map(tab => (
+ {(['overview', 'activities', 'notes', 'appointments'] as const).map(tab => (
  <button
  key={tab}
  onClick={() => setActiveTab(tab)}
- className={`px-6 py-4 text-xs font-black uppercase tracking-widest transition-colors relative ${activeTab === tab ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+ className={`px-5 py-4 text-xs font-black uppercase tracking-widest transition-colors relative whitespace-nowrap ${activeTab === tab ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
  >
- {tab}
+ {tab === 'appointments' ? (
+ <span className="flex items-center gap-1.5">
+ <CalendarDays className="w-3.5 h-3.5" />
+ Appointments
+ {hubspotData?.deals?.length > 0 && (
+ <span className="bg-[#ff7a59] text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">
+ {hubspotData.deals.length}
+ </span>
+ )}
+ </span>
+ ) : tab}
  {activeTab === tab && <div className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-blue-600" />}
  </button>
  ))}
@@ -1195,8 +1245,22 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <div className="space-y-6">
   <div className="flex justify-between items-center mb-8">
   <h3 className="font-black text-slate-800 text-base flex items-center gap-2">
-  <Activity className="w-5 h-5 text-blue-600" /> {activeTab === 'overview' ? 'Activity Feed' : activeTab === 'activities' ? 'Activities' : 'Notes'}
+   <Activity className="w-5 h-5 text-blue-600" />
+   {activeTab === 'overview' ? 'Activity Feed' : activeTab === 'activities' ? 'Activities' : activeTab === 'notes' ? 'Notes' : 'HubSpot Appointments'}
   </h3>
+  <div className="flex items-center gap-3">
+    {hubspotError && <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded">{hubspotError}</span>}
+    <Button 
+      size="sm" 
+      variant="outline" 
+      onClick={fetchHubSpotData}
+      disabled={hubspotLoading || (!email && !phone && !customer?.email && !customer?.phone)}
+      className="h-8 text-[11px] font-bold text-[#ff7a59] border-[#ff7a59]/30 hover:bg-[#ff7a59]/10 shadow-sm"
+    >
+      <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${hubspotLoading ? 'animate-spin' : ''}`} />
+      {hubspotLoading ? 'Syncing...' : 'Sync HubSpot'}
+    </Button>
+  </div>
   </div>
   
   {/* Unified Timeline */}
@@ -1234,10 +1298,62 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
       summary.appointments.forEach(a => timelineItems.push({ type: 'appointment', date: new Date(a.startTime || Date.now()), data: a }));
     }
   }
+
+  // Appointments tab: show local CRM appointments even if HubSpot isn't loaded yet
+  if (activeTab === 'appointments' && !hubspotData && summary?.appointments) {
+    summary.appointments.forEach(a => timelineItems.push({ type: 'appointment', date: new Date(a.startTime || Date.now()), data: a }));
+  }
+
+  // Inject raw "Form Comments / Notes" field as a timeline card in Notes tab
+  const rawNotes = customer?.notes || (customerRecord?.record as any)?.notes;
+  if (rawNotes && (activeTab === 'overview' || activeTab === 'notes')) {
+    timelineItems.push({
+      type: 'form_note',
+      date: new Date(customer?.createdAt || (customerRecord?.record as any)?.createdAt || Date.now()),
+      data: { content: rawNotes }
+    });
+  }
   
   if (activeTab === 'overview') {
     // Create a lead created event
     timelineItems.push({ type: 'created', date: new Date(customer.createdAt), data: null });
+  }
+
+  // Inject HubSpot Data
+  if (hubspotData) {
+    if (activeTab === 'overview' || activeTab === 'activities') {
+      const bookedDeals = hubspotData.deals?.filter((d: any) => !d.stage?.toLowerCase().includes('lost'));
+      bookedDeals?.forEach((deal: any) => {
+        timelineItems.push({
+          type: 'hubspot_deal',
+          date: new Date(deal.date),
+          data: deal
+        });
+      });
+    }
+    // Dedicated Appointments tab: show ALL HubSpot deals + local appointments
+    if (activeTab === 'appointments') {
+      hubspotData.deals?.forEach((deal: any) => {
+        timelineItems.push({
+          type: 'hubspot_deal',
+          date: new Date(deal.date),
+          data: deal
+        });
+      });
+      // Also add local CRM appointments in this tab
+      if (summary?.appointments) {
+        summary.appointments.forEach(a => timelineItems.push({ type: 'appointment', date: new Date(a.startTime || Date.now()), data: a }));
+      }
+    }
+    if (activeTab === 'overview' || activeTab === 'notes') {
+      hubspotData.summaryNotes?.forEach((note: any) => {
+        timelineItems.push({
+          type: 'hubspot_note',
+          date: new Date(note.date),
+          data: note
+        });
+      });
+    }
   }
 
   timelineItems.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -1275,6 +1391,23 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   </div>
   <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-lg border border-slate-100">{item.data.content || item.data.text || item.data.note || item.data.notes}</p>
   </div>
+  );
+  } else if (item.type === 'form_note') {
+  icon = <FileText className="w-5 h-5 text-emerald-600" />;
+  iconBg = "bg-emerald-50 border-emerald-200";
+  content = (
+    <div className="bg-white border border-emerald-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all">
+      <div className="flex justify-between items-center mb-3">
+        <span className="font-bold text-slate-900 text-sm flex items-center gap-2">
+          <span className="bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded">Form</span>
+          Form Comments / Notes
+        </span>
+        <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+      </div>
+      <div className="text-sm text-slate-700 leading-relaxed bg-emerald-50 p-4 rounded-lg border border-emerald-100 whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">
+        {item.data.content}
+      </div>
+    </div>
   );
   } else if (item.type === 'comm') {
   const isCall = item.data.type === 'call';
@@ -1321,6 +1454,40 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   </div>
   </div>
   );
+  } else if (item.type === 'hubspot_deal') {
+    icon = <CalendarDays className="w-5 h-5 text-[#ff7a59]" />;
+    iconBg = "bg-[#ff7a59]/10 border-[#ff7a59]/20";
+    content = (
+      <div className="bg-white border border-[#ff7a59]/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-8 h-8 bg-[#ff7a59]/10 flex items-center justify-center rounded-bl-xl font-black text-[#ff7a59] text-[10px]">HS</div>
+        <div className="flex justify-between items-center mb-3 pr-6">
+          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Appointment: {item.data.name}</span>
+          <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs font-medium text-slate-600 mb-3">
+          <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded"><DollarSign className="w-3.5 h-3.5 text-[#ff7a59]" /> {item.data.amount || '0'}</span>
+          <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> Pipeline: {item.data.pipeline}</span>
+        </div>
+        <Badge className="bg-[#ff7a59]/10 text-[#ff7a59] border-0 text-[10px] font-bold uppercase tracking-wider">{item.data.stage}</Badge>
+      </div>
+    );
+  } else if (item.type === 'hubspot_note') {
+    icon = <FileText className="w-5 h-5 text-[#ff7a59]" />;
+    iconBg = "bg-[#ff7a59]/10 border-[#ff7a59]/20";
+    content = (
+      <div className="bg-white border border-[#ff7a59]/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-8 h-8 bg-[#ff7a59]/10 flex items-center justify-center rounded-bl-xl font-black text-[#ff7a59] text-[10px]">HS</div>
+        <div className="flex justify-between items-center mb-3 pr-6">
+          <span className="font-bold text-slate-900 text-sm flex items-center gap-2">HubSpot Activity: {item.data.title}</span>
+          <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
+        </div>
+        {item.data.body ? (
+          <div className="text-sm text-slate-700 leading-relaxed bg-[#ff7a59]/5 p-4 rounded-lg border border-[#ff7a59]/10 prose prose-sm max-w-none prose-p:my-1" dangerouslySetInnerHTML={{ __html: item.data.body }} />
+        ) : (
+          <div className="text-sm text-slate-400 italic">No detailed notes.</div>
+        )}
+      </div>
+    );
   } else if (item.type === 'action') {
   icon = <CheckCircle className="w-5 h-5 text-slate-600" />;
   iconBg ="bg-slate-100 border-slate-300";
@@ -1361,11 +1528,14 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   </div>
   </div>
  </div>
- </div>
+</div>
  </div>
 
  {/* --- RIGHT COLUMN (~25% width) --- */}
  <div className="col-span-1 md:col-span-3 space-y-6">
+
+ {/* HubSpot Sync Widget */}
+
  {/* Breeze Summary Card */}
  <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl border border-indigo-100 shadow-sm p-6 relative overflow-hidden group">
  <div className="absolute top-0 right-0 w-32 h-32 bg-white/40 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
@@ -1374,7 +1544,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <h3 className="font-black text-indigo-900 text-sm tracking-tight">Breeze Record Summary</h3>
  </div>
  <p className="text-xs text-indigo-900/80 font-medium leading-relaxed relative z-10">
- {customer.status === 'converted' 
+ {derivedStatus === 'converted'
  ? 'This contact has successfully converted and engaged with appointments. Strong potential for repeat visits. Keep following up for post-treatment care.'
  : 'This is an active prospect. Review the timeline and schedule a call or meeting to drive conversion. No appointments booked yet.'}
  </p>
