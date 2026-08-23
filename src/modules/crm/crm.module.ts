@@ -8,6 +8,7 @@ import { DuplicateDetectionService } from './duplicate-detection.service';
 import { CustomerAffiliationService } from './customer-affiliation.service';
 import { MandatoryFieldValidationService } from './mandatory-field-validation.service';
 import { TaskAutomationService } from './task-automation.service';
+import { HubspotModule } from '../hubspot/hubspot.module';
 import { Lead } from './entities/lead.entity';
 import { CommunicationLog } from './entities/communication-log.entity';
 import { CustomerTag } from './entities/customer-tag.entity';
@@ -56,6 +57,7 @@ import { CrmListener } from './crm.listener';
     NotificationsModule,
     UsersModule,
     QueueModule,
+    HubspotModule,
   ],
   controllers: [CrmController, AdAttributionController],
   providers: [

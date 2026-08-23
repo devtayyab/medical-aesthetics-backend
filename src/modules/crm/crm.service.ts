@@ -36,6 +36,7 @@ import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 import { Service } from '../clinics/entities/service.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { BookingsService } from '../bookings/bookings.service';
+import { HubspotService } from '../hubspot/hubspot.service';
 
 @Injectable()
 export class CrmService implements OnModuleInit {
@@ -80,6 +81,7 @@ export class CrmService implements OnModuleInit {
     private bookingsService: BookingsService,
     private configService: ConfigService,
     private dataSource: DataSource,
+    private hubspotService: HubspotService,
   ) { }
 
   async onModuleInit() {
@@ -112,6 +114,20 @@ export class CrmService implements OnModuleInit {
         await queryRunner.query('ALTER TABLE "clinics" ADD COLUMN "treatmentRooms" integer DEFAULT 1');
         this.logger.log('Successfully added treatmentRooms column to clinics table.');
       }
+
+      // ─── Backfill: CSV-imported leads have NULL lastMetaFormSubmittedAt ───
+      // For any lead where this date is missing, set it to createdAt so the
+      // sort order (newest first) works correctly for all leads.
+      const backfillResult = await queryRunner.query(`
+        UPDATE leads
+        SET "lastMetaFormSubmittedAt" = "createdAt"
+        WHERE "lastMetaFormSubmittedAt" IS NULL
+      `);
+      const backfilledCount = backfillResult[1] ?? 0;
+      if (backfilledCount > 0) {
+        this.logger.log(`[Backfill] Set lastMetaFormSubmittedAt = createdAt for ${backfilledCount} leads that had NULL dates.`);
+      }
+      // ─────────────────────────────────────────────────────────────────────
 
       await queryRunner.release();
     } catch (err) {
@@ -988,9 +1004,9 @@ export class CrmService implements OnModuleInit {
       // For clinic owners, leave as-is for now (leads may not be linked to clinics). Future: relate leads to clinic and filter.
     }
 
-    // Default Sorting
-    qb.orderBy('lead.lastMetaFormSubmittedAt', 'DESC', 'NULLS LAST');
-    qb.addOrderBy('lead.createdAt', 'DESC');
+    // Default Sorting — use COALESCE so leads imported from CSV (NULL lastMetaFormSubmittedAt)
+    // still sort correctly by their createdAt date instead of falling to the bottom.
+    qb.orderBy('COALESCE(lead."lastMetaFormSubmittedAt", lead."createdAt")', 'DESC');
 
     // High performance limit & pagination (default limit 50 per page if not specified for instant loading)
     const limit = filters.limit
@@ -1161,6 +1177,15 @@ export class CrmService implements OnModuleInit {
         const record = await this.customerRecordsRepository.findOne({ where: { customerId: linkedCustomerId } });
         if (record) idMatchList.push(record.id);
       }
+
+      // Fire-and-forget: sync HubSpot activities to local DB (non-blocking)
+      // Next time this lead is opened, the synced activities will already be in DB
+      this.hubspotService.syncActivitiesToLocal(
+        lead.email,
+        lead.phone,
+        lead.id,
+        salespersonId,
+      ).catch(e => this.logger.warn(`[HubSpot BG Sync] ${e.message}`));
 
       const leadAppointments = await this.appointmentsRepository.createQueryBuilder('apt')
         .leftJoinAndSelect('apt.service', 'service')
