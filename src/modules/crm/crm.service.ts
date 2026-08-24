@@ -1009,7 +1009,8 @@ export class CrmService implements OnModuleInit {
 
     // Default Sorting — use COALESCE so leads imported from CSV (NULL lastMetaFormSubmittedAt)
     // still sort correctly by their createdAt date instead of falling to the bottom.
-    qb.orderBy('COALESCE(lead."lastMetaFormSubmittedAt", lead."createdAt")', 'DESC');
+    qb.addSelect('COALESCE(lead."lastMetaFormSubmittedAt", lead."createdAt")', 'sortDate')
+      .orderBy('"sortDate"', 'DESC');
 
     // High performance limit & pagination (default limit 50 per page if not specified for instant loading)
     const limit = filters.limit
