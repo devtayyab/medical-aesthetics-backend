@@ -969,8 +969,14 @@ export class CrmService implements OnModuleInit {
         qb.andWhere('lead.status IN (:...status)', { status: filters.status });
       } else if (filters.status === 'in_conversation') {
         qb.andWhere("lead.status IN ('contacted', 'follow_up')");
-      } else {
+      } else if (filters.status !== 'all') {
         qb.andWhere('lead.status = :status', { status: filters.status });
+      }
+    } else {
+      // If no status is specified (e.g. "All Leads" tab), hide converted/lost leads by default
+      // unless the user is performing a specific text search
+      if (!filters.search) {
+        qb.andWhere("lead.status NOT IN ('converted', 'lost')");
       }
     }
 
