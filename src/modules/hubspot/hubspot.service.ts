@@ -1,12 +1,19 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import axios from 'axios';
+import { CommunicationLog } from '../crm/entities/communication-log.entity';
 
 @Injectable()
 export class HubspotService {
   private readonly logger = new Logger(HubspotService.name);
-  // Default to the provided token for now; can be moved to ConfigService later
   private readonly HUBSPOT_TOKEN = process.env.HUBSPOT_API_TOKEN;
   private readonly BASE_URL = 'https://api.hubapi.com/crm';
+
+  constructor(
+    @InjectRepository(CommunicationLog)
+    private communicationLogsRepository: Repository<CommunicationLog>,
+  ) {}
 
   async getContactOverview(email?: string, phone?: string) {
     if (!email && !phone) {
@@ -21,7 +28,6 @@ export class HubspotService {
 
       const contactId = contact.id;
 
-      // Fetch Associations concurrently
       const [dealsAssoc, meetingsAssoc, notesAssoc, emailsAssoc, callsAssoc] = await Promise.all([
         this.getAssociations(contactId, 'contacts', 'deals'),
         this.getAssociations(contactId, 'contacts', 'meetings'),
@@ -36,27 +42,18 @@ export class HubspotService {
       const emailIds = emailsAssoc.map(a => a.toObjectId);
       const callIds = callsAssoc.map(a => a.toObjectId);
 
-      // Fetch Deals details
       const deals = await this.getBatchObjects('deals', dealIds, [
         'amount', 'dealname', 'dealstage', 'closedate', 'createdate', 'pipeline'
       ]);
-
-      // Fetch Meetings details
       const meetings = await this.getBatchObjects('meetings', meetingIds, [
         'hs_meeting_body', 'hs_meeting_title', 'hs_createdate'
       ]);
-
-      // Fetch Notes details
       const notes = await this.getBatchObjects('notes', noteIds, [
         'hs_note_body', 'hs_createdate'
       ]);
-
-      // Fetch Emails details
       const emails = await this.getBatchObjects('emails', emailIds, [
         'hs_email_subject', 'hs_email_text', 'hs_createdate'
       ]);
-
-      // Fetch Calls details
       const calls = await this.getBatchObjects('calls', callIds, [
         'hs_call_title', 'hs_call_body', 'hs_createdate'
       ]);
@@ -110,13 +107,128 @@ export class HubspotService {
     }
   }
 
+  /**
+   * Syncs HubSpot activities (notes, calls, meetings, emails) for a contact
+   * into our local communication_logs table.
+   *
+   * Safe to call multiple times — uses metadata.hubspotId to skip
+   * already-saved entries (no duplicates).
+   */
+  async syncActivitiesToLocal(
+    email: string | undefined,
+    phone: string | undefined,
+    relatedLeadId: string,
+    salespersonId: string = '00000000-0000-0000-0000-000000000000',
+  ): Promise<void> {
+    if (!this.HUBSPOT_TOKEN) {
+      this.logger.warn('[HubSpot Sync] HUBSPOT_API_TOKEN is not set. Skipping sync.');
+      return;
+    }
+    if (!email && !phone) return;
+
+    try {
+      const contact = await this.searchContact(email, phone);
+      if (!contact) {
+        this.logger.debug(`[HubSpot Sync] No HubSpot contact found for lead ${relatedLeadId}`);
+        return;
+      }
+
+      const contactId = contact.id;
+
+      const [meetingsAssoc, notesAssoc, emailsAssoc, callsAssoc] = await Promise.all([
+        this.getAssociations(contactId, 'contacts', 'meetings'),
+        this.getAssociations(contactId, 'contacts', 'notes'),
+        this.getAssociations(contactId, 'contacts', 'emails'),
+        this.getAssociations(contactId, 'contacts', 'calls'),
+      ]);
+
+      const [meetings, notes, emails, calls] = await Promise.all([
+        this.getBatchObjects('meetings', meetingsAssoc.map(a => a.toObjectId), ['hs_meeting_body', 'hs_meeting_title', 'hs_createdate']),
+        this.getBatchObjects('notes', notesAssoc.map(a => a.toObjectId), ['hs_note_body', 'hs_createdate']),
+        this.getBatchObjects('emails', emailsAssoc.map(a => a.toObjectId), ['hs_email_subject', 'hs_email_text', 'hs_createdate']),
+        this.getBatchObjects('calls', callsAssoc.map(a => a.toObjectId), ['hs_call_title', 'hs_call_body', 'hs_createdate']),
+      ]);
+
+      const activities: Array<{
+        hubspotId: string;
+        type: string;
+        subject: string;
+        notes: string;
+        createdAt: Date;
+      }> = [
+        ...meetings.map(m => ({
+          hubspotId: `hs_meeting_${m.id}`,
+          type: 'meeting',
+          subject: m.properties.hs_meeting_title || 'Meeting (HubSpot)',
+          notes: m.properties.hs_meeting_body || '',
+          createdAt: new Date(m.properties.hs_createdate || Date.now()),
+        })),
+        ...notes.map(n => ({
+          hubspotId: `hs_note_${n.id}`,
+          type: 'note',
+          subject: 'Note (HubSpot)',
+          notes: n.properties.hs_note_body || '',
+          createdAt: new Date(n.properties.hs_createdate || Date.now()),
+        })),
+        ...emails.map(e => ({
+          hubspotId: `hs_email_${e.id}`,
+          type: 'email',
+          subject: e.properties.hs_email_subject || 'Email (HubSpot)',
+          notes: e.properties.hs_email_text || '',
+          createdAt: new Date(e.properties.hs_createdate || Date.now()),
+        })),
+        ...calls.map(c => ({
+          hubspotId: `hs_call_${c.id}`,
+          type: 'call',
+          subject: c.properties.hs_call_title || 'Call (HubSpot)',
+          notes: c.properties.hs_call_body || '',
+          createdAt: new Date(c.properties.hs_createdate || Date.now()),
+        })),
+      ];
+
+      let savedCount = 0;
+      for (const activity of activities) {
+        // Skip if already saved (idempotency via hubspotId in metadata)
+        const existing = await this.communicationLogsRepository
+          .createQueryBuilder('log')
+          .where('log."relatedLeadId" = :relatedLeadId', { relatedLeadId })
+          .andWhere("log.metadata->>'hubspotId' = :hubspotId", { hubspotId: activity.hubspotId })
+          .getOne();
+
+        if (existing) continue;
+
+        const log = this.communicationLogsRepository.create({
+          relatedLeadId,
+          salespersonId,
+          type: activity.type as any,
+          direction: 'incoming',
+          status: 'completed',
+          subject: activity.subject,
+          notes: activity.notes,
+          metadata: { hubspotId: activity.hubspotId, source: 'hubspot_sync' },
+        } as any);
+
+        // Override createdAt after create (TypeORM ignores it during create())
+        (log as any).createdAt = activity.createdAt;
+        await this.communicationLogsRepository.save(log);
+        savedCount++;
+      }
+
+      if (savedCount > 0) {
+        this.logger.log(`[HubSpot Sync] Saved ${savedCount} new HubSpot activities for lead ${relatedLeadId}`);
+      }
+    } catch (error) {
+      // Non-fatal — never break the lead detail page due to HubSpot issues
+      this.logger.warn(`[HubSpot Sync] Failed for lead ${relatedLeadId}: ${error.message}`);
+    }
+  }
+
   private async searchContact(email?: string, phone?: string) {
     const filterGroups = [];
     if (email) {
       filterGroups.push({ filters: [{ propertyName: 'email', operator: 'EQ', value: email }] });
     }
     if (phone) {
-      // Hubspot phone search might need exact formatting.
       filterGroups.push({ filters: [{ propertyName: 'phone', operator: 'EQ', value: phone }] });
     }
 
