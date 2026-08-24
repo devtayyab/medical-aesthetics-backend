@@ -1277,7 +1277,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
       if (activeTab === 'overview') {
         timelineItems.push({ type: itemType, date: new Date(c.createdAt || (c as any).timestamp || Date.now()), data: c });
       } else if (activeTab === 'activities') {
-        if (c.type !== 'note') {
+        const isTask = c.subject && c.subject.toLowerCase().includes('task');
+        if (c.type !== 'note' || isTask) {
           timelineItems.push({ type: itemType, date: new Date(c.createdAt || (c as any).timestamp || Date.now()), data: c });
         }
       } else if (activeTab === 'notes') {
@@ -1381,12 +1382,17 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   </div>
   );
   } else if (item.type === 'note') {
-  icon = <FileText className="w-5 h-5 text-purple-600" />;
-  iconBg ="bg-purple-50 border-purple-200";
+  const isTask = item.data?.subject?.toLowerCase().includes('task');
+  icon = isTask ? <ClipboardCheck className="w-5 h-5 text-amber-600" /> : <FileText className="w-5 h-5 text-purple-600" />;
+  iconBg = isTask ? "bg-amber-50 border-amber-200" : "bg-purple-50 border-purple-200";
   content = (
   <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group">
   <div className="flex justify-between items-center mb-3">
-  <span className="font-bold text-slate-900 text-sm flex items-center gap-2">Note</span>
+  <span className="font-bold text-slate-900 text-sm flex items-center gap-2">
+    {isTask ? (
+       <><span className="bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded">HubSpot</span> Task</>
+    ) : 'Note'}
+  </span>
   <span className="text-[11px] font-bold text-slate-400">{item.date.toLocaleString()}</span>
   </div>
   <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-lg border border-slate-100">{item.data.content || item.data.text || item.data.note || item.data.notes}</p>
