@@ -956,17 +956,27 @@ export class CrmService implements OnModuleInit {
   }
 
   async findAll(filters: any = {}): Promise<Lead[]> {
+    // NOTE: we do NOT leftJoinAndSelect tags here because TypeORM generates
+    // SELECT DISTINCT for pagination whenever there is a LEFT JOIN to a *Many
+    // relation (lead_tags). PostgreSQL then requires ORDER BY columns to also
+    // appear in the DISTINCT select list, which prevents using computed/aliased
+    // expressions.  We load tags separately below.
     const qb = this.leadsRepository.createQueryBuilder('lead')
-      .leftJoinAndSelect('lead.assignedSales', 'sales')
-      .leftJoinAndSelect('lead.tags', 'tags');
+      .leftJoinAndSelect('lead.assignedSales', 'sales');
 
     if (filters.status) {
       if (Array.isArray(filters.status)) {
         qb.andWhere('lead.status IN (:...status)', { status: filters.status });
       } else if (filters.status === 'in_conversation') {
         qb.andWhere("lead.status IN ('contacted', 'follow_up')");
-      } else {
+      } else if (filters.status !== 'all') {
         qb.andWhere('lead.status = :status', { status: filters.status });
+      }
+    } else {
+      // If no status is specified (e.g. "All Leads" tab), hide converted/lost leads by default
+      // unless the user is performing a specific text search
+      if (!filters.search) {
+        qb.andWhere("lead.status NOT IN ('converted', 'lost')");
       }
     }
 
@@ -1007,10 +1017,13 @@ export class CrmService implements OnModuleInit {
       // For clinic owners, leave as-is for now (leads may not be linked to clinics). Future: relate leads to clinic and filter.
     }
 
-    // Default Sorting — use COALESCE so leads imported from CSV (NULL lastMetaFormSubmittedAt)
-    // still sort correctly by their createdAt date instead of falling to the bottom.
-    qb.addSelect('COALESCE(lead."lastMetaFormSubmittedAt", lead."createdAt")', 'sortDate')
-      .orderBy('"sortDate"', 'DESC');
+    // Default Sorting — NULLS LAST ensures CSV-imported leads (NULL lastMetaFormSubmittedAt)
+    // sort by createdAt instead of floating to the top/bottom unpredictably.
+    // We cannot use COALESCE here because TypeORM wraps getMany() in a SELECT DISTINCT
+    // subquery for pagination, and PostgreSQL requires ORDER BY expressions to appear
+    // in the DISTINCT select list.
+    qb.orderBy('lead.lastMetaFormSubmittedAt', 'DESC', 'NULLS LAST')
+      .addOrderBy('lead.createdAt', 'DESC');
 
     // High performance limit & pagination (default limit 50 per page if not specified for instant loading)
     const limit = filters.limit
@@ -1025,7 +1038,40 @@ export class CrmService implements OnModuleInit {
     qb.take(limit);
     qb.skip((page - 1) * limit);
 
-    return qb.getMany();
+    const leads = await qb.getMany();
+
+    // Load tags separately to avoid SELECT DISTINCT pagination issues
+    if (leads.length > 0) {
+      const leadIds = leads.map((l) => l.id);
+      const tagsRows = await this.leadsRepository
+        .createQueryBuilder('lead')
+        .relation(Lead, 'tags')
+        .of(leadIds)
+        .loadMany();
+      // tagsRows is an array of Tag[]; we need to associate per lead via an entityManager approach.
+      // Instead, use a raw join query for efficiency:
+      const rawTags = await this.leadsRepository.manager.query(
+        `SELECT lt."leadId", t.id, t.name, t.color, t.description, t."isActive", t."createdAt", t."updatedAt"
+         FROM lead_tags lt
+         JOIN tags t ON t.id = lt."tagId"
+         WHERE lt."leadId" = ANY($1)`,
+        [leadIds],
+      );
+      const tagsByLeadId = new Map<string, any[]>();
+      for (const row of rawTags) {
+        if (!tagsByLeadId.has(row.leadId)) tagsByLeadId.set(row.leadId, []);
+        tagsByLeadId.get(row.leadId)!.push({
+          id: row.id, name: row.name, color: row.color,
+          description: row.description, isActive: row.isActive,
+          createdAt: row.createdAt, updatedAt: row.updatedAt,
+        });
+      }
+      for (const lead of leads) {
+        (lead as any).tags = tagsByLeadId.get(lead.id) || [];
+      }
+    }
+
+    return leads;
   }
 
   async getLeadStats(filters: any = {}): Promise<{ total: number; newInquiries: number; inConversation: number; converted: number; lost: number }> {
