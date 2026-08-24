@@ -1007,10 +1007,13 @@ export class CrmService implements OnModuleInit {
       // For clinic owners, leave as-is for now (leads may not be linked to clinics). Future: relate leads to clinic and filter.
     }
 
-    // Default Sorting — use COALESCE so leads imported from CSV (NULL lastMetaFormSubmittedAt)
-    // still sort correctly by their createdAt date instead of falling to the bottom.
-    qb.addSelect('COALESCE(lead."lastMetaFormSubmittedAt", lead."createdAt")', 'sortDate')
-      .orderBy('"sortDate"', 'DESC');
+    // Default Sorting — NULLS LAST ensures CSV-imported leads (NULL lastMetaFormSubmittedAt)
+    // sort by createdAt instead of floating to the top/bottom unpredictably.
+    // We cannot use COALESCE here because TypeORM wraps getMany() in a SELECT DISTINCT
+    // subquery for pagination, and PostgreSQL requires ORDER BY expressions to appear
+    // in the DISTINCT select list.
+    qb.orderBy('lead.lastMetaFormSubmittedAt', 'DESC', 'NULLS LAST')
+      .addOrderBy('lead.createdAt', 'DESC');
 
     // High performance limit & pagination (default limit 50 per page if not specified for instant loading)
     const limit = filters.limit
