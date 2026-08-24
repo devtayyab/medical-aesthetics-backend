@@ -362,7 +362,11 @@ export class FacebookService {
           }
         }
       } catch (err) {
-        this.logger.warn(`Could not enumerate pages via /me/accounts: ${err.message}`);
+        if (err.response?.status === 400) {
+          this.logger.debug(`Could not enumerate pages via /me/accounts: (Likely a Page Access Token)`);
+        } else {
+          this.logger.warn(`Could not enumerate pages via /me/accounts: ${err.message}`);
+        }
       }
     }
 

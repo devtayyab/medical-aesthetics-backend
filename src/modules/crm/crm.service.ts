@@ -538,10 +538,10 @@ export class CrmService implements OnModuleInit {
     }
   }
 
-  async importFacebookLeads(formId: string, limit: number = 10000, pageAccessToken?: string): Promise<Lead[]> {
+  async importFacebookLeads(formId: string, limit: number = 10000, pageAccessToken?: string, skipTokenResolution: boolean = false): Promise<Lead[]> {
     // Manual imports don't know which page the form belongs to — resolve the
     // page token so forms on secondary pages import correctly too
-    if (!pageAccessToken) {
+    if (!pageAccessToken && !skipTokenResolution) {
       try {
         const allForms = await this.facebookService.getAllForms();
         pageAccessToken = allForms.find((f) => String(f.id) === String(formId))?.page_access_token;
