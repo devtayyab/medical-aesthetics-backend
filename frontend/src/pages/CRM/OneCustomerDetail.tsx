@@ -1346,8 +1346,17 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
         summary.appointments.forEach(a => timelineItems.push({ type: 'appointment', date: new Date(a.startTime || Date.now()), data: a }));
       }
     }
-    if (activeTab === 'overview' || activeTab === 'notes') {
+    if (activeTab === 'overview' || activeTab === 'notes' || activeTab === 'activities') {
       hubspotData.summaryNotes?.forEach((note: any) => {
+        const isNote = note.title?.toLowerCase() === 'note';
+        
+        // Hide pure notes from Activities tab
+        if (activeTab === 'activities' && isNote) return;
+        
+        // Optionally, hide tasks/calls from Notes tab if you want strict separation, 
+        // but for now we keep the existing behavior of showing everything in Notes tab 
+        // except we let Tasks and Calls show in Activities tab as well.
+
         timelineItems.push({
           type: 'hubspot_note',
           date: new Date(note.date),
@@ -1478,7 +1487,19 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
       </div>
     );
   } else if (item.type === 'hubspot_note') {
-    icon = <FileText className="w-5 h-5 text-[#ff7a59]" />;
+    const isTask = item.data.title?.toLowerCase().includes('task');
+    const isCall = item.data.title?.toLowerCase().includes('call');
+    const isEmail = item.data.title?.toLowerCase().includes('email');
+    
+    if (isTask) {
+      icon = <ClipboardCheck className="w-5 h-5 text-[#ff7a59]" />;
+    } else if (isCall) {
+      icon = <PhoneCall className="w-5 h-5 text-[#ff7a59]" />;
+    } else if (isEmail) {
+      icon = <Mail className="w-5 h-5 text-[#ff7a59]" />;
+    } else {
+      icon = <FileText className="w-5 h-5 text-[#ff7a59]" />;
+    }
     iconBg = "bg-[#ff7a59]/10 border-[#ff7a59]/20";
     content = (
       <div className="bg-white border border-[#ff7a59]/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
