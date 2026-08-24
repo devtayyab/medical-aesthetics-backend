@@ -822,7 +822,7 @@ export class CrmService implements OnModuleInit {
 
     // Create an action for the salesperson to follow up
     const action = this.crmActionsRepository.create({
-      customerId: existingCustomer.id,
+      customerId: customerRecord.id,
       salespersonId: customerRecord?.assignedSalespersonId || null,
       actionType: 'follow_up',
       title: 'Facebook Form Submission - Follow Up',
