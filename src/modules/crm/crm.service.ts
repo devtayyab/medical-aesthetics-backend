@@ -663,7 +663,7 @@ export class CrmService implements OnModuleInit {
       await this.logCommunication({
         customerId: existingCustomer.id,
         salespersonId: customerRecord.assignedSalespersonId,
-        type: 'form_submission',
+        type: 'note' as any,
         direction: 'incoming',
         status: 'completed',
         subject: 'New Form Submission',
@@ -804,7 +804,7 @@ export class CrmService implements OnModuleInit {
       await this.logCommunication({
         customerId: existingCustomer.id,
         salespersonId: customerRecord.assignedSalespersonId,
-        type: 'form_submission',
+        type: 'note' as any,
         direction: 'incoming',
         status: 'completed',
         subject: 'Facebook Lead Form Submission',
