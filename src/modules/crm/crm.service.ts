@@ -91,15 +91,17 @@ export class CrmService implements OnModuleInit {
       await queryRunner.connect();
 
       const checkResult = await queryRunner.query(`
-        SELECT is_nullable 
+        SELECT column_name, is_nullable 
         FROM information_schema.columns 
-        WHERE table_name = 'crm_actions' AND column_name = 'customerId'
+        WHERE table_name = 'crm_actions' AND column_name IN ('customerId', 'salespersonId')
       `);
 
-      if (checkResult && checkResult.length > 0 && checkResult[0].is_nullable === 'NO') {
-        this.logger.warn('Detected NOT NULL constraint on crm_actions.customerId. Attempting to fix...');
-        await queryRunner.query('ALTER TABLE "crm_actions" ALTER COLUMN "customerId" DROP NOT NULL');
-        this.logger.log('Successfully altered crm_actions.customerId to be nullable.');
+      for (const row of checkResult) {
+        if (row.is_nullable === 'NO') {
+          this.logger.warn(`Detected NOT NULL constraint on crm_actions.${row.column_name}. Attempting to fix...`);
+          await queryRunner.query(`ALTER TABLE "crm_actions" ALTER COLUMN "${row.column_name}" DROP NOT NULL`);
+          this.logger.log(`Successfully altered crm_actions.${row.column_name} to be nullable.`);
+        }
       }
 
       // Add treatmentRooms to clinics if missing
@@ -821,6 +823,7 @@ export class CrmService implements OnModuleInit {
     // Create an action for the salesperson to follow up
     const action = this.crmActionsRepository.create({
       customerId: existingCustomer.id,
+      salespersonId: customerRecord?.assignedSalespersonId || null,
       actionType: 'follow_up',
       title: 'Facebook Form Submission - Follow Up',
       description: `Customer submitted form via Facebook. Please contact them.`,

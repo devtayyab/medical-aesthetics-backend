@@ -25,7 +25,7 @@ export class CrmAction {
   customer: CustomerRecord;
 
   // Salesperson relation
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', nullable: true })
   salespersonId: string;
 
   @ManyToOne(() => User)
