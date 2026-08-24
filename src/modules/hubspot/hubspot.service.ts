@@ -21,47 +21,61 @@ export class HubspotService {
     }
 
     try {
-      const contact = await this.searchContact(email, phone);
-      if (!contact) {
+      const contacts = await this.searchContact(email, phone);
+      if (!contacts || contacts.length === 0) {
         return { message: 'Contact not found in HubSpot', data: null };
       }
 
-      const contactId = contact.id;
+      // Collect associations across all matched contacts
+      const dealIds = new Set<string>();
+      const meetingIds = new Set<string>();
+      const noteIds = new Set<string>();
+      const emailIds = new Set<string>();
+      const callIds = new Set<string>();
+      const taskIds = new Set<string>();
 
-      const [dealsAssoc, meetingsAssoc, notesAssoc, emailsAssoc, callsAssoc] = await Promise.all([
-        this.getAssociations(contactId, 'contacts', 'deals'),
-        this.getAssociations(contactId, 'contacts', 'meetings'),
-        this.getAssociations(contactId, 'contacts', 'notes'),
-        this.getAssociations(contactId, 'contacts', 'emails'),
-        this.getAssociations(contactId, 'contacts', 'calls'),
-      ]);
+      for (const contact of contacts) {
+        const contactId = contact.id;
+        const [dealsAssoc, meetingsAssoc, notesAssoc, emailsAssoc, callsAssoc, tasksAssoc] = await Promise.all([
+          this.getAssociations(contactId, 'contacts', 'deals'),
+          this.getAssociations(contactId, 'contacts', 'meetings'),
+          this.getAssociations(contactId, 'contacts', 'notes'),
+          this.getAssociations(contactId, 'contacts', 'emails'),
+          this.getAssociations(contactId, 'contacts', 'calls'),
+          this.getAssociations(contactId, 'contacts', 'tasks'),
+        ]);
 
-      const dealIds = dealsAssoc.map(a => a.toObjectId);
-      const meetingIds = meetingsAssoc.map(a => a.toObjectId);
-      const noteIds = notesAssoc.map(a => a.toObjectId);
-      const emailIds = emailsAssoc.map(a => a.toObjectId);
-      const callIds = callsAssoc.map(a => a.toObjectId);
+        dealsAssoc.forEach(a => dealIds.add(a.toObjectId));
+        meetingsAssoc.forEach(a => meetingIds.add(a.toObjectId));
+        notesAssoc.forEach(a => noteIds.add(a.toObjectId));
+        emailsAssoc.forEach(a => emailIds.add(a.toObjectId));
+        callsAssoc.forEach(a => callIds.add(a.toObjectId));
+        tasksAssoc.forEach(a => taskIds.add(a.toObjectId));
+      }
 
-      const deals = await this.getBatchObjects('deals', dealIds, [
+      const deals = await this.getBatchObjects('deals', Array.from(dealIds), [
         'amount', 'dealname', 'dealstage', 'closedate', 'createdate', 'pipeline'
       ]);
-      const meetings = await this.getBatchObjects('meetings', meetingIds, [
+      const meetings = await this.getBatchObjects('meetings', Array.from(meetingIds), [
         'hs_meeting_body', 'hs_meeting_title', 'hs_createdate'
       ]);
-      const notes = await this.getBatchObjects('notes', noteIds, [
+      const notes = await this.getBatchObjects('notes', Array.from(noteIds), [
         'hs_note_body', 'hs_createdate'
       ]);
-      const emails = await this.getBatchObjects('emails', emailIds, [
+      const emails = await this.getBatchObjects('emails', Array.from(emailIds), [
         'hs_email_subject', 'hs_email_text', 'hs_createdate'
       ]);
-      const calls = await this.getBatchObjects('calls', callIds, [
+      const calls = await this.getBatchObjects('calls', Array.from(callIds), [
         'hs_call_title', 'hs_call_body', 'hs_createdate'
+      ]);
+      const tasks = await this.getBatchObjects('tasks', Array.from(taskIds), [
+        'hs_task_subject', 'hs_task_body', 'hs_createdate'
       ]);
 
       return {
         message: 'HubSpot overview fetched successfully',
         data: {
-          contact: contact.properties,
+          contact: contacts[0].properties, // Just use properties from the primary contact
           deals: deals.map(d => ({
             id: d.id,
             name: d.properties.dealname,
@@ -94,6 +108,12 @@ export class HubspotService {
               title: c.properties.hs_call_title || 'Call',
               body: c.properties.hs_call_body,
               date: c.properties.hs_createdate,
+            })),
+            ...tasks.map(t => ({
+              id: t.id,
+              title: t.properties.hs_task_subject || 'Task',
+              body: t.properties.hs_task_body,
+              date: t.properties.hs_createdate,
             }))
           ],
         },
@@ -127,26 +147,42 @@ export class HubspotService {
     if (!email && !phone) return;
 
     try {
-      const contact = await this.searchContact(email, phone);
-      if (!contact) {
+      const contacts = await this.searchContact(email, phone);
+      if (!contacts || contacts.length === 0) {
         this.logger.debug(`[HubSpot Sync] No HubSpot contact found for lead ${relatedLeadId}`);
         return;
       }
 
-      const contactId = contact.id;
+      const meetingIds = new Set<string>();
+      const noteIds = new Set<string>();
+      const emailIds = new Set<string>();
+      const callIds = new Set<string>();
+      const taskIds = new Set<string>();
 
-      const [meetingsAssoc, notesAssoc, emailsAssoc, callsAssoc] = await Promise.all([
-        this.getAssociations(contactId, 'contacts', 'meetings'),
-        this.getAssociations(contactId, 'contacts', 'notes'),
-        this.getAssociations(contactId, 'contacts', 'emails'),
-        this.getAssociations(contactId, 'contacts', 'calls'),
-      ]);
+      for (const contact of contacts) {
+        const contactId = contact.id;
 
-      const [meetings, notes, emails, calls] = await Promise.all([
-        this.getBatchObjects('meetings', meetingsAssoc.map(a => a.toObjectId), ['hs_meeting_body', 'hs_meeting_title', 'hs_createdate']),
-        this.getBatchObjects('notes', notesAssoc.map(a => a.toObjectId), ['hs_note_body', 'hs_createdate']),
-        this.getBatchObjects('emails', emailsAssoc.map(a => a.toObjectId), ['hs_email_subject', 'hs_email_text', 'hs_createdate']),
-        this.getBatchObjects('calls', callsAssoc.map(a => a.toObjectId), ['hs_call_title', 'hs_call_body', 'hs_createdate']),
+        const [meetingsAssoc, notesAssoc, emailsAssoc, callsAssoc, tasksAssoc] = await Promise.all([
+          this.getAssociations(contactId, 'contacts', 'meetings'),
+          this.getAssociations(contactId, 'contacts', 'notes'),
+          this.getAssociations(contactId, 'contacts', 'emails'),
+          this.getAssociations(contactId, 'contacts', 'calls'),
+          this.getAssociations(contactId, 'contacts', 'tasks'),
+        ]);
+
+        meetingsAssoc.forEach(a => meetingIds.add(a.toObjectId));
+        notesAssoc.forEach(a => noteIds.add(a.toObjectId));
+        emailsAssoc.forEach(a => emailIds.add(a.toObjectId));
+        callsAssoc.forEach(a => callIds.add(a.toObjectId));
+        tasksAssoc.forEach(a => taskIds.add(a.toObjectId));
+      }
+
+      const [meetings, notes, emails, calls, tasks] = await Promise.all([
+        this.getBatchObjects('meetings', Array.from(meetingIds), ['hs_meeting_body', 'hs_meeting_title', 'hs_createdate']),
+        this.getBatchObjects('notes', Array.from(noteIds), ['hs_note_body', 'hs_createdate']),
+        this.getBatchObjects('emails', Array.from(emailIds), ['hs_email_subject', 'hs_email_text', 'hs_createdate']),
+        this.getBatchObjects('calls', Array.from(callIds), ['hs_call_title', 'hs_call_body', 'hs_createdate']),
+        this.getBatchObjects('tasks', Array.from(taskIds), ['hs_task_subject', 'hs_task_body', 'hs_createdate']),
       ]);
 
       const activities: Array<{
@@ -183,6 +219,13 @@ export class HubspotService {
           subject: c.properties.hs_call_title || 'Call (HubSpot)',
           notes: c.properties.hs_call_body || '',
           createdAt: new Date(c.properties.hs_createdate || Date.now()),
+        })),
+        ...tasks.map(t => ({
+          hubspotId: `hs_task_${t.id}`,
+          type: 'note',
+          subject: t.properties.hs_task_subject || 'Task (HubSpot)',
+          notes: t.properties.hs_task_body || '',
+          createdAt: new Date(t.properties.hs_createdate || Date.now()),
         })),
       ];
 
@@ -235,14 +278,14 @@ export class HubspotService {
     const payload = {
       filterGroups,
       properties: ['email', 'firstname', 'lastname', 'phone'],
-      limit: 1,
+      limit: 5,
     };
 
     const response = await axios.post(`${this.BASE_URL}/v3/objects/contacts/search`, payload, {
       headers: { Authorization: `Bearer ${this.HUBSPOT_TOKEN}` },
     });
 
-    return response.data.results[0] || null;
+    return response.data.results || [];
   }
 
   private async getAssociations(fromId: string, fromType: string, toType: string) {
