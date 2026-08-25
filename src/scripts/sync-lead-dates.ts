@@ -21,6 +21,10 @@ async function bootstrap() {
     console.log(`[${i + 1}/${leads.length}] Processing lead ${lead.id} (${lead.firstName} ${lead.lastName})...`);
     
     try {
+      if (!lead.email && !lead.phone) {
+        console.log(`  -> Skipping: No email or phone number to search in HubSpot.`);
+        continue;
+      }
       const contacts = await hubspotService.searchContact(lead.email, lead.phone);
       if (contacts && contacts.length > 0) {
         // Find the oldest createdate from all matching Hubspot contacts
