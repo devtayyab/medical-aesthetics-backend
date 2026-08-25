@@ -266,7 +266,7 @@ export class HubspotService {
     }
   }
 
-  private async searchContact(email?: string, phone?: string) {
+  public async searchContact(email?: string, phone?: string) {
     const filterGroups = [];
     if (email) {
       filterGroups.push({ filters: [{ propertyName: 'email', operator: 'EQ', value: email }] });
