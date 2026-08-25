@@ -1353,9 +1353,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
         // Hide pure notes from Activities tab
         if (activeTab === 'activities' && isNote) return;
         
-        // Optionally, hide tasks/calls from Notes tab if you want strict separation, 
-        // but for now we keep the existing behavior of showing everything in Notes tab 
-        // except we let Tasks and Calls show in Activities tab as well.
+        // Hide non-notes (tasks/calls/emails/meetings) from Notes tab
+        if (activeTab === 'notes' && !isNote) return;
 
         timelineItems.push({
           type: 'hubspot_note',
