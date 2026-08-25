@@ -1272,6 +1272,8 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
   
   if (summary?.communications) {
     summary.communications.forEach(c => {
+      if (c.metadata?.source === 'hubspot_sync') return;
+      
       const itemType = c.type === 'note' ? 'note' : 'comm';
       
       if (activeTab === 'overview') {
