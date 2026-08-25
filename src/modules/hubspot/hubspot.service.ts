@@ -57,19 +57,19 @@ export class HubspotService {
         'amount', 'dealname', 'dealstage', 'closedate', 'createdate', 'pipeline'
       ]);
       const meetings = await this.getBatchObjects('meetings', Array.from(meetingIds), [
-        'hs_meeting_body', 'hs_meeting_title', 'hs_createdate'
+        'hs_meeting_body', 'hs_meeting_title', 'hs_createdate', 'hs_timestamp'
       ]);
       const notes = await this.getBatchObjects('notes', Array.from(noteIds), [
-        'hs_note_body', 'hs_createdate'
+        'hs_note_body', 'hs_createdate', 'hs_timestamp'
       ]);
       const emails = await this.getBatchObjects('emails', Array.from(emailIds), [
-        'hs_email_subject', 'hs_email_text', 'hs_createdate'
+        'hs_email_subject', 'hs_email_text', 'hs_createdate', 'hs_timestamp'
       ]);
       const calls = await this.getBatchObjects('calls', Array.from(callIds), [
-        'hs_call_title', 'hs_call_body', 'hs_createdate'
+        'hs_call_title', 'hs_call_body', 'hs_createdate', 'hs_timestamp'
       ]);
       const tasks = await this.getBatchObjects('tasks', Array.from(taskIds), [
-        'hs_task_subject', 'hs_task_body', 'hs_createdate'
+        'hs_task_subject', 'hs_task_body', 'hs_createdate', 'hs_timestamp'
       ]);
 
       return {
@@ -89,31 +89,31 @@ export class HubspotService {
               id: m.id,
               title: m.properties.hs_meeting_title || 'Meeting',
               body: m.properties.hs_meeting_body,
-              date: m.properties.hs_createdate,
+              date: m.properties.hs_timestamp || m.properties.hs_createdate,
             })),
             ...notes.map(n => ({
               id: n.id,
               title: 'Note',
               body: n.properties.hs_note_body,
-              date: n.properties.hs_createdate,
+              date: n.properties.hs_timestamp || n.properties.hs_createdate,
             })),
             ...emails.map(e => ({
               id: e.id,
               title: e.properties.hs_email_subject || 'Email',
               body: e.properties.hs_email_text,
-              date: e.properties.hs_createdate,
+              date: e.properties.hs_timestamp || e.properties.hs_createdate,
             })),
             ...calls.map(c => ({
               id: c.id,
               title: c.properties.hs_call_title || 'Call',
               body: c.properties.hs_call_body,
-              date: c.properties.hs_createdate,
+              date: c.properties.hs_timestamp || c.properties.hs_createdate,
             })),
             ...tasks.map(t => ({
               id: t.id,
               title: t.properties.hs_task_subject || 'Task',
               body: t.properties.hs_task_body,
-              date: t.properties.hs_createdate,
+              date: t.properties.hs_timestamp || t.properties.hs_createdate,
             }))
           ],
         },
@@ -178,11 +178,11 @@ export class HubspotService {
       }
 
       const [meetings, notes, emails, calls, tasks] = await Promise.all([
-        this.getBatchObjects('meetings', Array.from(meetingIds), ['hs_meeting_body', 'hs_meeting_title', 'hs_createdate']),
-        this.getBatchObjects('notes', Array.from(noteIds), ['hs_note_body', 'hs_createdate']),
-        this.getBatchObjects('emails', Array.from(emailIds), ['hs_email_subject', 'hs_email_text', 'hs_createdate']),
-        this.getBatchObjects('calls', Array.from(callIds), ['hs_call_title', 'hs_call_body', 'hs_createdate']),
-        this.getBatchObjects('tasks', Array.from(taskIds), ['hs_task_subject', 'hs_task_body', 'hs_createdate']),
+        this.getBatchObjects('meetings', Array.from(meetingIds), ['hs_meeting_body', 'hs_meeting_title', 'hs_createdate', 'hs_timestamp']),
+        this.getBatchObjects('notes', Array.from(noteIds), ['hs_note_body', 'hs_createdate', 'hs_timestamp']),
+        this.getBatchObjects('emails', Array.from(emailIds), ['hs_email_subject', 'hs_email_text', 'hs_createdate', 'hs_timestamp']),
+        this.getBatchObjects('calls', Array.from(callIds), ['hs_call_title', 'hs_call_body', 'hs_createdate', 'hs_timestamp']),
+        this.getBatchObjects('tasks', Array.from(taskIds), ['hs_task_subject', 'hs_task_body', 'hs_createdate', 'hs_timestamp']),
       ]);
 
       const activities: Array<{
@@ -197,35 +197,35 @@ export class HubspotService {
           type: 'meeting',
           subject: m.properties.hs_meeting_title || 'Meeting (HubSpot)',
           notes: m.properties.hs_meeting_body || '',
-          createdAt: new Date(m.properties.hs_createdate || Date.now()),
+          createdAt: new Date(m.properties.hs_timestamp || m.properties.hs_createdate || Date.now()),
         })),
         ...notes.map(n => ({
           hubspotId: `hs_note_${n.id}`,
           type: 'note',
           subject: 'Note (HubSpot)',
           notes: n.properties.hs_note_body || '',
-          createdAt: new Date(n.properties.hs_createdate || Date.now()),
+          createdAt: new Date(n.properties.hs_timestamp || n.properties.hs_createdate || Date.now()),
         })),
         ...emails.map(e => ({
           hubspotId: `hs_email_${e.id}`,
           type: 'email',
           subject: e.properties.hs_email_subject || 'Email (HubSpot)',
           notes: e.properties.hs_email_text || '',
-          createdAt: new Date(e.properties.hs_createdate || Date.now()),
+          createdAt: new Date(e.properties.hs_timestamp || e.properties.hs_createdate || Date.now()),
         })),
         ...calls.map(c => ({
           hubspotId: `hs_call_${c.id}`,
           type: 'call',
           subject: c.properties.hs_call_title || 'Call (HubSpot)',
           notes: c.properties.hs_call_body || '',
-          createdAt: new Date(c.properties.hs_createdate || Date.now()),
+          createdAt: new Date(c.properties.hs_timestamp || c.properties.hs_createdate || Date.now()),
         })),
         ...tasks.map(t => ({
           hubspotId: `hs_task_${t.id}`,
           type: 'note',
           subject: t.properties.hs_task_subject || 'Task (HubSpot)',
           notes: t.properties.hs_task_body || '',
-          createdAt: new Date(t.properties.hs_createdate || Date.now()),
+          createdAt: new Date(t.properties.hs_timestamp || t.properties.hs_createdate || Date.now()),
         })),
       ];
 
