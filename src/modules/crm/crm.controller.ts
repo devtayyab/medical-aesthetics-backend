@@ -478,28 +478,35 @@ export class CrmController {
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Import remaining leads from ALL active Facebook forms at once' })
   async importAllFacebookLeads() {
-    const forms = await this.crmService.getFacebookForms();
-    const liveForms = (forms || []).filter(
-      (f: any) => f.id && !String(f.id).startsWith('db_') && f.status !== 'DELETED',
-    );
-
-    let totalImported = 0;
-    const results: { formId: string; formName: string; imported: number; error?: string }[] = [];
-
-    for (const form of liveForms) {
+    // Run the heavy operation in the background so Nginx doesn't timeout (504)
+    setTimeout(async () => {
       try {
-        const leads = await this.crmService.importFacebookLeads(form.id, 10000, form.page_access_token);
-        totalImported += leads.length;
-        results.push({ formId: form.id, formName: form.name, imported: leads.length });
-      } catch (err: any) {
-        results.push({ formId: form.id, formName: form.name, imported: 0, error: err?.message || 'Failed' });
+        const forms = await this.crmService.getFacebookForms();
+        const liveForms = (forms || []).filter(
+          (f: any) => f.id && !String(f.id).startsWith('db_') && f.status !== 'DELETED',
+        );
+    
+        let totalImported = 0;
+        const results: { formId: string; formName: string; imported: number; error?: string }[] = [];
+    
+        for (const form of liveForms) {
+          try {
+            const leads = await this.crmService.importFacebookLeads(form.id, 10000, form.page_access_token);
+            totalImported += leads.length;
+            results.push({ formId: form.id, formName: form.name, imported: leads.length });
+          } catch (err: any) {
+            results.push({ formId: form.id, formName: form.name, imported: 0, error: err?.message || 'Failed' });
+          }
+        }
+      } catch (err) {
+        // ignore background errors
       }
-    }
+    }, 0);
 
     return {
-      totalForms: liveForms.length,
-      totalImported,
-      results,
+      totalForms: 'All',
+      totalImported: 'Background',
+      results: []
     };
   }
 
