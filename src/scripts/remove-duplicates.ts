@@ -39,6 +39,11 @@ async function bootstrap() {
     const deleteIds = leads.slice(1).map((l: any) => l.id);
 
     if (deleteIds.length > 0) {
+      // Re-link related records to the kept lead so no data is lost
+      await dataSource.query(`UPDATE tasks SET "customerId" = $1 WHERE "customerId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
+      await dataSource.query(`UPDATE communication_logs SET "relatedLeadId" = $1 WHERE "relatedLeadId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
+      await dataSource.query(`UPDATE crm_actions SET "relatedLeadId" = $1 WHERE "relatedLeadId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
+
       await dataSource.query(`DELETE FROM leads WHERE id = ANY($1)`, [deleteIds]);
       removedCount += deleteIds.length;
       logger.log(`Merged ${deleteIds.length} duplicates for email: ${email}`);
@@ -71,6 +76,11 @@ async function bootstrap() {
     const deleteIds = leads.slice(1).map((l: any) => l.id);
 
     if (deleteIds.length > 0) {
+      // Re-link related records to the kept lead so no data is lost
+      await dataSource.query(`UPDATE tasks SET "customerId" = $1 WHERE "customerId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
+      await dataSource.query(`UPDATE communication_logs SET "relatedLeadId" = $1 WHERE "relatedLeadId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
+      await dataSource.query(`UPDATE crm_actions SET "relatedLeadId" = $1 WHERE "relatedLeadId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
+
       await dataSource.query(`DELETE FROM leads WHERE id = ANY($1)`, [deleteIds]);
       removedCount += deleteIds.length;
       logger.log(`Merged ${deleteIds.length} duplicates for phone: ${phone}`);
