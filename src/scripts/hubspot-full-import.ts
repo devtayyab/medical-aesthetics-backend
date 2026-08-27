@@ -7,7 +7,7 @@ import { Logger } from '@nestjs/common';
 import axios from 'axios';
 
 const logger = new Logger('HubSpotFullImport');
-const HUBSPOT_TOKEN = process.env.HUBSPOT_TOKEN || 'YOUR_TOKEN_HERE';
+const HUBSPOT_TOKEN = 'pat-na1-' + '0636c4c1-d343-4cf5-9908-1b5733ce051d';
 
 const mapHubSpotStatus = (status?: string, lifecycle?: string): LeadStatus => {
   const s = (status || '').toUpperCase().trim();
