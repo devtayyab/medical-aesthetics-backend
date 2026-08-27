@@ -691,16 +691,23 @@ export class CrmService implements OnModuleInit {
     // Determine if we should reset status (e.g. from LOST to NEW)
     const shouldResetStatus = existingLead.status === LeadStatus.LOST;
 
-    // Update existing lead with new information
+    // Update existing lead safely without overwriting core fields like createdAt
     const updatedLead = await this.leadsRepository.save({
-      ...existingLead,
-      ...leadDto,
+      ...existingLead, // Keep all existing data as base
       id: existingLead.id, // Ensure we are updating the correct record
       status: shouldResetStatus ? LeadStatus.NEW : existingLead.status,
-      lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt || new Date(),
+      // Only update specific tracking fields if they exist in the new DTO
+      facebookLeadId: leadDto.facebookLeadId || existingLead.facebookLeadId,
+      facebookFormId: leadDto.facebookFormId || existingLead.facebookFormId,
+      facebookCampaignId: leadDto.facebookCampaignId || existingLead.facebookCampaignId,
+      facebookAdSetId: leadDto.facebookAdSetId || existingLead.facebookAdSetId,
+      facebookAdId: leadDto.facebookAdId || existingLead.facebookAdId,
+      facebookAdName: leadDto.facebookAdName || existingLead.facebookAdName,
+      lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt || existingLead.lastMetaFormSubmittedAt || new Date(),
       lastMetaFormName: leadDto.lastMetaFormName || existingLead.lastMetaFormName,
+      source: existingLead.source && existingLead.source !== 'csv_import' ? existingLead.source : (leadDto.source || existingLead.source),
       notes: existingLead.notes
-        ? `${existingLead.notes}\n\n[Re-inquiry ${new Date().toLocaleDateString()}]: ${leadDto.notes || 'No new notes'}`
+        ? `${existingLead.notes}\n\n[Re-inquiry ${new Date().toLocaleDateString()}]: ${leadDto.notes || 'Filled another form'}`
         : leadDto.notes,
       metadata: {
         ...(existingLead.metadata || {}),
