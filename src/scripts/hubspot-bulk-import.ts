@@ -98,13 +98,18 @@ async function bootstrap() {
         // Map HubSpot contacts to local Lead entities
         const newLeads = results.map(contact => {
           const props = contact.properties;
+          const hubspotSource = props.hs_analytics_source || 'hubspot_import';
+          const mappedSource = (hubspotSource.toLowerCase().includes('paid_social') || hubspotSource.toLowerCase().includes('facebook')) 
+            ? 'facebook_ads' 
+            : hubspotSource;
+
           return leadsRepository.create({
             firstName: props.firstname || 'Unknown',
             lastName: props.lastname || 'Lead',
             email: props.email || `${contact.id}@noemail.hubspot.com`, // enforce unique
             phone: props.phone || null,
             status: mapHubSpotStatus(props.hs_lead_status, props.lifecyclestage),
-            source: props.hs_analytics_source || 'hubspot_import',
+            source: mappedSource,
             createdAt: props.createdate ? new Date(props.createdate) : new Date(),
             lastContactedAt: props.notes_last_contacted ? new Date(props.notes_last_contacted) : null,
             metadata: { hubspotId: contact.id }
