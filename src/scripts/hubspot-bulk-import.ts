@@ -16,7 +16,7 @@ const mapHubSpotStatus = (status: string | undefined | null, lifecycle: string |
   if (status === 'NEW' || lifecycle === 'lead') return LeadStatus.NEW;
   if (status === 'ATTEMPTED_TO_CONTACT' || status === 'CONTACTED' || lifecycle === 'marketingqualifiedlead') return LeadStatus.CONTACTED;
   if (status === 'CONNECTED') return LeadStatus.QUALIFIED;
-  if (status === 'OPEN_DEAL' || lifecycle === 'opportunity') return LeadStatus.PROPOSAL_SENT;
+  if (status === 'OPEN_DEAL' || lifecycle === 'opportunity') return LeadStatus.FOLLOW_UP;
   if (lifecycle === 'customer') return LeadStatus.CONVERTED;
   if (status === 'UNQUALIFIED' || status === 'BAD_TIMING' || lifecycle === 'evangelist' || lifecycle === 'other') return LeadStatus.LOST;
   return LeadStatus.NEW; // default
