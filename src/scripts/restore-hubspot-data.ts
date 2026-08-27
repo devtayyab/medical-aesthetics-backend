@@ -11,10 +11,10 @@ const HUBSPOT_TOKEN = 'pat-na1-' + '0636c4c1-d343-4cf5-9908-1b5733ce051d';
 
 const mapHubSpotStatus = (status?: string, lifecycle?: string): LeadStatus => {
   const s = (status || '').toUpperCase().trim();
-  if (['UNQUALIFIED', 'BAD_TIMING', 'I"I I? I~I` IzI`I?I`II+I IT', 'IsI`IsIOI IIIYI"I%IITIYI II I>I+I I-I', 'I+I>I>IYI I"ITI`II-IoITII I%I', 'I+I>I>I- I`I?I+I"IsI-', 'IIYI>I>I`II>I^I IIOIIoI I'].includes(s)) return LeadStatus.LOST;
+  if (['UNQUALIFIED', 'BAD_TIMING', 'ΔΕΝ ΘΑ ΞΑΝΑΠΆΕΙ', 'ΚΑΚΌΣ ΥΠΟΨΉΦΙΟΣ ΠΕΛΆΤΗΣ', 'ΆΛΛΟΣ ΔΙΑΦΗΜΙΣΤΉΣ', 'ΆΛΛΗ ΑΝΆΓΚΗ', 'ΠΟΛΛΑΠΛΈΣ ΦΌΡΜΕΣ'].includes(s)) return LeadStatus.LOST;
   if (['CONNECTED', 'OPEN_DEAL'].includes(s)) return LeadStatus.QUALIFIED;
-  if (['ATTEMPTED_TO_CONTACT', 'CONTACTED', 'IN_PROGRESS', 'I".I`', 'I"I`II'].includes(s)) return LeadStatus.CONTACTED;
-  if (['I~I` I IY IIsI II I IS', 'I+I>I>IY'].includes(s)) return LeadStatus.FOLLOW_UP;
+  if (['ATTEMPTED_TO_CONTACT', 'CONTACTED', 'IN_PROGRESS', 'Δ.Α', 'ΔΑΣΣ'].includes(s)) return LeadStatus.CONTACTED;
+  if (['ΘΑ ΤΟ ΣΚΕΦΤΕΊ', 'ΆΛΛΟ'].includes(s)) return LeadStatus.FOLLOW_UP;
 
   const l = (lifecycle || '').toLowerCase().trim();
   if (['customer', 'evangelist'].includes(l)) return LeadStatus.CONVERTED;
