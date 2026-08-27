@@ -13,12 +13,20 @@ const logger = new Logger('HubSpotBulkImport');
 
 // Map HubSpot statuses to our LeadStatus
 const mapHubSpotStatus = (status: string | undefined | null, lifecycle: string | undefined | null): LeadStatus => {
-  if (status === 'NEW' || lifecycle === 'lead') return LeadStatus.NEW;
-  if (status === 'ATTEMPTED_TO_CONTACT' || status === 'CONTACTED' || lifecycle === 'marketingqualifiedlead') return LeadStatus.CONTACTED;
-  if (status === 'CONNECTED') return LeadStatus.QUALIFIED;
-  if (status === 'OPEN_DEAL' || lifecycle === 'opportunity') return LeadStatus.FOLLOW_UP;
-  if (lifecycle === 'customer') return LeadStatus.CONVERTED;
-  if (status === 'UNQUALIFIED' || status === 'BAD_TIMING' || lifecycle === 'evangelist' || lifecycle === 'other') return LeadStatus.LOST;
+  // 1. Check explicit Lead Statuses first (they are more accurate)
+  const s = status?.toUpperCase() || '';
+  if (['UNQUALIFIED', 'BAD_TIMING', 'ΔΕΝ ΘΑ ΞΑΝΑΠΆΕΙ', 'ΚΑΚΌΣ ΥΠΟΨΉΦΙΟΣ ΠΕΛΆΤΗΣ', 'ΆΛΛΟΣ ΔΙΑΦΗΜΙΣΤΉΣ', 'ΆΛΛΗ ΑΝΆΓΚΗ', 'ΠΟΛΛΑΠΛΈΣ ΦΌΡΜΕΣ'].includes(s)) return LeadStatus.LOST;
+  if (['CONNECTED', 'OPEN_DEAL'].includes(s)) return LeadStatus.QUALIFIED;
+  if (['ATTEMPTED_TO_CONTACT', 'CONTACTED', 'IN_PROGRESS', 'Δ.Α', 'ΔΑΣΣ'].includes(s)) return LeadStatus.CONTACTED;
+  if (['ΘΑ ΤΟ ΣΚΕΦΤΕΊ', 'ΆΛΛΟ'].includes(s)) return LeadStatus.FOLLOW_UP;
+
+  // 2. Fallback to Lifecycle Stage if status is empty/new
+  const l = lifecycle?.toLowerCase() || '';
+  if (['customer', 'evangelist'].includes(l)) return LeadStatus.CONVERTED;
+  if (l === 'opportunity') return LeadStatus.FOLLOW_UP;
+  if (['marketingqualifiedlead', 'salesqualifiedlead'].includes(l)) return LeadStatus.QUALIFIED;
+  if (l === 'other') return LeadStatus.LOST;
+
   return LeadStatus.NEW; // default
 };
 
@@ -90,21 +98,26 @@ async function bootstrap() {
         // Map HubSpot contacts to local Lead entities
         const newLeads = results.map(contact => {
           const props = contact.properties;
+          const hubspotSource = props.hs_analytics_source || 'hubspot_import';
+          const mappedSource = (hubspotSource.toLowerCase().includes('paid_social') || hubspotSource.toLowerCase().includes('facebook')) 
+            ? 'facebook_ads' 
+            : hubspotSource;
+
           return leadsRepository.create({
             firstName: props.firstname || 'Unknown',
             lastName: props.lastname || 'Lead',
             email: props.email || `${contact.id}@noemail.hubspot.com`, // enforce unique
             phone: props.phone || null,
             status: mapHubSpotStatus(props.hs_lead_status, props.lifecyclestage),
-            source: props.hs_analytics_source || 'hubspot_import',
+            source: mappedSource,
             createdAt: props.createdate ? new Date(props.createdate) : new Date(),
             lastContactedAt: props.notes_last_contacted ? new Date(props.notes_last_contacted) : null,
             metadata: { hubspotId: contact.id }
           });
         });
 
-        // Batch Insert for performance
-        await leadsRepository.insert(newLeads);
+        // Batch Save for performance (and to respect explicit createdAt values)
+        await leadsRepository.save(newLeads, { chunk: 1000 });
         totalFetched += newLeads.length;
         
         logger.log(`Imported ${totalFetched} leads so far...`);
