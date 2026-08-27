@@ -116,8 +116,8 @@ async function bootstrap() {
           });
         });
 
-        // Batch Insert for performance
-        await leadsRepository.insert(newLeads);
+        // Batch Save for performance (and to respect explicit createdAt values)
+        await leadsRepository.save(newLeads, { chunk: 1000 });
         totalFetched += newLeads.length;
         
         logger.log(`Imported ${totalFetched} leads so far...`);
