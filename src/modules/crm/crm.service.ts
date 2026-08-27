@@ -650,7 +650,6 @@ export class CrmService implements OnModuleInit {
       status: LeadStatus.CONTACTED, // Mark as contacted since they already exist
       lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt,
       lastMetaFormName: leadDto.lastMetaFormName,
-      lastContactedAt: new Date(),
       metadata: {
         ...leadDto.metadata,
         existingCustomerId: existingCustomer.id,
@@ -700,7 +699,6 @@ export class CrmService implements OnModuleInit {
       status: shouldResetStatus ? LeadStatus.NEW : existingLead.status,
       lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt || new Date(),
       lastMetaFormName: leadDto.lastMetaFormName || existingLead.lastMetaFormName,
-      lastContactedAt: new Date(),
       notes: existingLead.notes
         ? `${existingLead.notes}\n\n[Re-inquiry ${new Date().toLocaleDateString()}]: ${leadDto.notes || 'No new notes'}`
         : leadDto.notes,
@@ -753,7 +751,6 @@ export class CrmService implements OnModuleInit {
       await this.leadsRepository.update(existingLead.id, {
         lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
         lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
-        lastContactedAt: new Date(),
         facebookLeadId: parsedLead.facebookLeadId,
         metadata: {
           ...(existingLead.metadata || {}),
@@ -787,7 +784,6 @@ export class CrmService implements OnModuleInit {
         status: LeadStatus.CONTACTED,
         lastMetaFormSubmittedAt: leadData.created_time ? new Date(leadData.created_time) : new Date(),
         lastMetaFormName: parsedLead.facebookFormId ? `Facebook Form ${parsedLead.facebookFormId}` : 'Unknown Facebook Form',
-        lastContactedAt: new Date(),
         metadata: {
           importedFromFacebook: true,
           fromWebhook: isWebhook,
