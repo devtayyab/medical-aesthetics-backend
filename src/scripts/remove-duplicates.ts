@@ -26,19 +26,34 @@ async function bootstrap() {
   for (const dup of duplicates) {
     const email = dup.email;
     
-    // Get all leads for this email, ordered by created date DESC (keep newest)
+    // Get all leads for this email, ordered by created date ASC (keep oldest)
     const leads = await dataSource.query(`
       SELECT id, "createdAt", "facebookLeadId", "facebookAdName", "lastMetaFormName"
       FROM leads
       WHERE email = $1
-      ORDER BY "createdAt" DESC
+      ORDER BY "createdAt" ASC
     `, [email]);
 
-    // Keep the first one, delete the rest
+    // Keep the first one (oldest), delete the rest
     const keepId = leads[0].id;
     const deleteIds = leads.slice(1).map((l: any) => l.id);
 
     if (deleteIds.length > 0) {
+      // Merge Facebook data from newer duplicates into the older kept lead (if missing)
+      const fbLeadId = leads.find((l: any) => l.facebookLeadId)?.facebookLeadId;
+      const fbAdName = leads.find((l: any) => l.facebookAdName)?.facebookAdName;
+      const lastMetaFormName = leads.find((l: any) => l.lastMetaFormName)?.lastMetaFormName;
+
+      if (fbLeadId || fbAdName || lastMetaFormName) {
+        await dataSource.query(`
+          UPDATE leads 
+          SET "facebookLeadId" = COALESCE("facebookLeadId", $2),
+              "facebookAdName" = COALESCE("facebookAdName", $3),
+              "lastMetaFormName" = COALESCE("lastMetaFormName", $4)
+          WHERE id = $1
+        `, [keepId, fbLeadId, fbAdName, lastMetaFormName]);
+      }
+
       // Re-link related records to the kept lead so no data is lost
       await dataSource.query(`UPDATE tasks SET "customerId" = $1 WHERE "customerId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
       await dataSource.query(`UPDATE communication_logs SET "relatedLeadId" = $1 WHERE "relatedLeadId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
