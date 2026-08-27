@@ -1025,8 +1025,10 @@ export class CrmService implements OnModuleInit {
     // We cannot use COALESCE here because TypeORM wraps getMany() in a SELECT DISTINCT
     // subquery for pagination, and PostgreSQL requires ORDER BY expressions to appear
     // in the DISTINCT select list.
-    qb.orderBy('lead.lastMetaFormSubmittedAt', 'DESC', 'NULLS LAST')
-      .addOrderBy('lead.createdAt', 'DESC');
+    qb.addSelect("CASE WHEN lead.status = 'NEW' THEN 0 ELSE 1 END", "isNewLeadOrder");
+    qb.orderBy('"isNewLeadOrder"', 'ASC')
+      .addOrderBy('lead.lastMetaFormSubmittedAt', 'ASC', 'NULLS LAST')
+      .addOrderBy('lead.createdAt', 'ASC');
 
     // High performance limit & pagination (default limit 50 per page if not specified for instant loading)
     const limit = filters.limit
