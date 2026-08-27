@@ -92,7 +92,7 @@ async function bootstrap() {
             source: mappedSource,
             
             facebookAdName: isFacebook ? adName : null,
-            facebookFormName: isFacebook ? adName : null,
+            lastMetaFormName: isFacebook ? adName : null,
             facebookAdId: props.hs_facebook_ad_id || null,
             facebookCampaignId: props.hs_facebook_campaign_id || null,
 
