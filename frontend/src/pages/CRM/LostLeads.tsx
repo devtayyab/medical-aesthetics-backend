@@ -349,10 +349,10 @@ export const LostLeadsPage: React.FC = () => {
             <TableRow>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Lead Name</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Contact</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Form / Campaign</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 w-[200px]">Form / Campaign</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Created Date</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400">Assigned To</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 text-right min-w-[220px] w-[220px]">Actions</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 text-right min-w-[180px] w-[180px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -394,8 +394,10 @@ export const LostLeadsPage: React.FC = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <p className="text-xs font-bold text-gray-800">{(lead as any).lastMetaFormName || 'N/A'}</p>
-                    <p className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">{lead.source || 'facebook_ads'}</p>
+                    <div className="max-w-[200px]">
+                      <p className="text-xs font-bold text-gray-800 truncate" title={(lead as any).lastMetaFormName || 'N/A'}>{(lead as any).lastMetaFormName || 'N/A'}</p>
+                      <p className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">{lead.source || 'facebook_ads'}</p>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <p className="text-xs font-bold text-gray-700">
@@ -408,16 +410,16 @@ export const LostLeadsPage: React.FC = () => {
                     </p>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1.5 flex-nowrap">
+                    <div className="flex items-center justify-end gap-1 flex-nowrap">
                       {lead.phone && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => dispatch(openDialer({ phoneNumber: lead.phone!, customerName: `${lead.firstName} ${lead.lastName}`, customerId: lead.id }))}
                           title="Call Lead"
-                          className="h-8 px-2 text-[10px] font-bold text-emerald-600 hover:bg-emerald-50 gap-1 shrink-0"
+                          className="h-7 px-1.5 text-[9px] font-bold text-emerald-600 hover:bg-emerald-50 gap-0.5 shrink-0"
                         >
-                          <Phone size={13} /> Call
+                          <Phone size={11} /> Call
                         </Button>
                       )}
                       <Button
@@ -425,18 +427,18 @@ export const LostLeadsPage: React.FC = () => {
                         size="sm"
                         onClick={() => handleReactivate(lead, 'new')}
                         title="Reactivate Lead (Set to New)"
-                        className="h-8 px-2 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 gap-1 shrink-0"
+                        className="h-7 px-1.5 text-[9px] font-bold text-indigo-600 hover:bg-indigo-50 gap-0.5 shrink-0"
                       >
-                        <RotateCcw size={12} /> Reactivate
+                        <RotateCcw size={11} /> Reactivate
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDelete(lead.id)}
                         title="Delete Lead"
-                        className="h-8 px-2 text-[10px] font-bold text-red-500 hover:bg-red-50 gap-1 shrink-0"
+                        className="h-7 px-1.5 text-[9px] font-bold text-red-500 hover:bg-red-50 gap-0.5 shrink-0"
                       >
-                        <Trash2 size={13} /> Delete
+                        <Trash2 size={11} /> Delete
                       </Button>
                     </div>
                   </TableCell>
