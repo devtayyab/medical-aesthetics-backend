@@ -829,12 +829,12 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </div>
  </div>
 
- <div className="flex flex-wrap items-center gap-3 order-2 xl:order-none ml-auto xl:ml-0">
- <div className="flex items-center bg-slate-100/50 p-1.5 rounded-[1.5rem] border border-slate-100 shadow-sm">
+ <div className="flex flex-wrap items-center gap-2.5 order-2 xl:order-none ml-auto xl:ml-0">
+ <div className="flex flex-wrap items-center bg-slate-100/50 p-1.5 rounded-[1.5rem] border border-slate-100 shadow-sm gap-1">
  <select
  value={leadFilters.status || ''}
  onChange={(e) => handleFilterChange('status', e.target.value)}
- className="h-10 px-4 bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-slate-700 focus:outline-none cursor-pointer rounded-2xl hover:bg-white/80 transition-all appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.65rem_auto] bg-[right_0.75rem_center] bg-no-repeat"
+ className="h-10 px-3 sm:px-4 bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-slate-700 focus:outline-none cursor-pointer rounded-2xl hover:bg-white/80 transition-all appearance-none pr-7 sm:pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.65rem_auto] bg-[right_0.75rem_center] bg-no-repeat"
  >
  <option value="">All Statuses</option>
  <option value="new">New</option>
@@ -845,52 +845,209 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <option value="lost">Lost</option>
  </select>
 
- <div className="h-6 w-[1px] bg-slate-200 mx-1.5" />
+ <div className="h-6 w-[1px] bg-slate-200 mx-1 hidden xs:block" />
 
  <Button
  variant="ghost"
  onClick={() => setShowFilters(!showFilters)}
- className={`h-10 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${showFilters ? 'bg-slate-900 text-[#CBFF38] shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}
+ className={`h-10 px-3.5 sm:px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${showFilters ? 'bg-slate-900 text-[#CBFF38] shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}
  >
- <Filter size={14} className="mr-2" />
+ <Filter size={14} className="mr-1.5" />
  {showFilters ? 'Applied' : 'Filters'}
  </Button>
 
- {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
- <>
- <div className="h-6 w-[1px] bg-slate-200 mx-1.5" />
+ <div className="h-6 w-[1px] bg-slate-200 mx-1" />
+
  <Button
  variant="ghost"
  onClick={() => setShowBulkImport(true)}
- className="h-10 px-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5"
+ className="h-10 px-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5"
+ title="Bulk Import Leads"
  >
  <Upload size={14} className="text-slate-400" />
- <span>Bulk Import</span>
+ <span>Import</span>
  </Button>
+
  <Button
  variant="ghost"
  onClick={handleExportLeads}
  disabled={isExporting}
- className="h-10 px-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5 disabled:opacity-50"
+ className="h-10 px-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5 disabled:opacity-50"
+ title="Export All Leads"
  >
  <Download size={14} className={isExporting ? 'animate-bounce text-emerald-600' : 'text-slate-400'} />
- <span>{isExporting ? 'Exporting...' : 'Export'}</span>
+ <span>{isExporting ? '...' : 'Export'}</span>
  </Button>
- </>
- )}
  </div>
 
  <Button
  onClick={() => setShowCreateForm(true)}
- className="h-14 px-8 bg-[#CBFF38] text-slate-900 border-none rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.15em] shadow-2xl shadow-[#CBFF38]/30 transition-all hover:scale-[1.05] active:scale-[0.95] hover:bg-[#b3d81b] flex items-center gap-3"
+ className="h-12 sm:h-14 px-5 sm:px-8 bg-[#CBFF38] text-slate-900 border-none rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.15em] shadow-2xl shadow-[#CBFF38]/30 transition-all hover:scale-[1.05] active:scale-[0.95] hover:bg-[#b3d81b] flex items-center gap-2"
  >
  <Plus size={18} strokeWidth={4} />
  <span className="hidden sm:inline">Add Lead</span>
  </Button>
  </div>
- </div>
+    </div>
 
- {/* Filter Chips */}
+    {/* Filters Drawer-style */}
+    {showFilters && (
+      <Card className="border-none shadow-md bg-white animate-in slide-in-from-top-2 duration-300">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Lead Status</label>
+              <Select
+                value={leadFilters.status || ''}
+                onChange={(val) => handleFilterChange('status', val)}
+                options={[
+                  { value: '', label: 'All Statuses' },
+                  { value: 'new', label: 'New' },
+                  { value: 'in_conversation', label: 'In Conversation' },
+                  { value: 'contacted', label: 'Contacted' },
+                  { value: 'qualified', label: 'Qualified' },
+                  { value: 'converted', label: 'Converted' },
+                  { value: 'lost', label: 'Lost' },
+                ]}
+                className="h-9 text-xs border-gray-200"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
+              <Select
+                value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
+                onChange={(val) => {
+                  dispatch(setLeadFilters({ ...leadFilters, formNames: val ? [val] : [], search: searchTerm }));
+                  toast.success(`Filtering by: ${val || 'All'}`);
+                }}
+                placeholder="Select form..."
+                options={[
+                  { value: '', label: 'All Forms' },
+                  ...Array.from(new Set(leads.map(l => (l as any).lastMetaFormName).filter(Boolean))).map(f => ({ value: f as string, label: f as string }))
+                ]}
+                className="h-9 text-xs border-gray-200"
+              />
+            </div>
+
+            <div className="md:col-span-1 space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                  <Input
+                    label="From"
+                    type="date"
+                    value={leadFilters.submissionDateFrom || ''}
+                    onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
+                    className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+                  />
+                  <Input
+                    label="To"
+                    type="date"
+                    value={leadFilters.submissionDateTo || ''}
+                    onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
+                    className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {[
+                    { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+                    { label: 'Yesterday', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
+                    { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                    { label: 'Last 30 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        const { from, to } = preset.getValue();
+                        handleFilterChange('submissionDateFrom', from);
+                        handleFilterChange('submissionDateTo', to);
+                      }}
+                      className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-1 space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                  <Input
+                    label="From"
+                    type="date"
+                    value={leadFilters.lastContactedFrom || ''}
+                    onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
+                    className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+                  />
+                  <Input
+                    label="To"
+                    type="date"
+                    value={leadFilters.lastContactedTo || ''}
+                    onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
+                    className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {[
+                    { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+                    { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        const { from, to } = preset.getValue();
+                        handleFilterChange('lastContactedFrom', from);
+                        handleFilterChange('lastContactedTo', to);
+                      }}
+                      className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => dispatch(setLeadFilters({ status: 'new' }))}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-xl transition-colors shrink-0"
+              >
+                Clear All Filters
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFilters(false)}
+                className="h-9 px-3.5 text-[10px] font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl"
+              >
+                Close Filters
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSearch}
+                className="h-9 px-4 text-[10px] font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-xl shadow-sm"
+              >
+                Apply Filters
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )}
+
+    {/* Filter Chips */}
  {Object.keys(leadFilters).some(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search') && (
  <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
  {Object.entries(leadFilters).map(([key, value]) => {
@@ -1019,176 +1176,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  );
  })}
  </div>
-
- {/* Filters Drawer-style */}
- {showFilters && (
- <Card className="border-none shadow-md bg-white animate-in slide-in-from-top-2 duration-300">
- <CardContent className="p-4">
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div className="space-y-1.5">
- <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Lead Status</label>
- <Select
- value={leadFilters.status || ''}
- onChange={(val) => handleFilterChange('status', val)}
- options={[
- { value: '', label: 'All Statuses' },
- { value: 'new', label: 'New' },
- { value: 'in_conversation', label: 'In Conversation' },
- { value: 'contacted', label: 'Contacted' },
- { value: 'qualified', label: 'Qualified' },
- { value: 'converted', label: 'Converted' },
- { value: 'lost', label: 'Lost' },
- ]}
- className="h-9 text-xs border-gray-200"
- />
- </div>
-
- <div className="space-y-1.5">
- <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
- <Select
- value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
- onChange={(val) => {
- dispatch(setLeadFilters({ ...leadFilters, formNames: val ? [val] : [], search: searchTerm }));
- toast.success(`Filtering by: ${val || 'All'}`);
- }}
- placeholder="Select form..."
- options={[
- { value: '', label: 'All Forms' },
- ...Array.from(new Set(leads.map(l => (l as any).lastMetaFormName).filter(Boolean))).map(f => ({ value: f as string, label: f as string }))
- ]}
- className="h-9 text-xs border-gray-200"
- />
- </div>
-
- <div className="md:col-span-1 space-y-1.5">
- <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
- <div className="flex flex-col gap-2">
- <div className="flex flex-col sm:flex-row sm:items-end gap-2">
- <Input
- label="From"
- type="date"
- value={leadFilters.submissionDateFrom || ''}
- onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
- className="h-auto text-[10px] px-0 flex-1 border-gray-100"
- />
- <Input
- label="To"
- type="date"
- value={leadFilters.submissionDateTo || ''}
- onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
- className="h-auto text-[10px] px-0 flex-1 border-gray-100"
- />
- </div>
- <div className="flex flex-wrap gap-1 mt-1.5">
- {[
- { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
- { label: 'Yesterday', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
- { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
- { label: 'Last 30 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
- ].map(preset => (
- <button
- key={preset.label}
- type="button"
- onClick={() => {
- const { from, to } = preset.getValue();
- handleFilterChange('submissionDateFrom', from);
- handleFilterChange('submissionDateTo', to);
- }}
- className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
- >
- {preset.label}
- </button>
- ))}
- </div>
- </div>
- </div>
-
- <div className="md:col-span-1 space-y-1.5">
- <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
- <div className="flex flex-col gap-2">
- <div className="flex flex-col sm:flex-row sm:items-end gap-2">
- <Input
- label="From"
- type="date"
- value={leadFilters.lastContactedFrom || ''}
- onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
- className="h-auto text-[10px] px-0 flex-1 border-gray-100"
- />
- <Input
- label="To"
- type="date"
- value={leadFilters.lastContactedTo || ''}
- onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
- className="h-auto text-[10px] px-0 flex-1 border-gray-100"
- />
- </div>
- <div className="flex flex-wrap gap-1 mt-1.5">
- {[
- { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
- { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
- ].map(preset => (
- <button
- key={preset.label}
- type="button"
- onClick={() => {
- const { from, to } = preset.getValue();
- handleFilterChange('lastContactedFrom', from);
- handleFilterChange('lastContactedTo', to);
- }}
- className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
- >
- {preset.label}
- </button>
- ))}
- </div>
- </div>
- </div>
- </div>
-
- <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
- <div className="flex items-center gap-2">
- <button
- onClick={() => dispatch(setLeadFilters({ status: 'new' }))}
- className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
- >
- Clear All Filters
- </button>
- </div>
- <div className="flex items-center gap-2">
- <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 text-[10px] font-bold">
- Close Filters
- </Button>
- <Button size="sm" onClick={handleSearch} className="h-8 px-6 text-[10px] font-bold bg-slate-900 text-white">
- Apply Filters
- </Button>
- {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
- <Button
- size="sm"
- onClick={async () => {
- try {
- const currentForm = Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] : leadFilters.formNames;
- if (currentForm) {
- setSelectedForms([currentForm]);
- } else {
- setSelectedForms([]);
- }
- await fetchFacebookForms();
- setShowFormScheduleModal(true);
- } catch (e) {
- setShowFormScheduleModal(true);
- }
- }}
- className="h-8 px-4 text-[10px] font-bold bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm border-none transition-all flex items-center gap-1.5"
- >
- <CalendarPlus className="w-3.5 h-3.5" />
- Schedule This Filter
- </Button>
- )}
- </div>
- </div>
- </CardContent>
- </Card>
- )}
 
  {/* Bulk Actions Bar */}
  {/* 3. Bulk Actions Floating Bar */}
