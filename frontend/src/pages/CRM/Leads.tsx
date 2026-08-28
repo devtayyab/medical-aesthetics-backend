@@ -887,10 +887,180 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <Plus size={18} strokeWidth={4} />
  <span className="hidden sm:inline">Add Lead</span>
  </Button>
- </div>
- </div>
+      </div>
+    </div>
 
- {/* Filter Chips */}
+    {/* Filters Drawer-style */}
+    {showFilters && (
+      <Card className="border-none shadow-md bg-white animate-in slide-in-from-top-2 duration-300">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Lead Status</label>
+              <Select
+                value={leadFilters.status || ''}
+                onChange={(val) => handleFilterChange('status', val)}
+                options={[
+                  { value: '', label: 'All Statuses' },
+                  { value: 'new', label: 'New' },
+                  { value: 'in_conversation', label: 'In Conversation' },
+                  { value: 'contacted', label: 'Contacted' },
+                  { value: 'qualified', label: 'Qualified' },
+                  { value: 'converted', label: 'Converted' },
+                  { value: 'lost', label: 'Lost' },
+                ]}
+                className="h-9 text-xs border-gray-200"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
+              <Select
+                value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
+                onChange={(val) => {
+                  dispatch(setLeadFilters({ ...leadFilters, formNames: val ? [val] : [], search: searchTerm }));
+                  toast.success(`Filtering by: ${val || 'All'}`);
+                }}
+                placeholder="Select form..."
+                options={[
+                  { value: '', label: 'All Forms' },
+                  ...Array.from(new Set(leads.map(l => (l as any).lastMetaFormName).filter(Boolean))).map(f => ({ value: f as string, label: f as string }))
+                ]}
+                className="h-9 text-xs border-gray-200"
+              />
+            </div>
+
+            <div className="md:col-span-1 space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                  <Input
+                    label="From"
+                    type="date"
+                    value={leadFilters.submissionDateFrom || ''}
+                    onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
+                    className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+                  />
+                  <Input
+                    label="To"
+                    type="date"
+                    value={leadFilters.submissionDateTo || ''}
+                    onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
+                    className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {[
+                    { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+                    { label: 'Yesterday', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
+                    { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                    { label: 'Last 30 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        const { from, to } = preset.getValue();
+                        handleFilterChange('submissionDateFrom', from);
+                        handleFilterChange('submissionDateTo', to);
+                      }}
+                      className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-1 space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                  <Input
+                    label="From"
+                    type="date"
+                    value={leadFilters.lastContactedFrom || ''}
+                    onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
+                    className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+                  />
+                  <Input
+                    label="To"
+                    type="date"
+                    value={leadFilters.lastContactedTo || ''}
+                    onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
+                    className="h-auto text-[10px] px-0 flex-1 border-gray-100"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {[
+                    { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+                    { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        const { from, to } = preset.getValue();
+                        handleFilterChange('lastContactedFrom', from);
+                        handleFilterChange('lastContactedTo', to);
+                      }}
+                      className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => dispatch(setLeadFilters({ status: 'new' }))}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Clear All Filters
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 text-[10px] font-bold">
+                Close Filters
+              </Button>
+              <Button size="sm" onClick={handleSearch} className="h-8 px-6 text-[10px] font-bold bg-slate-900 text-white">
+                Apply Filters
+              </Button>
+              {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      const currentForm = Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] : leadFilters.formNames;
+                      if (currentForm) {
+                        setSelectedForms([currentForm]);
+                      } else {
+                        setSelectedForms([]);
+                      }
+                      await fetchFacebookForms();
+                      setShowFormScheduleModal(true);
+                    } catch (e) {
+                      setShowFormScheduleModal(true);
+                    }
+                  }}
+                  className="h-8 px-4 text-[10px] font-bold bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm border-none transition-all flex items-center gap-1.5"
+                >
+                  <CalendarPlus className="w-3.5 h-3.5" />
+                  Schedule This Filter
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )}
+
+    {/* Filter Chips */}
  {Object.keys(leadFilters).some(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search') && (
  <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
  {Object.entries(leadFilters).map(([key, value]) => {
@@ -1019,176 +1189,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  );
  })}
  </div>
-
- {/* Filters Drawer-style */}
- {showFilters && (
- <Card className="border-none shadow-md bg-white animate-in slide-in-from-top-2 duration-300">
- <CardContent className="p-4">
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div className="space-y-1.5">
- <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Lead Status</label>
- <Select
- value={leadFilters.status || ''}
- onChange={(val) => handleFilterChange('status', val)}
- options={[
- { value: '', label: 'All Statuses' },
- { value: 'new', label: 'New' },
- { value: 'in_conversation', label: 'In Conversation' },
- { value: 'contacted', label: 'Contacted' },
- { value: 'qualified', label: 'Qualified' },
- { value: 'converted', label: 'Converted' },
- { value: 'lost', label: 'Lost' },
- ]}
- className="h-9 text-xs border-gray-200"
- />
- </div>
-
- <div className="space-y-1.5">
- <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Meta Form Name</label>
- <Select
- value={Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] || '' : ''}
- onChange={(val) => {
- dispatch(setLeadFilters({ ...leadFilters, formNames: val ? [val] : [], search: searchTerm }));
- toast.success(`Filtering by: ${val || 'All'}`);
- }}
- placeholder="Select form..."
- options={[
- { value: '', label: 'All Forms' },
- ...Array.from(new Set(leads.map(l => (l as any).lastMetaFormName).filter(Boolean))).map(f => ({ value: f as string, label: f as string }))
- ]}
- className="h-9 text-xs border-gray-200"
- />
- </div>
-
- <div className="md:col-span-1 space-y-1.5">
- <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Submission Date (Meta Form)</label>
- <div className="flex flex-col gap-2">
- <div className="flex flex-col sm:flex-row sm:items-end gap-2">
- <Input
- label="From"
- type="date"
- value={leadFilters.submissionDateFrom || ''}
- onChange={(e) => handleFilterChange('submissionDateFrom', e.target.value)}
- className="h-auto text-[10px] px-0 flex-1 border-gray-100"
- />
- <Input
- label="To"
- type="date"
- value={leadFilters.submissionDateTo || ''}
- onChange={(e) => handleFilterChange('submissionDateTo', e.target.value)}
- className="h-auto text-[10px] px-0 flex-1 border-gray-100"
- />
- </div>
- <div className="flex flex-wrap gap-1 mt-1.5">
- {[
- { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
- { label: 'Yesterday', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
- { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
- { label: 'Last 30 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
- ].map(preset => (
- <button
- key={preset.label}
- type="button"
- onClick={() => {
- const { from, to } = preset.getValue();
- handleFilterChange('submissionDateFrom', from);
- handleFilterChange('submissionDateTo', to);
- }}
- className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
- >
- {preset.label}
- </button>
- ))}
- </div>
- </div>
- </div>
-
- <div className="md:col-span-1 space-y-1.5">
- <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Last Contacted Date</label>
- <div className="flex flex-col gap-2">
- <div className="flex flex-col sm:flex-row sm:items-end gap-2">
- <Input
- label="From"
- type="date"
- value={leadFilters.lastContactedFrom || ''}
- onChange={(e) => handleFilterChange('lastContactedFrom', e.target.value)}
- className="h-auto text-[10px] px-0 flex-1 border-gray-100"
- />
- <Input
- label="To"
- type="date"
- value={leadFilters.lastContactedTo || ''}
- onChange={(e) => handleFilterChange('lastContactedTo', e.target.value)}
- className="h-auto text-[10px] px-0 flex-1 border-gray-100"
- />
- </div>
- <div className="flex flex-wrap gap-1 mt-1.5">
- {[
- { label: 'Today', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
- { label: 'Last 7 Days', getValue: () => { const to = new Date().toISOString().split('T')[0]; const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]; return { from, to }; } },
- ].map(preset => (
- <button
- key={preset.label}
- type="button"
- onClick={() => {
- const { from, to } = preset.getValue();
- handleFilterChange('lastContactedFrom', from);
- handleFilterChange('lastContactedTo', to);
- }}
- className="text-[9px] font-bold bg-white hover:bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg border border-slate-100 transition-colors shadow-sm"
- >
- {preset.label}
- </button>
- ))}
- </div>
- </div>
- </div>
- </div>
-
- <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
- <div className="flex items-center gap-2">
- <button
- onClick={() => dispatch(setLeadFilters({ status: 'new' }))}
- className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
- >
- Clear All Filters
- </button>
- </div>
- <div className="flex items-center gap-2">
- <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 text-[10px] font-bold">
- Close Filters
- </Button>
- <Button size="sm" onClick={handleSearch} className="h-8 px-6 text-[10px] font-bold bg-slate-900 text-white">
- Apply Filters
- </Button>
- {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
- <Button
- size="sm"
- onClick={async () => {
- try {
- const currentForm = Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] : leadFilters.formNames;
- if (currentForm) {
- setSelectedForms([currentForm]);
- } else {
- setSelectedForms([]);
- }
- await fetchFacebookForms();
- setShowFormScheduleModal(true);
- } catch (e) {
- setShowFormScheduleModal(true);
- }
- }}
- className="h-8 px-4 text-[10px] font-bold bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm border-none transition-all flex items-center gap-1.5"
- >
- <CalendarPlus className="w-3.5 h-3.5" />
- Schedule This Filter
- </Button>
- )}
- </div>
- </div>
- </CardContent>
- </Card>
- )}
 
  {/* Bulk Actions Bar */}
  {/* 3. Bulk Actions Floating Bar */}
