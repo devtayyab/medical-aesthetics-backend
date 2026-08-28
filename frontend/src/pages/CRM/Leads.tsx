@@ -1015,20 +1015,30 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-gray-100">
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => dispatch(setLeadFilters({ status: 'new' }))}
-                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-xl transition-colors shrink-0"
               >
                 Clear All Filters
               </button>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 text-[10px] font-bold">
+            <div className="flex flex-wrap items-center gap-2 justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFilters(false)}
+                className="h-9 px-3.5 text-[10px] font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl"
+              >
                 Close Filters
               </Button>
-              <Button size="sm" onClick={handleSearch} className="h-8 px-6 text-[10px] font-bold bg-slate-900 text-white">
+              <Button
+                size="sm"
+                onClick={handleSearch}
+                className="h-9 px-4 text-[10px] font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-xl shadow-sm"
+              >
                 Apply Filters
               </Button>
               {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
@@ -1048,10 +1058,10 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                       setShowFormScheduleModal(true);
                     }
                   }}
-                  className="h-8 px-4 text-[10px] font-bold bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm border-none transition-all flex items-center gap-1.5"
+                  className="h-9 px-3.5 text-[10px] font-bold bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm border-none transition-all flex items-center gap-1.5 rounded-xl"
                 >
                   <CalendarPlus className="w-3.5 h-3.5" />
-                  Schedule This Filter
+                  Schedule Filter
                 </Button>
               )}
             </div>
