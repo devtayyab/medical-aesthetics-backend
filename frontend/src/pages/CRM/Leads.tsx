@@ -829,12 +829,12 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </div>
  </div>
 
- <div className="flex flex-wrap items-center gap-3 order-2 xl:order-none ml-auto xl:ml-0">
- <div className="flex items-center bg-slate-100/50 p-1.5 rounded-[1.5rem] border border-slate-100 shadow-sm">
+ <div className="flex flex-wrap items-center gap-2.5 order-2 xl:order-none ml-auto xl:ml-0">
+ <div className="flex flex-wrap items-center bg-slate-100/50 p-1.5 rounded-[1.5rem] border border-slate-100 shadow-sm gap-1">
  <select
  value={leadFilters.status || ''}
  onChange={(e) => handleFilterChange('status', e.target.value)}
- className="h-10 px-4 bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-slate-700 focus:outline-none cursor-pointer rounded-2xl hover:bg-white/80 transition-all appearance-none pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.65rem_auto] bg-[right_0.75rem_center] bg-no-repeat"
+ className="h-10 px-3 sm:px-4 bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-slate-700 focus:outline-none cursor-pointer rounded-2xl hover:bg-white/80 transition-all appearance-none pr-7 sm:pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.65rem_auto] bg-[right_0.75rem_center] bg-no-repeat"
  >
  <option value="">All Statuses</option>
  <option value="new">New</option>
@@ -845,49 +845,49 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <option value="lost">Lost</option>
  </select>
 
- <div className="h-6 w-[1px] bg-slate-200 mx-1.5" />
+ <div className="h-6 w-[1px] bg-slate-200 mx-1 hidden xs:block" />
 
  <Button
  variant="ghost"
  onClick={() => setShowFilters(!showFilters)}
- className={`h-10 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${showFilters ? 'bg-slate-900 text-[#CBFF38] shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}
+ className={`h-10 px-3.5 sm:px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${showFilters ? 'bg-slate-900 text-[#CBFF38] shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}
  >
- <Filter size={14} className="mr-2" />
+ <Filter size={14} className="mr-1.5" />
  {showFilters ? 'Applied' : 'Filters'}
  </Button>
 
- {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
- <>
- <div className="h-6 w-[1px] bg-slate-200 mx-1.5" />
+ <div className="h-6 w-[1px] bg-slate-200 mx-1" />
+
  <Button
  variant="ghost"
  onClick={() => setShowBulkImport(true)}
- className="h-10 px-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5"
+ className="h-10 px-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5"
+ title="Bulk Import Leads"
  >
  <Upload size={14} className="text-slate-400" />
- <span>Bulk Import</span>
+ <span>Import</span>
  </Button>
+
  <Button
  variant="ghost"
  onClick={handleExportLeads}
  disabled={isExporting}
- className="h-10 px-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5 disabled:opacity-50"
+ className="h-10 px-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5 disabled:opacity-50"
+ title="Export All Leads"
  >
  <Download size={14} className={isExporting ? 'animate-bounce text-emerald-600' : 'text-slate-400'} />
- <span>{isExporting ? 'Exporting...' : 'Export'}</span>
+ <span>{isExporting ? '...' : 'Export'}</span>
  </Button>
- </>
- )}
  </div>
 
  <Button
  onClick={() => setShowCreateForm(true)}
- className="h-14 px-8 bg-[#CBFF38] text-slate-900 border-none rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.15em] shadow-2xl shadow-[#CBFF38]/30 transition-all hover:scale-[1.05] active:scale-[0.95] hover:bg-[#b3d81b] flex items-center gap-3"
+ className="h-12 sm:h-14 px-5 sm:px-8 bg-[#CBFF38] text-slate-900 border-none rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.15em] shadow-2xl shadow-[#CBFF38]/30 transition-all hover:scale-[1.05] active:scale-[0.95] hover:bg-[#b3d81b] flex items-center gap-2"
  >
  <Plus size={18} strokeWidth={4} />
  <span className="hidden sm:inline">Add Lead</span>
  </Button>
-      </div>
+ </div>
     </div>
 
     {/* Filters Drawer-style */}
