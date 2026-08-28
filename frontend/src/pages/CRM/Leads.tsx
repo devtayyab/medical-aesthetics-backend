@@ -347,28 +347,58 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   return () => window.removeEventListener('focus', onFocus);
  }, [dispatch, leadFilters, currentPage, leadsPerPage]);
 
-  // Export Leads to CSV
+  // Export ALL Leads to CSV
   const handleExportLeads = async () => {
     try {
       setIsExporting(true);
-      toast.loading('Preparing leads export...', { id: 'export-leads' });
+      toast.loading('Fetching all leads for export...', { id: 'export-leads' });
 
       let exportData: any[] = [];
-      try {
-        const res = await crmAPI.getLeads({ ...leadFilters, page: 1, limit: 10000 });
-        if (Array.isArray(res.data)) {
-          exportData = res.data;
-        } else if (res.data?.leads && Array.isArray(res.data.leads)) {
-          exportData = res.data.leads;
-        } else {
-          exportData = leads || [];
+      let pageIndex = 1;
+      const batchSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        try {
+          const res = await crmAPI.getLeads({
+            ...leadFilters,
+            page: pageIndex,
+            limit: batchSize,
+            all: 'true',
+            isExport: 'true',
+          });
+
+          let batch: any[] = [];
+          if (Array.isArray(res.data)) {
+            batch = res.data;
+          } else if (res.data?.leads && Array.isArray(res.data.leads)) {
+            batch = res.data.leads;
+          }
+
+          if (!batch || batch.length === 0) {
+            hasMore = false;
+          } else {
+            exportData.push(...batch);
+            toast.loading(`Fetched ${exportData.length} leads...`, { id: 'export-leads' });
+            if (batch.length < batchSize) {
+              hasMore = false;
+            } else {
+              pageIndex++;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn('Batch fetch completed or reached boundary', fetchErr);
+          hasMore = false;
         }
-      } catch {
-        exportData = leads || [];
+      }
+
+      // If loop returned nothing, fallback to local leads
+      if (exportData.length === 0 && leads && leads.length > 0) {
+        exportData = leads;
       }
 
       if (!exportData || exportData.length === 0) {
-        toast.error('No leads available to export matching the current criteria.', { id: 'export-leads' });
+        toast.error('No leads found to export matching criteria.', { id: 'export-leads' });
         return;
       }
 
