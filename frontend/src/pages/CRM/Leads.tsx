@@ -1041,29 +1041,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               >
                 Apply Filters
               </Button>
-              {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
-                <Button
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      const currentForm = Array.isArray(leadFilters.formNames) ? leadFilters.formNames[0] : leadFilters.formNames;
-                      if (currentForm) {
-                        setSelectedForms([currentForm]);
-                      } else {
-                        setSelectedForms([]);
-                      }
-                      await fetchFacebookForms();
-                      setShowFormScheduleModal(true);
-                    } catch (e) {
-                      setShowFormScheduleModal(true);
-                    }
-                  }}
-                  className="h-9 px-3.5 text-[10px] font-bold bg-[#CBFF38] text-gray-900 hover:bg-[#B8EA32] shadow-sm border-none transition-all flex items-center gap-1.5 rounded-xl"
-                >
-                  <CalendarPlus className="w-3.5 h-3.5" />
-                  Schedule Filter
-                </Button>
-              )}
             </div>
           </div>
         </CardContent>
