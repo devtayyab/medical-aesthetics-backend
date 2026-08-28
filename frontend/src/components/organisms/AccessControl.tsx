@@ -1,5 +1,5 @@
 import React, { useState } from"react";
-import { Edit2, Save, X, Search } from"lucide-react";
+import { Edit2, Save, X, Search, UserX } from "lucide-react";
 import type { User, Clinic } from"@/types";
 
 interface AccessControlProps {
@@ -19,6 +19,7 @@ export const AccessControl: React.FC<AccessControlProps> = ({
 }) => {
  const [activeTab, setActiveTab] = useState("All");
  const [searchQuery, setSearchQuery] = useState("");
+ const [showInactive, setShowInactive] = useState(false);
  const [isCreating, setIsCreating] = useState(false);
  const [createForm, setCreateForm] = useState({
  firstName:"",
@@ -120,13 +121,14 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  ];
 
  const filteredUsers = Array.isArray(users) ? users.filter(user => {
- const tabObj = tabs.find(t => t.name === activeTab);
- const matchesTab = activeTab ==="All" || (tabObj && tabObj.roles.includes(user.role));
- const q = searchQuery.trim().toLowerCase();
- const matchesSearch = !q ||
- `${user.firstName} ${user.lastName}`.toLowerCase().includes(q) ||
- user.email.toLowerCase().includes(q);
- return matchesTab && matchesSearch;
+  const tabObj = tabs.find(t => t.name === activeTab);
+  const matchesTab = activeTab === "All" || (tabObj && tabObj.roles.includes(user.role));
+  const q = searchQuery.trim().toLowerCase();
+  const matchesSearch = !q ||
+  `${user.firstName} ${user.lastName}`.toLowerCase().includes(q) ||
+  user.email.toLowerCase().includes(q);
+  const matchesStatus = showInactive ? user.isActive === false : true;
+  return matchesTab && matchesSearch && matchesStatus;
  }) : [];
 
  return (
@@ -157,25 +159,46 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  )}
  </div>
 
- {/* Search Bar */}
- <div className="relative">
- <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
- <input
- type="text"
- value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- placeholder="Search by name or email..."
- className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CBFF38] focus:border-transparent shadow-sm transition-all"
- />
- {searchQuery && (
- <button
- onClick={() => setSearchQuery("")}
- className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
- >
- <X size={14} />
- </button>
- )}
- </div>
+ {/* Search Bar + Inactive Toggle */}
+  <div className="flex gap-3 items-center">
+    <div className="relative flex-1">
+      <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search by name or email..."
+        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CBFF38] focus:border-transparent shadow-sm transition-all"
+      />
+      {searchQuery && (
+        <button
+          onClick={() => setSearchQuery("")}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+        >
+          <X size={14} />
+        </button>
+      )}
+    </div>
+
+    {/* Inactive users toggle */}
+    <button
+      onClick={() => setShowInactive(v => !v)}
+      title={showInactive ? "Showing inactive users — click to show all" : "Click to show inactive users only"}
+      className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold border transition-all shrink-0 ${
+        showInactive
+          ? "bg-red-500 text-white border-red-500 shadow-md"
+          : "bg-white text-gray-500 border-gray-200 hover:border-red-300 hover:text-red-500"
+      }`}
+    >
+      <UserX size={15} />
+      {showInactive ? "Inactive Only" : "Show Inactive"}
+      {showInactive && (
+        <span className="ml-1 bg-white/20 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full">
+          {users.filter(u => !u.isActive).length}
+        </span>
+      )}
+    </button>
+  </div>
 
  <div className="bg-white rounded-xl shadow overflow-hidden">
  <div className="overflow-x-auto">

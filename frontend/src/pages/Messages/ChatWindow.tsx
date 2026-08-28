@@ -47,14 +47,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  return (
  <div className="flex flex-col h-full min-h-0 bg-white relative">
  {/* Chat Header */}
- <header className="shrink-0 p-3 sm:p-6 md:p-8 bg-black text-white flex items-center justify-between border-b border-white/5 relative overflow-hidden">
- <div className="absolute top-0 right-0 w-64 h-full bg-[#CBFF38]/5 blur-3xl rounded-full translate-x-1/2" />
+ <header className="shrink-0 p-3 sm:p-6 md:p-8 bg-white text-gray-900 border-b border-gray-100 flex items-center justify-between border-b border-gray-100 relative overflow-hidden">
+ 
  
  <div className="flex items-center gap-3 sm:gap-6 relative z-10 min-w-0">
  {onBack && (
  <button
  onClick={onBack}
- className="p-2 -ml-2 rounded-xl bg-white/10 text-white hover:bg-[#CBFF38] hover:text-black transition-all lg:hidden"
+ className="p-2 -ml-2 rounded-xl bg-gray-100 text-gray-900 hover:bg-[#CBFF38] hover:text-black transition-all lg:hidden"
  title="Back to channels"
  >
  <ArrowLeft size={18} />
@@ -64,15 +64,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  <div className="size-11 sm:size-14 rounded-2xl bg-[#CBFF38] flex items-center justify-center text-black font-black text-base sm:text-xl shadow-lg group-hover:rotate-6 transition-transform shrink-0">
  {otherUser?.firstName?.[0]}{otherUser?.lastName?.[0]}
  </div>
- <div className="absolute -bottom-1 -right-1 size-4 bg-lime-500 rounded-full border-4 border-black animate-pulse" />
+ <div className="absolute -bottom-1 -right-1 size-4 bg-lime-500 rounded-full border-4 border-[#CBFF38] animate-pulse" />
  </div>
  
  <div className="min-w-0">
  <div className="flex items-center gap-3 min-w-0">
- <h3 className="font-black text-white uppercase tracking-tighter leading-none text-base sm:text-xl truncate">
+ <h3 className="font-black text-gray-900 uppercase tracking-tighter leading-none text-base sm:text-xl truncate">
  {conversation.title || `${otherUser?.firstName} ${otherUser?.lastName}`}
  </h3>
- <div className="hidden sm:block px-2 py-0.5 bg-white/5 backdrop-blur-md rounded-md border border-white/10 shrink-0">
+ <div className="hidden sm:block px-2 py-0.5 bg-gray-100 backdrop-blur-md rounded-md border border-gray-200 shrink-0">
  <span className="text-[8px] font-black uppercase tracking-widest text-[#CBFF38]">Encrypted</span>
  </div>
  </div>
@@ -92,8 +92,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  <AnimatePresence mode="popLayout">
  {isMessagesLoading && activeConversationMessages.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-20 gap-4">
- <div className="size-10 border-4 border-black border-t-transparent rounded-full animate-spin shadow-xl" />
- <p className="text-[11px] font-black uppercase tracking-widest text-gray-300">Decrypting incoming packets...</p>
+ <div className="size-10 border-4 border-[#CBFF38] border-t-transparent rounded-full animate-spin shadow-xl" />
+ <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">Decrypting incoming packets...</p>
  </div>
  ) : (
  activeConversationMessages.map((msg, idx) => {
@@ -109,8 +109,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  <div className="flex flex-col space-y-1.5 max-w-[85%] sm:max-w-[80%]">
  <div
  className={`p-3.5 sm:p-5 px-4 sm:px-6 rounded-2xl sm:rounded-[32px] relative overflow-hidden transition-all ${isMe
- ? 'bg-black text-white rounded-tr-none shadow-xl'
- : 'bg-white text-gray-900 border border-gray-100 rounded-tl-none shadow-lg'
+ ? 'bg-gray-900 text-white rounded-tr-none shadow-md'
+ : 'bg-white text-gray-900 border border-gray-200 rounded-tl-none shadow-sm'
  }`}
  >
  {isMe && (
@@ -121,7 +121,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  <p className="text-xs sm:text-[13px] leading-relaxed font-bold z-10 relative">{msg.content}</p>
  </div>
  <div className={`flex items-center gap-1.5 px-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
- <Clock size={10} className="text-gray-300" />
+ <Clock size={10} className="text-gray-400" />
  <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-gray-400">
  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
  </span>
@@ -142,7 +142,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  <input
  type="text"
  placeholder="Type a message..."
- className="w-full h-11 sm:h-16 pl-4 sm:pl-8 pr-12 sm:pr-28 bg-gray-100/50 border-none rounded-xl sm:rounded-3xl text-xs sm:text-sm font-medium sm:font-bold text-gray-900 focus:ring-2 focus:ring-black transition-all shadow-inner placeholder:text-gray-400 placeholder:font-medium sm:placeholder:font-black sm:placeholder:uppercase sm:placeholder:tracking-widest"
+ className="w-full h-11 sm:h-16 pl-4 sm:pl-8 pr-12 sm:pr-28 bg-gray-100 border-none rounded-xl sm:rounded-3xl text-xs sm:text-sm font-medium sm:font-bold text-gray-900 focus:ring-2 focus:ring-black transition-all shadow-inner placeholder:text-gray-400 placeholder:font-medium sm:placeholder:font-black sm:placeholder:uppercase sm:placeholder:tracking-widest"
  value={content}
  onChange={(e) => setContent(e.target.value)}
  />

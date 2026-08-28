@@ -13,3 +13,7 @@ node_modules
 tmp_check.ts
 test-db.ts
 src/check_metadata.ts
+*.csv
+logs/
+scratch/
+

@@ -68,13 +68,13 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  };
 
  return (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 md:p-10">
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 md:p-10">
   <motion.div 
   initial={{ opacity: 0 }}
   animate={{ opacity: 1 }}
   exit={{ opacity: 0 }}
   onClick={onClose}
-  className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+  className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm"
   />
   
   <motion.div 
@@ -84,27 +84,27 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
   className="bg-white rounded-2xl sm:rounded-[36px] md:rounded-[48px] w-full max-w-2xl shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative z-10 flex flex-col max-h-[85vh] sm:h-[700px] border border-white/20"
   >
   {/* Header Section */}
-  <header className="p-4 sm:p-8 md:p-10 bg-black text-white relative overflow-hidden shrink-0">
+  <header className="p-4 sm:p-8 md:p-10 bg-gray-50 text-gray-900 border-b border-gray-100 relative overflow-hidden shrink-0">
   <div className="absolute top-0 right-0 w-64 h-full bg-[#CBFF38]/10 blur-3xl rounded-full translate-x-1/2" />
   
   <div className="flex items-center justify-between relative z-10">
   <div className="space-y-1.5 sm:space-y-3">
-  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 sm:py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
-  <div className="size-1.5 rounded-full bg-[#CBFF38] animate-pulse" />
-  <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-[#CBFF38]">Neural Handshake</span>
+  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 sm:py-1 bg-white rounded-full border border-gray-200 shadow-sm">
+  <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+  <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600">New Conversation</span>
   </div>
-  <h2 className="text-xl sm:text-3xl md:text-4xl font-black uppercase tracking-tighter leading-none">Initialize Channel</h2>
+  <h2 className="text-xl sm:text-3xl md:text-4xl font-black uppercase tracking-tighter leading-none">Start New Chat</h2>
   </div>
   <button 
   onClick={onClose} 
-  className="size-9 sm:size-12 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center hover:bg-[#CBFF38] hover:text-black transition-all group shadow-xl shrink-0"
+  className="size-9 sm:size-12 bg-white border border-gray-200 rounded-xl sm:rounded-2xl flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-100 hover:border-gray-300 transition-all group shadow-sm shrink-0"
   >
   <X className="size-4 sm:size-5 group-hover:rotate-90 transition-transform" />
   </button>
   </div>
   </header>
 
-  <div className="p-4 sm:p-8 md:p-10 flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50/30">
+  <div className="p-4 sm:p-8 md:p-10 flex-1 flex flex-col min-h-0 overflow-hidden bg-white">
   {/* Selected Users HUD */}
   <AnimatePresence>
   {selectedUsers.length > 0 && (
@@ -114,19 +114,19 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
   exit={{ height: 0, opacity: 0, marginBottom: 0 }}
   className="overflow-hidden shrink-0"
   >
-  <div className="flex flex-wrap gap-2 p-3 bg-black rounded-2xl items-center shadow-lg">
+  <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-100 rounded-2xl items-center shadow-sm">
   {selectedUsers.map(user => (
   <motion.div 
   layout
   initial={{ scale: 0.5, opacity: 0 }}
   animate={{ scale: 1, opacity: 1 }}
   key={user.id} 
-  className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-white/10 rounded-lg border border-white/5"
+  className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-white rounded-lg border border-gray-200 shadow-sm"
   >
-  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-tighter text-white truncate max-w-[80px] sm:max-w-[100px]">{user.firstName}</span>
+  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-tighter text-gray-900 truncate max-w-[80px] sm:max-w-[100px]">{user.firstName}</span>
   <button 
   onClick={() => toggleUser(user)}
-  className="size-4 rounded hover:bg-white/20 flex items-center justify-center transition-colors"
+  className="size-4 rounded hover:bg-gray-100 flex items-center justify-center transition-colors"
   >
   <X size={10} className="text-gray-400" />
   </button>
@@ -135,9 +135,9 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
   <div className="flex-1" />
   <button 
   onClick={handleLaunchChannel}
-  className="px-4 py-1.5 bg-[#CBFF38] text-black text-[9px] font-black uppercase tracking-widest rounded-lg hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#CBFF38]/20"
+  className="px-4 py-1.5 bg-gray-900 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:scale-105 active:scale-95 transition-all shadow-md"
   >
-  Establish Link ({selectedUsers.length})
+  Start Chat ({selectedUsers.length})
   </button>
   </div>
   </motion.div>
@@ -166,8 +166,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
   animate={{ opacity: 1 }}
   className="flex flex-col items-center justify-center py-12 gap-3"
   >
-  <div className="size-8 border-3 border-black border-t-transparent rounded-full animate-spin" />
-  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Scanning clinical registry...</p>
+  <div className="size-8 border-3 border-gray-900 border-t-transparent rounded-full animate-spin" />
+  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Searching users...</p>
   </motion.div>
   ) : searchError ? (
   <motion.div
@@ -187,21 +187,21 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
   transition={{ delay: idx * 0.05 }}
   key={user.id}
   onClick={() => toggleUser(user)}
-  className={`w-full p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border flex items-center gap-3 sm:gap-4 group transition-all shadow-sm hover:shadow-md ${isSelected ? 'border-black bg-gray-50' : 'border-gray-100 hover:bg-black hover:text-[#CBFF38]'}`}
+  className={`w-full p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border flex items-center gap-3 sm:gap-4 group transition-all shadow-sm hover:shadow-md ${isSelected ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`}
   >
-  <div className={`size-10 sm:size-12 rounded-xl flex items-center justify-center font-black text-xs sm:text-base border transition-all shrink-0 ${isSelected ? 'bg-black text-[#CBFF38] border-black' : 'bg-gray-50 text-gray-500 border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black'}`}>
+  <div className={`size-10 sm:size-12 rounded-xl flex items-center justify-center font-black text-xs sm:text-base border transition-all shrink-0 ${isSelected ? 'bg-gray-900 text-white border-gray-900' : 'bg-gray-50 text-gray-400 border-gray-100 group-hover:bg-gray-100 group-hover:text-gray-900'}`}>
   {isSelected ? <Check size={20} /> : `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`}
   </div>
   <div className="text-left flex-1 min-w-0">
-  <div className="font-black uppercase tracking-tight text-xs sm:text-sm leading-snug truncate">
+  <div className="font-black uppercase tracking-tight text-xs sm:text-sm leading-snug text-gray-900 truncate">
   {user.firstName} {user.lastName}
   </div>
   <div className="flex items-center gap-2 flex-wrap">
-  <span className={`text-[8px] font-black uppercase tracking-widest bg-black/5 px-1.5 py-0.5 rounded transition-colors ${isSelected ? 'text-black bg-black/10' : 'text-gray-700 group-hover:bg-[#CBFF38]/20 group-hover:text-[#CBFF38]'}`}>{user.role?.replace('_', ' ')}</span>
-  <span className={`text-[9px] sm:text-[10px] font-bold truncate transition-colors ${isSelected ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-400'}`}>{user.email}</span>
+  <span className={`text-[8px] font-black uppercase tracking-widest bg-gray-100 px-1.5 py-0.5 rounded transition-colors ${isSelected ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900'}`}>{user.role?.replace('_', ' ')}</span>
+  <span className={`text-[9px] sm:text-[10px] font-bold truncate transition-colors ${isSelected ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'}`}>{user.email}</span>
   </div>
   </div>
-  <div className={`size-7 sm:size-9 rounded-full border flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-black border-black text-[#CBFF38]' : 'border-gray-100 group-hover:bg-[#CBFF38] group-hover:text-black group-hover:border-[#CBFF38]'}`}>
+  <div className={`size-7 sm:size-9 rounded-full border flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-100 group-hover:bg-gray-100 group-hover:text-gray-900 group-hover:border-gray-200 text-gray-400'}`}>
   {isSelected ? <X size={14} /> : <ArrowRight size={14} />}
   </div>
   </motion.button>
@@ -213,14 +213,14 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
   animate={{ opacity: 1 }}
   className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200"
   >
-  <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">No valid transmission targets identified</p>
+  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">No users found</p>
   </motion.div>
   ) : (
   <div className="text-center py-10">
   <div className="size-12 sm:size-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
   <Search className="text-gray-400 size-5 sm:size-8" />
   </div>
-  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-4">Enter parameters to scan neural registry</p>
+  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-4">Search by name to start chatting</p>
   </div>
   )}
   </AnimatePresence>
@@ -228,10 +228,10 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
   </div>
 
   {/* Footer Tip */}
-  <footer className="p-3 sm:p-4 bg-black/5 flex items-center justify-center shrink-0">
+  <footer className="p-3 sm:p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-center shrink-0">
   <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5 text-center leading-tight">
-  <Users size={12} className="text-[#CBFF38] shrink-0" />
-  Multi-Participant channels enabled. Select targets to establish link.
+  <Users size={12} className="text-gray-400 shrink-0" />
+  Select multiple users to create a group chat.
   </p>
   </footer>
   </motion.div>

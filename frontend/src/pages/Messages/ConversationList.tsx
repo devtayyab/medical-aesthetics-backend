@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { MessageSquare, Clock } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../store';
@@ -48,7 +48,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
  {isLoading && displayConversations.length === 0 ? (
  <div className="flex flex-col items-center justify-center p-12 gap-4">
  <div className="size-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">Accessing Archives...</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Accessing Archives...</p>
  </div>
  ) : displayConversations.length === 0 ? (
  <div className="p-12 text-center">
@@ -71,8 +71,8 @@ export const ConversationList: React.FC<ConversationListProps> = ({
  key={conv.id}
  onClick={() => onSelect(conv.id)}
  className={`w-full p-5 flex gap-4 text-left transition-all rounded-[32px] group relative ${isActive 
- ? 'bg-black text-white shadow-2xl shadow-gray-200 z-10' 
- : 'bg-white hover:bg-gray-100/50 text-gray-900 border border-gray-50'
+ ? 'bg-[#CBFF38] text-black shadow-2xl shadow-gray-200 z-10' 
+ : 'bg-gray-100/80 hover:bg-gray-200/60 text-gray-900 border border-gray-200/60'
  }`}
  >
  <div className="relative shrink-0">
@@ -83,7 +83,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
  {otherUser?.firstName?.[0] || '?'}{otherUser?.lastName?.[0] || ''}
  </div>
  {(conv.unreadCount || 0) > 0 && (
- <div className="absolute -top-1 -right-1 size-5 bg-[#CBFF38] text-black text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white shadow-sm ring-2 ring-black/5">
+ <div className="absolute -top-1 -right-1 size-5 bg-[#CBFF38] text-black text-[9px] font-black flex items-center justify-center rounded-full border-2 border-gray-50 shadow-sm ring-2 ring-black/5">
  {conv.unreadCount}
  </div>
  )}
@@ -91,7 +91,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 
  <div className="flex-1 min-w-0 py-0.5">
  <div className="flex justify-between items-start mb-1">
- <h4 className={`text-xs font-black uppercase tracking-tighter truncate ${isActive ? 'text-white' : 'text-gray-900'}`}>
+ <h4 className={`text-xs font-black uppercase tracking-tighter truncate ${isActive ? 'text-gray-900' : 'text-gray-900'}`}>
  {conv.title || `${otherUser?.firstName} ${otherUser?.lastName}`}
  </h4>
  {conv.lastMessage && (
@@ -103,7 +103,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
  </div>
  )}
  </div>
- <p className={`text-[10px] truncate font-bold leading-tight ${isActive ? 'text-[#CBFF38]' : 'text-gray-400 group-hover:text-gray-600'}`}>
+ <p className={`text-[10px] truncate font-bold leading-tight ${isActive ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'}`}>
  {conv.lastMessage?.content || 'Initialize connection...'}
  </p>
  </div>

@@ -83,13 +83,6 @@ api.interceptors.response.use(
  if (error.response?.status === 401 && !originalRequest._retry) {
  if (!store) return Promise.reject(error);
 
- console.log("401 detected, isRefreshing:",
- isRefreshing,"originalRequest:",
- {
- url: originalRequest.url,
- method: originalRequest.method,
- }
- );
  if (isRefreshing) {
  return new Promise((resolve, reject) => {
  subscribeTokenRefresh((token, refreshError) => {
@@ -126,8 +119,6 @@ api.interceptors.response.use(
  );
  }
 
- console.log("Token refresh successful, retrying original request:", originalRequest.url);
- 
  // Re-set flag before retrying to avoid the race condition where new requests
  // during the retry think a refresh is still in progress
  isRefreshing = false;
@@ -183,10 +174,7 @@ export const authAPI = {
  const state = store ? store.getState() : null;
  const token = state?.auth?.accessToken;
  const headers = token ? { Authorization: `Bearer ${token}` } : {};
- return api.post("/auth/logout", {}, { headers }).catch((error) => {
- console.log("Logout API failed, clearing state:",
- error.response?.data || error.message
- );
+ return api.post("/auth/logout", {}, { headers }).catch(() => {
  return Promise.resolve({ data: { message:"Logged out" } });
  });
  },
@@ -197,11 +185,7 @@ export const authAPI = {
  api.post("/auth/reset-password", { password, resetToken }),
 
  forgotPassword: (email: string) =>
- api.post("/auth/forget-password", { email })
- .catch((error) => {
- console.log("Forgot password API failed:", error.response?.data || error.message);
- return Promise.reject(error);
- }),
+ api.post("/auth/forget-password", { email }),
 
 
 };
