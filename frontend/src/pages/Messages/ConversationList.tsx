@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { MessageSquare, Clock } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../store';
@@ -72,7 +72,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
  onClick={() => onSelect(conv.id)}
  className={`w-full p-5 flex gap-4 text-left transition-all rounded-[32px] group relative ${isActive 
  ? 'bg-[#CBFF38] text-black shadow-2xl shadow-gray-200 z-10' 
- : 'bg-white hover:bg-gray-100/50 text-gray-900 border border-gray-50'
+ : 'bg-gray-100/80 hover:bg-gray-200/60 text-gray-900 border border-gray-200/60'
  }`}
  >
  <div className="relative shrink-0">

@@ -1,685 +1,856 @@
-import React, { useEffect, useState } from"react";
-import { useDispatch, useSelector } from"react-redux";
+import React, { useEffect, useState, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
- Users,
- UserCheck,
- TrendingUp,
- Activity,
- Calendar,
- Search,
- RefreshCw,
- Clock,
- BarChart3,
- Target,
- CheckCircle,
- Zap,
- Lightbulb,
- AlertTriangle,
- User
-} from"lucide-react";
+  Users,
+  UserCheck,
+  TrendingUp,
+  Activity,
+  Calendar,
+  Search,
+  RefreshCw,
+  Clock,
+  BarChart3,
+  Target,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Zap,
+  Lightbulb,
+  PhoneCall,
+  PhoneIncoming,
+  PhoneMissed,
+  User,
+  ShieldCheck,
+  Euro,
+  Percent,
+  Sparkles,
+  ArrowUpRight,
+  TrendingDown
+} from 'lucide-react';
 
 import {
- ResponsiveContainer,
- ComposedChart,
- BarChart,
- Bar,
- Line,
- XAxis,
- YAxis,
- CartesianGrid,
- Tooltip,
- Legend,
- PieChart,
- Pie,
- Cell
+  ResponsiveContainer,
+  ComposedChart,
+  BarChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
 
-import { Card, CardContent, CardHeader, CardTitle } from"@/components/molecules/Card/Card";
-import { Button } from"@/components/atoms/Button/Button";
-import { Select } from"@/components/atoms/Select/Select";
-import { Input } from"@/components/atoms/Input/Input";
-import { fetchSalespersonAnalytics, fetchSalespersons } from"@/store/slices/crmSlice";
-import type { RootState, AppDispatch } from"@/store";
+import { fetchSalespersonAnalytics, fetchSalespersons } from '@/store/slices/crmSlice';
+import type { RootState, AppDispatch } from '@/store';
+import { format, subDays, startOfMonth, endOfMonth, startOfYear } from 'date-fns';
 
-// Utility for formatting percentage
-const formatPercent = (val?: number) => val ? `${(val * 100).toFixed(1)}%` : '0%';
+const formatPercent = (val?: number) => (val !== undefined && val !== null ? `${(val * 100).toFixed(1)}%` : '0.0%');
 
 interface AnalyticsProps {
- initialSalespersonId?: string;
+  initialSalespersonId?: string;
 }
 
 export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) => {
- const dispatch = useDispatch<AppDispatch>();
- const { analytics, isLoading, salespersons, lastUpdated } = useSelector((state: RootState) => state.crm);
- const { user } = useSelector((state: RootState) => state.auth);
- const [salespersonId, setSalespersonId] = useState<string>(initialSalespersonId ||"all");
- const [dateRange, setDateRange] = useState({
- startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
- endDate: new Date().toISOString().split('T')[0]
- });
+  const dispatch = useDispatch<AppDispatch>();
+  const { analytics, isLoading, salespersons, lastUpdated } = useSelector((state: RootState) => state.crm);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [salespersonId, setSalespersonId] = useState<string>(initialSalespersonId || 'all');
+  const [activePreset, setActivePreset] = useState<'30d' | 'thisMonth' | 'lastMonth' | 'ytd' | 'custom'>('30d');
+  const [dateRange, setDateRange] = useState({
+    startDate: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+    endDate: format(new Date(), 'yyyy-MM-dd'),
+  });
 
- const canSeeFinancials = ['admin', 'SUPER_ADMIN', 'doctor', 'ADMIN', 'DOCTOR'].includes(user?.role);
+  const canSeeFinancials = ['admin', 'SUPER_ADMIN', 'doctor', 'ADMIN', 'DOCTOR', 'manager'].includes(user?.role);
 
- const turnoverChartData = React.useMemo(() => {
- if (!analytics?.turnoverTimeSeries) return [];
- let cumulative = 0;
- return analytics.turnoverTimeSeries.map(d => {
- cumulative += d.amount;
- return {
- ...d,
- cumulative,
- displayDate: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
- };
- });
- }, [analytics?.turnoverTimeSeries]);
+  const handlePreset = (preset: '30d' | 'thisMonth' | 'lastMonth' | 'ytd') => {
+    setActivePreset(preset);
+    const now = new Date();
+    if (preset === '30d') {
+      setDateRange({
+        startDate: format(subDays(now, 30), 'yyyy-MM-dd'),
+        endDate: format(now, 'yyyy-MM-dd'),
+      });
+    } else if (preset === 'thisMonth') {
+      setDateRange({
+        startDate: format(startOfMonth(now), 'yyyy-MM-dd'),
+        endDate: format(endOfMonth(now), 'yyyy-MM-dd'),
+      });
+    } else if (preset === 'lastMonth') {
+      const prev = subDays(startOfMonth(now), 1);
+      setDateRange({
+        startDate: format(startOfMonth(prev), 'yyyy-MM-dd'),
+        endDate: format(endOfMonth(prev), 'yyyy-MM-dd'),
+      });
+    } else if (preset === 'ytd') {
+      setDateRange({
+        startDate: format(startOfYear(now), 'yyyy-MM-dd'),
+        endDate: format(endOfMonth(now), 'yyyy-MM-dd'),
+      });
+    }
+  };
 
- const appointmentDonutData = React.useMemo(() => {
- if (!analytics?.appointmentStats) return [];
- const stats = analytics.appointmentStats;
- return [
- { name: 'Completed', value: stats.completed || 0, color: '#10b981' },
- { name: 'Booked/Pending', value: Math.max(0, (stats.total || 0) - (stats.completed || 0) - (stats.cancelled || 0) - (stats.noShow || 0)), color: '#3b82f6' },
- { name: 'Canceled', value: stats.cancelled || 0, color: '#ef4444' },
- { name: 'No-show', value: stats.noShow || 0, color: '#f97316' },
- ].filter(d => d.value > 0);
- }, [analytics?.appointmentStats]);
+  const turnoverChartData = useMemo(() => {
+    if (!analytics?.turnoverTimeSeries) return [];
+    let cumulative = 0;
+    return analytics.turnoverTimeSeries.map((d: any) => {
+      cumulative += d.amount || 0;
+      return {
+        ...d,
+        cumulative,
+        displayDate: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      };
+    });
+  }, [analytics?.turnoverTimeSeries]);
 
- const appointmentReturnData = React.useMemo(() => {
- if (!analytics?.appointmentStats) return [];
- const stats = analytics.appointmentStats;
- const isNew = Math.max(0, (stats.total || 0) - (stats.returned || 0));
- return [
- { name: 'New Clients', value: isNew, color: '#8b5cf6' },
- { name: 'Returned', value: stats.returned || 0, color: '#0ea5e9' },
- ].filter(d => d.value > 0);
- }, [analytics?.appointmentStats]);
+  const appointmentDonutData = useMemo(() => {
+    if (!analytics?.appointmentStats) return [];
+    const stats = analytics.appointmentStats;
+    const bookedPending = Math.max(0, (stats.total || 0) - (stats.completed || 0) - (stats.cancelled || 0) - (stats.noShow || 0));
+    return [
+      { name: 'Completed', value: stats.completed || 0, color: '#10b981' },
+      { name: 'Booked / Pending', value: bookedPending, color: '#3b82f6' },
+      { name: 'Cancelled', value: stats.cancelled || 0, color: '#ef4444' },
+      { name: 'No-Show', value: stats.noShow || 0, color: '#f59e0b' },
+    ].filter(d => d.value > 0);
+  }, [analytics?.appointmentStats]);
 
- useEffect(() => {
- if (user?.role === 'salesperson' && user?.id) {
- setSalespersonId(user.id);
- } else if (user?.id && (salespersonId ==="all" || !salespersonId)) {
- // For managers/admins, default to"all" or specific initial ID
- // but ensure state is initialized
- }
- }, [user]);
+  const appointmentReturnData = useMemo(() => {
+    if (!analytics?.appointmentStats) return [];
+    const stats = analytics.appointmentStats;
+    const isNew = Math.max(0, (stats.total || 0) - (stats.returned || 0));
+    return [
+      { name: 'New Clients', value: isNew, color: '#8b5cf6' },
+      { name: 'Repeat Patients', value: stats.returned || 0, color: '#06b6d4' },
+    ].filter(d => d.value > 0);
+  }, [analytics?.appointmentStats]);
 
- useEffect(() => {
- dispatch(fetchSalespersons());
- }, [dispatch]);
+  useEffect(() => {
+    if (user?.role === 'salesperson' && user?.id) {
+      setSalespersonId(user.id);
+    }
+  }, [user]);
 
- const loadSalespersonData = () => {
- if (salespersonId) {
- dispatch(fetchSalespersonAnalytics({
- salespersonId,
- dateRange
- }));
- }
- };
+  useEffect(() => {
+    dispatch(fetchSalespersons());
+  }, [dispatch]);
 
- useEffect(() => {
- loadSalespersonData();
- }, [dispatch, salespersonId, dateRange]);
+  const loadSalespersonData = () => {
+    if (salespersonId) {
+      dispatch(fetchSalespersonAnalytics({
+        salespersonId,
+        dateRange,
+      }));
+    }
+  };
 
- const handleRefresh = () => {
- dispatch(fetchSalespersons());
- loadSalespersonData();
- };
+  useEffect(() => {
+    loadSalespersonData();
+  }, [dispatch, salespersonId, dateRange]);
 
- return (
- <div className="p-3 md:p-4 max-w-7xl mx-auto space-y-4">
- {/* Header Section */}
- <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
- <div>
- <h1 className="text-xl font-bold text-gray-900 tracking-tight">CRM Analytics</h1>
- <p className="text-[10px] text-gray-400">Monitor performance metrics and activities.</p>
- </div>
- <div className="flex items-center gap-3">
- {lastUpdated && (
- <span className="text-[9px] font-medium text-gray-400">
- Last Synced: {new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
- </span>
- )}
- <Button
- onClick={handleRefresh}
- disabled={isLoading}
- variant="outline"
- className="flex items-center gap-1.5 h-8 text-xs py-1"
- >
- <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
- Sync
- </Button>
- </div>
- </div>
+  const handleRefresh = () => {
+    dispatch(fetchSalespersons());
+    loadSalespersonData();
+  };
 
-  {/* Filter Bar */}
-  <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-stretch md:items-center gap-3">
-  {user?.role !== 'salesperson' && (
-  <div className="flex-1 w-full relative">
-  <label className="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Salesperson</label>
-  <Select
-  options={[
-  { label: 'All Salespeople', value: 'all' },
-  ...(salespersons || [])
-  .filter((s: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(s.role))
-  .map(s => ({
-  label: `${s.firstName} ${s.lastName}`,
-  value: s.id
-  }))
-  ]}
-  value={salespersonId}
-  onChange={(val) => setSalespersonId(val)}
-  className="h-9 text-xs w-full"
-  />
-  </div>
-  )}
+  const activeSalespersonObj = salespersons?.find((s: any) => s.id === salespersonId);
 
-  <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full md:w-auto md:flex md:items-center">
-  <div className="w-full md:w-36 min-w-0">
-  <label className="text-[10px] font-bold text-gray-500 mb-1 block flex items-center gap-1">
-  <Calendar className="w-3 h-3 text-gray-400" /> Start
-  </label>
-  <Input
-  type="date"
-  value={dateRange.startDate}
-  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-  className="bg-gray-50 border-gray-200 h-9 text-xs w-full min-w-0 px-2"
-  />
-  </div>
-  <div className="w-full md:w-36 min-w-0">
-  <label className="text-[10px] font-bold text-gray-500 mb-1 block flex items-center gap-1">
-  <Calendar className="w-3 h-3 text-gray-400" /> End
-  </label>
-  <Input
-  type="date"
-  value={dateRange.endDate}
-  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-  className="bg-gray-50 border-gray-200 h-9 text-xs w-full min-w-0 px-2"
-  />
-  </div>
-  </div>
-  </div>
+  return (
+    <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 space-y-8 animate-in fade-in duration-300">
 
- {/* Turnover KPI Section */}
- {canSeeFinancials && (
- <>
- <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Turnover for Period</h2>
- <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
- <MetricCard
- title="Period Target"
- value={analytics?.turnoverStats?.targetIsSet ? `€${analytics?.turnoverStats?.monthlyTarget.toLocaleString()}` : 'Not set'}
- icon={<Target className="w-5 h-5 text-gray-600" />}
- trend={!analytics?.turnoverStats?.targetIsSet ?"Missing target" :"Current period goal"}
- color={analytics?.turnoverStats?.targetIsSet ?"bg-gray-50 text-gray-700" :"bg-red-50 text-red-700"}
- />
- <MetricCard
- title="Turnover"
- value={`€${(analytics?.turnoverStats?.achieved || 0).toLocaleString()}`}
- icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
- trend="Euros achieved up to today"
- color="bg-emerald-50 text-emerald-700"
- />
- <MetricCard
- title="Target Progress"
- value={analytics?.turnoverStats?.targetIsSet ? formatPercent(analytics?.turnoverStats?.progress) : '€–'}
- icon={<CheckCircle className="w-5 h-5 text-blue-600" />}
- trend={analytics?.turnoverStats?.targetIsSet ?"Progress towards goal" :"No target set"}
- color="bg-blue-50 text-blue-700"
- />
- <MetricCard
- title="Pacing vs Target"
- value={analytics?.turnoverStats?.targetIsSet ? 
- `${analytics?.turnoverStats?.pacingStatus} ${(analytics?.turnoverStats?.pacingDelta || 0) > 0 ? '+' : ''}${formatPercent(analytics?.turnoverStats?.pacingDelta)}` 
- : '€–'}
- icon={<Clock className="w-5 h-5 text-purple-600" />}
- trend={analytics?.turnoverStats?.targetIsSet ? `Expected progress by today: ${formatPercent(analytics?.turnoverStats?.expectedProgress)}` :"No target set"}
- color={
- analytics?.turnoverStats?.pacingStatus === 'Ahead' ?"bg-emerald-50 text-emerald-700" :
- analytics?.turnoverStats?.pacingStatus === 'Behind' ?"bg-red-50 text-red-700" :"bg-blue-50 text-blue-700"
- }
- />
- </div>
- </>
- )}
+      {/* ── Header Section ─────────────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        
+        {/* Left Title & Status */}
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#0B1120] flex items-center justify-center shadow-xl shadow-black/10 flex-shrink-0 ring-1 ring-white/10">
+            <BarChart3 className="text-[#CBFF38]" size={26} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">CRM &amp; Sales Analytics</h1>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold ring-1 ring-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Feed
+              </span>
+            </div>
+            <p className="text-sm text-gray-400 font-medium mt-0.5">
+              Sales pipeline, conversion throughput &amp; agent velocity metrics
+            </p>
+          </div>
+        </div>
 
- {/* Appointments Funnel KPI Section */}
- <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider mt-5">Appointments Funnel</h2>
- <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-2">
- <MetricCard
- title="Appointments Booked"
- value={analytics?.appointmentStats?.total || 0}
- icon={<Calendar className="w-5 h-5 text-blue-600" />}
- trend="Created in period"
- color="bg-blue-50 text-blue-700"
- />
- <MetricCard
- title="Appointments Done"
- value={analytics?.appointmentStats?.completed || 0}
- icon={<CheckCircle className="w-5 h-5 text-emerald-600" />}
- trend="Completed appointments"
- color="bg-emerald-50 text-emerald-700"
- />
- <MetricCard
- title="Appts. Canceled"
- value={analytics?.appointmentStats?.cancelled || 0}
- icon={<AlertTriangle className="w-5 h-5 text-red-600" />}
- trend="Canceled in period"
- color="bg-red-50 text-red-700"
- />
- <MetricCard
- title="No-shows"
- value={analytics?.appointmentStats?.noShow || 0}
- icon={<User className="w-5 h-5 text-orange-600" />}
- trend="Missed appointments"
- color="bg-orange-50 text-orange-700"
- />
- <MetricCard
- title="Returned Appts"
- value={analytics?.appointmentStats?.returned || 0}
- icon={<RefreshCw className="w-5 h-5 text-indigo-600" />}
- trend="Repeat clients"
- color="bg-indigo-50 text-indigo-700"
- />
- </div>
+        {/* Right Sync & Timestamps */}
+        <div className="flex items-center gap-3">
+          {lastUpdated && (
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Last Synced</p>
+              <p className="text-xs font-mono font-semibold text-gray-700">
+                {new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+              </p>
+            </div>
+          )}
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="h-10 px-4 inline-flex items-center justify-center gap-2 bg-[#0B1120] text-white hover:bg-black font-bold text-xs rounded-xl shadow-sm active:scale-95 transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+            <span>Sync Data</span>
+          </button>
+        </div>
 
- {/* Quick Insights Section */}
- <div className="grid grid-cols-1 gap-4 mb-4">
- <QuickInsights analytics={analytics} />
- </div>
+      </div>
 
- {/* Key Metrics Grid */}
- <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Activity Overview</h2>
- <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
- <MetricCard
- title="Total Leads"
- value={analytics?.totalLeads || 0}
- icon={<Users className="w-5 h-5 text-blue-600" />}
- trend="Total accumulated"
- color="bg-blue-50 text-blue-700"
- />
- <MetricCard
- title="Converted Leads"
- value={analytics?.convertedLeads || 0}
- icon={<UserCheck className="w-5 h-5 text-emerald-600" />}
- trend="Successful conversions"
- color="bg-emerald-50 text-emerald-700"
- />
- <MetricCard
- title="Conversion Rate"
- value={formatPercent(analytics?.conversionRate)}
- icon={<TrendingUp className="w-5 h-5 text-indigo-600" />}
- trend="Overall performance"
- color="bg-indigo-50 text-indigo-700"
- />
- <MetricCard
- title="Total Actions"
- value={analytics?.totalActions || 0}
- icon={<Activity className="w-5 h-5 text-purple-600" />}
- trend={`${analytics?.completedActions || 0} Completed`}
- color="bg-purple-50 text-purple-700"
- />
- </div>
+      {/* ── Filter Toolbar ─────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm ring-1 ring-gray-100 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+        
+        {/* Salesperson Selector */}
+        {user?.role !== 'salesperson' ? (
+          <div className="flex-1 min-w-[240px]">
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5 block">
+              Filter by Agent
+            </label>
+            <div className="relative">
+              <select
+                value={salespersonId}
+                onChange={(e) => setSalespersonId(e.target.value)}
+                className="w-full appearance-none bg-gray-50 pl-4 pr-10 py-2.5 rounded-xl text-xs font-bold text-gray-800 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#CBFF38] focus:border-transparent transition-all cursor-pointer"
+              >
+                <option value="all">All Salespeople &amp; Agents (Combined)</option>
+                {(salespersons || [])
+                  .filter((s: any) => ['salesperson', 'SUPER_ADMIN', 'manager', 'admin'].includes(s.role))
+                  .map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.firstName} {s.lastName} ({s.role.replace('_', ' ')})
+                    </option>
+                  ))}
+              </select>
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <User size={14} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 bg-blue-50/70 px-4 py-3 rounded-xl border border-blue-100 text-blue-900">
+            <User size={16} className="text-blue-600" />
+            <span className="text-xs font-bold">
+              Active Agent View: {user?.firstName} {user?.lastName}
+            </span>
+          </div>
+        )}
 
- {/* Detailed Analysis Section */}
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
- {/* Salesperson Performance Panel */}
- <Card className="lg:col-span-2 border-none shadow-md overflow-hidden">
- <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 py-2">
- <div className="flex items-center gap-2">
- <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
- <CardTitle className="text-sm font-bold">Agent Performance</CardTitle>
- </div>
- </CardHeader>
- <CardContent className="p-3">
- {salespersonId && analytics ? (
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- {/* Turnover Chart Panel OR Leaderboard */}
- <div className="md:col-span-2 mt-1 space-y-2">
- <h3 className="font-bold text-gray-500 text-[9px] uppercase tracking-wider">
- {salespersonId === 'all' ? 'Agent Leaderboard' : 'Activity Trend'}
- </h3>
- <div className="h-48 w-full bg-white border border-gray-100 rounded-lg p-2 shadow-sm overflow-hidden" style={{ minWidth: 0 }}>
- 
- {/* View for Individual Salesperson */}
- {salespersonId !== 'all' && (
- turnoverChartData.length > 0 ? (
- <ResponsiveContainer width="99%" height="100%" debounce={50}>
- <ComposedChart data={turnoverChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
- <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} dy={5} />
- {canSeeFinancials ? (
- <>
- <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
- <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => `€${val}`} />
- <Bar yAxisId="left" dataKey="amount" name="Daily Revenue" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={30} />
- <Line yAxisId="right" type="monotone" dataKey="cumulative" name="Cumulative MTD" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} />
- </>
- ) : (
- <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} />
- )}
- <Tooltip
- contentStyle={{ borderRadius: '6px', border: 'none', boxShadow: '0 2px 4px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
- formatter={(value: number, name: string) => {
- if (!canSeeFinancials && (name.includes('Revenue') || name.includes('MTD'))) return [null, null];
- return [name.includes('Revenue') ? `€${value.toLocaleString()}` : value, name];
- }}
- />
- </ComposedChart>
- </ResponsiveContainer>
- ) : (
- <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">No activity data</div>
- )
- )}
+        {/* Date Presets & Inputs */}
+        <div className="flex flex-wrap items-center gap-3">
+          
+          {/* Presets */}
+          <div className="inline-flex bg-gray-100 p-1 rounded-xl ring-1 ring-gray-200/50">
+            <button
+              onClick={() => handlePreset('30d')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activePreset === '30d' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              Last 30D
+            </button>
+            <button
+              onClick={() => handlePreset('thisMonth')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activePreset === 'thisMonth' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              This Month
+            </button>
+            <button
+              onClick={() => handlePreset('lastMonth')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activePreset === 'lastMonth' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              Last Month
+            </button>
+            <button
+              onClick={() => handlePreset('ytd')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activePreset === 'ytd' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              YTD
+            </button>
+          </div>
 
- {/* View for ALL Salespeople (Leaderboard) */}
- {salespersonId === 'all' && (
- (analytics?.agentLeaderboard?.length || 0) > 0 ? (
- <ResponsiveContainer width="99%" height="100%" debounce={50}>
- <BarChart data={analytics?.agentLeaderboard} margin={{ top: 5, right: 5, left: -20, bottom: 0 }} layout="vertical">
- <CartesianGrid strokeDasharray="3 3" horizontal={true} stroke="#F3F4F6" />
- <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9CA3AF' }} tickFormatter={(val) => canSeeFinancials ? `€${val}` : val} />
- <YAxis dataKey="agent" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#374151', fontWeight: 'bold' }} width={80} />
- <Tooltip
- cursor={{ fill: '#f8fafc' }}
- contentStyle={{ borderRadius: '6px', border: 'none', boxShadow: '0 2px 4px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
- formatter={(value: number) => [canSeeFinancials ? `€${value.toLocaleString()}` : '***', canSeeFinancials ? 'Total Generated' : 'Restricted']}
- />
- {canSeeFinancials ? (
- <Bar dataKey="amount" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={25} />
- ) : (
- <Bar dataKey="leads" fill="#94a3b8" radius={[0, 4, 4, 0]} maxBarSize={25} />
- )}
- </BarChart>
- </ResponsiveContainer>
- ) : (
- <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">No leaderboard data</div>
- )
- )}
+          {/* Date Picker Inputs */}
+          <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-200 shadow-xs">
+            <Calendar size={14} className="text-gray-400 shrink-0" />
+            <input
+              type="date"
+              value={dateRange.startDate}
+              onChange={(e) => {
+                setActivePreset('custom');
+                setDateRange(prev => ({ ...prev, startDate: e.target.value }));
+              }}
+              className="bg-transparent text-xs font-semibold text-gray-700 focus:outline-none cursor-pointer w-28"
+            />
+            <span className="text-[10px] text-gray-300 font-bold">TO</span>
+            <input
+              type="date"
+              value={dateRange.endDate}
+              onChange={(e) => {
+                setActivePreset('custom');
+                setDateRange(prev => ({ ...prev, endDate: e.target.value }));
+              }}
+              className="bg-transparent text-xs font-semibold text-gray-700 focus:outline-none cursor-pointer w-28"
+            />
+          </div>
 
- </div>
- </div>
+        </div>
 
- <div className="space-y-3">
- <StatRow
- label="Assigned"
- value={analytics?.leadsAssigned || 0}
- icon={<Users className="w-3 h-3 text-gray-400" />}
- />
- <StatRow
- label="Contacted"
- value={analytics?.leadsContacted || 0}
- icon={<Users className="w-3 h-3 text-gray-400" />}
- />
- <div className="pt-2 border-t border-gray-100">
- <p className="text-[9px] font-bold text-gray-400 uppercase">Conversion Efficiency</p>
- <div className="flex items-baseline gap-1.5">
- <span className="text-xl font-black text-gray-900">
- {formatPercent(analytics?.salespersonConversionRate)}
- </span>
- </div>
- {/* Progress Bar */}
- <div className="w-full bg-gray-100 h-1 rounded-full mt-1.5 overflow-hidden">
- <div
- className="bg-blue-600 h-1 rounded-full transition-all duration-1000 ease-out"
- style={{ width: `${(analytics?.salespersonConversionRate || 0) * 100}%` }}
- />
- </div>
- </div>
- </div>
+      </div>
 
- <div className="bg-gray-50 rounded-lg p-3 space-y-2">
- <div className="flex items-center justify-between p-2 bg-white rounded border border-gray-100 shadow-sm">
- <p className="text-[9px] font-bold text-gray-400 uppercase">Total Calls</p>
- <p className="text-sm font-black text-gray-900">{analytics.communicationStats?.calls || 0}</p>
- </div>
+      {/* ── Turnover & Financial Target KPIs ────────────────────── */}
+      {canSeeFinancials && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+              <Euro size={14} className="text-emerald-600" />
+              Revenue &amp; Period Target Pacing
+            </h2>
+            {activeSalespersonObj && (
+              <span className="text-[11px] font-bold text-gray-400">
+                Target configured: {activeSalespersonObj.monthlyTarget ? `€${activeSalespersonObj.monthlyTarget.toLocaleString()}/mo` : 'No Target Set'}
+              </span>
+            )}
+          </div>
 
- <div className="grid grid-cols-2 gap-2">
- <div className="p-2 bg-emerald-50/50 rounded text-center">
- <p className="text-[8px] font-bold text-emerald-600 uppercase">Ans</p>
- <p className="text-xs font-black text-emerald-700">{analytics.communicationStats?.answeredCalls || 0}</p>
- </div>
- <div className="p-2 bg-red-50/50 rounded text-center">
- <p className="text-[8px] font-bold text-red-600 uppercase">Miss</p>
- <p className="text-xs font-black text-red-700">{analytics.communicationStats?.missedCalls || 0}</p>
- </div>
- </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* 1. Turnover Gross (Luxury Dark Hero Card) */}
+            <div className="relative bg-[#0B1120] text-white rounded-2xl p-5 shadow-xl shadow-black/10 overflow-hidden ring-1 ring-white/10 flex flex-col justify-between group hover:shadow-2xl transition-all">
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#CBFF38]/10 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform" />
+              <div className="absolute right-2 bottom-1 opacity-5 text-white pointer-events-none">
+                <Euro size={70} />
+              </div>
 
- <div className="p-2 bg-indigo-50/50 rounded flex justify-between items-center">
- <p className="text-[8px] font-bold text-indigo-600 uppercase">Talk Time</p>
- <p className="text-xs font-black text-indigo-700">
- {analytics.communicationStats?.totalDurationSeconds ? Math.floor(analytics.communicationStats.totalDurationSeconds / 60) : 0}m
- </p>
- </div>
- </div>
- </div>
- ) : (
- <div className="h-56 flex flex-col items-center justify-center text-center text-gray-400 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
- <Search className="w-8 h-8 mb-2 opacity-20" />
- <p className="font-medium text-sm">No Data Available</p>
- <p className="text-xs opacity-60 max-w-[200px] mt-1">
- {!salespersonId ? 'Select a Salesperson above to view performance metrics.' : 'No records found for this period.'}
- </p>
- </div>
- )}
- </CardContent>
- </Card>
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    Gross Turnover
+                  </span>
+                  <div className="p-1.5 rounded-lg bg-white/10 text-[#CBFF38]">
+                    <TrendingUp size={14} />
+                  </div>
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white mt-1.5">
+                  €{(analytics?.turnoverStats?.achieved || 0).toLocaleString()}
+                </h3>
+              </div>
 
- {/* Breakdown Panel */}
- <Card className="border-none shadow-md">
- <CardHeader className="border-b border-gray-100 py-3">
- <CardTitle className="text-base">Activity Breakdown</CardTitle>
- </CardHeader>
- <CardContent className="p-4">
- <div className="space-y-3">
- {analytics ? (
- <>
- <BreakdownItem label="Pending Tasks" value={analytics.actionStats?.pending || 0} total={analytics.actionStats?.total || 1} color="bg-orange-500" />
- <BreakdownItem label="Completed Tasks" value={analytics.actionStats?.completed || 0} total={analytics.actionStats?.total || 1} color="bg-emerald-500" />
- <BreakdownItem label="Missed Tasks" value={analytics.actionStats?.missed || 0} total={analytics.actionStats?.total || 1} color="bg-red-500" />
+              <div className="pt-3 mt-2 border-t border-white/10 flex items-center justify-between text-xs">
+                <span className="text-slate-400 text-[11px]">Achieved in selected period</span>
+                <span className="text-[#CBFF38] font-bold text-[10px] uppercase tracking-wider">
+                  Verified
+                </span>
+              </div>
+            </div>
 
- <div className="mt-6 pt-4 border-t border-gray-100">
- <h4 className="font-medium text-xs text-gray-700 mb-3">Customer Base</h4>
- <div className="grid grid-cols-2 gap-3">
- <div className="p-2.5 bg-gray-50 rounded-lg">
- <p className="text-[10px] text-gray-500">Total</p>
- <p className="text-lg font-bold">{analytics.customerStats?.totalCustomers || 0}</p>
- </div>
- <div className="p-2.5 bg-gray-50 rounded-lg">
- <p className="text-[10px] text-gray-500">Repeat</p>
- <p className="text-lg font-bold text-blue-600">{analytics.customerStats?.repeatCustomers || 0}</p>
- </div>
- </div>
- <div className="mt-3 p-2.5 bg-emerald-50 rounded-lg">
- <p className="text-[10px] text-emerald-700 font-medium whitespace-nowrap">Lifetime Revenue</p>
- <p className="text-lg font-black text-emerald-900 mt-0.5">
- {canSeeFinancials ? `€${(analytics.customerStats?.totalRevenue || 0).toLocaleString()}` : '€–'}
- </p>
- </div>
+            {/* 2. Period Target */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-gray-100 flex flex-col justify-between hover:shadow-md transition-all">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
+                    Period Target
+                  </span>
+                  <div className="p-1.5 rounded-lg bg-slate-50 text-gray-600">
+                    <Target size={14} />
+                  </div>
+                </div>
+                <div className="mt-1.5">
+                  {analytics?.turnoverStats?.targetIsSet ? (
+                    <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900">
+                      €{analytics.turnoverStats.monthlyTarget.toLocaleString()}
+                    </h3>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-amber-600 mt-1">
+                      <AlertCircle size={18} />
+                      <span className="text-lg font-bold">Not Configured</span>
+                    </div>
+                  )}
+                </div>
+              </div>
 
- {/* Funnel Donut Charts */}
- <div className="mt-4 pt-4 border-t border-gray-100">
- <h4 className="font-medium text-xs text-gray-700 mb-1">Appointments Overview</h4>
- <div className="h-40 w-full" style={{ minWidth: 0 }}>
- {appointmentDonutData.length > 0 ? (
- <ResponsiveContainer width="99%" height="100%" debounce={50}>
- <PieChart>
- <Pie
- data={appointmentDonutData}
- cx="50%"
- cy="50%"
- innerRadius={30}
- outerRadius={50}
- paddingAngle={2}
- dataKey="value"
- >
- {appointmentDonutData.map((entry, index) => (
- <Cell key={`cell-${index}`} fill={entry.color} />
- ))}
- </Pie>
- <Tooltip
- formatter={(value, name) => [value, name]}
- contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
- />
- <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{ fontSize: '10px' }} />
- </PieChart>
- </ResponsiveContainer>
- ) : (
- <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">No appointments recorded</div>
- )}
- </div>
+              <div className="pt-3 mt-2 border-t border-gray-50 flex items-center justify-between text-xs">
+                <span className="text-gray-400 text-[11px]">
+                  {analytics?.turnoverStats?.targetIsSet ? 'Sales Goal for timeframe' : 'Set target in User Management'}
+                </span>
+              </div>
+            </div>
 
- <div className="h-32 w-full mt-1" style={{ minWidth: 0 }}>
- {appointmentReturnData.length > 0 ? (
- <ResponsiveContainer width="99%" height="100%" debounce={50}>
- <PieChart>
- <Pie
- data={appointmentReturnData}
- cx="50%"
- cy="50%"
- innerRadius={25}
- outerRadius={40}
- paddingAngle={2}
- dataKey="value"
- >
- {appointmentReturnData.map((entry, index) => (
- <Cell key={`cell-${index}`} fill={entry.color} />
- ))}
- </Pie>
- <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '10px' }} />
- <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '10px', paddingTop: '5px' }} />
- </PieChart>
- </ResponsiveContainer>
- ) : null}
- </div>
- </div>
- </div>
- </>
- ) : (
- <div className="text-xs text-gray-500 text-center py-6">Loading stats...</div>
- )}
- </div>
- </CardContent>
- </Card>
- </div>
- </div >
- );
+            {/* 3. Target Progress Rate */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-gray-100 flex flex-col justify-between hover:shadow-md transition-all">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
+                    Target Progress
+                  </span>
+                  <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                    <Percent size={14} />
+                  </div>
+                </div>
+                <div className="mt-1.5 flex items-baseline gap-2">
+                  <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-blue-600">
+                    {analytics?.turnoverStats?.targetIsSet ? formatPercent(analytics?.turnoverStats?.progress) : '—'}
+                  </h3>
+                  {analytics?.turnoverStats?.targetIsSet && (
+                    <span className="text-xs text-gray-400 font-semibold">of Goal</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-3 mt-2 border-t border-gray-50 space-y-1.5">
+                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 rounded-full transition-all duration-700"
+                    style={{ width: `${Math.min(100, Math.max(0, (analytics?.turnoverStats?.progress || 0) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Pacing vs Target */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-gray-100 flex flex-col justify-between hover:shadow-md transition-all">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
+                    Pacing vs Timeline
+                  </span>
+                  <div className={`p-1.5 rounded-lg ${
+                    analytics?.turnoverStats?.pacingStatus === 'Ahead' ? 'bg-emerald-50 text-emerald-600' :
+                    analytics?.turnoverStats?.pacingStatus === 'Behind' ? 'bg-red-50 text-red-600' :
+                    'bg-gray-50 text-gray-600'
+                  }`}>
+                    <Clock size={14} />
+                  </div>
+                </div>
+                <div className="mt-1.5">
+                  {analytics?.turnoverStats?.targetIsSet ? (
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xl sm:text-2xl font-black tracking-tight ${
+                        analytics.turnoverStats.pacingStatus === 'Ahead' ? 'text-emerald-600' : 'text-red-600'
+                      }`}>
+                        {analytics.turnoverStats.pacingStatus}
+                      </span>
+                      <span className={`text-xs font-extrabold px-2 py-0.5 rounded-md ${
+                        analytics.turnoverStats.pacingStatus === 'Ahead' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                      }`}>
+                        {(analytics.turnoverStats.pacingDelta || 0) > 0 ? '+' : ''}{formatPercent(analytics.turnoverStats.pacingDelta)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xl font-bold text-gray-400">—</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-3 mt-2 border-t border-gray-50 text-[11px] text-gray-400 font-medium">
+                {analytics?.turnoverStats?.targetIsSet
+                  ? `Expected today: ${formatPercent(analytics?.turnoverStats?.expectedProgress)}`
+                  : 'Requires target value'}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── Appointments Funnel Section ─────────────────────────────── */}
+      <div className="space-y-3">
+        <h2 className="text-xs font-extrabold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+          <Calendar size={14} className="text-blue-600" />
+          Appointments Throughput &amp; Funnel
+        </h2>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          
+          {/* 1. Booked */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm ring-1 ring-gray-100 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">Total Booked</span>
+              <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                <Calendar size={14} />
+              </div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-gray-900">{analytics?.appointmentStats?.total || 0}</p>
+            <p className="text-[10px] text-gray-400 mt-1 font-medium">Created in period</p>
+          </div>
+
+          {/* 2. Completed */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm ring-1 ring-gray-100 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600">Completed</span>
+              <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                <CheckCircle2 size={14} />
+              </div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-emerald-600">{analytics?.appointmentStats?.completed || 0}</p>
+            <p className="text-[10px] text-emerald-700 mt-1 font-semibold">Done appointments</p>
+          </div>
+
+          {/* 3. Cancelled */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm ring-1 ring-gray-100 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-500">Cancelled</span>
+              <div className="p-1.5 rounded-lg bg-red-50 text-red-500">
+                <XCircle size={14} />
+              </div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-red-600">{analytics?.appointmentStats?.cancelled || 0}</p>
+            <p className="text-[10px] text-red-500 mt-1 font-medium">Cancelled in period</p>
+          </div>
+
+          {/* 4. No-Show */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm ring-1 ring-gray-100 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-500">No-Show</span>
+              <div className="p-1.5 rounded-lg bg-amber-50 text-amber-500">
+                <AlertCircle size={14} />
+              </div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-amber-600">{analytics?.appointmentStats?.noShow || 0}</p>
+            <p className="text-[10px] text-amber-600 mt-1 font-medium">Missed attendance</p>
+          </div>
+
+          {/* 5. Repeat Patients */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm ring-1 ring-gray-100 hover:shadow-md transition-all col-span-2 sm:col-span-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-600">Repeat Patients</span>
+              <div className="p-1.5 rounded-lg bg-cyan-50 text-cyan-600">
+                <RefreshCw size={14} />
+              </div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-cyan-600">{analytics?.appointmentStats?.returned || 0}</p>
+            <p className="text-[10px] text-cyan-700 mt-1 font-semibold">Returning clients</p>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── AI Quick Insights & Actionable Guidance ─────────────────── */}
+      <QuickInsights analytics={analytics} />
+
+      {/* ── Activity & Lead Conversion Matrix ────────────────────────── */}
+      <div className="space-y-3">
+        <h2 className="text-xs font-extrabold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+          <Activity size={14} className="text-violet-600" />
+          Lead Velocity &amp; Action Performance
+        </h2>
+
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-gray-100">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">Total Leads</span>
+              <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600"><Users size={14} /></div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-gray-900">{analytics?.totalLeads || 0}</p>
+            <p className="text-[10px] text-gray-400 mt-1">Accumulated in database</p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-gray-100">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600">Converted Leads</span>
+              <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600"><UserCheck size={14} /></div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-emerald-600">{analytics?.convertedLeads || 0}</p>
+            <p className="text-[10px] text-emerald-700 mt-1 font-medium">Successful bookings</p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-gray-100">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600">Conversion Rate</span>
+              <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600"><TrendingUp size={14} /></div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-indigo-600">{formatPercent(analytics?.conversionRate)}</p>
+            <p className="text-[10px] text-gray-400 mt-1">Lead-to-client throughput</p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-gray-100">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-600">Completed Actions</span>
+              <div className="p-1.5 rounded-lg bg-purple-50 text-purple-600"><Activity size={14} /></div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-purple-600">{analytics?.completedActions || 0}</p>
+            <p className="text-[10px] text-gray-400 mt-1">out of {analytics?.totalActions || 0} total tasks</p>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── Detailed Analytics Charts & Panels (2 Columns) ─────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Left Column (2 Cols wide): Leaderboard or Time Series + Call Telemetry */}
+        <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm ring-1 ring-gray-100 flex flex-col justify-between space-y-6">
+          
+          <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-slate-900 text-[#CBFF38]">
+                <BarChart3 size={18} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">
+                  {salespersonId === 'all' ? 'Agent Performance Leaderboard' : 'Daily Activity & Revenue Timeline'}
+                </h3>
+                <p className="text-xs text-gray-400">
+                  {salespersonId === 'all' ? 'Comparing sales velocity across all active agents' : 'Daily tracked financial throughput'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Chart View */}
+          <div className="h-64 w-full">
+            {salespersonId !== 'all' ? (
+              turnoverChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={turnoverChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} />
+                    {canSeeFinancials ? (
+                      <>
+                        <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => `€${v}`} />
+                        <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(v) => `€${v}`} />
+                        <Bar yAxisId="left" dataKey="amount" name="Daily Revenue" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                        <Line yAxisId="right" type="monotone" dataKey="cumulative" name="Cumulative" stroke="#0B1120" strokeWidth={2.5} dot={{ r: 3, fill: '#CBFF38' }} />
+                      </>
+                    ) : (
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                    )}
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#0B1120', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '11px' }}
+                      formatter={(value: any, name: string) => [
+                        name.includes('Revenue') || name.includes('Cumulative') ? `€${Number(value).toLocaleString()}` : value,
+                        name,
+                      ]}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 gap-2">
+                  <Activity size={32} />
+                  <p className="text-xs font-semibold text-gray-400">No activity logged for this agent in selected dates</p>
+                </div>
+              )
+            ) : (
+              (analytics?.agentLeaderboard?.length || 0) > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={analytics?.agentLeaderboard} layout="vertical" margin={{ top: 5, right: 15, left: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => canSeeFinancials ? `€${val}` : val} />
+                    <YAxis dataKey="agent" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#0f172a', fontWeight: 'bold' }} width={90} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#0B1120', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '11px' }}
+                      formatter={(value: any) => [canSeeFinancials ? `€${Number(value).toLocaleString()}` : value, 'Gross Volume']}
+                    />
+                    <Bar dataKey="amount" fill="#0B1120" radius={[0, 6, 6, 0]} maxBarSize={26} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 gap-2">
+                  <Users size={32} />
+                  <p className="text-xs font-semibold text-gray-400">No agent performance entries found</p>
+                </div>
+              )
+            )}
+          </div>
+
+          {/* Telemetry Chips (Calls & Duration) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-gray-100">
+            <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100/80">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Assigned Leads</span>
+              <span className="text-lg font-black text-gray-900 mt-0.5 block">{analytics?.leadsAssigned || 0}</span>
+            </div>
+            <div className="bg-emerald-50/60 p-3 rounded-2xl border border-emerald-100/60">
+              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Answered Calls</span>
+              <span className="text-lg font-black text-emerald-800 mt-0.5 block">{analytics?.communicationStats?.answeredCalls || 0}</span>
+            </div>
+            <div className="bg-red-50/60 p-3 rounded-2xl border border-red-100/60">
+              <span className="text-[10px] font-bold text-red-700 uppercase tracking-wider block">Missed Calls</span>
+              <span className="text-lg font-black text-red-800 mt-0.5 block">{analytics?.communicationStats?.missedCalls || 0}</span>
+            </div>
+            <div className="bg-indigo-50/60 p-3 rounded-2xl border border-indigo-100/60">
+              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">Total Talk Time</span>
+              <span className="text-lg font-black text-indigo-900 mt-0.5 block">
+                {analytics?.communicationStats?.totalDurationSeconds ? Math.floor(analytics.communicationStats.totalDurationSeconds / 60) : 0} mins
+              </span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Right Column (1 Col wide): Customer Base & Appointment Integrity Donut */}
+        <div className="bg-white rounded-3xl p-6 shadow-sm ring-1 ring-gray-100 flex flex-col justify-between space-y-6">
+          
+          <div>
+            <div className="flex items-center justify-between border-b border-gray-50 pb-3 mb-4">
+              <h3 className="text-sm font-bold text-gray-900">Appointments Overview</h3>
+              <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded">
+                Distribution
+              </span>
+            </div>
+
+            {/* Donut Chart */}
+            <div className="h-44 w-full relative flex items-center justify-center">
+              {appointmentDonutData.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={appointmentDonutData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={68}
+                        paddingAngle={3}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {appointmentDonutData.map((entry, idx) => (
+                          <Cell key={`cell-${idx}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: '#0B1120', borderRadius: '10px', border: 'none', color: '#fff', fontSize: '10px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-xl font-black text-gray-900">{analytics?.appointmentStats?.total || 0}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Total</span>
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs text-gray-400">No appointments recorded</div>
+              )}
+            </div>
+          </div>
+
+          {/* Customer Base & Lifetime Value Box */}
+          <div className="pt-4 border-t border-gray-100 space-y-3">
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">Patient Database</h4>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-50 p-3 rounded-2xl">
+                <span className="text-[10px] text-gray-400 font-bold block">Total Patients</span>
+                <span className="text-lg font-black text-gray-900">{analytics?.customerStats?.totalCustomers || 0}</span>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-2xl">
+                <span className="text-[10px] text-blue-600 font-bold block">Repeat Ratio</span>
+                <span className="text-lg font-black text-blue-700">{analytics?.customerStats?.repeatCustomers || 0}</span>
+              </div>
+            </div>
+
+            {canSeeFinancials && (
+              <div className="bg-emerald-50/80 p-3.5 rounded-2xl border border-emerald-100 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Customer Lifetime Value</span>
+                  <span className="text-xl font-black text-emerald-900 mt-0.5 block">
+                    €{(analytics?.customerStats?.totalRevenue || 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
+                  <Euro size={16} />
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
 };
 
-// UI Components
-const MetricCard = ({ title, value, icon, trend, color }: any) => (
- <Card className="border-none shadow-sm hover:shadow-md transition-shadow">
- <CardContent className="p-3">
- <div className="flex items-center gap-2 sm:gap-3">
- <div className={`p-2 rounded-lg flex-shrink-0 ${color}`}>
- {React.cloneElement(icon as React.ReactElement, { className: 'w-3.5 h-3.5' })}
- </div>
- <div className="min-w-0 flex-1">
- <h3 className="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate" title={title}>{title}</h3>
- <p className="text-base sm:text-lg font-bold text-gray-900 leading-tight truncate">{value}</p>
- </div>
- </div>
- <p className="text-[9px] text-gray-400 mt-1 truncate">{trend}</p>
- </CardContent>
- </Card>
-);
-
-const StatRow = ({ label, value, icon }: any) => (
- <div className="flex items-center justify-between p-1.5 rounded-lg hover:bg-gray-50 transition-colors">
- <div className="flex items-center gap-2">
- <div className="p-1 bg-gray-100 rounded-full">
- {React.cloneElement(icon as React.ReactElement, { className: 'w-3 h-3' })}
- </div>
- <span className="text-[11px] font-medium text-gray-600">{label}</span>
- </div>
- <span className="text-xs font-semibold text-gray-900">{value}</span>
- </div>
-);
-
-const BreakdownItem = ({ label, value, total, color }: any) => {
- const percent = total > 0 ? (value / total) * 100 : 0;
- return (
- <div>
- <div className="flex justify-between text-[11px] mb-0.5">
- <span className="text-gray-600">{label}</span>
- <span className="font-medium text-gray-900">{value}</span>
- </div>
- <div className="w-full bg-gray-100 rounded-full h-1">
- <div
- className={`h-1 rounded-full ${color}`}
- style={{ width: `${percent}%` }}
- />
- </div>
- </div>
- );
-};
-
+// ── AI Quick Insights Component ─────────────────────────────
 const QuickInsights = ({ analytics }: { analytics: any }) => {
- if (!analytics) return null;
+  if (!analytics) return null;
 
- const insights = [];
- const stats = analytics.appointmentStats || {};
- const turnover = analytics.turnoverStats || {};
+  const insights = [];
+  const stats = analytics.appointmentStats || {};
+  const turnover = analytics.turnoverStats || {};
 
- // 1. No-show Insight
- const noShowRate = ((Number(stats.noShow) || 0) / (Number(stats.total) || 1)) * 100;
- if (noShowRate > 10) {
- insights.push({
- type: 'warning',
- text: `No-show rate is ${noShowRate.toFixed(1)}%. Add confirmation call reminders 24h before.`,
- icon: <Clock className="w-4 h-4 text-orange-600" />
- });
- }
+  // 1. No-show Insight
+  const noShowRate = ((Number(stats.noShow) || 0) / (Number(stats.total) || 1)) * 100;
+  if (noShowRate > 10) {
+    insights.push({
+      type: 'warning',
+      text: `No-show rate is ${noShowRate.toFixed(1)}%. Add confirmation WhatsApp/call reminder 24h prior.`,
+      icon: <AlertCircle className="w-4 h-4 text-amber-600" />
+    });
+  }
 
- // 2. Conversion Insight
- const conversionRate = ((Number(stats.completed) || 0) / (Number(stats.total) || 1)) * 100;
- if (conversionRate < 70 && stats.total > 0) {
- insights.push({
- type: 'info',
- text: `Booked to done conversion is ${conversionRate.toFixed(1)}%. Review cancellation reasons.`,
- icon: <Activity className="w-4 h-4 text-blue-600" />
- });
- }
+  // 2. Conversion Insight
+  const conversionRate = ((Number(stats.completed) || 0) / (Number(stats.total) || 1)) * 100;
+  if (conversionRate < 70 && stats.total > 0) {
+    insights.push({
+      type: 'info',
+      text: `Booked-to-done conversion rate is ${conversionRate.toFixed(1)}%. Review cancellation reasons.`,
+      icon: <Activity className="w-4 h-4 text-blue-600" />
+    });
+  }
 
- // 3. Pacing Insight
- if (turnover.targetIsSet) {
- const isBehind = turnover.pacingStatus === 'Behind';
- const progressPercent = (Number(turnover.progress) || 0) * 100;
- const expectedPercent = (Number(turnover.expectedProgress) || 0) * 100;
- insights.push({
- type: isBehind ? 'warning' : 'success',
- text: `You're at ${progressPercent.toFixed(1)}% of target; expected by today is ${expectedPercent.toFixed(1)}%.`,
- icon: isBehind ? <Zap className="w-4 h-4 text-red-600" /> : <CheckCircle className="w-4 h-4 text-emerald-600" />
- });
- }
+  // 3. Pacing Insight
+  if (turnover.targetIsSet) {
+    const isBehind = turnover.pacingStatus === 'Behind';
+    const progressPercent = (Number(turnover.progress) || 0) * 100;
+    const expectedPercent = (Number(turnover.expectedProgress) || 0) * 100;
+    insights.push({
+      type: isBehind ? 'warning' : 'success',
+      text: `Currently at ${progressPercent.toFixed(1)}% of target (expected by today: ${expectedPercent.toFixed(1)}%).`,
+      icon: isBehind ? <Zap className="w-4 h-4 text-red-600" /> : <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+    });
+  }
 
- if (insights.length === 0) {
- insights.push({
- type: 'success',
- text:"Portfolio performing optimally with high attendance and conversion.",
- icon: <Lightbulb className="w-4 h-4 text-emerald-600" />
- });
- }
+  if (insights.length === 0) {
+    insights.push({
+      type: 'success',
+      text: 'Portfolio performing optimally with high attendance velocity and conversion rate.',
+      icon: <Lightbulb className="w-4 h-4 text-emerald-600" />
+    });
+  }
 
- return (
- <Card className="border-none shadow-sm bg-gradient-to-br from-indigo-50/50 to-white">
- <CardHeader className="py-2 px-4 border-b border-gray-50/50">
- <div className="flex items-center gap-2">
- <Zap className="w-3.5 h-3.5 text-indigo-600" />
- <CardTitle className="text-xs font-bold uppercase tracking-wider text-gray-600">Quick Insights</CardTitle>
- </div>
- </CardHeader>
- <CardContent className="p-3">
- <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
- {insights.map((insight, idx) => (
- <div key={idx} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${insight.type === 'warning' ? 'bg-orange-50 border-orange-100 text-orange-800' :
- insight.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' :
- 'bg-blue-50 border-blue-100 text-blue-800'
- }`}>
- <div className="flex-shrink-0">{React.cloneElement(insight.icon as React.ReactElement, { className: 'w-3.5 h-3.5' })}</div>
- <p className="text-[10px] font-semibold leading-tight">{insight.text}</p>
- </div>
- ))}
- </div>
- </CardContent>
- </Card>
- );
+  return (
+    <div className="bg-white rounded-3xl p-5 shadow-sm ring-1 ring-gray-100 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-slate-900 text-[#CBFF38]">
+            <Sparkles size={13} />
+          </div>
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-600">
+            Intelligent Operational Insights
+          </h3>
+        </div>
+        <span className="text-[10px] font-bold text-gray-400">Automated Audit</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {insights.map((insight, idx) => (
+          <div
+            key={idx}
+            className={`flex items-start gap-2.5 p-3 rounded-2xl border ${
+              insight.type === 'warning' ? 'bg-amber-50/70 border-amber-200/80 text-amber-900' :
+              insight.type === 'success' ? 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900' :
+              'bg-blue-50/70 border-blue-200/80 text-blue-900'
+            }`}
+          >
+            <div className="shrink-0 mt-0.5">{insight.icon}</div>
+            <p className="text-xs font-semibold leading-relaxed">{insight.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };

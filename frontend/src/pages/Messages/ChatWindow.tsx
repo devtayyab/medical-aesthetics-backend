@@ -109,7 +109,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  <div className="flex flex-col space-y-1.5 max-w-[85%] sm:max-w-[80%]">
  <div
  className={`p-3.5 sm:p-5 px-4 sm:px-6 rounded-2xl sm:rounded-[32px] relative overflow-hidden transition-all ${isMe
- ? 'bg-black text-gray-900 rounded-tr-none shadow-xl'
+ ? 'bg-gray-900 text-white rounded-tr-none shadow-md'
  : 'bg-white text-gray-900 border border-gray-200 rounded-tl-none shadow-sm'
  }`}
  >
