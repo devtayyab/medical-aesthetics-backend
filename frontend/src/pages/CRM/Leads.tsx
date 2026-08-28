@@ -366,7 +366,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
             limit: batchSize,
             all: 'true',
             isExport: 'true',
-          });
+          } as any);
 
           let batch: any[] = [];
           if (Array.isArray(res.data)) {
