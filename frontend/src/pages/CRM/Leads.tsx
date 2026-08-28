@@ -734,14 +734,17 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </Button>
 
  {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
- <div className="flex items-center gap-1 border-l border-slate-200 ml-1.5 pl-1.5">
- <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white" onClick={() => setShowBulkImport(true)}>
- <Upload size={16} className="text-slate-400" />
+ <>
+ <div className="h-6 w-[1px] bg-slate-200 mx-1.5" />
+ <Button
+ variant="ghost"
+ onClick={() => setShowBulkImport(true)}
+ className="h-10 px-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-2"
+ >
+ <Upload size={14} className="text-slate-400" />
+ <span>Bulk Import</span>
  </Button>
- <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white" onClick={() => { setShowFormScheduleModal(true); fetchFacebookForms(); }}>
- <Globe size={16} className="text-blue-500" />
- </Button>
- </div>
+ </>
  )}
  </div>
 
