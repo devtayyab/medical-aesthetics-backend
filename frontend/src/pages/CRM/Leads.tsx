@@ -280,7 +280,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  priority: 'medium'
  });
 
- const [providers, setProviders] = useState<{ value: string; label: string }[]>([]);
+  const [providers, setProviders] = useState<{ value: string; label: string }[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
  useEffect(() => {
  (async () => {
@@ -345,6 +346,98 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   window.addEventListener('focus', onFocus);
   return () => window.removeEventListener('focus', onFocus);
  }, [dispatch, leadFilters, currentPage, leadsPerPage]);
+
+  // Export Leads to CSV
+  const handleExportLeads = async () => {
+    try {
+      setIsExporting(true);
+      toast.loading('Preparing leads export...', { id: 'export-leads' });
+
+      let exportData: any[] = [];
+      try {
+        const res = await crmAPI.getLeads({ ...leadFilters, page: 1, limit: 10000 });
+        if (Array.isArray(res.data)) {
+          exportData = res.data;
+        } else if (res.data?.leads && Array.isArray(res.data.leads)) {
+          exportData = res.data.leads;
+        } else {
+          exportData = leads || [];
+        }
+      } catch {
+        exportData = leads || [];
+      }
+
+      if (!exportData || exportData.length === 0) {
+        toast.error('No leads available to export matching the current criteria.', { id: 'export-leads' });
+        return;
+      }
+
+      const headers = [
+        'ID',
+        'First Name',
+        'Last Name',
+        'Email',
+        'Phone',
+        'Status',
+        'Source',
+        'Form Name',
+        'Assigned Agent',
+        'Estimated Value (EUR)',
+        'Created Date',
+        'Last Contacted Date',
+        'Notes',
+      ];
+
+      const escapeCsv = (val: any) => {
+        if (val === null || val === undefined) return '""';
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+      };
+
+      const rows = exportData.map((lead: any) => {
+        const agentName = lead.assignedSales
+          ? `${lead.assignedSales.firstName || ''} ${lead.assignedSales.lastName || ''}`.trim()
+          : '';
+        const createdStr = lead.createdAt ? new Date(lead.createdAt).toISOString().split('T')[0] : '';
+        const contactedStr = lead.lastContactedAt ? new Date(lead.lastContactedAt).toISOString().split('T')[0] : '';
+
+        return [
+          escapeCsv(lead.id),
+          escapeCsv(lead.firstName),
+          escapeCsv(lead.lastName),
+          escapeCsv(lead.email),
+          escapeCsv(lead.phone),
+          escapeCsv(lead.status),
+          escapeCsv(lead.source),
+          escapeCsv(lead.lastMetaFormName || lead.metadata?.form_name || ''),
+          escapeCsv(agentName),
+          escapeCsv(lead.estimatedValue || 0),
+          escapeCsv(createdStr),
+          escapeCsv(contactedStr),
+          escapeCsv(lead.notes || ''),
+        ].join(',');
+      });
+
+      // UTF-8 BOM for Excel compatibility with Greek/international characters
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Exported ${exportData.length} leads successfully!`, { id: 'export-leads' });
+    } catch (error) {
+      console.error('Failed to export leads', error);
+      toast.error('Failed to export leads. Please try again.', { id: 'export-leads' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
  // Handlers
  const handleFilterChange = (key: string, value: string | string[]) => {
@@ -739,10 +832,19 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <Button
  variant="ghost"
  onClick={() => setShowBulkImport(true)}
- className="h-10 px-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-2"
+ className="h-10 px-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5"
  >
  <Upload size={14} className="text-slate-400" />
  <span>Bulk Import</span>
+ </Button>
+ <Button
+ variant="ghost"
+ onClick={handleExportLeads}
+ disabled={isExporting}
+ className="h-10 px-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5 disabled:opacity-50"
+ >
+ <Download size={14} className={isExporting ? 'animate-bounce text-emerald-600' : 'text-slate-400'} />
+ <span>{isExporting ? 'Exporting...' : 'Export'}</span>
  </Button>
  </>
  )}
