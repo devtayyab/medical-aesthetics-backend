@@ -977,8 +977,8 @@ export class CrmService implements OnModuleInit {
       }
     } else {
       // If no status is specified (e.g. "All Leads" tab), hide converted/lost leads by default
-      // unless the user is performing a specific text search
-      if (!filters.search) {
+      // unless the user is performing a specific text search or exporting all data
+      if (!filters.search && filters.isExport !== 'true' && filters.isExport !== true && filters.all !== 'true' && filters.all !== true) {
         qb.andWhere("lead.status NOT IN ('converted', 'lost')");
       }
     }
@@ -1034,8 +1034,8 @@ export class CrmService implements OnModuleInit {
       ? parseInt(filters.limit, 10)
       : filters.take
       ? parseInt(filters.take, 10)
-      : (filters.all === 'true' || filters.all === true)
-      ? 50000
+      : (filters.all === 'true' || filters.all === true || filters.isExport === 'true' || filters.isExport === true)
+      ? 100000
       : 50;
 
     const page = filters.page ? Math.max(1, parseInt(filters.page, 10)) : 1;

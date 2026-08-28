@@ -280,7 +280,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  priority: 'medium'
  });
 
- const [providers, setProviders] = useState<{ value: string; label: string }[]>([]);
+  const [providers, setProviders] = useState<{ value: string; label: string }[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
  useEffect(() => {
  (async () => {
@@ -345,6 +346,128 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
   window.addEventListener('focus', onFocus);
   return () => window.removeEventListener('focus', onFocus);
  }, [dispatch, leadFilters, currentPage, leadsPerPage]);
+
+  // Export ALL Leads to CSV
+  const handleExportLeads = async () => {
+    try {
+      setIsExporting(true);
+      toast.loading('Fetching all leads for export...', { id: 'export-leads' });
+
+      let exportData: any[] = [];
+      let pageIndex = 1;
+      const batchSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        try {
+          const res = await crmAPI.getLeads({
+            ...leadFilters,
+            page: pageIndex,
+            limit: batchSize,
+            all: 'true',
+            isExport: 'true',
+          } as any);
+
+          let batch: any[] = [];
+          if (Array.isArray(res.data)) {
+            batch = res.data;
+          } else if (res.data?.leads && Array.isArray(res.data.leads)) {
+            batch = res.data.leads;
+          }
+
+          if (!batch || batch.length === 0) {
+            hasMore = false;
+          } else {
+            exportData.push(...batch);
+            toast.loading(`Fetched ${exportData.length} leads...`, { id: 'export-leads' });
+            if (batch.length < batchSize) {
+              hasMore = false;
+            } else {
+              pageIndex++;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn('Batch fetch completed or reached boundary', fetchErr);
+          hasMore = false;
+        }
+      }
+
+      // If loop returned nothing, fallback to local leads
+      if (exportData.length === 0 && leads && leads.length > 0) {
+        exportData = leads;
+      }
+
+      if (!exportData || exportData.length === 0) {
+        toast.error('No leads found to export matching criteria.', { id: 'export-leads' });
+        return;
+      }
+
+      const headers = [
+        'ID',
+        'First Name',
+        'Last Name',
+        'Email',
+        'Phone',
+        'Status',
+        'Source',
+        'Form Name',
+        'Assigned Agent',
+        'Estimated Value (EUR)',
+        'Created Date',
+        'Last Contacted Date',
+        'Notes',
+      ];
+
+      const escapeCsv = (val: any) => {
+        if (val === null || val === undefined) return '""';
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+      };
+
+      const rows = exportData.map((lead: any) => {
+        const agentName = lead.assignedSales
+          ? `${lead.assignedSales.firstName || ''} ${lead.assignedSales.lastName || ''}`.trim()
+          : '';
+        const createdStr = lead.createdAt ? new Date(lead.createdAt).toISOString().split('T')[0] : '';
+        const contactedStr = lead.lastContactedAt ? new Date(lead.lastContactedAt).toISOString().split('T')[0] : '';
+
+        return [
+          escapeCsv(lead.id),
+          escapeCsv(lead.firstName),
+          escapeCsv(lead.lastName),
+          escapeCsv(lead.email),
+          escapeCsv(lead.phone),
+          escapeCsv(lead.status),
+          escapeCsv(lead.source),
+          escapeCsv(lead.lastMetaFormName || lead.metadata?.form_name || ''),
+          escapeCsv(agentName),
+          escapeCsv(lead.estimatedValue || 0),
+          escapeCsv(createdStr),
+          escapeCsv(contactedStr),
+          escapeCsv(lead.notes || ''),
+        ].join(',');
+      });
+
+      // UTF-8 BOM for Excel compatibility with Greek/international characters
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Exported ${exportData.length} leads successfully!`, { id: 'export-leads' });
+    } catch (error) {
+      console.error('Failed to export leads', error);
+      toast.error('Failed to export leads. Please try again.', { id: 'export-leads' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
  // Handlers
  const handleFilterChange = (key: string, value: string | string[]) => {
@@ -734,14 +857,26 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </Button>
 
  {(user?.role === 'SUPER_ADMIN' || user?.role === 'admin' || user?.role === 'manager') && (
- <div className="flex items-center gap-1 border-l border-slate-200 ml-1.5 pl-1.5">
- <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white" onClick={() => setShowBulkImport(true)}>
- <Upload size={16} className="text-slate-400" />
+ <>
+ <div className="h-6 w-[1px] bg-slate-200 mx-1.5" />
+ <Button
+ variant="ghost"
+ onClick={() => setShowBulkImport(true)}
+ className="h-10 px-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5"
+ >
+ <Upload size={14} className="text-slate-400" />
+ <span>Bulk Import</span>
  </Button>
- <Button variant="ghost" className="h-10 w-10 p-0 rounded-xl hover:bg-white" onClick={() => { setShowFormScheduleModal(true); fetchFacebookForms(); }}>
- <Globe size={16} className="text-blue-500" />
+ <Button
+ variant="ghost"
+ onClick={handleExportLeads}
+ disabled={isExporting}
+ className="h-10 px-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1.5 disabled:opacity-50"
+ >
+ <Download size={14} className={isExporting ? 'animate-bounce text-emerald-600' : 'text-slate-400'} />
+ <span>{isExporting ? 'Exporting...' : 'Export'}</span>
  </Button>
- </div>
+ </>
  )}
  </div>
 

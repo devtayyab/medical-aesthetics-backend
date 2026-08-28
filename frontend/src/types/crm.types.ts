@@ -319,6 +319,10 @@ export interface CrmFilters {
   lastContactedTo?: string;
   page?: number;
   limit?: number;
+  all?: string | boolean;
+  isExport?: string | boolean;
+  take?: number;
+  [key: string]: any;
 }
 
 export interface CrmAnalytics {
