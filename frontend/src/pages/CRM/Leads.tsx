@@ -1273,19 +1273,19 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
     <div 
       ref={topScrollRef} 
       onScroll={handleTopScroll} 
-      className="w-full overflow-x-auto visible-scrollbar bg-slate-100/80 p-1.5 rounded-t-2xl border-b border-slate-200"
+      className="w-full overflow-x-auto visible-scrollbar bg-slate-100/90 p-2 rounded-t-2xl border-b border-slate-200"
     >
-      <div className="h-1.5 min-w-[1240px]" />
+      <div className="h-2 min-w-[1650px]" />
     </div>
 
     <Table 
       containerRef={bottomScrollRef}
       onContainerScroll={handleBottomScroll}
-      className="min-w-[1240px] w-full"
+      className="min-w-[1650px] w-full"
     >
-      <TableHeader className="bg-gray-50/90">
-        <TableRow className="h-10">
-          <TableHead className="w-[40px] min-w-[40px] px-2 text-center sticky left-0 bg-[#f8fafc] z-20">
+      <TableHeader className="bg-gray-50/70">
+        <TableRow className="h-11">
+          <TableHead className="w-[50px] min-w-[50px] px-3 text-center">
             <input
               type="checkbox"
               checked={selectedLeads.length > 0 && currentLeads.every(l => selectedLeads.includes(l.id))}
@@ -1297,24 +1297,24 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                   setSelectedLeads(selectedLeads.filter(id => !currentPageIds.includes(id)));
                 }
               }}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
             />
           </TableHead>
-          <TableHead className="w-[160px] min-w-[160px] px-2 sticky left-[40px] bg-[#f8fafc] z-20 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)]">Lead Name</TableHead>
-          <TableHead className="w-[180px] min-w-[180px] px-2">Contact Info</TableHead>
-          <TableHead className="w-[130px] min-w-[130px] px-2">Assigned To</TableHead>
-          <TableHead className="w-[90px] min-w-[90px] px-2 text-center">Status</TableHead>
-          <TableHead className="w-[120px] min-w-[120px] px-2">Source</TableHead>
-          <TableHead className="w-[150px] min-w-[150px] px-2 text-emerald-600 bg-emerald-50/50">Last Form</TableHead>
-          <TableHead className="w-[100px] min-w-[100px] px-2">Contacted</TableHead>
-          <TableHead className="w-[100px] min-w-[100px] px-2">Added</TableHead>
-          <TableHead className="w-[160px] min-w-[160px] text-right px-3 sticky right-0 bg-[#f8fafc] z-20 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.08)]">Actions</TableHead>
+          <TableHead className="w-[190px] min-w-[190px] px-3 font-black text-[11px] uppercase tracking-wider text-slate-700">Lead Name</TableHead>
+          <TableHead className="w-[230px] min-w-[230px] px-3 font-black text-[11px] uppercase tracking-wider text-slate-700">Contact Info</TableHead>
+          <TableHead className="w-[160px] min-w-[160px] px-3 font-black text-[11px] uppercase tracking-wider text-slate-700">Assigned To</TableHead>
+          <TableHead className="w-[120px] min-w-[120px] px-3 text-center font-black text-[11px] uppercase tracking-wider text-slate-700">Status</TableHead>
+          <TableHead className="w-[150px] min-w-[150px] px-3 font-black text-[11px] uppercase tracking-wider text-slate-700">Source</TableHead>
+          <TableHead className="w-[190px] min-w-[190px] px-3 text-emerald-700 bg-emerald-50/60 font-black text-[11px] uppercase tracking-wider">Last Form</TableHead>
+          <TableHead className="w-[140px] min-w-[140px] px-3 font-black text-[11px] uppercase tracking-wider text-slate-700">Contacted</TableHead>
+          <TableHead className="w-[140px] min-w-[140px] px-3 font-black text-[11px] uppercase tracking-wider text-slate-700">Added</TableHead>
+          <TableHead className="w-[220px] min-w-[220px] text-right px-4 pr-6 font-black text-[11px] uppercase tracking-wider text-slate-700">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {currentLeads.map((lead) => (
-          <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-50 last:border-0 h-14">
-            <TableCell className="py-2 px-2 text-center sticky left-0 bg-white group-hover:bg-[#f8fafc] z-10">
+          <TableRow key={lead.id} className="hover:bg-gray-50/80 transition-all duration-200 group border-b border-gray-100 last:border-0 h-16">
+            <TableCell className="py-2.5 px-3 text-center">
               <input
                 type="checkbox"
                 checked={selectedLeads.includes(lead.id)}
@@ -1324,181 +1324,181 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                     : selectedLeads.filter(id => id !== lead.id)
                   );
                 }}
-                className="rounded border-gray-300 text-primary focus:ring-primary h-3.5 w-3.5 transition-all"
+                className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 transition-all"
               />
             </TableCell>
-            <TableCell className="py-2 px-2 sticky left-[40px] bg-white group-hover:bg-[#f8fafc] z-10 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)]">
-  <div className="flex items-center gap-2">
-  {onViewLead ? (
-  <div 
-  onClick={() => onViewLead(lead)}
-  className="w-7 h-7 shrink-0 rounded-lg bg-[#CBFF38]/20 border border-[#CBFF38]/50 text-slate-900 flex items-center justify-center font-black text-[10px] uppercase shadow-sm cursor-pointer hover:scale-105 transition-all"
-  title="View Lead Details"
-  >
-  {lead.firstName[0]}{lead.lastName[0]}
-  </div>
-  ) : (
-  <Link 
-  to={`/crm/customer/${lead.id}`}
-  className="w-7 h-7 shrink-0 rounded-lg bg-[#CBFF38]/20 border border-[#CBFF38]/50 text-slate-900 flex items-center justify-center font-black text-[10px] uppercase shadow-sm cursor-pointer hover:scale-105 transition-all"
-  title="View Lead Details"
-  >
-  {lead.firstName[0]}{lead.lastName[0]}
-  </Link>
-  )}
-  <div className="flex-1 min-w-0 flex items-center gap-2">
-  {onViewLead ? (
-  <div 
-  onClick={() => onViewLead(lead)}
-  className="truncate max-w-[110px] cursor-pointer group/leadname"
-  title={`View Lead: ${lead.firstName} ${lead.lastName}`}
-  >
-  <div className="font-bold text-gray-900 text-[11px] truncate group-hover/leadname:text-blue-600 group-hover/leadname:underline">
-  {lead.firstName} {lead.lastName}
-  </div>
-  <div className="text-[8px] text-gray-400 font-mono tracking-tighter uppercase group-hover/leadname:text-blue-500">
-  {lead.id.slice(0, 6)}
-  </div>
-  </div>
-  ) : (
-  <Link 
-  to={`/crm/customer/${lead.id}`}
-  className="truncate max-w-[110px] cursor-pointer group/leadname block"
-  title={`View Lead: ${lead.firstName} ${lead.lastName}`}
-  >
-  <div className="font-bold text-gray-900 text-[11px] truncate group-hover/leadname:text-blue-600 group-hover/leadname:underline">
-  {lead.firstName} {lead.lastName}
-  </div>
-  <div className="text-[8px] text-gray-400 font-mono tracking-tighter uppercase group-hover/leadname:text-blue-500">
-  {lead.id.slice(0, 6)}
-  </div>
-  </Link>
-  )}
-  <Button
-  size="xs"
-  variant="white"
-  onClick={(e) => {
-  e.stopPropagation();
-  handleEditLead(lead);
-  }}
-  className="h-6 w-6 p-0 bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all shadow-sm shrink-0 ml-auto"
-  title="Edit Lead"
-  >
-  <Edit className="h-3 w-3" />
-  </Button>
- </div>
- </div>
- </TableCell>
- <TableCell className="py-2 px-2">
- <div className="flex flex-col gap-0.5 max-w-[150px]">
- <div className="flex items-center gap-1 text-[10px] text-gray-500 font-medium truncate" title={lead.email}>
- <Mail className="h-2.5 w-2.5 shrink-0" /> {lead.email}
- </div>
- {lead.phone && (
- <div className="flex items-center gap-1 text-[9px] text-gray-400 font-medium">
- <Phone className="h-2.5 w-2.5 shrink-0" /> {lead.phone}
- </div>
- )}
- </div>
- </TableCell>
- <TableCell className="py-2 px-2">
- {lead.assignedSales ? (
- <div className="flex items-center gap-1.5 overflow-hidden">
- <div className="w-5 h-5 shrink-0 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[9px] font-black uppercase">
- {lead.assignedSales.firstName[0]}{lead.assignedSales.lastName[0]}
- </div>
- <span className="text-[10px] font-bold text-gray-700 truncate">
- {lead.assignedSales.firstName}
- </span>
- </div>
- ) : (
- <div className="flex items-center gap-1.5 opacity-50">
- <div className="w-5 h-5 rounded-full bg-gray-50 text-gray-300 border border-dashed border-gray-200 flex items-center justify-center text-[9px]">
- <User className="w-2.5 h-2.5" />
- </div>
- <span className="text-[9px] text-gray-400">Unassigned</span>
- </div>
- )}
- </TableCell>
- <TableCell className="py-2 px-2 text-center">
- <Badge className={`${getStatusBadge(lead.status)} border px-1.5 py-0.5 rounded-full capitalize font-bold text-[8px] tracking-wider`}>
- {lead.status}
- </Badge>
- </TableCell>
- <TableCell className="py-2 px-2">
- <div className="flex flex-col gap-0 overflow-hidden max-w-[90px]">
- <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter truncate">{lead.source?.replace('_', ' ')}</span>
- {lead.facebookAdName && <span className="text-[7px] font-bold text-blue-500 truncate" title={lead.facebookAdName}>AD: {lead.facebookAdName}</span>}
- </div>
- </TableCell>
- <TableCell className="py-2 px-2 bg-emerald-50/10">
- {lead.lastMetaFormSubmittedAt ? (
- <button
- className="flex flex-col text-left hover:bg-emerald-50 rounded-md px-1 -mx-1 transition-colors cursor-pointer"
- onClick={() => setDetailLead(lead)}
- title="View full lead details and form answers"
- >
- <span className="text-[10px] font-bold text-gray-900 truncate max-w-[120px]" title={lead.lastMetaFormName || 'Form'}>
- {lead.lastMetaFormName || 'Meta Form'}
- </span>
- <span className="text-[9px] font-semibold text-emerald-600 flex items-center gap-1">
- {formatDate(lead.lastMetaFormSubmittedAt)}
- {(((lead as any).metadata?.previousFacebookLeadIds?.length) || 0) > 0 && (
- <span className="bg-blue-100 text-blue-700 px-1 rounded-full text-[8px] font-black" title="Repeat submissions">
- ×{((lead as any).metadata.previousFacebookLeadIds.length) + 1}
- </span>
- )}
- {(lead as any).metadata?.fetchFailed && (
- <span className="bg-red-100 text-red-600 px-1 rounded-full text-[8px] font-black" title="Details pending — re-import this form">!</span>
- )}
- </span>
- </button>
- ) : <span className="text-gray-300 text-[10px]">No submission</span>}
- </TableCell>
- <TableCell className="py-2 px-2">
- {lead.lastContactedAt ? (
- <span className="text-[9px] font-bold text-slate-800">{formatDate(lead.lastContactedAt)}</span>
- ) : <span className="text-gray-200 text-[9px]">-</span>}
- </TableCell>
- <TableCell className="py-2 px-2 text-gray-400 text-[10px] font-semibold">
- {formatDate(lead.createdAt)}
- </TableCell>
- <TableCell className="py-2 px-3 text-right sticky right-0 bg-white group-hover:bg-[#f8fafc] z-10 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.08)]">
- <div className="flex justify-end gap-1 items-center min-w-max">
- <div className="flex items-center bg-white border border-gray-100 rounded-lg shadow-sm p-0.5">
- <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md shrink-0" title="Lead details & form answers" onClick={() => setDetailLead(lead)}>
- <Info className="h-3.5 w-3.5" />
- </Button>
- {onViewLead ? (
- <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md shrink-0" onClick={() => onViewLead(lead)} title="View Lead Profile">
- <Eye className="h-3.5 w-3.5" />
- </Button>
- ) : (
- <Link to={`/crm/customer/${lead.id}`} className="h-7 w-7 flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md transition-colors shrink-0" title="View Lead Profile">
- <Eye className="h-3.5 w-3.5" />
- </Link>
- )}
- <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md shrink-0" onClick={() => handleCheckDuplicates(lead)} title="Check Duplicates">
- <Copy className="h-3.5 w-3.5" />
- </Button>
- <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md shrink-0" onClick={() => handleEditLead(lead)} title="Edit Lead">
- <Edit className="h-3.5 w-3.5" />
- </Button>
- {user?.role !== 'salesperson' && (
- <>
- <div className="w-px h-3 bg-gray-100 mx-0.5" />
- <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md shrink-0" onClick={() => dispatch(deleteLead(lead.id))} title="Delete Lead">
- <Trash2 className="h-3.5 w-3.5" />
- </Button>
- </>
- )}
- </div>
- </div>
- </TableCell>
- </TableRow>
- ))}
- </TableBody>
- </Table>
+            <TableCell className="py-2.5 px-3">
+              <div className="flex items-center gap-2.5">
+                {onViewLead ? (
+                  <div 
+                    onClick={() => onViewLead(lead)}
+                    className="w-8 h-8 shrink-0 rounded-lg bg-[#CBFF38]/20 border border-[#CBFF38]/50 text-slate-900 flex items-center justify-center font-black text-[11px] uppercase shadow-sm cursor-pointer hover:scale-105 transition-all"
+                    title="View Lead Details"
+                  >
+                    {lead.firstName[0]}{lead.lastName[0]}
+                  </div>
+                ) : (
+                  <Link 
+                    to={`/crm/customer/${lead.id}`}
+                    className="w-8 h-8 shrink-0 rounded-lg bg-[#CBFF38]/20 border border-[#CBFF38]/50 text-slate-900 flex items-center justify-center font-black text-[11px] uppercase shadow-sm cursor-pointer hover:scale-105 transition-all"
+                    title="View Lead Details"
+                  >
+                    {lead.firstName[0]}{lead.lastName[0]}
+                  </Link>
+                )}
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  {onViewLead ? (
+                    <div 
+                      onClick={() => onViewLead(lead)}
+                      className="truncate max-w-[130px] cursor-pointer group/leadname"
+                      title={`View Lead: ${lead.firstName} ${lead.lastName}`}
+                    >
+                      <div className="font-bold text-gray-900 text-xs truncate group-hover/leadname:text-blue-600 group-hover/leadname:underline">
+                        {lead.firstName} {lead.lastName}
+                      </div>
+                      <div className="text-[9px] text-gray-400 font-mono tracking-tighter uppercase group-hover/leadname:text-blue-500">
+                        {lead.id.slice(0, 6)}
+                      </div>
+                    </div>
+                  ) : (
+                    <Link 
+                      to={`/crm/customer/${lead.id}`}
+                      className="truncate max-w-[130px] cursor-pointer group/leadname block"
+                      title={`View Lead: ${lead.firstName} ${lead.lastName}`}
+                    >
+                      <div className="font-bold text-gray-900 text-xs truncate group-hover/leadname:text-blue-600 group-hover/leadname:underline">
+                        {lead.firstName} {lead.lastName}
+                      </div>
+                      <div className="text-[9px] text-gray-400 font-mono tracking-tighter uppercase group-hover/leadname:text-blue-500">
+                        {lead.id.slice(0, 6)}
+                      </div>
+                    </Link>
+                  )}
+                  <Button
+                    size="xs"
+                    variant="white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditLead(lead);
+                    }}
+                    className="h-6 w-6 p-0 bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all shadow-sm shrink-0 ml-auto"
+                    title="Edit Lead"
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </TableCell>
+            <TableCell className="py-2.5 px-3">
+              <div className="flex flex-col gap-0.5 max-w-[190px]">
+                <div className="flex items-center gap-1 text-[11px] text-gray-600 font-medium truncate" title={lead.email}>
+                  <Mail className="h-3 w-3 shrink-0 text-gray-400" /> {lead.email}
+                </div>
+                {lead.phone && (
+                  <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium">
+                    <Phone className="h-3 w-3 shrink-0 text-gray-400" /> {lead.phone}
+                  </div>
+                )}
+              </div>
+            </TableCell>
+            <TableCell className="py-2.5 px-3">
+              {lead.assignedSales ? (
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <div className="w-6 h-6 shrink-0 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[10px] font-black uppercase">
+                    {lead.assignedSales.firstName[0]}{lead.assignedSales.lastName[0]}
+                  </div>
+                  <span className="text-[11px] font-bold text-gray-700 truncate">
+                    {lead.assignedSales.firstName} {lead.assignedSales.lastName || ''}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 opacity-50">
+                  <div className="w-6 h-6 rounded-full bg-gray-50 text-gray-300 border border-dashed border-gray-200 flex items-center justify-center text-[10px]">
+                    <User className="w-3 h-3" />
+                  </div>
+                  <span className="text-[10px] text-gray-400">Unassigned</span>
+                </div>
+              )}
+            </TableCell>
+            <TableCell className="py-2.5 px-3 text-center">
+              <Badge className={`${getStatusBadge(lead.status)} border px-2 py-0.5 rounded-full capitalize font-bold text-[9px] tracking-wider`}>
+                {lead.status}
+              </Badge>
+            </TableCell>
+            <TableCell className="py-2.5 px-3">
+              <div className="flex flex-col gap-0.5 overflow-hidden max-w-[120px]">
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-tighter truncate">{lead.source?.replace('_', ' ')}</span>
+                {lead.facebookAdName && <span className="text-[8px] font-bold text-blue-500 truncate" title={lead.facebookAdName}>AD: {lead.facebookAdName}</span>}
+              </div>
+            </TableCell>
+            <TableCell className="py-2.5 px-3 bg-emerald-50/10">
+              {lead.lastMetaFormSubmittedAt ? (
+                <button
+                  className="flex flex-col text-left hover:bg-emerald-50 rounded-md px-1.5 py-0.5 -mx-1 transition-colors cursor-pointer"
+                  onClick={() => setDetailLead(lead)}
+                  title="View full lead details and form answers"
+                >
+                  <span className="text-[11px] font-bold text-gray-900 truncate max-w-[160px]" title={lead.lastMetaFormName || 'Form'}>
+                    {lead.lastMetaFormName || 'Meta Form'}
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
+                    {formatDate(lead.lastMetaFormSubmittedAt)}
+                    {(((lead as any).metadata?.previousFacebookLeadIds?.length) || 0) > 0 && (
+                      <span className="bg-blue-100 text-blue-700 px-1 rounded-full text-[8px] font-black" title="Repeat submissions">
+                        ×{((lead as any).metadata.previousFacebookLeadIds.length) + 1}
+                      </span>
+                    )}
+                    {(lead as any).metadata?.fetchFailed && (
+                      <span className="bg-red-100 text-red-600 px-1 rounded-full text-[8px] font-black" title="Details pending — re-import this form">!</span>
+                    )}
+                  </span>
+                </button>
+              ) : <span className="text-gray-300 text-[11px]">No submission</span>}
+            </TableCell>
+            <TableCell className="py-2.5 px-3">
+              {lead.lastContactedAt ? (
+                <span className="text-[10px] font-bold text-slate-800">{formatDate(lead.lastContactedAt)}</span>
+              ) : <span className="text-gray-200 text-[10px]">-</span>}
+            </TableCell>
+            <TableCell className="py-2.5 px-3 text-gray-400 text-[11px] font-semibold">
+              {formatDate(lead.createdAt)}
+            </TableCell>
+            <TableCell className="py-2.5 px-4 pr-6 text-right">
+              <div className="flex justify-end gap-1.5 items-center min-w-max">
+                <div className="flex items-center bg-white border border-gray-100 rounded-xl shadow-xs p-1 gap-0.5">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg shrink-0" title="Lead details & form answers" onClick={() => setDetailLead(lead)}>
+                    <Info className="h-3.5 w-3.5" />
+                  </Button>
+                  {onViewLead ? (
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg shrink-0" onClick={() => onViewLead(lead)} title="View Lead Profile">
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : (
+                    <Link to={`/crm/customer/${lead.id}`} className="h-7 w-7 flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors shrink-0" title="View Lead Profile">
+                      <Eye className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg shrink-0" onClick={() => handleCheckDuplicates(lead)} title="Check Duplicates">
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg shrink-0" onClick={() => handleEditLead(lead)} title="Edit Lead">
+                    <Edit className="h-3.5 w-3.5" />
+                  </Button>
+                  {user?.role !== 'salesperson' && (
+                    <>
+                      <div className="w-px h-3 bg-gray-100 mx-0.5" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0" onClick={() => dispatch(deleteLead(lead.id))} title="Delete Lead">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
  
  {/* Pagination Controls */}
  {leads.length > 0 && (
