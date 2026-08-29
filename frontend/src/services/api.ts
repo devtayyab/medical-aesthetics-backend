@@ -59,104 +59,131 @@ const onRefreshFailed = (error: any) => {
 };
 
 api.interceptors.request.use((config) => {
- if (store) {
- const state = store.getState();
- const token = state.auth.accessToken;
- if (token) {
- config.headers.Authorization = `Bearer ${token}`;
- }
- }
- return config;
+  let token = null;
+  if (store) {
+    const state = store.getState();
+    token = state?.auth?.accessToken;
+  }
+  if (!token) {
+    token = localStorage.getItem("accessToken");
+  }
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 api.interceptors.response.use(
- (response) => {
- return response;
- },
- async (error: AxiosError) => {
- const originalRequest = error.config as any;
- // Auth endpoints answer 401 for bad credentials — never treat that as an
- // expired session (would hard-redirect and wipe the error message)
- if (typeof originalRequest?.url ==="string" && originalRequest.url.includes("/auth/")) {
- return Promise.reject(error);
- }
- if (error.response?.status === 401 && !originalRequest._retry) {
- if (!store) return Promise.reject(error);
+  (response) => {
+    return response;
+  },
+  async (error: AxiosError) => {
+    const originalRequest = error.config as any;
+    // Auth endpoints answer 401 for bad credentials — never treat that as an
+    // expired session (would hard-redirect and wipe the error message)
+    if (typeof originalRequest?.url === "string" && originalRequest.url.includes("/auth/")) {
+      return Promise.reject(error);
+    }
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (!store) return Promise.reject(error);
 
- if (isRefreshing) {
- return new Promise((resolve, reject) => {
- subscribeTokenRefresh((token, refreshError) => {
- if (refreshError) {
- reject(refreshError);
- } else if (token) {
- if (originalRequest.headers) {
- delete originalRequest.headers.authorization;
- delete originalRequest.headers.Authorization;
- originalRequest.headers.Authorization = `Bearer ${token}`;
- }
- resolve(api(originalRequest));
- }
- });
- });
- }
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((token, refreshError) => {
+            if (refreshError) {
+              reject(refreshError);
+            } else if (token) {
+              if (originalRequest.headers) {
+                delete originalRequest.headers.authorization;
+                delete originalRequest.headers.Authorization;
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+              resolve(api(originalRequest));
+            }
+          });
+        });
+      }
 
- originalRequest._retry = true;
- isRefreshing = true;
+      originalRequest._retry = true;
+      isRefreshing = true;
 
- const state = store.getState();
- const refreshToken =
- state.auth.refreshToken || sessionStorage.getItem("refreshToken");
- if (refreshToken) {
- try {
- const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
- refreshToken,
- });
- const { accessToken, refreshToken: newRefreshToken } = response.data;
+      const state = store.getState();
+      const refreshToken =
+        localStorage.getItem("refreshToken") || state?.auth?.refreshToken || sessionStorage.getItem("refreshToken");
+      if (refreshToken) {
+        try {
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken,
+          });
+          const { accessToken, refreshToken: newRefreshToken, user } = response.data;
 
- if (store && setTokensAction) {
- store.dispatch(
- setTokensAction({ accessToken, refreshToken: newRefreshToken })
- );
- }
+          if (accessToken) {
+            localStorage.setItem("accessToken", accessToken);
+          }
+          if (newRefreshToken) {
+            localStorage.setItem("refreshToken", newRefreshToken);
+          }
+          if (user) {
+            localStorage.setItem("user", JSON.stringify(user));
+            if (user.role) localStorage.setItem("userRole", user.role);
+          }
 
- // Re-set flag before retrying to avoid the race condition where new requests
- // during the retry think a refresh is still in progress
- isRefreshing = false;
- onRefreshed(accessToken);
+          if (store && setTokensAction) {
+            store.dispatch(
+              setTokensAction({ accessToken, refreshToken: newRefreshToken, user })
+            );
+          }
 
- // Standard way to update headers for retry safely
- if (originalRequest.headers) {
- delete originalRequest.headers.authorization;
- delete originalRequest.headers.Authorization;
- originalRequest.headers.Authorization = `Bearer ${accessToken}`;
- }
- 
- return api(originalRequest);
- } catch (refreshError: any) {
- console.error("Refresh failed:", {
- message: refreshError.response?.data || refreshError.message,
- status: refreshError.response?.status,
- });
+          // Re-set flag before retrying to avoid the race condition where new requests
+          // during the retry think a refresh is still in progress
+          isRefreshing = false;
+          onRefreshed(accessToken);
 
- isRefreshing = false;
- onRefreshFailed(refreshError);
+          // Standard way to update headers for retry safely
+          if (originalRequest.headers) {
+            delete originalRequest.headers.authorization;
+            delete originalRequest.headers.Authorization;
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          }
+          
+          return api(originalRequest);
+        } catch (refreshError: any) {
+          console.error("Refresh failed:", {
+            message: refreshError.response?.data || refreshError.message,
+            status: refreshError.response?.status,
+          });
 
- if (store && logoutAction) {
- store.dispatch(logoutAction());
- }
- window.location.href ="/login";
- return Promise.reject(refreshError);
- }
- } else {
- console.warn("No refresh token found, logging out");
- if (store && logoutAction) {
- store.dispatch(logoutAction());
- }
- window.location.href ="/login";
- }
- }
- return Promise.reject(error);
- }
+          isRefreshing = false;
+          onRefreshFailed(refreshError);
+
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("user");
+          localStorage.removeItem("userRole");
+          sessionStorage.removeItem("refreshToken");
+
+          if (store && logoutAction) {
+            store.dispatch(logoutAction());
+          }
+          window.location.href = "/login";
+          return Promise.reject(refreshError);
+        }
+      } else {
+        console.warn("No refresh token found, logging out");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
+        localStorage.removeItem("userRole");
+        sessionStorage.removeItem("refreshToken");
+
+        if (store && logoutAction) {
+          store.dispatch(logoutAction());
+        }
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
 );
 
 export const authAPI = {

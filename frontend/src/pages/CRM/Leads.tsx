@@ -1469,15 +1469,15 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md" title="Lead details & form answers" onClick={() => setDetailLead(lead)}>
  <Info className="h-3.5 w-3.5" />
  </Button>
- <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => {
- if (onViewLead) {
- onViewLead(lead);
- } else {
- navigate(`/crm/customer/${lead.id}`);
- }
- }}>
+ {onViewLead ? (
+ <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => onViewLead(lead)} title="View Lead Profile">
  <Eye className="h-3.5 w-3.5" />
  </Button>
+ ) : (
+ <Link to={`/crm/customer/${lead.id}`} className="h-7 w-7 flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md transition-colors" title="View Lead Profile">
+ <Eye className="h-3.5 w-3.5" />
+ </Link>
+ )}
  <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-md" onClick={() => handleCheckDuplicates(lead)}>
  <Copy className="h-3.5 w-3.5" />
  </Button>

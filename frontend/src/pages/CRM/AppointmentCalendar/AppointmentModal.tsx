@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
+import { Link } from 'react-router-dom';
 import {
   X, Search, User, Scissors, MapPin, Clock, StickyNote,
-  CreditCard, Banknote, Trash2, AlertCircle, CheckCircle, Loader2, Plus
+  CreditCard, Banknote, Trash2, AlertCircle, CheckCircle, Loader2, Plus, ExternalLink
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -623,9 +624,20 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                       <p className="text-[10px] text-slate-400">{selectedPatient.phone}</p>
                     )}
                   </div>
+                  {(selectedPatient.id || form.patientId) && (
+                    <Link
+                      to={`/crm/customer/${selectedPatient.id || form.patientId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-100 border border-indigo-200 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors shrink-0 shadow-xs"
+                      title="Open Patient Profile in new tab"
+                    >
+                      <ExternalLink className="w-3 h-3" /> Profile
+                    </Link>
+                  )}
                   <button
                     onClick={() => { setSelectedPatient(null); setForm(prev => ({ ...prev, patientId: '', patientName: '' })); }}
-                    className="w-6 h-6 flex items-center justify-center rounded-lg bg-red-100 text-red-500 hover:bg-red-200 transition-colors"
+                    className="w-6 h-6 flex items-center justify-center rounded-lg bg-red-100 text-red-500 hover:bg-red-200 transition-colors shrink-0"
                   >
                     <X className="w-3 h-3" />
                   </button>

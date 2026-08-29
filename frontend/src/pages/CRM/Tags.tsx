@@ -21,7 +21,7 @@ import { Select } from"@/components/atoms/Select/Select";
 import { addCustomerTag, removeCustomerTag, fetchCustomersByTag } from"@/store/slices/crmSlice";
 import { adminAPI, userAPI } from"@/services/api";
 import type { RootState, AppDispatch } from"@/store";
-import { useNavigate } from"react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import React, { useState, useEffect } from"react";
 import { useDispatch, useSelector } from"react-redux";
 
@@ -376,13 +376,12 @@ export const Tags: React.FC = () => {
  )}
 
  <div className='flex items-center gap-2 pt-1'>
- <Button
- variant='outline'
- className='flex-1 h-8 rounded-lg border-slate-100 text-slate-500 font-black text-[9px] uppercase tracking-widest hover:bg-slate-50'
- onClick={() => navigate(`/crm/customer/${customer.customer?.id}`)}
+ <Link
+ to={`/crm/customer/${customer.customer?.id}`}
+ className='flex-1 h-8 rounded-lg border border-slate-100 text-slate-500 font-black text-[9px] uppercase tracking-widest hover:bg-slate-50 flex items-center justify-center transition-colors'
  >
  <ExternalLink className='w-3 h-3 mr-1.5' /> Profile
- </Button>
+ </Link>
  <Button
  variant='outline'
  className='flex-1 h-8 rounded-lg border-slate-100 text-slate-500 font-black text-[9px] uppercase tracking-widest hover:bg-slate-50'
