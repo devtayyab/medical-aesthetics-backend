@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from"react";
-import { useNavigate } from"react-router-dom";
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
 import { DataTable } from"@/components/ui/DataTable";
 import { Button } from"@/components/atoms/Button/Button";
@@ -64,21 +64,34 @@ export const NoShowAlerts: React.FC = () => {
  };
 
  const columns = [
- {
- accessorKey:"patientName",
- header:"Patient",
- cell: ({ row }: any) => (
- <div className="flex items-center gap-3">
- <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
- <Users className="h-4 w-4 text-gray-500" />
- </div>
- <div>
- <div className="font-semibold text-gray-900">{row.original.patientName}</div>
- <div className="text-[10px] text-gray-500">ID: {row.original.appointmentId.slice(0, 8)}</div>
- </div>
- </div>
- )
- },
+    {
+      accessorKey: "patientName",
+      header: "Patient",
+      cell: ({ row }: any) => {
+        const sanitizedId = row.original.patientId ? row.original.patientId.split(':')[0] : null;
+        return (
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+              <Users className="h-4 w-4 text-gray-500" />
+            </div>
+            <div>
+              {sanitizedId ? (
+                <Link
+                  to={`/crm/customer/${sanitizedId}`}
+                  className="font-semibold text-gray-900 hover:text-blue-600 hover:underline block"
+                  title="View Customer Profile"
+                >
+                  {row.original.patientName}
+                </Link>
+              ) : (
+                <div className="font-semibold text-gray-900">{row.original.patientName}</div>
+              )}
+              <div className="text-[10px] text-gray-500">ID: {row.original.appointmentId.slice(0, 8)}</div>
+            </div>
+          </div>
+        );
+      }
+    },
  {
  accessorKey:"agentName",
  header:"Assigned Agent",
@@ -142,14 +155,24 @@ export const NoShowAlerts: React.FC = () => {
  <CheckCircle2 className="h-3.5 w-3.5" />
  Resolve
  </Button>
- <Button
- variant="ghost"
- size="icon"
- className="h-8 w-8 text-gray-400 hover:text-gray-900"
- onClick={() => handleViewPatient(row.original.patientId)}
- >
- <ArrowRight className="h-4 w-4" />
- </Button>
+            {row.original.patientId ? (
+              <Link
+                to={`/crm/customer/${row.original.patientId.split(':')[0]}`}
+                className="h-8 w-8 text-gray-400 hover:text-gray-900 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors"
+                title="View Customer Profile"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-gray-400 hover:text-gray-900"
+                onClick={() => handleViewPatient(row.original.patientId)}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            )}
  </div>
  )
  }

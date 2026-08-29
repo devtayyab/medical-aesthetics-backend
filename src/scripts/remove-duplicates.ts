@@ -58,6 +58,9 @@ async function bootstrap() {
       await dataSource.query(`UPDATE tasks SET "customerId" = $1 WHERE "customerId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
       await dataSource.query(`UPDATE communication_logs SET "relatedLeadId" = $1 WHERE "relatedLeadId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
       await dataSource.query(`UPDATE crm_actions SET "relatedLeadId" = $1 WHERE "relatedLeadId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
+      await dataSource.query(`UPDATE appointments SET "customerId" = $1 WHERE "customerId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
+      await dataSource.query(`DELETE FROM lead_tags WHERE "leadId" = ANY($1)`, [deleteIds]).catch(() => {});
+      await dataSource.query(`DELETE FROM lead_clinic_status WHERE "leadId" = ANY($1)`, [deleteIds]).catch(() => {});
 
       await dataSource.query(`DELETE FROM leads WHERE id = ANY($1)`, [deleteIds]);
       removedCount += deleteIds.length;
@@ -95,6 +98,9 @@ async function bootstrap() {
       await dataSource.query(`UPDATE tasks SET "customerId" = $1 WHERE "customerId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
       await dataSource.query(`UPDATE communication_logs SET "relatedLeadId" = $1 WHERE "relatedLeadId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
       await dataSource.query(`UPDATE crm_actions SET "relatedLeadId" = $1 WHERE "relatedLeadId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
+      await dataSource.query(`UPDATE appointments SET "customerId" = $1 WHERE "customerId" = ANY($2)`, [keepId, deleteIds]).catch(() => {});
+      await dataSource.query(`DELETE FROM lead_tags WHERE "leadId" = ANY($1)`, [deleteIds]).catch(() => {});
+      await dataSource.query(`DELETE FROM lead_clinic_status WHERE "leadId" = ANY($1)`, [deleteIds]).catch(() => {});
 
       await dataSource.query(`DELETE FROM leads WHERE id = ANY($1)`, [deleteIds]);
       removedCount += deleteIds.length;

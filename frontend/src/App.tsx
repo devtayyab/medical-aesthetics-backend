@@ -10,7 +10,7 @@ import {
 } from"react-router-dom";
 import { Provider, useDispatch, useSelector } from"react-redux";
 import { store, AppDispatch } from"@/store";
-import { restoreSession } from"@/store/slices/authSlice";
+import { restoreSession, logout } from "@/store/slices/authSlice";
 import { Header } from"@/components/organisms/Header/Header";
 import { Footer } from"@/components/organisms/Footer/Footer";
 import { HomePage } from"@/pages/HomePage/HomePage";
@@ -176,6 +176,21 @@ function AppContent() {
  initializeFirebase(dispatch);
  }
  }, [isAuthenticated, dispatch]);
+
+ // Sync auth state across multiple browser tabs
+ useEffect(() => {
+   const handleStorageChange = (e: StorageEvent) => {
+     if (e.key === "refreshToken") {
+       if (!e.newValue) {
+         dispatch(logout());
+       } else if (e.newValue !== e.oldValue && !isAuthenticated) {
+         dispatch(restoreSession());
+       }
+     }
+   };
+   window.addEventListener("storage", handleStorageChange);
+   return () => window.removeEventListener("storage", handleStorageChange);
+ }, [dispatch, isAuthenticated]);
 
  // Role-aware redirect after session restore or login
  useEffect(() => {

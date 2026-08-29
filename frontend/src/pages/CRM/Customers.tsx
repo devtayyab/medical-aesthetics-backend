@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -579,11 +579,17 @@ export const Customers: React.FC = () => {
  </TableCell>
  <TableCell className="py-2 px-3">
  <div className="flex items-center gap-3">
- <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs uppercase">
+ <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs uppercase shrink-0">
  {lead.firstName[0]}{lead.lastName[0]}
  </div>
  <div>
- <div className="font-bold text-gray-900 text-xs">{lead.firstName} {lead.lastName}</div>
+ <Link
+ to={`/crm/customer/${lead.id}`}
+ className="font-bold text-gray-900 text-xs hover:text-blue-600 hover:underline block"
+ title={`View Customer: ${lead.firstName} ${lead.lastName}`}
+ >
+ {lead.firstName} {lead.lastName}
+ </Link>
  <div className="text-[9px] text-gray-400 font-mono tracking-tighter uppercase">
  ID: {lead.id.slice(0, 8)}
  </div>
@@ -612,9 +618,13 @@ export const Customers: React.FC = () => {
  </TableCell>
  <TableCell className="py-1 px-3 text-right">
  <div className="flex items-center justify-end gap-1">
- <Button variant="ghost" size="sm" onClick={() => setSelectedCustomer(lead)} className="h-8 px-3 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
+ <Link
+ to={`/crm/customer/${lead.id}`}
+ className="h-8 px-3 text-[10px] font-bold text-blue-600 hover:bg-blue-50 inline-flex items-center rounded-lg transition-colors"
+ title="View Customer Details"
+ >
  View Details <ArrowRight className="w-3 h-3 ml-1" />
- </Button>
+ </Link>
  {isAdmin && (
  <button
  onClick={() => handleDeleteCustomer(lead.id, `${lead.firstName} ${lead.lastName}`)}

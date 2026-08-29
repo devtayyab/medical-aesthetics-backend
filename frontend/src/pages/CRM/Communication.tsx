@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from"react";
-import { useNavigate } from"react-router-dom";
+import React, { useEffect, useState, useMemo } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from"react-redux";
 import {
  MessageSquare, User, Clock, Phone, Mail, FileText, ExternalLink,
@@ -362,12 +362,12 @@ export const Communication: React.FC = () => {
  >
  <Bell size={14} /> SEND PUSH NOTIFICATION
  </button>
- <button 
- onClick={() => navigate(activeContact.type === 'Customer' ? `/crm/customer/${activeContact.id}` : `/crm/leads`)}
- className="w-full h-11 bg-white rounded-xl flex items-center justify-center gap-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 shadow-sm transition-all font-black uppercase text-[10px] tracking-widest border border-gray-200"
- >
- <ExternalLink size={14} /> VIEW FULL PROFILE
- </button>
+            <Link 
+              to={activeContact.type === 'Customer' ? `/crm/customer/${activeContact.id}` : `/crm/leads`}
+              className="w-full h-11 bg-white rounded-xl flex items-center justify-center gap-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 shadow-sm transition-all font-black uppercase text-[10px] tracking-widest border border-gray-200"
+            >
+              <ExternalLink size={14} /> VIEW FULL PROFILE
+            </Link>
  </div>
 
  <div className="space-y-3 border-t border-gray-100 pt-6">

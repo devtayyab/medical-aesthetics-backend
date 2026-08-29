@@ -7,7 +7,7 @@ import { Logger } from '@nestjs/common';
 import axios from 'axios';
 
 const logger = new Logger('HubSpotFullImport');
-const HUBSPOT_TOKEN = 'pat-na1-' + '0636c4c1-d343-4cf5-9908-1b5733ce051d';
+const HUBSPOT_TOKEN = process.env.HUBSPOT_API_TOKEN || ('pat-na1-' + '0636c4c1-d343-4cf5-9908-1b5733ce051d');
 
 const mapHubSpotStatus = (status?: string, lifecycle?: string): LeadStatus => {
   const s = (status || '').toUpperCase().trim();
@@ -97,7 +97,7 @@ async function bootstrap() {
             facebookCampaignId: props.hs_facebook_campaign_id || null,
 
             createdAt: creationDate,
-            lastMetaFormSubmittedAt: isFacebook ? creationDate : null,
+            lastMetaFormSubmittedAt: creationDate,
             lastContactedAt: props.notes_last_contacted ? new Date(props.notes_last_contacted) : null,
             
             metadata: { hubspotId: contact.id }

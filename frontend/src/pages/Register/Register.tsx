@@ -176,7 +176,6 @@ export const Register: React.FC = () => {
  // Store tokens and hydrate auth state, then redirect — no full reload needed
  localStorage.setItem("accessToken", accessToken);
  localStorage.setItem("refreshToken", refreshToken);
- sessionStorage.setItem("refreshToken", refreshToken);
  await dispatch(restoreSession());
  navigate("/", { replace: true });
  } catch (err: any) {

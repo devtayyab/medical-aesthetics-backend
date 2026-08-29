@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
  ChevronLeft, ChevronRight, Plus, Clock, User, Users, Scissors, CheckCircle2,
@@ -375,12 +375,12 @@ export const AdminSuperCalendar: React.FC = () => {
  >
  <RefreshCw className="w-5 h-5" /> Set Recurring
  </Button>
- <Button 
- onClick={() => navigate(`/crm/customer/${selectedApt.clientId}`)}
- className="w-full bg-indigo-600 text-white hover:bg-indigo-700 font-black uppercase py-6 rounded-xl flex items-center justify-center gap-3"
- >
- <Search className="w-5 h-5" /> View Full CRM
- </Button>
+ <Link 
+                to={`/crm/customer/${selectedApt.clientId}`}
+                className="w-full bg-indigo-600 text-white hover:bg-indigo-700 font-black uppercase py-4 rounded-xl flex items-center justify-center gap-3 transition-colors text-sm"
+              >
+                <Search className="w-5 h-5" /> View Full CRM
+              </Link>
  </section>
 
  <section>
