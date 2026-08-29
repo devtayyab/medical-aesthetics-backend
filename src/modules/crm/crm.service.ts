@@ -987,10 +987,22 @@ export class CrmService implements OnModuleInit {
       qb.andWhere('lead.source = :source', { source: filters.source });
     }
 
-    if (filters.search) {
+    if (filters.search && filters.search.trim()) {
+      const searchTrimmed = filters.search.trim();
+      const tokens = searchTrimmed.split(/\s+/).filter(Boolean);
+      const params: Record<string, string> = { search: `%${searchTrimmed}%` };
+
+      let tokenConditions = '';
+      if (tokens.length > 1) {
+        tokenConditions = ' OR (' + tokens.map((t, idx) => {
+          params[`w_${idx}`] = `%${t}%`;
+          return `(lead.firstName ILIKE :w_${idx} OR lead.lastName ILIKE :w_${idx} OR lead.email ILIKE :w_${idx} OR lead.phone ILIKE :w_${idx})`;
+        }).join(' AND ') + ')';
+      }
+
       qb.andWhere(
-        '(lead.firstName ILIKE :search OR lead.lastName ILIKE :search OR lead.email ILIKE :search OR lead.phone ILIKE :search)',
-        { search: `%${filters.search}%` },
+        `(lead.firstName ILIKE :search OR lead.lastName ILIKE :search OR CONCAT(COALESCE(lead.firstName, ''), ' ', COALESCE(lead.lastName, '')) ILIKE :search OR CONCAT(COALESCE(lead.lastName, ''), ' ', COALESCE(lead.firstName, '')) ILIKE :search OR lead.email ILIKE :search OR lead.phone ILIKE :search OR CAST(lead.id AS TEXT) ILIKE :search OR lead.lastMetaFormName ILIKE :search OR lead.facebookAdName ILIKE :search${tokenConditions})`,
+        params,
       );
     }
 
@@ -1083,10 +1095,22 @@ export class CrmService implements OnModuleInit {
       qb.andWhere('lead.source = :source', { source: filters.source });
     }
 
-    if (filters.search) {
+    if (filters.search && filters.search.trim()) {
+      const searchTrimmed = filters.search.trim();
+      const tokens = searchTrimmed.split(/\s+/).filter(Boolean);
+      const params: Record<string, string> = { search: `%${searchTrimmed}%` };
+
+      let tokenConditions = '';
+      if (tokens.length > 1) {
+        tokenConditions = ' OR (' + tokens.map((t, idx) => {
+          params[`w_${idx}`] = `%${t}%`;
+          return `(lead.firstName ILIKE :w_${idx} OR lead.lastName ILIKE :w_${idx} OR lead.email ILIKE :w_${idx} OR lead.phone ILIKE :w_${idx})`;
+        }).join(' AND ') + ')';
+      }
+
       qb.andWhere(
-        '(lead.firstName ILIKE :search OR lead.lastName ILIKE :search OR lead.email ILIKE :search OR lead.phone ILIKE :search)',
-        { search: `%${filters.search}%` },
+        `(lead.firstName ILIKE :search OR lead.lastName ILIKE :search OR CONCAT(COALESCE(lead.firstName, ''), ' ', COALESCE(lead.lastName, '')) ILIKE :search OR CONCAT(COALESCE(lead.lastName, ''), ' ', COALESCE(lead.firstName, '')) ILIKE :search OR lead.email ILIKE :search OR lead.phone ILIKE :search OR CAST(lead.id AS TEXT) ILIKE :search OR lead.lastMetaFormName ILIKE :search OR lead.facebookAdName ILIKE :search${tokenConditions})`,
+        params,
       );
     }
 
@@ -1521,10 +1545,22 @@ export class CrmService implements OnModuleInit {
       // }
     }
 
-    if (filters.search) {
+    if (filters.search && filters.search.trim()) {
+      const searchTrimmed = filters.search.trim();
+      const tokens = searchTrimmed.split(/\s+/).filter(Boolean);
+      const params: Record<string, string> = { search: `%${searchTrimmed}%` };
+
+      let tokenConditions = '';
+      if (tokens.length > 1) {
+        tokenConditions = ' OR (' + tokens.map((t, idx) => {
+          params[`w_${idx}`] = `%${t}%`;
+          return `(customer.firstName ILIKE :w_${idx} OR customer.lastName ILIKE :w_${idx} OR customer.email ILIKE :w_${idx} OR customer.phone ILIKE :w_${idx})`;
+        }).join(' AND ') + ')';
+      }
+
       query.andWhere(
-        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search)',
-        { search: `%${filters.search}%` },
+        `(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR CONCAT(COALESCE(customer.firstName, ''), ' ', COALESCE(customer.lastName, '')) ILIKE :search OR CONCAT(COALESCE(customer.lastName, ''), ' ', COALESCE(customer.firstName, '')) ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search OR CAST(record.id AS TEXT) ILIKE :search${tokenConditions})`,
+        params,
       );
     }
 
@@ -3777,9 +3813,12 @@ export class CrmService implements OnModuleInit {
       .leftJoinAndSelect('record.customer', 'customer')
       .leftJoinAndSelect('record.assignedSalesperson', 'agent');
 
-    if (query.search) {
-      qb = qb.where('customer.firstName ILIKE :search OR customer.lastName ILIKE :search',
-        { search: `%${query.search}%` });
+    if (query.search && query.search.trim()) {
+      const searchTrimmed = query.search.trim();
+      qb = qb.where(
+        '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR CONCAT(COALESCE(customer.firstName, \'\'), \' \', COALESCE(customer.lastName, \'\')) ILIKE :search OR CONCAT(COALESCE(customer.lastName, \'\'), \' \', COALESCE(customer.firstName, \'\')) ILIKE :search)',
+        { search: `%${searchTrimmed}%` },
+      );
     }
 
     if (query.clinicId) {

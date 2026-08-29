@@ -78,10 +78,11 @@ export class UsersService {
       queryBuilder.andWhere('user.isActive = :isActive', { isActive: query.isActive });
     }
 
-    if (query?.search) {
+    if (query?.search && query.search.trim()) {
+      const searchTrimmed = query.search.trim();
       queryBuilder.andWhere(
-        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search OR user.phone ILIKE :search)',
-        { search: `%${query.search}%` },
+        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR CONCAT(COALESCE(user.firstName, \'\'), \' \', COALESCE(user.lastName, \'\')) ILIKE :search OR CONCAT(COALESCE(user.lastName, \'\'), \' \', COALESCE(user.firstName, \'\')) ILIKE :search OR user.email ILIKE :search OR user.phone ILIKE :search)',
+        { search: `%${searchTrimmed}%` },
       );
     }
 
