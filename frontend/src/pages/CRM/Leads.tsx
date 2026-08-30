@@ -146,13 +146,16 @@ const LeadDetailModal: React.FC<{ lead: Lead; onClose: () => void }> = ({ lead, 
  </div>
  </div>
  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
- <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Timeline</p>
- <div className="space-y-1.5 text-xs font-semibold text-gray-800">
- <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Added</span><span>{fmt(l.createdAt)}</span></div>
- <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Form submitted</span><span className="text-emerald-600">{fmt(l.lastMetaFormSubmittedAt)}</span></div>
- <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Last contacted</span><span>{fmt(l.lastContactedAt)}</span></div>
- </div>
- </div>
+  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Timeline</p>
+  <div className="space-y-1.5 text-xs font-semibold text-gray-800">
+  <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Initial Added</span><span>{fmt(l.createdAt)}</span></div>
+  <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Latest Form Submitted</span><span className="text-emerald-600 font-bold">{fmt(l.lastMetaFormSubmittedAt)}</span></div>
+  <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Last Contacted</span><span>{fmt(l.lastContactedAt)}</span></div>
+  {meta.initialFormName && meta.initialFormName !== l.lastMetaFormName && (
+    <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Original Form</span><span className="text-gray-600 truncate">{meta.initialFormName}</span></div>
+  )}
+  </div>
+  </div>
  </div>
 
  {/* Facebook / Meta provenance */}
@@ -163,7 +166,7 @@ const LeadDetailModal: React.FC<{ lead: Lead; onClose: () => void }> = ({ lead, 
  </p>
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
  <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Ad</span><span className="font-bold text-gray-800 truncate" title={l.facebookAdName}>{l.facebookAdName || '—'}</span></div>
- <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Form</span><span className="font-bold text-gray-800 truncate" title={l.lastMetaFormName}>{l.lastMetaFormName || '—'}</span></div>
+ <div className="flex justify-between gap-2"><span className="text-gray-400 font-medium">Latest Form</span><span className="font-bold text-gray-800 truncate" title={l.lastMetaFormName}>{l.lastMetaFormName || '—'}</span></div>
  {idRows.filter(([, v]) => v).map(([label, value]) => (
  <div key={label} className="flex justify-between gap-2">
  <span className="text-gray-400 font-medium">{label}</span>
@@ -183,6 +186,38 @@ const LeadDetailModal: React.FC<{ lead: Lead; onClose: () => void }> = ({ lead, 
  <p className="mt-2 text-[11px] text-blue-700 font-semibold">Linked to an existing customer record.</p>
  )}
  </div>
+ )}
+
+ {/* Form Submission History (Repeat Form Inquiries) */}
+ {Array.isArray(meta.formHistory) && meta.formHistory.length > 0 && (
+  <div className="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/80">
+  <p className="text-[9px] font-black text-amber-800 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+  <History className="h-3 w-3 text-amber-600" /> Form Submission History ({meta.formHistory.length})
+  </p>
+  <div className="space-y-2">
+  {meta.formHistory.map((item: any, idx: number) => (
+    <div key={idx} className="bg-white rounded-xl p-3 border border-amber-100 shadow-xs flex flex-col gap-1 text-xs">
+      <div className="flex items-center justify-between">
+        <span className="font-bold text-gray-900 flex items-center gap-1.5">
+          {idx === meta.formHistory.length - 1 ? (
+            <span className="bg-emerald-100 text-emerald-800 text-[8px] font-black px-1.5 py-0.5 rounded">Latest Form</span>
+          ) : (
+            <span className="bg-gray-100 text-gray-700 text-[8px] font-bold px-1.5 py-0.5 rounded">Submission #{idx + 1}</span>
+          )}
+          {item.formName || 'Form Submission'}
+        </span>
+        <span className="text-[10px] font-semibold text-gray-500">{fmt(item.submittedAt)}</span>
+      </div>
+      {item.adName && (
+        <p className="text-[10px] text-gray-500">Ad Campaign: <span className="font-medium text-gray-800">{item.adName}</span></p>
+      )}
+      {item.notes && (
+        <p className="text-[10px] text-gray-600 italic bg-amber-50/50 rounded px-2 py-1 mt-1">{item.notes}</p>
+      )}
+    </div>
+  ))}
+  </div>
+  </div>
  )}
 
  {/* Form answers */}
@@ -1356,8 +1391,15 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                       <div className="font-bold text-gray-900 text-xs truncate group-hover/leadname:text-blue-600 group-hover/leadname:underline">
                         {lead.firstName} {lead.lastName}
                       </div>
-                      <div className="text-[9px] text-gray-400 font-mono tracking-tighter uppercase group-hover/leadname:text-blue-500">
-                        {lead.id.slice(0, 6)}
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-[9px] text-gray-400 font-mono tracking-tighter uppercase group-hover/leadname:text-blue-500">
+                          {lead.id.slice(0, 6)}
+                        </span>
+                        {(((lead as any).metadata?.isRepeat || ((lead as any).metadata?.formHistory?.length > 1) || (((lead as any).metadata?.previousFacebookLeadIds?.length) || 0) > 0) && (
+                          <span className="inline-flex items-center gap-0.5 bg-amber-100 text-amber-800 border border-amber-300 text-[8px] font-black px-1.5 py-0.2 rounded-md uppercase tracking-wider shrink-0" title="Repeat Customer / Re-inquiry">
+                            Repeat
+                          </span>
+                        ))}
                       </div>
                     </div>
                   ) : (
@@ -1369,8 +1411,15 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
                       <div className="font-bold text-gray-900 text-xs truncate group-hover/leadname:text-blue-600 group-hover/leadname:underline">
                         {lead.firstName} {lead.lastName}
                       </div>
-                      <div className="text-[9px] text-gray-400 font-mono tracking-tighter uppercase group-hover/leadname:text-blue-500">
-                        {lead.id.slice(0, 6)}
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-[9px] text-gray-400 font-mono tracking-tighter uppercase group-hover/leadname:text-blue-500">
+                          {lead.id.slice(0, 6)}
+                        </span>
+                        {(((lead as any).metadata?.isRepeat || ((lead as any).metadata?.formHistory?.length > 1) || (((lead as any).metadata?.previousFacebookLeadIds?.length) || 0) > 0) && (
+                          <span className="inline-flex items-center gap-0.5 bg-amber-100 text-amber-800 border border-amber-300 text-[8px] font-black px-1.5 py-0.2 rounded-md uppercase tracking-wider shrink-0" title="Repeat Customer / Re-inquiry">
+                            Repeat
+                          </span>
+                        ))}
                       </div>
                     </Link>
                   )}
@@ -1421,9 +1470,16 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
               )}
             </TableCell>
             <TableCell className="py-2.5 px-3 text-center">
-              <Badge className={`${getStatusBadge(lead.status)} border px-2 py-0.5 rounded-full capitalize font-bold text-[9px] tracking-wider`}>
-                {lead.status}
-              </Badge>
+              <div className="flex flex-col items-center gap-1">
+                <Badge className={`${getStatusBadge(lead.status)} border px-2 py-0.5 rounded-full capitalize font-bold text-[9px] tracking-wider`}>
+                  {lead.status}
+                </Badge>
+                {(((lead as any).metadata?.isRepeat || ((lead as any).metadata?.formHistory?.length > 1) || (((lead as any).metadata?.previousFacebookLeadIds?.length) || 0) > 0) && (
+                  <span className="bg-amber-100 text-amber-800 border border-amber-300 text-[8px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-wider" title="Repeat Customer / Re-inquiry">
+                    Repeat
+                  </span>
+                ))}
+              </div>
             </TableCell>
             <TableCell className="py-2.5 px-3">
               <div className="flex flex-col gap-0.5 overflow-hidden max-w-[120px]">
