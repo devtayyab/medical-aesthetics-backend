@@ -1,7 +1,7 @@
 import React, { useState } from"react";
 import { useDispatch, useSelector } from"react-redux";
 import { useNavigate, Link } from"react-router-dom";
-import { login, forgotPassword, resetPassword } from"@/store/slices/authSlice";
+import { login, forgotPassword, resetPassword, logout } from"@/store/slices/authSlice";
 import { Button } from"@/components/atoms/Button/Button";
 import { Input } from"@/components/atoms/Input/Input";
 import { Card } from"@/components/atoms/Card/Card";
@@ -107,6 +107,14 @@ export const Login: React.FC = () => {
  try {
  const result = await dispatch(login({ email, password })).unwrap();
 
+ const isClientOnlyApp = import.meta.env.VITE_APP_TYPE === 'client' || (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.());
+
+ if (isClientOnlyApp && result.user?.role && result.user.role !== 'client') {
+ await dispatch(logout());
+ setEmailError("Access Denied: This mobile app is exclusively for Clients. Staff, Clinic & Admin users must use the web portal.");
+ return;
+ }
+
  // Redirect based on role
  const clinicRoles = ["clinic_owner","doctor","secretariat"];
 
@@ -125,8 +133,10 @@ export const Login: React.FC = () => {
  } else {
  navigate("/", { replace: true });
  }
- } catch (err) {
+ } catch (err: any) {
  console.log("Login error:", err);
+ const errorMessage = typeof err === 'string' ? err : (err?.message || "Invalid email or password");
+ setEmailError(errorMessage);
  }
  };
 
@@ -232,7 +242,10 @@ export const Login: React.FC = () => {
  type="email"
  placeholder="abc@gmail.com"
  value={email}
- onChange={(e) => setEmail(e.target.value)}
+ onChange={(e) => {
+ setEmail(e.target.value);
+ setEmailError("");
+ }}
  fullWidth
  className="bg-white text-[15px] mt-1"
  autoComplete="email"
@@ -254,7 +267,11 @@ export const Login: React.FC = () => {
  type="password"
  placeholder="Enter Your Password"
  value={password}
- onChange={(e) => setPassword(e.target.value)}
+ onChange={(e) => {
+ setPassword(e.target.value);
+ setPasswordError("");
+ setEmailError("");
+ }}
  fullWidth
  className="bg-white text-[15px] mt-1"
  passwordToggle

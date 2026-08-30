@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Beauty Doctor</string>
+    <string name="title_activity_main">Beauty Doctor</string>
+    <string name="package_name">com.beautydoctor.app</string>
+    <string name="custom_url_scheme">com.beautydoctor.app</string>
+</resources>

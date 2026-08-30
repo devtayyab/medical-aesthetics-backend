@@ -192,6 +192,28 @@ function AppContent() {
    return () => window.removeEventListener("storage", handleStorageChange);
  }, [dispatch, isAuthenticated]);
 
+  // Android hardware back button handler for Capacitor
+  useEffect(() => {
+    let backListener: any;
+    import('@capacitor/app').then(({ App: CapApp }) => {
+      CapApp.addListener('backButton', ({ canGoBack }) => {
+        if (window.history.length > 1 && canGoBack) {
+          window.history.back();
+        } else {
+          CapApp.exitApp();
+        }
+      }).then(listener => {
+        backListener = listener;
+      });
+    }).catch(() => {});
+
+    return () => {
+      if (backListener && typeof backListener.remove === 'function') {
+        backListener.remove();
+      }
+    };
+  }, []);
+
  // Role-aware redirect after session restore or login
  useEffect(() => {
  if (

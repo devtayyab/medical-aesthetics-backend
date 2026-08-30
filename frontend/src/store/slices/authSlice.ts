@@ -52,6 +52,15 @@ export const login = createAsyncThunk(
         localStorage.setItem("accessToken", response.data.accessToken);
       }
       if (response.data.user) {
+        const isClientOnlyApp = import.meta.env.VITE_APP_TYPE === 'client' || (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.());
+        if (isClientOnlyApp && response.data.user.role && response.data.user.role !== 'client') {
+          await authAPI.logout().catch(() => {});
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("user");
+          localStorage.removeItem("userRole");
+          return rejectWithValue("Access Denied: This mobile app is exclusively for Clients. Staff & Admins must use the web portal.");
+        }
         localStorage.setItem("user", JSON.stringify(response.data.user));
         if (response.data.user.role) {
           localStorage.setItem("userRole", response.data.user.role);
@@ -186,6 +195,11 @@ export const restoreSession = createAsyncThunk(
         localStorage.setItem("accessToken", response.data.accessToken);
       }
       if (response.data.user) {
+        const isClientOnlyApp = import.meta.env.VITE_APP_TYPE === 'client' || (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.());
+        if (isClientOnlyApp && response.data.user.role && response.data.user.role !== 'client') {
+          dispatch(logout());
+          return rejectWithValue("Access Denied: This mobile app is exclusively for Clients.");
+        }
         localStorage.setItem("user", JSON.stringify(response.data.user));
         if (response.data.user.role) {
           localStorage.setItem("userRole", response.data.user.role);

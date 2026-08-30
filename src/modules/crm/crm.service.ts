@@ -688,32 +688,75 @@ export class CrmService implements OnModuleInit {
   }
 
   private async updateExistingLead(existingLead: Lead, leadDto: CreateLeadDto): Promise<Lead> {
-    // Determine if we should reset status (e.g. from LOST to NEW)
-    const shouldResetStatus = existingLead.status === LeadStatus.LOST;
+    const submittedAt = leadDto.lastMetaFormSubmittedAt || new Date();
 
-    // Update existing lead safely without overwriting core fields like createdAt
+    // Preserve previous form submission history so both old and new form data can be viewed
+    const existingMeta = (existingLead.metadata || {}) as any;
+    const previousForms = Array.isArray(existingMeta.formHistory) ? [...existingMeta.formHistory] : [];
+
+    // Capture initial/previous form if not already logged
+    if (existingLead.lastMetaFormName || existingLead.facebookFormId) {
+      const alreadyLogged = previousForms.some(
+        (f: any) => f.facebookLeadId === existingLead.facebookLeadId && f.formId === existingLead.facebookFormId
+      );
+      if (!alreadyLogged) {
+        previousForms.push({
+          formId: existingLead.facebookFormId,
+          formName: existingLead.lastMetaFormName || 'Initial Form',
+          adName: existingLead.facebookAdName,
+          facebookLeadId: existingLead.facebookLeadId,
+          submittedAt: existingLead.lastMetaFormSubmittedAt || existingLead.createdAt,
+          leadData: existingLead.facebookLeadData,
+        });
+      }
+    }
+
+    // Append new form submission into history
+    previousForms.push({
+      formId: leadDto.facebookFormId,
+      formName: leadDto.lastMetaFormName || 'New Form Submission',
+      adName: leadDto.facebookAdName,
+      facebookLeadId: leadDto.facebookLeadId,
+      submittedAt: submittedAt,
+      leadData: (leadDto as any).facebookLeadData,
+    });
+
+    const initialFormName = existingMeta.initialFormName || existingLead.lastMetaFormName || leadDto.lastMetaFormName;
+    const initialSubmittedAt = existingMeta.initialSubmittedAt || existingLead.lastMetaFormSubmittedAt || existingLead.createdAt;
+
+    // Update existing lead safely without overwriting core fields like createdAt, preserving existing status
     const updatedLead = await this.leadsRepository.save({
       ...existingLead, // Keep all existing data as base
       id: existingLead.id, // Ensure we are updating the correct record
-      status: shouldResetStatus ? LeadStatus.NEW : existingLead.status,
-      // Only update specific tracking fields if they exist in the new DTO
+      status: existingLead.status, // Keep old status unchanged as requested
+      // Update tracking fields from new form submission
       facebookLeadId: leadDto.facebookLeadId || existingLead.facebookLeadId,
       facebookFormId: leadDto.facebookFormId || existingLead.facebookFormId,
       facebookCampaignId: leadDto.facebookCampaignId || existingLead.facebookCampaignId,
       facebookAdSetId: leadDto.facebookAdSetId || existingLead.facebookAdSetId,
       facebookAdId: leadDto.facebookAdId || existingLead.facebookAdId,
       facebookAdName: leadDto.facebookAdName || existingLead.facebookAdName,
-      lastMetaFormSubmittedAt: leadDto.lastMetaFormSubmittedAt || existingLead.lastMetaFormSubmittedAt || new Date(),
+      facebookLeadData: (leadDto as any).facebookLeadData || existingLead.facebookLeadData,
+      lastMetaFormSubmittedAt: submittedAt,
       lastMetaFormName: leadDto.lastMetaFormName || existingLead.lastMetaFormName,
       source: existingLead.source && existingLead.source !== 'csv_import' ? existingLead.source : (leadDto.source || existingLead.source),
       notes: existingLead.notes
         ? `${existingLead.notes}\n\n[Re-inquiry ${new Date().toLocaleDateString()}]: ${leadDto.notes || 'Filled another form'}`
         : leadDto.notes,
       metadata: {
-        ...(existingLead.metadata || {}),
+        ...existingMeta,
         ...(leadDto.metadata || {}),
+        isRepeat: true,
         reInquiry: true,
-        lastReInquiryDate: new Date(),
+        initialFormName,
+        initialSubmittedAt,
+        formHistory: previousForms,
+        reInquiryCount: (existingMeta.reInquiryCount || 0) + 1,
+        lastReInquiryDate: submittedAt,
+        previousFacebookLeadIds: [
+          ...(existingMeta.previousFacebookLeadIds || []),
+          existingLead.facebookLeadId,
+        ].filter((id) => id && id !== leadDto.facebookLeadId),
       },
     });
 
@@ -1032,9 +1075,8 @@ export class CrmService implements OnModuleInit {
       // For clinic owners, leave as-is for now (leads may not be linked to clinics). Future: relate leads to clinic and filter.
     }
 
-    // Default Sorting — Newest leads first (DESC), older leads later
-    qb.orderBy(`CASE WHEN lead.status = 'NEW' THEN 0 ELSE 1 END`, 'ASC')
-      .addOrderBy('lead.lastMetaFormSubmittedAt', 'DESC', 'NULLS LAST')
+    // Default Sorting — Newest form submissions or creations first (DESC)
+    qb.orderBy('COALESCE(lead.lastMetaFormSubmittedAt, lead.createdAt)', 'DESC')
       .addOrderBy('lead.createdAt', 'DESC');
 
     // High performance limit & pagination (default limit 50 per page if not specified for instant loading)
