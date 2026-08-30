@@ -27,6 +27,9 @@ export interface ParsedFacebookLead {
   facebookCampaignId?: string;
   facebookAdSetId?: string;
   facebookAdId?: string;
+  facebookAdName?: string;
+  lastMetaFormName?: string;
+  lastMetaFormSubmittedAt?: Date;
   facebookLeadData: any;
   notes?: string;
 }
@@ -256,6 +259,10 @@ export class FacebookService {
     const firstName = fieldMap.get('first_name') || findField('first_name', 'vorname');
     const lastName = fieldMap.get('last_name') || findField('last_name', 'nachname');
 
+    const submittedAt = leadData.created_time ? new Date(leadData.created_time) : new Date();
+    const formName = (leadData as any).form_name || (leadData.form_id ? `Facebook Form ${leadData.form_id}` : undefined);
+    const adName = (leadData as any).ad_name || undefined;
+
     return {
       firstName: firstName || fullName?.split(' ')[0],
       lastName: lastName || fullName?.split(' ').slice(1).join(' '),
@@ -266,6 +273,9 @@ export class FacebookService {
       facebookCampaignId: leadData.campaign_id,
       facebookAdSetId: leadData.adset_id,
       facebookAdId: leadData.ad_id,
+      facebookAdName: adName,
+      lastMetaFormName: formName,
+      lastMetaFormSubmittedAt: submittedAt,
       facebookLeadData: leadData,
       notes: notes,
     };
