@@ -52,8 +52,14 @@ export const login = createAsyncThunk(
         localStorage.setItem("accessToken", response.data.accessToken);
       }
       if (response.data.user) {
-        const isClientOnlyApp = import.meta.env.VITE_APP_TYPE === 'client' || (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.());
-        if (isClientOnlyApp && response.data.user.role && response.data.user.role !== 'client') {
+        const isClientOnlyApp =
+          import.meta.env.VITE_APP_TYPE === 'client' ||
+          (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()) ||
+          (typeof window !== "undefined" && (window as any).isClientMobileApp) ||
+          (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("BeautyDoctorMobileApp")) ||
+          (typeof localStorage !== "undefined" && localStorage.getItem("is_client_mobile_app") === "true");
+
+        if (isClientOnlyApp && response.data.user.role && response.data.user.role.toLowerCase() !== 'client') {
           await authAPI.logout().catch(() => {});
           localStorage.removeItem("refreshToken");
           localStorage.removeItem("accessToken");
@@ -195,9 +201,19 @@ export const restoreSession = createAsyncThunk(
         localStorage.setItem("accessToken", response.data.accessToken);
       }
       if (response.data.user) {
-        const isClientOnlyApp = import.meta.env.VITE_APP_TYPE === 'client' || (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.());
-        if (isClientOnlyApp && response.data.user.role && response.data.user.role !== 'client') {
+        const isClientOnlyApp =
+          import.meta.env.VITE_APP_TYPE === 'client' ||
+          (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()) ||
+          (typeof window !== "undefined" && (window as any).isClientMobileApp) ||
+          (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("BeautyDoctorMobileApp")) ||
+          (typeof localStorage !== "undefined" && localStorage.getItem("is_client_mobile_app") === "true");
+
+        if (isClientOnlyApp && response.data.user.role && response.data.user.role.toLowerCase() !== "client") {
           dispatch(logout());
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("user");
+          localStorage.removeItem("userRole");
           return rejectWithValue("Access Denied: This mobile app is exclusively for Clients.");
         }
         localStorage.setItem("user", JSON.stringify(response.data.user));

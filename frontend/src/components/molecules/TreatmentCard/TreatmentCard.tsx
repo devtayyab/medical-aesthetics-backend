@@ -103,12 +103,12 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
  </div>
 
  {/* Primary Image */}
- <div className="relative h-[240px] overflow-hidden m-4 mt-0 rounded-2xl bg-gray-50 flex items-center justify-center">
+ <div className="relative aspect-[4/3] w-full overflow-hidden m-0 rounded-t-2xl bg-slate-100 flex items-center justify-center">
  <img
  src={imageUrl}
  alt={treatment.name}
  onError={() => setImgError(true)}
- className={`w-full h-full object-contain transition-transform duration-1000 group-hover:scale-110 ${imgError ? 'opacity-50' : ''}`}
+ className={`w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 ${imgError ? 'opacity-50' : ''}`}
  />
  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
  

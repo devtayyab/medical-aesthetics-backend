@@ -11,9 +11,136 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/logo.png" />
     <title>Beauty Doctor</title>
+
+    <!-- Google Translate CSS Cleaners -->
+    <style>
+      /* Hide the top banner, frames and tooltips completely */
+      .goog-te-banner-frame,
+      .goog-te-banner,
+      .goog-te-balloon-frame,
+      #goog-gt-tt,
+      .goog-tooltip,
+      .goog-tooltip:hover,
+      .goog-te-spinner-pos,
+      #goog-gt-votingFrame,
+      .VIpgJd-ZVi9od-ORHb-OEVmcd,
+      .VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
+      iframe.goog-te-banner-frame,
+      iframe[id^=":"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+        opacity: 0 !important;
+      }
+      html, body {
+        top: 0 !important;
+        position: static !important;
+        margin-top: 0 !important;
+      }
+      body.translated-ltr,
+      body.translated-rtl {
+        top: 0 !important;
+        position: static !important;
+        margin-top: 0 !important;
+      }
+      /* Remove Google hover text highlighting */
+      .goog-text-highlight {
+        background: none !important;
+        box-shadow: none !important;
+      }
+      .goog-te-menu-value span {
+        color: inherit !important;
+      }
+      #google_translate_element {
+        position: fixed;
+        left: -9999px;
+        top: -9999px;
+        opacity: 0;
+        pointer-events: none;
+        z-index: -1000;
+      }
+    </style>
   </head>
   <body>
+    <!-- Google Translate Element -->
+    <div id="google_translate_element"></div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Google Translate Init -->
+    <script type="text/javascript">
+      function googleTranslateElementInit() {
+        new google.translate.TranslateElement(
+          {
+            pageLanguage: 'en',
+            includedLanguages: 'en,el',
+            autoDisplay: false,
+          },
+          'google_translate_element'
+        );
+      }
+
+      // Helper: set googtrans cookie for all domains and paths
+      function _setGoogleTransCookie(val) {
+        var host = window.location.hostname;
+        var domains = ['', host, '.' + host, 'localhost'];
+        for (var i = 0; i < domains.length; i++) {
+          var d = domains[i];
+          var dStr = d ? '; domain=' + d : '';
+          document.cookie = 'googtrans=' + val + '; path=/' + dStr;
+        }
+      }
+
+      // Helper: Trigger GT select dropdown
+      function _triggerGTSelect(langCode, attempts) {
+        var select = document.querySelector('.goog-te-combo') || document.querySelector('#google_translate_element select');
+        if (select) {
+          select.value = langCode;
+          // Trigger change event through all standard methods
+          try {
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+          } catch(e) {}
+          try {
+            var evt = document.createEvent('HTMLEvents');
+            evt.initEvent('change', true, true);
+            select.dispatchEvent(evt);
+          } catch(e) {}
+        } else if (attempts > 0) {
+          setTimeout(function() { _triggerGTSelect(langCode, attempts - 1); }, 150);
+        }
+      }
+
+      // Public API called by Header.tsx
+      window.switchLanguage = function(langCode) {
+        localStorage.setItem('preferredLang', langCode);
+        if (langCode === 'en') {
+          _setGoogleTransCookie('');
+          var select = document.querySelector('.goog-te-combo') || document.querySelector('#google_translate_element select');
+          if (select) {
+            select.value = 'en';
+            try { select.dispatchEvent(new Event('change', { bubbles: true })); } catch(e) {}
+          }
+          window.location.reload();
+        } else {
+          _setGoogleTransCookie('/en/' + langCode);
+          _triggerGTSelect(langCode, 25);
+        }
+      };
+
+      // On page load: restore preferred language
+      window.addEventListener('DOMContentLoaded', function() {
+        var preferred = localStorage.getItem('preferredLang');
+        if (preferred && preferred !== 'en') {
+          _setGoogleTransCookie('/en/' + preferred);
+          _triggerGTSelect(preferred, 25);
+        }
+      });
+    </script>
+    <script
+      type="text/javascript"
+      src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
+    ></script>
   </body>
 </html>

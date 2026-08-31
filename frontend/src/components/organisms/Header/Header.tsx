@@ -257,12 +257,20 @@ const notificationBadgeStyle = css`
 
 
 export const Header: React.FC = () => {
- const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
- const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
- const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
- const [searchQuery, setSearchQuery] = useState("");
- const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
- const { categories: navCategories } = useCategoryTree();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+  const [currentLang, setCurrentLang] = useState<'en' | 'el'>(
+    (localStorage.getItem('preferredLang') as 'en' | 'el') || 'en'
+  );
+  const { categories: navCategories } = useCategoryTree();
+
+  const handleLanguageSwitch = (lang: 'en' | 'el') => {
+    setCurrentLang(lang);
+    (window as any).switchLanguage?.(lang);
+  };
  const navigate = useNavigate();
  const dispatch = useDispatch<AppDispatch>();
  const { isAuthenticated, user } = useSelector(
@@ -621,6 +629,33 @@ export const Header: React.FC = () => {
  </Link>
  </>
  )}
+
+  {/* Language Switcher - Desktop */}
+  <div className="hidden md:flex items-center rounded-xl overflow-hidden border border-white/10 bg-white/5">
+  <button
+  onClick={() => handleLanguageSwitch('en')}
+  className={`px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-all ${
+  currentLang === 'en'
+  ? 'bg-[#CBFF38] text-black'
+  : 'text-gray-400 hover:text-white'
+  }`}
+  title="Switch to English"
+  >
+  EN
+  </button>
+  <div className="w-px h-4 bg-white/10" />
+  <button
+  onClick={() => handleLanguageSwitch('el')}
+  className={`px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-all ${
+  currentLang === 'el'
+  ? 'bg-[#CBFF38] text-black'
+  : 'text-gray-400 hover:text-white'
+  }`}
+  title="Switch to Greek"
+  >
+  ΕΛ
+  </button>
+  </div>
  </nav>
  </>
  )}
@@ -701,63 +736,91 @@ export const Header: React.FC = () => {
 
   <div className="p-4 sm:p-6 flex flex-col gap-4 flex-1 overflow-y-auto">
 
- {isAuthenticated ? (
- <>
- {/* ✅ Logged-in: Show role-specific menu only */}
- <div className="flex flex-col gap-1">
- {/* User info badge */}
- <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl mb-2">
- <div className="size-10 rounded-full bg-[#0B1120] flex items-center justify-center">
- <User size={18} className="text-[#CBFF38]" />
- </div>
- <div>
- <p className="text-sm font-black text-gray-900 uppercase tracking-tight">
- {user?.firstName} {user?.lastName}
- </p>
- <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
- {user?.role?.replace('_', ' ')}
- </p>
- </div>
- </div>
+  {/* Universal Mobile Language Switcher (Visible to all users including SuperAdmin, Admin, Clinic, Client) */}
+  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 shadow-sm">
+    <span className="text-xs font-black uppercase tracking-wider text-gray-500">Language</span>
+    <div className="flex items-center rounded-xl overflow-hidden border border-gray-300 bg-white shadow-xs">
+      <button
+        onClick={() => handleLanguageSwitch('en')}
+        className={`px-4 py-2 text-[12px] font-black uppercase tracking-wider transition-all ${
+          currentLang === 'en'
+            ? 'bg-[#CBFF38] text-black shadow-sm'
+            : 'text-gray-500 hover:text-black hover:bg-gray-50'
+        }`}
+      >
+        EN
+      </button>
+      <div className="w-px h-5 bg-gray-200" />
+      <button
+        onClick={() => handleLanguageSwitch('el')}
+        className={`px-4 py-2 text-[12px] font-black uppercase tracking-wider transition-all ${
+          currentLang === 'el'
+            ? 'bg-[#CBFF38] text-black shadow-sm'
+            : 'text-gray-500 hover:text-black hover:bg-gray-50'
+        }`}
+      >
+        ΕΛ
+      </button>
+    </div>
+  </div>
 
- {/* Role-specific nav links */}
- {getMenuItems().map((item, index) =>
- item.to ? (
- <Link
- key={index}
- to={item.to}
- onClick={() => setIsMobileMenuOpen(false)}
- className={`flex items-center gap-3 px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${
- location.pathname === item.to
- ? 'bg-[#CBFF38] text-black'
- : 'text-gray-700 hover:bg-gray-100'
- }`}
- >
- {item.label}
- </Link>
- ) : (
- <button
- key={item.label}
- className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all text-left ${
- item.label === 'Logout'
- ? 'mt-2 text-red-500 hover:bg-red-50'
- : 'text-gray-700 hover:bg-gray-100'
- }`}
- onClick={() => {
- item.action();
- setIsMobileMenuOpen(false);
- }}
- >
- {item.label}
- </button>
- )
- )}
- </div>
- </>
- ) : (
- <>
- {/* ✅ Not logged-in: Show public website links */}
- <div className="flex gap-2">
+  {isAuthenticated ? (
+  <>
+  {/* ✅ Logged-in: Show role-specific menu only */}
+  <div className="flex flex-col gap-1">
+  {/* User info badge */}
+  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl mb-2">
+  <div className="size-10 rounded-full bg-[#0B1120] flex items-center justify-center">
+  <User size={18} className="text-[#CBFF38]" />
+  </div>
+  <div>
+  <p className="text-sm font-black text-gray-900 uppercase tracking-tight">
+  {user?.firstName} {user?.lastName}
+  </p>
+  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+  {user?.role?.replace('_', ' ')}
+  </p>
+  </div>
+  </div>
+
+  {/* Role-specific nav links */}
+  {getMenuItems().map((item, index) =>
+  item.to ? (
+  <Link
+  key={index}
+  to={item.to}
+  onClick={() => setIsMobileMenuOpen(false)}
+  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${
+  location.pathname === item.to
+  ? 'bg-[#CBFF38] text-black'
+  : 'text-gray-700 hover:bg-gray-100'
+  }`}
+  >
+  {item.label}
+  </Link>
+  ) : (
+  <button
+  key={item.label}
+  className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all text-left ${
+  item.label === 'Logout'
+  ? 'mt-2 text-red-500 hover:bg-red-50'
+  : 'text-gray-700 hover:bg-gray-100'
+  }`}
+  onClick={() => {
+  item.action();
+  setIsMobileMenuOpen(false);
+  }}
+  >
+  {item.label}
+  </button>
+  )
+  )}
+  </div>
+  </>
+  ) : (
+  <>
+  {/* ✅ Not logged-in: Show public website links */}
+  <div className="flex gap-2">
  <Button
  fullWidth
  onClick={() => {
