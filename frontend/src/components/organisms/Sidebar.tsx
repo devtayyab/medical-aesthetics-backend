@@ -155,6 +155,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
  }
  }, [dispatch, user]);
 
+  const [currentLang, setCurrentLang] = React.useState<'en' | 'el'>(
+    (localStorage.getItem('preferredLang') as 'en' | 'el') || 'en'
+  );
+
+  const handleLanguageSwitch = (lang: 'en' | 'el') => {
+    setCurrentLang(lang);
+    (window as any).switchLanguage?.(lang);
+  };
+
  const handleLogout = async () => {
  await dispatch(logout());
  navigate("/login");
@@ -278,7 +287,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
  ))}
  </nav>
 
- <div className="p-6 border-t border-gray-50 bg-white">
+ <div className="p-4 border-t border-gray-100 bg-white flex flex-col gap-3">
+        {/* Language Switcher for SuperAdmin / Admin / Clinic / CRM / Staff */}
+        <div className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
+          <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Language</span>
+          <div className="flex items-center rounded-lg overflow-hidden border border-gray-200 bg-white shadow-xs">
+            <button
+              onClick={() => handleLanguageSwitch('en')}
+              className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition-all ${
+                currentLang === 'en'
+                  ? 'bg-[#CBFF38] text-black shadow-xs'
+                  : 'text-gray-500 hover:text-black'
+              }`}
+              title="Switch to English"
+            >
+              EN
+            </button>
+            <div className="w-px h-3.5 bg-gray-200" />
+            <button
+              onClick={() => handleLanguageSwitch('el')}
+              className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition-all ${
+                currentLang === 'el'
+                  ? 'bg-[#CBFF38] text-black shadow-xs'
+                  : 'text-gray-500 hover:text-black'
+              }`}
+              title="Switch to Greek"
+            >
+              ΕΛ
+            </button>
+          </div>
+        </div>
+
  <div className="flex gap-3">
  <button
  onClick={() => {

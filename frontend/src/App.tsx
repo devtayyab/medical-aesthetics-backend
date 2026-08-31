@@ -116,18 +116,51 @@ import { GlobalDialer } from"./components/crm/GlobalDialer";
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword/ResetPassword'));
 
-const AuthHeader: React.FC = () => (
- <header className="bg-[#2D3748] border-b border-[#e5e7eb] sticky top-0 z-[100] shadow-sm">
- <div className="max-w-[480px] mx-auto p-4 flex items-center justify-center">
- <Link
- to="/"
- className="text-[2rem] font-medium text-white no-underline tracking-tight flex items-center"
- >
- <img src={SiteLogo} alt="Site Logo" className="w-[200px]" />
- </Link>
- </div>
- </header>
-);
+const AuthHeader: React.FC = () => {
+  const [currentLang, setCurrentLang] = useState<'en' | 'el'>(
+    (localStorage.getItem('preferredLang') as 'en' | 'el') || 'en'
+  );
+
+  const handleLanguageSwitch = (lang: 'en' | 'el') => {
+    setCurrentLang(lang);
+    (window as any).switchLanguage?.(lang);
+  };
+
+  return (
+    <header className="bg-[#2D3748] border-b border-white/10 sticky top-0 z-[100] shadow-sm">
+      <div className="max-w-[1200px] mx-auto px-4 py-3 flex items-center justify-between">
+        <Link to="/" className="flex items-center">
+          <img src={SiteLogo} alt="Site Logo" className="w-[160px]" />
+        </Link>
+        <div className="flex items-center rounded-xl overflow-hidden border border-white/10 bg-white/5">
+          <button
+            onClick={() => handleLanguageSwitch('en')}
+            className={`px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-all ${
+              currentLang === 'en'
+                ? 'bg-[#CBFF38] text-black shadow-xs'
+                : 'text-gray-400 hover:text-white'
+            }`}
+            title="Switch to English"
+          >
+            EN
+          </button>
+          <div className="w-px h-4 bg-white/10" />
+          <button
+            onClick={() => handleLanguageSwitch('el')}
+            className={`px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-all ${
+              currentLang === 'el'
+                ? 'bg-[#CBFF38] text-black shadow-xs'
+                : 'text-gray-400 hover:text-white'
+            }`}
+            title="Switch to Greek"
+          >
+            ΕΛ
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+};
 
 /** Returns the correct home path for a given role */
 function getRoleHomePath(role?: string): string {
