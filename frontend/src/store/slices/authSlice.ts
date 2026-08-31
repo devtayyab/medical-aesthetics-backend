@@ -51,6 +51,7 @@ export const login = createAsyncThunk(
       if (response.data.accessToken) {
         localStorage.setItem("accessToken", response.data.accessToken);
       }
+      if (response.data.user) {
         const isClientOnlyApp =
           import.meta.env.VITE_APP_TYPE === 'client' ||
           (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()) ||
@@ -199,6 +200,7 @@ export const restoreSession = createAsyncThunk(
       if (response.data.accessToken) {
         localStorage.setItem("accessToken", response.data.accessToken);
       }
+      if (response.data.user) {
         const isClientOnlyApp =
           import.meta.env.VITE_APP_TYPE === 'client' ||
           (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()) ||
