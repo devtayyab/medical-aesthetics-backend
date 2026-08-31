@@ -154,7 +154,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
  <img
  src={t.imageUrl ? getImageUrl(t.imageUrl) : getFallbackImg(t.name)}
  onError={(e: any) => { e.target.src = getFallbackImg(t.name); }}
- className="w-full h-full object-contain transition-transform duration-500 hover:scale-110"
+ className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
  alt={t.name}
  />
  </div>

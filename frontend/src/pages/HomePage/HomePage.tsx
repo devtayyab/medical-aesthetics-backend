@@ -341,14 +341,14 @@ const mainCategories = [
  onClick={() => handleTreatmentSelect(treatment)}
  className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer group border border-gray-100 flex flex-col h-full"
  >
- <div className="h-48 bg-gray-200 relative overflow-hidden">
+ <div className="aspect-[4/3] w-full bg-slate-100 relative overflow-hidden">
  <img
  src={(!treatment.imageUrl || treatment.imageUrl.includes('placehold')) ? getFallbackImage(treatment.name) : getImageUrl(treatment.imageUrl)}
  alt={treatment.name}
  onError={(e: any) => {
  e.target.src = getFallbackImage(treatment.name);
  }}
- className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+ className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
  />
  {treatment.rating ? (
  <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1">

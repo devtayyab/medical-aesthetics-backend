@@ -52,6 +52,20 @@ export const login = createAsyncThunk(
         localStorage.setItem("accessToken", response.data.accessToken);
       }
       if (response.data.user) {
+        // Enforce client-only access on mobile app builds
+        const isClientMobile =
+          (typeof window !== "undefined" && (window as any).isClientMobileApp) ||
+          (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("BeautyDoctorMobileApp")) ||
+          (typeof localStorage !== "undefined" && localStorage.getItem("is_client_mobile_app") === "true");
+
+        if (isClientMobile && response.data.user.role && response.data.user.role.toLowerCase() !== "client") {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("user");
+          localStorage.removeItem("userRole");
+          return rejectWithValue("Access Restricted: Only client accounts can log in to this mobile app. Staff and administrators must use the web portal.");
+        }
+
         localStorage.setItem("user", JSON.stringify(response.data.user));
         if (response.data.user.role) {
           localStorage.setItem("userRole", response.data.user.role);
@@ -186,6 +200,20 @@ export const restoreSession = createAsyncThunk(
         localStorage.setItem("accessToken", response.data.accessToken);
       }
       if (response.data.user) {
+        const isClientMobile =
+          (typeof window !== "undefined" && (window as any).isClientMobileApp) ||
+          (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("BeautyDoctorMobileApp")) ||
+          (typeof localStorage !== "undefined" && localStorage.getItem("is_client_mobile_app") === "true");
+
+        if (isClientMobile && response.data.user.role && response.data.user.role.toLowerCase() !== "client") {
+          dispatch(logout());
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("user");
+          localStorage.removeItem("userRole");
+          return rejectWithValue("Access Restricted: Only client accounts can log in on mobile app.");
+        }
+
         localStorage.setItem("user", JSON.stringify(response.data.user));
         if (response.data.user.role) {
           localStorage.setItem("userRole", response.data.user.role);

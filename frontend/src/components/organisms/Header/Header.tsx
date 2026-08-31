@@ -257,12 +257,20 @@ const notificationBadgeStyle = css`
 
 
 export const Header: React.FC = () => {
- const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
- const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
- const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
- const [searchQuery, setSearchQuery] = useState("");
- const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
- const { categories: navCategories } = useCategoryTree();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+  const [currentLang, setCurrentLang] = useState<'en' | 'el'>(
+    (localStorage.getItem('preferredLang') as 'en' | 'el') || 'en'
+  );
+  const { categories: navCategories } = useCategoryTree();
+
+  const handleLanguageSwitch = (lang: 'en' | 'el') => {
+    setCurrentLang(lang);
+    (window as any).switchLanguage?.(lang);
+  };
  const navigate = useNavigate();
  const dispatch = useDispatch<AppDispatch>();
  const { isAuthenticated, user } = useSelector(
@@ -621,6 +629,33 @@ export const Header: React.FC = () => {
  </Link>
  </>
  )}
+
+  {/* Language Switcher - Desktop */}
+  <div className="hidden md:flex items-center rounded-xl overflow-hidden border border-white/10 bg-white/5">
+  <button
+  onClick={() => handleLanguageSwitch('en')}
+  className={`px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-all ${
+  currentLang === 'en'
+  ? 'bg-[#CBFF38] text-black'
+  : 'text-gray-400 hover:text-white'
+  }`}
+  title="Switch to English"
+  >
+  EN
+  </button>
+  <div className="w-px h-4 bg-white/10" />
+  <button
+  onClick={() => handleLanguageSwitch('el')}
+  className={`px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-all ${
+  currentLang === 'el'
+  ? 'bg-[#CBFF38] text-black'
+  : 'text-gray-400 hover:text-white'
+  }`}
+  title="Switch to Greek"
+  >
+  ΕΛ
+  </button>
+  </div>
  </nav>
  </>
  )}
@@ -757,7 +792,35 @@ export const Header: React.FC = () => {
  ) : (
  <>
  {/* ✅ Not logged-in: Show public website links */}
- <div className="flex gap-2">
+  {/* Mobile Language Switcher */}
+  <div className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-200/60 mb-2">
+    <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Language</span>
+    <div className="flex items-center rounded-xl overflow-hidden border border-gray-300 bg-white">
+      <button
+        onClick={() => handleLanguageSwitch('en')}
+        className={`px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-all ${
+          currentLang === 'en'
+            ? 'bg-[#CBFF38] text-black'
+            : 'text-gray-500 hover:text-black'
+        }`}
+      >
+        EN
+      </button>
+      <div className="w-px h-4 bg-gray-200" />
+      <button
+        onClick={() => handleLanguageSwitch('el')}
+        className={`px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-all ${
+          currentLang === 'el'
+            ? 'bg-[#CBFF38] text-black'
+            : 'text-gray-500 hover:text-black'
+        }`}
+      >
+        ΕΛ
+      </button>
+    </div>
+  </div>
+
+  <div className="flex gap-2">
  <Button
  fullWidth
  onClick={() => {

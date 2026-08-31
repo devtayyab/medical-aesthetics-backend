@@ -6,14 +6,30 @@ node_modules
 /frontend/dist
 /frontend/.env
 
-# Temporary files and scripts
+# Mobile apps, Expo and Android/iOS build folders
+client-mobile-app/
+frontend/android/
+android/
+ios/
+.expo/
+.expo-shared/
+*.apk
+*.aab
+
+# Temporary files, IDE and scripts
+.idea/
+.vscode/
 /tmp/
 *.js
+*.mjs
 *.tsbuildinfo
 tmp_check.ts
 test-db.ts
+test-import.ts
 src/check_metadata.ts
+src/test-hubspot.ts
+src/scripts/
+hubspot-raw-counts.json
 *.csv
 logs/
 scratch/
-
