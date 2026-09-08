@@ -395,23 +395,28 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
         // The wizardDate and wizardTime represent the date and time in the CLINIC'S timezone.
         // We need to convert this to the correct UTC timestamp.
         const tz = sanitizeTz(wizardClinic.timezone);
-        const startDateTime = createClinicUTCDateTime(wizardDate, wizardTime, tz);
-
-        const totalDuration = wizardServices.reduce((acc: number, s: any) => acc + Number(s.durationMinutes || s.duration || 30), 0);
-        const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60000);
-
+        
         try {
-            await bookingAPI.createAppointment({
-                clientId: clientId!,
-                clinicId: wizardClinic.id,
-                serviceId: wizardServices[0].id,
-                additionalServiceIds: wizardServices.length > 1 ? wizardServices.slice(1).map(s => s.id) : undefined,
-                providerId: wizardProviderId || undefined,
-                startTime: startDateTime.toISOString(),
-                endTime: endDateTime.toISOString(),
-                status: 'PENDING',
-                bookedById: user?.id
-            });
+            let currentStartTime = createClinicUTCDateTime(wizardDate, wizardTime, tz);
+
+            for (const service of wizardServices) {
+                const duration = Number(service.durationMinutes || service.duration || 30);
+                const currentEndTime = new Date(currentStartTime.getTime() + duration * 60000);
+                
+                await bookingAPI.createAppointment({
+                    clientId: clientId!,
+                    clinicId: wizardClinic.id,
+                    serviceId: service.id,
+                    providerId: wizardProviderId || undefined,
+                    startTime: currentStartTime.toISOString(),
+                    endTime: currentEndTime.toISOString(),
+                    status: 'PENDING',
+                    bookedById: user?.id
+                });
+
+                // Set the start time for the next service to be the end time of the current one
+                currentStartTime = currentEndTime;
+            }
 
             setIsAddWizardOpen(false);
             dispatch(fetchClinicAppointments(currentFilters));

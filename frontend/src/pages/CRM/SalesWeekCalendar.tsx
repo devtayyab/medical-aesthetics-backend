@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   ChevronLeft, ChevronRight, Plus, Clock, User, Users, Scissors, CheckCircle2,
-  XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone, ArrowLeft, Trash2
+  XCircle, AlertCircle, Calendar, CreditCard, X, Search, MapPin, Phone, ArrowLeft, Trash2, Banknote
 } from 'lucide-react';
 import {
   format, startOfWeek, endOfWeek, addDays, eachDayOfInterval,
@@ -158,6 +158,7 @@ export const SalesWeekCalendar: React.FC = () => {
   } | null>(null);
 
   // Wizard State
+  const [expandedGroup, setExpandedGroup] = useState<any[] | null>(null);
   const [wizardStep, setWizardStep] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [wizardClient, setWizardClient] = useState<any>(null);
@@ -419,23 +420,28 @@ export const SalesWeekCalendar: React.FC = () => {
     // The wizardDate and wizardTime represent the date and time in the CLINIC'S timezone.
     // We need to convert this to the correct UTC timestamp.
     const tz = wizardClinic.timezone || 'UTC';
-    const startDateTime = createClinicUTCDateTime(wizardDate, wizardTime, tz);
-
-    const totalDuration = wizardServices.reduce((acc, s) => acc + Number(s.durationMinutes || s.duration || 30), 0);
-    const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60000);
-
+    
     try {
-      await bookingAPI.createAppointment({
-        clientId: clientId!,
-        clinicId: wizardClinic.id,
-        serviceId: wizardServices[0].id,
-        additionalServiceIds: wizardServices.length > 1 ? wizardServices.slice(1).map(s => s.id) : undefined,
-        providerId: wizardProviderId || undefined,
-        startTime: startDateTime.toISOString(),
-        endTime: endDateTime.toISOString(),
-        status: 'PENDING',
-        bookedById: user?.id
-      });
+      let currentStartTime = createClinicUTCDateTime(wizardDate, wizardTime, tz);
+
+      for (const service of wizardServices) {
+        const duration = Number(service.durationMinutes || service.duration || 30);
+        const currentEndTime = new Date(currentStartTime.getTime() + duration * 60000);
+        
+        await bookingAPI.createAppointment({
+          clientId: clientId!,
+          clinicId: wizardClinic.id,
+          serviceId: service.id,
+          providerId: wizardProviderId || undefined,
+          startTime: currentStartTime.toISOString(),
+          endTime: currentEndTime.toISOString(),
+          status: 'PENDING',
+          bookedById: user?.id
+        });
+
+        // Set the start time for the next service to be the end time of the current one
+        currentStartTime = currentEndTime;
+      }
 
       setIsAddWizardOpen(false);
       dispatch(fetchClinicAppointments(currentFilters));
@@ -762,93 +768,136 @@ export const SalesWeekCalendar: React.FC = () => {
                     );
                   })}
 
-                  {appointments.filter(a => {
-                    // Use the clinic timezone to determine if the appointment falls on the current column day.
-                    const tz = a.clinic?.timezone || availableClinics.find(c => c.id === a.clinicId)?.timezone || 'UTC';
-                    const aptDateStr = getClinicLocalDate(a.startTime, tz);
-                    const colDateStr = format(day, 'yyyy-MM-dd');
-                    return colDateStr === aptDateStr;
-                  }).map(apt => {
-                    // Position and label the appointment according to the clinic's local time.
-                    const tz = apt.clinic?.timezone || availableClinics.find(c => c.id === apt.clinicId)?.timezone || 'UTC';
-                    const timeString = formatClinicTime(apt.startTime, tz);
-                    const [strHour, strMinute] = timeString.split(':').map(Number);
-                    const top = strHour * 64 + (strMinute / 60) * 64;
+                  {(() => {
+                    // 1. Filter day appointments
+                    const dayAptsList = appointments.filter(a => {
+                      const tz = a.clinic?.timezone || availableClinics.find(c => c.id === a.clinicId)?.timezone || 'UTC';
+                      const aptDateStr = getClinicLocalDate(a.startTime, tz);
+                      const colDateStr = format(day, 'yyyy-MM-dd');
+                      return colDateStr === aptDateStr;
+                    });
 
+                    // 2. Group appointments by Client and consecutive time
+                    const groupedAppointments: any[][] = [];
+                    const sortedApts = [...dayAptsList].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+                    
+                    let currentGroup: any[] = [];
+                    for (const apt of sortedApts) {
+                      if (currentGroup.length === 0) {
+                        currentGroup.push(apt);
+                      } else {
+                        const lastApt = currentGroup[currentGroup.length - 1];
+                        const lastEnd = new Date(lastApt.endTime).getTime();
+                        const currentStart = new Date(apt.startTime).getTime();
+                        
+                        // Group if same client and starts near the end of the last one (e.g. consecutive), or overlap
+                        if (apt.clientId && apt.clientId === lastApt.clientId && (currentStart <= lastEnd + 60000)) {
+                          currentGroup.push(apt);
+                        } else {
+                          groupedAppointments.push(currentGroup);
+                          currentGroup = [apt];
+                        }
+                      }
+                    }
+                    if (currentGroup.length > 0) {
+                      groupedAppointments.push(currentGroup);
+                    }
 
-                    const start = parseISO(apt.startTime);
-                    const end = parseISO(apt.endTime);
-                    const durationHours = (end.getTime() - start.getTime()) / 3600000;
-                    const height = Math.max(durationHours * 64, 45); // Minimum height for visibility
-                    const normalizedStatus = (apt.status || 'PENDING').toUpperCase();
-                    const style = statusLabels[normalizedStatus] || statusLabels.PENDING;
-                    const Icon = style.icon;
+                    return groupedAppointments.map(group => {
+                      const apt = group[0];
+                      const isGrouped = group.length > 1;
+                      
+                      const tz = apt.clinic?.timezone || availableClinics.find((c: any) => c.id === apt.clinicId)?.timezone || 'UTC';
+                      const timeString = formatClinicTime(apt.startTime, tz);
+                      const [strHour, strMinute] = timeString.split(':').map(Number);
+                      const top = strHour * 64 + (strMinute / 60) * 64;
 
-                    if (apt.isBlocked) {
+                      const start = parseISO(apt.startTime);
+                      const maxEnd = new Date(Math.max(...group.map((a: any) => parseISO(a.endTime).getTime())));
+                      const durationHours = (maxEnd.getTime() - start.getTime()) / 3600000;
+                      // Give it a larger min height if grouped to fit the +X more label
+                      const height = Math.max(durationHours * 64, isGrouped ? 60 : 45); 
+
+                      const normalizedStatus = (apt.status || 'PENDING').toUpperCase();
+                      const style = statusLabels[normalizedStatus] || statusLabels.PENDING;
+
+                      if (apt.isBlocked) {
+                        return (
+                          <div
+                            key={apt.id}
+                            onClick={(e) => { e.stopPropagation(); handleUnblockSlot(apt.id); }}
+                            className="absolute left-1 right-1 rounded-md border-2 border-dashed border-orange-200 bg-orange-50/40 z-10 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-orange-100/50 hover:border-orange-300 transition-all group"
+                            style={{ top, height }}
+                            title={`Blocked: ${apt.displayName || apt.serviceName || 'No reason'}. Click to unblock.`}
+                          >
+                            <div className="flex flex-col items-center justify-center p-1 text-center">
+                              <span className="text-[8px] font-black text-orange-600 uppercase tracking-tighter leading-none">BLOCKED</span>
+                              {height > 40 && <span className="text-[7px] font-bold text-orange-500/70 truncate w-full px-1">{apt.displayName || apt.serviceName || 'Unavailable'}</span>}
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUnblockSlot(apt.id);
+                              }}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-md text-orange-600 hover:text-red-600 hover:bg-orange-100/80 transition-all z-20 opacity-70 group-hover:opacity-100"
+                              title="Delete blocked time"
+                            >
+                              <Trash2 size={12} className="stroke-[2.5]" />
+                            </button>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div
                           key={apt.id}
-                          onClick={(e) => { e.stopPropagation(); handleUnblockSlot(apt.id); }}
-                          className="absolute left-1 right-1 rounded-md border-2 border-dashed border-orange-200 bg-orange-50/40 z-10 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-orange-100/50 hover:border-orange-300 transition-all group"
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            if (isGrouped) setExpandedGroup(group);
+                            else openAptDetails(apt);
+                          }}
+                          className={`absolute left-0 right-1 rounded-r-md border-l-[3px] border-l-current shadow-sm cursor-pointer group hover:shadow-md hover:scale-[1.01] z-20 overflow-visible transition-all flex flex-col p-1.5 ${style.color.split(' ').slice(0, 2).join(' ')}`}
                           style={{ top, height }}
-                          title={`Blocked: ${apt.displayName || apt.serviceName || 'No reason'}. Click to unblock.`}
                         >
-                          <div className="flex flex-col items-center justify-center p-1 text-center">
-                            <span className="text-[8px] font-black text-orange-600 uppercase tracking-tighter leading-none">BLOCKED</span>
-                            {height > 40 && <span className="text-[7px] font-bold text-orange-500/70 truncate w-full px-1">{apt.displayName || apt.serviceName || 'Unavailable'}</span>}
+                          {/* Tooltip Preview on Hover */}
+                          <div className="absolute left-full ml-2 w-48 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 z-[100] hidden group-hover:block transition-all duration-300 pointer-events-none transform -translate-y-1/2 top-1/2">
+                            <div className="flex justify-between items-start border-b border-gray-100 pb-2 mb-2">
+                              <div className="flex items-center gap-1.5 text-indigo-600">
+                                <Clock size={12} strokeWidth={3} />
+                                <span className="text-[10px] font-black">{timeString} – {formatClinicTime(apt.endTime, tz)}</span>
+                              </div>
+                              <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${style.color.split(' ')[0]} ${style.color.split(' ')[1]}`}>{style.label}</span>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs font-black text-gray-900">{apt.client?.firstName} {apt.client?.lastName}</p>
+                              <p className="text-[10px] text-gray-500 flex items-center gap-1 leading-none mb-2">
+                                <Phone size={10} className="text-gray-400" /> {apt.client?.phone || 'No phone'}
+                              </p>
+                              <div className="flex justify-between items-center text-[10px] text-gray-700 font-bold bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                <span className="truncate w-2/3">{isGrouped ? `${group.length} Services` : (apt.service?.treatment?.name || apt.service?.name)}</span>
+                                <span className="text-emerald-700 font-black">€{group.reduce((acc, a) => acc + calculateAptTotal(a), 0).toFixed(2)}</span>
+                              </div>
+                            </div>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUnblockSlot(apt.id);
-                            }}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-md text-orange-600 hover:text-red-600 hover:bg-orange-100/80 transition-all z-20 opacity-70 group-hover:opacity-100"
-                            title="Delete blocked time"
-                          >
-                            <Trash2 size={12} className="stroke-[2.5]" />
-                          </button>
+
+                          <div className="flex items-start gap-1">
+                            <span className={`text-[10px] font-bold opacity-75`}>{strHour}</span>
+                            <span className="text-[10px] font-black leading-tight flex-1">
+                              {apt.client?.firstName} {apt.client?.lastName}
+                              {(apt as any).isReturned && <span className="ml-1 text-[7px] px-1 rounded bg-black/10 font-black">RET</span>}
+                            </span>
+                          </div>
+                          {isGrouped && (
+                            <div className="mt-auto pt-0.5">
+                              <span className="text-[9px] font-black uppercase bg-white/60 px-1 rounded text-gray-700">
+                                {group.length} therapies
+                              </span>
+                            </div>
+                          )}
                         </div>
                       );
-                    }
-
-                    return (
-                      <div
-                        key={apt.id}
-                        onClick={(e) => { e.stopPropagation(); openAptDetails(apt); }}
-                        className={`absolute left-0 right-1 rounded-r-md border-l-[3px] border-l-current shadow-sm cursor-pointer group hover:shadow-md hover:scale-[1.01] z-20 overflow-visible transition-all flex flex-col p-1.5 ${style.color.split(' ').slice(0, 2).join(' ')}`}
-                        style={{ top, height }}
-                      >
-                        {/* Tooltip Preview on Hover */}
-                        <div className="absolute left-full ml-2 w-48 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 z-[100] hidden group-hover:block transition-all duration-300 pointer-events-none transform -translate-y-1/2 top-1/2">
-                          <div className="flex justify-between items-start border-b border-gray-100 pb-2 mb-2">
-                            <div className="flex items-center gap-1.5 text-indigo-600">
-                              <Clock size={12} strokeWidth={3} />
-                              <span className="text-[10px] font-black">{timeString} – {formatClinicTime(apt.endTime, tz)}</span>
-                            </div>
-                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${style.color.split(' ')[0]} ${style.color.split(' ')[1]}`}>{style.label}</span>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-xs font-black text-gray-900">{apt.client?.firstName} {apt.client?.lastName}</p>
-                            <p className="text-[10px] text-gray-500 flex items-center gap-1 leading-none mb-2">
-                              <Phone size={10} className="text-gray-400" /> {apt.client?.phone || 'No phone'}
-                            </p>
-                            <div className="flex justify-between items-center text-[10px] text-gray-700 font-bold bg-gray-50 p-2 rounded-lg border border-gray-100">
-                              <span className="truncate w-2/3">{apt.additionalServiceIds?.length > 0 ? `${apt.service?.treatment?.name || apt.service?.name} + ${apt.additionalServiceIds.length}` : (apt.service?.treatment?.name || apt.service?.name)}</span>
-                              <span className="text-emerald-700 font-black">€{calculateAptTotal(apt).toFixed(2)}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-1">
-                          <span className={`text-[10px] font-bold opacity-75`}>{strHour}</span>
-                          <span className="text-[10px] font-black leading-tight flex-1">
-                            {apt.client?.firstName} {apt.client?.lastName}
-                            {(apt as any).isReturned && <span className="ml-1 text-[7px] px-1 rounded bg-black/10 font-black">RET</span>}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                    });
+                  })()}
 
 
 
@@ -1535,15 +1584,15 @@ export const SalesWeekCalendar: React.FC = () => {
                     </div>
 
                     {/* Two options container */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Pay at Venue */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      {/* Cash (Manual Mark as Paid) */}
                       <button
-                        onClick={handleRecordPayment}
+                        onClick={handleCompletePayment}
                         className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-200 bg-white hover:border-emerald-500 hover:bg-emerald-50 transition-all group"
                       >
-                        <MapPin size={22} className="text-emerald-500 group-hover:text-emerald-700" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Pay at Venue</span>
-                        <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Confirm & stay pending</span>
+                        <Banknote size={22} className="text-emerald-500 group-hover:text-emerald-700" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Cash</span>
+                        <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Complete via Cash</span>
                       </button>
 
                       {/* Card (Manual Mark as Paid) */}
@@ -1553,17 +1602,9 @@ export const SalesWeekCalendar: React.FC = () => {
                       >
                         <CreditCard size={22} className="text-indigo-500 group-hover:text-indigo-700" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Card</span>
-                        <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Record as Card & Complete</span>
+                        <span className="text-[8px] font-bold text-gray-400 text-center leading-tight">Complete via Card</span>
                       </button>
                     </div>
-
-                    {/* Complete + collect cash */}
-                    <button
-                      onClick={handleCompletePayment}
-                      className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest shadow-md transition-all"
-                    >
-                      Cash — Collect & Complete
-                    </button>
                   </div>
                 )}
 
@@ -1661,6 +1702,50 @@ export const SalesWeekCalendar: React.FC = () => {
               </div>
             </>
           )}
+
+          {/* Grouped Therapies Modal/Popover */}
+          {expandedGroup && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setExpandedGroup(null)}>
+              <div className="bg-white rounded-xl shadow-2xl p-4 w-80 animate-in fade-in zoom-in" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                  <div>
+                    <h3 className="font-black text-gray-900">{expandedGroup[0].client?.firstName} {expandedGroup[0].client?.lastName}</h3>
+                    <p className="text-[10px] text-gray-500 font-bold">{format(parseISO(expandedGroup[0].startTime), 'EEE, d MMM yyyy')}</p>
+                  </div>
+                  <button onClick={() => setExpandedGroup(null)} className="text-gray-400 hover:text-red-500 p-1"><X size={16}/></button>
+                </div>
+                <div className="max-h-[400px] overflow-y-auto space-y-2 custom-scrollbar pr-1">
+                  {expandedGroup.map(apt => {
+                    const style = statusLabels[(apt.status || 'PENDING').toUpperCase()] || statusLabels.PENDING;
+                    const tz = apt.clinic?.timezone || availableClinics.find((c: any) => c.id === apt.clinicId)?.timezone || 'UTC';
+                    
+                    return (
+                      <div 
+                        key={apt.id} 
+                        className={`p-3 rounded-lg border-2 cursor-pointer hover:scale-[1.02] transition-all flex justify-between items-center bg-white ${style.color.split(' ').slice(2).join(' ')}`}
+                        onClick={() => {
+                          setExpandedGroup(null);
+                          openAptDetails(apt);
+                        }}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black text-indigo-700">{formatClinicTime(apt.startTime, tz)} - {formatClinicTime(apt.endTime, tz)}</span>
+                          <p className="text-[11px] font-bold text-gray-800 leading-tight mt-0.5">{apt.service?.treatment?.name || apt.service?.name}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-xs font-black text-gray-900">€{calculateAptTotal(apt).toFixed(2)}</span>
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${style.color.split(' ').slice(0, 2).join(' ')}`}>
+                            {style.label}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       );
 };

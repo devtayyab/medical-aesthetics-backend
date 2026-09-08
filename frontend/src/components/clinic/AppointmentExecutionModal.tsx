@@ -180,12 +180,16 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
  }
  };
 
- const paymentMethods = [
- { value: PaymentMethod.CASH, label: 'Cash', icon: <Banknote className="w-5 h-5" /> },
- { value: PaymentMethod.POS, label: 'POS', icon: <CreditCard className="w-5 h-5" /> },
- { value: PaymentMethod.CARD, label: 'Card', icon: <CreditCard className="w-5 h-5" /> },
- { value: PaymentMethod.BANK_TRANSFER, label: 'Bank Transfer', icon: <Building2 className="w-5 h-5" /> },
- ];
+  const paymentMethods = [
+    { value: PaymentMethod.CASH, label: 'Cash', icon: <Banknote className="w-5 h-5" /> },
+    { value: PaymentMethod.POS, label: 'POS', icon: <CreditCard className="w-5 h-5" /> },
+    { value: PaymentMethod.CARD, label: 'Card', icon: <CreditCard className="w-5 h-5" /> },
+    { value: PaymentMethod.BANK_TRANSFER, label: 'Bank Transfer', icon: <Building2 className="w-5 h-5" /> },
+  ];
+
+  const isAlreadyPaid = appointment.paymentMethod != null || Number(appointment.amountPaid) > 0 || Number(appointment.appointmentCompletionReport?.amountPaid) > 0;
+  const bookedByName = (appointment as any).bookedByInfo?.name || 'System';
+  const isOnline = appointment.appointmentSource === 'platform_broker' && appointment.paymentMethod === 'CARD';
 
  return (
  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[2000] p-4">
@@ -233,6 +237,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
  ))}
  </div>
  
+ {!isAlreadyPaid && (
  <div className="pt-4 border-t border-gray-200">
  <div className="flex items-center justify-between">
  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Base Price Adjustment</label>
@@ -247,9 +252,23 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
  </div>
  </div>
  </div>
+ )}
  </div>
  </div>
 
+ {isAlreadyPaid ? (
+ <div className="bg-emerald-50 rounded-xl p-6 border border-emerald-200 flex flex-col items-center justify-center text-center space-y-2">
+ <CheckCircle className="w-10 h-10 text-emerald-500" />
+ <h3 className="text-lg font-black text-emerald-800 uppercase tracking-widest">Payment Complete</h3>
+ <p className="text-emerald-600 font-bold">
+ {isOnline ? 'Paid Online' : `Received by ${bookedByName}`}
+ </p>
+ <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest pt-2">
+ Amount Paid: €{Number(appointment.amountPaid || appointment.appointmentCompletionReport?.amountPaid || 0).toFixed(2)}
+ </p>
+ </div>
+ ) : (
+ <>
  {/* Pre-paid Gift Card applied online */}
  {appointment.giftCardAmountRedeemed ? (
  <div className="bg-lime-50 rounded-xl p-4 border border-lime-100 flex items-center justify-between">
@@ -402,23 +421,27 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
  )}
  </div>
 
- {/* Total Recalculation */}
- <div className="bg-gray-900 rounded-xl p-5 text-white flex flex-col justify-center">
- <div className="flex justify-between items-center mb-1 text-gray-400 text-sm">
- <span>Sum Recalculated</span>
- <RefreshCw className="w-3 h-3" />
+ {/* Total Summary */}
+ <div className="bg-[#0f172a] rounded-xl p-5 text-white">
+ <div className="flex justify-between items-end mb-1">
+ <p className="text-xs font-bold text-slate-400">Sum Recalculated</p>
+ <RefreshCw className="w-3 h-3 text-slate-500" />
  </div>
- <div className="text-3xl font-bold flex items-center justify-between">
- <span>Total Due:</span>
- <span className="text-green-400">€{calculateTotal().toFixed(2)}</span>
+ <div className="flex items-baseline gap-2">
+ <span className="text-2xl font-bold">Total Due:</span>
+ <span className="text-3xl font-black text-[#10b981]">
+ €{calculateTotal().toFixed(2)}
+ </span>
  </div>
- <div className="mt-2 text-[10px] text-gray-500 uppercase font-bold tracking-widest text-right">
- (inc. all taxes & discounts)
+ <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-2 text-right">
+ (Inc. all taxes & discounts)
+ </p>
  </div>
  </div>
  </div>
- </div>
-
+ </>
+ )}
+ 
  {/* Treatment Notes */}
  <div className="space-y-2">
  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -458,7 +481,7 @@ const AppointmentExecutionModal: React.FC<AppointmentExecutionModalProps> = ({
  >
  {isSubmitting ? 'Finalizing...' : (
  <>
- Complete & Pay
+ {isAlreadyPaid ? 'Complete Appointment' : 'Complete & Pay'}
  <RefreshCw className={`w-5 h-5 ${isSubmitting ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
  </>
  )}

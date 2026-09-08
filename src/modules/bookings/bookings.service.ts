@@ -1089,6 +1089,32 @@ export class BookingsService {
         }
       }
 
+      // 3b. Enrich additionalServiceIds with names for tooltip display
+      const allAdditionalIds = [
+        ...new Set(
+          appointments
+            .flatMap(a => a.additionalServiceIds || [])
+            .filter(Boolean)
+        )
+      ];
+      let additionalServicesMap: Record<string, { id: string; name: string; price: number }> = {};
+      if (allAdditionalIds.length > 0) {
+        try {
+          const additionalSvcs = await this.servicesRepository.find({
+            where: { id: In(allAdditionalIds) },
+            relations: ['treatment']
+          } as any);
+          additionalServicesMap = Object.fromEntries(
+            additionalSvcs.map((s: any) => [
+              s.id,
+              { id: s.id, name: s.name || s.treatment?.name || 'Service', price: s.price || 0 }
+            ])
+          );
+        } catch (svcErr) {
+          console.error('[BookingsService] Additional services fetch failed:', svcErr.message);
+        }
+      }
+
       // 4. Transform & Mask
       const mappedAppointments = appointments.map(apt => {
         let isMasked = false;
@@ -1125,7 +1151,11 @@ export class BookingsService {
             role: apt.bookedBy?.role || apt.representative?.role || 'salesperson' 
           } : null,
           isReturned: repeatClients.has(apt.clientId),
-          isBeautyDoctorsClient: apt.isBeautyDoctorsClient || false, // Return flag for color-coding
+          isBeautyDoctorsClient: apt.isBeautyDoctorsClient || false,
+          // Enriched additional services with names for tooltip display
+          additionalServices: (apt.additionalServiceIds || [])
+            .map((id: string) => additionalServicesMap[id])
+            .filter(Boolean),
         };
       });
 
