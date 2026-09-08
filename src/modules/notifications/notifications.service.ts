@@ -205,14 +205,16 @@ export class NotificationsService implements OnModuleInit {
     message: string,
     data?: any,
   ): Promise<{ message: string; sentTo: number }> {
-    // Find all admin users
+    // Find all admin and super admin users
     const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true });
+    const superAdmins = await this.usersService.findAll({ role: UserRole.SUPER_ADMIN, isActive: true });
+    const platformAdmins = [...admins, ...superAdmins];
 
-    if (admins.length === 0) {
+    if (platformAdmins.length === 0) {
       throw new Error('No admin users found to send message to');
     }
 
-    const adminIds = admins.map(admin => admin.id);
+    const adminIds = platformAdmins.map(admin => admin.id);
 
     // Send bulk notification to all admins
     await this.sendBulk(

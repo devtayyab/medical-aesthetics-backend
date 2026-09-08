@@ -23,6 +23,7 @@ import { ReviewStatus } from './enums/review-status.enum';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ClinicsService {
@@ -46,6 +47,7 @@ export class ClinicsService {
     @InjectRepository(AgentClinicAccess)
     private agentAccessRepository: Repository<AgentClinicAccess>,
     private eventEmitter: EventEmitter2,
+    private notificationsService: NotificationsService,
   ) { }
 
   async search(params: {
@@ -1050,7 +1052,14 @@ export class ClinicsService {
       if (updateData.imageUrl !== undefined) { service.treatment.imageUrl = updateData.imageUrl; treatmentUpdated = true; }
 
       if (treatmentUpdated) {
+        service.treatment.status = TreatmentStatus.PENDING;
         await this.treatmentsRepository.save(service.treatment);
+        
+        this.notificationsService.sendToPlatformAdmins(
+          'Therapy Edited - Pending Approval',
+          `The therapy "${service.treatment.name}" has been edited by a clinic and requires your re-approval.`,
+          { treatmentId: service.treatment.id }
+        ).catch(e => console.error('Failed to send notification to platform admins:', e));
       }
     }
 
@@ -1513,12 +1522,20 @@ export class ClinicsService {
 
     const treatment = this.treatmentsRepository.create({
       ...data,
-      status: TreatmentStatus.APPROVED,
+      status: TreatmentStatus.PENDING,
       isActive: true,
       category: category.name, // Support legacy
     });
 
-    return this.treatmentsRepository.save(treatment);
+    const savedTreatment = await this.treatmentsRepository.save(treatment);
+
+    this.notificationsService.sendToPlatformAdmins(
+      'New Therapy Pending Approval',
+      `A new manual therapy "${savedTreatment.name}" has been created by a clinic and requires your approval.`,
+      { treatmentId: savedTreatment.id }
+    ).catch(e => console.error('Failed to send notification to platform admins:', e));
+
+    return savedTreatment;
   }
 
   async setTreatmentStatus(treatmentId: string, status: TreatmentStatus): Promise<Treatment> {

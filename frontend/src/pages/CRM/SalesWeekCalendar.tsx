@@ -877,12 +877,32 @@ export const SalesWeekCalendar: React.FC = () => {
                     } else {
                       topPx = new Date().getHours() * 64 + (new Date().getMinutes() / 60 * 64);
                     }
+                    let currentTimeStr = '';
+                    if (activeTz && activeTz !== 'null') {
+                      try {
+                        const fmtTime = new Intl.DateTimeFormat('en-US', {
+                          timeZone: activeTz,
+                          hour: 'numeric',
+                          minute: 'numeric',
+                          hour12: true
+                        });
+                        currentTimeStr = fmtTime.format(new Date());
+                      } catch {
+                        currentTimeStr = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+                      }
+                    } else {
+                      currentTimeStr = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+                    }
+
                     return (
                       <div
-                        className="absolute left-0 right-0 border-t-2 border-red-500 z-30 pointer-events-none"
-                        style={{ top: topPx }}
+                        className="absolute left-0 right-0 z-30 pointer-events-none flex items-center"
+                        style={{ top: topPx - 10 }}
                       >
-                        <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500" />
+                        <div className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm z-10 flex items-center -ml-2 whitespace-nowrap uppercase">
+                           {currentTimeStr}
+                        </div>
+                        <div className="h-[2px] bg-red-500 flex-1 opacity-70 -ml-1"></div>
                       </div>
                     );
                   })()}

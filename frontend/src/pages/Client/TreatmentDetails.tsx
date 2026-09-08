@@ -98,16 +98,18 @@ const mapSide = css`
 `;
 
 const treatmentCardImage = css`
- width: 100%;
- @media (min-width: 768px) {
- width: 40%;
- }
- height: 180px;
- @media (min-width: 768px) {
- height: 100%;
- }
- object-fit: cover;
- filter: saturate(0.8) contrast(1.1);
+  width: 100%;
+  @media (min-width: 768px) {
+    width: 45%;
+  }
+  height: 220px;
+  @media (min-width: 768px) {
+    height: 100%;
+  }
+  object-fit: contain;
+  object-position: center left;
+  filter: saturate(0.8) contrast(1.1);
+  padding: 1rem;
 `;
 
 const glassOverlay = css`

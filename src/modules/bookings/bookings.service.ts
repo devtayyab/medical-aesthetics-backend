@@ -470,6 +470,20 @@ export class BookingsService {
     // Set status to pending_payment if card is chosen and still has payable amount
     if (createAppointmentDto.paymentMethod === 'card' && payableAmount > 0) {
       appointmentData.status = AppointmentStatus.PENDING_PAYMENT;
+    } else if (!appointmentData.status) {
+      let isStaffBooking = false;
+      if (createAppointmentDto.bookedById) {
+        const booker = await this.usersRepository.findOne({ where: { id: createAppointmentDto.bookedById } });
+        if (booker && [UserRole.SALESPERSON, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.SECRETARIAT].includes(booker.role as UserRole)) {
+          isStaffBooking = true;
+        }
+      } else if (createAppointmentDto.appointmentSource === 'clinic_own') {
+        isStaffBooking = true;
+      }
+
+      if (isStaffBooking) {
+        appointmentData.status = AppointmentStatus.CONFIRMED;
+      }
     }
 
     const appointment: Appointment = this.appointmentsRepository.create(appointmentData);

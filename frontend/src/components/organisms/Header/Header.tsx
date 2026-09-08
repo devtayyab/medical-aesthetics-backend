@@ -416,7 +416,7 @@ export const Header: React.FC = () => {
  }
  className={`flex items-center no-underline ${clinicRoles.includes(user?.role ||"") ?"justify-center" :""}`}
  >
- <div className="w-[150px] sm:w-[190px] 2xl:w-[220px] h-10 sm:h-14 relative flex items-center justify-center mr-1 sm:mr-4 transition-all">
+ <div className="w-[180px] sm:w-[220px] 2xl:w-[260px] h-12 sm:h-16 relative flex items-center justify-center mr-1 sm:mr-4 transition-all">
  <img src={SiteLogo} alt="Site Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(203,255,56,0.1)] pointer-events-none" />
  </div>
  </Link>
@@ -722,7 +722,7 @@ export const Header: React.FC = () => {
   <div className={mobileMenuStyle}>
   <div className={mobileMenuHeaderStyle}>
   <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className={logoStyle}>
-  <div className="w-[150px] sm:w-[180px] h-9 sm:h-11 relative flex items-center justify-start">
+  <div className="w-[180px] sm:w-[200px] h-10 sm:h-12 relative flex items-center justify-start">
   <img src={SiteLogo} alt="Site Logo" className="w-full h-full object-contain pointer-events-none drop-shadow-[0_0_10px_rgba(203,255,56,0.15)]" />
   </div>
   </Link>
