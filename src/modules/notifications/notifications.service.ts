@@ -216,7 +216,8 @@ export class NotificationsService implements OnModuleInit {
       throw new Error('No admin users found to send message to');
     }
 
-    const adminIds = platformAdmins.map(admin => admin.id);
+    // Deduplicate in case a user appears in multiple role queries
+    const adminIds = [...new Set(platformAdmins.map(admin => admin.id))];
 
     // Send bulk notification to all admins
     await this.sendBulk(
