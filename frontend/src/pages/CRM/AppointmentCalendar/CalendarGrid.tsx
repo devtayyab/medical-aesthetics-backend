@@ -137,44 +137,75 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     });
   };
 
-  // Compute pixel position for an appointment
-  const getAptStyle = (apt: CalendarAppointment, tz: string, allDayApts: CalendarAppointment[]): React.CSSProperties => {
+  // ── Proper interval-graph coloring for overlap layout ──────────────────────
+  // Returns { laneIndex, totalLanes } for each appointment in a day's list.
+  const computeLanes = (apts: CalendarAppointment[]): Map<string, { lane: number; total: number }> => {
+    // Sort by start time, then by end time descending (longer first) for stability
+    const sorted = [...apts].sort((a, b) => {
+      const diff = new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+      if (diff !== 0) return diff;
+      return new Date(b.endTime).getTime() - new Date(a.endTime).getTime();
+    });
+
+    // lane[i] = end time (ms) of the last appointment placed in lane i
+    const lanes: number[] = [];
+    const aptLane = new Map<string, number>();
+
+    for (const apt of sorted) {
+      const start = new Date(apt.startTime).getTime();
+      // Find the first free lane (whose last appointment already ended)
+      let assigned = -1;
+      for (let i = 0; i < lanes.length; i++) {
+        if (lanes[i] <= start) { assigned = i; break; }
+      }
+      if (assigned === -1) { assigned = lanes.length; lanes.push(0); }
+      lanes[assigned] = new Date(apt.endTime).getTime();
+      aptLane.set(apt.id, assigned);
+    }
+
+    // For each appointment, find how many lanes overlap with it (its group width)
+    const result = new Map<string, { lane: number; total: number }>();
+    for (const apt of apts) {
+      const aptStart = new Date(apt.startTime).getTime();
+      const aptEnd = new Date(apt.endTime).getTime();
+      // Find the max lane index of any overlapping appointment + 1
+      let maxLane = aptLane.get(apt.id)!;
+      for (const other of apts) {
+        if (other.id === apt.id) continue;
+        const os = new Date(other.startTime).getTime();
+        const oe = new Date(other.endTime).getTime();
+        if (aptStart < oe && aptEnd > os) {
+          maxLane = Math.max(maxLane, aptLane.get(other.id)!);
+        }
+      }
+      result.set(apt.id, { lane: aptLane.get(apt.id)!, total: maxLane + 1 });
+    }
+    return result;
+  };
+
+  // Compute pixel position for an appointment using lane info
+  const getAptStyle = (apt: CalendarAppointment, tz: string, laneInfo: { lane: number; total: number }): React.CSSProperties => {
     const { hour, minute } = getClinicLocalTime(apt.startTime, tz);
     const top = hour * HOUR_HEIGHT_PX + (minute / 60) * HOUR_HEIGHT_PX;
     const start = parseISO(apt.startTime);
     const end = parseISO(apt.endTime);
     const durationHours = (end.getTime() - start.getTime()) / 3600000;
-    const height = Math.max(durationHours * HOUR_HEIGHT_PX, 20);
+    // Min height 18px so even very short apts are visible
+    const height = Math.max(durationHours * HOUR_HEIGHT_PX, 18);
 
-    // Detect overlaps and compute left/width
-    const overlapping = allDayApts.filter(other => {
-      if (other.id === apt.id) return false;
-      const otherStart = new Date(other.startTime).getTime();
-      const otherEnd = new Date(other.endTime).getTime();
-      const aptStart = new Date(apt.startTime).getTime();
-      const aptEnd = new Date(apt.endTime).getTime();
-      return aptStart < otherEnd && aptEnd > otherStart;
-    });
-
-    const overlapCount = overlapping.length + 1;
-    const aptIndex = allDayApts.filter(other => {
-      if (other.id === apt.id) return false;
-      const otherStart = new Date(other.startTime).getTime();
-      const aptStart = new Date(apt.startTime).getTime();
-      return otherStart <= aptStart;
-    }).length;
-
-    const widthPct = 100 / overlapCount;
-    const leftPct = (aptIndex % overlapCount) * widthPct;
+    const { lane, total } = laneInfo;
+    const widthPct = 100 / total;
+    const leftPct = lane * widthPct;
 
     return {
       position: 'absolute',
       top,
       height,
-      left: `${leftPct + 2}%`,
+      left: `${leftPct + 1}%`,
       right: `${100 - leftPct - widthPct + 1}%`,
     };
   };
+
 
   // Unblock a slot
   const handleUnblock = async (e: React.MouseEvent, slotId: string) => {
@@ -380,21 +411,25 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
                 })}
 
                 {/* Appointments */}
-                {dayApts.map(apt => {
-                  const tz = getAptTimezone(apt);
-                  const aptStyle = getAptStyle(apt, tz, dayApts);
-                  return (
-                    <AppointmentCard
-                      key={apt.id}
-                      appointment={apt}
-                      style={aptStyle}
-                      timezone={tz}
-                      onEdit={onAppointmentEdit}
-                      onDragStart={() => {}}
-                      onResizeStart={() => {}}
-                    />
-                  );
-                })}
+                {(() => {
+                  const laneMap = computeLanes(dayApts);
+                  return dayApts.map(apt => {
+                    const tz = getAptTimezone(apt);
+                    const laneInfo = laneMap.get(apt.id) ?? { lane: 0, total: 1 };
+                    const aptStyle = getAptStyle(apt, tz, laneInfo);
+                    return (
+                      <AppointmentCard
+                        key={apt.id}
+                        appointment={apt}
+                        style={aptStyle}
+                        timezone={tz}
+                        onEdit={onAppointmentEdit}
+                        onDragStart={() => {}}
+                        onResizeStart={() => {}}
+                      />
+                    );
+                  });
+                })()}
               </div>
             );
           })}
