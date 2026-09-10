@@ -505,7 +505,10 @@ const AvailabilityPage: React.FC = () => {
  <p className="text-[9px] font-black uppercase tracking-widest text-gray-600">No Active Blocks</p>
  </div>
  ) : (
- blockedSlots.map((slot) => (
+ [...blockedSlots]
+    .filter(slot => new Date(slot.result.date) >= new Date(new Date().toDateString()))
+    .sort((a, b) => new Date(b.result.date).getTime() - new Date(a.result.date).getTime())
+    .map((slot) => (
  <div key={slot.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl group hover:border-[#CBFF38] transition-all">
  <div className="flex items-center gap-4">
  <div>

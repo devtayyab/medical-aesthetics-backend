@@ -23,6 +23,7 @@ import { ReviewStatus } from './enums/review-status.enum';
 import { AppointmentStatus } from '../../common/enums/appointment-status.enum';
 
 import { AgentClinicAccess } from '../crm/entities/agent-clinic-access.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ClinicsService {
@@ -46,6 +47,7 @@ export class ClinicsService {
     @InjectRepository(AgentClinicAccess)
     private agentAccessRepository: Repository<AgentClinicAccess>,
     private eventEmitter: EventEmitter2,
+    private notificationsService: NotificationsService,
   ) { }
 
   async search(params: {
@@ -62,7 +64,7 @@ export class ClinicsService {
   }): Promise<{ clinics: Clinic[]; treatments: any[]; total: number; totalClinics: number; totalTreatments: number; offset: number }> {
     // 1. Search for Clinics
     const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
-      .innerJoinAndSelect('clinic.services', 'services', 'services.isActive = :sActive', { sActive: true })
+      .innerJoinAndSelect('clinic.services', 'services', "services.isActive = :sActive AND (services.metadata->>'approvalStatus' IS NULL OR services.metadata->>'approvalStatus' = 'APPROVED')", { sActive: true })
       .leftJoinAndSelect('services.treatment', 'treatment')
       .where('clinic.isActive = :isActive', { isActive: true });
 
@@ -155,7 +157,7 @@ export class ClinicsService {
       .leftJoinAndSelect('treatment.categoryRef', 'categoryRef')
       .leftJoin('categoryRef.parent', 'categoryParent')
       .leftJoinAndSelect('service.clinic', 'clinic')
-      .where('service.isActive = :sActive AND clinic.isActive = :cActive', {
+      .where("service.isActive = :sActive AND clinic.isActive = :cActive AND (service.metadata->>'approvalStatus' IS NULL OR service.metadata->>'approvalStatus' = 'APPROVED')", {
         sActive: true,
         cActive: true
       });
@@ -408,10 +410,13 @@ export class ClinicsService {
   }
 
   async findServices(clinicId: string): Promise<any[]> {
-    const services = await this.servicesRepository.find({
-      where: { clinicId, isActive: true, treatment: { isActive: true } },
-      relations: ['treatment'],
-    });
+    const services = await this.servicesRepository.createQueryBuilder('service')
+      .leftJoinAndSelect('service.treatment', 'treatment')
+      .where('service.clinicId = :clinicId', { clinicId })
+      .andWhere('service.isActive = :isActive', { isActive: true })
+      .andWhere('treatment.isActive = :tIsActive', { tIsActive: true })
+      .andWhere("(service.metadata->>'approvalStatus' IS NULL OR service.metadata->>'approvalStatus' = 'APPROVED')")
+      .getMany();
     console.log(`[ClinicsService] Found ${services.length} active services for clinicId: ${clinicId}`);
     
     // Explicitly map name from treatment to service for UI consistency
@@ -928,7 +933,10 @@ export class ClinicsService {
       treatmentId: treatment.id,
       imageUrl: serviceData.imageUrl,
       isActive: (serviceData as any).isActive ?? true,
-      metadata: serviceData.metadata,
+      metadata: {
+        ...(serviceData.metadata || {}),
+        approvalStatus: 'PENDING'
+      },
     });
 
     // Validate but don't block creation if just metadata is missing
@@ -1050,7 +1058,18 @@ export class ClinicsService {
       if (updateData.imageUrl !== undefined) { service.treatment.imageUrl = updateData.imageUrl; treatmentUpdated = true; }
 
       if (treatmentUpdated) {
+        service.treatment.status = TreatmentStatus.PENDING;
         await this.treatmentsRepository.save(service.treatment);
+
+        // Emit event for notification bell (treatment.edited handler in event-handlers.service.ts)
+        this.eventEmitter.emit('treatment.edited', {
+          treatment: service.treatment,
+          clinicName: clinic.name,
+          changes: {
+            priceChanged: updateData.price !== undefined && before.price !== Number(updateData.price),
+            newPrice: updateData.price,
+          },
+        });
       }
     }
 
@@ -1513,12 +1532,19 @@ export class ClinicsService {
 
     const treatment = this.treatmentsRepository.create({
       ...data,
-      status: TreatmentStatus.APPROVED,
+      status: TreatmentStatus.PENDING,
       isActive: true,
       category: category.name, // Support legacy
     });
 
-    return this.treatmentsRepository.save(treatment);
+    const savedTreatment = await this.treatmentsRepository.save(treatment);
+
+    this.eventEmitter.emit('treatment.added', {
+      treatment: savedTreatment,
+      clinicName: 'a clinic',
+    });
+
+    return savedTreatment;
   }
 
   async setTreatmentStatus(treatmentId: string, status: TreatmentStatus): Promise<Treatment> {
@@ -1830,6 +1856,32 @@ export class ClinicsService {
       console.error('getSuggestions error:', error);
       return [];
     }
+  }
+
+  async getPendingServices(): Promise<Service[]> {
+    return this.servicesRepository.createQueryBuilder('service')
+      .leftJoinAndSelect('service.clinic', 'clinic')
+      .leftJoinAndSelect('service.treatment', 'treatment')
+      .leftJoinAndSelect('treatment.categoryRef', 'categoryRef')
+      .where("service.metadata->>'approvalStatus' = 'PENDING'")
+      .orderBy('service.createdAt', 'DESC')
+      .getMany();
+  }
+
+  async setServiceApprovalStatus(serviceId: string, status: 'APPROVED' | 'REJECTED'): Promise<Service> {
+    const service = await this.servicesRepository.findOne({ where: { id: serviceId }, relations: ['clinic', 'treatment'] });
+    if (!service) throw new NotFoundException('Service not found');
+    
+    service.metadata = {
+      ...(service.metadata || {}),
+      approvalStatus: status
+    };
+    
+    if (status === 'REJECTED') {
+      service.isActive = false;
+    }
+    
+    return this.servicesRepository.save(service);
   }
 
   async autoConnectTreatmentCategories() {

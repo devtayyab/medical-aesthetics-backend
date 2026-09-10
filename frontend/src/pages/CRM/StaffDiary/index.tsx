@@ -6,6 +6,7 @@ import type { RootState } from '@/store';
 import { CalendarToolbar } from '../AppointmentCalendar/CalendarToolbar';
 import { StaffSidebar } from './StaffSidebar';
 import { StaffCalendarGrid } from './StaffCalendarGrid';
+import { MonthListView } from './MonthListView';
 // Temporarily using AppointmentCalendar modals until they need to be decoupled.
 import { AppointmentModal } from '../AppointmentCalendar/AppointmentModal';
 import { BlockSlotModal } from '../AppointmentCalendar/BlockSlotModal';
@@ -240,21 +241,30 @@ export const StaffDiary: React.FC<StaffDiaryProps> = ({ clinicId, onNewAppointme
           />
         </div>
 
-        {/* Calendar Grid */}
+        {/* Calendar Grid or Month List */}
         <div className="flex-1 overflow-hidden bg-white flex flex-col">
-          <StaffCalendarGrid
-            viewDate={viewDate}
-            viewMode={viewMode}
-            appointments={displayAppointments}
-            blockedSlots={blockedSlots}
-            providers={providers}
-            selectedProviderId={selectedProviderId}
-            clinics={clinics}
-            selectedClinicId={filters.clinicId}
-            onSlotClick={handleSlotClick}
-            onAppointmentEdit={handleAppointmentEdit}
-            onRefresh={refreshAppointments}
-          />
+          {viewMode === 'month-list' ? (
+            <MonthListView
+              appointments={displayAppointments}
+              providers={providers}
+              selectedProviderId={selectedProviderId}
+              onAppointmentEdit={handleAppointmentEdit}
+            />
+          ) : (
+            <StaffCalendarGrid
+              viewDate={viewDate}
+              viewMode={viewMode}
+              appointments={displayAppointments}
+              blockedSlots={blockedSlots}
+              providers={providers}
+              selectedProviderId={selectedProviderId}
+              clinics={clinics}
+              selectedClinicId={filters.clinicId}
+              onSlotClick={handleSlotClick}
+              onAppointmentEdit={handleAppointmentEdit}
+              onRefresh={refreshAppointments}
+            />
+          )}
         </div>
       </div>
 

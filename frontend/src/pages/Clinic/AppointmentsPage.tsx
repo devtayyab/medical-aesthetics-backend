@@ -480,11 +480,18 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
  Confirm
  </button>
  )}
- {status === 'confirmed' && hasPermission(user?.role, 'canCompleteAppointments') && (
- <button onClick={onExecute} className="h-9 px-4 bg-[#CBFF38] text-black rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all">
- Execute
- </button>
- )}
+ {status === 'confirmed' && hasPermission(user?.role, 'canCompleteAppointments') && (() => {
+    const isPaid = appointment.paymentMethod != null || Number(appointment.amountPaid) > 0 || Number(appointment.appointmentCompletionReport?.amountPaid) > 0;
+    return (
+      <button onClick={onExecute} className={`h-9 px-4 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${
+        isPaid 
+          ? 'bg-emerald-400 text-black hover:bg-black hover:text-emerald-400' 
+          : 'bg-[#CBFF38] text-black hover:bg-black hover:text-[#CBFF38]'
+      }`}>
+        {isPaid ? 'Complete' : 'Execute'}
+      </button>
+    );
+  })()}
  {['pending', 'confirmed'].includes(status) && (
  <div className="flex gap-1.5">
  <button onClick={onReschedule} className="size-9 bg-gray-50 text-gray-400 rounded-lg flex items-center justify-center hover:bg-black hover:text-[#CBFF38] transition-all border border-gray-100">

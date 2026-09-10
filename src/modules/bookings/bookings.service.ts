@@ -470,6 +470,20 @@ export class BookingsService {
     // Set status to pending_payment if card is chosen and still has payable amount
     if (createAppointmentDto.paymentMethod === 'card' && payableAmount > 0) {
       appointmentData.status = AppointmentStatus.PENDING_PAYMENT;
+    } else if (!appointmentData.status) {
+      let isStaffBooking = false;
+      if (createAppointmentDto.bookedById) {
+        const booker = await this.usersRepository.findOne({ where: { id: createAppointmentDto.bookedById } });
+        if (booker && [UserRole.SALESPERSON, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CLINIC_OWNER, UserRole.MANAGER, UserRole.SECRETARIAT].includes(booker.role as UserRole)) {
+          isStaffBooking = true;
+        }
+      } else if (createAppointmentDto.appointmentSource === 'clinic_own') {
+        isStaffBooking = true;
+      }
+
+      if (isStaffBooking) {
+        appointmentData.status = AppointmentStatus.CONFIRMED;
+      }
     }
 
     const appointment: Appointment = this.appointmentsRepository.create(appointmentData);
@@ -805,6 +819,14 @@ export class BookingsService {
         } catch (payErr) {
           console.error('[BookingsService] Failed to auto-record payment on status update to COMPLETED:', payErr.message);
         }
+
+        // Emit appointment.paid event for notifications
+        this.eventEmitter.emit('appointment.paid', {
+          appointment: await this.findById(appointment.id).catch(() => appointment),
+          amountPaid: amountToRecord,
+          paymentMethod: data?.paymentMethod || appointment.paymentMethod || 'cash',
+          markedById: userId,
+        });
       }
     } else if (status === AppointmentStatus.CANCELLED) {
       updateData.cancelledAt = new Date();
@@ -1075,6 +1097,32 @@ export class BookingsService {
         }
       }
 
+      // 3b. Enrich additionalServiceIds with names for tooltip display
+      const allAdditionalIds = [
+        ...new Set(
+          appointments
+            .flatMap(a => a.additionalServiceIds || [])
+            .filter(Boolean)
+        )
+      ];
+      let additionalServicesMap: Record<string, { id: string; name: string; price: number }> = {};
+      if (allAdditionalIds.length > 0) {
+        try {
+          const additionalSvcs = await this.servicesRepository.find({
+            where: { id: In(allAdditionalIds) },
+            relations: ['treatment']
+          } as any);
+          additionalServicesMap = Object.fromEntries(
+            additionalSvcs.map((s: any) => [
+              s.id,
+              { id: s.id, name: s.name || s.treatment?.name || 'Service', price: s.price || 0 }
+            ])
+          );
+        } catch (svcErr) {
+          console.error('[BookingsService] Additional services fetch failed:', svcErr.message);
+        }
+      }
+
       // 4. Transform & Mask
       const mappedAppointments = appointments.map(apt => {
         let isMasked = false;
@@ -1111,7 +1159,11 @@ export class BookingsService {
             role: apt.bookedBy?.role || apt.representative?.role || 'salesperson' 
           } : null,
           isReturned: repeatClients.has(apt.clientId),
-          isBeautyDoctorsClient: apt.isBeautyDoctorsClient || false, // Return flag for color-coding
+          isBeautyDoctorsClient: apt.isBeautyDoctorsClient || false,
+          // Enriched additional services with names for tooltip display
+          additionalServices: (apt.additionalServiceIds || [])
+            .map((id: string) => additionalServicesMap[id])
+            .filter(Boolean),
         };
       });
 

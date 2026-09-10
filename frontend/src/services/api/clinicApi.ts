@@ -98,6 +98,16 @@ export const servicesApi = {
  const response = await apiClient.patch(`/clinics/treatments/${id}/status`, { status });
  return response.data;
  },
+
+ getPendingServices: async (): Promise<any[]> => {
+ const response = await apiClient.get('/clinic/master/services/pending');
+ return response.data;
+ },
+
+ setServiceApprovalStatus: async (id: string, status: string): Promise<any> => {
+ const response = await apiClient.patch(`/clinic/master/services/${id}/status`, { status });
+ return response.data;
+ },
 };
 
 // Appointments API

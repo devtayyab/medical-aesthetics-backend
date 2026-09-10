@@ -11,6 +11,7 @@ import { NotificationsGateway } from './gateways/notifications.gateway';
 import { NotificationTrigger } from '../../common/enums/notification-trigger.enum';
 import { NotificationTemplate } from './entities/notification-template.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
+import { MailService } from './services/mail.service';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
@@ -26,6 +27,7 @@ export class NotificationsService implements OnModuleInit {
     @InjectQueue('notifications')
     private notificationsQueue: Queue,
     private usersService: UsersService,
+    private mailService: MailService,
     @Inject(forwardRef(() => NotificationsGateway))
     private _gateway: NotificationsGateway,
   ) { }
@@ -205,14 +207,16 @@ export class NotificationsService implements OnModuleInit {
     message: string,
     data?: any,
   ): Promise<{ message: string; sentTo: number }> {
-    // Find all admin users
+    // Find all admin and super admin users
     const admins = await this.usersService.findAll({ role: UserRole.ADMIN, isActive: true });
+    const superAdmins = await this.usersService.findAll({ role: UserRole.SUPER_ADMIN, isActive: true });
+    const platformAdmins = [...admins, ...superAdmins];
 
-    if (admins.length === 0) {
+    if (platformAdmins.length === 0) {
       throw new Error('No admin users found to send message to');
     }
 
-    const adminIds = admins.map(admin => admin.id);
+    const adminIds = platformAdmins.map(admin => admin.id);
 
     // Send bulk notification to all admins
     await this.sendBulk(
@@ -292,7 +296,14 @@ export class NotificationsService implements OnModuleInit {
     recipientId: string,
     email: string,
     password: string,
+    userName?: string,
   ): Promise<Notification> {
+    try {
+      await this.mailService.sendWelcomeCredentialsEmail(email, password, userName);
+    } catch (err) {
+      // Log error but don't fail notification creation
+    }
+
     return this.create(
       recipientId,
       NotificationType.EMAIL,

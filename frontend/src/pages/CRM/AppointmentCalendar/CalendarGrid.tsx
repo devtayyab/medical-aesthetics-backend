@@ -46,6 +46,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [currentTimeTop, setCurrentTimeTop] = useState(0);
+  const [currentTimeLabel, setCurrentTimeLabel] = useState('');
 
 
   // Days to display
@@ -64,6 +65,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
       const nowIso = new Date().toISOString();
       const tz = clinicTimezone && clinicTimezone !== 'null' ? clinicTimezone : undefined;
       let minutes: number;
+      let h = 0, m = 0;
       if (tz) {
         try {
           const fmt = new Intl.DateTimeFormat('en-US', {
@@ -73,18 +75,25 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
             hourCycle: 'h23',
           });
           const parts = fmt.formatToParts(new Date(nowIso));
-          const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
-          const m = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
-          minutes = (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+          h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
+          m = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
+          if (isNaN(h)) h = 0;
+          if (isNaN(m)) m = 0;
+          minutes = h * 60 + m;
         } catch {
           const now = new Date();
-          minutes = now.getHours() * 60 + now.getMinutes();
+          h = now.getHours();
+          m = now.getMinutes();
+          minutes = h * 60 + m;
         }
       } else {
         const now = new Date();
-        minutes = now.getHours() * 60 + now.getMinutes();
+        h = now.getHours();
+        m = now.getMinutes();
+        minutes = h * 60 + m;
       }
       setCurrentTimeTop((minutes / 60) * HOUR_HEIGHT_PX);
+      setCurrentTimeLabel(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
     };
     updateTime();
     const interval = setInterval(updateTime, 60000);
@@ -266,6 +275,20 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
                 </span>
               </div>
             ))}
+
+            {/* Current time label pill in gutter */}
+            {currentTimeLabel && (
+              <div
+                className="absolute right-0 z-40 pointer-events-none"
+                style={{ top: currentTimeTop - 9, width: '100%' }}
+              >
+                <div className="flex justify-end pr-1">
+                  <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none shadow-sm shadow-red-200">
+                    {currentTimeLabel}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Day Columns */}
@@ -304,9 +327,15 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
                     className="absolute left-0 right-0 z-30 pointer-events-none"
                     style={{ top: currentTimeTop }}
                   >
-                    <div className="flex items-center">
-                      <div className="w-2.5 h-2.5 bg-red-500 rounded-full -ml-1.5 flex-shrink-0" />
-                      <div className="flex-1 h-0.5 bg-red-500" />
+                    {/* Glowing line */}
+                    <div className="relative flex items-center">
+                      {/* Animated pulse dot */}
+                      <div className="relative flex-shrink-0 -ml-1.5">
+                        <div className="w-3 h-3 bg-red-500 rounded-full shadow-[0_0_0_3px_rgba(239,68,68,0.25)] animate-ping absolute inset-0" />
+                        <div className="w-3 h-3 bg-red-500 rounded-full relative z-10" />
+                      </div>
+                      {/* Line with gradient fade */}
+                      <div className="flex-1 h-[2px] bg-gradient-to-r from-red-500 via-red-400 to-red-200" />
                     </div>
                   </div>
                 )}

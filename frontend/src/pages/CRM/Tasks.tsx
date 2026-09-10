@@ -29,7 +29,7 @@ import {
   PhoneCall, MoreHorizontal, User, Eye, Plus, Edit, X,
   CornerUpRight, Calendar, Phone, Trash2, UserPlus, Mail,
   Target, Tag, ArrowLeft, ArrowRight, Building2, MousePointer2, Check, MessageSquare,
-  Star, PhoneOff, XCircle, CheckCircle2, Search, Bell, ListTodo
+  Star, PhoneOff, XCircle, CheckCircle2, Search, Bell, ListTodo, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -200,6 +200,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
 
   // New Interaction States for strict workflow
   const [workflowStep, setWorkflowStep] = useState(1);
+  const [callMade, setCallMade] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
   const [interactionOutcome, setInteractionOutcome] = useState("");
   const [interactionClinic, setInteractionClinic] = useState("");
   const [callbackDate, setCallbackDate] = useState("");
@@ -416,9 +418,11 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
         subject: `[${effectiveOutcome.toUpperCase()}] Follow Up: ${interactionTask?.title || 'Interaction'}`,
         notes: finalNotes,
         createdAt: new Date().toISOString(),
-        durationSeconds: 0,
+        durationSeconds: callDuration || 0,
         metadata: {
+          clickOnly: true,
           callOutcome: effectiveOutcome,
+          outcome: effectiveOutcome,
           originalTaskId: interactionTask?.id,
           clinic: interactionClinic || interactionTask?.clinic || interactionTask?.metadata?.clinic || undefined,
           tags: selectedTags
@@ -500,6 +504,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       setInteractionClinic("");
       setInteractionTask(null);
       setWorkflowStep(1);
+      setCallMade(false);
       setSelectedTags([]);
       setCallbackDate("");
       setFollowUpData({ title: '', therapy: '', dueDate: '', reminderDate: '', priority: 'medium' });
@@ -520,7 +525,29 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     if (!interactionTask) return;
 
     try {
-      // Complete the task
+      // 1. Log the communication for the booking outcome
+      await dispatch(logCommunication({
+        customerId: interactionTask?.customerId || (interactionTask?.customer as any)?.id || undefined,
+        relatedLeadId: interactionTask?.relatedLeadId || undefined,
+        salespersonId: currentUserId || undefined,
+        type: 'call',
+        direction: 'outgoing',
+        status: 'completed',
+        subject: `[APPOINTMENT BOOKED] Task Completed: ${interactionTask?.title || 'Appointment Scheduled'}`,
+        notes: interactionNotes ? `[APPOINTMENT BOOKED]\n${interactionNotes}` : 'Appointment booked successfully via task workflow.',
+        createdAt: new Date().toISOString(),
+        durationSeconds: callDuration || 0,
+        metadata: {
+          clickOnly: true,
+          callOutcome: 'appointment_booked',
+          outcome: 'appointment_booked',
+          originalTaskId: interactionTask?.id,
+          clinic: interactionClinic || interactionTask?.clinic || undefined,
+          tags: selectedTags
+        }
+      })).unwrap();
+
+      // 2. Complete the task
       await dispatch(updateAction({
         id: interactionTask.id,
         updates: { status: 'completed' }
@@ -529,6 +556,11 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       setShowInteractionModal(false);
       setInteractionTask(null);
       setInteractionNotes("");
+      setInteractionOutcome("");
+      setWorkflowStep(1);
+      setCallMade(false);
+      setSelectedTags([]);
+      setCallbackDate("");
 
       const sid = selectedSalespersonId === 'all' ? undefined : selectedSalespersonId;
       dispatch(fetchActions({ salespersonId: sid }));
@@ -551,6 +583,11 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
   };
 
   const handleCloseInteraction = async () => {
+    if (callMade || workflowStep > 1) {
+      toast.error("Call outcome is mandatory. Please select an option before closing.");
+      return;
+    }
+
     if (interactionTask) {
       try {
         await dispatch(updateAction({
@@ -568,6 +605,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
     setShowInteractionModal(false);
     setInteractionTask(null);
     setInteractionNotes("");
+    setCallMade(false);
+    setWorkflowStep(1);
   };
 
   const handleAssignTask = async () => {
@@ -976,6 +1015,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                                   setInteractionTask({ ...task, status: 'in_progress' });
                                   setInteractionNotes(task.description || "");
                                   setWorkflowStep(1);
+                                  setCallMade(false);
+                                  setInteractionOutcome("");
                                   setSelectedTags([]);
                                   setShowInteractionModal(true);
 
@@ -1325,9 +1366,20 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                       : 'Unassigned'}
                 </p>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleCloseInteraction} className="rounded-xl hover:bg-slate-50">
-                <X className="w-5 h-5 text-slate-400" />
-              </Button>
+              {(!callMade && workflowStep === 1) ? (
+                <Button variant="ghost" size="icon" onClick={handleCloseInteraction} className="rounded-xl hover:bg-slate-50">
+                  <X className="w-5 h-5 text-slate-400" />
+                </Button>
+              ) : (
+                <div
+                  onClick={() => toast.error("Call outcome is mandatory. Please select an option before closing.")}
+                  className="px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg text-[10px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5 shadow-sm cursor-not-allowed select-none"
+                  title="Outcome required before closing"
+                >
+                  <Lock className="w-3 h-3 text-amber-600" />
+                  Outcome Required
+                </div>
+              )}
             </div>
 
             {/* Vertical Stepper Header */}
@@ -1363,7 +1415,10 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                       </div>
 
                       <Button
-                        onClick={() => setShowDialer(true)}
+                        onClick={() => {
+                          setCallMade(true);
+                          setShowDialer(true);
+                        }}
                         className="w-full bg-[#CBFF38] hover:bg-[#D9FF66] text-black font-black h-16 rounded-2xl shadow-xl shadow-lime-500/10 flex items-center justify-center gap-3 transition-all active:scale-95 text-xs uppercase tracking-[0.15em]"
                       >
                         <PhoneCall className="w-5 h-5" />
@@ -1406,9 +1461,11 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                 <div className="space-y-6 animate-in slide-in-from-right-8 duration-500">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-black text-slate-900 uppercase">Interaction Result</h3>
-                    <Button variant="ghost" onClick={() => setWorkflowStep(1)} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-black">
-                      <ArrowLeft className="w-3 h-3 mr-1" /> Back
-                    </Button>
+                    {!callMade && (
+                      <Button variant="ghost" onClick={() => setWorkflowStep(1)} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-black">
+                        <ArrowLeft className="w-3 h-3 mr-1" /> Back
+                      </Button>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1680,7 +1737,11 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
       {/* Dialer Modal */}
       <DialerModal
         isOpen={showDialer}
-        onClose={() => setShowDialer(false)}
+        onClose={() => {
+          setShowDialer(false);
+          setCallMade(true);
+          setWorkflowStep(2);
+        }}
         customerName={
           interactionTask?.customer?.customer
             ? `${interactionTask.customer.customer.firstName} ${interactionTask.customer.customer.lastName}`
@@ -1694,6 +1755,8 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
           'Unknown'
         }
         onCallEnded={(duration) => {
+          setCallDuration(duration);
+          setCallMade(true);
           setShowDialer(false);
           // Auto-append duration to notes
           setInteractionNotes(prev => `${prev}\n[Call Duration: ${Math.floor(duration / 60)}m ${duration % 60}s]`.trim());

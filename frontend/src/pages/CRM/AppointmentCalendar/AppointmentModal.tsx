@@ -112,12 +112,19 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         ? `${apt.client.firstName} ${apt.client.lastName || ''}`.trim()
         : apt.clientDetails?.fullName || '';
 
-      const serviceAmount = parseFloat(String(apt.service?.price || apt.totalAmount || 0));
+      // Calculate total amount = primary service + all additional services
+      const primaryPrice = parseFloat(String(apt.service?.price || 0));
+      const additionalServicesTotal = (apt.additionalServices || [])
+        .reduce((sum: number, s: any) => sum + parseFloat(String(s.price || 0)), 0);
+      const serviceAmount = apt.totalAmount
+        ? parseFloat(String(apt.totalAmount))
+        : primaryPrice + additionalServicesTotal || parseFloat(String(apt.amount || 0));
+
       const paid = parseFloat(String(apt.amountPaid || 0));
 
       let paymentStatus: 'UNPAID' | 'PAID' | 'PARTIALLY_PAID' = 'UNPAID';
-      if (paid > 0 && paid >= serviceAmount) paymentStatus = 'PAID';
-      else if (paid > 0) paymentStatus = 'PARTIALLY_PAID';
+      const isActuallyPaid = apt.status !== 'CANCELLED' && ((apt.paymentMethod != null && apt.paymentMethod !== '') || paid > 0 || Number(apt.appointmentCompletionReport?.amountPaid || 0) > 0);
+      if (isActuallyPaid) paymentStatus = 'PAID';
 
       setSelectedPatient(apt.client || { id: apt.clientId, firstName: clientName });
       setForm({
@@ -386,7 +393,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     return true;
   }, [form, clinics, checkConflict, mode, existingAppointment]);
 
-  const handleSave = async () => {
+  const handleSave = async (eOrOverrideStatus?: any) => {
+    const overrideStatus = typeof eOrOverrideStatus === 'string' ? eOrOverrideStatus : undefined;
     if (!validateAndCheckConflict()) return;
     setIsSubmitting(true);
 
@@ -398,26 +406,38 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
     try {
       if (mode === 'create') {
-        const payload: any = {
-          clinicId: form.clinicId,
-          serviceId: form.serviceId,
-          additionalServiceIds: form.additionalServiceIds,
-          providerId: form.salesPersonId || undefined,
-          startTime: startUTC.toISOString(),
-          endTime: endUTC.toISOString(),
-          status: form.status,
-          notes: form.notes,
-        };
+        const servicesToBook = [form.serviceId, ...(form.additionalServiceIds || [])].filter(id => !!id);
+        
+        let currentStartTime = startUTC;
+        
+        for (const sId of servicesToBook) {
+          const serviceObj = availableServices.find(s => s.id === sId);
+          const duration = Number(serviceObj?.durationMinutes || serviceObj?.duration || 30);
+          const currentEndTime = new Date(currentStartTime.getTime() + duration * 60000);
+          
+          const payload: any = {
+            clinicId: form.clinicId,
+            serviceId: sId,
+            providerId: form.salesPersonId || undefined,
+            startTime: currentStartTime.toISOString(),
+            endTime: currentEndTime.toISOString(),
+            status: overrideStatus || form.status,
+            notes: form.notes,
+          };
 
-        if (form.isNewPatient && form.newPatientDetails) {
-          payload.clientId = '00000000-0000-0000-0000-000000000000'; // dummy ID for backend to know it's a new customer
-          payload.clientDetails = form.newPatientDetails;
-        } else {
-          payload.clientId = form.patientId;
+          if (form.isNewPatient && form.newPatientDetails) {
+            payload.clientId = '00000000-0000-0000-0000-000000000000'; // dummy ID for backend to know it's a new customer
+            payload.clientDetails = form.newPatientDetails;
+          } else {
+            payload.clientId = form.patientId;
+          }
+
+          await bookingAPI.createAppointment(payload);
+          
+          currentStartTime = currentEndTime;
         }
 
-        await bookingAPI.createAppointment(payload);
-        toast.success('Appointment created successfully!');
+        toast.success('Appointments created successfully!');
       } else {
         await bookingAPI.updateAppointment(existingAppointment!.id, {
           startTime: startUTC.toISOString(),
@@ -428,8 +448,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           notes: form.notes,
         });
         // Update status separately if changed
-        if (form.status !== existingAppointment?.status) {
-          await bookingAPI.updateStatus(existingAppointment!.id, form.status);
+        const finalStatus = overrideStatus || form.status;
+        if (finalStatus !== existingAppointment?.status) {
+          await bookingAPI.updateStatus(existingAppointment!.id, finalStatus);
         }
         toast.success('Appointment updated successfully!');
       }
@@ -474,11 +495,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const handlePayCard = async () => {
     if (!existingAppointment) return;
-    const total = computeTotal(form.amount, form.tax, form.discount);
+    const chargeAmount = computeTotal(form.amount, form.tax, form.discount);
     setIsSubmitting(true);
     try {
       await bookingAPI.recordPayment(existingAppointment.id, {
-        amount: total,
+        amount: chargeAmount,
         method: 'card',
         notes: 'Paid via Card',
       });
@@ -495,11 +516,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const handlePayCash = async () => {
     if (!existingAppointment) return;
-    const total = computeTotal(form.amount, form.tax, form.discount);
+    const chargeAmount = computeTotal(form.amount, form.tax, form.discount);
     setIsSubmitting(true);
     try {
       await bookingAPI.recordPayment(existingAppointment.id, {
-        amount: total,
+        amount: chargeAmount,
         method: 'cash',
         notes: 'Paid via Cash',
       });
@@ -777,6 +798,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                  {salespersons.map(sp => (
                    <option key={sp.id} value={sp.id}>{sp.name}</option>
                  ))}
+                 {user && !salespersons.some(sp => sp.id === user.id) && (
+                   <option value={user.id}>{`${user.firstName || ''} ${user.lastName || ''} (Me)`}</option>
+                 )}
               </select>
             </div>
 
@@ -898,83 +922,138 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           {/* ── Payment Section ── */}
           <div className="pt-2 border-t border-slate-100">
 
-            {/* Payment status badge */}
-            {form.paymentStatus === 'PAID' ? (
-              <div className="flex items-center gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50 mb-3">
-                <CheckCircle className="w-5 h-5 text-emerald-600" />
-                <div>
-                  <p className="text-[12px] font-black text-emerald-700">Payment Complete</p>
-                  {existingAppointment?.amountPaid && parseFloat(String(existingAppointment.amountPaid)) > 0 && (
-                    <p className="text-[11px] text-emerald-600">
-                      Paid: ${parseFloat(String(existingAppointment.amountPaid)).toFixed(2)}
-                    </p>
-                  )}
+            {/* Services breakdown (edit mode, multi-service) */}
+            {mode === 'edit' && existingAppointment && (() => {
+              const primarySvc = existingAppointment.service;
+              const additionalSvcs: Array<{ name: string; price?: number }> = existingAppointment.additionalServices || [];
+              const hasMultiple = additionalSvcs.length > 0 || (existingAppointment.additionalServiceIds?.length || 0) > 0;
+              if (!hasMultiple && !primarySvc) return null;
+              const primaryP = parseFloat(String(primarySvc?.price || 0));
+              const addTotal = additionalSvcs.reduce((s: number, x: any) => s + parseFloat(String(x.price || 0)), 0);
+              const grandTotal = primaryP + addTotal;
+              return (
+                <div className="mb-3 rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="bg-slate-50 px-3 py-2 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Services</span>
+                    <span className="text-[11px] font-black text-emerald-600">Total: €{grandTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {primarySvc && (
+                      <div className="flex items-center justify-between px-3 py-2 bg-emerald-50/50">
+                        <span className="text-[11px] font-bold text-slate-700 truncate mr-2">{primarySvc.name || primarySvc.treatment?.name || 'Primary Service'}</span>
+                        <span className="text-[11px] font-black text-emerald-600 flex-shrink-0">€{primaryP.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {additionalSvcs.map((s: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between px-3 py-2">
+                        <span className="text-[11px] font-bold text-slate-600 truncate mr-2">{s.name}</span>
+                        <span className="text-[11px] font-black text-emerald-600 flex-shrink-0">€{parseFloat(String(s.price || 0)).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    {additionalSvcs.length === 0 && (existingAppointment.additionalServiceIds?.length || 0) > 0 && (
+                      <div className="px-3 py-2">
+                        <span className="text-[10px] text-slate-400 italic">+ {existingAppointment.additionalServiceIds.length} more service(s)</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
+              );
+            })()}
+
+            {/* Payment status badge */}
+            {form.paymentStatus === 'PAID' ? (() => {
+              const bookedByName = (existingAppointment as any)?.bookedByInfo?.name || 'System';
+              const isOnline = existingAppointment?.appointmentSource === 'platform_broker' && existingAppointment?.paymentMethod === 'CARD';
+              return (
+                <div className="flex items-center gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50 mb-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  <div>
+                    <p className="text-[12px] font-black text-emerald-700">Payment Complete</p>
+                    {existingAppointment?.amountPaid && parseFloat(String(existingAppointment.amountPaid)) > 0 && (
+                      <p className="text-[11px] text-emerald-600">
+                        Paid: €{parseFloat(String(existingAppointment.amountPaid)).toFixed(2)} via {existingAppointment.paymentMethod || 'N/A'}
+                        <span className="block mt-0.5 text-emerald-700/80">
+                          {isOnline ? '— Paid Online' : `— Received by ${bookedByName}`}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })() : (
               /* ── Collect Payment Card ── */
               <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/60 overflow-hidden">
                 {/* Card header */}
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-emerald-100">
                   <CreditCard className="w-4 h-4 text-emerald-600" />
                   <p className="text-[13px] font-black text-emerald-800">Collect Payment</p>
+                  {mode === 'edit' && existingAppointment?.service?.name && (
+                    <span className="ml-auto text-[11px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full truncate max-w-[180px]">
+                      {existingAppointment.service.name}
+                    </span>
+                  )}
                 </div>
 
                 <div className="px-4 py-4 space-y-4">
-                  {/* Amount input */}
+                  {/* Editable Amount input */}
                   <div>
                     <label className="block text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1.5">
-                      Amount ($)
+                      Amount (€) <span className="text-slate-400 font-medium normal-case tracking-normal">— editable</span>
                     </label>
                     <input
                       type="number"
-                      value={total.toFixed(2)}
-                      readOnly
-                      className="w-full px-4 py-3 text-[22px] font-black text-slate-800 bg-white border-2 border-emerald-200 rounded-xl focus:outline-none focus:border-emerald-400 text-center tracking-wide"
+                      min={0}
+                      step={0.01}
+                      value={form.amount}
+                      onChange={e => setForm(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                      className="w-full px-4 py-3 text-[22px] font-black text-slate-800 bg-white border-2 border-emerald-300 rounded-xl focus:outline-none focus:border-emerald-500 text-center tracking-wide transition-colors"
                     />
-                    {/* Breakdown hint — the field above shows the total that will actually be charged */}
                     <p className="text-[10px] text-slate-400 text-center mt-1">
-                      ${form.amount.toFixed(2)} + ${taxAmount.toFixed(2)} tax − ${form.discount.toFixed(2)} disc
+                      Total charged: €{total.toFixed(2)} (incl. {(form.tax * 100).toFixed(0)}% tax)
                     </p>
                   </div>
 
-                  {/* PAY AT VENUE + CARD row */}
+                  {/* CASH + CARD side by side */}
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Pay at Venue */}
+                    {/* CASH */}
                     <button
-                      onClick={handlePayAtVenue}
+                      onClick={handlePayCash}
                       disabled={isSubmitting}
-                      className="flex flex-col items-center gap-1.5 p-4 bg-white border-2 border-emerald-300 rounded-xl hover:bg-emerald-50 hover:border-emerald-400 transition-all disabled:opacity-50 group"
+                      className="flex flex-col items-center gap-2 py-5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl shadow-lg shadow-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
                     >
-                      <MapPin className="w-6 h-6 text-emerald-500 group-hover:text-emerald-600" />
-                      <span className="text-[11px] font-black text-emerald-700 uppercase tracking-wide">Pay at Venue</span>
-                      <span className="text-[9px] text-slate-400 text-center leading-tight">Confirm &amp; stay pending</span>
+                      {isSubmitting ? (
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <Banknote className="w-6 h-6" />
+                      )}
+                      <span className="text-[12px] font-black uppercase tracking-widest">Cash</span>
+                      <span className="text-[9px] text-emerald-100 text-center leading-tight">Collect &amp; Complete</span>
                     </button>
 
-                    {/* Card */}
+                    {/* CARD */}
                     <button
                       onClick={handlePayCard}
                       disabled={isSubmitting}
-                      className="flex flex-col items-center gap-1.5 p-4 bg-white border-2 border-indigo-300 rounded-xl hover:bg-indigo-50 hover:border-indigo-400 transition-all disabled:opacity-50 group"
+                      className="flex flex-col items-center gap-2 py-5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white rounded-xl shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
                     >
-                      <CreditCard className="w-6 h-6 text-indigo-500 group-hover:text-indigo-600" />
-                      <span className="text-[11px] font-black text-indigo-700 uppercase tracking-wide">Card</span>
-                      <span className="text-[9px] text-slate-400 text-center leading-tight">Record as Card &amp; Complete</span>
+                      {isSubmitting ? (
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <CreditCard className="w-6 h-6" />
+                      )}
+                      <span className="text-[12px] font-black uppercase tracking-widest">Card</span>
+                      <span className="text-[9px] text-indigo-200 text-center leading-tight">Record &amp; Complete</span>
                     </button>
                   </div>
 
-                  {/* CASH button */}
+                  {/* Pay at Venue option */}
                   <button
-                    onClick={handlePayCash}
+                    onClick={handlePayAtVenue}
                     disabled={isSubmitting}
-                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-[13px] uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {isSubmitting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Banknote className="w-5 h-5" />
-                    )}
-                    Cash — Collect &amp; Complete
+                    <MapPin className="w-4 h-4" />
+                    Pay at Venue — keep pending
                   </button>
                 </div>
               </div>
@@ -1004,14 +1083,25 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             >
               Cancel
             </button>
-            <button
-              onClick={handleSave}
-              disabled={isSubmitting}
-              className="px-5 py-2.5 text-[12px] font-black bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {mode === 'create' ? 'Create Appointment' : 'Save Changes'}
-            </button>
+            {mode === 'edit' && form.paymentStatus === 'PAID' && existingAppointment?.status !== 'completed' ? (
+              <button
+                onClick={() => handleSave('completed')}
+                disabled={isSubmitting}
+                className="px-5 py-2.5 text-[12px] font-black bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                Complete Appointment
+              </button>
+            ) : (
+              <button
+                onClick={handleSave}
+                disabled={isSubmitting}
+                className="px-5 py-2.5 text-[12px] font-black bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {mode === 'create' ? 'Create Appointment' : 'Save Changes'}
+              </button>
+            )}
           </div>
         </div>
       </div>

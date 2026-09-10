@@ -1,6 +1,6 @@
 // ─── Calendar View Types ───────────────────────────────────────────────────────
 
-export type CalendarView = 'day' | 'week';
+export type CalendarView = 'day' | 'week' | 'month-list';
 
 export type AppointmentStatusType =
   | 'PENDING'

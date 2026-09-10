@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { format, startOfWeek, endOfWeek } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { AppDispatch, RootState } from '@/store';
 import { fetchClinicAppointments } from '@/store/slices/bookingSlice';
 import { crmAPI, adminAPI, clinicsAPI } from '@/services/api';
@@ -139,7 +139,10 @@ export function useStaffDiaryData({ viewDate, viewMode, filters }: UseStaffDiary
     if (filters.providerId && filters.providerId !== 'all') params.providerId = filters.providerId;
     if (filters.status && filters.status !== 'all') params.status = filters.status;
 
-    if (viewMode === 'week') {
+    if (viewMode === 'month-list') {
+      params.startDate = format(startOfMonth(viewDate), 'yyyy-MM-dd');
+      params.endDate = format(endOfMonth(viewDate), 'yyyy-MM-dd');
+    } else if (viewMode === 'week') {
       params.startDate = format(startOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
       params.endDate = format(endOfWeek(viewDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
     } else {

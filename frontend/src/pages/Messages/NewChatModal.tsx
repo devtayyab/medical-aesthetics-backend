@@ -17,6 +17,31 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  const [isLoading, setIsLoading] = useState(false);
  const [searchError, setSearchError] = useState(false);
  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
+ const [suggestedContacts, setSuggestedContacts] = useState<any[]>([]);
+ const [isSuggestedLoading, setIsSuggestedLoading] = useState(false);
+
+ useEffect(() => {
+   const fetchSuggested = async () => {
+     setIsSuggestedLoading(true);
+     try {
+       const [adminsRes, salesRes] = await Promise.all([
+         userAPI.getAllUsers({ role: 'SUPER_ADMIN', limit: 10 }),
+         userAPI.getAllUsers({ role: 'salesperson', limit: 10 })
+       ]);
+       const admins = Array.isArray(adminsRes.data) ? adminsRes.data : adminsRes.data.users || [];
+       const sales = Array.isArray(salesRes.data) ? salesRes.data : salesRes.data.users || [];
+       
+       const combined = [...admins, ...sales];
+       const unique = Array.from(new Map(combined.map(u => [u.id, u])).values());
+       setSuggestedContacts(unique);
+     } catch (err) {
+       console.error('Failed to load suggested contacts', err);
+     } finally {
+       setIsSuggestedLoading(false);
+     }
+   };
+   fetchSuggested();
+ }, []);
 
  useEffect(() => {
  const delayDebounceFn = setTimeout(() => {
@@ -214,6 +239,48 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
   className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200"
   >
   <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">No users found</p>
+  </motion.div>
+  ) : suggestedContacts.length > 0 ? (
+  <div className="flex flex-col">
+  <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 pl-2">Suggested Contacts</div>
+  {suggestedContacts.map((user, idx) => {
+  const isSelected = selectedUsers.find(u => u.id === user.id);
+  return (
+  <motion.button
+  initial={{ opacity: 0, x: -20 }}
+  animate={{ opacity: 1, x: 0 }}
+  transition={{ delay: idx * 0.05 }}
+  key={user.id}
+  onClick={() => toggleUser(user)}
+  className={`w-full p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border flex items-center gap-3 sm:gap-4 group transition-all shadow-sm hover:shadow-md mb-2 ${isSelected ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`}
+  >
+  <div className={`size-10 sm:size-12 rounded-xl flex items-center justify-center font-black text-xs sm:text-base border transition-all shrink-0 ${isSelected ? 'bg-gray-900 text-white border-gray-900' : 'bg-gray-50 text-gray-400 border-gray-100 group-hover:bg-gray-100 group-hover:text-gray-900'}`}>
+  {isSelected ? <Check size={20} /> : `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`}
+  </div>
+  <div className="text-left flex-1 min-w-0">
+  <div className="font-black uppercase tracking-tight text-xs sm:text-sm leading-snug text-gray-900 truncate">
+  {user.firstName} {user.lastName}
+  </div>
+  <div className="flex items-center gap-2 flex-wrap">
+  <span className={`text-[8px] font-black uppercase tracking-widest bg-gray-100 px-1.5 py-0.5 rounded transition-colors ${isSelected ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900'}`}>{user.role?.replace('_', ' ')}</span>
+  <span className={`text-[9px] sm:text-[10px] font-bold truncate transition-colors ${isSelected ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'}`}>{user.email}</span>
+  </div>
+  </div>
+  <div className={`size-7 sm:size-9 rounded-full border flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-100 group-hover:bg-gray-100 group-hover:text-gray-900 group-hover:border-gray-200 text-gray-400'}`}>
+  {isSelected ? <X size={14} /> : <ArrowRight size={14} />}
+  </div>
+  </motion.button>
+  );
+  })}
+  </div>
+  ) : isSuggestedLoading ? (
+  <motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  className="flex flex-col items-center justify-center py-12 gap-3"
+  >
+  <div className="size-6 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Loading contacts...</p>
   </motion.div>
   ) : (
   <div className="text-center py-10">

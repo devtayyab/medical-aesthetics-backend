@@ -54,4 +54,26 @@ export class AuthController {
   async verifyEmail(@Body() body: { userId: string; otp: string }) {
     return this.authService.verifyEmail(body.userId, body.otp);
   }
+
+  @Post('forget-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset email (alias)' })
+  async forgetPassword(@Body() body: { email: string }) {
+    return this.authService.forgotPassword(body.email);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset email' })
+  async forgotPassword(@Body() body: { email: string }) {
+    return this.authService.forgotPassword(body.email);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password using token' })
+  async resetPassword(@Body() body: { password: string; resetToken?: string; token?: string }) {
+    const token = body.resetToken || body.token;
+    return this.authService.resetPassword(body.password, token!);
+  }
 }

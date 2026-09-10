@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { UsersService } from "../users/users.service";
@@ -10,6 +10,7 @@ import { UserRole } from "../../common/enums/user-role.enum";
 import { LoyaltyService } from "../loyalty/loyalty.service";
 import { BookingsService } from "../bookings/bookings.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { MailService } from "../notifications/services/mail.service";
 import { NotificationTrigger } from "../../common/enums/notification-trigger.enum";
 
 @Injectable()
@@ -22,6 +23,7 @@ export class AuthService {
     private loyaltyService: LoyaltyService,
     private bookingsService: BookingsService,
     private notificationsService: NotificationsService,
+    private mailService: MailService,
   ) { }
 
   async validateUser(email: string, password: string): Promise<User | null> {
@@ -216,5 +218,72 @@ export class AuthService {
     console.log("[AuthService] Logging out user:", userId);
     await this.usersService.updateRefreshToken(userId, null);
     console.log("[AuthService] Logout success for user:", userId);
+  }
+
+  async forgotPassword(email: string) {
+    if (!email || !email.trim()) {
+      throw new BadRequestException('Please provide a valid email address.');
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(trimmedEmail);
+
+    if (user && user.isActive) {
+      // Generate a signed JWT token valid for 1 hour
+      const resetToken = this.jwtService.sign(
+        { sub: user.id, email: user.email, purpose: 'password_reset' },
+        { expiresIn: '1h' },
+      );
+
+      const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'https://beautydoctors.gr';
+      const cleanFrontendUrl = frontendUrl.replace(/\/$/, '');
+      const resetUrl = `${cleanFrontendUrl}/reset-password?token=${resetToken}`;
+
+      try {
+        await this.mailService.sendPasswordResetEmail(user.email, resetUrl, user.firstName);
+        console.log(`[AuthService] Password reset link sent to: ${user.email}`);
+      } catch (err: any) {
+        console.error('[AuthService] Failed to send password reset email:', err.message);
+      }
+    }
+
+    // Always return success message for security (prevents user enumeration)
+    return {
+      message: 'If an account matches that email address, a password reset link has been dispatched.',
+    };
+  }
+
+  async resetPassword(password: string, resetToken: string) {
+    if (!password || password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters long.');
+    }
+
+    if (!resetToken) {
+      throw new BadRequestException('Reset token is required.');
+    }
+
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(resetToken);
+    } catch (err: any) {
+      throw new BadRequestException('Password reset link has expired or is invalid. Please request a new one.');
+    }
+
+    if (payload.purpose !== 'password_reset' || !payload.sub) {
+      throw new BadRequestException('Invalid reset token.');
+    }
+
+    const user = await this.usersService.findById(payload.sub);
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await this.usersService.update(user.id, { passwordHash } as any);
+    console.log(`[AuthService] Password reset successful for user: ${user.email}`);
+
+    return {
+      message: 'Your password has been successfully reset. You can now log in.',
+    };
   }
 }

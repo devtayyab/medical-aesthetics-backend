@@ -168,7 +168,19 @@ export function useCalendarData({ viewDate, viewMode, filters }: UseCalendarData
       else if (paid > 0 && paid < total) computedPaymentStatus = 'PARTIALLY_PAID';
 
       const spIdx = salespersons.findIndex(sp => sp.id === (apt.providerId || apt.provider?.id));
-      return { ...apt, computedPaymentStatus, colorIndex: spIdx >= 0 ? spIdx : 0 };
+
+      // Build additionalServices array with names if backend returns them
+      // Backend may return apt.additionalServices = [{ id, name, price }]
+      // or just apt.additionalServiceIds = [id, ...]
+      const additionalServices: Array<{ name: string; price?: number }> =
+        Array.isArray(apt.additionalServices) && apt.additionalServices.length > 0
+          ? apt.additionalServices.map((s: any) => ({
+              name: s.name || s.service?.name || `Service`,
+              price: s.price ?? s.service?.price,
+            }))
+          : [];
+
+      return { ...apt, computedPaymentStatus, colorIndex: spIdx >= 0 ? spIdx : 0, additionalServices };
     });
   }, [appointments, salespersons]);
 

@@ -551,40 +551,45 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  setInteractionNotes(prev => `Call Duration: ${mins}m ${secs}s\n${prev}`);
  };
 
- const handleSelectOutcome = (outcome: string) => {
- setInteractionOutcome(outcome);
+  const handleSelectOutcome = (outcome: string) => {
+    setInteractionOutcome(outcome);
+  };
 
- // Reset dynamic state
- setOutcomeStep(null);
- setInterestedData({ date: '', services: [] });
- setCallbackDate('');
- setWrongNumberRemakes('');
-
- // Strict Workflow Logic
- if (outcome === 'not_interested') {
- setOutcomeStep(null); // No specific sub-step for details, goes correctly to review
- setWorkflowStep(3); // Tag step first
- setAutoTask(null); // No task for closed lead
- } else if (outcome === 'appointment_booked') {
- setShowBookingModal(true);
- setWorkflowStep(4); // Go to review to set confirmation task
- // Task set by modal success or manually here? 
- // We'll set a default confirmation task
- setAutoTask({ title: 'Confirmation Call', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], type: 'call' });
- } else if (outcome === 'call_later') {
- setOutcomeStep('callback'); // Shows date picker
- setWorkflowStep(3); // Tag step (can skip or integrate) -> actually let's go to Tag then Task
- // User requirement:"Tag -> Mandatory Task"
- // So Outcome -> Tag -> Task
- } else if (outcome === 'no_answer') {
- setWorkflowStep(3); // Tag
- // Mandatory Task: Call again
- setAutoTask({ title: 'Call again (No Answer)', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], type: 'call' });
- } else {
- // Default Fallback
- setWorkflowStep(3);
- }
- };
+  const proceedFromStep2 = () => {
+    if (!interactionOutcome) return;
+    const outcome = interactionOutcome;
+    
+    // Reset dynamic state
+    setOutcomeStep(null);
+    setInterestedData({ date: '', services: [] });
+    setCallbackDate('');
+    setWrongNumberRemakes('');
+    
+    // Strict Workflow Logic
+    if (outcome === 'not_interested') {
+      setOutcomeStep(null); // No specific sub-step for details, goes correctly to review
+      setWorkflowStep(3); // Tag step first
+      setAutoTask(null); // No task for closed lead
+    } else if (outcome === 'appointment_booked') {
+      setShowBookingModal(true);
+      setWorkflowStep(4); // Go to review to set confirmation task
+      // Task set by modal success or manually here? 
+      // We'll set a default confirmation task
+      setAutoTask({ title: 'Confirmation Call', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], type: 'call' });
+    } else if (outcome === 'call_later') {
+      setOutcomeStep('callback'); // Shows date picker
+      setWorkflowStep(3); // Tag step (can skip or integrate) -> actually let's go to Tag then Task
+      // User requirement:"Tag -> Mandatory Task"
+      // So Outcome -> Tag -> Task
+    } else if (outcome === 'no_answer') {
+      setWorkflowStep(3); // Tag
+      // Mandatory Task: Call again
+      setAutoTask({ title: 'Call again (No Answer)', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], type: 'call' });
+    } else {
+      // Default Fallback
+      setWorkflowStep(3);
+    }
+  };
 
  const handleAddTag = () => {
  if (tagInput.trim()) {
@@ -867,9 +872,17 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <button
  key={opt.id}
  onClick={() => handleSelectOutcome(opt.id)}
- className="flex items-center gap-3 p-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all duration-300 text-left shadow-sm group"
+ className={`flex items-center gap-3 p-3 bg-white hover:bg-slate-50 border rounded-lg transition-all duration-300 text-left shadow-sm group ${
+ interactionOutcome === opt.id 
+ ? 'border-blue-500 ring-2 ring-blue-500/20' 
+ : 'border-slate-200'
+ }`}
  >
- <div className={`p-2.5 bg-slate-50 text-slate-500 rounded-lg border border-slate-100 group-hover:text-blue-600 transition-colors`}>
+ <div className={`p-2.5 rounded-lg border transition-colors ${
+ interactionOutcome === opt.id 
+ ? 'bg-blue-50 text-blue-600 border-blue-200'
+ : 'bg-slate-50 text-slate-500 border-slate-100 group-hover:text-blue-600'
+ }`}>
  <opt.icon className="w-5 h-5" />
  </div>
  <div>
@@ -887,6 +900,13 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  className="bg-slate-50 border-slate-200 min-h-[120px] rounded-lg p-4 font-medium text-sm focus:bg-white transition-all shadow-sm"
  />
  </div>
+ <Button 
+ className="w-full h-11 bg-slate-900 text-white hover:bg-black rounded-lg font-bold text-sm transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed" 
+ onClick={proceedFromStep2}
+ disabled={!interactionOutcome}
+ >
+ Next Step <ArrowRight className="w-4 h-4 ml-2" />
+ </Button>
  </div>
  )}
 

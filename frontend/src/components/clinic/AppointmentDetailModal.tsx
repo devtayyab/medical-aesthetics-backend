@@ -138,16 +138,18 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
  </div>
  </div>
  <div className="pt-4 border-t border-gray-50 space-y-2">
- <div className="flex justify-between text-xs">
- <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Provider</span>
- <span className="text-gray-900 font-black uppercase">
- {appointment.provider ? `${appointment.provider.firstName} ${appointment.provider.lastName}` : 'Not Assigned'}
- </span>
- </div>
- <div className="flex justify-between text-xs">
- <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Duration</span>
- <span className="text-gray-900 font-black">60 mins</span>
- </div>
+  <div className="flex justify-between text-xs">
+  <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Booked By</span>
+  <span className="text-gray-900 font-black uppercase">
+  {((appointment as any).bookedByInfo?.name) || (appointment.provider ? `${appointment.provider.firstName} ${appointment.provider.lastName}` : 'System')}
+  </span>
+  </div>
+  <div className="flex justify-between text-xs">
+  <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Duration</span>
+  <span className="text-gray-900 font-black">
+    {Math.round((new Date(appointment.endTime).getTime() - new Date(appointment.startTime).getTime()) / 60000)} mins
+  </span>
+  </div>
  </div>
  </div>
  </div>
@@ -186,52 +188,102 @@ const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({ appoint
  </div>
  </div>
 
- {/* Additional Services (Mapped from treatmentDetails or direct column) */}
- {appointment.additionalServiceIds && appointment.additionalServiceIds.length > 0 && (
- <div className="grid grid-cols-1 gap-2">
- <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4">Additional Procedures</p>
- {appointment.additionalServiceIds.map((serviceId: string, idx: number) => (
- <div key={idx} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex justify-between items-center">
- <div className="flex items-center gap-3">
- <CheckCircle className="size-4 text-[#CBFF38]" />
- <span className="text-xs font-black uppercase tracking-tighter text-gray-900">
- {/* Show name from treatmentDetails if available, otherwise fallback to ID */}
- {appointment.treatmentDetails?.actualServiceNames?.[idx + 1] || `Additional Treatment #${idx + 1}`}
- </span>
- </div>
- <span className="text-[10px] font-black text-gray-400">ID: {serviceId.slice(0, 8)}</span>
- </div>
- ))}
- </div>
- )}
+  {/* Additional Services (Mapped from treatmentDetails or direct column) */}
+  {(((appointment as any).additionalServices && (appointment as any).additionalServices.length > 0) || (appointment.additionalServiceIds && appointment.additionalServiceIds.length > 0)) && (
+  <div className="grid grid-cols-1 gap-2">
+  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-4">Additional Procedures</p>
+  
+  {((appointment as any).additionalServices && (appointment as any).additionalServices.length > 0) ? (
+    (appointment as any).additionalServices.map((svc: any, idx: number) => (
+      <div key={idx} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <CheckCircle className="size-4 text-[#CBFF38]" />
+          <span className="text-xs font-black uppercase tracking-tighter text-gray-900">
+            {svc.name}
+          </span>
+        </div>
+        {svc.price !== undefined && (
+          <span className="text-[12px] font-black text-gray-400">€{Number(svc.price).toFixed(2)}</span>
+        )}
+      </div>
+    ))
+  ) : (
+    appointment.additionalServiceIds.map((serviceId: string, idx: number) => (
+    <div key={idx} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex justify-between items-center">
+    <div className="flex items-center gap-3">
+    <CheckCircle className="size-4 text-[#CBFF38]" />
+    <span className="text-xs font-black uppercase tracking-tighter text-gray-900">
+    {/* Show name from treatmentDetails if available, otherwise fallback to ID */}
+    {appointment.treatmentDetails?.actualServiceNames?.[idx + 1] || `Additional Treatment #${idx + 1}`}
+    </span>
+    </div>
+    <span className="text-[10px] font-black text-gray-400">ID: {serviceId.slice(0, 8)}</span>
+    </div>
+    ))
+  )}
+  </div>
+  )}
  </div>
  </div>
 
- {/* Payment & Settlement Info */}
- {(appointment.paymentMethod || appointment.amountPaid != null || appointment.appointmentCompletionReport?.amountPaid != null) && (
- <div className="space-y-4">
- <div className="flex items-center gap-2">
- <Euro size={14} className="text-[#CBFF38]" />
- <h3 className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Payment & Settlement</h3>
- </div>
- <div className="p-6 bg-white border border-gray-100 rounded-[32px] shadow-sm">
- <div className="grid grid-cols-2 gap-4">
- <div className="space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Payment Method</p>
- <p className="font-black text-gray-900 uppercase">
- {appointment.paymentMethod ? appointment.paymentMethod.replace('_', ' ') : 'Not Specified'}
- </p>
- </div>
- <div className="space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Amount Paid</p>
- <p className="font-black text-gray-900">
- €{(appointment.amountPaid != null ? appointment.amountPaid : (appointment.appointmentCompletionReport?.amountPaid || 0)).toString()}
- </p>
- </div>
- </div>
- </div>
- </div>
- )}
+  {/* Payment & Settlement Info */}
+  {(appointment.paymentMethod || appointment.amountPaid != null || appointment.appointmentCompletionReport?.amountPaid != null) && (() => {
+    const primaryPrice = Number(appointment.service?.price || 0);
+    const additionalPrice = ((appointment as any).additionalServices || []).reduce((sum: number, s: any) => sum + Number(s.price || 0), 0);
+    const baseAmount = primaryPrice + additionalPrice;
+    const amountPaid = Number(appointment.amountPaid != null ? appointment.amountPaid : (appointment.appointmentCompletionReport?.amountPaid || 0));
+    const diff = amountPaid - baseAmount;
+    const bookedByName = (appointment as any).bookedByInfo?.name || (appointment.provider ? `${appointment.provider.firstName} ${appointment.provider.lastName}` : 'System');
+    const hasBaseAmount = baseAmount > 0;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Euro size={14} className="text-[#CBFF38]" />
+          <h3 className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Payment & Settlement</h3>
+        </div>
+        <div className="p-6 bg-white border border-gray-100 rounded-[32px] shadow-sm space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Payment Method</p>
+              <p className="font-black text-gray-900 uppercase">
+                {appointment.paymentMethod ? appointment.paymentMethod.replace('_', ' ') : 'Not Specified'}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Final Amount Paid</p>
+              <p className="font-black text-emerald-600 text-xl">
+                €{amountPaid.toFixed(2)}
+              </p>
+            </div>
+          </div>
+          
+          {amountPaid > 0 && hasBaseAmount && Math.abs(diff) > 0.01 && (
+            <div className="pt-4 border-t border-gray-50 space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Base Services Total</span>
+                <span className="text-gray-900 font-black">€{baseAmount.toFixed(2)}</span>
+              </div>
+              {diff > 0 ? (
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Extra Charges / Taxes</span>
+                  <span className="text-rose-500 font-black">+ €{diff.toFixed(2)}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Discount Applied</span>
+                  <div className="text-right">
+                    <span className="text-emerald-500 font-black">- €{Math.abs(diff).toFixed(2)}</span>
+                    <p className="text-[8px] text-gray-400 mt-0.5">Authorized by {bookedByName}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  })()}
 
  {/* Additional Info / Comments */}
  {(appointment.notes || appointment.clinicNotes || appointment.appointmentCompletionReport?.notes || appointment.treatmentDetails?.notes) && (

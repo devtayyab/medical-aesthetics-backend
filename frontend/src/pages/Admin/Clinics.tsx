@@ -430,7 +430,7 @@ export const Clinics: React.FC = () => {
                 </tr>
               )}
               {filteredClinics.map((clinic) => (
-                <tr key={clinic.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={clinic.id} onClick={() => handleOpenModal(clinic)} className="hover:bg-gray-50 transition-colors cursor-pointer">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
@@ -475,7 +475,7 @@ export const Clinics: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
-                      onClick={() => handleToggleStatus(clinic)}
+                      onClick={(e) => { e.stopPropagation(); handleToggleStatus(clinic); }}
                       className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full transition-all hover:scale-105 active:scale-95 ${clinic.isActive ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200"
                         }`}
                       title="Click to toggle status"
