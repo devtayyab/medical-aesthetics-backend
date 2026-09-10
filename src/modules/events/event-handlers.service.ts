@@ -286,7 +286,8 @@ export class EventHandlersService {
     const { treatment, clinicName } = eventData;
     this.logger.log(`New treatment added: ${treatment?.name}`);
 
-    await this.notificationsService.notifyAllStaff(
+    // Only notify platform admins — not all staff (avoids duplicate/spam notifications)
+    await this.notificationsService.sendToPlatformAdmins(
       '💉 New Treatment Added',
       `"${treatment?.name}" has been added by ${clinicName || 'a clinic'} and is pending approval.`,
       { treatmentId: treatment?.id, type: 'treatment_added' }
@@ -302,7 +303,8 @@ export class EventHandlersService {
       ? ` Price changed to €${changes.newPrice}.`
       : '';
 
-    await this.notificationsService.notifyAllStaff(
+    // Only notify platform admins — not all staff (avoids duplicate/spam notifications)
+    await this.notificationsService.sendToPlatformAdmins(
       '✏️ Treatment Edited — Pending Re-approval',
       `"${treatment?.name}" at ${clinicName || 'a clinic'} has been edited.${changeDesc}`,
       { treatmentId: treatment?.id, type: 'treatment_edited' }
