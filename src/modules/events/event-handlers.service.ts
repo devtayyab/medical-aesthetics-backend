@@ -143,6 +143,10 @@ export class EventHandlersService {
     const providerName = appointment.provider
       ? `${appointment.provider.firstName} ${appointment.provider.lastName}`
       : 'Professional';
+    const clientName = appointment.client
+      ? `${appointment.client.firstName} ${appointment.client.lastName || ''}`.trim()
+      : 'Client';
+    const clinicName = appointment.clinic?.name || 'Clinic';
 
     if (newStatus === 'completed') {
       // Award loyalty points
@@ -172,12 +176,29 @@ export class EventHandlersService {
         });
       }
 
-      // Notify Sales and Admin on every completion as requested
-      const clinicName = appointment.clinic?.name || 'Clinic';
+      // Notify Sales and Admin on every completion
       await this.notificationsService.sendToPlatformAdmins(
         'Appointment Executed',
-        `${serviceName} executed at ${clinicName} for ${appointment.client?.firstName || 'Client'}`,
+        `${serviceName} executed at ${clinicName} for ${clientName}`,
         { appointmentId: appointment.id, clinicId: appointment.clinicId }
+      );
+    }
+
+    // Notify admins/Elena on cancellation
+    if (newStatus === 'cancelled' || newStatus === 'CANCELLED') {
+      await this.notificationsService.notifyAllStaff(
+        '❌ Appointment Cancelled',
+        `Appointment for ${clientName} (${serviceName}) at ${clinicName} has been cancelled.`,
+        { appointmentId: appointment.id, clinicId: appointment.clinicId, type: 'appointment_cancelled' }
+      );
+    }
+
+    // Notify admins/Elena on confirmation
+    if (newStatus === 'confirmed' || newStatus === 'CONFIRMED') {
+      await this.notificationsService.notifyAllStaff(
+        '✅ Appointment Confirmed',
+        `Appointment for ${clientName} (${serviceName}) at ${clinicName} has been confirmed.`,
+        { appointmentId: appointment.id, clinicId: appointment.clinicId, type: 'appointment_confirmed' }
       );
     }
 
@@ -205,10 +226,87 @@ export class EventHandlersService {
         {
           appointmentId: appointment.id,
           status: newStatus,
-          clientName: appointment.client ? `${appointment.client.firstName} ${appointment.client.lastName}` : 'Client',
+          clientName,
         },
       );
     }
+  }
+
+  @OnEvent('appointment.paid')
+  async handleAppointmentPaid(eventData: any) {
+    const { appointment, amountPaid, paymentMethod, markedById } = eventData;
+    const serviceName = appointment.service?.treatment?.name || 'Appointment';
+    const clientName = appointment.client
+      ? `${appointment.client.firstName} ${appointment.client.lastName || ''}`.trim()
+      : 'Client';
+    const clinicName = appointment.clinic?.name || 'Clinic';
+
+    this.logger.log(`Appointment ${appointment.id} marked as paid: €${amountPaid} via ${paymentMethod}`);
+
+    await this.notificationsService.notifyAllStaff(
+      '💳 Appointment Marked as Paid',
+      `${clientName}'s ${serviceName} at ${clinicName} — €${amountPaid} paid via ${paymentMethod || 'cash'}.`,
+      { appointmentId: appointment.id, clinicId: appointment.clinicId, amountPaid, paymentMethod, type: 'appointment_paid' }
+    );
+  }
+
+  @OnEvent('blocked_slot.created')
+  async handleBlockedSlotCreated(slot: any) {
+    this.logger.log(`Blocked slot created for clinic ${slot.clinicId}`);
+
+    const startDate = new Date(slot.startTime);
+    const endDate = new Date(slot.endTime);
+    const formattedStart = startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const formattedStartTime = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formattedEndTime = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    await this.notificationsService.notifyAllStaff(
+      '🔒 Calendar Day/Slot Blocked',
+      `A slot was blocked on ${formattedStart} (${formattedStartTime}–${formattedEndTime}). Reason: ${slot.reason || 'Not specified'}.`,
+      { clinicId: slot.clinicId, slotId: slot.id, type: 'slot_blocked' }
+    );
+  }
+
+  @OnEvent('blocked_slot.deleted')
+  async handleBlockedSlotDeleted(slot: any) {
+    this.logger.log(`Blocked slot removed for clinic ${slot.clinicId}`);
+
+    const startDate = new Date(slot.startTime);
+    const formattedStart = startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    await this.notificationsService.notifyAllStaff(
+      '🔓 Blocked Slot Removed',
+      `A previously blocked slot on ${formattedStart} has been unblocked.`,
+      { clinicId: slot.clinicId, slotId: slot.id, type: 'slot_unblocked' }
+    );
+  }
+
+  @OnEvent('treatment.added')
+  async handleTreatmentAdded(eventData: any) {
+    const { treatment, clinicName } = eventData;
+    this.logger.log(`New treatment added: ${treatment?.name}`);
+
+    await this.notificationsService.notifyAllStaff(
+      '💉 New Treatment Added',
+      `"${treatment?.name}" has been added by ${clinicName || 'a clinic'} and is pending approval.`,
+      { treatmentId: treatment?.id, type: 'treatment_added' }
+    );
+  }
+
+  @OnEvent('treatment.edited')
+  async handleTreatmentEdited(eventData: any) {
+    const { treatment, clinicName, changes } = eventData;
+    this.logger.log(`Treatment edited: ${treatment?.name}`);
+
+    const changeDesc = changes?.priceChanged
+      ? ` Price changed to €${changes.newPrice}.`
+      : '';
+
+    await this.notificationsService.notifyAllStaff(
+      '✏️ Treatment Edited — Pending Re-approval',
+      `"${treatment?.name}" at ${clinicName || 'a clinic'} has been edited.${changeDesc}`,
+      { treatmentId: treatment?.id, type: 'treatment_edited' }
+    );
   }
 
   @OnEvent('loyalty.points.awarded')

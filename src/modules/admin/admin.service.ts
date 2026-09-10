@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, DeepPartial, In } from 'typeorm';
 import { Tag } from './entities/tag.entity';
@@ -358,6 +359,14 @@ export class AdminService {
       throw new NotFoundException('Treatment not found');
     }
     return updated;
+  }
+
+  async changeUserPassword(id: string, newPassword: string): Promise<void> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+    const salt = await bcrypt.genSalt();
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+    await this.usersRepository.update(id, { passwordHash });
   }
 
   async updateUser(id: string, updateData: Partial<User> & { assignedClinicIds?: string[] }): Promise<User> {

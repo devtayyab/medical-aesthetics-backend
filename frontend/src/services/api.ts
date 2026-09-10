@@ -543,6 +543,8 @@ export const adminAPI = {
  getUsers: () => api.get("/admin/users"),
  updateUser: (id: string, updateData: any) =>
  api.put(`/admin/users/${id}`, updateData),
+ changeUserPassword: (id: string, data: { password: string }) =>
+ api.patch(`/admin/users/${id}/password`, data),
  getLoyalty: () => api.get("/admin/loyalty"),
  updateLoyalty: (data: {
  tiers: { name: string; points: number; rewards: string[] }[];

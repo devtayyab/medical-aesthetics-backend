@@ -110,7 +110,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       className={`absolute rounded-r-lg cursor-pointer transition-all group select-none
         border-l-[3px] ${apt.isBlocked ? blockedBg : statusCfg.bg} ${apt.isBlocked ? blockedBorder : statusCfg.border}
         shadow-sm hover:shadow-md hover:scale-[1.01] hover:z-30 z-20`}
-      style={style}
+      style={{ ...style, minHeight: 'fit-content' }}
       onClick={e => { e.stopPropagation(); onEdit(apt); }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -158,11 +158,11 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
 
         {/* Status + Payment badges */}
         {!isVeryCompact && !apt.isBlocked && (
-          <div className="flex items-center gap-1 flex-wrap mt-auto pt-0.5">
-            <span className={`text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full ${statusCfg.bg} ${statusCfg.text} border ${statusCfg.border}`}>
+          <div className="flex items-center gap-1 mt-auto pt-0.5 overflow-hidden">
+            <span className={`text-[7px] font-black uppercase tracking-wider px-1.5 py-[1px] rounded flex-shrink text-ellipsis overflow-hidden ${statusCfg.bg} ${statusCfg.text} border ${statusCfg.border}`}>
               {statusCfg.label}
             </span>
-            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${paymentCfg.bg} ${paymentCfg.text}`}>
+            <span className={`text-[7px] font-bold px-1.5 py-[1px] rounded flex-shrink text-ellipsis overflow-hidden whitespace-nowrap ${paymentCfg.bg} ${paymentCfg.text}`}>
               {paymentCfg.label}
             </span>
           </div>

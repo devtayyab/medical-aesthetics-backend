@@ -123,7 +123,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       const paid = parseFloat(String(apt.amountPaid || 0));
 
       let paymentStatus: 'UNPAID' | 'PAID' | 'PARTIALLY_PAID' = 'UNPAID';
-      const isActuallyPaid = apt.paymentMethod != null || paid > 0 || Number(apt.appointmentCompletionReport?.amountPaid || 0) > 0;
+      const isActuallyPaid = apt.status !== 'CANCELLED' && ((apt.paymentMethod != null && apt.paymentMethod !== '') || paid > 0 || Number(apt.appointmentCompletionReport?.amountPaid || 0) > 0);
       if (isActuallyPaid) paymentStatus = 'PAID';
 
       setSelectedPatient(apt.client || { id: apt.clientId, firstName: clientName });
@@ -798,6 +798,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                  {salespersons.map(sp => (
                    <option key={sp.id} value={sp.id}>{sp.name}</option>
                  ))}
+                 {user && !salespersons.some(sp => sp.id === user.id) && (
+                   <option value={user.id}>{`${user.firstName || ''} ${user.lastName || ''} (Me)`}</option>
+                 )}
               </select>
             </div>
 

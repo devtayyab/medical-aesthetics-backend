@@ -23,16 +23,11 @@ export class CrmListener {
             this.logger.log(`Lead ${lead.id} converted. Attempting to create customer account...`);
 
             try {
-                if (!lead.phone) {
-                    this.logger.warn(`Cannot convert lead ${lead.id} to customer: Phone number is missing and mandatory.`);
-                    return;
-                }
-
                 const customerData = {
-                    firstName: lead.firstName,
-                    lastName: lead.lastName,
+                    firstName: lead.firstName || 'Client',
+                    lastName: lead.lastName || '',
                     email: lead.email,
-                    phone: lead.phone,
+                    phone: lead.phone || '',
                     source: lead.source,
                 };
 
@@ -54,8 +49,13 @@ export class CrmListener {
                 }
 
                 if (convertedUser) {
-                    if (passwordToEmail) {
-                        await this.notificationsService.sendWelcomeCredentials(convertedUser.id, convertedUser.email, passwordToEmail);
+                    if (passwordToEmail && convertedUser.email) {
+                        await this.notificationsService.sendWelcomeCredentials(
+                            convertedUser.id,
+                            convertedUser.email,
+                            passwordToEmail,
+                            convertedUser.firstName || lead.firstName
+                        );
                     }
                     await this.crmService.update(lead.id, {
                         metadata: {
@@ -64,6 +64,16 @@ export class CrmListener {
                             convertedAt: new Date()
                         }
                     } as any);
+
+                    // Add an activity log
+                    await this.crmService.logCommunication({
+                        customerId: convertedUser.id,
+                        salespersonId: lead.assignedSalesId || null,
+                        type: 'note',
+                        status: 'completed',
+                        direction: 'outgoing',
+                        notes: `Lead successfully converted into an active Customer.`,
+                    });
                 }
             } catch (error) {
                 this.logger.error(`Failed to handle lead conversion for ${lead.id}`, error.stack);

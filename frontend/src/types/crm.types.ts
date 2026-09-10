@@ -332,6 +332,7 @@ export interface CrmAnalytics {
  conversionRate?: number;
  totalActions?: number;
  completedActions?: number;
+ leadsByForm?: { name: string; value: number }[];
 
  // Salesperson Performance
  leadsAssigned?: number;

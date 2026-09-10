@@ -152,7 +152,7 @@ export const Communication: React.FC = () => {
  // UNIFIED TIMELINE LOGIC
  const unifiedTimeline = useMemo(() => {
  const comms = communications.map(c => ({ ...c, entryType: 'communication', date: c.createdAt }));
- const tks = tasks.map(t => ({ ...t, entryType: 'task', date: t.dueDate || t.createdAt }));
+ const tks = tasks.map(t => ({ ...t, entryType: 'task', type: t.actionType || 'task', date: t.dueDate || t.createdAt }));
  const appts = appointments.map(a => ({ ...a, entryType: 'appointment', date: a.startTime }));
 
  const all = [...comms, ...tks, ...appts].sort((a, b) => 

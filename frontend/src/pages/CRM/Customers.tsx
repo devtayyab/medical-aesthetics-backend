@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
@@ -53,6 +53,19 @@ export const Customers: React.FC = () => {
  const [selectedCustomer, setSelectedCustomer] = useState<Lead | null>(null);
  const [showModal, setShowModal] = useState(false);
  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
  // Pagination state
  const [currentPage, setCurrentPage] = useState(1);
@@ -202,48 +215,147 @@ export const Customers: React.FC = () => {
 
  return (
  <div className="space-y-6 max-w-full mx-auto px-4 pb-10">
- {/* Search Header */}
- <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
- <div>
- <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
- Customer Database
+  {/* Search Header */}
+  {/* Row 1: Title + Action Buttons */}
+  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <div>
+      <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+        Customer Database
             <Badge className="bg-[#CBFF38] text-slate-900 border-[#b3d81b] px-3 py-1 rounded-xl text-xs font-black shadow-xs">
               {stats?.converted ?? leads.filter(l => l.status === 'converted').length} Converted Customers
             </Badge>
- </h1>
- <p className="text-gray-500 text-xs font-medium">Manage your active clients and their interactions</p>
- </div>
+      </h1>
+      <p className="text-gray-500 text-xs font-medium">Manage your active clients and their interactions</p>
+    </div>
 
- <div className="flex flex-1 max-w-md mx-0 md:mx-4 relative">
- <Input
- placeholder="Search by Name, Email or Phone..."
- value={searchTerm}
- onChange={(e) => setSearchTerm(e.target.value)}
- onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
- className="h-10 pl-10 bg-white border-gray-200 shadow-sm focus:ring-[#b3d81b] rounded-xl w-full"
- />
- <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
- </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        variant="outline"
+        onClick={() => setShowFilters(!showFilters)}
+        className={`h-10 text-[11px] font-bold border-gray-200 hover:bg-gray-50 transition-all ${showFilters ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-gray-600'}`}
+      >
+        <Filter className={`w-3.5 h-3.5 mr-1.5 ${showFilters ? 'text-white' : 'text-gray-400'}`} />
+        {showFilters ? 'Hide Filters' : 'Show Filters'}
+        {Object.keys(leadFilters).filter(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search').length > 0 && (
+          <span className="ml-1.5 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-[9px] min-w-[18px]">
+            {Object.keys(leadFilters).filter(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search').length}
+          </span>
+        )}
+      </Button>
+      <Button onClick={() => setShowCreateForm(true)} className="h-9 px-4 bg-slate-900 text-white hover:bg-slate-800 shadow-sm border-none rounded-xl font-bold text-[10px] transition-all hover:scale-[1.02] active:scale-[0.98]">
+        <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Customer
+      </Button>
+    </div>
+  </div>
 
- <div className="flex flex-wrap items-center gap-2">
- <Button
- variant="outline"
- onClick={() => setShowFilters(!showFilters)}
- className={`h-10 text-[11px] font-bold border-gray-200 hover:bg-gray-50 transition-all ${showFilters ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-gray-600'}`}
- >
- <Filter className={`w-3.5 h-3.5 mr-1.5 ${showFilters ? 'text-white' : 'text-gray-400'}`} />
- {showFilters ? 'Hide Filters' : 'Show Filters'}
- {Object.keys(leadFilters).filter(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search').length > 0 && (
- <span className="ml-1.5 px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-[9px] min-w-[18px]">
- {Object.keys(leadFilters).filter(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search').length}
- </span>
- )}
- </Button>
- <Button onClick={() => setShowCreateForm(true)} className="h-9 px-4 bg-slate-900 text-white hover:bg-slate-800 shadow-sm border-none rounded-xl font-bold text-[10px] transition-all hover:scale-[1.02] active:scale-[0.98]">
- <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Customer
- </Button>
- </div>
- </div>
+  {/* Row 2: Full-width Search Bar with Smart Dropdown */}
+  <div className="relative w-full" ref={searchRef}>
+    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none z-10" />
+    <Input
+      placeholder="Search by name, email or phone..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      onFocus={() => setSearchFocused(true)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') { handleSearch(); setSearchFocused(false); }
+        if (e.key === 'Escape') setSearchFocused(false);
+      }}
+      className="h-12 pl-12 pr-4 text-sm bg-white border-gray-200 shadow-sm focus:ring-[#b3d81b] rounded-xl w-full"
+    />
+    {searchTerm && (
+      <button
+        onClick={() => { setSearchTerm(''); dispatch(setLeadFilters({ ...leadFilters, search: '' })); }}
+        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    )}
+
+    {/* Smart Dropdown */}
+    {searchFocused && (() => {
+      const convertedLeads = leads.filter(l => l.status === 'converted');
+      const q = searchTerm.trim().toLowerCase();
+      const suggestions = q
+        ? convertedLeads.filter(l => {
+            const full = `${l.firstName ?? ''} ${l.lastName ?? ''} ${l.email ?? ''} ${l.phone ?? ''}`.toLowerCase();
+            return full.includes(q);
+          }).slice(0, 6)
+        : convertedLeads.slice(0, 6); // recent 6 when empty
+
+      return (
+        <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 bg-white border border-gray-200 rounded-2xl shadow-xl shadow-gray-200/60 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+
+          {/* Quick Filters — shown only when empty */}
+          {!q && (
+            <div className="px-4 pt-3 pb-2 border-b border-gray-100">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Quick Filters</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: '📞 Called Today', key: 'lastContactedFrom', value: new Date().toISOString().split('T')[0] },
+                  { label: '⭐ VIP', key: 'tag', value: 'VIP' },
+                ].map(chip => (
+                  <button
+                    key={chip.label}
+                    onMouseDown={(e) => { e.preventDefault(); dispatch(setLeadFilters({ ...leadFilters, [chip.key]: chip.value })); setSearchFocused(false); }}
+                    className="px-3 py-1 bg-gray-100 hover:bg-[#CBFF38] hover:text-slate-900 text-gray-600 text-[11px] font-semibold rounded-full transition-colors"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Suggestion Rows */}
+          <div className="py-1">
+            {suggestions.length === 0 && q && (
+              <div className="px-4 py-5 text-center text-sm text-gray-400">
+                No customers found for &ldquo;<span className="font-semibold text-gray-600">{searchTerm}</span>&rdquo;
+              </div>
+            )}
+            {!q && <p className="px-4 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Recent Customers</p>}
+            {suggestions.map((lead) => {
+              const name = `${lead.firstName ?? ''} ${lead.lastName ?? ''}`.trim() || lead.email || 'Unknown';
+              const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+              return (
+                <button
+                  key={lead.id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setSearchTerm(name);
+                    dispatch(setLeadFilters({ ...leadFilters, search: name }));
+                    setSearchFocused(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left group"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#CBFF38] to-[#a8d020] flex items-center justify-center text-slate-900 text-xs font-black flex-shrink-0">
+                    {initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{name}</p>
+                    <p className="text-xs text-gray-400 truncate">{lead.email || lead.phone || ''}</p>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 flex-shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search action footer */}
+          {q && suggestions.length > 0 && (
+            <div className="border-t border-gray-100 px-4 py-2">
+              <button
+                onMouseDown={(e) => { e.preventDefault(); handleSearch(); setSearchFocused(false); }}
+                className="w-full text-center text-xs font-bold text-[#5a8a00] hover:text-[#3d6200] py-1 transition-colors"
+              >
+                See all results for &ldquo;{searchTerm}&rdquo; →
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    })()}
+  </div>
 
  {/* Filter Chips */}
  {Object.keys(leadFilters).some(k => leadFilters[k] !== undefined && leadFilters[k] !== '' && k !== 'search') && (

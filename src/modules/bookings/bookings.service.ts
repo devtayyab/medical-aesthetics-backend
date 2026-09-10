@@ -819,6 +819,14 @@ export class BookingsService {
         } catch (payErr) {
           console.error('[BookingsService] Failed to auto-record payment on status update to COMPLETED:', payErr.message);
         }
+
+        // Emit appointment.paid event for notifications
+        this.eventEmitter.emit('appointment.paid', {
+          appointment: await this.findById(appointment.id).catch(() => appointment),
+          amountPaid: amountToRecord,
+          paymentMethod: data?.paymentMethod || appointment.paymentMethod || 'cash',
+          markedById: userId,
+        });
       }
     } else if (status === AppointmentStatus.CANCELLED) {
       updateData.cancelledAt = new Date();

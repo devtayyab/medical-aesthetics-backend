@@ -1075,9 +1075,16 @@ export class CrmService implements OnModuleInit {
       // For clinic owners, leave as-is for now (leads may not be linked to clinics). Future: relate leads to clinic and filter.
     }
 
-    // Default Sorting — Newest form submissions or creations first (DESC)
-    qb.orderBy('COALESCE(lead.lastMetaFormSubmittedAt, lead.createdAt)', 'DESC')
-      .addOrderBy('lead.createdAt', 'DESC');
+    // Default Sorting
+    if (filters.status === 'converted' || (Array.isArray(filters.status) && filters.status.includes('converted'))) {
+      // For converted leads (customers), sort by when they became members.
+      qb.orderBy('COALESCE(lead.convertedAt, lead.updatedAt, lead.createdAt)', 'DESC')
+        .addOrderBy('lead.createdAt', 'DESC');
+    } else {
+      // Newest form submissions or creations first (DESC)
+      qb.orderBy('COALESCE(lead.lastMetaFormSubmittedAt, lead.createdAt)', 'DESC')
+        .addOrderBy('lead.createdAt', 'DESC');
+    }
 
     // High performance limit & pagination (default limit 50 per page if not specified for instant loading)
     const limit = filters.limit
@@ -1718,36 +1725,54 @@ export class CrmService implements OnModuleInit {
         }
       }
 
-      // Check for linked lead/customer IDs
-      let originalLead = await this.leadsRepository.findOne({ where: { id: customerId } });
-
-      if (!originalLead) {
-        try {
-          originalLead = await this.leadsRepository.createQueryBuilder('lead')
-            .where("lead.metadata @> :convertedJson", {
-              convertedJson: JSON.stringify({ convertedToCustomerId: customerId })
-            })
-            .getOne();
-        } catch (e) {
-          const recentLeads = await this.leadsRepository.find({ order: { createdAt: 'DESC' }, take: 500 });
-          originalLead = recentLeads.find(l => {
-            const meta = l.metadata as any;
-            return meta && typeof meta === 'object' && meta.convertedToCustomerId === customerId;
-          });
-        }
-      }
-
       const idMatchList: string[] = [customerId];
       let metadataLogs: any[] = [];
 
-      if (originalLead) {
-        if (originalLead.id && originalLead.id !== customerId) idMatchList.push(originalLead.id);
-        const meta = originalLead.metadata as any;
-        const linkedId = meta?.convertedToCustomerId;
-        if (typeof linkedId === 'string' && linkedId !== customerId) idMatchList.push(linkedId);
+      // 1. Resolve CustomerRecord IDs and User IDs
+      const customerRecords = await this.customerRecordsRepository.find({
+        where: [
+          { customerId: customerId },
+          { id: customerId }
+        ],
+        relations: ['customer']
+      });
 
-        const history = meta?.interactionHistory;
-        metadataLogs = Array.isArray(history) ? history : [];
+      for (const rec of customerRecords) {
+        if (rec.id && !idMatchList.includes(rec.id)) idMatchList.push(rec.id);
+        if (rec.customerId && !idMatchList.includes(rec.customerId)) idMatchList.push(rec.customerId);
+      }
+
+      // 2. Resolve User email & phone for cross-matching leads
+      let userEmail: string | undefined;
+      let userPhone: string | undefined;
+
+      const user = await this.usersRepository.findOne({ where: { id: customerId } });
+      if (user) {
+        if (!idMatchList.includes(user.id)) idMatchList.push(user.id);
+        userEmail = user.email;
+        userPhone = user.phone;
+      } else if (customerRecords.length > 0 && customerRecords[0].customer) {
+        userEmail = customerRecords[0].customer.email;
+        userPhone = customerRecords[0].customer.phone;
+      }
+
+      // 3. Resolve linked leads (by ID, metadata convertedToCustomerId, email, or phone)
+      const leadWhere: any[] = [{ id: customerId }];
+      if (userEmail) leadWhere.push({ email: userEmail });
+      if (userPhone) leadWhere.push({ phone: userPhone });
+
+      const matchingLeads = await this.leadsRepository.find({
+        where: leadWhere
+      });
+
+      for (const lead of matchingLeads) {
+        if (lead.id && !idMatchList.includes(lead.id)) idMatchList.push(lead.id);
+        const meta = lead.metadata as any;
+        const linkedId = meta?.convertedToCustomerId;
+        if (typeof linkedId === 'string' && !idMatchList.includes(linkedId)) idMatchList.push(linkedId);
+        if (Array.isArray(meta?.interactionHistory)) {
+          metadataLogs.push(...meta.interactionHistory);
+        }
       }
 
       // Get communication history - merge database logs and legacy metadata logs
@@ -2552,6 +2577,17 @@ export class CrmService implements OnModuleInit {
       .andWhere('lead.status != :newStatus', { newStatus: LeadStatus.NEW })
       .getCount();
 
+    // 1b. Leads By Form Statistics
+    const formStatsQuery = leadsQuery.clone()
+      .select([
+        `COALESCE(lead."lastMetaFormName", 'Manual / Other') as form`,
+        `COUNT(lead.id) as count`
+      ])
+      .groupBy(`COALESCE(lead."lastMetaFormName", 'Manual / Other')`)
+      .orderBy("count", "DESC");
+    const rawFormStats = await formStatsQuery.getRawMany();
+    const leadsByForm = rawFormStats.map(f => ({ name: f.form, value: parseInt(f.count || '0') }));
+
     // 2. Communication Stats
     let communicationQuery = this.communicationLogsRepository.createQueryBuilder('log');
     if (!isAll) {
@@ -2842,6 +2878,7 @@ export class CrmService implements OnModuleInit {
       },
       turnoverTimeSeries,
       agentLeaderboard,
+      leadsByForm,
 
       // Detailed objects (legacy support)
       communicationStats: {

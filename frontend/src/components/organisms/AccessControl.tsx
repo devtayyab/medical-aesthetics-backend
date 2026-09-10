@@ -1,6 +1,8 @@
 import React, { useState } from"react";
 import { Edit2, Save, X, Search, UserX } from "lucide-react";
 import type { User, Clinic } from"@/types";
+import { adminAPI } from "@/services/api";
+import toast from "react-hot-toast";
 
 interface AccessControlProps {
  users: User[];
@@ -41,6 +43,9 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  monthlyTarget:"",
  assignedClinicIds: [],
  });
+ const [isChangingPassword, setIsChangingPassword] = useState(false);
+ const [newPassword, setNewPassword] = useState('');
+ const [confirmPassword, setConfirmPassword] = useState('');
 
  const handleEditClick = (user: User) => {
  setEditingUser(user);
@@ -52,8 +57,31 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  };
 
  const handleCloseEdit = () => {
- setEditingUser(null);
- };
+  setEditingUser(null);
+  setIsChangingPassword(false);
+  setNewPassword('');
+  setConfirmPassword('');
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match!");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
+    try {
+      await adminAPI.changeUserPassword(editingUser!.id, { password: newPassword });
+      toast.success("Password changed successfully!");
+      setIsChangingPassword(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to change password.");
+    }
+  };
 
  const handleSaveEdit = () => {
  if (editingUser) {
@@ -312,27 +340,63 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  </div>
  )}
 
- <div>
- <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Clinics (Staff Mapping)</label>
- <div className="space-y-2 border border-gray-200 rounded-lg p-3 max-h-48 overflow-y-auto bg-gray-50">
- {clinics?.map((clinic) => (
- <label key={clinic.id} className="flex items-center gap-2 text-sm cursor-pointer">
- <input
- type="checkbox"
- className="rounded text-blue-500 focus:ring-blue-500"
- checked={editForm.assignedClinicIds.includes(clinic.id)}
- onChange={() => toggleClinicSelection(clinic.id)}
- />
- {clinic.name}
- </label>
- ))}
- {(!clinics || clinics.length === 0) && (
- <p className="text-sm text-gray-500">No clinics available.</p>
- )}
- </div>
- </div>
+ {['clinic_owner', 'doctor', 'secretariat', 'salesperson', 'manager'].includes(editForm.role) && (
+  <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Clinics (Staff Mapping)</label>
+  <div className="space-y-2 border border-gray-200 rounded-lg p-3 max-h-48 overflow-y-auto bg-gray-50">
+  {clinics?.map((clinic) => (
+  <label key={clinic.id} className="flex items-center gap-2 text-sm cursor-pointer">
+  <input
+  type="checkbox"
+  className="rounded text-blue-500 focus:ring-blue-500"
+  checked={editForm.assignedClinicIds.includes(clinic.id)}
+  onChange={() => toggleClinicSelection(clinic.id)}
+  />
+  {clinic.name}
+  </label>
+  ))}
+  {(!clinics || clinics.length === 0) && (
+  <p className="text-sm text-gray-500">No clinics available.</p>
+  )}
+  </div>
+  </div>
+  )}
 
- <div className="pt-4 flex justify-end gap-3 border-t">
+  {isChangingPassword ? (
+    <div className="space-y-4 border p-4 rounded-lg bg-gray-50 mt-4">
+      <h4 className="font-bold text-sm">Change Password</h4>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+        <input
+          type="password"
+          className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500"
+          value={newPassword}
+          onChange={e => setNewPassword(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+        <input
+          type="password"
+          className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500"
+          value={confirmPassword}
+          onChange={e => setConfirmPassword(e.target.value)}
+        />
+      </div>
+      <div className="flex justify-end gap-2 mt-2">
+        <button type="button" onClick={() => { setIsChangingPassword(false); setNewPassword(''); setConfirmPassword(''); }} className="text-sm px-3 py-1.5 text-gray-600 hover:bg-gray-200 rounded font-medium transition-colors">Cancel</button>
+        <button type="button" onClick={handleChangePassword} className="text-sm px-3 py-1.5 bg-[#CBFF38] text-[#0B1120] font-bold rounded hover:bg-[#b5e632] transition-colors">Update Password</button>
+      </div>
+    </div>
+  ) : (
+    <div className="mt-4 border-t pt-4">
+      <button type="button" onClick={() => setIsChangingPassword(true)} className="text-blue-600 hover:text-blue-800 text-sm font-medium underline">
+        Change Password for this user
+      </button>
+    </div>
+  )}
+
+  <div className="pt-4 flex justify-end gap-3 border-t mt-6">
  <button
  onClick={handleCloseEdit}
  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"

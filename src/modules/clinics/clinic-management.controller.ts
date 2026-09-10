@@ -768,6 +768,22 @@ export class ClinicManagementController {
   }
 
   // Master Catalog Management (Admin Only)
+  @Get('master/services/pending')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get all pending services (Admin)' })
+  async getPendingServices() {
+    return this.clinicsService.getPendingServices();
+  }
+
+  @Patch('master/services/:id/status')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Set service approval status' })
+  async setServiceApprovalStatus(
+    @Param('id') id: string,
+    @Body() body: { status: 'APPROVED' | 'REJECTED' }
+  ) {
+    return this.clinicsService.setServiceApprovalStatus(id, body.status);
+  }
   @Get('master/categories')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all categories (Admin)' })

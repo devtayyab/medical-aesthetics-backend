@@ -770,6 +770,41 @@ export const Analytics: React.FC<AnalyticsProps> = ({ initialSalespersonId }) =>
 
       </div>
 
+      {/* ── Leads by Interest Form (Sources) ─────────────────────── */}
+      <div className="bg-white rounded-3xl p-6 shadow-sm ring-1 ring-gray-100 mt-6">
+        <div className="flex items-center justify-between border-b border-gray-50 pb-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-slate-900 text-[#CBFF38]">
+              <Target size={18} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-900">Leads by Interest Form</h3>
+              <p className="text-xs text-gray-400">Total volume of leads separated by form or source</p>
+            </div>
+          </div>
+        </div>
+        <div className="h-64 w-full">
+          {analytics?.leadsByForm && analytics.leadsByForm.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={analytics.leadsByForm || []} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} angle={-25} textAnchor="end" height={50} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0B1120', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '11px' }}
+                />
+                <Bar dataKey="value" name="Leads" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 gap-2">
+              <Users size={32} />
+              <p className="text-xs font-semibold text-gray-400">No leads found for selected dates</p>
+            </div>
+          )}
+        </div>
+      </div>
+
     </div>
   );
 };

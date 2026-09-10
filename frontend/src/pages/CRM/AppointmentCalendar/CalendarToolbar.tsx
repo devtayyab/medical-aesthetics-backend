@@ -4,7 +4,7 @@ import {
   SlidersHorizontal, RefreshCw,
 } from 'lucide-react';
 import {
-  format, addDays, subDays, addWeeks, subWeeks,
+  format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths,
   startOfWeek, endOfWeek,
 } from 'date-fns';
 import { useSelector } from 'react-redux';
@@ -54,14 +54,20 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   const weekEnd = endOfWeek(viewDate, { weekStartsOn: 1 });
 
   const navigatePrev = () => {
-    onViewDateChange(viewMode === 'week' ? subWeeks(viewDate, 1) : subDays(viewDate, 1));
+    if (viewMode === 'month-list') onViewDateChange(subMonths(viewDate, 1));
+    else if (viewMode === 'week') onViewDateChange(subWeeks(viewDate, 1));
+    else onViewDateChange(subDays(viewDate, 1));
   };
   const navigateNext = () => {
-    onViewDateChange(viewMode === 'week' ? addWeeks(viewDate, 1) : addDays(viewDate, 1));
+    if (viewMode === 'month-list') onViewDateChange(addMonths(viewDate, 1));
+    else if (viewMode === 'week') onViewDateChange(addWeeks(viewDate, 1));
+    else onViewDateChange(addDays(viewDate, 1));
   };
 
   const dateLabel =
-    viewMode === 'week'
+    viewMode === 'month-list'
+      ? format(viewDate, 'MMMM yyyy')
+      : viewMode === 'week'
       ? `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d, yyyy')}`
       : format(viewDate, 'EEEE, MMMM d, yyyy');
 

@@ -129,6 +129,13 @@ export class AdminController {
     return this.adminService.updateUser(id, updateData);
   }
 
+  @Patch('users/:id/password')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Change user password' })
+  changeUserPassword(@Param('id') id: string, @Body() body: { password: string }) {
+    return this.adminService.changeUserPassword(id, body.password);
+  }
+
   @Patch('users/:id/toggle-status')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Toggle user active status' })

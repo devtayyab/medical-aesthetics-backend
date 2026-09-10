@@ -127,6 +127,8 @@ const getAdminLinks = (role: string): SidebarItem[] => {
  { path:"/admin/treatments", label:"Therapy Catalog", icon: <ListChecks className="w-5 h-5" />, group:"Approvals" },
  { path:"/admin/payments", label:"Payments & Turnover", icon: <DollarSign className="w-5 h-5" />, group:"Finance" },
  { path:"/admin/gift-cards", label:"Gift Cards", icon: <Tag className="w-5 h-5" />, group:"Finance" },
+ { path:"/crm/analytics", label:"Sales Analytics", icon: <BarChart2 className="w-5 h-5" />, group:"Intelligence" },
+ { path:"/admin/clinic-analytics", label:"Clinic Analytics", icon: <Building2 className="w-5 h-5" />, group:"Intelligence" },
  { path:"/admin/notification-settings", label:"Notification Settings", icon: <Bell className="w-5 h-5" />, group:"System" },
  { path:"/admin/system-lists", label:"System Lists", icon: <ListChecks className="w-5 h-5" />, group:"System" },
  { path:"/admin/audit-logs", label:"Audit Logs", icon: <Shield className="w-5 h-5" />, group:"System" },

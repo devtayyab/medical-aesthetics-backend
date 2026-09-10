@@ -17,7 +17,10 @@ import {
  Clock,
  Star
 } from"lucide-react";
-import { format } from"date-fns";
+import { format } from "date-fns";
+import { TreatmentStatus } from "@/types/clinic.types";
+import { TreatmentApproval } from "./TreatmentApproval";
+import { ServiceApproval } from "./ServiceApproval";
 import { Button } from"@/components/atoms/Button/Button";
 import ImageUpload from"@/components/atoms/ImageUpload";
 import { toast } from"react-hot-toast";
@@ -66,7 +69,7 @@ interface masterCategory {
 }
 
 export const TherapyCatalog: React.FC = () => {
- const [activeTab, setActiveTab] = useState<'treatments' | 'categories' | 'approval'>('treatments');
+ const [activeTab, setActiveTab] = useState<'treatments' | 'categories' | 'approval' | 'service-approval'>('treatments');
  const [treatments, setTreatments] = useState<masterTreatment[]>([]);
  const [categories, setCategories] = useState<masterCategory[]>([]);
  const [pendingItems, setPendingItems] = useState<masterTreatment[]>([]);
@@ -324,7 +327,7 @@ export const TherapyCatalog: React.FC = () => {
 
  {/* Tabs */}
  <div className="flex gap-1 bg-gray-100 p-1.5 rounded-2xl w-fit max-w-full overflow-x-auto">
- {(['treatments', 'categories', 'approval'] as const).map(tab => (
+  {(['treatments', 'categories', 'approval', 'service-approval'] as const).map(tab => (
  <button
  key={tab}
  onClick={() => setActiveTab(tab)}
@@ -522,6 +525,10 @@ export const TherapyCatalog: React.FC = () => {
  </div>
  )}
  </div>
+ )}
+
+ {activeTab === 'service-approval' && (
+   <ServiceApproval />
  )}
 
  {/* Treatment Modal */}

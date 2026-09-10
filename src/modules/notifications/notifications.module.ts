@@ -30,6 +30,6 @@ import { JwtModule } from '@nestjs/jwt';
     MailService,
     NotificationProcessor,
   ],
-  exports: [NotificationsService, NotificationsGateway],
+  exports: [NotificationsService, NotificationsGateway, MailService],
 })
 export class NotificationsModule { }
