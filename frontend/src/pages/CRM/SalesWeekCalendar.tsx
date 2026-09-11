@@ -424,24 +424,22 @@ export const SalesWeekCalendar: React.FC = () => {
     try {
       let currentStartTime = createClinicUTCDateTime(wizardDate, wizardTime, tz);
 
-      for (const service of wizardServices) {
-        const duration = Number(service.durationMinutes || service.duration || 30);
-        const currentEndTime = new Date(currentStartTime.getTime() + duration * 60000);
-        
-        await bookingAPI.createAppointment({
-          clientId: clientId!,
-          clinicId: wizardClinic.id,
-          serviceId: service.id,
-          providerId: wizardProviderId || undefined,
-          startTime: currentStartTime.toISOString(),
-          endTime: currentEndTime.toISOString(),
-          status: 'PENDING',
-          bookedById: user?.id
-        });
+      const primaryService = wizardServices[0];
+      const additionalServiceIds = wizardServices.slice(1).map(s => s.id);
+      const totalDuration = wizardServices.reduce((sum, s) => sum + Number(s.durationMinutes || s.duration || 30), 0);
+      const currentEndTime = new Date(currentStartTime.getTime() + totalDuration * 60000);
 
-        // Set the start time for the next service to be the end time of the current one
-        currentStartTime = currentEndTime;
-      }
+      await bookingAPI.createAppointment({
+        clientId: clientId!,
+        clinicId: wizardClinic.id,
+        serviceId: primaryService.id,
+        additionalServiceIds: additionalServiceIds.length > 0 ? additionalServiceIds : undefined,
+        providerId: wizardProviderId || undefined,
+        startTime: currentStartTime.toISOString(),
+        endTime: currentEndTime.toISOString(),
+        status: 'PENDING',
+        bookedById: user?.id
+      });
 
       setIsAddWizardOpen(false);
       dispatch(fetchClinicAppointments(currentFilters));
