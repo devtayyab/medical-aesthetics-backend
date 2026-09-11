@@ -77,6 +77,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const { checkConflict } = useConflictDetection(appointments, blockedSlots);
 
   // Form state
+  const effectiveUserId = user?.id || currentUserId || '';
+
+  // Form state
   const [form, setForm] = useState<AppointmentFormData>({
     patientId: '',
     patientName: '',
@@ -84,7 +87,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     serviceName: '',
     clinicId: '',
     clinicName: '',
-    salesPersonId: currentUserId || '',
+    salesPersonId: effectiveUserId,
     date: format(new Date(), 'yyyy-MM-dd'),
     startTime: '10:00',
     durationMinutes: 60,
@@ -126,6 +129,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       const isActuallyPaid = apt.status !== 'CANCELLED' && ((apt.paymentMethod != null && apt.paymentMethod !== '') || paid > 0 || Number(apt.appointmentCompletionReport?.amountPaid || 0) > 0);
       if (isActuallyPaid) paymentStatus = 'PAID';
 
+      // Default salesperson: assign to provider, or whoever booked it, or current logged-in user
+      const bookedPersonId = apt.providerId || (apt as any).bookedById || (apt as any).bookedBy?.id || effectiveUserId;
+
       setSelectedPatient(apt.client || { id: apt.clientId, firstName: clientName });
       setForm({
         patientId: apt.clientId,
@@ -135,7 +141,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         serviceName: apt.service?.name || (apt as any).serviceName || '',
         clinicId: apt.clinicId,
         clinicName: apt.clinic?.name || '',
-        salesPersonId: apt.providerId || '',
+        salesPersonId: bookedPersonId || '',
         date: getClinicLocalDate(apt.startTime, apt.clinic?.timezone || 'UTC'),
         startTime: (() => {
           const tz = apt.clinic?.timezone || 'UTC';
@@ -153,6 +159,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       });
     } else {
       // Create mode
+      const defaultPersonId = initialData?.salesPersonId || effectiveUserId;
       setForm(prev => ({
         ...prev,
         patientId: '',
@@ -160,7 +167,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         serviceId: '',
         additionalServiceIds: [],
         serviceName: '',
-        salesPersonId: currentUserId || '',
+        salesPersonId: defaultPersonId,
         status: 'PENDING',
         notes: '',
         paymentMethod: '',
@@ -175,7 +182,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     setConflict(null);
     setPatientSearch('');
     setPatientResults([]);
-  }, [isOpen, mode, existingAppointment, initialData, currentUserId]);
+  }, [isOpen, mode, existingAppointment, initialData, currentUserId, user]);
 
   // Fetch services when clinic changes
   useEffect(() => {
@@ -406,38 +413,30 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
     try {
       if (mode === 'create') {
-        const servicesToBook = [form.serviceId, ...(form.additionalServiceIds || [])].filter(id => !!id);
-        
-        let currentStartTime = startUTC;
-        
-        for (const sId of servicesToBook) {
-          const serviceObj = availableServices.find(s => s.id === sId);
-          const duration = Number(serviceObj?.durationMinutes || serviceObj?.duration || 30);
-          const currentEndTime = new Date(currentStartTime.getTime() + duration * 60000);
-          
-          const payload: any = {
-            clinicId: form.clinicId,
-            serviceId: sId,
-            providerId: form.salesPersonId || undefined,
-            startTime: currentStartTime.toISOString(),
-            endTime: currentEndTime.toISOString(),
-            status: overrideStatus || form.status,
-            notes: form.notes,
-          };
+        const additionalServiceIds = (form.additionalServiceIds || []).filter(id => !!id && id !== form.serviceId);
 
-          if (form.isNewPatient && form.newPatientDetails) {
-            payload.clientId = '00000000-0000-0000-0000-000000000000'; // dummy ID for backend to know it's a new customer
-            payload.clientDetails = form.newPatientDetails;
-          } else {
-            payload.clientId = form.patientId;
-          }
+        const payload: any = {
+          clinicId: form.clinicId,
+          serviceId: form.serviceId,
+          additionalServiceIds: additionalServiceIds.length > 0 ? additionalServiceIds : undefined,
+          providerId: form.salesPersonId || effectiveUserId || undefined,
+          bookedById: effectiveUserId || undefined,
+          startTime: startUTC.toISOString(),
+          endTime: endUTC.toISOString(),
+          status: overrideStatus || form.status,
+          notes: form.notes,
+        };
 
-          await bookingAPI.createAppointment(payload);
-          
-          currentStartTime = currentEndTime;
+        if (form.isNewPatient && form.newPatientDetails) {
+          payload.clientId = '00000000-0000-0000-0000-000000000000'; // dummy ID for backend to know it's a new customer
+          payload.clientDetails = form.newPatientDetails;
+        } else {
+          payload.clientId = form.patientId;
         }
 
-        toast.success('Appointments created successfully!');
+        await bookingAPI.createAppointment(payload);
+
+        toast.success('Appointment created successfully!');
       } else {
         await bookingAPI.updateAppointment(existingAppointment!.id, {
           startTime: startUTC.toISOString(),
@@ -795,12 +794,36 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
                 <option value="">Unassigned</option>
-                 {salespersons.map(sp => (
-                   <option key={sp.id} value={sp.id}>{sp.name}</option>
-                 ))}
-                 {user && !salespersons.some(sp => sp.id === user.id) && (
-                   <option value={user.id}>{`${user.firstName || ''} ${user.lastName || ''} (Me)`}</option>
-                 )}
+                {salespersons.map(sp => (
+                  <option key={sp.id} value={sp.id}>{sp.name}</option>
+                ))}
+                {user && !salespersons.some(sp => sp.id === user.id) && (
+                  <option value={user.id}>{`${user.firstName || ''} ${user.lastName || ''} (Me)`.trim()}</option>
+                )}
+                {existingAppointment?.bookedBy &&
+                  !salespersons.some(sp => sp.id === existingAppointment.bookedBy?.id) &&
+                  existingAppointment.bookedBy?.id !== user?.id && (
+                    <option value={existingAppointment.bookedBy.id}>
+                      {`${existingAppointment.bookedBy.firstName || ''} ${existingAppointment.bookedBy.lastName || ''} (Booked by)`.trim()}
+                    </option>
+                )}
+                {existingAppointment?.provider &&
+                  !salespersons.some(sp => sp.id === existingAppointment.provider.id) &&
+                  existingAppointment.provider.id !== user?.id &&
+                  existingAppointment.provider.id !== existingAppointment?.bookedBy?.id && (
+                    <option value={existingAppointment.provider.id}>
+                      {`${existingAppointment.provider.firstName || ''} ${existingAppointment.provider.lastName || ''}`.trim()}
+                    </option>
+                )}
+                {form.salesPersonId &&
+                  !salespersons.some(sp => sp.id === form.salesPersonId) &&
+                  form.salesPersonId !== user?.id &&
+                  form.salesPersonId !== existingAppointment?.bookedBy?.id &&
+                  form.salesPersonId !== existingAppointment?.provider?.id && (
+                    <option value={form.salesPersonId}>
+                      {existingAppointment?.providerName || (existingAppointment as any)?.bookedByName || 'Assigned Staff'}
+                    </option>
+                )}
               </select>
             </div>
 
