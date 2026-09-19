@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { BiX } from 'react-icons/bi';
 
 interface BookingNoteModalProps {
@@ -24,7 +24,7 @@ const BookingNoteModal: React.FC<BookingNoteModalProps> = ({ isOpen, onClose, on
  </button>
  <h2 className="text-lg font-semibold mb-4">Add a booking note</h2>
  <label htmlFor="bookingNote" className="block text-sm mb-1">
- Note for the beauty doctors
+ Note for <span className="notranslate">Beauty Doctors</span>
  </label>
  <textarea
  id="bookingNote"

@@ -226,7 +226,7 @@ export const Treatments: React.FC = () => {
  </a>
  </div>
 
- <p className="text-center mt-10 text-[9px] font-black uppercase tracking-widest text-gray-300">Beauty & Doctors Official Network</p>
+ <p className="text-center mt-10 text-[9px] font-black uppercase tracking-widest text-gray-300"><span className="notranslate">Beauty & Doctors</span> Official Network</p>
  </motion.div>
  </div>
  )}

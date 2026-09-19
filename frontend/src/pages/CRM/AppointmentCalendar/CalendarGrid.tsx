@@ -4,6 +4,21 @@ import {
   eachDayOfInterval, startOfDay, parseISO,
 } from 'date-fns';
 import { Trash2, Lock } from 'lucide-react';
+
+const getFormattedDay = (date: Date, fmt: string = 'EEE') => {
+  const lang = localStorage.getItem('preferredLang') || 'en';
+  if (lang === 'el') {
+    if (fmt === 'EEE') {
+      return ['ΚΥΡ', 'ΔΕΥ', 'ΤΡΙ', 'ΤΕΤ', 'ΠΕΜ', 'ΠΑΡ', 'ΣΑΒ'][date.getDay()];
+    }
+    if (fmt === 'EEEE, MMM d') {
+      const elDays = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
+      const elMonths = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
+      return `${elDays[date.getDay()]}, ${elMonths[date.getMonth()]} ${date.getDate()}`;
+    }
+  }
+  return format(date, fmt);
+};
 import { HOUR_HEIGHT_PX, SLOT_INTERVAL_MIN, STATUS_CONFIG } from './constants';
 import { AppointmentCard } from './AppointmentCard';
 import { getClinicLocalDate, getClinicLocalTime } from './useCalendarData';
@@ -279,7 +294,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
             }`}
           >
             <span className={`text-[10px] font-bold uppercase tracking-widest ${isToday(day) ? 'text-indigo-500' : 'text-slate-400'}`}>
-              {format(day, 'EEE')}
+              <span className="notranslate">{getFormattedDay(day, 'EEE')}</span>
             </span>
             <div className={`w-8 h-8 flex items-center justify-center rounded-full mt-0.5 ${
               isToday(day) ? 'bg-indigo-600 text-white' : 'text-slate-800'
@@ -467,7 +482,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ appointments, days, onEdit }) =
                 {format(day, 'd')}
               </div>
               <span className="text-[11px] font-black uppercase tracking-wide">
-                {format(day, 'EEEE, MMM d')}
+                <span className="notranslate">{getFormattedDay(day, 'EEEE, MMM d')}</span>
               </span>
             </div>
 

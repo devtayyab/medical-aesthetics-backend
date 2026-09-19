@@ -118,7 +118,7 @@ const ClinicReviews: React.FC<ClinicReviewsProps> = ({ clinicId, ServiceData: _S
  <div className="bg-[#EDEEF1] p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
  <img src={Certification} alt="Certification" className="mb-2 mx-auto w-14 h-14 object-contain" />
  <h3 className="font-semibold text-gray-700 text-xl mb-3">Certification</h3>
- <p className="text-gray-600 text-sm sm:text-base">Approved by beauty doctors</p>
+ <p className="text-gray-600 text-sm sm:text-base">Approved by <span className="notranslate">Beauty Doctors</span></p>
  </div>
 
  <div className="bg-[#EDEEF1] p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
