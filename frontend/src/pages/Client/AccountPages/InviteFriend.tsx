@@ -191,7 +191,11 @@ export const InviteFriend: React.FC = () => {
  <div className="flex flex-col gap-6">
  {/* Message preview box */}
  <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl sm:rounded-3xl px-4 sm:px-8 py-4 group hover:border-[#CBFF38] transition-all relative">
- <p className="text-xs font-bold text-gray-700 leading-relaxed whitespace-pre-line pr-8">{inviteMessage}</p>
+ <p className="text-xs font-bold text-gray-700 leading-relaxed whitespace-pre-line pr-8">
+ {userName} has invited you to join <span className="notranslate">Beauty Doctors</span>!{'\n'}
+ Register now and get €5 off your first aesthetic treatment.{'\n'}
+ {inviteLink}
+ </p>
  <button
  onClick={copyToClipboard}
  className="absolute top-4 right-4 text-gray-300 hover:text-black transition-colors"

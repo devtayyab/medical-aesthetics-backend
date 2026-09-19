@@ -72,7 +72,7 @@ export const Footer: React.FC = () => {
  to="/"
  className="text-white transition hover:text-[#CBFF38]"
  >
- Home
+ <span className="notranslate">{localStorage.getItem('preferredLang') === 'el' ? 'Αρχική' : 'Home'}</span>
  </Link>
  </li>
  <li>
@@ -169,7 +169,7 @@ export const Footer: React.FC = () => {
  type="submit"
  className="whitespace-nowrap rounded-[8px] bg-[#CBFF38] px-4 py-2 font-black text-[10px] uppercase tracking-widest text-[#2D3748] transition hover:bg-lime-400"
  >
- Subscribe
+ <span className="notranslate">{localStorage.getItem('preferredLang') === 'el' ? 'ΕΓΓΡΑΦΗ' : 'Subscribe'}</span>
  </button>
  </div>
  </div>

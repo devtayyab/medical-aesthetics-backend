@@ -581,7 +581,7 @@ export const Header: React.FC = () => {
  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
  >
  <User size={20} />
- <span>{(user?.firstName ||"User").split("")[0]}</span>
+  <span className="notranslate">{(user?.firstName ||"User")}</span>
  </button>
 
  {isUserMenuOpen && (
@@ -670,7 +670,7 @@ export const Header: React.FC = () => {
 
  {!isAuthenticated && (
  <div className="hidden md:flex items-center gap-2 justify-center mt-5 relative z-20 flex-wrap px-4">
- <Link to="/" className={`${navItemStyle} ${location.pathname === '/' ? activeNavItemStyle : ''}`}>Home</Link>
+ <Link to="/" className={`${navItemStyle} ${location.pathname === '/' ? activeNavItemStyle : ''}`}><span className="notranslate">{currentLang === 'el' ? 'Αρχική' : 'Home'}</span></Link>
  {navCategories.length > 0 ? (
  navCategories.map((cat) => {
  const hasChildren = cat.children && cat.children.length > 0;
@@ -774,7 +774,7 @@ export const Header: React.FC = () => {
   <User size={18} className="text-[#CBFF38]" />
   </div>
   <div>
-  <p className="text-sm font-black text-gray-900 uppercase tracking-tight">
+  <p className="text-sm font-black text-gray-900 uppercase tracking-tight notranslate">
   {user?.firstName} {user?.lastName}
   </p>
   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">

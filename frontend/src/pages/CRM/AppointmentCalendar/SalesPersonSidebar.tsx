@@ -88,7 +88,7 @@ export const SalesPersonSidebar: React.FC<SalesPersonSidebarProps> = ({
             >
               {/* Avatar */}
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-black ${isSelected ? 'bg-white/20 text-white' : `${colors.bg} ${colors.text}`
+                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-black notranslate ${isSelected ? 'bg-white/20 text-white' : `${colors.bg} ${colors.text}`
                   }`}
               >
                 {sp.initials}
@@ -98,7 +98,7 @@ export const SalesPersonSidebar: React.FC<SalesPersonSidebarProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
                   <p
-                    className={`text-[11px] font-bold truncate ${isSelected ? 'text-white' : 'text-slate-700'
+                    className={`text-[11px] font-bold truncate notranslate ${isSelected ? 'text-white' : 'text-slate-700'
                       }`}
                   >
                     {sp.name}
@@ -140,7 +140,7 @@ export const SalesPersonSidebar: React.FC<SalesPersonSidebarProps> = ({
                 }`}
             >
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-black ${selectedId === currentUserId
+                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-black notranslate ${selectedId === currentUserId
                     ? 'bg-white/20 text-white'
                     : 'bg-indigo-100 text-indigo-700'
                   }`}
@@ -149,7 +149,7 @@ export const SalesPersonSidebar: React.FC<SalesPersonSidebarProps> = ({
               </div>
               <div className="min-w-0">
                 <p
-                  className={`text-[11px] font-bold truncate ${selectedId === currentUserId ? 'text-white' : 'text-slate-700'
+                  className={`text-[11px] font-bold truncate notranslate ${selectedId === currentUserId ? 'text-white' : 'text-slate-700'
                     }`}
                 >
                   {currentUserName || 'Me'}

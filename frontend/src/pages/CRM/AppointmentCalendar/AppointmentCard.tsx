@@ -138,7 +138,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
               className="w-1.5 h-1.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: borderColor }}
             />
-            <span className="text-[10px] font-black text-slate-800 truncate leading-tight">
+            <span className="text-[10px] font-black text-slate-800 truncate leading-tight notranslate">
               {clientName}
             </span>
             {!isBlocked && totalServices > 1 && (
@@ -192,7 +192,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
               style={{ background: bgColor, borderBottom: `2px solid ${borderColor}` }}
             >
               <div className="flex flex-col gap-0.5">
-                <span className="text-[13px] font-black text-slate-800 leading-tight">{clientName}</span>
+                <span className="text-[13px] font-black text-slate-800 leading-tight notranslate">{clientName}</span>
                 {clinicName && (
                   <div className="flex items-center gap-1 text-slate-500">
                     <Building2 className="w-3 h-3" />
@@ -246,7 +246,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
                       key={idx}
                       className={`rounded-xl px-3 py-2 flex items-center justify-between ${idx === 0 ? 'bg-emerald-50' : 'bg-slate-50'}`}
                     >
-                      <span className={`text-[10px] font-bold truncate mr-2 ${idx === 0 ? 'text-slate-700' : 'text-slate-500'}`}>
+                      <span className={`text-[10px] font-bold truncate mr-2 notranslate ${idx === 0 ? 'text-slate-700' : 'text-slate-500'}`}>
                         {svc.name}
                         {svc.isPrimary && totalServices > 1 && (
                           <span className="ml-1 text-[7px] font-black text-emerald-600 bg-emerald-100 px-1 rounded-full">PRIMARY</span>

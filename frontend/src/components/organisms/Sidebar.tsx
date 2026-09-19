@@ -214,11 +214,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
  <aside className="w-64 lg:w-72 bg-white text-gray-900 flex flex-col border-r border-gray-100 shadow-sm h-full overflow-hidden shrink-0">
  <Link to={getHomePath(role)} className="p-6 border-b border-gray-50 bg-gradient-to-tr from-white to-gray-50/50 block hover:bg-gray-50/80 transition-all group">
  <div className="flex items-center gap-4">
- <div className="size-12 bg-black rounded-2xl flex items-center justify-center text-[#CBFF38] shadow-xl shadow-lime-500/10 font-black text-xl border border-white/10 group-hover:rotate-6 transition-transform">
+ <div className="size-12 bg-black rounded-2xl flex items-center justify-center text-[#CBFF38] shadow-xl shadow-lime-500/10 font-black text-xl border border-white/10 group-hover:rotate-6 transition-transform notranslate">
  {user.firstName?.substring(0, 1).toUpperCase() || 'U'}
  </div>
  <div className="flex-1 min-w-0">
- <h2 className="text-sm font-black text-black uppercase tracking-tighter leading-tight truncate">
+ <h2 className="text-sm font-black text-black uppercase tracking-tighter leading-tight truncate notranslate">
  {user?.firstName} {user?.lastName}
  </h2>
  <div className="flex items-center gap-1.5 mt-0.5">
