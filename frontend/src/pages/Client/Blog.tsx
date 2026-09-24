@@ -111,7 +111,7 @@ export const Blog: React.FC = () => {
  </h1>
 
  <p className="text-gray-500 mt-4 sm:mt-6 font-bold text-sm sm:text-lg max-w-lg leading-relaxed">
- Expert treatment guides, clinical science, and beauty philosophy from our leading aesthetic professionals.
+ Expert treatment guides, clinical insights and aesthetic medicine perspectives.
  </p>
  </div>
  </div>

@@ -70,14 +70,14 @@ export const MessagesPage: React.FC = () => {
  Messages
  </h1>
  <p className="text-gray-500 text-[10px] sm:text-xs font-medium max-w-md leading-tight">
- Manage real-time clinical transmissions and secure patient communications.
+ Communicate securely with your selected doctor or clinic, or contact Beauty Doctors Support for account and appointment assistance.
  </p>
  </div>
  <button 
  onClick={() => setShowNewChatModal(true)}
  className="bg-[#CBFF38] text-black h-9 sm:h-12 px-4 sm:px-6 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] flex items-center justify-center gap-2 hover:scale-105 transition-all shadow-lg w-full sm:w-auto shrink-0"
  >
- <Plus size={16} /> Initialize
+ <Plus size={16} /> Start Conversation
  </button>
  </div>
 
@@ -88,7 +88,7 @@ export const MessagesPage: React.FC = () => {
  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
  <input 
  type="text" 
- placeholder="Search matrix..."
+ placeholder="Search conversations..."
  className="w-full h-10 sm:h-11 bg-white rounded-xl pl-12 pr-4 text-xs font-medium border border-gray-200 focus:border-[#CBFF38] text-gray-900 transition-all outline-none"
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
@@ -141,8 +141,8 @@ export const MessagesPage: React.FC = () => {
  <div className="size-16 sm:size-20 bg-white/5 rounded-3xl flex items-center justify-center mb-6 text-gray-200">
  <MessageSquare className="size-8 sm:size-10" />
  </div>
- <h2 className="text-lg sm:text-xl font-black uppercase tracking-widest mb-2 text-gray-300">Select Transmission</h2>
- <p className="text-[10px] font-bold text-gray-400 uppercase max-w-xs tracking-wider">Initialize a communication channel to begin clinical data exchange.</p>
+ <h2 className="text-lg sm:text-xl font-black uppercase tracking-widest mb-2 text-gray-300">Select a Conversation</h2>
+ <p className="text-[10px] font-bold text-gray-400 uppercase max-w-xs tracking-wider">Choose a conversation from the list or start a new conversation to communicate.</p>
  </div>
  )}
  </AnimatePresence>

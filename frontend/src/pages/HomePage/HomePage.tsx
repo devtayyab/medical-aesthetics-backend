@@ -221,13 +221,12 @@ const mainCategories = [
  <div className="max-w-[1200px] mx-auto w-full px-6">
  <div className="flex flex-col max-w-xl">
   <h1 className="text-black text-xl sm:text-3xl md:text-[40px] font-black mb-2 leading-tight uppercase tracking-tight">
-  BOOK YOUR NEXT <br />
-  <span className="text-[#A3E635] inline-block">BEAUTY TREATMENT</span>
+  FIND THE RIGHT <br />
+                  <span className="text-[#A3E635] inline-block">TREATMENT FOR YOU</span>
   </h1>
 
  <p className="text-gray-700 text-sm mb-4 max-w-md leading-snug font-medium">
- Book your appointment easily and quickly
- with specialized doctors and modern treatments.
+ Explore aesthetic and medical treatments and speak with our medical team for personalized guidance.
  </p>
 
  <div className="w-full max-w-[480px]">
@@ -319,7 +318,7 @@ const mainCategories = [
  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
  <div>
  <h2 className="text-2xl font-bold text-[#33373F]">Featured Treatments</h2>
- <p className="text-gray-600 mt-1">Top-rated treatments recommended for you</p>
+ <p className="text-gray-600 mt-1">Explore selected treatments and medical services.</p>
  </div>
  <button
  onClick={() => navigate('/treatments')}
@@ -498,16 +497,16 @@ const mainCategories = [
  />
  <div className="p-6 sm:p-8 flex flex-col flex-1">
  <h3 className="text-xl font-bold text-gray-900 mb-3">
- Top-Rated Treatments
+ Aesthetic Treatments
  </h3>
  <p className="text-gray-600 text-base leading-relaxed flex-1 mb-6">
- Discover elite aesthetic protocols recognized for excellence. Backed by clinical science and expert results.
+ Explore modern aesthetic treatments delivered by specialized medical professionals.
  </p>
  <button 
  onClick={() => navigate('/treatments')}
  className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm gap-2"
  >
- Explore Top Treatments
+ Explore Aesthetic Treatments
  <ArrowRight className="h-4 w-4" />
  </button>
  </div>
@@ -515,32 +514,7 @@ const mainCategories = [
  </div>
  </section>
 
- <section className="bg-[#1A202C] text-white py-12 sm:py-16">
- <div className="max-w-[1200px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
- <div className="space-y-6 text-center lg:text-left">
- <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
- Own a medical <br /> <span className="text-[#CBFF38]">aesthetics clinic?</span>
- </h2>
- <p className="text-gray-300 text-lg leading-relaxed max-w-lg mx-auto lg:mx-0">
- We'll help you grow your practice and attract more patients with
- our easy-to-use booking platform.
- </p>
- <a 
- href="mailto:info@beautydoctors.gr?subject=Clinic%20Partnership%20Inquiry"
- className="inline-block bg-[#CBFF38] text-[#1A202C] px-8 py-4 rounded-xl font-bold hover:bg-white transition-colors transform hover:-translate-y-1 no-underline"
- >
- Partner With Us
- </a>
- </div>
- <div className="w-full flex justify-center lg:justify-end">
- <img
- src={OnlineClinicHome}
- alt="Online Clinic Dashboard"
- className="w-full max-w-[500px] rounded-2xl shadow-2xl border-4 border-[#2D3748]"
- />
- </div>
- </div>
- </section>
+ 
 
  <section className="pt-16 bg-gray-50 relative overflow-hidden">
  <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">

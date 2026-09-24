@@ -59,7 +59,7 @@ export const Settings: React.FC = () => {
  const defaultSettings = {
  inspirationOffers: {
  sms: false,
- email: true,
+ email: false, // Default OFF as per GDPR opt-in rules
  push: true,
  },
  privacy: {
@@ -96,23 +96,26 @@ export const Settings: React.FC = () => {
 
  const [saveSuccess, setSaveSuccess] = useState(false);
  const [isDeactivating, setIsDeactivating] = useState(false);
+  const handleDeactivate = async () => {
+    const confirmationNotice = 
+      "Are you sure you want to request account deletion?\n\n" +
+      "Deleting your Beauty Doctors account does not necessarily delete medical records held independently by doctors or clinics, or information that must be retained where required by law.";
 
- const handleDeactivate = async () => {
-   if (window.confirm("Are you sure you want to request termination? You will be logged out and unable to login until a super admin reactivates your account.")) {
-     setIsDeactivating(true);
-     try {
-       await userAPI.deactivateData();
-       dispatch(logout());
-       navigate("/login", { replace: true });
-       alert("Your account has been terminated successfully.");
-     } catch (err: any) {
-       console.error("Failed to deactivate account:", err);
-       alert(err.response?.data?.message || "Failed to terminate account. Please try again.");
-     } finally {
-       setIsDeactivating(false);
-     }
-   }
- };
+    if (window.confirm(confirmationNotice)) {
+      setIsDeactivating(true);
+      try {
+        await userAPI.deactivateData();
+        dispatch(logout());
+        navigate("/login", { replace: true });
+        alert("Your account deletion request has been submitted successfully.");
+      } catch (err: any) {
+        console.error("Failed to deactivate account:", err);
+        alert(err.response?.data?.message || "Failed to submit account deletion request. Please try again.");
+      } finally {
+        setIsDeactivating(false);
+      }
+    }
+  };
 
  const toggle = async (section: keyof typeof settings, key: string) => {
  const newSettings = {
@@ -214,15 +217,15 @@ export const Settings: React.FC = () => {
  </div>
  <div>
  <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Notification Feed</h3>
- <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Configure clinical alerts & offers</p>
+ <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Manage service notifications & marketing preferences</p>
  </div>
  </div>
 
  <div className="space-y-10">
  {[
- { section: 'inspirationOffers', key: 'email', label: 'Clinical Newsletters', d: 'Periodic updates on new treatments and aesthetic science.', icon: <Mail size={16} /> },
- { section: 'inspirationOffers', key: 'sms', label: 'Priority SMS', d: 'Get flash alerts for last-minute appointment availability.', icon: <Smartphone size={16} /> },
- { section: 'inspirationOffers', key: 'push', label: 'Application Alerts', d: 'Receive instant notifications regarding your bookings.', icon: <Sliders size={16} /> },
+ { section: 'inspirationOffers', key: 'email', label: 'Newsletters & Updates', d: 'Receive Beauty Doctors news, treatment information and updates by email.', icon: <Mail size={16} /> },
+ { section: 'inspirationOffers', key: 'sms', label: 'Priority SMS Alerts', d: 'Receive optional SMS updates about appointment availability and Beauty Doctors offers.', icon: <Smartphone size={16} /> },
+ { section: 'inspirationOffers', key: 'push', label: 'Application Alerts', d: 'Receive important notifications about your appointments, messages and account activity.', icon: <Sliders size={16} /> },
  ].map((item, i) => (
  <div key={i} className="flex flex-row items-start sm:items-center justify-between gap-4 group">
  <div className="max-w-md">
@@ -242,38 +245,12 @@ export const Settings: React.FC = () => {
  </div>
  </motion.div>
 
- {/* Privacy Card */}
- <motion.div 
- initial={{ opacity: 0, y: 20 }}
- animate={{ opacity: 1, y: 0 }}
- transition={{ delay: 0.1 }}
- className={glassCard}
- >
- <div className="p-6 sm:p-8 md:p-12 text-gray-900">
- <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-12">
- <div className="size-12 sm:size-16 shrink-0 rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl">
- <ShieldOff size={24} />
- </div>
- <div>
- <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Data Intelligence</h3>
- <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Manage your digital footprint</p>
- </div>
- </div>
+ {/* Data Intelligence Card - Temporarily hidden for legal review */}
+        {/*
+        <motion.div ... Anonymous Protocols hidden ... />
+        */}
 
- <div className="flex flex-row items-start sm:items-center justify-between gap-4">
- <div className="max-w-md">
- <p className="font-black uppercase text-gray-900 mb-2 tracking-tight">Anonymous Protocols</p>
- <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">Allow us to analyze treatment results anonymously for clinical research.</p>
- </div>
- <div 
- className={toggleSwitch(settings.privacy.shareData)} 
- onClick={() => toggle('privacy', 'shareData')}
- />
- </div>
- </div>
- </motion.div>
-
- {/* Danger Card */}
+        {/* Danger Card */}
  <motion.div 
  initial={{ opacity: 0, y: 20 }}
  animate={{ opacity: 1, y: 0 }}
@@ -286,8 +263,8 @@ export const Settings: React.FC = () => {
  <Trash2 size={24} />
  </div>
  <div className="text-center md:text-left">
- <h3 className="text-xl md:text-2xl font-black uppercase text-red-600 tracking-tighter">Deactivate Access</h3>
- <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Permanently remove clinical profile</p>
+ <h3 className="text-xl md:text-2xl font-black uppercase text-red-600 tracking-tighter">DELETE ACCOUNT</h3>
+ <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Request deletion of your Beauty Doctors account.</p>
  </div>
  </div>
  <button 
@@ -295,11 +272,18 @@ export const Settings: React.FC = () => {
  disabled={isDeactivating}
  className="w-full md:w-auto h-14 px-6 md:px-10 rounded-2xl bg-black text-white hover:bg-red-600 font-black uppercase text-[10px] tracking-[0.3em] transition-all shadow-2xl border border-white/10"
  >
- {isDeactivating ? "PROCESSING..." : "Request Termination"}
+ {isDeactivating ? "PROCESSING..." : "REQUEST ACCOUNT DELETION"}
  </button>
  </div>
- 
- {/* Subtle hazard pattern */}
+              
+              {/* Deletion Legal Retention Disclaimer */}
+              <div className="mt-4 p-3.5 rounded-xl bg-red-50/70 border border-red-100 text-left w-full">
+                <p className="text-[10px] text-red-900 font-medium leading-relaxed">
+                  * Deleting your Beauty Doctors account does not necessarily delete medical records held independently by doctors or clinics, or information that must be retained where required by law.
+                </p>
+              </div>
+
+              {/* Subtle hazard pattern */}
  <div className="absolute top-0 right-0 w-32 h-full bg-red-50/20 -skew-x-12 translate-x-10 pointer-events-none" />
  </motion.div>
 

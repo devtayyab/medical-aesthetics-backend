@@ -15,20 +15,19 @@ import SiteLogo from"@/assets/SiteLogo.png";
 import { NotificationDropdown } from"@/components/molecules/NotificationDropdown";
 
 const containerStyle = css`
- max-width: 1440px;
- margin: 0 auto;
- padding: 0 1rem;
- display: flex;
- align-items: center;
- justify-content: space-between;
- height: 4rem;
- @media (min-width: 768px) {
- padding: 0 2rem;
- }
- @media (max-width: 768px) {
- height: 3.5rem;
- padding: 0 0.75rem;
- }
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  height: 4.5rem;
+  @media (max-width: 768px) {
+    height: 3.75rem;
+    padding: 0 0.75rem;
+  }
 `;
 
 const logoStyle = css`
@@ -43,12 +42,14 @@ const logoStyle = css`
 `;
 
 const searchContainerStyle = css`
- flex: 1;
- max-width: 400px;
- margin: 0 1rem;
- @media (max-width: 1024px) {
- display: none;
- }
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  margin: 0 1rem;
+  @media (max-width: 1024px) {
+    display: none;
+  }
 `;
 
 const mobileMenuButtonStyle = css`
@@ -393,7 +394,37 @@ export const Header: React.FC = () => {
 
  return (
  <>
- <header className="bg-[#2D3748] py-2 sm:py-3 sticky top-0 z-[999] border-b border-white/5 backdrop-blur-md">
+ <header className="w-full bg-[#1A202C] sticky top-0 z-[999] border-b border-white/10 backdrop-blur-md">
+      {/* Top Utility Bar with Phone, Email & Clinic Portal */}
+      <div className="w-full border-b border-white/5 bg-black/40 text-gray-300 text-[11px] py-1.5 px-4 sm:px-8">
+        <div className="max-w-[1440px] mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-2">
+              <Phone className="h-3 w-3 text-[#CBFF38]" />
+              <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Call Us:</span>
+              <a href="tel:6948880498" className="hover:text-[#CBFF38] font-bold text-white transition-colors">6948880498</a>
+              <span className="text-gray-600">/</span>
+              <a href="tel:2112184564" className="hover:text-[#CBFF38] font-bold text-white transition-colors">2112184564</a>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <MessageCircle className="h-3 w-3 text-[#CBFF38]" />
+              <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Email:</span>
+              <a href="mailto:info@beautydoctors.gr" className="hover:text-[#CBFF38] font-bold text-white transition-colors">
+                info@beautydoctors.gr
+              </a>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              to="/for-clinics"
+              className="text-[10px] font-black uppercase tracking-wider text-gray-300 hover:text-[#CBFF38] transition-colors"
+            >
+              For Clinics &amp; Partners &rarr;
+            </Link>
+          </div>
+        </div>
+      </div>
  <div className={containerStyle}>
  <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
  <button
@@ -426,107 +457,153 @@ export const Header: React.FC = () => {
  <>
  {user?.role !== 'salesperson' && (
  <div className={searchContainerStyle}>
- <ul className="flex justify-center items-center gap-3 lg:gap-4 2xl:gap-8 text-white whitespace-nowrap transition-all">
- <li
- className="cursor-pointer relative"
- onMouseEnter={() => setIsCategoriesOpen(true)}
- onMouseLeave={() => setIsCategoriesOpen(false)}
- >
- <Link
- to="/treatments"
- className={`flex items-center gap-1 text-[11px] font-black uppercase tracking-[0.15em] transition-all ${location.pathname.startsWith("/treatments")
- ?"text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
- :"text-gray-400 hover:text-white"
- }`}
- >
- Categories <ChevronDown size={12} className={`transition-transform ${isCategoriesOpen ? 'rotate-180' : ''}`} />
- </Link>
+ <ul className="flex justify-center items-center gap-3 lg:gap-4 xl:gap-6 2xl:gap-8 text-white whitespace-nowrap transition-all">
+                {/* Treatments with Mega-Menu */}
+                <li
+                  className="cursor-pointer relative"
+                  onMouseEnter={() => setIsCategoriesOpen(true)}
+                  onMouseLeave={() => setIsCategoriesOpen(false)}
+                >
+                  <Link
+                    to="/treatments"
+                    className={`flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.15em] transition-all ${
+                      location.pathname.startsWith("/treatments")
+                        ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Treatments <ChevronDown size={12} className={`transition-transform duration-200 ${isCategoriesOpen ? 'rotate-180 text-[#CBFF38]' : ''}`} />
+                  </Link>
 
- {isCategoriesOpen && navCategories.length > 0 && (
- <div className="absolute left-0 top-full pt-3 z-50">
- <div className="bg-[#0B1120] border border-white/10 rounded-2xl shadow-2xl p-4 min-w-[260px] max-h-[70vh] overflow-y-auto grid gap-1">
- {navCategories.map((cat) => (
- <div key={cat.id}>
- <button
- onClick={() => { setIsCategoriesOpen(false); navigate(`/search?category=${encodeURIComponent(cat.name)}`); }}
- className="w-full text-left px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest text-white hover:bg-[#CBFF38] hover:text-black transition-all flex items-center gap-2"
- >
- {cat.icon ? <span className="not-">{cat.icon}</span> : null}{cat.name}
- </button>
- {(cat.children || []).length > 0 && (
- <div className="pl-4 mt-0.5 mb-1 flex flex-col">
- {(cat.children || []).map((sub) => (
- <button
- key={sub.id}
- onClick={() => { setIsCategoriesOpen(false); navigate(`/search?category=${encodeURIComponent(sub.name)}`); }}
- className="text-left px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-[#CBFF38] transition-all"
- >
- ↳ {sub.name}
- </button>
- ))}
- </div>
- )}
- </div>
- ))}
- </div>
- </div>
- )}
- </li>
- <li className="cursor-pointer">
- <Link
- to="/services"
- className={`text-[11px] font-black uppercase tracking-[0.15em] transition-all ${location.pathname.startsWith("/services")
- ?"text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
- :"text-gray-400 hover:text-white"
- }`}
- >
- Privileges
- </Link>
- </li>
- <li className="cursor-pointer">
- <Link
- to="/blog"
- className={`text-[11px] font-black uppercase tracking-[0.15em] transition-all ${location.pathname.startsWith("/blog") || location.pathname.startsWith("/articles")
- ?"text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
- :"text-gray-400 hover:text-white"
- }`}
- >
- Articles
- </Link>
- </li>
- </ul>
+                  {isCategoriesOpen && navCategories.length > 0 && (
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full pt-4 z-50 w-[720px] max-w-[90vw]">
+                      <div className="bg-[#0B1120] border border-white/10 rounded-2xl shadow-2xl p-6 backdrop-blur-xl">
+                        <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
+                          <div>
+                            <h4 className="text-white text-xs font-black uppercase tracking-wider">Medical & Aesthetic Treatments</h4>
+                            <p className="text-gray-400 text-[11px] mt-0.5">Explore treatments delivered by specialized medical practitioners</p>
+                          </div>
+                          <Link
+                            to="/treatments"
+                            onClick={() => setIsCategoriesOpen(false)}
+                            className="text-[11px] font-black uppercase tracking-widest text-[#CBFF38] hover:underline flex items-center gap-1"
+                          >
+                            All Treatments &rarr;
+                          </Link>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-6 max-h-[60vh] overflow-y-auto pr-2">
+                          {navCategories.map((cat) => (
+                            <div key={cat.id} className="space-y-2">
+                              <button
+                                onClick={() => {
+                                  setIsCategoriesOpen(false);
+                                  navigate(`/search?category=${encodeURIComponent(cat.name)}`);
+                                }}
+                                className="w-full text-left font-black text-xs uppercase tracking-wider text-white hover:text-[#CBFF38] transition-colors flex items-center gap-2 group"
+                              >
+                                {cat.icon && <span className="text-sm">{cat.icon}</span>}
+                                <span className="group-hover:translate-x-0.5 transition-transform">{cat.name}</span>
+                              </button>
+
+                              {(cat.children || []).length > 0 && (
+                                <div className="flex flex-col space-y-1 pl-4 border-l border-white/10">
+                                  {(cat.children || []).map((sub) => (
+                                    <button
+                                      key={sub.id}
+                                      onClick={() => {
+                                        setIsCategoriesOpen(false);
+                                        navigate(`/search?category=${encodeURIComponent(sub.name)}`);
+                                      }}
+                                      className="text-left text-[11px] text-gray-400 hover:text-white transition-colors py-0.5"
+                                    >
+                                      {sub.name}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </li>
+
+                {/* Doctors / Clinics */}
+                <li className="cursor-pointer">
+                  <Link
+                    to="/search"
+                    className={`text-[11px] font-black uppercase tracking-[0.15em] transition-all ${
+                      location.pathname === "/search" && !location.search.includes("category=")
+                        ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Doctors/Clinics
+                  </Link>
+                </li>
+
+                {/* Privileges */}
+                <li className="cursor-pointer">
+                  <Link
+                    to="/services"
+                    className={`text-[11px] font-black uppercase tracking-[0.15em] transition-all ${
+                      location.pathname.startsWith("/services")
+                        ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Privileges
+                  </Link>
+                </li>
+
+                {/* Articles */}
+                <li className="cursor-pointer">
+                  <Link
+                    to="/blog"
+                    className={`text-[11px] font-black uppercase tracking-[0.15em] transition-all ${
+                      location.pathname.startsWith("/blog") || location.pathname.startsWith("/articles")
+                        ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Articles
+                  </Link>
+                </li>
+
+                {/* Contact */}
+                <li className="cursor-pointer">
+                  <Link
+                    to="/contact"
+                    className={`text-[11px] font-black uppercase tracking-[0.15em] transition-all ${
+                      location.pathname.startsWith("/contact")
+                        ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Contact
+                  </Link>
+                </li>
+
+                {/* For Clinics */}
+                <li className="cursor-pointer">
+                  <Link
+                    to="/for-clinics"
+                    className={`text-[10px] font-black uppercase tracking-[0.15em] px-2.5 py-1 rounded-full border border-white/20 transition-all ${
+                      location.pathname.startsWith("/for-clinics") || location.pathname.startsWith("/partners")
+                        ? "bg-[#CBFF38] text-black border-[#CBFF38]"
+                        : "text-gray-400 hover:text-white hover:border-white/40"
+                    }`}
+                  >
+                    For Clinics
+                  </Link>
+                </li>
+              </ul>
  </div>
  )}
 
- {user?.role !== 'salesperson' && (
- <div className="hidden xl:flex items-center gap-4 2xl:gap-6 mr-6 2xl:mr-10 transition-all">
- <div className="flex items-center gap-2">
- <div className="size-9 2xl:size-11 bg-white/5 rounded-full flex items-center justify-center border border-white/10 transition-all">
- <Phone className="h-3.5 w-3.5 2xl:h-4 2xl:w-4 text-white" />
- </div>
- <div className="flex flex-col">
- <span className="text-[10px] 2xl:text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1 transition-all">Call Us</span>
- <div className="text-[11px] 2xl:text-[13px] font-black text-white leading-none flex gap-1 transition-all">
- <a href="tel:6948880498" className="hover:text-[#CBFF38] transition-colors">6948880498</a>
- <span className="text-gray-600">/</span>
- <a href="tel:2112184564" className="hover:text-[#CBFF38] transition-colors">2112184564</a>
- </div>
- </div>
- </div>
-
- <div className="flex items-center gap-2">
- <div className="size-9 2xl:size-11 bg-white/5 rounded-full flex items-center justify-center border border-white/10 transition-all">
- <MessageCircle className="h-4 w-4 2xl:h-5 2xl:w-5 text-white" />
- </div>
- <div className="flex flex-col">
- <span className="text-[10px] 2xl:text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1 transition-all">Email</span>
- <a href="mailto:info@beautydoctors.gr" className="text-[11px] 2xl:text-[13px] font-black text-white leading-none hover:text-[#CBFF38] transition-colors">
- info@beautydoctors.gr
- </a>
- </div>
- </div>
- </div>
- )}
+ 
 
  {isAuthenticated && (
  <div className="md:hidden relative mr-2">
@@ -661,62 +738,13 @@ export const Header: React.FC = () => {
  )}
 
  <button
- className={mobileMenuButtonStyle}
- onClick={() => setIsMobileMenuOpen(true)}
- >
- <Menu size={24} className="text-white" />
- </button>
- </div>
-
- {!isAuthenticated && (
- <div className="hidden md:flex items-center gap-2 justify-center mt-5 relative z-20 flex-wrap px-4">
- <Link to="/" className={`${navItemStyle} ${location.pathname === '/' ? activeNavItemStyle : ''}`}><span className="notranslate">{currentLang === 'el' ? 'Αρχική' : 'Home'}</span></Link>
- {navCategories.length > 0 ? (
- navCategories.map((cat) => {
- const hasChildren = cat.children && cat.children.length > 0;
- return (
- <div key={cat.id} className="relative group">
- <Link
- to={`/search?category=${encodeURIComponent(cat.name)}`}
- className={`${navItemStyle} flex items-center gap-1.5`}
- >
- {cat.name}
- {hasChildren && (
- <ChevronDown size={12} className="opacity-60 transition-transform duration-200 group-hover:rotate-180" />
- )}
- </Link>
-
- {/* Subcategories Dropdown */}
- {hasChildren && (
- <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200">
- <div className="bg-[#0B1120] border border-white/10 rounded-xl shadow-2xl p-2 min-w-[200px] flex flex-col gap-0.5">
- {cat.children!.map((sub) => (
- <Link
- key={sub.id}
- to={`/search?category=${encodeURIComponent(sub.name)}`}
- className="text-left px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-300 hover:text-black hover:bg-[#CBFF38] transition-all"
- >
- {sub.name}
- </Link>
- ))}
- </div>
- </div>
- )}
- </div>
- );
- })
- ) : (
- // Fallback static links while loading
- <>
- <Link to="/search?category=hair-removal" className={navItemStyle}>Hair Removal</Link>
- <Link to="/search?category=facial-aesthetics" className={navItemStyle}>Facial Aesthetics</Link>
- <Link to="/search?category=body-aesthetics" className={navItemStyle}>Body Aesthetics</Link>
- <Link to="/search?q=Plastic Surgery" className={navItemStyle}>Plastic Surgery</Link>
- </>
- )}
- </div>
- )}
- </header>
+          className={mobileMenuButtonStyle}
+          onClick={() => setIsMobileMenuOpen(true)}
+        >
+          <Menu size={24} className="text-white" />
+        </button>
+      </div>
+    </header>
 
   {isMobileMenuOpen && (
   <div className={mobileMenuStyle}>
@@ -842,37 +870,58 @@ export const Header: React.FC = () => {
  </div>
 
  <div className="flex flex-col gap-1 mt-2">
- <Link
- to="/"
- className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname === '/' ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
- onClick={() => setIsMobileMenuOpen(false)}
- >
- Home
- </Link>
- <Link
- to="/search"
- className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/search') || location.pathname.startsWith('/treatments') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
- onClick={() => setIsMobileMenuOpen(false)}
- >
- Treatments
- </Link>
- <Link
- to="/blog"
- className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/blog') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
- onClick={() => setIsMobileMenuOpen(false)}
- >
- Articles
- </Link>
- <Link
- to="/services"
- className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/services') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
- onClick={() => setIsMobileMenuOpen(false)}
- >
- Privileges
- </Link>
- </div>
+            <Link
+              to="/"
+              className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname === '/' ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Home
+            </Link>
+            <Link
+              to="/treatments"
+              className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/treatments') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Treatments
+            </Link>
+            <Link
+              to="/search"
+              className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname === '/search' ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Doctors / Clinics
+            </Link>
+            <Link
+              to="/services"
+              className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/services') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Privileges
+            </Link>
+            <Link
+              to="/blog"
+              className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/blog') || location.pathname.startsWith('/articles') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Articles
+            </Link>
+            <Link
+              to="/contact"
+              className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/contact') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Contact
+            </Link>
+            <Link
+              to="/for-clinics"
+              className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname.startsWith('/for-clinics') ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              For Clinics / Partners
+            </Link>
+          </div>
 
- <div className="flex flex-col gap-2 mt-2">
+          <div className="flex flex-col gap-2 mt-2">
  <span className="text-gray-400 font-black text-[10px] uppercase tracking-widest px-4">Treatments</span>
  {navCategories.length > 0 ? (
  navCategories.map((cat) => {

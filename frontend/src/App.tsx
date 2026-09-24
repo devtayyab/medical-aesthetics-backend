@@ -75,7 +75,8 @@ import { BlogPost } from"@/pages/Client/BlogPost";
 import { Treatments } from"@/pages/Client/Treatments";
 import { Services } from"@/pages/Client/Services";
 import { Legal, SupportCenter, ChatSupport } from"@/pages/Client/InfoPages/InfoPages";
-import { ContactUs } from"@/pages/Client/InfoPages/ContactUs";
+import { ContactUs } from "@/pages/Client/InfoPages/ContactUs";
+import { ForClinics } from "@/pages/Client/ForClinics";
 import { InviteFriend } from"@/pages/Client/AccountPages/InviteFriend";
 import { Settings } from "@/pages/Client/AccountPages/Settings";
 import { Reviews } from "@/pages/Client/Reviews";
@@ -247,6 +248,11 @@ function AppContent() {
     };
   }, []);
 
+  // Re-apply language translation on SPA route change
+  useEffect(() => {
+    (window as any).reapplyLanguage?.();
+  }, [location.pathname]);
+
  // Role-aware redirect after session restore or login
  useEffect(() => {
  if (
@@ -353,6 +359,8 @@ function AppContent() {
  <Route path="/blog/:slug" element={<ClientLayout><BlogPost /></ClientLayout>} />
  <Route path="/treatments" element={<ClientLayout><Treatments /></ClientLayout>} />
  <Route path="/services" element={<ClientLayout><Services /></ClientLayout>} />
+ <Route path="/for-clinics" element={<ClientLayout><ForClinics /></ClientLayout>} />
+ <Route path="/partners" element={<ClientLayout><ForClinics /></ClientLayout>} />
 
  {/* Protected booking route - requires login */}
  <Route

@@ -150,7 +150,7 @@ export const Reviews: React.FC = () => {
  </h1>
 
  <p className="text-gray-600 mt-2 sm:mt-6 font-semibold text-xs sm:text-lg max-w-lg leading-snug sm:leading-relaxed">
- Share your treatment journey with our community. Your reviews help us maintain the highest standards of care.
+ Share your feedback about your appointment and experience with Beauty Doctors.
  </p>
  </div>
  </div>
@@ -235,9 +235,9 @@ export const Reviews: React.FC = () => {
  <div className="size-20 bg-gray-50 rounded-[28px] flex items-center justify-center mx-auto mb-8 text-gray-200">
  <MessageSquare size={40} />
  </div>
- <h3 className="text-3xl font-black uppercase text-gray-900 mb-4 tracking-tighter">No Consultations to Review</h3>
+ <h3 className="text-3xl font-black uppercase text-gray-900 mb-4 tracking-tighter">NO COMPLETED APPOINTMENTS TO REVIEW</h3>
  <p className="text-gray-400 max-w-sm mx-auto text-base font-bold leading-relaxed">
- Your feedback loop opens automatically after every successful treatment at our clinics.
+ You can leave feedback after a completed appointment.
  </p>
  <Link to="/search" className="inline-flex items-center gap-3 mt-12 bg-black text-[#CBFF38] px-8 sm:px-12 h-16 rounded-[20px] font-black uppercase text-xs tracking-[0.2em] hover:bg-gray-900 transition-all shadow-2xl">
  Schedule Visit <Sparkles size={18} />

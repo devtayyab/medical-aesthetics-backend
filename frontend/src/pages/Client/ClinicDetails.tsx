@@ -248,6 +248,14 @@ export const ClinicDetails: React.FC = () => {
                         </div>
                       );
                     })}
+
+                  {/* Medical Assessment Price Notice */}
+                  <div className="mt-6 p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center gap-3">
+                    <Info size={16} className="text-gray-400 shrink-0" />
+                    <p className="text-[11px] text-gray-500 font-medium leading-relaxed">
+                      * Final treatment cost may vary depending on the treatment plan determined following a medical assessment.
+                    </p>
+                  </div>
                 </div>
               )}
 

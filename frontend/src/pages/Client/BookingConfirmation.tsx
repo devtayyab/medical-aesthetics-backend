@@ -166,6 +166,13 @@ const BookingConfirmation: React.FC = () => {
   </div>
   </div>
 
+  {/* Discreet Medical Assessment Note */}
+  <div className="mb-6 p-3.5 rounded-xl bg-gray-50 border border-gray-100 text-left">
+    <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
+      * Treatment suitability and the final treatment plan are confirmed by the treating physician following medical assessment.
+    </p>
+  </div>
+
   <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8 border-t border-gray-100 pt-4 sm:pt-8">
   <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 sm:mb-4">What happens next?</h3>
   <div className="grid grid-cols-3 gap-2 sm:gap-4">

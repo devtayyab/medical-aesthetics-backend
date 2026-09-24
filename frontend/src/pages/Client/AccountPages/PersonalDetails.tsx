@@ -242,7 +242,7 @@ export const PersonalDetails: React.FC = () => {
  </h1>
 
  <p className="text-gray-600 mt-2 sm:mt-4 font-semibold text-xs sm:text-base max-w-lg leading-snug sm:leading-relaxed">
- Keep your account details up to date to receive the best service and personalized treatment plans.
+ Keep your account details up to date for appointments, account notifications and communication with your selected clinics and doctors.
  </p>
  </div>
  </div>

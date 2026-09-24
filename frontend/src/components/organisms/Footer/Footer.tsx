@@ -175,7 +175,26 @@ export const Footer: React.FC = () => {
  </div>
  </form>
  </div>
- </div>
- </footer>
+         {/* Bottom Legal / Copyright / Cookie Settings Bar */}
+        <div className="mt-8 pt-6 border-t border-[#4A5568] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-gray-300">
+          <p>© 2026 Beauty Doctors. All rights reserved.</p>
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 font-medium">
+            <Link to="/legal" className="hover:text-[#CBFF38] transition-colors">Privacy Policy</Link>
+            <Link to="/legal" className="hover:text-[#CBFF38] transition-colors">Terms of Service</Link>
+            <Link to="/medical-disclaimer" className="hover:text-[#CBFF38] transition-colors">Medical Disclaimer</Link>
+            <button 
+              type="button" 
+              onClick={() => {
+                localStorage.removeItem('cookiesAccepted');
+                window.dispatchEvent(new Event('openCookieSettings'));
+              }}
+              className="text-[#CBFF38] hover:underline uppercase text-[10px] font-black tracking-wider cursor-pointer bg-transparent border-0 p-0"
+            >
+              Cookie Settings
+            </button>
+          </div>
+        </div>
+      </div>
+    </footer>
  );
 };

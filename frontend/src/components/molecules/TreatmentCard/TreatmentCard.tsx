@@ -81,77 +81,82 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
  return (
  <>
  <motion.div
- initial={{ opacity: 0, y: 20 }}
- whileInView={{ opacity: 1, y: 0 }}
- viewport={{ once: true }}
- whileHover={{ y: -8 }}
- className="group relative cursor-pointer overflow-hidden rounded-3xl bg-[#FDFDFD] border border-gray-100 shadow-xl transition-all duration-500 mb-8"
- onClick={handleClick}
- >
- <div className="flex flex-col">
- {/* Text Content Top */}
- <div className="p-6 sm:p-8 pb-4">
- <div className="flex items-center gap-2 text-[10px] font-black text-[#CBFF38] uppercase tracking-[0.2em] mb-2 sm:3">
- <Sparkles size={12} /> {treatment.category || 'Clinical Treatment'}
- </div>
- <h3 className="text-2xl sm:text-3xl font-black tracking-tighter text-gray-900 leading-[0.9] mb-3 sm:4 group-hover:text-[#CBFF38] transition-colors">
- {treatment.name}
- </h3>
- <p className="text-[11px] sm:text-[12px] font-medium text-gray-500 leading-relaxed max-w-[90%] sm:max-w-[80%] line-clamp-2">
- {treatment.shortDescription || 'Experience our premium clinical approach with state-of-the-art technology and expert care.'}
- </p>
- </div>
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        whileHover={{ y: -8 }}
+        className="group relative cursor-pointer overflow-hidden rounded-3xl bg-[#FDFDFD] border border-gray-100 shadow-xl transition-all duration-500 h-full flex flex-col justify-between"
+        onClick={handleClick}
+      >
+        <div className="flex flex-col h-full justify-between">
+          {/* Text Content Top with Fixed Unified Dimensions */}
+          <div className="p-6 sm:p-7 pb-4 flex flex-col justify-start">
+            <div className="flex items-center gap-1.5 text-[10px] font-black text-lime-600 uppercase tracking-[0.2em] mb-2 min-h-[1.25rem]">
+              <Sparkles size={12} className="shrink-0 text-lime-500" />
+              <span className="truncate">{treatment.category || 'Clinical Treatment'}</span>
+            </div>
+            <h3 className="text-lg sm:text-xl font-black tracking-tight text-gray-900 leading-snug mb-2 group-hover:text-lime-600 transition-colors line-clamp-2 min-h-[3.25rem] flex items-center">
+              {treatment.name}
+            </h3>
+            <p className="text-[11px] sm:text-[12px] font-medium text-gray-500 leading-relaxed max-w-[90%] sm:max-w-[85%] line-clamp-2 min-h-[2.5rem]">
+              {treatment.shortDescription || 'Experience our premium clinical approach with state-of-the-art technology and expert care.'}
+            </p>
+          </div>
 
- {/* Primary Image */}
- <div className="relative aspect-[4/3] w-full overflow-hidden m-0 rounded-t-2xl bg-slate-100 flex items-center justify-center">
- <img
- src={imageUrl}
- alt={treatment.name}
- onError={() => setImgError(true)}
- className={`w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 ${imgError ? 'opacity-50' : ''}`}
- />
- <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
- 
- {/* Action Button + Clinics Badge Over Image */}
- <div className="absolute bottom-6 left-6 z-10 flex items-center gap-2">
- <button 
- onClick={(e) => { e.stopPropagation(); handleClick(); }}
- className="flex items-center gap-2 bg-[#CBFF38]/20 backdrop-blur-xl border border-[#CBFF38]/40 text-[#CBFF38] px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl"
- >
- <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
- {(treatment as any).clinicsCount > 1 ? 'Compare Clinics' : 'View Treatment'}
- </button>
- </div>
+          {/* Primary Image with strict height & absolute positioning so portrait images never stretch */}
+          <div className="relative w-full aspect-[4/3] h-[220px] sm:h-[240px] overflow-hidden m-0 rounded-t-2xl bg-slate-100 mt-auto">
+            <img
+              src={imageUrl}
+              alt={treatment.name}
+              onError={() => setImgError(true)}
+              className={`absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 ${imgError ? 'opacity-50' : ''}`}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+            
+            {/* Primary Action Button: Always View Treatment */}
+            <div className="absolute bottom-5 left-5 z-10 flex items-center gap-2">
+              <button 
+                onClick={(e) => { e.stopPropagation(); handleClick(); }}
+                className="flex items-center gap-2 bg-[#CBFF38]/20 backdrop-blur-xl border border-[#CBFF38]/40 text-[#CBFF38] px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#CBFF38] hover:text-black transition-all shadow-2xl"
+              >
+                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                View Treatment
+              </button>
+            </div>
 
- {/* Clinics Count Badge - Bottom Right */}
- {(treatment as any).clinicsCount > 1 && (
- <div className="absolute bottom-6 right-6 z-10">
- <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
- <Building2 size={11} className="text-white" />
- <span className="text-[9px] font-black text-white uppercase tracking-wider">
- {(treatment as any).clinicsCount} Clinics
- </span>
- </div>
- </div>
- )}
+            {/* Secondary Action: Compare Clinics Badge only when 2+ clinics exist */}
+            {(treatment as any).clinicsCount > 1 && (
+              <div className="absolute bottom-5 right-5 z-10">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleClick(); }}
+                  className="flex items-center gap-1.5 bg-black/50 hover:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 text-white hover:text-[#CBFF38] hover:border-[#CBFF38]/40 transition-all cursor-pointer shadow-lg"
+                  title="Compare clinics offering this treatment"
+                >
+                  <Building2 size={11} className="text-[#CBFF38]" />
+                  <span className="text-[9px] font-black uppercase tracking-wider">
+                    Compare {(treatment as any).clinicsCount} Clinics
+                  </span>
+                </button>
+              </div>
+            )}
 
- {/* Price Tag - Top Right Overlay */}
- <div className="absolute top-6 right-6 text-right z-10">
- <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
- <p className="text-[8px] font-black text-[#CBFF38] uppercase tracking-[0.2em] mb-0.5">Starts From</p>
- <p className="text-xl font-black text-white tracking-tighter leading-none">€{(treatment as any).fromPrice || '120.00'}</p>
- </div>
- </div>
- </div>
+            {/* Price Tag - Top Right Overlay */}
+            <div className="absolute top-5 right-5 text-right z-10">
+              <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
+                <p className="text-[8px] font-black text-[#CBFF38] uppercase tracking-[0.2em] mb-0.5">Starts From</p>
+                <p className="text-lg sm:text-xl font-black text-white tracking-tighter leading-none">€{(treatment as any).fromPrice || '120.00'}</p>
+              </div>
+            </div>
+          </div>
 
- {/* Decorative Elements */}
- <div className="absolute top-8 right-8">
- <div className="size-10 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-[#CBFF38] group-hover:text-black transition-all">
- <Heart size={18} />
- </div>
- </div>
- </div>
- </motion.div>
+          {/* Decorative Heart Element */}
+          <div className="absolute top-7 right-7">
+            <div className="size-9 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-[#CBFF38] group-hover:text-black transition-all">
+              <Heart size={16} />
+            </div>
+          </div>
+        </div>
+      </motion.div>
 
  {/* Elite Explanation Modal */}
  <AnimatePresence>

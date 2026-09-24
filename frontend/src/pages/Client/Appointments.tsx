@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { css } from "@emotion/css";
 import { 
-  CalendarDays, Clock, MapPin, X, Edit3, 
+  CalendarDays, Clock, MapPin, Shield, X, Edit3, 
   MessageSquare, Star, CreditCard, 
   CheckCircle2, AlertCircle, Plus
 } from "lucide-react";
@@ -296,16 +296,24 @@ export const Appointments: React.FC = () => {
                     <div className={statusBadgeStyle(apt.status)}>
                       {apt.status === 'CONFIRMED' && <CheckCircle2 size={12} />}
                       {apt.status === 'CANCELLED' && <AlertCircle size={12} />}
-                      {apt.status}
+                      {apt.status === 'CONFIRMED' ? 'APPOINTMENT CONFIRMED' : apt.status === 'PENDING_PAYMENT' ? 'PAYMENT PENDING' : apt.status}
                     </div>
                   </div>
 
                   {/* Treatment Detail */}
                   <div className="mb-6 sm:mb-8 min-h-[60px] sm:min-h-[80px]">
-                    <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Selected Procedure</p>
+                    <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">TREATMENT OF INTEREST</p>
                     <h3 className="text-lg sm:text-2xl font-black uppercase text-gray-900 tracking-tighter leading-tight line-clamp-2">
                       {(apt as any).serviceName || apt.service?.treatment?.name || "Aesthetic Protocol"}
                     </h3>
+                  </div>
+
+                  {/* Discreet Medical Assessment Note */}
+                  <div className="mb-4 p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-start gap-2.5">
+                    <Shield size={13} className="text-gray-400 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
+                      Treatment suitability and the final treatment plan are confirmed by the treating physician following medical assessment.
+                    </p>
                   </div>
 
                   {/* Date & Time Grid */}
@@ -346,7 +354,7 @@ export const Appointments: React.FC = () => {
                       )}
                       {apt.status === 'PENDING_PAYMENT' as any && (
                         <button onClick={() => handleRetryPayment(apt)} className="h-10 sm:h-11 px-4 sm:px-6 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center gap-2 text-[9px] sm:text-[10px] font-black uppercase tracking-widest min-h-[44px]" title="Pay Now">
-                          <CreditCard size={14} /> Pay Now
+                          <CreditCard size={14} /> PAY PROVIDER
                         </button>
                       )}
                     </div>
