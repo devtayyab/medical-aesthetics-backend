@@ -253,6 +253,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       date: form.date,
       providerId: form.salesPersonId || undefined,
       allowPast: true,
+      excludeAppointmentId: mode === 'edit' && existingAppointment ? existingAppointment.id : undefined,
     })
       .then((res: any) => {
         const slotsData = res.data?.slots || res.data?.data || res.data;
@@ -270,7 +271,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       })
       .catch(() => setAvailableSlots([]))
       .finally(() => setIsLoadingSlots(false));
-  }, [form.clinicId, form.serviceId, form.date, form.salesPersonId, clinics]);
+  }, [form.clinicId, form.serviceId, form.date, form.salesPersonId, clinics, mode, existingAppointment]);
 
   // Patient search
   useEffect(() => {
