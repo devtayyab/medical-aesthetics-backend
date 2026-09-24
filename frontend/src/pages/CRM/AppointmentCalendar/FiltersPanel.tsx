@@ -106,7 +106,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
                 isSelected={filters.clinicId === 'all'}
                 onClick={() => update('clinicId', 'all')}
               />
-              {clinics.map(c => (
+              {[...clinics].sort((a, b) => (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' })).map(c => (
                 <FilterOption
                   key={c.id}
                   value={c.id}

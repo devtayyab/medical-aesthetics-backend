@@ -4250,10 +4250,14 @@ export class CrmService implements OnModuleInit {
         return [];
       }
 
-      return this.clinicsRepository.find({
+      const clinics = await this.clinicsRepository.find({
         where: { id: In(Array.from(accessibleClinicIds)), isActive: true },
         select: ['id', 'name', 'address', 'phone', 'email', 'timezone']
       });
+
+      return clinics.sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' })
+      );
     } catch (err) {
       this.logger.error(`[CrmService] Error in getAccessibleClinicsForUser: ${err.message}`, err.stack);
       throw err;

@@ -189,7 +189,13 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     if (!form.clinicId) return;
     setIsLoadingServices(true);
     clinicsAPI.getServices(form.clinicId)
-      .then((res: any) => setAvailableServices(res.data || []))
+      .then((res: any) => {
+        const raw = res.data || [];
+        const sorted = [...raw].sort((a: any, b: any) =>
+          (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' })
+        );
+        setAvailableServices(sorted);
+      })
       .catch(() => setAvailableServices([]))
       .finally(() => setIsLoadingServices(false));
   }, [form.clinicId]);
@@ -706,7 +712,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               <SearchableSelect
                 value={form.clinicId || ''}
                 onChange={value => handleClinicChange(value)}
-                options={clinics.map(c => ({ value: c.id, label: c.name }))}
+                options={[...clinics].sort((a, b) => (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' })).map(c => ({ value: c.id, label: c.name }))}
                 placeholder="Select clinic..."
               />
             </div>
