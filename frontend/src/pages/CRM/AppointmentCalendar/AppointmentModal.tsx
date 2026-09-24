@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { bookingAPI, crmAPI, clinicsAPI } from '@/services/api';
-import { APPOINTMENT_STATUS_OPTIONS, DURATION_OPTIONS, STATUS_CONFIG, PAYMENT_STATUS_CONFIG } from './constants';
+import { APPOINTMENT_STATUS_OPTIONS, DURATION_OPTIONS, STATUS_CONFIG } from './constants';
 import type { AppointmentFormData, CalendarAppointment, ConflictInfo } from './types';
 import { createClinicUTCDateTime, getClinicLocalTime, getClinicLocalDate } from './useCalendarData';
 import { useConflictDetection } from './useConflictDetection';
@@ -54,8 +54,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const { user } = useSelector((state: RootState) => state.auth);
 
- 
-
   // Patient search
   const [patientSearch, setPatientSearch] = useState('');
   const [patientResults, setPatientResults] = useState<any[]>([]);
@@ -69,37 +67,15 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   // Time Slots
   const [availableSlots, setAvailableSlots] = useState<{ value: string, label: string, available?: boolean }[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-  const [isTreatmentDropdownOpen, setIsTreatmentDropdownOpen] = useState(false);
 
   // Conflict
   const [conflict, setConflict] = useState<ConflictInfo | null>(null);
 
   const { checkConflict } = useConflictDetection(appointments, blockedSlots);
 
-  const durationOptions = useMemo(() => {
-    const currentDur = parseInt(String(form.durationMinutes || 0), 10);
-    const existing = DURATION_OPTIONS.find(opt => opt.value === currentDur);
-    if (!existing && currentDur > 0) {
-      const hours = Math.floor(currentDur / 60);
-      const mins = currentDur % 60;
-      let label = '';
-      if (hours > 0 && mins > 0) {
-        label = `${hours}h ${mins}m (${currentDur} min)`;
-      } else if (hours > 0) {
-        label = hours === 1 ? '1 hour (60 min)' : `${hours} hours (${currentDur} min)`;
-      } else {
-        label = `${mins} min`;
-      }
-      return [...DURATION_OPTIONS, { value: currentDur, label }].sort((a, b) => a.value - b.value);
-    }
-    return DURATION_OPTIONS;
-  }, [form.durationMinutes]);
-
-
   // Form state
   const effectiveUserId = user?.id || currentUserId || '';
 
-  // Form state
   const [form, setForm] = useState<AppointmentFormData>({
     patientId: '',
     patientName: '',
@@ -119,6 +95,25 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     discount: 0,
     paymentStatus: 'UNPAID',
   });
+
+  const durationOptions = useMemo(() => {
+    const currentDur = parseInt(String(form.durationMinutes || 0), 10);
+    const existing = DURATION_OPTIONS.find(opt => opt.value === currentDur);
+    if (!existing && currentDur > 0) {
+      const hours = Math.floor(currentDur / 60);
+      const mins = currentDur % 60;
+      let label = '';
+      if (hours > 0 && mins > 0) {
+        label = `${hours}h ${mins}m (${currentDur} min)`;
+      } else if (hours > 0) {
+        label = hours === 1 ? '1 hour (60 min)' : `${hours} hours (${currentDur} min)`;
+      } else {
+        label = `${mins} min`;
+      }
+      return [...DURATION_OPTIONS, { value: currentDur, label }].sort((a, b) => a.value - b.value);
+    }
+    return DURATION_OPTIONS;
+  }, [form.durationMinutes]);
 
   // Initialize form when modal opens
   useEffect(() => {
@@ -585,7 +580,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   };
 
   const total = computeTotal(form.amount, form.tax, form.discount);
-  const taxAmount = form.amount * form.tax;
 
   return ReactDOM.createPortal(
     <>
