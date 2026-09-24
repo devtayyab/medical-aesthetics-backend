@@ -321,6 +321,50 @@ export class ClinicsService {
           existing.clinicsCount = (existing.clinicsCount || 1) + 1;
         }
       }
+
+      // Also query master catalog treatments so newly created treatments (e.g. Acne / Ακμή)
+      // always appear in Search and Category views even before a clinic adds an active service for them
+      const masterTreatmentQb = this.treatmentsRepository.createQueryBuilder('treatment')
+        .leftJoinAndSelect('treatment.categoryRef', 'categoryRef')
+        .leftJoin('categoryRef.parent', 'categoryParent');
+
+      if (params.search) {
+        const normalizedSearch = normalizeGreek(params.search);
+        const searchTerm = `%${normalizedSearch}%`;
+        const searchNoSpace = `%${normalizedSearch.replace(/\s+/g, '')}%`;
+        masterTreatmentQb.andWhere(
+          `(${sqlTranslate('treatment.name')} ILIKE :searchTerm OR ${sqlTranslate('treatment.category')} ILIKE :searchTerm OR ${sqlTranslate('categoryRef.name')} ILIKE :searchTerm OR ${sqlTranslate('treatment.shortDescription')} ILIKE :searchTerm OR REPLACE(${sqlTranslate('treatment.name')}, ' ', '') ILIKE :searchNoSpace OR REPLACE(${sqlTranslate('treatment.category')}, ' ', '') ILIKE :searchNoSpace OR REPLACE(${sqlTranslate('categoryRef.name')}, ' ', '') ILIKE :searchNoSpace)`,
+          { searchTerm, searchNoSpace }
+        );
+      }
+
+      if (params.category) {
+        const normalizedCategory = normalizeGreek(params.category);
+        const categoryParam = `%${normalizedCategory}%`;
+        const categoryParamDash = `%${normalizedCategory.replace(/\s+/g, '-')}%`;
+        masterTreatmentQb.andWhere(
+          `(${sqlTranslate('treatment.category')} ILIKE :categoryParam OR ${sqlTranslate('categoryRef.name')} ILIKE :categoryParam OR ${sqlTranslate('categoryParent.name')} ILIKE :categoryParam OR REPLACE(${sqlTranslate('treatment.category')}, ' ', '-') ILIKE :categoryParamDash OR REPLACE(${sqlTranslate('categoryRef.name')}, ' ', '-') ILIKE :categoryParamDash OR REPLACE(${sqlTranslate('categoryParent.name')}, ' ', '-') ILIKE :categoryParamDash)`,
+          { categoryParam, categoryParamDash }
+        );
+      }
+
+      const masterTreatments = await masterTreatmentQb.take(params.limit || 50).getMany();
+      for (const mt of masterTreatments) {
+        if (!treatmentMap.has(mt.id)) {
+          treatmentMap.set(mt.id, {
+            ...mt,
+            id: mt.id,
+            masterTreatmentId: mt.id,
+            category: mt.category || mt.categoryRef?.name || 'General Aesthetics',
+            fromPrice: 0,
+            durationMinutes: 30,
+            availableAt: [],
+            clinicsCount: 0,
+            imageUrl: mt.imageUrl,
+          });
+        }
+      }
+
       const processedTreatments = Array.from(treatmentMap.values());
 
       const deduplicatedCount = processedTreatments.length;

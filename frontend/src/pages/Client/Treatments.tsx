@@ -88,7 +88,8 @@ const subTreatmentCard = css`
 // beneath it (its own + its subcategories'), all read from the pre-fetched tree.
 const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ category, idx }) => {
  const navigate = useNavigate();
- const subs = category.children || [];
+ const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+  const subs = category.children || [];
  // Aggregate the category's own treatments with those of its subcategories,
  // de-duplicated by id. No extra request — the tree was fetched withTreatments.
  const treatments: PublicTreatment[] = React.useMemo(() => {
@@ -115,7 +116,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
  </div>
  <div>
  <h3 className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 leading-tight">{category.name}</h3>
- <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Elite Clinical Specialty</p>
+ <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{isGreek ? 'ΚΛΙΝΙΚΗ ΕΙΔΙΚΟΤΗΤΑ' : 'Elite Clinical Specialty'}</p>
  </div>
  </div>
  <ArrowRight size={20} className="text-gray-200 group-hover:text-lime-500 transition-colors shrink-0" />
@@ -128,7 +129,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
  {/* Subcategories */}
  {subs.length > 0 && (
  <div className="mb-8">
- <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Subcategories</h4>
+ <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">{isGreek ? 'ΥΠΟΚΑΤΗΓΟΡΙΕΣ' : 'Subcategories'}</h4>
  <div className="flex flex-wrap gap-2">
  {subs.map((sub) => (
  <button
@@ -146,7 +147,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
  {/* Treatments inside this category */}
  {treatments.length > 0 && (
  <div className="space-y-4">
- <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">Featured Procedures</h4>
+ <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">{isGreek ? 'ΠΡΟΤΕΙΝΟΜΕΝΕΣ ΘΕΡΑΠΕΙΕΣ' : 'Featured Procedures'}</h4>
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  {treatments.map((t) => (
  <div key={t.id} className={subTreatmentCard} onClick={() => navigate(`/search?query=${encodeURIComponent(t.name)}`)}>
@@ -170,7 +171,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
  onClick={() => navigate(`/search?category=${encodeURIComponent(category.name)}`)}
  className="w-full h-14 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center gap-4 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-lime-500 hover:text-black transition-all active:scale-95 shadow-2xl"
  >
- Examine Category <ChevronRight size={14} />
+ {isGreek ? 'ΕΞΕΡΕΥΝΗΣΗ ΚΑΤΗΓΟΡΙΑΣ' : 'Examine Category'} <ChevronRight size={14} />
  </button>
  </div>
  </div>

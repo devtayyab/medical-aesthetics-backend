@@ -143,8 +143,12 @@ export const TreatmentCard: React.FC<TreatmentCardProps> = ({
             {/* Price Tag - Top Right Overlay */}
             <div className="absolute top-5 right-5 text-right z-10">
               <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
-                <p className="text-[8px] font-black text-[#CBFF38] uppercase tracking-[0.2em] mb-0.5">Starts From</p>
-                <p className="text-lg sm:text-xl font-black text-white tracking-tighter leading-none">€{(treatment as any).fromPrice || '120.00'}</p>
+                <p className="text-[8px] font-black text-[#CBFF38] uppercase tracking-[0.2em] mb-0.5">
+                  {(treatment as any).fromPrice > 0 ? "Starts From" : "Treatment"}
+                </p>
+                <p className="text-lg sm:text-xl font-black text-white tracking-tighter leading-none">
+                  {(treatment as any).fromPrice > 0 ? `€${(treatment as any).fromPrice}` : "Available"}
+                </p>
               </div>
             </div>
           </div>
