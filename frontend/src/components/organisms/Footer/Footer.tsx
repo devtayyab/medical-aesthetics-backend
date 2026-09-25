@@ -112,18 +112,6 @@ export const Footer: React.FC = () => {
           Gift Card Terms
         </Link>
       </li>
-      <li>
-        <button 
-          type="button" 
-          onClick={() => {
-            localStorage.removeItem('cookiesAccepted');
-            window.dispatchEvent(new Event('openCookieSettings'));
-          }}
-          className="text-[#CBFF38] hover:underline uppercase text-[9px] sm:text-[10px] font-black tracking-wider cursor-pointer bg-transparent border-0 p-0 text-left"
-        >
-          Cookie Settings
-        </button>
-      </li>
     </ul>
   </div>
 
