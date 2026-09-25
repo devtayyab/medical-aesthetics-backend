@@ -27,109 +27,145 @@ export const Footer: React.FC = () => {
  </div>
 
  {/* Right Side */}
- <div className="grid grid-cols-3 gap-2 sm:gap-4 lg:gap-8 text-left w-full overflow-hidden">
- {/* Overview */}
- <div>
- <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
- Overview
- </strong>
- <ul className="mt-2.5 space-y-[4px] text-[9px] sm:text-[12px]">
- <li>
- <Link
- to="/treatments"
- className="text-white transition hover:text-[#CBFF38]"
- >
- Treatments
- </Link>
- </li>
- <li>
- <Link
- to="/services"
- className="text-white transition hover:text-[#CBFF38]"
- >
- All Services
- </Link>
- </li>
- <li>
- <Link
- to="/blog"
- className="text-white transition hover:text-[#CBFF38]"
- >
- Latest Articles
- </Link>
- </li>
- </ul>
- </div>
+ <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6 text-left w-full">
+  {/* Overview */}
+  <div>
+    <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
+      Overview
+    </strong>
+    <ul className="mt-2.5 space-y-[6px] text-[10px] sm:text-[12px]">
+      <li>
+        <Link to="/treatments" className="text-white transition hover:text-[#CBFF38]">
+          Treatments
+        </Link>
+      </li>
+      <li>
+        <Link to="/services" className="text-white transition hover:text-[#CBFF38]">
+          Privileges
+        </Link>
+      </li>
+      <li>
+        <Link to="/blog" className="text-white transition hover:text-[#CBFF38]">
+          Latest Articles
+        </Link>
+      </li>
+      <li>
+        <Link to="/for-clinics" className="text-white transition hover:text-[#CBFF38]">
+          For Clinics
+        </Link>
+      </li>
+    </ul>
+  </div>
 
- {/* Company */}
- <div>
- <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
- Company
- </strong>
- <ul className="mt-2.5 space-y-[4px] text-[9px] sm:text-[12px]">
- <li>
- <Link
- to="/"
- className="text-white transition hover:text-[#CBFF38]"
- >
- <span className="notranslate">{localStorage.getItem('preferredLang') === 'el' ? 'Αρχική' : 'Home'}</span>
- </Link>
- </li>
- <li>
- <Link
- to="/about"
- className="text-white transition hover:text-[#CBFF38]"
- >
- About us
- </Link>
- </li>
- <li>
- <Link
- to="/contact"
- className="text-white transition hover:text-[#CBFF38]"
- >
- Support
- </Link>
- </li>
- </ul>
- </div>
+  {/* Company */}
+  <div>
+    <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
+      Company
+    </strong>
+    <ul className="mt-2.5 space-y-[6px] text-[10px] sm:text-[12px]">
+      <li>
+        <Link to="/about-us" className="text-white transition hover:text-[#CBFF38]">
+          About Us
+        </Link>
+      </li>
+      <li>
+        <Link to="/contact" className="text-white transition hover:text-[#CBFF38]">
+          Contact
+        </Link>
+      </li>
+      <li>
+        <Link to="/support" className="text-white transition hover:text-[#CBFF38]">
+          Support
+        </Link>
+      </li>
+    </ul>
+  </div>
 
- {/* Contact */}
- <div className="min-w-0">
- <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
- Contact Us
- </strong>
- <ul className="mt-2.5 space-y-[4px] text-[9px] sm:text-[12px]">
- <li>
- <a
- href="tel:6948880498"
- className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
- style={{ textDecoration: 'none' }}
- >
- <span className="flex items-center justify-start gap-1">
- <Phone size={10} className="text-[#CBFF38] shrink-0" /> 
- <span>6948880498</span>
- </span>
- </a>
- </li>
- <li>
- <a
- href="mailto:info@beautydoctors.gr"
- className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
- style={{ textDecoration: 'none' }}
- >
- <span className="flex items-center justify-start gap-1">
- <Mail size={10} className="text-[#CBFF38] shrink-0" /> 
- <span className="truncate">info@beautydoctors.gr</span>
- </span>
- </a>
- </li>
- </ul>
- </div>
- </div>
- </div>
+  {/* Legal */}
+  <div>
+    <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
+      Legal
+    </strong>
+    <ul className="mt-2.5 space-y-[6px] text-[10px] sm:text-[12px]">
+      <li>
+        <Link to="/terms-of-use" className="text-white transition hover:text-[#CBFF38]">
+          Terms of Use
+        </Link>
+      </li>
+      <li>
+        <Link to="/privacy-policy" className="text-white transition hover:text-[#CBFF38]">
+          Privacy Policy
+        </Link>
+      </li>
+      <li>
+        <Link to="/cookie-policy" className="text-white transition hover:text-[#CBFF38]">
+          Cookie Policy
+        </Link>
+      </li>
+      <li>
+        <Link to="/medical-disclaimer" className="text-white transition hover:text-[#CBFF38]">
+          Medical Disclaimer
+        </Link>
+      </li>
+      <li>
+        <Link to="/gift-card-terms" className="text-white transition hover:text-[#CBFF38]">
+          Gift Card Terms
+        </Link>
+      </li>
+      <li>
+        <button 
+          type="button" 
+          onClick={() => {
+            localStorage.removeItem('cookiesAccepted');
+            window.dispatchEvent(new Event('openCookieSettings'));
+          }}
+          className="text-[#CBFF38] hover:underline uppercase text-[9px] sm:text-[10px] font-black tracking-wider cursor-pointer bg-transparent border-0 p-0 text-left"
+        >
+          Cookie Settings
+        </button>
+      </li>
+    </ul>
+  </div>
 
- {/* Bottom */}
+  {/* Contact */}
+  <div className="min-w-0">
+    <strong className="font-semibold text-[11px] sm:text-[14px] text-[#CBFF38]">
+      Contact Us
+    </strong>
+    <ul className="mt-2.5 space-y-[6px] text-[10px] sm:text-[12px]">
+      <li>
+        <a
+          href="tel:6948880498"
+          className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
+          style={{ textDecoration: 'none' }}
+        >
+          <span className="flex items-center justify-start gap-1">
+            <Phone size={10} className="text-[#CBFF38] shrink-0" /> 
+            <span>6948880498 / 2112184564</span>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a
+          href="mailto:info@beautydoctors.gr"
+          className="text-white transition hover:text-[#CBFF38] decoration-none no-underline"
+          style={{ textDecoration: 'none' }}
+        >
+          <span className="flex items-center justify-start gap-1">
+            <Mail size={10} className="text-[#CBFF38] shrink-0" /> 
+            <span className="truncate">info@beautydoctors.gr</span>
+          </span>
+        </a>
+      </li>
+      <li className="pt-1 text-[10px] text-gray-300">
+        23 Xanthippou Street, Pikermi 19009, Greece
+      </li>
+    </ul>
+  </div>
+</div>
+</div>
+
+{/* Bottom */}
  <div className="mt-6 flex flex-col md:flex-row justify-center md:justify-between gap-4 items-center border-t border-[#586271] pt-4 w-full">
  <div className="flex space-x-[8px]">
  <a
@@ -175,26 +211,21 @@ export const Footer: React.FC = () => {
  </div>
  </form>
  </div>
-         {/* Bottom Legal / Copyright / Cookie Settings Bar */}
-        <div className="mt-8 pt-6 border-t border-[#4A5568] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-gray-300">
-          <p>© 2026 Beauty Doctors. All rights reserved.</p>
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6 font-medium">
-            <Link to="/legal" className="hover:text-[#CBFF38] transition-colors">Privacy Policy</Link>
-            <Link to="/legal" className="hover:text-[#CBFF38] transition-colors">Terms of Service</Link>
+         {/* Bottom Legal / Copyright / Company Details */}
+        <div className="mt-8 pt-6 border-t border-[#4A5568] flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-gray-300 text-center md:text-left">
+          <div className="space-y-1">
+            <p className="font-semibold text-white">© 2026 Beauty Doctors. Operated by Beautydoctors O.E. All rights reserved.</p>
+            <p className="text-[10px] text-gray-400">Beautydoctors O.E. · VAT 803040724 · G.E.MI. 188015103000 · 23 Xanthippou Street, Pikermi 19009, Greece</p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-[10px] text-gray-300">
+            <Link to="/terms-of-use" className="hover:text-[#CBFF38] transition-colors">Terms of Use</Link>
+            <Link to="/privacy-policy" className="hover:text-[#CBFF38] transition-colors">Privacy Policy</Link>
+            <Link to="/cookie-policy" className="hover:text-[#CBFF38] transition-colors">Cookie Policy</Link>
             <Link to="/medical-disclaimer" className="hover:text-[#CBFF38] transition-colors">Medical Disclaimer</Link>
-            <button 
-              type="button" 
-              onClick={() => {
-                localStorage.removeItem('cookiesAccepted');
-                window.dispatchEvent(new Event('openCookieSettings'));
-              }}
-              className="text-[#CBFF38] hover:underline uppercase text-[10px] font-black tracking-wider cursor-pointer bg-transparent border-0 p-0"
-            >
-              Cookie Settings
-            </button>
+            <Link to="/gift-card-terms" className="hover:text-[#CBFF38] transition-colors">Gift Card Terms</Link>
           </div>
         </div>
       </div>
     </footer>
- );
+  );
 };

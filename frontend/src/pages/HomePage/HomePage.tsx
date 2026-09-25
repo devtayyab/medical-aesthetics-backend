@@ -15,7 +15,8 @@ import { SearchBar } from"@/components/organisms/SearchBar";
 import {
   ArrowRight,
   Sparkles,
-  Syringe
+  Syringe,
+  ShieldCheck
 } from "lucide-react";
 
 
@@ -618,6 +619,43 @@ const mainCategories = [
  <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover grayscale" alt="Microscope" />
  </div>
  </motion.div>
+ </div>
+
+ {/* Clinical Principles Section */}
+ <div className="my-16 bg-white rounded-[32px] border border-gray-100 shadow-sm p-6 sm:p-10">
+   <div className="max-w-3xl mx-auto text-center space-y-4">
+     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-lime-50 border border-lime-200 text-lime-800 text-xs font-bold uppercase tracking-wider">
+       <ShieldCheck size={14} className="text-lime-600" />
+       Clinical Governance & Safety
+     </div>
+     <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-gray-900">
+       Clinical <span className="text-[#84cc16]">Principles</span>
+     </h2>
+     <p className="text-base sm:text-lg font-bold text-gray-800">
+       “Every treatment begins with medical assessment.”
+     </p>
+     <p className="text-xs sm:text-sm text-gray-600 leading-relaxed max-w-2xl mx-auto">
+       Every aesthetic procedure requires a prior clinical evaluation by a certified doctor. Selecting a treatment online represents your Treatment of Interest; clinical suitability, safety, and your final treatment plan are determined exclusively by your attending physician.
+     </p>
+   </div>
+
+   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-6 border-t border-gray-100 text-left">
+     <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+       <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">01</div>
+       <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">Verified Medical Practitioners</h3>
+       <p className="text-[11px] text-gray-500 leading-relaxed">All doctors and clinic providers hold verified medical credentials and licenses in compliance with national healthcare standards.</p>
+     </div>
+     <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+       <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">02</div>
+       <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">Personalised Clinical Evaluation</h3>
+       <p className="text-[11px] text-gray-500 leading-relaxed">Individual diagnostic assessment is conducted to establish treatment safety, contraindications, and tailored protocols.</p>
+     </div>
+     <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+       <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">03</div>
+       <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">Regulatory Compliance</h3>
+       <p className="text-[11px] text-gray-500 leading-relaxed">Strict adherence to Greek and European healthcare regulations preserving the independent clinical judgment of your doctor.</p>
+     </div>
+   </div>
  </div>
 
  <div className="pt-12 grid grid-cols-1 lg:grid-cols-2 items-center gap-12">

@@ -239,7 +239,7 @@ export const GiftCard: React.FC = () => {
                       Gift Cards cannot be redeemed for medical procedures, medical treatments or medical consultations. Eligible services are specifically identified within the platform.
                     </p>
                     <div className="mt-2">
-                      <Link to="/legal" className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-amber-950 underline decoration-amber-500 underline-offset-4 hover:text-amber-800">
+                      <Link to="/gift-card-terms" className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-amber-950 underline decoration-amber-500 underline-offset-4 hover:text-amber-800">
                         Gift Card Terms <ChevronRight size={12} />
                       </Link>
                     </div>
@@ -345,7 +345,7 @@ export const GiftCard: React.FC = () => {
  <div className="mt-16 flex flex-col sm:flex-row justify-between items-center sm:items-end gap-10 relative z-10">
  <div className="text-center sm:text-left">
  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 max-w-[350px] leading-relaxed">
- THIS DIGITAL VOUCHER IS REDEEMABLE FOR ALL TREATMENTS AND SERVICES AT ANY CLINIC WITHIN THE BEAUTIDOC NETWORK.
+ THIS DIGITAL VOUCHER IS REDEEMABLE EXCLUSIVELY FOR ELIGIBLE NON-MEDICAL AESTHETIC SERVICES WITHIN THE BEAUTY DOCTORS NETWORK.
  </p>
  </div>
  <div className="text-center sm:text-right border-l-2 border-[#CBFF38] pl-6 py-2">
