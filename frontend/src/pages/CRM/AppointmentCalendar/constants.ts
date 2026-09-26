@@ -109,12 +109,21 @@ export const TIME_OPTIONS = Array.from({ length: 24 * 4 }).map((_, i) => {
 
 export const DURATION_OPTIONS = [
   { value: 15, label: '15 min' },
+  { value: 20, label: '20 min' },
   { value: 30, label: '30 min' },
+  { value: 40, label: '40 min' },
   { value: 45, label: '45 min' },
-  { value: 60, label: '1 hour' },
-  { value: 90, label: '1.5 hours' },
-  { value: 120, label: '2 hours' },
+  { value: 50, label: '50 min' },
+  { value: 60, label: '1 hour (60 min)' },
+  { value: 75, label: '1h 15m (75 min)' },
+  { value: 90, label: '1.5 hours (90 min)' },
+  { value: 105, label: '1h 45m (105 min)' },
+  { value: 120, label: '2 hours (120 min)' },
+  { value: 135, label: '2h 15m (135 min)' },
+  { value: 150, label: '2.5 hours (150 min)' },
   { value: 180, label: '3 hours' },
+  { value: 210, label: '3.5 hours' },
+  { value: 240, label: '4 hours' },
 ];
 
 // ─── Block Reason Options ─────────────────────────────────────────────────────

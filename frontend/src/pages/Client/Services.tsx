@@ -26,25 +26,18 @@ const extraServices = [
  link:"/gift-card"
  },
  {
- id:"wallet",
- name:"Digital Wallet",
- description:"Easily manage your payments, view history, and keep track of your treatment credits.",
- icon: <FaWallet size={30} />,
- link:"/payments"
- },
+    id: "wallet",
+    name: "Payments & Invoices",
+    description: "View your payments, invoices and transaction history across participating clinics.",
+    icon: <FaWallet size={30} />,
+    link: "/payments"
+  },
  {
  id:"support",
  name:"24/7 Support",
  description:"Our dedicated team of professionals are here to help you with booking and treatment advice.",
  icon: <FaHeadset size={30} />,
  link:"/support"
- },
- {
- id:"international",
- name:"International Clinics",
- description:"Access top-rated aesthetics clinics across various countries with seamless booking experience.",
- icon: <FaGlobe size={30} />,
- link:"/search"
  },
  {
  id:"gdpr",
@@ -77,14 +70,14 @@ export const Services: React.FC = () => {
  <div className="flex items-center justify-center gap-4 mb-6 text-[#CBFF38] text-[10px] font-black uppercase tracking-[0.2em]">
  <Link to="/" className="hover:opacity-80 transition-opacity">Home</Link>
  <FaChevronRight size={10} />
- <span>Other Services</span>
+ <span>Privileges</span>
  </div>
  <h1 className="text-3xl sm:text-6xl md:text-8xl font-black uppercase tracking-tighter leading-tight mb-6">
  Explore<br/>
- <span className="text-[#CBFF38]">Services</span>
+ <span className="text-[#CBFF38]">Privileges</span>
  </h1>
  <p className="text-gray-200 font-bold max-w-2xl mx-auto text-base sm:text-xl leading-relaxed">
- Beyond world-class treatments, we offer full-spectrum services to enhance your aesthetics journey and reward your loyalty.
+ Discover services and benefits designed to make your Beauty Doctors experience easier, more convenient and better connected.
  </p>
  </div>
  </div>

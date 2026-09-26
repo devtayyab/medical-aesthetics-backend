@@ -4,7 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as fs from 'fs';
 import * as path from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThan, In } from 'typeorm';
+import { Repository, Between, MoreThan, In, Not } from 'typeorm';
 import { Appointment } from './entities/appointment.entity';
 import { AppointmentHold } from './entities/appointment-hold.entity';
 import { BlockedTimeSlot } from './entities/blocked-time-slot.entity';
@@ -34,7 +34,8 @@ export class AvailabilityService {
     serviceId: string | string[],
     providerId?: string | null,
     date?: string,
-    allowPast = false
+    allowPast = false,
+    excludeAppointmentId?: string | null,
   ): Promise<{ slots: any[]; count: number; reason?: string; debug?: any }> {
     const logPath = path.join(process.cwd(), 'logs', 'availability-debug.log');
     try {
@@ -157,18 +158,26 @@ export class AvailabilityService {
       log(`🔵 Checking availability for ${providers.length} providers`);
 
       // Get existing appointments for ALL relevant providers
+      const appointmentWhere: any = {
+        clinicId,
+        startTime: Between(startOfDay, endOfDay),
+        status: In([
+          AppointmentStatus.CONFIRMED,
+          AppointmentStatus.PENDING,
+          AppointmentStatus.PENDING_PAYMENT,
+          AppointmentStatus.ARRIVED,
+          AppointmentStatus.IN_PROGRESS,
+          'pending' as any,
+          'confirmed' as any,
+        ]),
+      };
+
+      if (excludeAppointmentId) {
+        appointmentWhere.id = Not(excludeAppointmentId);
+      }
+
       const existingAppointments = await this.appointmentsRepository.find({
-        where: {
-          clinicId,
-          startTime: Between(startOfDay, endOfDay),
-          status: In([
-            AppointmentStatus.CONFIRMED,
-            AppointmentStatus.PENDING,
-            AppointmentStatus.PENDING_PAYMENT,
-            AppointmentStatus.ARRIVED,
-            AppointmentStatus.IN_PROGRESS
-          ]),
-        },
+        where: appointmentWhere,
       });
 
       // Get active holds

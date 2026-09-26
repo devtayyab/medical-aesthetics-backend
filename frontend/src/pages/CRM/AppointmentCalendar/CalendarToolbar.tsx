@@ -100,7 +100,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
               className="h-9 bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-semibold rounded-lg pl-3 pr-7 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
             >
               <option value="all">All Clinics</option>
-              {clinics.map(c => (
+              {[...clinics].sort((a, b) => (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' })).map(c => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>

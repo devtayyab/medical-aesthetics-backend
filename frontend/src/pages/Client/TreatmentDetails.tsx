@@ -325,10 +325,18 @@ export const TreatmentDetails: React.FC = () => {
  </motion.div>
  ))}
  </div>
- </div>
- </section>
 
- {/* In-depth Description - Moved Down */}
+          {/* Medical Assessment Price Notice */}
+          <div className="mt-8 p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center gap-3">
+            <Info size={16} className="text-gray-400 shrink-0" />
+            <p className="text-[11px] text-gray-500 font-medium leading-relaxed">
+              * Final treatment cost may vary depending on the treatment plan determined following a medical assessment.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* In-depth Description - Moved Down */}
  <section className="py-12 bg-[#FAFAFA] border-b border-gray-100">
  <div className="container mx-auto px-4 sm:px-8 max-w-4xl">
  <div className="flex items-center gap-4 mb-6">
@@ -338,9 +346,33 @@ export const TreatmentDetails: React.FC = () => {
  </div>
  <p className="text-base sm:text-lg md:text-xl font-medium text-gray-800 leading-relaxed text-left whitespace-pre-wrap">
  {treatment.fullDescription}
- </p>
- </div>
- </section>
+          </p>
+
+          {/* Medical Assessment Notice */}
+          <div className="mt-10 p-6 rounded-2xl bg-white border border-gray-200/80 shadow-sm flex items-start gap-4">
+            <div className="size-10 rounded-xl bg-black text-[#CBFF38] flex items-center justify-center shrink-0 mt-0.5">
+              <Shield size={20} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">Medical Assessment</h4>
+              <p className="text-xs sm:text-sm text-gray-600 font-medium leading-relaxed">
+                Treatment suitability and the final treatment plan are determined by the treating physician following an individual medical assessment.
+              </p>
+            </div>
+          </div>
+
+          {/* Medical Review Metadata */}
+          <div className="mt-6 pt-4 border-t border-gray-200/60 flex flex-wrap items-center justify-between gap-3 text-[11px] text-gray-500 font-semibold uppercase tracking-wider">
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-[#CBFF38]"></span>
+              <span>Medically reviewed by: <strong className="text-gray-900">Dr. Scientific Board (Medical Aesthetics)</strong></span>
+            </div>
+            <div>
+              <span>Last reviewed: <strong className="text-gray-900">September 2026</strong></span>
+            </div>
+          </div>
+        </div>
+      </section>
  </div>
  );
 };

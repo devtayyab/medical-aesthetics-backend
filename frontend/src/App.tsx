@@ -75,7 +75,14 @@ import { BlogPost } from"@/pages/Client/BlogPost";
 import { Treatments } from"@/pages/Client/Treatments";
 import { Services } from"@/pages/Client/Services";
 import { Legal, SupportCenter, ChatSupport } from"@/pages/Client/InfoPages/InfoPages";
-import { ContactUs } from"@/pages/Client/InfoPages/ContactUs";
+import { AboutUs } from "@/pages/Client/InfoPages/AboutUs";
+import { TermsOfUse } from "@/pages/Client/InfoPages/TermsOfUse";
+import { PrivacyPolicy } from "@/pages/Client/InfoPages/PrivacyPolicy";
+import { MedicalDisclaimer } from "@/pages/Client/InfoPages/MedicalDisclaimer";
+import { GiftCardTerms } from "@/pages/Client/InfoPages/GiftCardTerms";
+import { CookiePolicy } from "@/pages/Client/InfoPages/CookiePolicy";
+import { ContactUs } from "@/pages/Client/InfoPages/ContactUs";
+import { ForClinics } from "@/pages/Client/ForClinics";
 import { InviteFriend } from"@/pages/Client/AccountPages/InviteFriend";
 import { Settings } from "@/pages/Client/AccountPages/Settings";
 import { Reviews } from "@/pages/Client/Reviews";
@@ -247,6 +254,11 @@ function AppContent() {
     };
   }, []);
 
+  // Re-apply language translation on SPA route change
+  useEffect(() => {
+    (window as any).reapplyLanguage?.();
+  }, [location.pathname]);
+
  // Role-aware redirect after session restore or login
  useEffect(() => {
  if (
@@ -353,6 +365,8 @@ function AppContent() {
  <Route path="/blog/:slug" element={<ClientLayout><BlogPost /></ClientLayout>} />
  <Route path="/treatments" element={<ClientLayout><Treatments /></ClientLayout>} />
  <Route path="/services" element={<ClientLayout><Services /></ClientLayout>} />
+ <Route path="/for-clinics" element={<ClientLayout><ForClinics /></ClientLayout>} />
+ <Route path="/partners" element={<ClientLayout><ForClinics /></ClientLayout>} />
 
  {/* Protected booking route - requires login */}
  <Route
@@ -447,8 +461,40 @@ function AppContent() {
  }
  />
  <Route
+ path="/about"
+ element={<ClientLayout><AboutUs /></ClientLayout>}
+ />
+ <Route
+ path="/about-us"
+ element={<ClientLayout><AboutUs /></ClientLayout>}
+ />
+ <Route
+ path="/terms"
+ element={<ClientLayout><TermsOfUse /></ClientLayout>}
+ />
+ <Route
+ path="/terms-of-use"
+ element={<ClientLayout><TermsOfUse /></ClientLayout>}
+ />
+ <Route
+ path="/privacy-policy"
+ element={<ClientLayout><PrivacyPolicy /></ClientLayout>}
+ />
+ <Route
+ path="/medical-disclaimer"
+ element={<ClientLayout><MedicalDisclaimer /></ClientLayout>}
+ />
+ <Route
+ path="/gift-card-terms"
+ element={<ClientLayout><GiftCardTerms /></ClientLayout>}
+ />
+ <Route
+ path="/cookie-policy"
+ element={<ClientLayout><CookiePolicy /></ClientLayout>}
+ />
+ <Route
  path="/legal"
- element={<ClientLayout><Legal /></ClientLayout>}
+ element={<ClientLayout><TermsOfUse /></ClientLayout>}
  />
  <Route
  path="/support"

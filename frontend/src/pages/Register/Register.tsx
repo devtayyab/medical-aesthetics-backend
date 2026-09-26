@@ -83,6 +83,9 @@ export const Register: React.FC = () => {
  const [firstNameError, setFirstNameError] = useState("");
  const [lastNameError, setLastNameError] = useState("");
  const [phoneError, setPhoneError] = useState("");
+ const [agreedTerms, setAgreedTerms] = useState(false);
+ const [termsError, setTermsError] = useState("");
+ const [marketingConsent, setMarketingConsent] = useState(false);
 
  // OTP verification state
  const [verificationStep, setVerificationStep] = useState(false);
@@ -99,6 +102,7 @@ export const Register: React.FC = () => {
  setFirstNameError("");
  setLastNameError("");
  setPhoneError("");
+ setTermsError("");
 
  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
  setEmailError("Please enter a valid email address");
@@ -121,6 +125,10 @@ export const Register: React.FC = () => {
  isValid = false;
  } else if (!/^\+?\d{10,15}$/.test(phone)) {
  setPhoneError("Please enter a valid phone number");
+ isValid = false;
+ }
+ if (!agreedTerms) {
+ setTermsError("You must read and agree to the Terms of Use and acknowledge the Privacy Policy.");
  isValid = false;
  }
  return isValid;
@@ -338,6 +346,42 @@ export const Register: React.FC = () => {
  fullWidth
  />
  {phoneError && <p className={errorStyle}>{phoneError}</p>}
+ </div>
+
+ <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "4px" }}>
+ <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "13px", color: "var(--color-medical-text)", cursor: "pointer", lineHeight: "1.4" }}>
+ <input
+ type="checkbox"
+ checked={agreedTerms}
+ onChange={(e) => {
+ setAgreedTerms(e.target.checked);
+ if (e.target.checked) setTermsError("");
+ }}
+ style={{ marginTop: "3px", cursor: "pointer" }}
+ />
+ <span>
+ I have read and agree to the{" "}
+ <Link to="/terms-of-use" target="_blank" className={linkStyle}>Terms of Use</Link>
+ , and acknowledge the{" "}
+ <Link to="/privacy-policy" target="_blank" className={linkStyle}>Privacy Policy</Link>
+ {" "}and{" "}
+ <Link to="/medical-disclaimer" target="_blank" className={linkStyle}>Medical Disclaimer</Link>
+ . <span style={{ color: "var(--color-error)" }}>*</span>
+ </span>
+ </label>
+ {termsError && <p style={{ color: "var(--color-error)", fontSize: "12px", margin: "-4px 0 0 24px" }}>{termsError}</p>}
+
+ <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "13px", color: "var(--color-text-secondary, #666)", cursor: "pointer", lineHeight: "1.4" }}>
+ <input
+ type="checkbox"
+ checked={marketingConsent}
+ onChange={(e) => setMarketingConsent(e.target.checked)}
+ style={{ marginTop: "3px", cursor: "pointer" }}
+ />
+ <span>
+ I agree to receive news, clinical articles, and promotional updates from Beauty Doctors (optional).
+ </span>
+ </label>
  </div>
 
  <Button

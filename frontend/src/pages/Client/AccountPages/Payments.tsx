@@ -203,6 +203,9 @@ export const Payments: React.FC = () => {
  </div>
  <div>
  <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Financial Ledger</h3>
+                <p className="text-[11px] text-gray-500 font-medium mt-2 leading-relaxed">
+                  * Payments shown here are transactions with the respective clinics or medical professionals. Beauty Doctors provides the platform and does not act as the recipient of these payments.
+                </p>
  <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Transaction History & Verification</p>
  </div>
  </div>

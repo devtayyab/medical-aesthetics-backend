@@ -19,6 +19,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
  const [suggestedContacts, setSuggestedContacts] = useState<any[]>([]);
  const [isSuggestedLoading, setIsSuggestedLoading] = useState(false);
+  const [hasAcknowledgedNotice, setHasAcknowledgedNotice] = useState(false);
 
  useEffect(() => {
    const fetchSuggested = async () => {
@@ -159,7 +160,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose }) => {
   ))}
   <div className="flex-1" />
   <button 
-  onClick={handleLaunchChannel}
+  disabled={!hasAcknowledgedNotice}
+                      onClick={handleLaunchChannel}
   className="px-4 py-1.5 bg-gray-900 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:scale-105 active:scale-95 transition-all shadow-md"
   >
   Start Chat ({selectedUsers.length})

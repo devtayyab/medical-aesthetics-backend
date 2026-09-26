@@ -854,6 +854,16 @@ export class BookingsService {
       // Financial impact: Revenue becomes 0 for canceled appointments
       updateData.amountPaid = 0;
       updateData.totalAmount = 0;
+
+      // Release any active hold for this time slot immediately
+      try {
+        await this.holdsRepository.delete({
+          clinicId: appointment.clinicId,
+          startTime: appointment.startTime,
+        });
+      } catch (holdErr) {
+        console.error('[BookingsService] Failed to clear hold on cancel:', holdErr?.message);
+      }
     } else if (status === AppointmentStatus.NO_SHOW) {
       updateData.noShowMarkedAt = new Date();
       updateData.noShowMarkedById = userId;
@@ -1716,6 +1726,16 @@ export class BookingsService {
       amountPaid: 0,
       totalAmount: 0,
     });
+
+    // Release any active hold for this time slot immediately
+    try {
+      await this.holdsRepository.delete({
+        clinicId: appointment.clinicId,
+        startTime: appointment.startTime,
+      });
+    } catch (holdErr) {
+      console.error('[BookingsService] Failed to clear hold on soft-delete:', holdErr?.message);
+    }
 
     this.eventEmitter.emit('audit.log', {
       userId,

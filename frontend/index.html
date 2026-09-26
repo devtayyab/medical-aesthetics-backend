@@ -129,6 +129,14 @@
         }
       };
 
+      // Reapply language on route navigation for SPA
+      window.reapplyLanguage = function() {
+        var preferred = localStorage.getItem('preferredLang');
+        if (preferred && preferred !== 'en') {
+          _triggerGTSelect(preferred, 15);
+        }
+      };
+
       // On page load: restore preferred language
       window.addEventListener('DOMContentLoaded', function() {
         var preferred = localStorage.getItem('preferredLang');

@@ -252,6 +252,7 @@ export const bookingAPI = {
  providerId?: string;
  date: string;
  allowPast?: boolean;
+ excludeAppointmentId?: string;
  }) => api.get("/availability", { 
  params,
  paramsSerializer: {

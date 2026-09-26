@@ -279,7 +279,7 @@ export class AdminService {
   }
 
   async deleteCategory(id: string): Promise<void> {
-    await this.categoryRepository.delete(id);
+    await this.clinicsService.deleteCategory(id);
   }
 
   // Therapy (Treatment) Management

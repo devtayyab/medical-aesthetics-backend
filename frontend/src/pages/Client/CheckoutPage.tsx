@@ -288,7 +288,7 @@ export const CheckoutPage: React.FC = () => {
  {paymentMethod === 'card' && (
  <div className="p-4 bg-lime-100/50 rounded-xl border border-lime-200">
  <p className="text-[10px] font-bold text-lime-700 uppercase tracking-tight leading-relaxed">
- SECURE CHECKOUT: You will be redirected to the secure Viva Wallet payment page after clicking"Finish & Book" at the bottom right.
+ SECURE CHECKOUT: You will be redirected to the secure Viva Wallet payment page after clicking"Pay Provider & Book" at the bottom right.
  </p>
  </div>
  )}
@@ -399,7 +399,7 @@ export const CheckoutPage: React.FC = () => {
  </div>
 
  <div>
- <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Treatments</h4>
+ <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Treatments of Interest</h4>
  <div className="space-y-2">
  {selectedServices.map(s => (
  <div key={s.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
@@ -430,10 +430,31 @@ export const CheckoutPage: React.FC = () => {
  </div>
  </div>
 
- <Button
- fullWidth
- disabled={isSubmitting || !selectedClinic}
- onClick={handleCompleteBooking}
+ {/* Medical Assessment Notice */}
+            <div className="mb-6 p-4 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-3">
+              <FaShieldAlt className="text-amber-600 shrink-0 mt-0.5" size={16} />
+              <p className="text-[11px] text-amber-900 font-semibold leading-relaxed">
+                Treatment selection is subject to medical assessment. Your physician may recommend a different treatment or treatment plan where clinically appropriate.
+              </p>
+            </div>
+
+            {/* Direct Clinic / Doctor Payment Disclosure */}
+            <div className="mb-6 p-4 rounded-2xl bg-blue-50/80 border border-blue-200/80 flex items-start gap-3 text-left">
+              <FaInfoCircle className="text-blue-600 shrink-0 mt-0.5" size={16} />
+              <div className="space-y-1.5">
+                <p className="text-[11px] text-blue-950 font-bold leading-relaxed">
+                  Payment is made directly to the clinic or doctor providing the service. Beauty Doctors does not receive or hold your payment.
+                </p>
+                <p className="text-[10px] text-blue-800 font-medium leading-relaxed italic">
+                  «Η πληρωμή πραγματοποιείται απευθείας προς την κλινική ή τον ιατρό που παρέχει την υπηρεσία. Η Beauty Doctors δεν εισπράττει ούτε διατηρεί τα χρήματα της πληρωμής.»
+                </p>
+              </div>
+            </div>
+
+            <Button
+              fullWidth
+              disabled={isSubmitting || !selectedClinic}
+              onClick={handleCompleteBooking}
  className="bg-[#CBFF38] text-black hover:bg-lime-400 h-16 rounded-2xl font-black uppercase tracking-widest text-base shadow-lg shadow-lime-200"
  >
  {isSubmitting ?"Processing..." :"Finish & Book"}

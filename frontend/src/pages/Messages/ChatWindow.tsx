@@ -87,6 +87,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  </div>
  </header>
 
+      {/* Permanent Medical Emergency Warning & Privacy Notice */}
+      <div className="shrink-0 px-4 py-2.5 bg-amber-50/90 border-b border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-left z-10">
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-amber-500 shrink-0"></span>
+          <p className="text-[11px] text-amber-950 font-bold leading-tight">
+            This messaging service is not intended for medical emergencies. In an emergency, contact the appropriate emergency medical service immediately.
+          </p>
+        </div>
+        <a 
+          href="/medical-disclaimer" 
+          target="_blank" 
+          rel="noreferrer"
+          className="text-[10px] font-black uppercase tracking-wider text-amber-900 underline decoration-amber-400 hover:text-black shrink-0"
+        >
+          Privacy & Medical Data
+        </a>
+      </div>
+
  {/* Messages Area */}
  <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 no-scrollbar bg-gray-50/20">
  <AnimatePresence mode="popLayout">

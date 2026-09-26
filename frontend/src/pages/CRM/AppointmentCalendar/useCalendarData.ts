@@ -99,7 +99,11 @@ export function useCalendarData({ viewDate, viewMode, filters }: UseCalendarData
           crmAPI.getAccessibleClinics(),
           crmAPI.getSalespersons(),
         ]);
-        setClinics(clinicRes.data || []);
+        const rawClinics = clinicRes.data || [];
+        const sortedClinics = [...rawClinics].sort((a: any, b: any) =>
+          (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' })
+        );
+        setClinics(sortedClinics);
         const spList = (spRes.data || [])
           .filter((sp: any) => sp.role === 'salesperson')
           .map((sp: any, idx: number) => ({

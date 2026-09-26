@@ -192,6 +192,20 @@ export const GiftCard: React.FC = () => {
  <p className="text-gray-500 mt-3 sm:mt-6 font-bold text-base sm:text-2xl max-w-lg leading-relaxed">
  Give the gift of excellence with a digital gift card instantly and elevate someone's confidence.
  </p>
+
+  <div className="mt-4 max-w-lg p-4 rounded-2xl bg-white/80 backdrop-blur border border-gray-100 shadow-sm">
+    <p className="text-xs sm:text-sm text-gray-800 font-bold leading-relaxed">
+      Beauty Doctors Gift Cards can be redeemed only for eligible non-medical aesthetic services within the Beauty Doctors network.
+    </p>
+    <div className="mt-2.5">
+      <Link 
+        to="/legal" 
+        className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-black hover:text-lime-600 underline decoration-lime-500 underline-offset-4 transition-colors"
+      >
+        Gift Card Terms <ChevronRight size={12} className="text-lime-500" />
+      </Link>
+    </div>
+  </div>
  </div>
  </div>
  </div>
@@ -214,7 +228,25 @@ export const GiftCard: React.FC = () => {
 
  <div className="flex flex-col lg:flex-row">
  <div className="flex-1 p-6 sm:p-10 lg:p-16">
- <h3 className="text-2xl font-black uppercase text-gray-900 tracking-tight leading-none mb-12">Purchase Gift Card</h3>
+ {/* Legal Non-Medical Gift Card Notice */}
+                <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-3">
+                  <Sparkles className="text-amber-600 shrink-0 mt-0.5" size={18} />
+                  <div className="space-y-1">
+                    <p className="text-xs sm:text-sm font-bold text-amber-950">
+                      Beauty Doctors Gift Cards are available exclusively for selected non-medical aesthetic services.
+                    </p>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      Gift Cards cannot be redeemed for medical procedures, medical treatments or medical consultations. Eligible services are specifically identified within the platform.
+                    </p>
+                    <div className="mt-2">
+                      <Link to="/gift-card-terms" className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-amber-950 underline decoration-amber-500 underline-offset-4 hover:text-amber-800">
+                        Gift Card Terms <ChevronRight size={12} />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
+                <h3 className="text-2xl font-black uppercase text-gray-900 tracking-tight leading-none mb-12">Purchase Gift Card</h3>
 
  <div className="space-y-8">
  <div className={giftInput}>
@@ -313,7 +345,7 @@ export const GiftCard: React.FC = () => {
  <div className="mt-16 flex flex-col sm:flex-row justify-between items-center sm:items-end gap-10 relative z-10">
  <div className="text-center sm:text-left">
  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 max-w-[350px] leading-relaxed">
- THIS DIGITAL VOUCHER IS REDEEMABLE FOR ALL TREATMENTS AND SERVICES AT ANY CLINIC WITHIN THE BEAUTIDOC NETWORK.
+ THIS DIGITAL VOUCHER IS REDEEMABLE EXCLUSIVELY FOR ELIGIBLE NON-MEDICAL AESTHETIC SERVICES WITHIN THE BEAUTY DOCTORS NETWORK.
  </p>
  </div>
  <div className="text-center sm:text-right border-l-2 border-[#CBFF38] pl-6 py-2">

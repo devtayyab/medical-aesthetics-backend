@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { bookingAPI, crmAPI, clinicsAPI } from '@/services/api';
-import { APPOINTMENT_STATUS_OPTIONS, DURATION_OPTIONS, STATUS_CONFIG, PAYMENT_STATUS_CONFIG } from './constants';
+import { APPOINTMENT_STATUS_OPTIONS, DURATION_OPTIONS, STATUS_CONFIG } from './constants';
 import type { AppointmentFormData, CalendarAppointment, ConflictInfo } from './types';
 import { createClinicUTCDateTime, getClinicLocalTime, getClinicLocalDate } from './useCalendarData';
 import { useConflictDetection } from './useConflictDetection';
@@ -54,8 +54,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const { user } = useSelector((state: RootState) => state.auth);
 
- 
-
   // Patient search
   const [patientSearch, setPatientSearch] = useState('');
   const [patientResults, setPatientResults] = useState<any[]>([]);
@@ -69,7 +67,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   // Time Slots
   const [availableSlots, setAvailableSlots] = useState<{ value: string, label: string, available?: boolean }[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-  const [isTreatmentDropdownOpen, setIsTreatmentDropdownOpen] = useState(false);
 
   // Conflict
   const [conflict, setConflict] = useState<ConflictInfo | null>(null);
@@ -79,7 +76,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   // Form state
   const effectiveUserId = user?.id || currentUserId || '';
 
-  // Form state
   const [form, setForm] = useState<AppointmentFormData>({
     patientId: '',
     patientName: '',
@@ -99,6 +95,25 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     discount: 0,
     paymentStatus: 'UNPAID',
   });
+
+  const durationOptions = useMemo(() => {
+    const currentDur = parseInt(String(form.durationMinutes || 0), 10);
+    const existing = DURATION_OPTIONS.find(opt => opt.value === currentDur);
+    if (!existing && currentDur > 0) {
+      const hours = Math.floor(currentDur / 60);
+      const mins = currentDur % 60;
+      let label = '';
+      if (hours > 0 && mins > 0) {
+        label = `${hours}h ${mins}m (${currentDur} min)`;
+      } else if (hours > 0) {
+        label = hours === 1 ? '1 hour (60 min)' : `${hours} hours (${currentDur} min)`;
+      } else {
+        label = `${mins} min`;
+      }
+      return [...DURATION_OPTIONS, { value: currentDur, label }].sort((a, b) => a.value - b.value);
+    }
+    return DURATION_OPTIONS;
+  }, [form.durationMinutes]);
 
   // Initialize form when modal opens
   useEffect(() => {
@@ -189,7 +204,13 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     if (!form.clinicId) return;
     setIsLoadingServices(true);
     clinicsAPI.getServices(form.clinicId)
-      .then((res: any) => setAvailableServices(res.data || []))
+      .then((res: any) => {
+        const raw = res.data || [];
+        const sorted = [...raw].sort((a: any, b: any) =>
+          (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' })
+        );
+        setAvailableServices(sorted);
+      })
       .catch(() => setAvailableServices([]))
       .finally(() => setIsLoadingServices(false));
   }, [form.clinicId]);
@@ -232,6 +253,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       date: form.date,
       providerId: form.salesPersonId || undefined,
       allowPast: true,
+      excludeAppointmentId: mode === 'edit' && existingAppointment ? existingAppointment.id : undefined,
     })
       .then((res: any) => {
         const slotsData = res.data?.slots || res.data?.data || res.data;
@@ -249,7 +271,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       })
       .catch(() => setAvailableSlots([]))
       .finally(() => setIsLoadingSlots(false));
-  }, [form.clinicId, form.serviceId, form.date, form.salesPersonId, clinics]);
+  }, [form.clinicId, form.serviceId, form.date, form.salesPersonId, clinics, mode, existingAppointment]);
 
   // Patient search
   useEffect(() => {
@@ -318,10 +340,13 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     selectedIds.forEach(id => {
       const svc = availableServices.find(s => s.id === id);
       if (svc) {
-        totalAmount += parseFloat(svc.price || '0') || 0;
-        totalDuration += svc.durationMinutes || 60;
+        totalAmount += parseFloat(String(svc.price || '0')) || 0;
+        const dur = parseInt(String(svc.durationMinutes || svc.duration || 0), 10);
+        totalDuration += (dur > 0 ? dur : 30);
       }
     });
+
+    if (totalDuration <= 0) totalDuration = 60;
 
     setForm(prev => ({
       ...prev,
@@ -332,6 +357,27 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       durationMinutes: totalDuration,
     }));
   };
+
+    // Automatically calculate and set the exact sum of durations from selected services
+  useEffect(() => {
+    if (!availableServices.length || !form.serviceId) return;
+    const allSelectedIds = Array.from(new Set([form.serviceId, ...(form.additionalServiceIds || [])].filter(Boolean)));
+    let calculatedDuration = 0;
+    allSelectedIds.forEach(id => {
+      const svc = availableServices.find(s => s.id === id);
+      if (svc) {
+        const dur = parseInt(String(svc.durationMinutes || svc.duration || 0), 10);
+        calculatedDuration += (dur > 0 ? dur : 30);
+      }
+    });
+
+    if (calculatedDuration > 0 && calculatedDuration !== form.durationMinutes) {
+      setForm(prev => ({
+        ...prev,
+        durationMinutes: calculatedDuration,
+      }));
+    }
+  }, [availableServices, form.serviceId, form.additionalServiceIds]);
 
   const handleClinicChange = (clinicId: string) => {
     const clinic = clinics.find(c => c.id === clinicId);
@@ -535,7 +581,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   };
 
   const total = computeTotal(form.amount, form.tax, form.discount);
-  const taxAmount = form.amount * form.tax;
 
   return ReactDOM.createPortal(
     <>
@@ -706,7 +751,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               <SearchableSelect
                 value={form.clinicId || ''}
                 onChange={value => handleClinicChange(value)}
-                options={clinics.map(c => ({ value: c.id, label: c.name }))}
+                options={[...clinics].sort((a, b) => (a.name || '').localeCompare(b.name || '', ['el', 'en'], { sensitivity: 'base' })).map(c => ({ value: c.id, label: c.name }))}
                 placeholder="Select clinic..."
               />
             </div>
@@ -733,7 +778,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     placeholder={form.clinicId ? 'Select primary treatment...' : 'Select clinic first'}
                     options={availableServices.map(s => ({
                       value: s.id,
-                      label: `${s.name} ${s.price ? `— $${s.price}` : ''} ${s.durationMinutes ? `(${s.durationMinutes}m)` : ''}`.trim()
+                      label: `${s.name} ${s.price ? `— €${s.price}` : ''} ${s.durationMinutes ? `(${s.durationMinutes}m)` : ''}`.trim()
                     }))}
                   />
 
@@ -750,7 +795,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                           placeholder="Select additional treatment..."
                           options={availableServices.map(s => ({
                             value: s.id,
-                            label: `${s.name} ${s.price ? `— $${s.price}` : ''} ${s.durationMinutes ? `(${s.durationMinutes}m)` : ''}`.trim()
+                            label: `${s.name} ${s.price ? `— €${s.price}` : ''} ${s.durationMinutes ? `(${s.durationMinutes}m)` : ''}`.trim()
                           }))}
                         />
                       </div>
@@ -887,15 +932,22 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
             {/* Duration */}
             <div>
-              <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide mb-1.5">
-                <Clock className="inline w-3 h-3 mr-1" /> Duration
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide">
+                  <Clock className="inline w-3 h-3 mr-1" /> Duration
+                </label>
+                {form.durationMinutes > 0 && (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Auto: {form.durationMinutes} min
+                  </span>
+                )}
+              </div>
               <select
                 value={form.durationMinutes}
-                onChange={e => setForm(prev => ({ ...prev, durationMinutes: parseInt(e.target.value) }))}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                onChange={e => setForm(prev => ({ ...prev, durationMinutes: parseInt(e.target.value, 10) }))}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
-                {DURATION_OPTIONS.map(opt => (
+                {durationOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>

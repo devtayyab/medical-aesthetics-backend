@@ -15,7 +15,8 @@ import { SearchBar } from"@/components/organisms/SearchBar";
 import {
   ArrowRight,
   Sparkles,
-  Syringe
+  Syringe,
+  ShieldCheck
 } from "lucide-react";
 
 
@@ -221,13 +222,12 @@ const mainCategories = [
  <div className="max-w-[1200px] mx-auto w-full px-6">
  <div className="flex flex-col max-w-xl">
   <h1 className="text-black text-xl sm:text-3xl md:text-[40px] font-black mb-2 leading-tight uppercase tracking-tight">
-  BOOK YOUR NEXT <br />
-  <span className="text-[#A3E635] inline-block">BEAUTY TREATMENT</span>
+  FIND THE RIGHT <br />
+                  <span className="text-[#A3E635] inline-block">TREATMENT FOR YOU</span>
   </h1>
 
  <p className="text-gray-700 text-sm mb-4 max-w-md leading-snug font-medium">
- Book your appointment easily and quickly
- with specialized doctors and modern treatments.
+ Explore aesthetic and medical treatments and speak with our medical team for personalized guidance.
  </p>
 
  <div className="w-full max-w-[480px]">
@@ -319,7 +319,7 @@ const mainCategories = [
  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
  <div>
  <h2 className="text-2xl font-bold text-[#33373F]">Featured Treatments</h2>
- <p className="text-gray-600 mt-1">Top-rated treatments recommended for you</p>
+ <p className="text-gray-600 mt-1">Explore selected treatments and medical services.</p>
  </div>
  <button
  onClick={() => navigate('/treatments')}
@@ -498,16 +498,16 @@ const mainCategories = [
  />
  <div className="p-6 sm:p-8 flex flex-col flex-1">
  <h3 className="text-xl font-bold text-gray-900 mb-3">
- Top-Rated Treatments
+ Aesthetic Treatments
  </h3>
  <p className="text-gray-600 text-base leading-relaxed flex-1 mb-6">
- Discover elite aesthetic protocols recognized for excellence. Backed by clinical science and expert results.
+ Explore modern aesthetic treatments delivered by specialized medical professionals.
  </p>
  <button 
  onClick={() => navigate('/treatments')}
  className="w-fit inline-flex items-center justify-center border-2 border-[#5F8B00] text-[#5F8B00] hover:bg-[#5F8B00] hover:text-white transition-all font-bold px-6 py-3 rounded-xl text-sm gap-2"
  >
- Explore Top Treatments
+ Explore Aesthetic Treatments
  <ArrowRight className="h-4 w-4" />
  </button>
  </div>
@@ -515,32 +515,7 @@ const mainCategories = [
  </div>
  </section>
 
- <section className="bg-[#1A202C] text-white py-12 sm:py-16">
- <div className="max-w-[1200px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
- <div className="space-y-6 text-center lg:text-left">
- <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
- Own a medical <br /> <span className="text-[#CBFF38]">aesthetics clinic?</span>
- </h2>
- <p className="text-gray-300 text-lg leading-relaxed max-w-lg mx-auto lg:mx-0">
- We'll help you grow your practice and attract more patients with
- our easy-to-use booking platform.
- </p>
- <a 
- href="mailto:info@beautydoctors.gr?subject=Clinic%20Partnership%20Inquiry"
- className="inline-block bg-[#CBFF38] text-[#1A202C] px-8 py-4 rounded-xl font-bold hover:bg-white transition-colors transform hover:-translate-y-1 no-underline"
- >
- Partner With Us
- </a>
- </div>
- <div className="w-full flex justify-center lg:justify-end">
- <img
- src={OnlineClinicHome}
- alt="Online Clinic Dashboard"
- className="w-full max-w-[500px] rounded-2xl shadow-2xl border-4 border-[#2D3748]"
- />
- </div>
- </div>
- </section>
+ 
 
  <section className="pt-16 bg-gray-50 relative overflow-hidden">
  <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -644,6 +619,43 @@ const mainCategories = [
  <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover grayscale" alt="Microscope" />
  </div>
  </motion.div>
+ </div>
+
+ {/* Clinical Principles Section */}
+ <div className="my-16 bg-white rounded-[32px] border border-gray-100 shadow-sm p-6 sm:p-10">
+   <div className="max-w-3xl mx-auto text-center space-y-4">
+     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-lime-50 border border-lime-200 text-lime-800 text-xs font-bold uppercase tracking-wider">
+       <ShieldCheck size={14} className="text-lime-600" />
+       Clinical Governance & Safety
+     </div>
+     <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-gray-900">
+       Clinical <span className="text-[#84cc16]">Principles</span>
+     </h2>
+     <p className="text-base sm:text-lg font-bold text-gray-800">
+       “Every treatment begins with medical assessment.”
+     </p>
+     <p className="text-xs sm:text-sm text-gray-600 leading-relaxed max-w-2xl mx-auto">
+       Every aesthetic procedure requires a prior clinical evaluation by a certified doctor. Selecting a treatment online represents your Treatment of Interest; clinical suitability, safety, and your final treatment plan are determined exclusively by your attending physician.
+     </p>
+   </div>
+
+   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-6 border-t border-gray-100 text-left">
+     <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+       <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">01</div>
+       <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">Verified Medical Practitioners</h3>
+       <p className="text-[11px] text-gray-500 leading-relaxed">All doctors and clinic providers hold verified medical credentials and licenses in compliance with national healthcare standards.</p>
+     </div>
+     <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+       <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">02</div>
+       <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">Personalised Clinical Evaluation</h3>
+       <p className="text-[11px] text-gray-500 leading-relaxed">Individual diagnostic assessment is conducted to establish treatment safety, contraindications, and tailored protocols.</p>
+     </div>
+     <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+       <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">03</div>
+       <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">Regulatory Compliance</h3>
+       <p className="text-[11px] text-gray-500 leading-relaxed">Strict adherence to Greek and European healthcare regulations preserving the independent clinical judgment of your doctor.</p>
+     </div>
+   </div>
  </div>
 
  <div className="pt-12 grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
