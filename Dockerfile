@@ -46,11 +46,11 @@ COPY --chown=nestjs:nodejs --from=builder /app/node_modules ./node_modules
 # Copy built application from builder stage with correct ownership
 COPY --chown=nestjs:nodejs --from=builder /app/dist ./dist
 
+# Create uploads directory and set ownership to nestjs user
+RUN mkdir -p public/uploads && chown -R nestjs:nodejs /app/public
+
 # Switch to non-root user
 USER nestjs
-
-# Create uploads directory (owned by nestjs)
-RUN mkdir -p public/uploads
 
 # Set environment to production
 ENV NODE_ENV=production
