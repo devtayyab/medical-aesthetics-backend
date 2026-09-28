@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Beauty Doctor",
+    "slug": "beauty-doctor-client",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1120"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.beautydoctor.clientapp"
+    },
+    "android": {
+      "package": "com.beautydoctor.clientapp",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1120",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png"
+      },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "usesCleartextTraffic": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "./withCleartextTraffic.js"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a2939e6d-d6ca-47ee-b57a-d67f54df8064"
+      }
+    },
+    "owner": "ahsanmian"
+  }
+}

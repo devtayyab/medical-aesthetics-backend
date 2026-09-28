@@ -7,7 +7,9 @@ node_modules
 /frontend/.env
 
 # Mobile apps, Expo and Android/iOS build folders
-client-mobile-app/
+client-mobile-app/node_modules/
+client-mobile-app/.expo/
+client-mobile-app/dist/
 frontend/android/
 android/
 ios/
@@ -21,6 +23,7 @@ ios/
 .vscode/
 /tmp/
 *.js
+!client-mobile-app/*.js
 *.mjs
 *.tsbuildinfo
 tmp_check.ts

@@ -396,18 +396,22 @@ export const Header: React.FC = () => {
  <>
  <header className="w-full bg-[#1A202C] sticky top-0 z-[999] border-b border-white/10 backdrop-blur-md">
       {/* Top Utility Bar with Phone, Email & Clinic Portal */}
-      <div className="w-full border-b border-white/5 bg-black/40 text-gray-300 text-[11px] py-1.5 px-4 sm:px-8">
-        <div className="max-w-[1440px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4 sm:gap-6">
-            <div className="flex items-center gap-2">
-              <Phone className="h-3 w-3 text-[#CBFF38]" />
-              <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Call Us:</span>
-              <a href="tel:6948880498" className="hover:text-[#CBFF38] font-bold text-white transition-colors">6948880498</a>
-              <span className="text-gray-600">/</span>
-              <a href="tel:2112184564" className="hover:text-[#CBFF38] font-bold text-white transition-colors">2112184564</a>
+      <div className="w-full border-b border-white/5 bg-black/40 text-gray-300 text-[11px] py-1.5 px-3 sm:px-8">
+        <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <Phone className="h-3 w-3 text-[#CBFF38] shrink-0" />
+              <span className="hidden sm:inline text-gray-400 font-bold uppercase tracking-wider text-[10px]">Call Us:</span>
+              <a href="tel:6948880498" className="hover:text-[#CBFF38] font-bold text-white transition-colors whitespace-nowrap text-[10px] sm:text-[11px]">
+                6948880498
+              </a>
+              <span className="hidden xs:inline text-gray-600">/</span>
+              <a href="tel:2112184564" className="hidden xs:inline hover:text-[#CBFF38] font-bold text-white transition-colors whitespace-nowrap text-[10px] sm:text-[11px]">
+                2112184564
+              </a>
             </div>
             <div className="hidden sm:flex items-center gap-2">
-              <MessageCircle className="h-3 w-3 text-[#CBFF38]" />
+              <MessageCircle className="h-3 w-3 text-[#CBFF38] shrink-0" />
               <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Email:</span>
               <a href="mailto:info@beautydoctors.gr" className="hover:text-[#CBFF38] font-bold text-white transition-colors">
                 info@beautydoctors.gr
@@ -415,12 +419,13 @@ export const Header: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link
               to="/for-clinics"
-              className="text-[10px] font-black uppercase tracking-wider text-gray-300 hover:text-[#CBFF38] transition-colors"
+              className="text-[10px] font-black uppercase tracking-wider text-gray-300 hover:text-[#CBFF38] transition-colors whitespace-nowrap"
             >
-              For Clinics &amp; Partners &rarr;
+              <span className="sm:hidden">For Clinics &rarr;</span>
+              <span className="hidden sm:inline">For Clinics &amp; Partners &rarr;</span>
             </Link>
           </div>
         </div>
@@ -528,20 +533,6 @@ export const Header: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </li>
-
-                {/* Doctors / Clinics */}
-                <li className="cursor-pointer">
-                  <Link
-                    to="/search"
-                    className={`text-[11px] font-black uppercase tracking-[0.15em] transition-all ${
-                      location.pathname === "/search" && !location.search.includes("category=")
-                        ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
-                        : "text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    Doctors/Clinics
-                  </Link>
                 </li>
 
                 {/* Privileges */}
@@ -883,13 +874,6 @@ export const Header: React.FC = () => {
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Treatments
-            </Link>
-            <Link
-              to="/search"
-              className={`flex items-center px-4 py-3.5 rounded-xl font-black text-[12px] uppercase tracking-wider transition-all ${location.pathname === '/search' ? 'bg-[#CBFF38] text-black' : 'text-gray-700 hover:bg-gray-100'}`}
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Doctors / Clinics
             </Link>
             <Link
               to="/services"

@@ -107,7 +107,14 @@ export const Login: React.FC = () => {
  try {
  const result = await dispatch(login({ email, password })).unwrap();
 
- const isClientOnlyApp = import.meta.env.VITE_APP_TYPE === 'client' || (typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.());
+ const isClientOnlyApp =
+  import.meta.env.VITE_APP_TYPE === 'client' ||
+  (typeof window !== 'undefined' && (
+    !!(window as any).isClientMobileApp ||
+    localStorage.getItem('is_client_mobile_app') === 'true' ||
+    (typeof navigator !== 'undefined' && navigator.userAgent?.includes('ClientMobileApp')) ||
+    !!(window as any).Capacitor?.isNativePlatform?.()
+  ));
 
  if (isClientOnlyApp && result.user?.role && result.user.role !== 'client') {
  await dispatch(logout());
