@@ -40,6 +40,11 @@ export const Footer: React.FC = () => {
         </Link>
       </li>
       <li>
+        <Link to="/search" className="text-white transition hover:text-[#CBFF38]">
+          Doctors / Clinics
+        </Link>
+      </li>
+      <li>
         <Link to="/services" className="text-white transition hover:text-[#CBFF38]">
           Privileges
         </Link>

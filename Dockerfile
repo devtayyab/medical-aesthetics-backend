@@ -37,20 +37,20 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+# Copy package files with correct ownership
+COPY --chown=nestjs:nodejs package.json pnpm-lock.yaml ./
 
-# Copy production node_modules from builder
-COPY --from=builder /app/node_modules ./node_modules
+# Copy production node_modules from builder with correct ownership
+COPY --chown=nestjs:nodejs --from=builder /app/node_modules ./node_modules
 
-# Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
-
-# Create uploads directory and set permissions
-RUN mkdir -p public/uploads && chown -R nestjs:nodejs /app
+# Copy built application from builder stage with correct ownership
+COPY --chown=nestjs:nodejs --from=builder /app/dist ./dist
 
 # Switch to non-root user
 USER nestjs
+
+# Create uploads directory (owned by nestjs)
+RUN mkdir -p public/uploads
 
 # Set environment to production
 ENV NODE_ENV=production
