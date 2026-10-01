@@ -79,7 +79,7 @@ export const CheckoutPage: React.FC = () => {
  const { selectedClinic, selectedServices, selectedDate, selectedTimeSlot, holdId } = useSelector((state: RootState) => state.booking);
  const { user } = useSelector((state: RootState) => state.auth);
 
- const [paymentMethod, setPaymentMethod] = useState<'card' | 'venue' | 'paypal'>('card');
+ const [paymentMethod, setPaymentMethod] = useState<'card' | 'venue' | 'paypal'>('venue');
  const [giftCardCode, setGiftCardCode] = useState('');
  const [appliedGiftCard, setAppliedGiftCard] = useState<{ valid: boolean; balance: number; code: string; id: string } | null>(null);
  const [isApplyingGiftCard, setIsApplyingGiftCard] = useState(false);
@@ -270,28 +270,24 @@ export const CheckoutPage: React.FC = () => {
  <div className="space-y-4">
  <button
  type="button"
- onClick={() => setPaymentMethod('card')}
- className={`w-full flex flex-wrap items-center justify-between gap-y-2 p-4 sm:p-6 rounded-2xl border-2 transition-all ${paymentMethod === 'card' ? 'border-[#CBFF38] bg-lime-50' : 'border-gray-100 hover:border-gray-200'}`}
+ disabled
+ className="w-full flex flex-wrap items-center justify-between gap-y-2 p-4 sm:p-6 rounded-2xl border-2 border-gray-100 bg-gray-50 opacity-70 cursor-not-allowed"
  >
  <div className="flex items-center gap-4">
- <div className={`size-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'card' ? 'border-black bg-black' : 'border-gray-300'}`}>
- {paymentMethod === 'card' && <div className="size-2 rounded-full bg-[#CBFF38]" />}
+ <div className="size-6 rounded-full border-2 border-gray-300 flex items-center justify-center"></div>
+ <span className="font-black uppercase text-sm tracking-tight text-gray-400">Credit or Debit Card</span>
  </div>
- <span className="font-black uppercase text-sm tracking-tight">Credit or Debit Card</span>
- </div>
- <div className="flex gap-2">
+ <div className="flex gap-2 opacity-50">
  <img src={VISA} alt="Visa" className="h-5" />
  <img src={AMEX} alt="Amex" className="h-5" />
  </div>
  </button>
 
- {paymentMethod === 'card' && (
- <div className="p-4 bg-lime-100/50 rounded-xl border border-lime-200">
- <p className="text-[10px] font-bold text-lime-700 uppercase tracking-tight leading-relaxed">
- SECURE CHECKOUT: You will be redirected to the secure Viva Wallet payment page after clicking"Pay Provider & Book" at the bottom right.
+ <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
+ <p className="text-[10px] font-bold text-orange-700 uppercase tracking-tight leading-relaxed">
+ ONLINE PAYMENTS DISABLED: Online medical payments are temporarily disabled until clinic payment accounts are connected. Please pay at the clinic.
  </p>
  </div>
- )}
 
  <button
  type="button"
@@ -434,7 +430,7 @@ export const CheckoutPage: React.FC = () => {
             <div className="mb-6 p-4 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-3">
               <FaShieldAlt className="text-amber-600 shrink-0 mt-0.5" size={16} />
               <p className="text-[11px] text-amber-900 font-semibold leading-relaxed">
-                Treatment selection is subject to medical assessment. Your physician may recommend a different treatment or treatment plan where clinically appropriate.
+                Proceeding with the treatment requires a medical assessment and informed consent. The treating physician may confirm, modify, or decide not to perform the selected treatment.
               </p>
             </div>
 

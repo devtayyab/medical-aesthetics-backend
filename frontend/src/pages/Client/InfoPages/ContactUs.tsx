@@ -254,10 +254,9 @@ export const ContactUs: React.FC = () => {
  <Send size={14} />
  {isSubmitting ? "Sending…" : "Send message"}
  </button>
- <p className="text-[11px] text-gray-400 font-medium text-center sm:text-left">
- By sending, you agree to our{" "}
- <Link to="/legal" className="underline hover:text-gray-600">privacy policy</Link>.
- </p>
+ <div className="text-[11px] text-gray-400 font-medium text-center sm:text-left space-y-1">
+ <p>By submitting this form, you acknowledge that you have read the <Link to="/legal" className="underline hover:text-gray-600">Privacy Policy</Link>. Please do not include medical or other sensitive information in this form.</p>
+ </div>
  </div>
  </form>
  </>

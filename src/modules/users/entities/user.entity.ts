@@ -85,6 +85,12 @@ export class User {
   @Column({ default: false })
   isEmailVerified: boolean;
 
+  @Column({ default: false })
+  marketingEmailConsent: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  marketingEmailConsentDate: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

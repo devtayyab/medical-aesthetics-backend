@@ -360,15 +360,17 @@ export const Register: React.FC = () => {
  style={{ marginTop: "3px", cursor: "pointer" }}
  />
  <span>
- I have read and agree to the{" "}
+ I confirm that I am at least 18 years old and accept the{" "}
  <Link to="/terms-of-use" target="_blank" className={linkStyle}>Terms of Use</Link>
- , and acknowledge the{" "}
- <Link to="/privacy-policy" target="_blank" className={linkStyle}>Privacy Policy</Link>
- {" "}and{" "}
- <Link to="/medical-disclaimer" target="_blank" className={linkStyle}>Medical Disclaimer</Link>
  . <span style={{ color: "var(--color-error)" }}>*</span>
  </span>
  </label>
+ <div style={{ fontSize: "12px", color: "var(--color-text-secondary, #666)", marginLeft: "24px", lineHeight: "1.4" }}>
+ By continuing, you acknowledge our{" "}
+ <Link to="/privacy-policy" target="_blank" className={linkStyle}>Privacy Policy</Link>
+ {" "}and{" "}
+ <Link to="/medical-disclaimer" target="_blank" className={linkStyle}>Medical Disclaimer</Link>.
+ </div>
  {termsError && <p style={{ color: "var(--color-error)", fontSize: "12px", margin: "-4px 0 0 24px" }}>{termsError}</p>}
 
  <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "13px", color: "var(--color-text-secondary, #666)", cursor: "pointer", lineHeight: "1.4" }}>

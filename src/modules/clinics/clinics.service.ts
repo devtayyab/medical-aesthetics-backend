@@ -66,7 +66,8 @@ export class ClinicsService {
     const clinicQb = this.clinicsRepository.createQueryBuilder('clinic')
       .innerJoinAndSelect('clinic.services', 'services', "services.isActive = :sActive AND (services.metadata->>'approvalStatus' IS NULL OR services.metadata->>'approvalStatus' = 'APPROVED')", { sActive: true })
       .leftJoinAndSelect('services.treatment', 'treatment')
-      .where('clinic.isActive = :isActive', { isActive: true });
+      .where('clinic.isActive = :isActive', { isActive: true })
+      .andWhere("(clinic.address->>'country' != :cyprus OR clinic.address->>'country' IS NULL)", { cyprus: 'Cyprus' });
 
     if (params.location) {
       clinicQb.andWhere(
@@ -160,7 +161,8 @@ export class ClinicsService {
       .where("service.isActive = :sActive AND clinic.isActive = :cActive AND (service.metadata->>'approvalStatus' IS NULL OR service.metadata->>'approvalStatus' = 'APPROVED')", {
         sActive: true,
         cActive: true
-      });
+      })
+      .andWhere("(clinic.address->>'country' != :cyprus OR clinic.address->>'country' IS NULL)", { cyprus: 'Cyprus' });
 
     if (params.search) {
       const normalizedSearch = normalizeGreek(params.search);
@@ -421,19 +423,21 @@ export class ClinicsService {
   }
 
   async getFeatured(): Promise<Clinic[]> {
-    return this.clinicsRepository.find({
-      where: { isActive: true },
-      relations: ['services'],
-      take: 6,
-      order: { createdAt: 'DESC' },
-    });
+    return this.clinicsRepository.createQueryBuilder('clinic')
+      .leftJoinAndSelect('clinic.services', 'services')
+      .where('clinic.isActive = :isActive', { isActive: true })
+      .andWhere("(clinic.address->>'country' != :cyprus OR clinic.address->>'country' IS NULL)", { cyprus: 'Cyprus' })
+      .orderBy('clinic.createdAt', 'DESC')
+      .take(6)
+      .getMany();
   }
 
   async getPublicCities(): Promise<string[]> {
-    const clinics = await this.clinicsRepository.find({
-      where: { isActive: true },
-      select: ['address'],
-    });
+    const clinics = await this.clinicsRepository.createQueryBuilder('clinic')
+      .select('clinic.address')
+      .where('clinic.isActive = :isActive', { isActive: true })
+      .andWhere("(clinic.address->>'country' != :cyprus OR clinic.address->>'country' IS NULL)", { cyprus: 'Cyprus' })
+      .getMany();
     const citySet = new Set<string>();
     for (const clinic of clinics) {
       const city = clinic.address?.city?.trim();

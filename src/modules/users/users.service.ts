@@ -108,7 +108,15 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    await this.usersRepository.update(id, updateUserDto);
+    const updateData: any = { ...updateUserDto };
+    
+    if (updateData.marketingEmailConsent === true) {
+      updateData.marketingEmailConsentDate = new Date();
+    } else if (updateData.marketingEmailConsent === false) {
+      updateData.marketingEmailConsentDate = null;
+    }
+
+    await this.usersRepository.update(id, updateData);
     return this.findById(id);
   }
 

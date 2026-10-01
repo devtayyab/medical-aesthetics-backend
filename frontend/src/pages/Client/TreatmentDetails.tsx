@@ -361,14 +361,17 @@ export const TreatmentDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Medical Review Metadata */}
-          <div className="mt-6 pt-4 border-t border-gray-200/60 flex flex-wrap items-center justify-between gap-3 text-[11px] text-gray-500 font-semibold uppercase tracking-wider">
-            <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full bg-[#CBFF38]"></span>
-              <span>Medically reviewed by: <strong className="text-gray-900">Dr. Scientific Board (Medical Aesthetics)</strong></span>
-            </div>
-            <div>
+          {/* Scientific Review Metadata */}
+          <div className="mt-6 pt-4 border-t border-gray-200/60 flex flex-col gap-3">
+            <h4 className="text-[11px] font-black uppercase tracking-wider text-gray-900 flex items-center gap-2">
+              <span className="size-2 rounded-full bg-[#CBFF38]"></span> SCIENTIFIC REVIEW
+            </h4>
+            <p className="text-[11px] text-gray-500 font-medium leading-relaxed">
+              The informational content has been reviewed by the BeautyDoctors Scientific Board. The suitability of the treatment is assessed individually by the treating physician before any procedure is performed.
+            </p>
+            <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-1">
               <span>Last reviewed: <strong className="text-gray-900">September 2026</strong></span>
+              {/* Once the Medical Director is appointed: Scientific review: Dr. [NAME], [SPECIALTY] */}
             </div>
           </div>
         </div>

@@ -65,7 +65,7 @@ export const AboutUs: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-2">
             {[
               { step: "01", title: "Explore a treatment", desc: "Browse curated clinical procedures" },
-              { step: "02", title: "Choose a doctor or clinic", desc: "Select verified accredited providers" },
+              { step: "02", title: "Choose a doctor or clinic", desc: "Select verified healthcare professionals" },
               { step: "03", title: "Select a date", desc: "Pick convenient available slots" },
               { step: "04", title: "Medical assessment", desc: "Consult with your attending doctor" },
               { step: "05", title: "Final treatment plan", desc: "Personalised procedure execution" },

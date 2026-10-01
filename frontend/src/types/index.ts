@@ -27,6 +27,7 @@ export interface User {
  monthlyTarget?: number;
  assignedClinics?: Clinic[];
  pendingTasksCount?: number;
+ marketingEmailConsent?: boolean;
 }
 
 export interface Clinic {

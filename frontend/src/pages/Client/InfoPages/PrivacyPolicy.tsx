@@ -72,7 +72,7 @@ export const PrivacyPolicy: React.FC = () => {
               <li className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">• Account details (name, email, phone)</li>
               <li className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">• Appointment details & history</li>
               <li className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">• Selected doctor or clinic</li>
-              <li className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">• Communications and messages</li>
+              <li className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">• Platform notifications</li>
               <li className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">• Files uploaded by the user</li>
               <li className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">• Payment and invoice metadata</li>
               <li className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">• Gift Card information</li>
@@ -111,10 +111,10 @@ export const PrivacyPolicy: React.FC = () => {
 
           <div className="pt-6 space-y-3">
             <h2 className="text-base font-black uppercase tracking-wide text-gray-900 flex items-center gap-2">
-              <Lock size={16} className="text-lime-600" /> 7. Messages & 8. Marketing Preferences
+              <Lock size={16} className="text-lime-600" /> 7. Notifications & 8. Marketing Preferences
             </h2>
             <p>
-              Messages exchanged are securely stored to support communication. Users should not upload unnecessary sensitive financial or identity files.
+              Platform notifications are securely logged and stored. Users should not upload unnecessary sensitive financial or identity files.
             </p>
             <p>
               Marketing communications (newsletters/promotions) are completely optional and separate from essential service notifications. You can unsubscribe at any time.
