@@ -16,7 +16,7 @@ It will highlight:
 
 - **Core Principle:** “Every treatment begins with medical assessment.” 
 
-- **Patient Safety & Diligence:** Every aesthetic procedure requires a prior clinical evaluation by a certified doctor. 
+- **Patient Safety & Diligence:** Every aesthetic procedure requires a prior clinical evaluation by a verified doctor. 
 
 - **Trust Badges:** Verified medical practitioners, personalised clinical evaluation, and regulatory compliance. 
 
@@ -1446,3 +1446,253 @@ The proposed requirement is:
 
 **Developer Requirement:** The exact messaging permissions and allowed sender/recipient combinations should be configurable so the final communication workflow can be confirmed before implementation. 
 
+# **16. 🟡 MESSAGING → ONE-WAY NOTIFICATIONS**
+
+**Status: VERIFIED & CONFIRMED (100% FEASIBLE)**
+
+### Requirement:
+We want to verify whether the existing Messaging functionality can operate as one-way only, from BeautyDoctors to the user, with no ability for the user to reply. It should be used only for:
+
+- Appointment confirmations
+- Reminders
+- Appointment changes/cancellations
+- Operational platform notifications
+
+### Actions:
+1. **Rename Messaging everywhere:** Rename "Messages" / "Messaging" everywhere to **"Notifications"** across client portals, app navigation, and headers.
+2. **Remove all references to:**
+   - "Chat"
+   - "Secure messaging"
+   - "Message your doctor"
+   - "Direct communication"
+3. **Enforce One-Way Architecture:**
+   - Remove reply input box, send button, and attachments for end users / clients.
+   - Restrict incoming client messaging on the backend API / websocket layer.
+4. **Content & Legal Updates:**
+   - Update **For Clinics** section (`ForClinics.tsx`): Remove 'Direct secure messaging with inquiring patients'.
+   - Update **Terms of Use** (`TermsOfUse.tsx`): Replace Section 8 (Messaging) with Platform Notifications.
+   - Update **Medical Disclaimer** (`MedicalDisclaimer.tsx`): Align messaging terminology to notifications.
+
+# **17. 🟡 NOTIFICATION SETTINGS**
+
+**Status: NEW**
+
+### Requirement:
+Settings should display only the channels that are actually functional. At launch, we want:
+
+- **Email:** ON / user-selectable
+- **In-App Notifications:** ON / user-selectable, only if the one-way notification center is implemented
+- **SMS:** To be removed for now
+
+Currently, Email, SMS, and App Notifications are displayed. The UI must be updated to remove SMS functionality and only keep the available options.
+
+# **18. 🔴 CHANGE “OUR MEDICAL TEAM”**
+
+**Status: NEW**
+
+### Requirement:
+Wherever wording such as:
+“our medical team for personalized guidance”
+appears, it should be replaced with:
+
+- **EN:** Connect with participating doctors and clinics for medical assessment and personalized treatment planning.
+- **GR:** Συνδεθείτε με συμμετέχοντες ιατρούς και κλινικές για ιατρική αξιολόγηση και εξατομικευμένο θεραπευτικό πλάνο.
+
+BeautyDoctors should not be presented as the medical team itself providing personalized treatment.
+
+# **19. 🔴 CLINIC AND DOCTOR TERMINOLOGY**
+
+**Status: NEW**
+
+### Requirement:
+- **"Our Certified Clinics"**: Remove "our". "Certified" should only be used if there is an actual certification. Preferred wording: **"Participating Clinics"** or **"Verified Clinics"** (provided details are actually verified).
+- **"Verified Doctors"**: Keep this. Since BeautyDoctors verifies credentials, the following are acceptable:
+  - **"Verified Doctor"**
+  - **"Verified Healthcare Professional"**
+  - **"Credentials verified by BeautyDoctors"**
+- **"Accredited"**: Must not be used without a specific basis. "Verified Accredited Provider" should be replaced with **"Verified Healthcare Professional"**.
+
+# **20. 🟡 ONLINE PAYMENTS**
+
+**Status: NEW**
+
+### Requirement:
+Online medical payments must remain disabled until provider payment accounts are connected. In production, the doctor/clinic must be the actual payee/beneficiary of the medical-service payment.
+
+# **21. 🔴 GIFT CARDS — BACKEND HARD BLOCK**
+
+**Status: NEW**
+
+### Requirement:
+Gift Cards must only be usable for services that the Admin has explicitly marked as non-medical / Gift Card Eligible. 
+We want a field per service, for example:
+**Gift Card Eligible: YES / NO**
+
+Backend validation must reject Gift Card usage for:
+- Medical consultation
+- Injectable treatment
+- Medical procedure
+- Surgery
+- Any service classified as medical
+
+This must not be only a UI warning — it must be a real server/backend block.
+
+# **22. 🔴 EMAIL MARKETING CONSENT**
+
+**Status: NEW**
+
+### Requirement:
+For newsletter/promotional emails:
+- **Default = OFF**
+- The user must actively enable it.
+- Store the date/time of the opt-in.
+- The user must be able to disable it.
+- An unsubscribe option must be available.
+
+Transactional emails for booking, confirmation, cancellation, payment/refund, and account functionality must not depend on the marketing toggle.
+
+# **23. 🔴 CONTACT FORM WARNING**
+
+**Status: NEW**
+
+### Requirement:
+Below the contact form, replace the current wording with:
+
+- **GR:** Με την υποβολή της φόρμας δηλώνετε ότι έχετε ενημερωθεί για την Πολιτική Απορρήτου. Παρακαλούμε μην καταχωρείτε ιατρικά δεδομένα ή άλλες ευαίσθητες πληροφορίες σε αυτή τη φόρμα.
+- **EN:** By submitting this form, you acknowledge that you have read the Privacy Policy. Please do not include medical or other sensitive information in this form.
+
+# **24. 🔴 SCIENTIFIC REVIEW WORDING**
+
+**Status: NEW**
+
+### Requirement:
+The phrasing "Medically reviewed by: Dr. Scientific Board" gives the impression that an individual doctor performed the assessment. 
+It must be replaced with:
+**SCIENTIFIC REVIEW**
+The informational content has been reviewed by the BeautyDoctors Scientific Board. The suitability of the treatment is assessed individually by the treating physician before any procedure is performed.
+
+*Once the Medical Director is appointed, the following can be used:*
+Scientific review: Dr. [NAME], [SPECIALTY]
+
+# **25. 🔴 FOOTER — POSITIONING CHANGE**
+
+**Status: NEW**
+
+### Requirement:
+Remove any wording that presents BeautyDoctors as directly providing treatments or medical care.
+
+**New text:**
+- **GR:** Η BeautyDoctors είναι ψηφιακή πλατφόρμα ενημέρωσης, αναζήτησης και κράτησης ραντεβού με ανεξάρτητους ιατρούς και κλινικές αισθητικής ιατρικής. Η καταλληλότητα κάθε θεραπείας αξιολογείται από τον εκάστοτε ιατρό.
+- **EN:** BeautyDoctors is a digital platform for exploring treatments and booking appointments with independent doctors and clinics. Treatment suitability is determined by the treating healthcare professional following medical assessment.
+
+# **26. 🟢 BOOK NOW — KEEP**
+
+**Status: NEW**
+
+### Requirement:
+Do not remove "Book Now" from medical treatments.
+Below or within the booking process, the following should be clearly stated:
+> "Proceeding with the treatment requires a medical assessment and informed consent. The treating physician may confirm, modify, or decide not to perform the selected treatment."
+
+# **27. 🟡 HELP CENTER — CANCELLATION**
+
+**Status: NEW**
+
+### Requirement:
+If the 24-hour rule is not a universal BeautyDoctors policy, it should not be presented as a general rule. 
+Update the Help Center cancellation text to reflect that policies depend on the clinic:
+
+- **GR:** Μπορείτε να ζητήσετε αλλαγή ή ακύρωση του ραντεβού σας μέσω BeautyDoctors. Οι προθεσμίες και τυχόν χρεώσεις ακύρωσης καθορίζονται από την πολιτική του εκάστοτε ιατρού ή κλινικής και εμφανίζονται κατά τη διαδικασία κράτησης.
+- **EN:** You can request to reschedule or cancel your appointment through BeautyDoctors. Cancellation deadlines and any applicable charges depend on the policy of the selected doctor or clinic and are displayed during booking.
+
+# **28. 🔴 FOR CLINICS — CLAIMS CLEANUP**
+
+**Status: NEW**
+
+### Requirement:
+On the For Clinics page, modify claims that represent BeautyDoctors as having direct control or ensuring 100% compliance:
+
+- “All listings adhere strictly...” → **“All provider profiles are subject to BeautyDoctors onboarding and credential verification before activation.”**
+- “Full GDPR Compliance” → **“Consent and data-management tools designed to support GDPR-compliant workflows.”**
+- “Medical Verification within 24–48 hours” → **“Verification is typically completed within 24–48 business hours after all required documentation has been received.”**
+
+# **29. 🔴 GREECE-ONLY LAUNCH**
+
+**Status: NEW**
+
+### Requirement:
+For the initial launch, the public-facing platform should include Greece only.
+Hide/deactivate all Cyprus providers and Cyprus locations from public search results, treatment pages, filters, maps, pricing, and booking. Existing Cyprus records may remain in the database/admin, but they must not be publicly visible or bookable until Cyprus is separately activated.
+
+# **30. 🔴 GREEK TRANSLATION / LEGAL COPY CLEANUP**
+
+**Status: NEW**
+
+### Requirement:
+Avoid automatic, literal translation of legal and medical texts.
+Greek and English legal/medical copy should consist of two separately approved texts, rather than machine translations.
+
+Specific translation rules:
+- BeautyDoctors → never translate as “Γιατροί Ομορφιάς”
+- ROLE OF BEAUTY DOCTORS → Ο ΡΟΛΟΣ ΤΗΣ BEAUTYDOCTORS (never "Ο ΡΟΛΟΣ ΤΩΝ ΓΙΑΤΡΩΝ ΟΜΟΡΦΙΑΣ")
+- TREATMENT OF INTEREST → ΘΕΡΑΠΕΙΑ ΕΝΔΙΑΦΕΡΟΝΤΟΣ or ΕΚΔΗΛΩΣΗ ΕΝΔΙΑΦΕΡΟΝΤΟΣ ΓΙΑ ΘΕΡΑΠΕΙΑ
+- Doctor → Ιατρός
+- Clinic → Κλινική
+- Booking → Κράτηση ραντεβού
+- Medical Assessment → Ιατρική αξιολόγηση
+
+# **31. 🔴 COOKIE CONSENT — ACTUAL FUNCTIONALITY**
+
+**Status: NEW**
+
+### Requirement:
+Non-essential cookies/trackers must NOT load before consent. No Analytics or Marketing cookie should be pre-enabled. The user must be able to choose “Only Necessary”, accept optional cookies, or manage categories separately. Changing consent later must actually stop the relevant technologies. The Active Cookie Inventory must always match what is actually installed in production (HDPA requirement).
+
+# **32. 🔴 PRIVACY POLICY — TECHNICAL DETAILS**
+
+**Status: NEW**
+
+### Requirement:
+Provide the final production list of: Hosting provider/location, Database provider/location, Email provider, SMS provider, Payment provider, Analytics tools, Cookie/SDK providers, Backups, Support tools, Any other third-party processor/subprocessor. Also identify whether any provider or technical access is located outside the EEA.
+
+# **33. 🔴 CONSENT / TERMS LOGGING**
+
+**Status: NEW**
+
+### Requirement:
+When a user accepts the Terms, marketing email/SMS consent, or cookie preferences, store: User ID, Consent type, Policy/version number, Date/time, Source of consent. If consent is withdrawn, store the withdrawal date/time as well.
+
+# **34. 🔴 18+ AT REGISTRATION**
+
+**Status: NEW**
+
+### Requirement:
+At registration, add a mandatory, unchecked checkbox: “I confirm that I am at least 18 years old and accept the Terms of Use.” The Privacy Policy must be linked separately. Marketing consent must NOT be bundled into this checkbox. The platform is 18+ only for launch.
+
+# **35. 🔴 SMS / PUSH PRIVACY**
+
+**Status: NEW**
+
+### Requirement:
+SMS, push notifications and email subject lines must not expose treatment names or sensitive medical information. Example: “BeautyDoctors Reminder: You have an appointment at 14:30. View the details in your account.” Do not send: “Reminder: Botox appointment tomorrow.”
+
+# **36. 🟡 PROVIDER TERMS — RANKING / SUSPENSION / DATA**
+
+**Status: NEW**
+
+### Requirement:
+Create a separate “Provider Terms / Terms for Clinics” page placeholder. Final legal copy will be supplied after lawyer confirms P2B Regulation details (ranking criteria, paid placement, data access, suspension reasons).
+
+# **37. 🟡 REPORT CONTENT / REVIEW**
+
+**Status: NEW**
+
+### Requirement:
+Add “Report” to each public review/user-generated content item. The Report function allows flagging content (Illegal, Abusive, False, Privacy-sensitive) which sends to an admin moderation queue. A simple workflow is sufficient for launch.
+
+# **38. 🟡 ONLINE WITHDRAWAL — GIFT CARDS**
+
+**Status: NEW**
+
+### Requirement:
+Ask the lawyer: For online Gift Cards and any other BeautyDoctors transaction where a right of withdrawal applies, is the website required to provide a separate electronic “Withdrawal from the Contract” functionality? No code implementation yet until confirmed.

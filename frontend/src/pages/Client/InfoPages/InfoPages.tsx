@@ -45,8 +45,8 @@ export const SupportCenter: React.FC = () => {
  <h2 className="text-[#33373F] text-2xl sm:text-[30px] font-black uppercase mb-8">Help <span className="text-lime-700">Center</span></h2>
  <Card className="bg-white p-5 sm:p-8 rounded-2xl shadow-lg border border-gray-100 space-y-6">
  <div><h3 className="text-xl font-bold mb-2">How to Book an Appointment?</h3><p className="text-gray-600">Booking is easy! Simply navigate to the search page, select your preferred treatment, and choose a time slot that works for you.</p></div>
- <div className="border-t pt-6"><h3 className="text-xl font-bold mb-2">Rescheduling & Cancellations</h3><p className="text-gray-600">Need to change your plans? You can manage your appointments directly from your dashboard up to 24 hours before your session.</p></div>
- <div className="border-t pt-6"><h3 className="text-xl font-bold mb-2">Payment Options</h3><p className="text-gray-600">We accept all major credit cards, Stripe payments, and cash on-site at our certified clinics.</p></div>
+ <div className="border-t pt-6"><h3 className="text-xl font-bold mb-2">Rescheduling & Cancellations</h3><p className="text-gray-600">You can request to reschedule or cancel your appointment through BeautyDoctors. Cancellation deadlines and any applicable charges depend on the policy of the selected doctor or clinic and are displayed during booking.</p></div>
+ <div className="border-t pt-6"><h3 className="text-xl font-bold mb-2">Payment Options</h3><p className="text-gray-600">We accept all major credit cards, Stripe payments, and cash on-site at participating clinics.</p></div>
  </Card>
  </div>
  </section>

@@ -43,6 +43,10 @@ export class CreateUserDto {
   @IsObject()
   profile?: any;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  marketingEmailConsent?: boolean;
+
   @IsOptional()
   @IsString()
   referralCode?: string;

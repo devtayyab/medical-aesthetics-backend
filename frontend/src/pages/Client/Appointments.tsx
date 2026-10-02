@@ -312,7 +312,7 @@ export const Appointments: React.FC = () => {
                   <div className="mb-4 p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-start gap-2.5">
                     <Shield size={13} className="text-gray-400 shrink-0 mt-0.5" />
                     <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
-                      Treatment suitability and the final treatment plan are confirmed by the treating physician following medical assessment.
+                      Proceeding with the treatment requires a medical assessment and informed consent. The treating physician may confirm, modify, or decide not to perform the selected treatment.
                     </p>
                   </div>
 

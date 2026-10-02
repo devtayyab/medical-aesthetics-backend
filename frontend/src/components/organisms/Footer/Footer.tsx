@@ -22,7 +22,7 @@ export const Footer: React.FC = () => {
  </div>
  </Link>
  <p className="mt-3 text-xs text-white text-left leading-relaxed max-w-sm opacity-90">
- Our aesthetics platform is dedicated to providing high-quality treatments and personalized care. Explore our range of services to find the perfect solution for your beauty and wellness needs.
+ BeautyDoctors is a digital platform for exploring treatments and booking appointments with independent doctors and clinics. Treatment suitability is determined by the treating healthcare professional following medical assessment.
  </p>
  </div>
 
@@ -115,6 +115,11 @@ export const Footer: React.FC = () => {
       <li>
         <Link to="/gift-card-terms" className="text-white transition hover:text-[#CBFF38]">
           Gift Card Terms
+        </Link>
+      </li>
+      <li>
+        <Link to="/provider-terms" className="text-white transition hover:text-[#CBFF38]">
+          Provider Terms
         </Link>
       </li>
     </ul>

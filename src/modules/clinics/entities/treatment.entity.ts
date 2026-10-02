@@ -56,6 +56,9 @@ export class Treatment {
     @Column({ default: true })
     isActive: boolean;
 
+    @Column({ default: false })
+    giftCardEligible: boolean;
+
     @CreateDateColumn()
     createdAt: Date;
 

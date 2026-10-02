@@ -354,11 +354,20 @@ export class BookingsService {
     };
 
     // Auto-set totalAmount based on all selected services if not already provided
+    const allIds = [createAppointmentDto.serviceId, ...(createAppointmentDto.additionalServiceIds || [])];
+    const services = await this.servicesRepository.find({ where: { id: In(allIds) }, relations: ['treatment'] });
+    
     if (!appointmentData.totalAmount) {
-      const allIds = [createAppointmentDto.serviceId, ...(createAppointmentDto.additionalServiceIds || [])];
-      const services = await this.servicesRepository.find({ where: { id: In(allIds) } });
       const totalPrice = services.reduce((sum, s) => sum + Number(s.price), 0);
       appointmentData.totalAmount = totalPrice;
+    }
+
+    // 🔴 GIFT CARDS — BACKEND HARD BLOCK
+    if (createAppointmentDto.giftCardCode) {
+      const hasIneligibleService = services.some(s => !s.giftCardEligible && !s.treatment?.giftCardEligible);
+      if (hasIneligibleService) {
+        throw new BadRequestException('Gift cards cannot be used for medical consultations, procedures, injectables, or any non-eligible service.');
+      }
     }
 
     if (createAppointmentDto.additionalServiceIds) {

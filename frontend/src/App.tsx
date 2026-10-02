@@ -81,6 +81,7 @@ import { PrivacyPolicy } from "@/pages/Client/InfoPages/PrivacyPolicy";
 import { MedicalDisclaimer } from "@/pages/Client/InfoPages/MedicalDisclaimer";
 import { GiftCardTerms } from "@/pages/Client/InfoPages/GiftCardTerms";
 import { CookiePolicy } from "@/pages/Client/InfoPages/CookiePolicy";
+import ProviderTerms from "@/pages/Client/InfoPages/ProviderTerms";
 import { ContactUs } from "@/pages/Client/InfoPages/ContactUs";
 import { ForClinics } from "@/pages/Client/ForClinics";
 import { InviteFriend } from"@/pages/Client/AccountPages/InviteFriend";
@@ -487,6 +488,10 @@ function AppContent() {
  <Route
  path="/gift-card-terms"
  element={<ClientLayout><GiftCardTerms /></ClientLayout>}
+ />
+ <Route
+ path="/provider-terms"
+ element={<ClientLayout><ProviderTerms /></ClientLayout>}
  />
  <Route
  path="/cookie-policy"

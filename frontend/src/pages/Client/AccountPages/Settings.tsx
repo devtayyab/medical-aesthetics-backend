@@ -77,18 +77,19 @@ export const Settings: React.FC = () => {
  if (user || !authLoading) {
  setLoaded(true);
  }
- if (user?.profile?.settings) {
+ if (user) {
  // Merge saved settings with default to ensure all keys exist
  setSettings((prev) => ({
  ...prev,
- ...user.profile.settings,
+ ...(user.profile?.settings || {}),
  inspirationOffers: {
  ...prev.inspirationOffers,
- ...(user.profile.settings.inspirationOffers || {})
+ ...(user.profile?.settings?.inspirationOffers || {}),
+ email: user.marketingEmailConsent ?? false
  },
  privacy: {
  ...prev.privacy,
- ...(user.profile.settings.privacy || {})
+ ...(user.profile?.settings?.privacy || {})
  }
  }));
  }
@@ -118,23 +119,30 @@ export const Settings: React.FC = () => {
   };
 
  const toggle = async (section: keyof typeof settings, key: string) => {
+ const newValue = !(settings[section] as any)[key];
  const newSettings = {
  ...settings,
  [section]: {
  ...settings[section],
- [key]: !(settings[section] as any)[key],
+ [key]: newValue,
  },
  };
  
  setSettings(newSettings);
  
  try {
- await dispatch(updateProfile({
+ const updatePayload: any = {
  profile: {
  ...(user?.profile || {}),
  settings: newSettings
  }
- })).unwrap();
+ };
+
+ if (section === 'inspirationOffers' && key === 'email') {
+   updatePayload.marketingEmailConsent = newValue;
+ }
+
+ await dispatch(updateProfile(updatePayload)).unwrap();
  
  setSaveSuccess(true);
  setTimeout(() => setSaveSuccess(false), 2000);
@@ -224,8 +232,7 @@ export const Settings: React.FC = () => {
  <div className="space-y-10">
  {[
  { section: 'inspirationOffers', key: 'email', label: 'Newsletters & Updates', d: 'Receive Beauty Doctors news, treatment information and updates by email.', icon: <Mail size={16} /> },
- { section: 'inspirationOffers', key: 'sms', label: 'Priority SMS Alerts', d: 'Receive optional SMS updates about appointment availability and Beauty Doctors offers.', icon: <Smartphone size={16} /> },
- { section: 'inspirationOffers', key: 'push', label: 'Application Alerts', d: 'Receive important notifications about your appointments, messages and account activity.', icon: <Sliders size={16} /> },
+ { section: 'inspirationOffers', key: 'push', label: 'Application Alerts', d: 'Receive important notifications about your appointments and account activity.', icon: <Sliders size={16} /> },
  ].map((item, i) => (
  <div key={i} className="flex flex-row items-start sm:items-center justify-between gap-4 group">
  <div className="max-w-md">

@@ -110,7 +110,7 @@ export const ForClinics: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Ethical & Legal Compliance</h3>
               <p className="text-gray-600 text-sm leading-relaxed">
-                All listings adhere strictly to medical ethics and European healthcare regulations, protecting practitioner reputation and patient privacy.
+                All provider profiles are subject to BeautyDoctors onboarding and credential verification before activation.
               </p>
             </div>
           </div>
@@ -135,9 +135,9 @@ export const ForClinics: React.FC = () => {
                   'Automated Google Calendar two-way synchronization',
                   'Doctor profiles with verifiable medical credentials & specialties',
                   'Custom treatment pricing, durations, and protocol specifications',
-                  'Direct secure messaging with inquiring patients',
+                  'One-way operational platform notifications',
                   'Automated appointment reminders via SMS & Email to reduce no-shows',
-                  'Full GDPR patient consent tracking & audit logging'
+                  'Consent and data-management tools designed to support GDPR-compliant workflows.'
                 ].map((feature, idx) => (
                   <div key={idx} className="flex items-start gap-3">
                     <CheckCircle2 className="size-5 text-lime-600 shrink-0 mt-0.5" />
@@ -194,7 +194,7 @@ export const ForClinics: React.FC = () => {
 
               <div className="p-4 rounded-xl bg-lime-50 border border-lime-200 text-lime-900 text-xs font-semibold flex items-center gap-3">
                 <Clock className="size-5 shrink-0 text-lime-700" />
-                <span>Verification typically completes within 24 to 48 business hours.</span>
+                <span>Verification is typically completed within 24–48 business hours after all required documentation has been received.</span>
               </div>
             </div>
           </div>

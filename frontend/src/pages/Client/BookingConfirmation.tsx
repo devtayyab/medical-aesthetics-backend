@@ -169,7 +169,7 @@ const BookingConfirmation: React.FC = () => {
   {/* Discreet Medical Assessment Note */}
   <div className="mb-6 p-3.5 rounded-xl bg-gray-50 border border-gray-100 text-left">
     <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
-      * Treatment suitability and the final treatment plan are confirmed by the treating physician following medical assessment.
+      * Proceeding with the treatment requires a medical assessment and informed consent. The treating physician may confirm, modify, or decide not to perform the selected treatment.
     </p>
   </div>
 

@@ -79,7 +79,7 @@ export const MedicalDisclaimer: React.FC = () => {
                 No Emergency Medical Services
               </h3>
               <p className="text-xs text-rose-900 leading-relaxed font-medium">
-                Beauty Doctors does not provide emergency medical services. The platform and its messaging functions must not be used where urgent or emergency medical assistance is required. In an emergency, please immediately call local emergency services (112 / 166 in Greece) or visit the nearest hospital.
+                Beauty Doctors does not provide emergency medical services. The platform and its notification system must not be used where urgent or emergency medical assistance is required. In an emergency, please immediately call local emergency services (112 / 166 in Greece) or visit the nearest hospital.
               </p>
             </div>
           </div>

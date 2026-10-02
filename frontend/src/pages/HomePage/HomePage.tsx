@@ -82,7 +82,7 @@ const treatmentSteps = [
  {
  id:"confirm",
  name:"Confirm Your Appointment",
- description:"Book your consultation or treatment with a certified clinic",
+ description:"Book your consultation or treatment with a participating clinic",
  icon: TickIcon,
  },
 ];
@@ -227,7 +227,7 @@ const mainCategories = [
   </h1>
 
  <p className="text-gray-700 text-sm mb-4 max-w-md leading-snug font-medium">
- Explore aesthetic and medical treatments and speak with our medical team for personalized guidance.
+ Connect with participating doctors and clinics for medical assessment and personalized treatment planning.
  </p>
 
  <div className="w-full max-w-[480px]">
@@ -635,7 +635,7 @@ const mainCategories = [
        “Every treatment begins with medical assessment.”
      </p>
      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed max-w-2xl mx-auto">
-       Every aesthetic procedure requires a prior clinical evaluation by a certified doctor. Selecting a treatment online represents your Treatment of Interest; clinical suitability, safety, and your final treatment plan are determined exclusively by your attending physician.
+       Every aesthetic procedure requires a prior clinical evaluation by a verified doctor. Selecting a treatment online represents your Treatment of Interest; clinical suitability, safety, and your final treatment plan are determined exclusively by your attending physician.
      </p>
    </div>
 

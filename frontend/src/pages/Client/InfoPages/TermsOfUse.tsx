@@ -154,16 +154,25 @@ export const TermsOfUse: React.FC = () => {
           {/* Section 8 */}
           <div className="pt-6 space-y-3">
             <h2 className="text-base font-black uppercase tracking-wide text-gray-900">
-              8. Messaging
+              8. Notifications
             </h2>
             <p>
-              Beauty Doctors may enable users to communicate with participating doctors or clinics and, separately, with Beauty Doctors Support.
+              The Beauty Doctors platform utilizes a one-way notification system to send important information to users.
             </p>
             <p>
-              Beauty Doctors Support provides assistance relating to the platform, accounts, appointments and other administrative matters. Beauty Doctors Support does not provide medical diagnosis or medical treatment.
+              Notifications are used exclusively for:
+            </p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Appointment confirmations</li>
+              <li>Reminders</li>
+              <li>Appointment changes or cancellations</li>
+              <li>Operational platform notifications</li>
+            </ul>
+            <p>
+              Users cannot reply to these notifications. For assistance relating to the platform, accounts, appointments, and other administrative matters, users should contact Beauty Doctors Support directly. Beauty Doctors Support does not provide medical diagnosis or medical treatment.
             </p>
             <p className="text-amber-900 font-semibold text-xs">
-              The messaging function is not an emergency medical service and must not be used when immediate medical assistance is required.
+              The platform's notification system is not an emergency medical service and must not be relied upon for immediate medical assistance.
             </p>
           </div>
 
