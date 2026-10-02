@@ -1,6 +1,6 @@
 import React from 'react';
 import { ShieldCheck } from 'lucide-react';
-import LayeredBG from '@/assets/layered-waves-haikei.svg';
+import LayeredBG from '@/assets/LayeredBg.svg';
 
 const ProviderTerms: React.FC = () => {
   return (
