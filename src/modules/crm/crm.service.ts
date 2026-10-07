@@ -897,11 +897,13 @@ export class CrmService implements OnModuleInit {
   private async createLeadFromFacebook(parsedLead: ParsedFacebookLead, leadData: any, isWebhook: boolean = false): Promise<Lead> {
     // Extract Facebook Ad Name from form fields if available
     const facebookAdNameField = parsedLead.facebookLeadData?.field_data?.find(
-      (f: any) => f.name.toLowerCase().includes('ad_name') || f.name.toLowerCase().includes('campaign')
+      (f: any) => f && f.name && (f.name.toLowerCase().includes('ad_name') || f.name.toLowerCase().includes('campaign'))
     );
 
     // Try to get form name from Facebook API as fallback (better than "Unknown Ad")
-    let facebookAdName = facebookAdNameField ? facebookAdNameField.values[0] : null;
+    let facebookAdName = (facebookAdNameField && Array.isArray(facebookAdNameField.values) && facebookAdNameField.values.length > 0)
+      ? facebookAdNameField.values[0]
+      : (facebookAdNameField?.values ? String(facebookAdNameField.values) : null);
     if (!facebookAdName && parsedLead.facebookFormId) {
       try {
         const creds = await this.facebookService.getFacebookCredentials();
