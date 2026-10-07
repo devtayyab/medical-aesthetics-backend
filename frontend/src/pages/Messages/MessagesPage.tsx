@@ -35,7 +35,7 @@ const marbleBackground = css`
 export const MessagesPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
  const { activeConversationId, conversations } = useSelector((state: RootState) => state.messages);
- const { accessToken } = useSelector((state: RootState) => state.auth);
+ const { accessToken, user } = useSelector((state: RootState) => state.auth);
  const [searchQuery, setSearchQuery] = useState('');
  const [showNewChatModal, setShowNewChatModal] = useState(false);
  const [selectedTab, setSelectedTab] = useState('All');
@@ -70,15 +70,17 @@ export const MessagesPage: React.FC = () => {
  Messages
  </h1>
  <p className="text-gray-500 text-[10px] sm:text-xs font-medium max-w-md leading-tight">
- Communicate securely with your selected doctor or clinic, or contact Beauty Doctors Support for account and appointment assistance.
+ Receive appointment and operational notifications.
  </p>
  </div>
+ {user && user.role !== 'client' && (
  <button 
  onClick={() => setShowNewChatModal(true)}
  className="bg-[#CBFF38] text-black h-9 sm:h-12 px-4 sm:px-6 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] flex items-center justify-center gap-2 hover:scale-105 transition-all shadow-lg w-full sm:w-auto shrink-0"
  >
  <Plus size={16} /> Start Conversation
  </button>
+ )}
  </div>
 
  <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0">

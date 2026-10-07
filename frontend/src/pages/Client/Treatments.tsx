@@ -86,6 +86,13 @@ const subTreatmentCard = css`
 
 // A single top-level category card: shows its subcategories and every treatment
 // beneath it (its own + its subcategories'), all read from the pre-fetched tree.
+const getCategoryLabel = (name: string, isGreek: boolean) => {
+  const lower = (name || '').toLowerCase().trim();
+  if (lower === 'hair removal' || lower === 'μόνιμη αποτρίχωση' || lower === 'αποτρίχωση') {
+    return isGreek ? 'Αποτρίχωση' : 'Hair Removal';
+  }
+  return name;
+};
 const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ category, idx }) => {
  const navigate = useNavigate();
  const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
@@ -115,7 +122,7 @@ const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ cat
  {category.icon ? <span>{category.icon}</span> : getCategoryIcon(category.name)}
  </div>
  <div>
- <h3 className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 leading-tight">{category.name}</h3>
+ <h3 className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 leading-tight"><span className="notranslate" translate="no">{getCategoryLabel(category.name, isGreek)}</span></h3>
  <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{isGreek ? 'ΚΛΙΝΙΚΗ ΕΙΔΙΚΟΤΗΤΑ' : 'Elite Clinical Specialty'}</p>
  </div>
  </div>

@@ -154,6 +154,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  </div>
 
  {/* Input Area */}
+ {user && user.role !== 'client' ? (
  <div className="shrink-0 p-3 sm:p-6 md:p-8 bg-white border-t border-gray-50 relative z-30">
  <form onSubmit={handleSend} className="flex items-center gap-2 sm:gap-4 max-w-5xl mx-auto">
  <div className="flex-1 relative group">
@@ -178,6 +179,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onBack }
  </div>
  </form>
  </div>
+ ) : (
+ <div className="shrink-0 p-3.5 sm:p-4 bg-gray-50 border-t border-gray-100 text-center text-xs text-gray-500 font-bold uppercase tracking-wider">
+ Receive appointment and operational notifications only
+ </div>
+ )}
  </div>
  );
 };

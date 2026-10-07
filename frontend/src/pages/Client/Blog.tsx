@@ -106,12 +106,18 @@ export const Blog: React.FC = () => {
  <span className="text-lime-500">ARTICLES & INSIGHTS</span>
  </div>
 
- <h1 className="text-3xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none text-gray-900">
- AESTHETIC <br /> <span className="text-[#CBFF38]">INTELLIGENCE</span>
+ <h1 className="text-2xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight leading-tight text-gray-900">
+ {isGreek ? (
+   <>Ενημέρωση για θεραπείες, <br /><span className="text-[#84cc16]">την υγεία του δέρματος και την αισθητική φροντίδα.</span></>
+ ) : (
+   <>Information about treatments, <br /><span className="text-[#84cc16]">skin health and aesthetic care.</span></>
+ )}
  </h1>
 
- <p className="text-gray-500 mt-4 sm:mt-6 font-bold text-sm sm:text-lg max-w-lg leading-relaxed">
- Expert treatment guides, clinical insights and aesthetic medicine perspectives.
+ <p className="text-gray-600 mt-4 sm:mt-6 font-semibold text-xs sm:text-base max-w-2xl leading-relaxed">
+ {isGreek
+   ? 'Το περιεχόμενο δεν αντικαθιστά την εξατομικευμένη ιατρική αξιολόγηση ή συμβουλή.'
+   : 'Content is provided for general information and does not replace individual medical assessment or advice.'}
  </p>
  </div>
  </div>
@@ -123,7 +129,7 @@ export const Blog: React.FC = () => {
  <aside className="xl:w-64 shrink-0">
  <div className={glassCard}>
  <div className="p-6">
- <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">Treatments</h3>
+ <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">{isGreek ? 'Κατηγορίες άρθρων' : 'Article Categories'}</h3>
 
  <div className="space-y-2">
  <button
@@ -152,13 +158,13 @@ export const Blog: React.FC = () => {
  </div>
 
  <div className="mt-8 pt-6 border-t border-gray-50">
- <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Search</h4>
+ <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">{isGreek ? 'Αναζήτηση' : 'Search'}</h4>
  <div className="relative">
  <input
  type="text"
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
- placeholder="Keyword..."
+ placeholder={isGreek ? "Αναζήτηση..." : "Keyword..."}
  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 outline-none focus:border-[#CBFF38] transition-all font-black text-[10px] uppercase tracking-wider text-gray-900 placeholder-gray-300"
  />
  <Search size={12} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
@@ -233,17 +239,23 @@ export const Blog: React.FC = () => {
 
  {/* Right Column: Promotion Card */}
  <aside className="xl:w-64 shrink-0">
- <div className="bg-black rounded-[32px] p-8 relative overflow-hidden group shadow-2xl h-72 flex flex-col justify-between border border-white/5">
+ <div className="bg-black rounded-[32px] p-8 relative overflow-hidden group shadow-2xl min-h-72 flex flex-col justify-between border border-white/5">
  <div className="relative z-10">
- <h4 className="text-lg font-black uppercase text-white tracking-tight leading-none mb-3">Discover Top Treatments</h4>
- <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">Explore elite aesthetic treatments and scientific beauty guides.</p>
+ <h4 className="text-lg font-black uppercase text-white tracking-tight leading-snug mb-3">
+ {isGreek ? 'Δείτε θεραπείες' : 'Explore Treatments'}
+ </h4>
+ <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
+ {isGreek
+   ? 'Ενημερωθείτε για θεραπείες και υπηρεσίες που διατίθενται από συμμετέχοντες ιατρούς και κλινικές.'
+   : 'Learn about treatments and services available through participating doctors and clinics.'}
+ </p>
  </div>
 
  <button 
  onClick={() => navigate('/treatments')}
- className="relative z-10 w-full bg-[#CBFF38] text-black h-12 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95 transition-all"
+ className="relative z-10 w-full bg-[#CBFF38] text-black h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95 transition-all mt-6"
  >
- Explore Treatments <ChevronRight size={14} />
+ {isGreek ? 'Δείτε θεραπείες' : 'Explore Treatments'} <ChevronRight size={14} />
  </button>
 
  <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">

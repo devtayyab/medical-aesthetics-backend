@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
  Mail,
@@ -95,9 +95,10 @@ export const ContactUs: React.FC = () => {
  GET IN <span className="text-[#CBFF38]">TOUCH</span>
  </h1>
  <div className="h-1 w-20 bg-[#CBFF38] rounded-full my-5" />
- <p className="text-gray-400 text-sm sm:text-base max-w-xl font-medium">
- Questions about a treatment, your booking, or partnering with us?
- Send us a message — our team typically replies within one business day.
+ <p className="text-gray-300 text-sm sm:text-base max-w-2xl font-medium leading-relaxed">
+ {isGreek
+   ? 'Επικοινωνήστε με την υποστήριξη BeautyDoctors για ερωτήσεις σχετικά με τον λογαριασμό σας, τα ραντεβού, τη χρήση της πλατφόρμας ή συνεργασίες. Για ιατρικές συμβουλές ή την καταλληλότητα μιας θεραπείας, απευθυνθείτε στον θεράποντα ιατρό σας.'
+   : 'Contact BeautyDoctors Support for questions about your account, appointments, platform use or partnerships. For medical advice or treatment suitability, please contact your treating doctor.'}
  </p>
  </div>
  </header>
@@ -132,8 +133,12 @@ export const ContactUs: React.FC = () => {
  <Clock size={18} className="text-lime-700" />
  </div>
  <div>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Support hours</p>
- <p className="text-sm font-bold text-gray-900">Mon – Fri, 9:00 – 18:00 EET</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+   {isGreek ? 'Ώρες υποστήριξης' : 'Support hours'}
+ </p>
+ <p className="text-sm font-bold text-gray-900">
+   {isGreek ? 'Δευτέρα–Παρασκευή, 09:00–18:00, ώρα Ελλάδας' : 'Monday–Friday, 09:00–18:00, Greece local time'}
+ </p>
  </div>
  </div>
  <div className="flex items-start gap-4">
@@ -178,8 +183,11 @@ export const ContactUs: React.FC = () => {
  </div>
  <h2 className="text-2xl font-black uppercase tracking-tight text-gray-900 mb-3">Message sent</h2>
  <p className="text-gray-500 font-medium max-w-sm mb-8">
- Thanks {form.name.split(" ")[0]} — we received your message and will get back to you at{" "}
- <span className="font-bold text-gray-800">{form.email}</span> within one business day.
+ {isGreek ? (
+   <>Ευχαριστούμε {form.name.split(" ")[0]} — λάβαμε το μήνυμά σας και θα επικοινωνήσουμε μαζί σας στο <span className="font-bold text-gray-800">{form.email}</span>.</>
+ ) : (
+   <>Thanks {form.name.split(" ")[0]} — we received your message and will get back to you at <span className="font-bold text-gray-800">{form.email}</span>.</>
+ )}
  </p>
  <div className="flex gap-3">
  <Link to="/" className="px-6 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black uppercase tracking-widest transition-colors">
