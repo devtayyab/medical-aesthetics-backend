@@ -267,6 +267,14 @@ export const Header: React.FC = () => {
     (localStorage.getItem('preferredLang') as 'en' | 'el') || 'en'
   );
   const { categories: navCategories } = useCategoryTree();
+  const isGreek = currentLang === 'el';
+  const getCategoryLabel = (name: string) => {
+    const lower = (name || '').toLowerCase().trim();
+    if (lower === 'hair removal' || lower === 'μόνιμη αποτρίχωση' || lower === 'αποτρίχωση') {
+      return isGreek ? 'Αποτρίχωση' : 'Hair Removal';
+    }
+    return name;
+  };
 
   const handleLanguageSwitch = (lang: 'en' | 'el') => {
     setCurrentLang(lang);
@@ -481,50 +489,66 @@ export const Header: React.FC = () => {
                   </Link>
 
                   {isCategoriesOpen && navCategories.length > 0 && (
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full pt-4 z-50 w-[720px] max-w-[90vw]">
-                      <div className="bg-[#0B1120] border border-white/10 rounded-2xl shadow-2xl p-6 backdrop-blur-xl">
-                        <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
-                          <div>
-                            <h4 className="text-white text-xs font-black uppercase tracking-wider">Medical & Aesthetic Treatments</h4>
-                            <p className="text-gray-400 text-[11px] mt-0.5">Explore treatments delivered by specialized medical practitioners</p>
-                          </div>
+                    <div className="absolute left-0 top-full pt-2.5 z-50 w-72 sm:w-80 whitespace-normal">
+                      <div className="bg-[#0B1120] border border-white/10 rounded-2xl shadow-2xl p-2.5 backdrop-blur-xl">
+                        <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 mb-1.5">
+                          <span className="text-gray-400 text-[10px] font-black uppercase tracking-wider">
+                            Categories
+                          </span>
                           <Link
                             to="/treatments"
                             onClick={() => setIsCategoriesOpen(false)}
-                            className="text-[11px] font-black uppercase tracking-widest text-[#CBFF38] hover:underline flex items-center gap-1"
+                            className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] hover:underline flex items-center gap-1"
                           >
                             All Treatments &rarr;
                           </Link>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-6 max-h-[60vh] overflow-y-auto pr-2">
+                        <div className="flex flex-col space-y-1 max-h-[65vh] overflow-y-auto pr-1">
                           {navCategories.map((cat) => (
-                            <div key={cat.id} className="space-y-2">
+                            <div key={cat.id} className="relative group/sub">
                               <button
                                 onClick={() => {
                                   setIsCategoriesOpen(false);
                                   navigate(`/search?category=${encodeURIComponent(cat.name)}`);
                                 }}
-                                className="w-full text-left font-black text-xs uppercase tracking-wider text-white hover:text-[#CBFF38] transition-colors flex items-center gap-2 group"
+                                className="w-full text-left font-bold text-xs uppercase tracking-wider text-gray-200 hover:text-black hover:bg-[#CBFF38] group-hover/sub:bg-[#CBFF38] group-hover/sub:text-black transition-all px-3 py-2 rounded-xl flex items-center justify-between gap-2"
                               >
-                                {cat.icon && <span className="text-sm">{cat.icon}</span>}
-                                <span className="group-hover:translate-x-0.5 transition-transform">{cat.name}</span>
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {cat.icon ? (
+                                    <span className="text-sm shrink-0">{cat.icon}</span>
+                                  ) : (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#CBFF38] group-hover/sub:bg-black shrink-0 transition-colors" />
+                                  )}
+                                  <span className="leading-snug notranslate" translate="no">{getCategoryLabel(cat.name)}</span>
+                                </div>
+                                {(cat.children || []).length > 0 && (
+                                  <ChevronRight size={13} className="shrink-0 text-gray-400 group-hover/sub:text-black transition-colors" />
+                                )}
                               </button>
 
                               {(cat.children || []).length > 0 && (
-                                <div className="flex flex-col space-y-1 pl-4 border-l border-white/10">
-                                  {(cat.children || []).map((sub) => (
-                                    <button
-                                      key={sub.id}
-                                      onClick={() => {
-                                        setIsCategoriesOpen(false);
-                                        navigate(`/search?category=${encodeURIComponent(sub.name)}`);
-                                      }}
-                                      className="text-left text-[11px] text-gray-400 hover:text-white transition-colors py-0.5"
-                                    >
-                                      {sub.name}
-                                    </button>
-                                  ))}
+                                <div className="hidden group-hover/sub:block absolute left-full top-0 pl-2 z-50 w-64">
+                                  <div className="bg-[#0B1120] border border-white/10 rounded-2xl shadow-2xl p-2 backdrop-blur-xl flex flex-col space-y-1">
+                                    <div className="px-3 py-1.5 border-b border-white/10 mb-1">
+                                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                                        {getCategoryLabel(cat.name)}
+                                      </span>
+                                    </div>
+                                    {(cat.children || []).map((sub) => (
+                                      <button
+                                        key={sub.id}
+                                        onClick={() => {
+                                          setIsCategoriesOpen(false);
+                                          navigate(`/search?category=${encodeURIComponent(sub.name)}`);
+                                        }}
+                                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-gray-300 hover:text-black hover:bg-[#CBFF38] transition-all leading-snug flex items-center gap-2"
+                                      >
+                                        <span className="w-1 h-1 rounded-full bg-[#CBFF38] shrink-0" />
+                                        <span className="notranslate" translate="no">{getCategoryLabel(sub.name)}</span>
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -914,13 +938,13 @@ export const Header: React.FC = () => {
  <div key={cat.id} className="flex flex-col gap-1 pl-2">
  {hasChildren ? (
  <>
- <span className="text-gray-500 font-bold text-[10px] uppercase tracking-widest px-4 py-1">{cat.name}</span>
+ <span className="text-gray-500 font-bold text-[10px] uppercase tracking-widest px-4 py-1 notranslate" translate="no">{getCategoryLabel(cat.name)}</span>
  {cat.children!.map((sub) => (
- <Link key={sub.id} to={`/search?category=${encodeURIComponent(sub.name)}`} className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ {sub.name}</Link>
+ <Link key={sub.id} to={`/search?category=${encodeURIComponent(sub.name)}`} className="px-4 py-2 text-[12px] text-gray-600 hover:text-black hover:bg-gray-50 rounded-lg font-semibold" onClick={() => setIsMobileMenuOpen(false)}>↳ <span className="notranslate" translate="no">{getCategoryLabel(sub.name)}</span></Link>
  ))}
  </>
  ) : (
- <Link to={`/search?category=${encodeURIComponent(cat.name)}`} className="px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 rounded-xl" onClick={() => setIsMobileMenuOpen(false)}>{cat.name}</Link>
+ <Link to={`/search?category=${encodeURIComponent(cat.name)}`} className="px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 rounded-xl" onClick={() => setIsMobileMenuOpen(false)}><span className="notranslate" translate="no">{getCategoryLabel(cat.name)}</span></Link>
  )}
  </div>
  );

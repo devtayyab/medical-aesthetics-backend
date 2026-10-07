@@ -21,7 +21,7 @@ const extraServices = [
  {
  id:"gift-cards",
  name:"Gift Cards",
- description:"Surprise your loved ones with the gift of confidence. Available for all treatments and clinics.",
+ description:"Surprise your loved ones with the gift of confidence. Available only for selected eligible non-medical aesthetic services.",
  icon: <FaGift size={30} />,
  link:"/gift-card"
  },

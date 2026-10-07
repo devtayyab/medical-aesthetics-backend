@@ -14,7 +14,7 @@ import {
 import { WebView } from 'react-native-webview';
 
 // Live production URL for the client web app
-const APP_URL = 'https://beautydoctors.gr/';
+const APP_URL = 'https://dev.beautydoctors.gr/';
 
 export default function App() {
   const webViewRef = useRef<WebView>(null);

@@ -16,7 +16,8 @@ import {
   ArrowRight,
   Sparkles,
   Syringe,
-  ShieldCheck
+  ShieldCheck,
+  Info
 } from "lucide-react";
 
 
@@ -69,20 +70,26 @@ const getFallbackImage = (name: string): string => {
 const treatmentSteps = [
  {
  id:"choose",
- name:"Choose a Treatment",
+ name:"Explore Treatments & Choose a Provider",
+ nameEl:"Δείτε θεραπείες και επιλέξτε ιατρό ή κλινική",
  description:"Dermatology, Plastic Surgery, Skin Treatments, or Aesthetics",
+ descriptionEl:"Δερματολογία, Πλαστική Χειρουργική, Θεραπείες Δέρματος ή Αισθητική",
  icon: PlusIcon,
  },
  {
  id:"schedule",
- name:"Pick Date & Time",
+ name:"Select Date & Time",
+ nameEl:"Επιλέξτε ημερομηνία και ώρα",
  description:"Select the day and time that works best for you",
+ descriptionEl:"Επιλέξτε την ημέρα και την ώρα που σας εξυπηρετεί καλύτερα",
  icon: CalendarIcon,
  },
  {
  id:"confirm",
  name:"Confirm Your Appointment",
+ nameEl:"Επιβεβαιώστε το ραντεβού σας",
  description:"Book your consultation or treatment with a participating clinic",
+ descriptionEl:"Ολοκληρώστε την κράτηση της επίσκεψης ή της θεραπείας σας",
  icon: TickIcon,
  },
 ];
@@ -125,6 +132,29 @@ const mainCategories = [
  const { categories: dynamicCategories, loading: categoriesLoading } = useCategoryTree();
  const { treatments: topTreatments, loading: topLoading } = useTopTreatments(8);
  const [clinicCities, setClinicCities] = useState<string[]>([]);
+ const [isGreek, setIsGreek] = useState<boolean>(
+   () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+ );
+
+ const getCategoryLabel = (name: string) => {
+   const lower = (name || '').toLowerCase().trim();
+   if (lower === 'hair removal' || lower === 'μόνιμη αποτρίχωση' || lower === 'αποτρίχωση') {
+     return isGreek ? 'Αποτρίχωση' : 'Hair Removal';
+   }
+   return name;
+ };
+
+ useEffect(() => {
+   const handleLang = () => {
+     setIsGreek(localStorage.getItem('preferredLang') === 'el');
+   };
+   window.addEventListener('storage', handleLang);
+   const interval = setInterval(handleLang, 1000);
+   return () => {
+     window.removeEventListener('storage', handleLang);
+     clearInterval(interval);
+   };
+ }, []);
 
  useEffect(() => {
    publicCatalogAPI.getCities()
@@ -215,20 +245,22 @@ const mainCategories = [
  minHeight: '850px'
  }}
  >
- <div className="absolute inset-0 bg-white/10 lg:bg-transparent" />
+ <div className="absolute inset-0 bg-gradient-to-r from-white/70 via-white/40 to-transparent md:from-transparent md:to-transparent" />
 
  {/* Content Overlay */}
  <div className="relative z-10 w-full -mt-24 md:-mt-40">
- <div className="max-w-[1200px] mx-auto w-full px-6">
+ <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-6">
  <div className="flex flex-col max-w-xl">
-  <h1 className="text-black text-xl sm:text-3xl md:text-[40px] font-black mb-2 leading-tight uppercase tracking-tight">
-  FIND THE RIGHT <br />
-                  <span className="text-[#A3E635] inline-block">TREATMENT FOR YOU</span>
-  </h1>
+  <div className="bg-white/90 md:bg-transparent backdrop-blur-md md:backdrop-blur-none p-4 sm:p-5 md:p-0 rounded-3xl border border-white/60 md:border-none shadow-xl md:shadow-none mb-3 md:mb-0">
+   <h1 className="text-gray-950 text-xl sm:text-3xl md:text-[40px] font-black mb-1.5 leading-tight uppercase tracking-tight">
+   FIND THE RIGHT <br />
+                   <span className="text-[#65a30d] md:text-[#A3E635] inline-block">TREATMENT FOR YOU</span>
+   </h1>
 
- <p className="text-gray-700 text-sm mb-4 max-w-md leading-snug font-medium">
- Connect with participating doctors and clinics for medical assessment and personalized treatment planning.
- </p>
+  <p className="text-gray-800 md:text-gray-700 text-xs sm:text-sm max-w-md leading-relaxed font-bold md:font-medium">
+  Connect with participating doctors and clinics for medical assessment and personalized treatment planning.
+  </p>
+  </div>
 
  <div className="w-full max-w-[480px]">
  <SearchBar
@@ -417,9 +449,11 @@ const mainCategories = [
  <section className="py-16 bg-white overflow-hidden">
  <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
  <div className="text-center mb-10">
- <h2 className="text-[#586271] text-xl uppercase tracking-wider font-medium mb-2">How It Works</h2>
+ <h2 className="text-[#586271] text-xl uppercase tracking-wider font-medium mb-2">
+ {isGreek ? 'Πώς Λειτουργεί' : 'How It Works'}
+ </h2>
  <h3 className="text-[#33373F] text-2xl sm:text-3xl font-bold">
- 3 Steps to Your Treatment
+ {isGreek ? '3 βήματα για το ραντεβού σας' : '3 Steps to Your Appointment'}
  </h3>
  </div>
 
@@ -431,10 +465,10 @@ const mainCategories = [
  <img src={step.icon} alt={step.name} className="w-10" />
  </div>
  <h3 className="text-xl font-bold text-gray-900 mb-2">
- {step.name}
+ {isGreek ? step.nameEl : step.name}
  </h3>
  <p className="text-base text-gray-500 leading-relaxed">
- {step.description}
+ {isGreek ? step.descriptionEl : step.description}
  </p>
  </div>
 
@@ -457,6 +491,20 @@ const mainCategories = [
  )}
  </React.Fragment>
  ))}
+ </div>
+
+ {/* Clinical Notice under Steps */}
+ <div className="mt-12 sm:mt-16 max-w-4xl mx-auto p-4 sm:p-6 rounded-2xl bg-gray-50/80 border border-gray-200/80 shadow-xs">
+ <div className="flex items-start sm:items-center gap-3.5">
+ <div className="size-8 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-[#84cc16] shrink-0 shadow-xs mt-0.5 sm:mt-0">
+ <Info size={16} />
+ </div>
+ <p className="text-xs sm:text-[13px] text-gray-600 leading-relaxed font-medium">
+ {isGreek
+ ? 'Η επιλογή ιατρικής θεραπείας αποτελεί εκδήλωση ενδιαφέροντος. Η πραγματοποίησή της προϋποθέτει ιατρική αξιολόγηση και ενημερωμένη συναίνεση. Ο θεράπων ιατρός μπορεί να επιβεβαιώσει, να τροποποιήσει ή να μην πραγματοποιήσει την επιλεγμένη θεραπεία.'
+ : 'Selecting a medical treatment indicates your Treatment of Interest. Any medical procedure requires medical assessment and informed consent. The treating doctor may confirm, modify or decide not to perform the selected treatment.'}
+ </p>
+ </div>
  </div>
  </div>
  </section>
@@ -559,13 +607,13 @@ const mainCategories = [
  : <img src={DermaIcon} alt={category.name} className="p-1" />}
  </div>
  <h3 className="text-gray-800 font-semibold group-hover:text-lime-600 transition-colors">
- {category.name}
+ <span className="notranslate" translate="no">{getCategoryLabel(category.name)}</span>
  </h3>
  </div>
  <ul className="space-y-1 text-gray-700">
  {subs.length > 0
  ? subs.map((sub) => (
- <li key={sub.id} className="hover:text-lime-600 cursor-pointer" onClick={() => handleCategoryClick(sub.name)}>{sub.name}</li>
+ <li key={sub.id} className="hover:text-lime-600 cursor-pointer" onClick={() => handleCategoryClick(sub.name)}><span className="notranslate" translate="no">{getCategoryLabel(sub.name)}</span></li>
  ))
  : citiesToShow.map((city, i) => (
  <li
@@ -603,16 +651,22 @@ const mainCategories = [
  <div className="relative z-10">
  <Sparkles className="text-[#CBFF38] mx-auto mb-8" size={40} />
  <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white mb-8 leading-tight">
- Not sure which <br /> <span className="text-[#CBFF38]">path fits you?</span>
+ {isGreek ? (
+   <>Χρειάζεστε βοήθεια <br /> <span className="text-[#CBFF38]">για το επόμενο βήμα;</span></>
+ ) : (
+   <>Need help choosing <br /> <span className="text-[#CBFF38]">your next step?</span></>
+ )}
  </h2>
- <p className="text-gray-400 font-bold max-w-sm mx-auto mb-10 text-sm">
- Receive a professional clinical assessment with our lead medical practitioners.
+ <p className="text-gray-300 font-medium max-w-lg mx-auto mb-10 text-sm sm:text-base leading-relaxed">
+ {isGreek
+   ? 'Βρείτε συμμετέχοντα ιατρό ή κλινική για ιατρική αξιολόγηση και εξατομικευμένο θεραπευτικό πλάνο.'
+   : 'Find a participating doctor or clinic for medical assessment and personalised treatment planning.'}
  </p>
  <button
- onClick={() => setShowConsultModal(true)}
- className="px-6 py-4 h-auto md:px-12 md:py-0 md:h-16 max-w-full bg-[#CBFF38] text-black rounded-2xl font-black text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] hover:bg-white transition-all shadow-xl active:scale-95 mx-auto"
+ onClick={() => navigate('/search')}
+ className="px-6 py-4 h-auto md:px-12 md:py-0 md:h-16 max-w-full bg-[#CBFF38] text-black rounded-2xl font-black text-[11px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] hover:bg-white transition-all shadow-xl active:scale-95 mx-auto"
  >
- Get Professional Consultant
+ {isGreek ? 'Βρείτε ιατρό' : 'Find a Doctor'}
  </button>
  </div>
  <div className="absolute inset-0 opacity-10">
@@ -622,87 +676,120 @@ const mainCategories = [
  </div>
 
  {/* Clinical Principles Section */}
- <div className="my-16 bg-white rounded-[32px] border border-gray-100 shadow-sm p-6 sm:p-10">
-   <div className="max-w-3xl mx-auto text-center space-y-4">
-     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-lime-50 border border-lime-200 text-lime-800 text-xs font-bold uppercase tracking-wider">
-       <ShieldCheck size={14} className="text-lime-600" />
-       Clinical Governance & Safety
-     </div>
-     <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-gray-900">
-       Clinical <span className="text-[#84cc16]">Principles</span>
-     </h2>
-     <p className="text-base sm:text-lg font-bold text-gray-800">
-       “Every treatment begins with medical assessment.”
-     </p>
-     <p className="text-xs sm:text-sm text-gray-600 leading-relaxed max-w-2xl mx-auto">
-       Every aesthetic procedure requires a prior clinical evaluation by a verified doctor. Selecting a treatment online represents your Treatment of Interest; clinical suitability, safety, and your final treatment plan are determined exclusively by your attending physician.
-     </p>
-   </div>
+  <div className="my-16 bg-white rounded-[32px] border border-gray-100 shadow-sm p-6 sm:p-10">
+    <div className="max-w-3xl mx-auto text-center space-y-4">
+      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-lime-50 border border-lime-200 text-lime-800 text-xs font-bold uppercase tracking-wider">
+        <ShieldCheck size={14} className="text-lime-600" />
+        {isGreek ? 'Κλινική Διακυβέρνηση & Ασφάλεια' : 'Clinical Governance & Safety'}
+      </div>
+      <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-gray-900">
+        {isGreek ? (
+          <>Κλινικές <span className="text-[#84cc16]">Αρχές</span></>
+        ) : (
+          <>Clinical <span className="text-[#84cc16]">Principles</span></>
+        )}
+      </h2>
+      <p className="text-base sm:text-lg font-bold text-gray-800">
+        {isGreek ? '«Κάθε θεραπεία ξεκινά με ιατρική αξιολόγηση.»' : '“Every treatment begins with medical assessment.”'}
+      </p>
+      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed max-w-2xl mx-auto">
+        {isGreek
+          ? 'Για τις ιατρικές θεραπείες, η ηλεκτρονική επιλογή θεραπείας αποτελεί εκδήλωση ενδιαφέροντος. Η καταλληλότητα και το τελικό θεραπευτικό πλάνο καθορίζονται από τον θεράποντα ιατρό μετά από εξατομικευμένη ιατρική αξιολόγηση.'
+          : 'For medical treatments, selecting a treatment online represents your Treatment of Interest. Treatment suitability and the final treatment plan are determined by your treating physician following individual medical assessment.'}
+      </p>
+    </div>
 
-   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-6 border-t border-gray-100 text-left">
-     <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
-       <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">01</div>
-       <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">Verified Medical Practitioners</h3>
-       <p className="text-[11px] text-gray-500 leading-relaxed">All doctors and clinic providers hold verified medical credentials and licenses in compliance with national healthcare standards.</p>
-     </div>
-     <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
-       <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">02</div>
-       <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">Personalised Clinical Evaluation</h3>
-       <p className="text-[11px] text-gray-500 leading-relaxed">Individual diagnostic assessment is conducted to establish treatment safety, contraindications, and tailored protocols.</p>
-     </div>
-     <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
-       <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">03</div>
-       <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">Regulatory Compliance</h3>
-       <p className="text-[11px] text-gray-500 leading-relaxed">Strict adherence to Greek and European healthcare regulations preserving the independent clinical judgment of your doctor.</p>
-     </div>
-   </div>
- </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-6 border-t border-gray-100 text-left">
+      <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+        <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">01</div>
+        <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">
+          {isGreek ? '01: Έλεγχος επαγγελματικών στοιχείων' : '01: Provider Credential Verification'}
+        </h3>
+        <p className="text-[11px] text-gray-500 leading-relaxed">
+          {isGreek
+            ? 'Τα επαγγελματικά διαπιστευτήρια ελέγχονται από το BeautyDoctors πριν από την ενεργοποίηση του προφίλ. Η επαλήθευση δεν εγγυάται τα αποτελέσματα της θεραπείας.'
+            : 'Professional credentials are checked by BeautyDoctors before profile activation. Verification does not guarantee treatment outcomes.'}
+        </p>
+      </div>
+      <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+        <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">02</div>
+        <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">
+          {isGreek ? '02: Εξατομικευμένη ιατρική αξιολόγηση' : '02: Individual Medical Assessment'}
+        </h3>
+        <p className="text-[11px] text-gray-500 leading-relaxed">
+          {isGreek
+            ? 'Ο θεράπων ιατρός σας αξιολογεί την καταλληλότητα της θεραπείας, τους κινδύνους, τις αντενδείξεις και τις εναλλακτικές λύσεις πριν από μια ιατρική πράξη.'
+            : 'Your treating doctor assesses treatment suitability, risks, contraindications and alternatives before a medical procedure.'}
+        </p>
+      </div>
+      <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+        <div className="w-8 h-8 rounded-xl bg-lime-100 text-lime-700 flex items-center justify-center font-black text-xs">03</div>
+        <h3 className="text-xs font-bold uppercase tracking-wide text-gray-900">
+          {isGreek ? '03: Ανεξάρτητη κλινική κρίση' : '03: Independent Clinical Judgment'}
+        </h3>
+        <p className="text-[11px] text-gray-500 leading-relaxed">
+          {isGreek
+            ? 'Η ιατρική αξιολόγηση και οι θεραπευτικές αποφάσεις παραμένουν αποκλειστική ευθύνη του θεράποντος επαγγελματία υγείας.'
+            : 'Medical assessment and treatment decisions remain the responsibility of the treating healthcare professional.'}
+        </p>
+      </div>
+    </div>
+  </div>
 
- <div className="pt-12 grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
- <div className="text-center lg:text-left">
- <h2 className="text-3xl font-bold text-[#33373F] mb-4">
- Download our app
- </h2>
- <p className="text-gray-600 mb-8 max-w-md mx-auto lg:mx-0 text-lg">
- Book treatments and find the best clinic near you with a quick
- swipe or two.
- </p>
+  <div className="pt-12 grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
+    <div className="text-center lg:text-left">
+      <h2 className="text-3xl font-bold text-[#33373F] mb-4">
+        {isGreek ? 'Κατεβάστε την εφαρμογή μας' : 'Download our app'}
+      </h2>
+      <p className="text-gray-600 mb-8 max-w-md mx-auto lg:mx-0 text-lg leading-relaxed">
+        {isGreek
+          ? 'Ενημερωθείτε για θεραπείες, βρείτε συμμετέχοντες ιατρούς και κλινικές και διαχειριστείτε τα ραντεβού σας μέσω της εφαρμογής BeautyDoctors.'
+          : 'Explore treatments, find participating doctors and clinics, and manage your appointments through the BeautyDoctors app.'}
+      </p>
 
- <div className="flex flex-wrap justify-center lg:justify-start gap-4">
- <a
- href="#"
- className="bg-black text-white flex items-center rounded-xl px-5 py-3 gap-3 hover:bg-gray-800 transition shadow-lg"
- aria-label="Download on App Store"
- >
- <FaApple size={32} />
- <span className="text-left leading-none">
- <span className="text-[10px] uppercase tracking-wider block mb-1">Download on the</span>
- <span className="font-bold text-lg">App Store</span>
- </span>
- </a>
- <a
- href="#"
- className="bg-black text-white flex items-center rounded-xl px-5 py-3 gap-3 hover:bg-gray-800 transition shadow-lg"
- aria-label="Get it on Google Play"
- >
- <FaGooglePlay size={28} />
- <span className="text-left leading-none">
- <span className="text-[10px] uppercase tracking-wider block mb-1">GET IT ON</span>
- <span className="font-bold text-lg">Google Play</span>
- </span>
- </a>
- </div>
- </div>
+      <div className="flex flex-wrap justify-center lg:justify-start gap-4">
+        <a
+          href="https://apps.apple.com/app/beauty-doctor/id6470000000"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-black text-white flex items-center rounded-xl px-5 py-3 gap-3 hover:bg-gray-800 transition shadow-lg"
+          aria-label="Download on App Store"
+        >
+          <FaApple size={32} />
+          <span className="text-left leading-none">
+            <span className="text-[10px] uppercase tracking-wider block mb-1">
+              {isGreek ? 'Λήψη στο' : 'Download on the'}
+            </span>
+            <span className="font-bold text-lg">App Store</span>
+          </span>
+        </a>
+        <a
+          href="https://play.google.com/store/apps/details?id=com.beautydoctor.clientapp"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-black text-white flex items-center rounded-xl px-5 py-3 gap-3 hover:bg-gray-800 transition shadow-lg"
+          aria-label="Get it on Google Play"
+        >
+          <FaGooglePlay size={28} />
+          <span className="text-left leading-none">
+            <span className="text-[10px] uppercase tracking-wider block mb-1">
+              {isGreek ? 'Αποκτήστε το στο' : 'GET IT ON'}
+            </span>
+            <span className="font-bold text-lg">Google Play</span>
+          </span>
+        </a>
+      </div>
+    </div>
 
- <div className="flex justify-center lg:justify-end">
- <img
- src={HomeMobAppImg}
- alt="Mobile App"
- className="w-full max-w-[400px]"
- />
- </div>
- </div>
- </div>
+    <div className="flex justify-center lg:justify-end">
+      <img
+        src={HomeMobAppImg}
+        alt="BeautyDoctors Mobile App"
+        className="w-full max-w-[380px] drop-shadow-2xl hover:scale-105 transition-transform duration-500"
+      />
+    </div>
+  </div>
+  </div>
 
  <img
  src={LayeredBG}
