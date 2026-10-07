@@ -6,9 +6,9 @@ import * as crypto from 'crypto';
 
 export interface FacebookLeadData {
   id: string;
-  field_data: Array<{
+  field_data?: Array<{
     name: string;
-    values: string[];
+    values?: string[];
   }>;
   created_time: string;
   ad_id?: string;
@@ -219,9 +219,23 @@ export class FacebookService {
     const extraFields: string[] = [];
 
     // Map Facebook field names to our field names
-    leadData.field_data.forEach((field) => {
-      fieldMap.set(field.name, field.values[0]);
-      
+    const fields = Array.isArray(leadData?.field_data) ? leadData.field_data : [];
+    fields.forEach((field) => {
+      if (!field || !field.name) return;
+
+      let strVal = '';
+      if (Array.isArray(field.values) && field.values.length > 0) {
+        strVal = field.values
+          .filter((v) => v !== null && v !== undefined)
+          .map((v) => String(v).trim())
+          .filter(Boolean)
+          .join(', ');
+      } else if (field.values !== null && field.values !== undefined) {
+        strVal = String(field.values).trim();
+      }
+
+      fieldMap.set(field.name, strVal);
+
       const nameLower = field.name.toLowerCase();
       if (
         !nameLower.includes('first_name') &&
@@ -232,7 +246,9 @@ export class FacebookService {
         !nameLower.includes('ad_name') &&
         !nameLower.includes('campaign')
       ) {
-        extraFields.push(`${field.name}: ${field.values[0]}`);
+        if (strVal) {
+          extraFields.push(`${field.name}: ${strVal}`);
+        }
       }
     });
 
@@ -248,31 +264,40 @@ export class FacebookService {
         for (const [key, value] of fieldMap) {
           const k = key.toLowerCase();
           if (k.includes(needle) && !EXCLUDED_KEY_PARTS.some((ex) => k.includes(ex))) {
-            return value;
+            if (value && value.trim()) {
+              return value.trim();
+            }
           }
         }
       }
       return undefined;
     };
 
-    const fullName = fieldMap.get('full_name') || findField('full_name', 'name');
-    const firstName = fieldMap.get('first_name') || findField('first_name', 'vorname');
-    const lastName = fieldMap.get('last_name') || findField('last_name', 'nachname');
+    const rawFullName = fieldMap.get('full_name') || findField('full_name', 'name');
+    const rawFirstName = fieldMap.get('first_name') || findField('first_name', 'vorname');
+    const rawLastName = fieldMap.get('last_name') || findField('last_name', 'nachname');
 
-    const submittedAt = leadData.created_time ? new Date(leadData.created_time) : new Date();
-    const formName = (leadData as any).form_name || (leadData.form_id ? `Facebook Form ${leadData.form_id}` : undefined);
-    const adName = (leadData as any).ad_name || undefined;
+    const fullName = rawFullName?.trim() || undefined;
+    const firstName = rawFirstName?.trim() || undefined;
+    const lastName = rawLastName?.trim() || undefined;
+
+    const email = fieldMap.get('email') || findField('email', 'e-mail', 'mail');
+    const phone = fieldMap.get('phone_number') || fieldMap.get('phone') || findField('phone', 'telefon', 'mobil', 'handy');
+
+    const submittedAt = leadData?.created_time ? new Date(leadData.created_time) : new Date();
+    const formName = (leadData as any)?.form_name || (leadData?.form_id ? `Facebook Form ${leadData.form_id}` : undefined);
+    const adName = (leadData as any)?.ad_name || undefined;
 
     return {
-      firstName: firstName || fullName?.split(' ')[0],
-      lastName: lastName || fullName?.split(' ').slice(1).join(' '),
-      email: fieldMap.get('email') || findField('email', 'e-mail', 'mail'),
-      phone: fieldMap.get('phone_number') || fieldMap.get('phone') || findField('phone', 'telefon', 'mobil', 'handy'),
-      facebookLeadId: leadData.id,
-      facebookFormId: leadData.form_id,
-      facebookCampaignId: leadData.campaign_id,
-      facebookAdSetId: leadData.adset_id,
-      facebookAdId: leadData.ad_id,
+      firstName: firstName || (fullName ? fullName.split(/\s+/)[0] : undefined),
+      lastName: lastName || (fullName && fullName.split(/\s+/).length > 1 ? fullName.split(/\s+/).slice(1).join(' ') : undefined),
+      email: email?.trim() || undefined,
+      phone: phone?.trim() || undefined,
+      facebookLeadId: leadData?.id || '',
+      facebookFormId: leadData?.form_id,
+      facebookCampaignId: leadData?.campaign_id,
+      facebookAdSetId: leadData?.adset_id,
+      facebookAdId: leadData?.ad_id,
       facebookAdName: adName,
       lastMetaFormName: formName,
       lastMetaFormSubmittedAt: submittedAt,
