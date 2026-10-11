@@ -34,6 +34,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  prefilledData,
  hideHeader
 }) => {
+  const [isGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
  const dispatch = useDispatch<AppDispatch>();
  const navigate = useNavigate();
  const { user } = useSelector((state: RootState) => state.auth);
@@ -515,7 +518,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  />
 
  <Select
- label="Priority"
+ label={isGreek ? 'Προτεραιότητα' : 'Priority'}
  value={formData.priority}
  onChange={(value) => handleInputChange('priority', value)}
  options={[
@@ -548,7 +551,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 
  <div className="grid grid-cols-2 gap-4">
  <Input
- label="Task Title (Required)"
+ label={isGreek ? 'Τίτλος Task (Υποχρεωτικό)' : 'Task Title (Required)'}
  value={formData.title || ''}
  onChange={(e) => handleInputChange('title', e.target.value)}
  placeholder="e.g. Call client for confirmation"
@@ -556,14 +559,14 @@ export const ActionForm: React.FC<ActionFormProps> = ({
  />
  <div className="grid grid-cols-2 gap-2">
  <Input
- label="Due Date (Required)"
+ label={isGreek ? 'Προθεσμία (Υποχρεωτικό)' : 'Due Date (Required)'}
  type="date"
  value={getSplitDateTime(formData.dueDate).date}
  onChange={(e) => handleDatePartChange('dueDate', e.target.value, getSplitDateTime(formData.dueDate).time)}
  required
  />
  <Select
- label="Due Time (Required)"
+ label={isGreek ? 'Ώρα (Υποχρεωτικό)' : 'Due Time (Required)'}
  value={getSplitDateTime(formData.dueDate).time}
  onChange={(val) => handleTimePartChange('dueDate', getSplitDateTime(formData.dueDate).date, val)}
  options={timeOptions}

@@ -1,322 +1,373 @@
-import React, { useEffect, useState } from"react";
-import { Link, useNavigate } from"react-router-dom";
-import { css } from"@emotion/css";
-import { ChevronRight, ArrowRight, Sparkles, Wand2, Syringe, Scissors, Pill, Microscope, Loader2, Smile, User } from"lucide-react";
-import { motion, AnimatePresence } from"framer-motion";
-import { useCategoryTree, PublicCategory, PublicTreatment } from"@/hooks/useCategoryTree";
-import { getImageUrl } from"@/utils/imageUrl";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { css } from "@emotion/css";
+import { ChevronRight, ArrowRight, Sparkles, Wand2, Scissors, Microscope, Loader2, Smile, User, Mail, Eye } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useCategoryTree, PublicCategory, PublicTreatment } from "@/hooks/useCategoryTree";
+import { getImageUrl } from "@/utils/imageUrl";
 
 // Clinical visual assets
-import HeroBg from"@/assets/Blog_Hero.jpg";
+import HeroBg from "@/assets/Blog_Hero.jpg";
 
 // Fallback Treatment Assets
-import RhinoplastyImg from"@/assets/Treatments/rhinoplasty_elite.png";
-import BotoxImg from"@/assets/Treatments/botox_elite.png";
-import HairImg from"@/assets/Treatments/hair_transplant_elite.png";
-import FillersImg from"@/assets/Treatments/fillers_elite.png";
-import EyesImg from"@/assets/Treatments/eyes_surgery_elite.png";
-import RejuvenationImg from"@/assets/Treatments/rejuvenation_elite.png";
-import PrpImg from"@/assets/Treatments/prp_therapy_elite.png";
-import BeardTransplantImg from"@/assets/Treatments/beard_transplant_elite.png";
+import RhinoplastyImg from "@/assets/Treatments/rhinoplasty_elite.png";
+import BotoxImg from "@/assets/Treatments/botox_elite.png";
+import HairImg from "@/assets/Treatments/hair_transplant_elite.png";
+import FillersImg from "@/assets/Treatments/fillers_elite.png";
+import EyesImg from "@/assets/Treatments/eyes_surgery_elite.png";
+import RejuvenationImg from "@/assets/Treatments/rejuvenation_elite.png";
+import PrpImg from "@/assets/Treatments/prp_therapy_elite.png";
+import BeardTransplantImg from "@/assets/Treatments/beard_transplant_elite.png";
 
 const getFallbackImg = (name: string): string => {
- const n = (name || '').toLowerCase();
- if (n.includes('botox') || n.includes('wrinkle')) return BotoxImg;
- if (n.includes('filler') || n.includes('lip')) return FillersImg;
- if (n.includes('rhinoplasty') || n.includes('nose')) return RhinoplastyImg;
- if (n.includes('hair') || n.includes('transplant') || n.includes('fue')) return HairImg;
- if (n.includes('eye') || n.includes('bleph')) return EyesImg;
- if (n.includes('skin') || n.includes('rejuvenation') || n.includes('peel') || n.includes('facial')) return RejuvenationImg;
- if (n.includes('prp')) return PrpImg;
- if (n.includes('beard')) return BeardTransplantImg;
- return BotoxImg;
+  const n = (name || "").toLowerCase();
+  if (n.includes("botox") || n.includes("wrinkle")) return BotoxImg;
+  if (n.includes("filler") || n.includes("lip")) return FillersImg;
+  if (n.includes("rhinoplasty") || n.includes("nose")) return RhinoplastyImg;
+  if (n.includes("hair") || n.includes("transplant") || n.includes("fue")) return HairImg;
+  if (n.includes("eye") || n.includes("bleph")) return EyesImg;
+  if (n.includes("skin") || n.includes("rejuvenation") || n.includes("peel") || n.includes("facial")) return RejuvenationImg;
+  if (n.includes("prp")) return PrpImg;
+  if (n.includes("beard")) return BeardTransplantImg;
+  return BotoxImg;
 };
 
 const getCategoryIcon = (name: string) => {
- const n = (name || '').toLowerCase();
- if (n.includes('hair') || n.includes('μαλλιά') || n.includes('τριχωτό')) return <Scissors size={24} />;
- if (n.includes('derm') || n.includes('skin') || n.includes('δέρμα') || n.includes('δερματολογ')) return <Microscope size={24} />;
- if (n.includes('plastic') || n.includes('cosmet') || n.includes('surgical') || n.includes('πλαστική') || n.includes('χειρουργική')) return <Wand2 size={24} />;
- if (n.includes('προσώπου') || n.includes('face')) return <Smile size={24} />;
- if (n.includes('σώματος') || n.includes('body')) return <User size={24} />;
- return <Syringe size={24} />;
+  const n = (name || "").toLowerCase();
+  if (n.includes("hair") || n.includes("μαλλιά") || n.includes("τριχωτό") || n.includes("αποτρίχωση")) return <Scissors size={24} />;
+  if (n.includes("derm") || n.includes("skin") || n.includes("δέρμα") || n.includes("δερματολογ")) return <Microscope size={24} />;
+  if (n.includes("plastic") || n.includes("cosmet") || n.includes("surgical") || n.includes("πλαστική") || n.includes("χειρουργική")) return <Wand2 size={24} />;
+  if (n.includes("προσώπου") || n.includes("face")) return <Smile size={24} />;
+  if (n.includes("σώματος") || n.includes("body")) return <User size={24} />;
+  if (n.includes("eye") || n.includes("μάτι")) return <Eye size={24} />;
+  return <Sparkles size={24} />;
 };
 
 const sectionStyles = css`
- min-height: 100vh;
- background: radial-gradient(circle at top right, rgba(203, 255, 56, 0.05), transparent), #FFFFFF;
+  min-height: 100vh;
+  background: radial-gradient(circle at top right, rgba(203, 255, 56, 0.05), transparent), #FFFFFF;
 `;
 
 const glassCard = css`
- background: white;
- border-radius: 40px;
- box-shadow: 0 50px 100px rgba(0, 0, 0, 0.04);
- border: 1px solid #F1F5F9;
- position: relative;
- overflow: hidden;
- display: flex;
- flex-direction: column;
- transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
- 
- &:hover {
- border-color: #CBFF38;
- transform: translateY(-8px);
- box-shadow: 0 60px 120px rgba(0, 0, 0, 0.07);
- }
+  background: white;
+  border-radius: 40px;
+  box-shadow: 0 50px 100px rgba(0, 0, 0, 0.04);
+  border: 1px solid #F1F5F9;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    border-color: #CBFF38;
+    transform: translateY(-8px);
+    box-shadow: 0 60px 120px rgba(0, 0, 0, 0.07);
+  }
 `;
 
 const subTreatmentCard = css`
- background: #F8F9FA;
- border-radius: 20px;
- overflow: hidden;
- display: flex;
- align-items: center;
- gap: 20px;
- padding: 16px;
- transition: all 0.2s ease;
- cursor: pointer;
- border: 1px solid transparent;
+  background: #F8F9FA;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
 
- &:hover {
- background: white;
- border-color: #CBFF38;
- transform: translateX(5px);
- }
+  &:hover {
+    background: white;
+    border-color: #CBFF38;
+    transform: translateX(5px);
+  }
 `;
 
-// A single top-level category card: shows its subcategories and every treatment
-// beneath it (its own + its subcategories'), all read from the pre-fetched tree.
 const getCategoryLabel = (name: string, isGreek: boolean) => {
-  const lower = (name || '').toLowerCase().trim();
-  if (lower === 'hair removal' || lower === 'μόνιμη αποτρίχωση' || lower === 'αποτρίχωση') {
-    return isGreek ? 'Αποτρίχωση' : 'Hair Removal';
+  const lower = (name || "").toLowerCase().trim();
+  if (lower === "hair removal" || lower === "μόνιμη αποτρίχωση" || lower === "αποτρίχωση") {
+    return isGreek ? "Αποτρίχωση" : "Hair Removal";
   }
   return name;
 };
-const CategoryCard: React.FC<{ category: PublicCategory; idx: number }> = ({ category, idx }) => {
- const navigate = useNavigate();
- const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+
+const CategoryCard: React.FC<{ category: PublicCategory; idx: number; isGreek: boolean }> = ({ category, idx, isGreek }) => {
+  const navigate = useNavigate();
   const subs = category.children || [];
- // Aggregate the category's own treatments with those of its subcategories,
- // de-duplicated by id. No extra request — the tree was fetched withTreatments.
- const treatments: PublicTreatment[] = React.useMemo(() => {
- const seen = new Set<string>();
- const out: PublicTreatment[] = [];
- for (const t of [...(category.treatments || []), ...(category.children || []).flatMap((s) => s.treatments || [])]) {
- if (!seen.has(t.id)) { seen.add(t.id); out.push(t); }
- }
- return out;
- }, [category]);
 
- return (
- <motion.div
- initial={{ opacity: 0, y: 30 }}
- animate={{ opacity: 1, y: 0 }}
- transition={{ delay: idx * 0.1 }}
- className={glassCard}
- >
- <div className="p-6 sm:p-10 md:p-12 flex flex-col flex-grow">
- <div className="flex items-center justify-between mb-6 sm:mb-10">
- <div className="flex items-center gap-4 sm:gap-6 w-[80%] sm:w-auto">
- <div className="size-12 sm:size-16 shrink-0 rounded-2xl sm:rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl text-xl sm:text-2xl font-black">
- {category.icon ? <span>{category.icon}</span> : getCategoryIcon(category.name)}
- </div>
- <div>
- <h3 className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 leading-tight"><span className="notranslate" translate="no">{getCategoryLabel(category.name, isGreek)}</span></h3>
- <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{isGreek ? 'ΚΛΙΝΙΚΗ ΕΙΔΙΚΟΤΗΤΑ' : 'Elite Clinical Specialty'}</p>
- </div>
- </div>
- <ArrowRight size={20} className="text-gray-200 group-hover:text-lime-500 transition-colors shrink-0" />
- </div>
+  const treatments: PublicTreatment[] = React.useMemo(() => {
+    const seen = new Set<string>();
+    const out: PublicTreatment[] = [];
+    for (const t of [...(category.treatments || []), ...(category.children || []).flatMap((s) => s.treatments || [])]) {
+      if (!seen.has(t.id)) {
+        seen.add(t.id);
+        out.push(t);
+      }
+    }
+    return out;
+  }, [category]);
 
- {category.description && (
- <p className="text-[13px] font-medium text-gray-500 mb-10 leading-relaxed">{category.description}</p>
- )}
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: idx * 0.1 }}
+      className={glassCard}
+    >
+      <div className="p-6 sm:p-10 md:p-12 flex flex-col flex-grow">
+        <div className="flex items-center justify-between mb-6 sm:mb-10">
+          <div className="flex items-center gap-4 sm:gap-6 w-[80%] sm:w-auto">
+            <div className="size-12 sm:size-16 shrink-0 rounded-2xl sm:rounded-3xl bg-black flex items-center justify-center text-[#CBFF38] shadow-2xl text-xl sm:text-2xl font-black">
+              {category.icon ? <span>{category.icon}</span> : getCategoryIcon(category.name)}
+            </div>
+            <div>
+              <h3 className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 leading-tight">
+                <span className="notranslate" translate="no">{getCategoryLabel(category.name, isGreek)}</span>
+              </h3>
+            </div>
+          </div>
+          <ArrowRight size={20} className="text-gray-200 group-hover:text-lime-500 transition-colors shrink-0" />
+        </div>
 
- {/* Subcategories */}
- {subs.length > 0 && (
- <div className="mb-8">
- <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">{isGreek ? 'ΥΠΟΚΑΤΗΓΟΡΙΕΣ' : 'Subcategories'}</h4>
- <div className="flex flex-wrap gap-2">
- {subs.map((sub) => (
- <button
- key={sub.id}
- onClick={() => navigate(`/search?category=${encodeURIComponent(sub.name)}`)}
- className="px-4 py-2 bg-gray-50 hover:bg-[#CBFF38] border border-gray-100 rounded-full text-[10px] font-black tracking-widest text-gray-800 transition-all"
- >
- {sub.icon ? `${sub.icon} ` : ''}{sub.name}
- </button>
- ))}
- </div>
- </div>
- )}
+        {category.description && (
+          <p className="text-[13px] font-medium text-gray-500 mb-10 leading-relaxed">{category.description}</p>
+        )}
 
- {/* Treatments inside this category */}
- {treatments.length > 0 && (
- <div className="space-y-4">
- <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">{isGreek ? 'ΠΡΟΤΕΙΝΟΜΕΝΕΣ ΘΕΡΑΠΕΙΕΣ' : 'Featured Procedures'}</h4>
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- {treatments.map((t) => (
- <div key={t.id} className={subTreatmentCard} onClick={() => navigate(`/search?query=${encodeURIComponent(t.name)}`)}>
- <div className="size-16 rounded-xl overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center shadow-sm">
- <img
- src={t.imageUrl ? getImageUrl(t.imageUrl) : getFallbackImg(t.name)}
- onError={(e: any) => { e.target.src = getFallbackImg(t.name); }}
- className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
- alt={t.name}
- />
- </div>
- <span className="text-xs font-black tracking-widest text-gray-900 leading-tight">{t.name}</span>
- </div>
- ))}
- </div>
- </div>
- )}
+        {/* Subcategories */}
+        {subs.length > 0 && (
+          <div className="mb-8">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">
+              {isGreek ? "ΥΠΟΚΑΤΗΓΟΡΙΕΣ" : "Subcategories"}
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {subs.map((sub) => (
+                <button
+                  key={sub.id}
+                  onClick={() => navigate(`/search?category=${encodeURIComponent(sub.name)}`)}
+                  className="px-4 py-2 bg-gray-50 hover:bg-[#CBFF38] border border-gray-100 rounded-full text-[10px] font-black tracking-widest text-gray-800 transition-all cursor-pointer"
+                >
+                  {sub.icon ? `${sub.icon} ` : ""}{sub.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
- <div className="mt-auto pt-8 border-t border-gray-50">
- <button
- onClick={() => navigate(`/search?category=${encodeURIComponent(category.name)}`)}
- className="w-full h-14 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center gap-4 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-lime-500 hover:text-black transition-all active:scale-95 shadow-2xl"
- >
- {isGreek ? 'ΕΞΕΡΕΥΝΗΣΗ ΚΑΤΗΓΟΡΙΑΣ' : 'Examine Category'} <ChevronRight size={14} />
- </button>
- </div>
- </div>
- </motion.div>
- );
+        {/* Treatments inside this category */}
+        {treatments.length > 0 && (
+          <div className="space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">
+              {isGreek ? "ΠΡΟΤΕΙΝΟΜΕΝΕΣ ΘΕΡΑΠΕΙΕΣ" : "Featured Procedures"}
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {treatments.map((t) => (
+                <div key={t.id} className={subTreatmentCard} onClick={() => navigate(`/search?query=${encodeURIComponent(t.name)}`)}>
+                  <div className="size-16 rounded-xl overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center shadow-sm">
+                    <img
+                      src={t.imageUrl ? getImageUrl(t.imageUrl) : getFallbackImg(t.name)}
+                      onError={(e: any) => { e.target.src = getFallbackImg(t.name); }}
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                      alt={t.name}
+                    />
+                  </div>
+                  <span className="text-xs font-black tracking-widest text-gray-900 leading-tight">{t.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-auto pt-8 border-t border-gray-50">
+          <button
+            onClick={() => navigate(`/search?category=${encodeURIComponent(category.name)}`)}
+            className="w-full h-14 bg-black text-[#CBFF38] rounded-2xl flex items-center justify-center gap-4 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-lime-500 hover:text-black transition-all active:scale-95 shadow-2xl cursor-pointer"
+          >
+            {isGreek ? "Θεραπείες της κατηγορίας" : "Treatments in This Category"} <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
 };
 
 export const Treatments: React.FC = () => {
- const [showConsultModal, setShowConsultModal] = React.useState(false);
- const { categories, loading } = useCategoryTree({ withTreatments: true });
+  const navigate = useNavigate();
+  const [showConsultModal, setShowConsultModal] = useState(false);
+  const { categories, loading } = useCategoryTree({ withTreatments: true });
 
- return (
- <div className={sectionStyles}>
- <AnimatePresence>
- {showConsultModal && (
- <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
- <motion.div
- initial={{ opacity: 0 }}
- animate={{ opacity: 1 }}
- exit={{ opacity: 0 }}
- onClick={() => setShowConsultModal(false)}
- className="absolute inset-0 bg-black/60 backdrop-blur-md"
- />
- <motion.div
- initial={{ opacity: 0, scale: 0.9, y: 20 }}
- animate={{ opacity: 1, scale: 1, y: 0 }}
- exit={{ opacity: 0, scale: 0.9, y: 20 }}
- className="bg-white w-[90%] sm:w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 relative z-10 shadow-2xl overflow-hidden border border-gray-100"
- >
- <div className="absolute top-0 right-0 p-6">
- <button onClick={() => setShowConsultModal(false)} className="text-gray-400 hover:text-black transition-colors">
- <Sparkles size={24} className="text-[#CBFF38]" />
- </button>
- </div>
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== "undefined" && localStorage.getItem("preferredLang") === "el"
+  );
 
- <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-gray-900 mb-2">Connect with us</h2>
- <p className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-10">Professional Consultation Protocols</p>
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem("preferredLang") === "el");
+    };
+    window.addEventListener("storage", handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener("storage", handleLang);
+      clearInterval(interval);
+    };
+  }, []);
 
- <div className="space-y-4">
- <a
- href="mailto:info@beautydoctors.gr?subject=Professional%20Consultation%20Request"
- target="_blank"
- rel="noopener noreferrer"
- className="w-full group p-4 sm:p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-4 sm:gap-6 transition-all duration-300 border border-transparent"
- >
- <div className="size-14 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform shadow-sm">
- <Syringe size={24} />
- </div>
- <div className="text-left">
- <h4 className="font-black uppercase text-gray-900 text-lg group-hover:text-[#CBFF38]">Email Inquiry</h4>
- <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-300">Official Correspondence</p>
- </div>
- </a>
- </div>
+  return (
+    <div className={sectionStyles}>
+      <AnimatePresence>
+        {showConsultModal && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConsultModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-[90%] sm:w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 relative z-10 shadow-2xl overflow-hidden border border-gray-100"
+            >
+              <div className="absolute top-0 right-0 p-6">
+                <button onClick={() => setShowConsultModal(false)} className="text-gray-400 hover:text-black transition-colors cursor-pointer">
+                  <Sparkles size={24} className="text-[#CBFF38]" />
+                </button>
+              </div>
 
- <p className="text-center mt-10 text-[9px] font-black uppercase tracking-widest text-gray-300"><span className="notranslate">Beauty & Doctors</span> Official Network</p>
- </motion.div>
- </div>
- )}
- </AnimatePresence>
+              <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-gray-900 mb-2">
+                {isGreek ? "Επικοινωνήστε μαζί μας" : "Connect with us"}
+              </h2>
+              <p className="text-gray-500 font-bold text-xs uppercase tracking-widest mb-10">
+                {isGreek ? "Επίσημη Επικοινωνία BeautyDoctors" : "BeautyDoctors Official Correspondence"}
+              </p>
 
- {/* Immersive Hero Header */}
- <div className="relative pt-24 pb-48 overflow-hidden">
- <div className="absolute inset-0 z-0">
- <img
- src={HeroBg}
- style={{ objectPosition: 'center 70%' }}
- className="w-full h-full object-cover opacity-[0.35]"
- alt="Hero background"
- />
- </div>
+              <div className="space-y-4">
+                <a
+                  href="mailto:info@beautydoctors.gr?subject=Professional%20Inquiry"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full group p-4 sm:p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-4 sm:gap-6 transition-all duration-300 border border-transparent"
+                >
+                  <div className="size-14 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform shadow-sm">
+                    <Mail size={24} />
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-black uppercase text-gray-900 text-lg group-hover:text-[#CBFF38]">
+                      {isGreek ? "Επικοινωνία μέσω Email" : "Email Inquiry"}
+                    </h4>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-300">
+                      info@beautydoctors.gr
+                    </p>
+                  </div>
+                </a>
+              </div>
 
- <div className="container mx-auto px-4 sm:px-8 relative z-10">
- <div className="max-w-4xl">
- <motion.div
- initial={{ opacity: 0, x: -20 }}
- animate={{ opacity: 1, x: 0 }}
- className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8 text-gray-400 text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em]"
- >
- <Link to="/" className="text-gray-900 border-b border-gray-900 pb-0.5">ELITE CLINIC</Link>
- <span className="text-lime-500"> CLINICAL_TREATMENTS</span>
- </motion.div>
+              <p className="text-center mt-10 text-[9px] font-black uppercase tracking-widest text-gray-300">
+                <span className="notranslate">BeautyDoctors</span> Official Network
+              </p>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
- <h1 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none text-gray-900">
- PROTOCOL <span className="text-[#CBFF38] block sm:inline">EXPERIENCE</span>
- </h1>
+      {/* Immersive Hero Header */}
+      <div className="relative pt-24 pb-48 overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img
+            src={HeroBg}
+            style={{ objectPosition: "center 70%" }}
+            className="w-full h-full object-cover opacity-[0.35]"
+            alt="Hero background"
+          />
+        </div>
 
- <p className="text-gray-500 mt-8 font-bold text-lg max-w-2xl leading-relaxed">
- Discover our comprehensive spectrum of medical aesthetics, surgical refinements, and advanced clinical protocols.
- </p>
- </div>
- </div>
- </div>
+        <div className="container mx-auto px-4 sm:px-8 relative z-10">
+          <div className="max-w-4xl">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8 text-gray-400 text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em]"
+            >
+              <Link to="/" className="text-gray-900 border-b border-gray-900 pb-0.5 hover:text-black">
+                {isGreek ? "ΑΡΧΙΚΗ" : "HOME"}
+              </Link>
+              <span className="text-[#84cc16]">
+                {isGreek ? "ΘΕΡΑΠΕΙΕΣ & ΥΠΗΡΕΣΙΕΣ" : "TREATMENTS & SERVICES"}
+              </span>
+            </motion.div>
 
- <main className="max-w-7xl mx-auto px-4 sm:px-8 relative z-20 -mt-[180px] pb-32">
- <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
- {loading && (
- <div className="md:col-span-2 flex flex-col items-center justify-center py-32 gap-4">
- <Loader2 size={48} className="animate-spin text-[#CBFF38]" />
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Loading Catalog...</p>
- </div>
- )}
- {!loading && categories.length === 0 && (
- <div className="md:col-span-2 text-center py-12 text-gray-400 font-bold uppercase tracking-widest text-xs">
- No treatment categories available yet.
- </div>
- )}
- {!loading && categories.map((cat, idx) => (
- <CategoryCard key={cat.id} category={cat} idx={idx} />
- ))}
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter leading-tight text-gray-900">
+              {isGreek ? "Ανακαλύψτε θεραπείες και υπηρεσίες" : "Discover treatments and services"}
+            </h1>
 
- {/* Inquiry Card */}
- <motion.div
- initial={{ opacity: 0, scale: 0.95 }}
- animate={{ opacity: 1, scale: 1 }}
- className="bg-black rounded-[2rem] sm:rounded-[40px] p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden flex flex-col justify-center min-h-[300px] sm:min-h-[400px]"
- >
- <div className="relative z-10">
- <Sparkles className="text-[#CBFF38] mx-auto mb-8" size={40} />
- <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white mb-8 leading-tight">
- Not sure which <br /> <span className="text-[#CBFF38]">path fits you?</span>
- </h2>
- <p className="text-gray-400 font-bold max-w-sm mx-auto mb-10 text-sm">
- Receive a professional clinical assessment with our lead medical practitioners.
- </p>
- <button
- onClick={() => setShowConsultModal(true)}
- className="px-6 md:px-12 h-16 bg-[#CBFF38] text-black rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-white transition-all shadow-xl active:scale-95"
- >
- Get Professional Consultant
- </button>
- </div>
- <div className="absolute inset-0 opacity-10">
- <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover grayscale" alt="Microscope" />
- </div>
- </motion.div>
- </div>
- </main>
- </div>
- );
+            <p className="text-gray-600 mt-6 font-bold text-base sm:text-lg max-w-2xl leading-relaxed">
+              {isGreek
+                ? "Ενημερωθείτε για θεραπείες και υπηρεσίες που διατίθενται από συμμετέχοντες ιατρούς, κλινικές και παρόχους υπηρεσιών αισθητικής."
+                : "Explore information about treatments and services available through participating doctors, clinics and aesthetic service providers."}
+            </p>
+
+            <p className="text-gray-500 mt-4 text-xs sm:text-sm font-medium max-w-2xl leading-relaxed italic border-l-2 border-[#CBFF38] pl-3">
+              {isGreek
+                ? "«Η επιλογή ιατρικής θεραπείας αποτελεί εκδήλωση ενδιαφέροντος. Η καταλληλότητα και το τελικό θεραπευτικό πλάνο καθορίζονται από τον θεράποντα ιατρό μετά από ιατρική αξιολόγηση.»"
+                : "“Selecting a medical treatment indicates your Treatment of Interest. Suitability and the final treatment plan are determined by the treating doctor following medical assessment.”"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 relative z-20 -mt-[180px] pb-32">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          {loading && (
+            <div className="md:col-span-2 flex flex-col items-center justify-center py-32 gap-4">
+              <Loader2 size={48} className="animate-spin text-[#CBFF38]" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Loading Catalog...</p>
+            </div>
+          )}
+          {!loading && categories.length === 0 && (
+            <div className="md:col-span-2 text-center py-12 text-gray-400 font-bold uppercase tracking-widest text-xs">
+              {isGreek ? "Δεν υπάρχουν διαθέσιμες κατηγορίες θεραπειών ακόμα." : "No treatment categories available yet."}
+            </div>
+          )}
+          {!loading && categories.map((cat, idx) => (
+            <CategoryCard key={cat.id} category={cat} idx={idx} isGreek={isGreek} />
+          ))}
+
+          {/* Inquiry Card (Black Banner) */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-black rounded-[2rem] sm:rounded-[40px] p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden flex flex-col justify-center min-h-[300px] sm:min-h-[400px]"
+          >
+            <div className="relative z-10 max-w-2xl mx-auto">
+              <Sparkles className="text-[#CBFF38] mx-auto mb-6" size={40} />
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight text-white mb-6 leading-tight">
+                {isGreek ? "ΧΡΕΙΑΖΕΣΤΕ ΒΟΗΘΕΙΑ ΣΤΗΝ ΑΝΑΖΗΤΗΣΗ ΣΑΣ;" : "NEED HELP EXPLORING YOUR OPTIONS?"}
+              </h2>
+              <p className="text-gray-300 font-medium max-w-xl mx-auto mb-8 text-xs sm:text-sm leading-relaxed">
+                {isGreek
+                  ? "Επικοινωνήστε με την ομάδα της BeautyDoctors για πληροφορίες σχετικά με τις διαθέσιμες υπηρεσίες, τους συνεργαζόμενους ιατρούς και τις κρατήσεις ραντεβού. Η ιατρική καταλληλότητα αξιολογείται από τον θεράποντα ιατρό."
+                  : "Contact the BeautyDoctors team for information about available services, participating doctors and appointment bookings. Medical suitability is assessed by the treating doctor."}
+              </p>
+              <button
+                onClick={() => navigate("/contact")}
+                className="px-6 md:px-12 h-14 bg-[#CBFF38] text-black rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white transition-all shadow-xl active:scale-95 cursor-pointer"
+              >
+                {isGreek ? "ΕΠΙΚΟΙΝΩΝΗΣΤΕ ΜΑΖΙ ΜΑΣ" : "CONTACT BEAUTYDOCTORS"}
+              </button>
+            </div>
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
+              <img
+                src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=800&auto=format&fit=crop"
+                className="w-full h-full object-cover grayscale"
+                alt="Consultation background"
+              />
+            </div>
+          </motion.div>
+        </div>
+      </main>
+    </div>
+  );
 };

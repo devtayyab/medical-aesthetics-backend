@@ -30,7 +30,7 @@ interface AppointmentModalProps {
   onSuccess: () => void;
 }
 
-const TAX_RATE = 0.05; // 5%
+const TAX_RATE = 0;
 
 function computeTotal(amount: number, tax: number, discount: number): number {
   return Math.max(0, amount + amount * tax - discount);
@@ -51,6 +51,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
 
   const { user } = useSelector((state: RootState) => state.auth);
 
@@ -828,17 +829,17 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               )}
             </div>
 
-            {/* Sales Person */}
+            {/* Assigned Staff Member / Υπεύθυνος ραντεβού */}
             <div>
               <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide mb-1.5">
-                <User className="inline w-3 h-3 mr-1" /> Sales Person
+                <User className="inline w-3 h-3 mr-1" /> {isGreek ? 'Υπεύθυνος ραντεβού' : 'Assigned Staff Member'}
               </label>
               <select
                 value={form.salesPersonId}
                 onChange={e => setForm(prev => ({ ...prev, salesPersonId: e.target.value }))}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
-                <option value="">Unassigned</option>
+                <option value="">{isGreek ? 'Χωρίς ανάθεση' : 'Unassigned'}</option>
                 {salespersons.map(sp => (
                   <option key={sp.id} value={sp.id}>{sp.name}</option>
                 ))}
@@ -956,7 +957,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             {/* Status */}
             <div>
               <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide mb-1.5">
-                Status
+                {isGreek ? 'Κατάσταση' : 'Status'}
               </label>
               <div className="grid grid-cols-3 gap-1.5">
                 {APPOINTMENT_STATUS_OPTIONS.map(opt => {
@@ -972,7 +973,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                         }`}
                     >
                       <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isSelected ? cfg.dot : 'bg-slate-300'}`} />
-                      {opt.label}
+                      {(opt as any).labelGr && isGreek ? (opt as any).labelGr : opt.label}
                     </button>
                   );
                 })}
@@ -1061,7 +1062,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 {/* Card header */}
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-emerald-100">
                   <CreditCard className="w-4 h-4 text-emerald-600" />
-                  <p className="text-[13px] font-black text-emerald-800">Collect Payment</p>
+                  <p className="text-[13px] font-black text-emerald-800">
+                    {isGreek ? 'Καταχώριση πληρωμής' : 'Record Payment'}
+                  </p>
                   {mode === 'edit' && existingAppointment?.service?.name && (
                     <span className="ml-auto text-[11px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full truncate max-w-[180px]">
                       {existingAppointment.service.name}
@@ -1084,7 +1087,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                       className="w-full px-4 py-3 text-[22px] font-black text-slate-800 bg-white border-2 border-emerald-300 rounded-xl focus:outline-none focus:border-emerald-500 text-center tracking-wide transition-colors"
                     />
                     <p className="text-[10px] text-slate-400 text-center mt-1">
-                      Total charged: €{total.toFixed(2)} (incl. {(form.tax * 100).toFixed(0)}% tax)
+                      {isGreek ? `Συνολική χρέωση: €${total.toFixed(2)}` : `Total charged: €${total.toFixed(2)}`}
                     </p>
                   </div>
 
@@ -1094,41 +1097,49 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     <button
                       onClick={handlePayCash}
                       disabled={isSubmitting}
-                      className="flex flex-col items-center gap-2 py-5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl shadow-lg shadow-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                      className="flex flex-col items-center gap-2 py-5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl shadow-lg shadow-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
                     >
                       {isSubmitting ? (
                         <Loader2 className="w-6 h-6 animate-spin" />
                       ) : (
                         <Banknote className="w-6 h-6" />
                       )}
-                      <span className="text-[12px] font-black uppercase tracking-widest">Cash</span>
-                      <span className="text-[9px] text-emerald-100 text-center leading-tight">Collect &amp; Complete</span>
+                      <span className="text-[12px] font-black uppercase tracking-widest">
+                        {isGreek ? 'Μετρητά' : 'Cash'}
+                      </span>
+                      <span className="text-[9px] text-emerald-100 text-center leading-tight">
+                        {isGreek ? 'Καταχώριση πληρωμής' : 'Record Payment'}
+                      </span>
                     </button>
 
                     {/* CARD */}
                     <button
                       onClick={handlePayCard}
                       disabled={isSubmitting}
-                      className="flex flex-col items-center gap-2 py-5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white rounded-xl shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                      className="flex flex-col items-center gap-2 py-5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white rounded-xl shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
                     >
                       {isSubmitting ? (
                         <Loader2 className="w-6 h-6 animate-spin" />
                       ) : (
                         <CreditCard className="w-6 h-6" />
                       )}
-                      <span className="text-[12px] font-black uppercase tracking-widest">Card</span>
-                      <span className="text-[9px] text-indigo-200 text-center leading-tight">Record &amp; Complete</span>
+                      <span className="text-[12px] font-black uppercase tracking-widest">
+                        {isGreek ? 'Κάρτα' : 'Card'}
+                      </span>
+                      <span className="text-[9px] text-indigo-200 text-center leading-tight">
+                        {isGreek ? 'Καταχώριση πληρωμής' : 'Record Payment'}
+                      </span>
                     </button>
                   </div>
 
-                  {/* Pay at Venue option */}
+                  {/* Pay at Clinic option */}
                   <button
                     onClick={handlePayAtVenue}
                     disabled={isSubmitting}
-                    className="w-full py-2.5 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <MapPin className="w-4 h-4" />
-                    Pay at Venue — keep pending
+                    {isGreek ? 'Πληρωμή στην κλινική — Σε εκκρεμότητα' : 'Pay at Clinic — Payment Pending'}
                   </button>
                 </div>
               </div>
@@ -1142,10 +1153,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             <button
               onClick={handleDelete}
               disabled={isDeleting}
-              className="flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 text-[12px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50 cursor-pointer"
             >
               {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-              Delete
+              {isGreek ? 'Διαγραφή' : 'Delete'}
             </button>
           ) : (
             <div />
@@ -1154,27 +1165,29 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2.5 text-[12px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+              className="px-4 py-2.5 text-[12px] font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              Cancel
+              {isGreek ? 'Ακύρωση' : 'Cancel'}
             </button>
             {mode === 'edit' && form.paymentStatus === 'PAID' && existingAppointment?.status !== 'completed' ? (
               <button
                 onClick={() => handleSave('completed')}
                 disabled={isSubmitting}
-                className="px-5 py-2.5 text-[12px] font-black bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2.5 text-[12px] font-black bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
               >
                 {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                Complete Appointment
+                {isGreek ? 'Ολοκληρωμένο' : 'Complete Appointment'}
               </button>
             ) : (
               <button
                 onClick={handleSave}
                 disabled={isSubmitting}
-                className="px-5 py-2.5 text-[12px] font-black bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2.5 text-[12px] font-black bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
               >
                 {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {mode === 'create' ? 'Create Appointment' : 'Save Changes'}
+                {mode === 'create' 
+                  ? (isGreek ? 'Δημιουργία ραντεβού' : 'Create Appointment')
+                  : (isGreek ? 'Αποθήκευση αλλαγών' : 'Save Changes')}
               </button>
             )}
           </div>

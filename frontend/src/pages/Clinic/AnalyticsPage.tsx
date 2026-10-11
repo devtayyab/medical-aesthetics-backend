@@ -14,6 +14,23 @@ const AnalyticsPage: React.FC = () => {
  const [loyaltyAnalytics, setLoyaltyAnalytics] = useState<any>(null);
  const [isLoading, setIsLoading] = useState(true);
 
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      clearInterval(interval);
+    };
+  }, []);
+
+
  useEffect(() => {
  fetchAnalytics();
  }, [dateRange]);
@@ -58,15 +75,15 @@ const AnalyticsPage: React.FC = () => {
  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Operational Intelligence</span>
  </div>
  <div className="space-y-1">
- <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">Analysis & Insights</h1>
- <p className="text-gray-500 font-medium max-w-md text-sm">Real-time performance telemetry and revenue scaling matrix.</p>
+ <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Στατιστικά & Αναφορές" : "Analytics & Reports"}</h1>
+ <p className="text-gray-500 font-medium max-w-md text-sm">{isGreek ? "Παρακολουθήστε τα ραντεβού, τα έσοδα και την απόδοση της κλινικής σας." : "Monitor appointments, revenue and clinic performance."}</p>
  </div>
  </div>
  
  <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-3">
  <div className="flex items-center gap-2 px-2 border-r border-gray-200 sm:pr-4">
  <Filter size={12} className="text-gray-400" />
- <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Matrix Range</span>
+ <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "Χρονικό διάστημα" : "Date Range"}</span>
  </div>
  <div className="flex flex-wrap items-center justify-center gap-2">
  <input
@@ -97,7 +114,7 @@ const AnalyticsPage: React.FC = () => {
  <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
  {/* Top Stats */}
  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
- <PremiumStatCard title="Throughput" value={appointmentAnalytics?.totalAppointments || 0} subValue="Events Matrix" icon={<Calendar size={18} />} highlight />
+ <PremiumStatCard title="Throughput" value={appointmentAnalytics?.totalAppointments || 0} subValue={isGreek ? "Σύνολο ραντεβού" : "Total Appointments"} icon={<Calendar size={18} />} highlight />
  <PremiumStatCard title="Conversion" value={appointmentAnalytics?.completedAppointments || 0} subValue="Finalized Ops" icon={<BarChart3 size={18} />} />
  <PremiumStatCard title="Yield" value={`€${(revenueAnalytics?.totalRevenue || 0).toLocaleString()}`} subValue="Gross Volume" icon={<DollarSign size={18} />} />
  <PremiumStatCard title="Efficiency" value={`€${(revenueAnalytics?.averageAppointmentValue || 0).toFixed(0)}`} subValue="Unit Velocity" icon={<TrendingUp size={18} />} />

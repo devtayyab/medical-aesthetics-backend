@@ -118,6 +118,22 @@ const voucherStyle = css`
 `;
 
 export const GiftCard: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const [amount, setAmount] = useState<number>(50);
  const [giftCardCode, setGiftCardCode] = useState<string | null>(null);
  const [isPaying, setIsPaying] = useState<boolean>(false);
@@ -202,7 +218,7 @@ export const GiftCard: React.FC = () => {
         to="/legal" 
         className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-black hover:text-lime-600 underline decoration-lime-500 underline-offset-4 transition-colors"
       >
-        Gift Card Terms <ChevronRight size={12} className="text-lime-500" />
+        {isGreek ? "Όροι Δωροκάρτας" : "Gift Card Terms"} <ChevronRight size={12} className="text-lime-500" />
       </Link>
     </div>
   </div>
@@ -233,20 +249,20 @@ export const GiftCard: React.FC = () => {
                   <Sparkles className="text-amber-600 shrink-0 mt-0.5" size={18} />
                   <div className="space-y-1">
                     <p className="text-xs sm:text-sm font-bold text-amber-950">
-                      Beauty Doctors Gift Cards are available exclusively for selected non-medical aesthetic services.
+                      {isGreek ? "Οι δωροκάρτες BeautyDoctors χρησιμοποιούνται αποκλειστικά για επιλεγμένες μη ιατρικές υπηρεσίες αισθητικής με την ένδειξη “Δέχεται δωροκάρτα”, σε συμμετέχοντες παρόχους." : "BeautyDoctors Gift Cards are available exclusively for selected non-medical aesthetic services marked as Gift Card Eligible, at participating providers."}
                     </p>
                     <p className="text-[11px] text-amber-800 leading-relaxed">
-                      Gift Cards cannot be redeemed for medical procedures, medical treatments or medical consultations. Eligible services are specifically identified within the platform.
+                      {isGreek ? "Δεν χρησιμοποιούνται για ιατρικές επισκέψεις ή ιατρικές πράξεις." : "They cannot be used for medical consultations or procedures."}
                     </p>
                     <div className="mt-2">
                       <Link to="/gift-card-terms" className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-amber-950 underline decoration-amber-500 underline-offset-4 hover:text-amber-800">
-                        Gift Card Terms <ChevronRight size={12} />
+                        {isGreek ? "Όροι Δωροκάρτας" : "Gift Card Terms"} <ChevronRight size={12} />
                       </Link>
                     </div>
                   </div>
                 </div>
 
-                <h3 className="text-2xl font-black uppercase text-gray-900 tracking-tight leading-none mb-12">Purchase Gift Card</h3>
+                <h3 className="text-2xl font-black uppercase text-gray-900 tracking-tight leading-none mb-12">{isGreek ? "Αγορά Δωροκάρτας" : "Purchase Gift Card"}</h3>
 
  <div className="space-y-8">
  <div className={giftInput}>
@@ -283,9 +299,9 @@ export const GiftCard: React.FC = () => {
  <div className="size-14 rounded-2xl bg-black flex items-center justify-center text-[#CBFF38] mb-8">
  <Gift size={28} />
  </div>
- <h4 className="text-2xl font-black uppercase leading-tight tracking-[0.02em] text-gray-900">GIFT <br />EXCELLENCE</h4>
+ <h4 className="text-2xl font-black uppercase leading-tight tracking-[0.02em] text-gray-900">{isGreek ? <>ΔΩΡΟΚΑΡΤΑ <br />BEAUTYDOCTORS</> : <>GIFT <br />EXCELLENCE</>}</h4>
  <div className="w-full h-px bg-black/10 my-6" />
- <p className="text-[10px] font-black uppercase tracking-widest text-black/40">Digital Delivery</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-black/40">{isGreek ? "Ψηφιακή αποστολή" : "Digital Delivery"}</p>
  </div>
 
  <div className="mt-12">
@@ -297,7 +313,7 @@ export const GiftCard: React.FC = () => {
  {isPaying ? (
  <div className="size-5 border-2 border-black/40 border-t-transparent rounded-full animate-spin" />
  ) : (
- <>CHECKOUT € {amount}</>
+ <>{isGreek ? `Συνέχεια στην πληρωμή — ${amount} €` : `Continue to Payment — €${amount}`}</>
  )}
  </button>
  </div>
@@ -320,8 +336,8 @@ export const GiftCard: React.FC = () => {
 
  <div className="flex flex-col-reverse sm:flex-row gap-6 sm:gap-0 justify-between items-start mb-10 sm:mb-16 relative z-10">
  <div>
- <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#CBFF38] mb-3">DIGITAL BEAUTY VOUCHER</h3>
- <h4 className="text-4xl sm:text-6xl font-black uppercase tracking-tighter leading-none">Value €{amount}</h4>
+ <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-[#CBFF38] mb-3">{isGreek ? "ΨΗΦΙΑΚΗ ΔΩΡΟΚΑΡΤΑ BEAUTYDOCTORS" : "DIGITAL BEAUTY VOUCHER"}</h3>
+ <h4 className="text-4xl sm:text-6xl font-black uppercase tracking-tighter leading-none">{isGreek ? `Αξία ${amount} €` : `Value €${amount}`}</h4>
  </div>
  <div className="size-20 rounded-3xl bg-[#CBFF38] flex items-center justify-center text-black shadow-xl shadow-lime-500/20">
  <CheckCircle size={40} />
@@ -329,7 +345,7 @@ export const GiftCard: React.FC = () => {
  </div>
 
  <div className="border-2 border-dashed border-white/10 pt-10 pb-10 text-center bg-white/5 rounded-3xl relative z-10">
- <p className="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-6">Secure Voucher Code</p>
+ <p className="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-6">{isGreek ? "Κωδικός Δωροκάρτας" : "Secure Voucher Code"}</p>
  <div className="flex flex-col sm:flex-row items-center justify-center gap-6 px-4 sm:px-10">
  <span className="text-xl sm:text-5xl font-black tracking-[0.15em] sm:tracking-[0.25em] text-white tabular-nums text-center break-all">{giftCardCode}</span>
  <button
@@ -337,7 +353,7 @@ export const GiftCard: React.FC = () => {
  className={`w-full sm:w-auto h-16 px-8 rounded-2xl flex items-center justify-center gap-3 transition-all font-black uppercase text-[10px] tracking-widest ${copied ? 'bg-[#CBFF38] text-black shadow-xl shadow-lime-500/20' : 'bg-white/10 hover:bg-white/20 text-white'}`}
  >
  {copied ? <CheckCircle size={18} /> : <Copy size={18} />}
- {copied ?"COPIED" :"COPY CODE"}
+ {copied ? (isGreek ? "ΑΝΤΙΓΡΑΦΗΚΕ" : "COPIED") : (isGreek ? "ΑΝΤΙΓΡΑΦΗ ΚΩΔΙΚΟΥ" : "COPY CODE")}
  </button>
  </div>
  </div>
@@ -360,10 +376,10 @@ export const GiftCard: React.FC = () => {
  onClick={() => setGiftCardCode(null)}
  className="flex-1 h-18 py-6 bg-black text-[#CBFF38] rounded-[24px] text-xs font-black uppercase tracking-[0.2em] hover:bg-gray-900 transition-all flex items-center justify-center gap-3 shadow-xl"
  >
- <CreditCard size={18} /> Purchase Another
+ <CreditCard size={18} /> {isGreek ? "Αγορά άλλης δωροκάρτας" : "Purchase Another"}
  </button>
  <Link to="/my-account" className="flex-1 h-18 py-6 bg-white border-2 border-gray-100 flex items-center justify-center rounded-[24px] text-xs font-black uppercase tracking-[0.2em] hover:border-black transition-all group">
- Back to Dashboard <ChevronRight size={18} className="translate-x-0 group-hover:translate-x-1 transition-transform" />
+ {isGreek ? "Επιστροφή στον πίνακα ελέγχου" : "Back to Dashboard"} <ChevronRight size={18} className="translate-x-0 group-hover:translate-x-1 transition-transform" />
  </Link>
  </div>
  </motion.div>

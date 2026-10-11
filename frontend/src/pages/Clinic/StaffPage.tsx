@@ -34,6 +34,23 @@ const StaffPage: React.FC = () => {
  const [showAddModal, setShowAddModal] = useState(false);
  const [searchQuery, setSearchQuery] = useState("");
 
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      clearInterval(interval);
+    };
+  }, []);
+
+
  // New Staff State
  const [newStaff, setNewStaff] = useState({
  firstName:"",
@@ -106,8 +123,8 @@ const StaffPage: React.FC = () => {
  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Operational Force</span>
  </div>
  <div className="space-y-1">
- <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">Personnel Registry</h1>
- <p className="text-gray-500 font-medium max-w-md text-sm">Manage your clinical elite. Coordinate specialists and support teams.</p>
+ <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Κατάλογος προσωπικού" : "Staff Directory"}</h1>
+ <p className="text-gray-500 font-medium max-w-md text-sm">{isGreek ? "Διαχειριστείτε το προσωπικό της κλινικής σας." : "Manage your clinic's staff."}</p>
  </div>
  </div>
  
@@ -117,8 +134,8 @@ const StaffPage: React.FC = () => {
  className="h-12 px-6 bg-[#CBFF38] text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all shadow-lg shadow-lime-500/10 flex items-center gap-3"
  >
  <UserPlus size={16} />
- Enlist Specialist
- </button>
+ {isGreek ? "Προσθήκη μέλους προσωπικού" : "Add Staff Member"}
+  </button>
  </div>
  </div>
  </div>

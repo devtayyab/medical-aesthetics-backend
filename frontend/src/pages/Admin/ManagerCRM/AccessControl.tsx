@@ -20,6 +20,22 @@ import { cn } from"@/lib/utils";
 import { toast } from"react-hot-toast";
 
 export const AccessControl: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const [rows, setRows] = useState<AccessMatrixRow[]>([]);
  const [loading, setLoading] = useState(true);
  const [isRefreshing, setIsRefreshing] = useState(false);
@@ -168,11 +184,11 @@ export const AccessControl: React.FC = () => {
  </div>
  <div>
  <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 uppercase">
- Access Control <span className="text-blue-600">Matrix</span>
+ {isGreek ? 'Διαχείριση Πρόσβασης' : <>Access Control <span className="text-blue-600">Matrix</span></>}
  </h1>
  <div className="flex items-center gap-2 mt-1">
  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
- <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Deployment System v4.0 PRO</p>
+ <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{isGreek ? 'Ρυθμίσεις Δικαιωμάτων Πρόσβασης' : 'Access Permissions'}</p>
  </div>
  </div>
  </div>

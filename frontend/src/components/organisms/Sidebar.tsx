@@ -14,10 +14,11 @@ import {
 } from"lucide-react";
 
 interface SidebarItem {
- path: string;
- label: string;
- icon: React.ReactNode;
- group?: string;
+  path: string;
+  label: string;
+  labelGr?: string;
+  icon: React.ReactNode;
+  group?: string;
 }
 
 const clientLinks: SidebarItem[] = [
@@ -56,60 +57,59 @@ const doctorLinks: SidebarItem[] = [
 ];
 
 const crmLinks: SidebarItem[] = [
- { path:"/messages", label:"Messages", icon: <MessageSquare className="w-5 h-5" />, group:"CRM" },
- { path:"/crm/tasks", label:"Tasks", icon: <ListChecks className="w-5 h-5" />, group:"CRM" },
- { path:"/crm/leads", label:"Leads", icon: <Repeat className="w-5 h-5" />, group:"CRM" },
- { path:"/crm/lost-leads", label:"Lost Leads", icon: <UserX className="w-5 h-5" />, group:"CRM" },
- { path:"/crm/customers", label:"Customers", icon: <Users className="w-5 h-5" />, group:"CRM" },
- { path:"/crm/calendar", label:"Sales Week Calendar", icon: <Calendar className="w-5 h-5" />, group:"Operations" },
- { path:"/crm/repeat-management", label:"Repeat Management", icon: <Repeat className="w-5 h-5" />, group:"Operations" },
- { path:"/crm/archive", label:"Archive", icon: <Archive className="w-5 h-5" />, group:"Operations" },
- { path:"/crm/tag", label:"Tags", icon: <Tag className="w-5 h-5" />, group:"Operations" },
+  { path: "/messages", label: "Messages", labelGr: "Μηνύματα", icon: <MessageSquare className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/tasks", label: "Tasks", labelGr: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/leads", label: "Leads", labelGr: "Leads", icon: <Repeat className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/lost-leads", label: "Lost Leads", labelGr: "Lost Leads", icon: <UserX className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/customers", label: "Customers", labelGr: "Πελάτες", icon: <Users className="w-5 h-5" />, group: "CRM" },
+  { path: "/crm/calendar", label: "Sales Calendar", labelGr: "Ημερολόγιο Πωλήσεων", icon: <Calendar className="w-5 h-5" />, group: "Operations" },
+  { path: "/crm/repeat-management", label: "Repeat Management", labelGr: "Διαχείριση επαναληπτικών επαφών", icon: <Repeat className="w-5 h-5" />, group: "Operations" },
+  { path: "/crm/archive", label: "Archive", labelGr: "Αρχείο", icon: <Archive className="w-5 h-5" />, group: "Operations" },
+  { path: "/crm/tag", label: "Tags", labelGr: "Ετικέτες", icon: <Tag className="w-5 h-5" />, group: "Operations" },
 
- { path:"/crm/communication", label:"Communication Flow", icon: <Phone className="w-5 h-5" />, group:"Performance" },
- { path:"/crm/analytics", label:"Statistics", icon: <BarChart2 className="w-5 h-5" />, group:"Performance" },
- { path:"/crm/sales-analytics", label:"Sales Dashboard", icon: <BarChart2 className="w-5 h-5" />, group:"Performance" },
- { path:"/change-password", label:"Change Password", icon: <Key className="w-5 h-5" />, group:"Account" },
+  { path: "/crm/communication", label: "Communication Flow", labelGr: "Ιστορικό Επικοινωνίας", icon: <Phone className="w-5 h-5" />, group: "Performance" },
+  { path: "/crm/analytics", label: "Statistics", labelGr: "Στατιστικά", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
+  { path: "/crm/sales-analytics", label: "Sales Dashboard", labelGr: "Sales Dashboard", icon: <BarChart2 className="w-5 h-5" />, group: "Performance" },
+  { path: "/change-password", label: "Change Password", labelGr: "Αλλαγή κωδικού", icon: <Key className="w-5 h-5" />, group: "Account" },
 ];
 
 const managerLinks: SidebarItem[] = [
- { path:"/admin/manager-dashboard", label:"Overview", icon: <LayoutDashboard className="w-5 h-5" />, group:"Main" },
- { path:"/messages", label:"Messages", icon: <MessageSquare className="w-5 h-5" />, group:"Sales" },
- { path:"/crm/tasks", label:"Tasks", icon: <ListChecks className="w-5 h-5" />, group:"Sales" },
- { path:"/crm/leads", label:"Leads", icon: <Repeat className="w-5 h-5" />, group:"Sales" },
- { path:"/crm/lost-leads", label:"Lost Leads", icon: <UserX className="w-5 h-5" />, group:"Sales" },
- { path:"/crm/customers", label:"Customers", icon: <Users className="w-5 h-5" />, group:"Sales" },
- { path:"/crm/communication", label:"Communication Flow", icon: <Phone className="w-5 h-5" />, group:"Sales" },
+  { path: "/admin/manager-dashboard", label: "Overview", labelGr: "Επισκόπηση", icon: <LayoutDashboard className="w-5 h-5" />, group: "Main" },
+  { path: "/messages", label: "Messages", labelGr: "Μηνύματα", icon: <MessageSquare className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/tasks", label: "Tasks", labelGr: "Tasks", icon: <ListChecks className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/leads", label: "Leads", labelGr: "Leads", icon: <Repeat className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/lost-leads", label: "Lost Leads", labelGr: "Lost Leads", icon: <UserX className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/customers", label: "Customers", labelGr: "Πελάτες", icon: <Users className="w-5 h-5" />, group: "Sales" },
+  { path: "/crm/communication", label: "Communication Flow", labelGr: "Ιστορικό Επικοινωνίας", icon: <Phone className="w-5 h-5" />, group: "Sales" },
 
- { path:"/admin/clinics", label:"Clinics", icon: <Building2 className="w-5 h-5" />, group:"Infrastructure" },
- { path:"/admin/users", label:"Users & Roles", icon: <Users className="w-5 h-5" />, group:"Infrastructure" },
+  { path: "/admin/clinics", label: "Clinics Management", labelGr: "Διαχείριση Κλινικών", icon: <Building2 className="w-5 h-5" />, group: "Infrastructure" },
+  { path: "/admin/users", label: "Users & Roles", labelGr: "Διαχείριση Χρηστών", icon: <Users className="w-5 h-5" />, group: "Infrastructure" },
 
- { path:"/crm/analytics", label:"Sales Analytics", icon: <BarChart2 className="w-5 h-5" />, group:"Intelligence" },
- { path:"/admin/clinic-analytics", label:"Clinic Analytics", icon: <Building2 className="w-5 h-5" />, group:"Intelligence" },
- { path:"/crm/calendar", label:"Global Calendar", icon: <Calendar className="w-5 h-5" />, group:"Intelligence" },
+  { path: "/crm/analytics", label: "Sales Analytics", labelGr: "Ανάλυση Πωλήσεων", icon: <BarChart2 className="w-5 h-5" />, group: "Intelligence" },
+  { path: "/admin/clinic-analytics", label: "Clinic Analytics", labelGr: "Στατιστικά Κλινικών", icon: <Building2 className="w-5 h-5" />, group: "Intelligence" },
+  { path: "/crm/calendar", label: "Global Calendar", labelGr: "Κεντρικό Ημερολόγιο", icon: <Calendar className="w-5 h-5" />, group: "Intelligence" },
 
+  { path: "/admin/manager-crm/reports", label: "CRM Reports", labelGr: "Αναφορές CRM", icon: <FileText className="w-5 h-5" />, group: "Analytics" },
+  { path: "/admin/manager-crm/advertising", label: "Advertising", labelGr: "Διαφημίσεις", icon: <BarChart className="w-5 h-5" />, group: "Analytics" },
+  { path: "/admin/broadcast", label: "Broadcast", labelGr: "Μαζικές Ενημερώσεις", icon: <Bell className="w-5 h-5" />, group: "Marketing" },
+  { path: "/crm/facebook-integration", label: "Facebook Integration", labelGr: "Σύνδεση με Facebook", icon: <Repeat className="w-5 h-5" />, group: "Marketing" },
 
- { path:"/admin/manager-crm/reports", label:"Reports", icon: <FileText className="w-5 h-5" />, group:"Analytics" },
- { path:"/admin/manager-crm/advertising", label:"Advertising", icon: <BarChart className="w-5 h-5" />, group:"Analytics" },
- { path:"/admin/broadcast", label:"Broadcast", icon: <Bell className="w-5 h-5" />, group:"Marketing" },
- { path:"/crm/facebook-integration", label:"Facebook Integration", icon: <Repeat className="w-5 h-5" />, group:"Marketing" },
+  { path: "/admin/manager-crm/access", label: "Access Control", labelGr: "Διαχείριση Πρόσβασης", icon: <Shield className="w-5 h-5" />, group: "Management" },
+  { path: "/admin/manager-crm/no-show-alerts", label: "No-Show Alerts", labelGr: "Ειδοποιήσεις μη προσέλευσης", icon: <Eye className="w-5 h-5" />, group: "Management" },
 
- { path:"/admin/manager-crm/access", label:"Access Control", icon: <Shield className="w-5 h-5" />, group:"Management" },
- { path:"/admin/manager-crm/no-show-alerts", label:"No-Show Alerts", icon: <Eye className="w-5 h-5" />, group:"Management" },
+  { path: "/admin/payments", label: "Payments & Financials", labelGr: "Πληρωμές & Οικονομική Διαχείριση", icon: <DollarSign className="w-5 h-5" />, group: "Finance" },
+  { path: "/admin/gift-cards", label: "Gift Cards", labelGr: "Δωροκάρτες", icon: <Tag className="w-5 h-5" />, group: "Finance" },
+  { path: "/admin/wallet", label: "Loyalty & Wallet", labelGr: "Πρόγραμμα Επιβράβευσης & Πορτοφόλι", icon: <ClipboardList className="w-5 h-5" />, group: "Finance" },
 
- { path:"/admin/payments", label:"Payments & Turnover", icon: <DollarSign className="w-5 h-5" />, group:"Finance" },
- { path:"/admin/gift-cards", label:"Gift Cards", icon: <Tag className="w-5 h-5" />, group:"Finance" },
- { path:"/admin/wallet", label:"Loyalty & Wallet", icon: <ClipboardList className="w-5 h-5" />, group:"Finance" },
+  { path: "/admin/reviews", label: "Review Moderation", labelGr: "Διαχείριση Αξιολογήσεων", icon: <Eye className="w-5 h-5" />, group: "Content" },
+  { path: "/admin/treatments", label: "Therapy Catalog", labelGr: "Κατάλογος Θεραπειών", icon: <ListChecks className="w-5 h-5" />, group: "Content" },
+  { path: "/admin/blog", label: "Blog & Content", labelGr: "Άρθρα & Περιεχόμενο", icon: <FileText className="w-5 h-5" />, group: "Content" },
 
- { path:"/admin/reviews", label:"Review Approvals", icon: <Eye className="w-5 h-5" />, group:"Content" },
- { path:"/admin/treatments", label:"Therapy Catalog", icon: <ListChecks className="w-5 h-5" />, group:"Content" },
- { path:"/admin/blog", label:"Blog & Content", icon: <FileText className="w-5 h-5" />, group:"Content" },
-
- { path:"/admin/integrations", label:"Integrations", icon: <Settings className="w-5 h-5" />, group:"System" },
- { path:"/admin/system-lists", label:"System-wide Lists", icon: <ListChecks className="w-5 h-5" />, group:"System" },
- { path:"/admin/notification-settings", label:"Notification Templates", icon: <Bell className="w-5 h-5" />, group:"System" },
- { path:"/admin/audit-logs", label:"Audit Logs", icon: <Shield className="w-5 h-5" />, group:"System" },
- { path:"/change-password", label:"Change Password", icon: <Key className="w-5 h-5" />, group:"System" },
+  { path: "/admin/integrations", label: "Integrations", labelGr: "Διασυνδέσεις", icon: <Settings className="w-5 h-5" />, group: "System" },
+  { path: "/admin/system-lists", label: "System-wide Lists", labelGr: "Κεντρικές Λίστες", icon: <ListChecks className="w-5 h-5" />, group: "System" },
+  { path: "/admin/notification-settings", label: "Notification Settings", labelGr: "Ρυθμίσεις Ειδοποιήσεων", icon: <Bell className="w-5 h-5" />, group: "System" },
+  { path: "/admin/audit-logs", label: "Audit Logs", labelGr: "Αρχείο Καταγραφής Ενεργειών", icon: <Shield className="w-5 h-5" />, group: "System" },
+  { path: "/change-password", label: "Change Password", labelGr: "Αλλαγή κωδικού", icon: <Key className="w-5 h-5" />, group: "System" },
 ];
 
 const getAdminLinks = (role: string): SidebarItem[] => {
@@ -266,8 +266,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
  {React.cloneElement(link.icon as React.ReactElement, { size: 18, strokeWidth: isActive ? 3 : 2 })}
  </div>
  <span className={`text-[10px] font-black uppercase tracking-widest flex-1 ${isActive ? 'text-black' : 'text-gray-500 group-hover:text-black'}`}>
- {link.label}
- </span>
+                    {(currentLang === 'el' && link.labelGr) ? link.labelGr : link.label}
+                  </span>
 
  {link.path === '/messages' && totalUnread > 0 && (
  <div className="bg-black text-[#CBFF38] text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm">

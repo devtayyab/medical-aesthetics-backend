@@ -77,6 +77,20 @@ export const TherapyCatalog: React.FC = () => {
  const [error, setError] = useState<string | null>(null);
  const [searchQuery, setSearchQuery] = useState("");
  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [currentLang, setCurrentLang] = useState<string>(
+    () => localStorage.getItem('preferredLang') || 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => setCurrentLang(localStorage.getItem('preferredLang') || 'el');
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+  const isEl = currentLang === 'el';
 
  // Modal state
  const [isTreatmentModalOpen, setIsTreatmentModalOpen] = useState(false);
@@ -300,7 +314,7 @@ export const TherapyCatalog: React.FC = () => {
  Therapy Catalog
  </h1>
  <p className="text-gray-500 uppercase text-xs font-bold tracking-widest mt-2 flex items-center gap-2">
- <Tag className="text-[#CBFF38]" size={14} /> Master therapy catalog & category management
+ <Tag className="text-[#CBFF38]" size={14} /> {isEl ? 'Κεντρικός κατάλογος θεραπειών & διαχείριση κατηγοριών' : 'Master therapy catalog & category management'}
  </p>
  </div>
  <div className="flex flex-wrap gap-3">
@@ -308,19 +322,19 @@ export const TherapyCatalog: React.FC = () => {
   onClick={handleAutoConnect}
   className="flex items-center gap-2 px-4 md:px-6 py-3 bg-blue-100 text-blue-700 font-black rounded-2xl hover:bg-blue-200 transition-all shadow-lg shadow-blue-50 uppercase text-xs tracking-widest"
   >
-  <Check size={16} /> Auto-Connect
+  <Check size={16} /> {isEl ? 'Αυτόματη Σύνδεση' : 'Auto-Connect'}
   </button>
  <button
  onClick={() => openTreatmentModal()}
  className="flex items-center gap-2 px-4 md:px-6 py-3 bg-[#CBFF38] text-black font-black rounded-2xl hover:bg-lime-400 transition-all shadow-lg shadow-lime-100 uppercase text-xs tracking-widest"
  >
- <Plus size={16} /> New Therapy
+ <Plus size={16} /> {isEl ? 'Νέα Θεραπεία' : 'New Therapy'}
  </button>
  <button
  onClick={() => { setEditingItem(null); setCategoryForm({ name:"", description:"", icon:"", parentId:"", isActive: true }); setIsCategoryModalOpen(true); }}
  className="flex items-center gap-2 px-4 md:px-6 py-3 bg-[#0B1120] text-white font-black rounded-2xl hover:bg-gray-800 transition-all shadow-lg shadow-gray-200 uppercase text-xs tracking-widest"
  >
- <Plus size={16} /> New Category
+ <Plus size={16} /> {isEl ? 'Νέα Κατηγορία' : 'New Category'}
  </button>
  </div>
  </div>
@@ -354,7 +368,7 @@ export const TherapyCatalog: React.FC = () => {
  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#CBFF38] transition-colors" size={18} />
  <input
  type="text"
- placeholder="Search therapies by name or category..."
+ placeholder={isEl ? "Αναζήτηση θεραπειών με όνομα ή κατηγορία..." : "Search therapies by name or category..."}
  className="w-full pl-12 pr-4 py-4 bg-white border border-gray-100 rounded-3xl outline-none focus:ring-2 focus:ring-[#CBFF38] transition-all font-medium shadow-sm"
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}

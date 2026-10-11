@@ -86,6 +86,22 @@ const reviewCard = css`
 `;
 
 export const Reviews: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const dispatch = useDispatch<AppDispatch>();
  const { appointments, isLoading } = useSelector((state: RootState) => state.client);
  const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
@@ -146,11 +162,11 @@ export const Reviews: React.FC = () => {
  </div>
 
  <h1 className="text-2xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-tight sm:leading-none text-gray-900">
- YOUR EXCELLENCE <span className="text-[#84cc16] sm:text-[#CBFF38]">FEEDBACK</span>
+ {isGreek ? "Η ΑΞΙΟΛΟΓΗΣΗ ΣΑΣ ΜΕΤΡΑΕΙ" : <>YOUR FEEDBACK <span className="text-[#84cc16] sm:text-[#CBFF38]">MATTERS</span></>}
  </h1>
 
  <p className="text-gray-600 mt-2 sm:mt-6 font-semibold text-xs sm:text-lg max-w-lg leading-snug sm:leading-relaxed">
- Share your feedback about your appointment and experience with Beauty Doctors.
+ {isGreek ? "Μοιραστείτε την εμπειρία σας από το ραντεβού σας και βοηθήστε μας να βελτιώσουμε τις υπηρεσίες μας." : "Share your feedback about your appointment and experience with Beauty Doctors."}
  </p>
  </div>
  </div>
@@ -235,12 +251,12 @@ export const Reviews: React.FC = () => {
  <div className="size-20 bg-gray-50 rounded-[28px] flex items-center justify-center mx-auto mb-8 text-gray-200">
  <MessageSquare size={40} />
  </div>
- <h3 className="text-3xl font-black uppercase text-gray-900 mb-4 tracking-tighter">NO COMPLETED APPOINTMENTS TO REVIEW</h3>
+ <h3 className="text-3xl font-black uppercase text-gray-900 mb-4 tracking-tighter">{isGreek ? "ΔΕΝ ΥΠΑΡΧΟΥΝ ΟΛΟΚΛΗΡΩΜΕΝΑ ΡΑΝΤΕΒΟΥ ΠΡΟΣ ΑΞΙΟΛΟΓΗΣΗ" : "NO COMPLETED APPOINTMENTS TO REVIEW"}</h3>
  <p className="text-gray-400 max-w-sm mx-auto text-base font-bold leading-relaxed">
- You can leave feedback after a completed appointment.
+ {isGreek ? "Μπορείτε να υποβάλετε αξιολόγηση μετά την ολοκλήρωση ενός ραντεβού." : "You can leave feedback after a completed appointment."}
  </p>
  <Link to="/search" className="inline-flex items-center gap-3 mt-12 bg-black text-[#CBFF38] px-8 sm:px-12 h-16 rounded-[20px] font-black uppercase text-xs tracking-[0.2em] hover:bg-gray-900 transition-all shadow-2xl">
- Schedule Visit <Sparkles size={18} />
+ {isGreek ? "Κλείστε ραντεβού" : "Schedule Visit"} <Sparkles size={18} />
  </Link>
  </div>
  ) : (
@@ -258,7 +274,7 @@ export const Reviews: React.FC = () => {
  <Sparkles size={24} />
  </div>
  <div className="text-right">
- <span className="block text-[9px] font-black uppercase tracking-[0.2em] text-lime-600 mb-1">Status Verified</span>
+ <span className="block text-[9px] font-black uppercase tracking-[0.2em] text-lime-600 mb-1">{isGreek ? "Επιβεβαιωμένο" : "Status Verified"}</span>
  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
  {format(new Date(apt.startTime),"MMM dd, yyyy")}
  </span>
@@ -283,7 +299,7 @@ export const Reviews: React.FC = () => {
  onClick={() => handleSelectAppointment(apt)}
  className="w-full flex items-center justify-center gap-3 bg-black text-[#CBFF38] h-14 rounded-[18px] font-black uppercase text-[10px] tracking-[0.2em] hover:bg-gray-900 transition-all shadow-xl active:scale-[0.98]"
  >
- Submit Review <ChevronRight size={16} />
+ {isGreek ? "Υποβολή αξιολόγησης" : "Submit Review"} <ChevronRight size={16} />
  </button>
  </motion.div>
  ))}

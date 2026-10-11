@@ -150,6 +150,22 @@ const statusBadgeStyle = (status: string) => {
 };
 
 export const Appointments: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { appointments: bookingAppointments } = useSelector((state: RootState) => state.booking);
@@ -227,16 +243,16 @@ export const Appointments: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-8 text-gray-400 text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em]"
             >
-              <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">DASHBOARD</Link>
-              <span className="text-lime-500"> MY_RESERVATIONS</span>
+              <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">{isGreek ? "ΠΙΝΑΚΑΣ ΕΛΕΓΧΟΥ" : "DASHBOARD"}</Link>
+              <span className="text-lime-500"> {isGreek ? "ΤΑ ΡΑΝΤΕΒΟΥ ΜΟΥ" : "APPOINTMENT HISTORY"}</span>
             </motion.div>
             
             <h1 className="text-2xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none text-gray-900">
-              MY <span className="text-[#CBFF38]">APPOINTMENTS</span>
+              {isGreek ? "ΤΑ ΡΑΝΤΕΒΟΥ ΜΟΥ" : <>MY <span className="text-[#CBFF38]">APPOINTMENTS</span></>}
             </h1>
             
             <p className="text-gray-500 mt-4 sm:mt-6 font-bold text-xs sm:text-base max-w-xl">
-              Manage your active reservations, track your aesthetic journey, and secure your next time slot.
+              {isGreek ? "Δείτε τα προγραμματισμένα ραντεβού σας, παρακολουθήστε το ιστορικό σας και προγραμματίστε την επόμενη επίσκεψή σας." : "Manage your active reservations, track your aesthetic journey, and secure your next time slot."}
             </p>
           </div>
         </div>
@@ -245,9 +261,9 @@ export const Appointments: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-8 relative z-20 -mt-[90px] sm:-mt-[160px]">
         {/* Filters Grid */}
         <div className="flex items-center gap-3 mb-6 sm:mb-10 overflow-x-auto pb-2 no-scrollbar">
-          <button onClick={() => setActiveFilter('all')} className={filterTab(activeFilter === 'all')}>All</button>
-          <button onClick={() => setActiveFilter('confirmed')} className={filterTab(activeFilter === 'confirmed')}>Scheduled</button>
-          <button onClick={() => setActiveFilter('completed')} className={filterTab(activeFilter === 'completed')}>Completed</button>
+          <button onClick={() => setActiveFilter('all')} className={filterTab(activeFilter === 'all')}>{isGreek ? "Όλα" : "All"}</button>
+          <button onClick={() => setActiveFilter('confirmed')} className={filterTab(activeFilter === 'confirmed')}>{isGreek ? "Προγραμματισμένα" : "Scheduled"}</button>
+          <button onClick={() => setActiveFilter('completed')} className={filterTab(activeFilter === 'completed')}>{isGreek ? "Ολοκληρωμένα" : "Completed"}</button>
         </div>
 
         {filteredAppointments.length === 0 ? (
@@ -259,11 +275,11 @@ export const Appointments: React.FC = () => {
             <div className="size-16 sm:size-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8">
               <CalendarDays className="text-gray-200" size={32} />
             </div>
-            <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 mb-2">No records found</h3>
-            <p className="text-gray-400 text-xs sm:text-sm font-bold uppercase tracking-widest mb-8">Your aesthetic calendar is currently clear.</p>
+            <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 mb-2">{isGreek ? "Δεν βρέθηκαν ραντεβού" : "No records found"}</h3>
+            <p className="text-gray-400 text-xs sm:text-sm font-bold uppercase tracking-widest mb-8">{isGreek ? "Δεν υπάρχουν προγραμματισμένα ραντεβού." : "Your aesthetic calendar is currently clear."}</p>
             <Link to="/search">
               <button className="px-8 sm:px-12 h-12 sm:h-16 bg-black text-[#CBFF38] text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-lime-500 hover:text-black transition-all shadow-xl min-h-[44px]">
-                Book New Reservation
+                {isGreek ? "Κλείστε νέο ραντεβού" : "Book New Reservation"}
               </button>
             </Link>
           </motion.div>
@@ -296,13 +312,23 @@ export const Appointments: React.FC = () => {
                     <div className={statusBadgeStyle(apt.status)}>
                       {apt.status === 'CONFIRMED' && <CheckCircle2 size={12} />}
                       {apt.status === 'CANCELLED' && <AlertCircle size={12} />}
-                      {apt.status === 'CONFIRMED' ? 'APPOINTMENT CONFIRMED' : apt.status === 'PENDING_PAYMENT' ? 'PAYMENT PENDING' : apt.status}
+                      {isGreek ? (
+      apt.status === 'CONFIRMED' ? 'ΕΠΙΒΕΒΑΙΩΜΕΝΟ' :
+      apt.status === 'PENDING_PAYMENT' ? 'ΕΚΚΡΕΜΕΙ ΠΛΗΡΩΜΗ' :
+      apt.status === 'PENDING' ? 'ΣΕ ΑΝΑΜΟΝΗ' :
+      apt.status === 'COMPLETED' ? 'ΟΛΟΚΛΗΡΩΜΕΝΟ' :
+      apt.status === 'CANCELLED' ? 'ΑΚΥΡΩΜΕΝΟ' : apt.status
+    ) : (
+      apt.status === 'CONFIRMED' ? 'APPOINTMENT CONFIRMED' :
+      apt.status === 'PENDING_PAYMENT' ? 'PAYMENT PENDING' :
+      apt.status
+    )}
                     </div>
                   </div>
 
                   {/* Treatment Detail */}
                   <div className="mb-6 sm:mb-8 min-h-[60px] sm:min-h-[80px]">
-                    <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">TREATMENT OF INTEREST</p>
+                    <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{isGreek ? "ΘΕΡΑΠΕΙΑ ΕΝΔΙΑΦΕΡΟΝΤΟΣ" : "TREATMENT OF INTEREST"}</p>
                     <h3 className="text-lg sm:text-2xl font-black uppercase text-gray-900 tracking-tighter leading-tight line-clamp-2">
                       {(apt as any).serviceName || apt.service?.treatment?.name || "Aesthetic Protocol"}
                     </h3>
@@ -319,14 +345,14 @@ export const Appointments: React.FC = () => {
                   {/* Date & Time Grid */}
                   <div className="grid grid-cols-2 gap-3 mb-6 sm:mb-8 bg-gray-50/50 p-3 sm:p-5 rounded-2xl border border-gray-100">
                     <div className="flex flex-col gap-1 sm:gap-2">
-                      <span className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">Date</span>
+                      <span className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">{isGreek ? "Ημερομηνία" : "Date"}</span>
                       <div className="flex items-center gap-1.5 text-gray-900 font-black text-[10px] sm:text-[11px] uppercase truncate">
                         <CalendarDays size={14} className="text-lime-500 shrink-0" />
                         <span className="truncate">{formatClinicDate(apt.startTime, apt.clinic?.timezone)}</span>
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 sm:gap-2">
-                      <span className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">Session Time</span>
+                      <span className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">{isGreek ? "Ώρα" : "Session Time"}</span>
                       <div className="flex items-center gap-1.5 text-gray-900 font-black text-[10px] sm:text-[11px] uppercase truncate">
                         <Clock size={14} className="text-lime-500 shrink-0" />
                         <span className="truncate">{formatClinicTime(apt.startTime, apt.clinic?.timezone)}</span>
@@ -402,10 +428,10 @@ export const Appointments: React.FC = () => {
       {/* Footer Branding */}
       <footer className="container mx-auto px-4 sm:px-8 py-8 sm:py-16 mt-8 sm:mt-16 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-8">
         <div className="flex items-center gap-6 sm:gap-10">
-          <Link to="/support" className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 hover:text-black transition-colors">Patient Concierge</Link>
-          <Link to="/legal" className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 hover:text-black transition-colors">Privacy Compliance</Link>
+          <Link to="/support" className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 hover:text-black transition-colors">{isGreek ? "Υποστήριξη ασθενών" : "Patient Support"}</Link>
+          <Link to="/legal" className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 hover:text-black transition-colors">{isGreek ? "Πολιτική απορρήτου" : "Privacy Policy"}</Link>
         </div>
-        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-300">© 2026 BEAUTY_DOCTORS_PROTOCOL</p>
+        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-300">© 2026 BeautyDoctors</p>
       </footer>
     </div>
   );

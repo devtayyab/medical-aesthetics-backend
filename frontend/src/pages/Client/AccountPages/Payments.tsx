@@ -83,6 +83,22 @@ const statItem = css`
 `;
 
 export const Payments: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const [payments, setPayments] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
 
@@ -162,27 +178,27 @@ export const Payments: React.FC = () => {
  <div className="container mx-auto px-4 sm:px-8 relative z-10">
  <div className="max-w-4xl">
  <div className="flex items-center gap-3 mb-6 text-gray-400 text-[11px] font-black uppercase tracking-[0.2em]">
- <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
- <ChevronRight size={12} className="text-lime-500" />
- <span className="text-lime-500">BILLING & FINANCE</span>
+ <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">{isGreek ? "ΛΟΓΑΡΙΑΣΜΟΣ" : "ACCOUNT"}</Link>
+              <ChevronRight size={12} className="text-lime-500" />
+              <span className="text-lime-500">{isGreek ? "ΧΡΕΩΣΕΙΣ ΚΑΙ ΟΙΚΟΝΟΜΙΚΑ" : "CHARGES & FINANCIALS"}</span>
  </div>
 
  <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase tracking-tighter leading-none text-gray-900 md:whitespace-nowrap">
- PAYMENTS & <span className="text-[#CBFF38]">INVOICES</span>
+ {isGreek ? "ΠΛΗΡΩΜΕΣ & ΧΡΕΩΣΕΙΣ" : <>PAYMENTS & <span className="text-[#CBFF38]">INVOICES</span></>}
  </h1>
 
  <p className="text-gray-500 mt-3 sm:mt-6 font-bold text-sm sm:text-lg max-w-lg leading-relaxed">
- Your complete financial history across all clinics and treatments. Track every deposit and transaction.
+ {isGreek ? "Το πλήρες ιστορικό πληρωμών σας σε συνεργαζόμενες κλινικές και θεραπείες." : "Your complete financial history across all clinics and treatments. Track every deposit and transaction."}
  </p>
 
  {/* Summary Quick Stats */}
  <div className="flex flex-wrap gap-4 mt-10">
  <div className="bg-white/80 backdrop-blur px-6 py-4 rounded-2xl border border-white/20 shadow-xl shadow-black/5">
- <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Spent</p>
+ <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isGreek ? "Συνολικό Ποσό" : "Total Spent"}</p>
  <p className="text-2xl font-black text-gray-900 tabular-nums">€{totalSpend.toFixed(2)}</p>
  </div>
  <div className="bg-white/80 backdrop-blur px-6 py-4 rounded-2xl border border-white/20 shadow-xl shadow-black/5">
- <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Transactions</p>
+ <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isGreek ? "Συναλλαγές" : "Transactions"}</p>
  <p className="text-2xl font-black text-gray-900 tabular-nums">{payments.length}</p>
  </div>
  </div>
@@ -202,11 +218,11 @@ export const Payments: React.FC = () => {
  <History size={24} />
  </div>
  <div>
- <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Financial Ledger</h3>
+ <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">{isGreek ? "Ιστορικό πληρωμών" : "Payment History"}</h3>
                 <p className="text-[11px] text-gray-500 font-medium mt-2 leading-relaxed">
-                  * Payments shown here are transactions with the respective clinics or medical professionals. Beauty Doctors provides the platform and does not act as the recipient of these payments.
+                  {isGreek ? "* Οι πληρωμές που εμφανίζονται εδώ αφορούν συναλλαγές με τις αντίστοιχες κλινικές ή ιατρούς. Το BeautyDoctors παρέχει την πλατφόρμα και δεν ενεργεί ως αποδέκτης των πληρωμών αυτών." : "* Payments shown here are transactions with the respective clinics or medical professionals. Beauty Doctors provides the platform and does not act as the recipient of these payments."}
                 </p>
- <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Transaction History & Verification</p>
+ <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">{isGreek ? "Ιστορικό & Επαλήθευση" : "Transaction History & Verification"}</p>
  </div>
  </div>
  <div className="flex items-center gap-4">
@@ -266,9 +282,9 @@ export const Payments: React.FC = () => {
  ) : (
  <div className="text-center py-32 px-10">
  <CreditCard className="size-20 mx-auto mb-8 text-gray-100" />
- <h4 className="text-3xl font-black uppercase text-gray-900 mb-3 tracking-tighter">No Transactions Yet</h4>
+ <h4 className="text-3xl font-black uppercase text-gray-900 mb-3 tracking-tighter">{isGreek ? "Δεν υπάρχουν συναλλαγές" : "No Transactions Yet"}</h4>
  <p className="text-gray-400 max-w-sm mx-auto text-base font-bold leading-relaxed">
- Once you complete a treatment or make a deposit, your financial record will be updated here.
+ {isGreek ? "Μόλις ολοκληρώσετε μια θεραπεία ή καταβάλετε πληρωμή, το ιστορικό σας θα ενημερωθεί εδώ." : "Once you complete a treatment or make a deposit, your financial record will be updated here."}
  </p>
  </div>
  )}

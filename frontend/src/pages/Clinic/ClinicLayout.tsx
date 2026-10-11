@@ -81,6 +81,8 @@ const ClinicLayout: React.FC = () => {
 
   const handleLanguageSwitch = (lang: 'en' | 'el') => {
     setCurrentLang(lang);
+    localStorage.setItem('preferredLang', lang);
+    window.dispatchEvent(new Event('storage'));
     (window as any).switchLanguage?.(lang);
   };
 
@@ -143,7 +145,7 @@ const ClinicLayout: React.FC = () => {
   <div className="transition-transform duration-300 group-hover:scale-105">
   {iconMap[item.icon]}
   </div>
-  <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+  <span className="text-[10px] font-black uppercase tracking-widest">{currentLang === 'el' && (item as any).labelGr ? (item as any).labelGr : item.label}</span>
   {item.id === 'appointments' && (
   <div className="ml-auto size-4 rounded-full bg-[#CBFF38] text-black text-[8px] font-black flex items-center justify-center shadow-sm">
   !

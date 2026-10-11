@@ -17,6 +17,22 @@ import {
 import OnlineClinicHome from '@/assets/OnlineClinicHome.svg';
 
 export const ForClinics: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
@@ -30,11 +46,15 @@ export const ForClinics: React.FC = () => {
             </div>
             
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-tight uppercase tracking-tight">
-              Grow Your Medical Practice With <span className="text-[#CBFF38]">Precision</span>
+              {isGreek ? (
+                <>Αναπτύξτε την ιατρική σας δραστηριότητα με <span className="text-[#CBFF38]">σιγουριά</span></>
+              ) : (
+                <>Grow Your Medical Practice With <span className="text-[#CBFF38]">Confidence</span></>
+              )}
             </h1>
             
             <p className="text-gray-300 text-base sm:text-lg leading-relaxed max-w-xl">
-              Connect with patients seeking specialized aesthetic and medical treatments. Manage appointments, consultations, and verified clinic credentials on one compliant platform.
+              {isGreek ? "Συνδεθείτε με ενδιαφερόμενους ασθενείς που αναζητούν εξειδικευμένες υπηρεσίες αισθητικής ιατρικής. Διαχειριστείτε ραντεβού και πληροφορίες σε μία πλατφόρμα." : "Connect with patients interested in specialized aesthetic medicine services. Manage appointments, consultations, and verified clinic credentials on one compliant platform."}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-2 justify-center lg:justify-start">
@@ -42,13 +62,13 @@ export const ForClinics: React.FC = () => {
                 to="/register?role=clinic"
                 className="inline-flex items-center justify-center bg-[#CBFF38] text-black px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-white transition-all shadow-xl hover:shadow-2xl"
               >
-                Register Your Clinic <ArrowRight className="ml-2 size-4" />
+                {isGreek ? "Εγγραφή κλινικής / ιατρείου" : "Register Your Clinic"} <ArrowRight className="ml-2 size-4" />
               </Link>
               <a
                 href="mailto:info@beautydoctors.gr?subject=Clinic%20Partnership%20Inquiry"
                 className="inline-flex items-center justify-center border-2 border-white/20 text-white px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all"
               >
-                Contact Partnership Team
+                {isGreek ? "Επικοινωνήστε με την ομάδα συνεργατών μας" : "Contact Our Partnerships Team"}
               </a>
             </div>
 
@@ -88,7 +108,7 @@ export const ForClinics: React.FC = () => {
               <div className="size-12 rounded-xl bg-lime-50 text-lime-600 flex items-center justify-center mb-6">
                 <CalendarCheck className="size-6" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Targeted Patient Inquiries</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">{isGreek ? "Αιτήματα ενδιαφερόμενων ασθενών" : "Inquiries from Interested Patients"}</h3>
               <p className="text-gray-600 text-sm leading-relaxed">
                 Receive inquiries from patients seeking verified medical aesthetic treatments in your area, with transparent consultation scheduling.
               </p>
@@ -122,7 +142,7 @@ export const ForClinics: React.FC = () => {
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-6">
-              <span className="text-xs font-black uppercase tracking-widest text-lime-600">Complete Clinic Toolkit</span>
+              <span className="text-xs font-black uppercase tracking-widest text-lime-600">{isGreek ? "Εργαλεία διαχείρισης κλινικής" : "Clinic Management Tools"}</span>
               <h2 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight leading-tight">
                 Everything You Need To Manage Consultations & Treatments
               </h2>
@@ -151,7 +171,7 @@ export const ForClinics: React.FC = () => {
                   to="/register?role=clinic"
                   className="inline-flex items-center justify-center bg-black text-[#CBFF38] px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-gray-900 transition-all shadow-lg"
                 >
-                  Join The Medical Network
+                  {isGreek ? "Εγγραφείτε στο δίκτυο συνεργατών" : "Join Our Partner Network"}
                   <ArrowRight className="ml-2 size-4" />
                 </Link>
               </div>

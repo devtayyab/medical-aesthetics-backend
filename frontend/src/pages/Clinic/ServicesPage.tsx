@@ -26,6 +26,23 @@ const ServicesPage: React.FC = () => {
  const [showModal, setShowModal] = useState(false);
  const [editingService, setEditingService] = useState<Service | null>(null);
 
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      clearInterval(interval);
+    };
+  }, []);
+
+
  useEffect(() => {
  dispatch(fetchServices(undefined));
  }, [dispatch]);
@@ -50,11 +67,11 @@ const ServicesPage: React.FC = () => {
  <div className="space-y-3">
  <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
  <div className="size-1.5 rounded-full bg-green-500" />
- <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Catalog Management</span>
+ <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">{isGreek ? "Διαχείριση θεραπειών" : "Treatment Management"}</span>
  </div>
  <div className="space-y-1">
- <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">Treatments & Pricing</h1>
- <p className="text-gray-500 font-medium max-w-md text-sm">Orchestrate clinical offerings and deployment protocol.</p>
+ <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Θεραπείες & Τιμές" : "Treatments & Pricing"}</h1>
+ <p className="text-gray-500 font-medium max-w-md text-sm">{isGreek ? "Διαχειριστείτε τις θεραπείες, τις τιμές και τη διάρκεια των ραντεβού σας." : "Manage your treatments, prices and appointment durations."}</p>
  </div>
  </div>
 
@@ -67,8 +84,8 @@ const ServicesPage: React.FC = () => {
  className="group h-12 px-8 bg-black text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all shadow-lg flex items-center gap-3"
  >
  <Plus size={16} />
- Provision New Therapy
- </button>
+ {isGreek ? "Προσθήκη θεραπείας" : "Add Treatment"}
+  </button>
  )}
  </div>
  </div>

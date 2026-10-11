@@ -1,4 +1,4 @@
-import React from"react";
+import React, { useState, useEffect } from "react";
 import { Link } from"react-router-dom";
 import { FaFacebookF, FaLinkedinIn } from"react-icons/fa";
 import { FaXTwitter } from"react-icons/fa6";
@@ -6,6 +6,21 @@ import { Phone, Mail } from"lucide-react";
 import SiteLogo from"@/assets/SiteLogo.png";
 
 export const Footer: React.FC = () => {
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      clearInterval(interval);
+    };
+  }, []);
  return (
  <footer className="bg-[#2D3748]">
  <div className="mx-auto max-w-[1200px] px-4 pt-8 pb-16 sm:pb-8 sm:px-6 lg:px-8">
@@ -185,29 +200,50 @@ export const Footer: React.FC = () => {
  <FaLinkedinIn size={14} />
  </a>
  </div>
- <form onSubmit={(e) => e.preventDefault()} className="w-full sm:w-auto mt-2 sm:mt-0">
- <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-2 w-full">
- <label className="text-white text-[10px] font-bold uppercase tracking-wider mb-1 sm:mb-0" htmlFor="email">
- Newsletter
- </label>
+ <div className="w-full md:w-auto flex flex-col items-start md:items-end gap-2 mt-2 md:mt-0">
+          <form onSubmit={(e) => e.preventDefault()} className="w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-2 w-full">
+              <label className="text-white text-[10px] font-bold uppercase tracking-wider mb-1 sm:mb-0" htmlFor="email">
+                Newsletter
+              </label>
 
- <div className="flex w-full sm:w-auto gap-2">
- <input
- className="w-full flex-1 sm:w-auto rounded-[8px] border focus:outline-none border-[#8B95A5] focus:border-white bg-transparent px-3 py-2 text-white text-xs font-medium"
- id="email"
- type="email"
- placeholder="john@doe.com"
- />
+              <div className="flex w-full sm:w-auto gap-2">
+                <input
+                  className="w-full flex-1 sm:w-auto rounded-[8px] border focus:outline-none border-[#8B95A5] focus:border-white bg-transparent px-3 py-2 text-white text-xs font-medium"
+                  id="email"
+                  type="email"
+                  placeholder="john@doe.com"
+                />
 
- <button
- type="submit"
- className="whitespace-nowrap rounded-[8px] bg-[#CBFF38] px-4 py-2 font-black text-[10px] uppercase tracking-widest text-[#2D3748] transition hover:bg-lime-400"
- >
- <span className="notranslate">{localStorage.getItem('preferredLang') === 'el' ? 'ΕΓΓΡΑΦΗ' : 'Subscribe'}</span>
- </button>
- </div>
- </div>
- </form>
+                <button
+                  type="submit"
+                  className="whitespace-nowrap rounded-[8px] bg-[#CBFF38] px-4 py-2 font-black text-[10px] uppercase tracking-widest text-[#2D3748] transition hover:bg-lime-400"
+                >
+                  <span className="notranslate">{isGreek ? 'ΕΓΓΡΑΦΗ' : 'Subscribe'}</span>
+                </button>
+              </div>
+            </div>
+          </form>
+          <p className="text-[10px] text-gray-300 leading-tight max-w-md text-left md:text-right">
+            {isGreek ? (
+              <>
+                «Εγγραφείτε για να λαμβάνετε νέα και προωθητικά email της BeautyDoctors. Μπορείτε να διαγραφείτε οποτεδήποτε. Δείτε την{' '}
+                <Link to="/privacy-policy" className="text-[#CBFF38] underline hover:opacity-80 transition-opacity">
+                  Πολιτική Απορρήτου
+                </Link>
+                .»
+              </>
+            ) : (
+              <>
+                Subscribe to receive BeautyDoctors news and promotional emails. You can unsubscribe at any time. See our{' '}
+                <Link to="/privacy-policy" className="text-[#CBFF38] underline hover:opacity-80 transition-opacity">
+                  Privacy Policy
+                </Link>
+                .
+              </>
+            )}
+          </p>
+        </div>
  </div>
          {/* Bottom Legal / Copyright / Company Details */}
         <div className="mt-8 pt-6 border-t border-[#4A5568] flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-gray-300 text-center md:text-left">

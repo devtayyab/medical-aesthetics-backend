@@ -1589,7 +1589,7 @@ export const OneCustomerDetail: React.FC<OneCustomerDetailProps> = ({
  <div className="absolute top-0 right-0 w-32 h-32 bg-white/40 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
  <div className="flex items-center gap-2 mb-4 relative z-10">
  <Sparkles className="w-5 h-5 text-indigo-500" />
- <h3 className="font-black text-indigo-900 text-sm tracking-tight">Breeze Record Summary</h3>
+ <h3 className="font-black text-indigo-900 text-sm tracking-tight">Lead Summary</h3>
  </div>
  <p className="text-xs text-indigo-900/80 font-medium leading-relaxed relative z-10">
  {derivedStatus === 'converted'

@@ -41,10 +41,14 @@ export class BookingsService {
   private readonly logPath = path.join(process.cwd(), 'logs', 'appointment-debug.log');
 
   private logDebug(msg: string, data?: any) {
-    const timestamp = new Date().toISOString();
-    const line = `[${timestamp}] ${msg} ${data ? JSON.stringify(data) : ''}\n`;
-    if (!fs.existsSync(path.dirname(this.logPath))) fs.mkdirSync(path.dirname(this.logPath), { recursive: true });
-    fs.appendFileSync(this.logPath, line);
+    try {
+      const timestamp = new Date().toISOString();
+      const line = `[${timestamp}] ${msg} ${data ? JSON.stringify(data) : ''}\n`;
+      if (!fs.existsSync(path.dirname(this.logPath))) fs.mkdirSync(path.dirname(this.logPath), { recursive: true });
+      fs.appendFileSync(this.logPath, line);
+    } catch {
+      // Ignore file writing permission errors inside Docker so it never crashes the request
+    }
     console.log(msg, data);
   }
   constructor(

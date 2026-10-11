@@ -36,3 +36,4 @@ hubspot-raw-counts.json
 *.csv
 logs/
 scratch/
+*.pdf
