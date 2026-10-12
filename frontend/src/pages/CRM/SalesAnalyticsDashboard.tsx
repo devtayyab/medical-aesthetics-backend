@@ -19,6 +19,22 @@ export const SalesAnalyticsDashboard = () => {
  const { salespersons } = useSelector((state: RootState) => state.crm);
  const { clinics } = useSelector((state: RootState) => state.clinics);
 
+ const [isGreek, setIsGreek] = useState<boolean>(
+   () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+ );
+
+ useEffect(() => {
+   const handleLang = () => {
+     setIsGreek(localStorage.getItem('preferredLang') === 'el');
+   };
+   window.addEventListener('storage', handleLang);
+   window.addEventListener('languagechange', handleLang);
+   return () => {
+     window.removeEventListener('storage', handleLang);
+     window.removeEventListener('languagechange', handleLang);
+   };
+ }, []);
+
  const [isLoading, setIsLoading] = useState(true);
  const [data, setData] = useState<any>(null);
  const [loadError, setLoadError] = useState<string | null>(null);

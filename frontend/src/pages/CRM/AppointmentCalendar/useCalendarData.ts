@@ -165,11 +165,40 @@ export function useCalendarData({ viewDate, viewMode, filters }: UseCalendarData
   // Enrich appointments with computed fields
   const enrichedAppointments = useMemo(() => {
     return appointments.map((apt: any) => {
-      const paid = parseFloat(apt.amountPaid) || 0;
-      const total = parseFloat(apt.totalAmount) || 0;
+      const primaryPrice = parseFloat(String(apt.service?.price || 0));
+      const additionalServicesTotal = (apt.additionalServices || []).reduce(
+        (sum: number, s: any) => sum + parseFloat(String(s.price || 0)),
+        0
+      );
+      const total =
+        parseFloat(String(apt.totalAmount || 0)) ||
+        (primaryPrice + additionalServicesTotal) ||
+        parseFloat(String(apt.amount || 0));
+
+      const paid =
+        parseFloat(String(apt.amountPaid || 0)) ||
+        parseFloat(String(apt.appointmentCompletionReport?.amountPaid || 0)) ||
+        parseFloat(String(apt.advancePaymentAmount || 0));
+
+      const hasPaymentMethod = Boolean(apt.paymentMethod && apt.paymentMethod !== '');
+      const isCompleted = ['COMPLETED', 'EXECUTED'].includes(String(apt.status || '').toUpperCase());
+      const isCancelled = String(apt.status || '').toUpperCase() === 'CANCELLED';
+
       let computedPaymentStatus: 'UNPAID' | 'PAID' | 'PARTIALLY_PAID' = 'UNPAID';
-      if (paid > 0 && paid >= total && total > 0) computedPaymentStatus = 'PAID';
-      else if (paid > 0 && paid < total) computedPaymentStatus = 'PARTIALLY_PAID';
+
+      if (!isCancelled) {
+        if (paid > 0 && total > 0 && paid >= total) {
+          computedPaymentStatus = 'PAID';
+        } else if (paid > 0 && total > 0 && paid < total) {
+          computedPaymentStatus = 'PARTIALLY_PAID';
+        } else if (paid > 0 && total <= 0) {
+          computedPaymentStatus = 'PAID';
+        } else if (hasPaymentMethod || (isCompleted && (Number(apt.appointmentCompletionReport?.amountPaid || 0) > 0 || hasPaymentMethod))) {
+          computedPaymentStatus = 'PAID';
+        } else if (apt.paymentStatus === 'PAID') {
+          computedPaymentStatus = 'PAID';
+        }
+      }
 
       const spIdx = salespersons.findIndex(sp => sp.id === (apt.providerId || apt.provider?.id));
 

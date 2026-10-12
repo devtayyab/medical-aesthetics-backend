@@ -788,17 +788,21 @@ export class BookingsService {
       if (data?.treatmentDetails) {
         updateData.treatmentDetails = data.treatmentDetails;
       }
+      const resolvedTotal = data?.totalAmount !== undefined 
+        ? Number(data.totalAmount) 
+        : Number(appointment.totalAmount || appointment.service?.price || 0);
+
       if (data?.totalAmount !== undefined) {
         updateData.totalAmount = data.totalAmount;
-      } else if (!appointment.totalAmount && appointment.service?.price) {
-        updateData.totalAmount = appointment.service.price;
+      } else if (!appointment.totalAmount && resolvedTotal > 0) {
+        updateData.totalAmount = resolvedTotal;
       }
 
       if (data?.amountPaid !== undefined) {
         updateData.amountPaid = data.amountPaid;
-      } else if (updateData.totalAmount) {
+      } else if (resolvedTotal > 0 && (!appointment.amountPaid || Number(appointment.amountPaid) <= 0)) {
         // Fallback to assume full amount was paid if amountPaid not explicitly provided but completion is triggered
-        updateData.amountPaid = updateData.totalAmount;
+        updateData.amountPaid = resolvedTotal;
       }
 
       if (data?.paymentMethod) {
@@ -1629,6 +1633,9 @@ export class BookingsService {
       // Update payment if provided in report
       if (completionReport.amountPaid) {
         appointment.totalAmount = completionReport.amountPaid;
+        if (!appointment.amountPaid || Number(appointment.amountPaid) <= 0) {
+          appointment.amountPaid = completionReport.amountPaid;
+        }
       }
     }
 

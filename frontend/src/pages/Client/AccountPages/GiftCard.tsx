@@ -1,4 +1,4 @@
-import React, { useState } from"react";
+import React, { useState, useEffect } from "react";
 import { Link } from"react-router-dom";
 import { css } from"@emotion/css";
 import { Gift, Copy, CheckCircle, ChevronRight, ArrowRight, Sparkles, CreditCard } from"lucide-react";
@@ -118,11 +118,11 @@ const voucherStyle = css`
 `;
 
 export const GiftCard: React.FC = () => {
-  const [isGreek, setIsGreek] = useState(
+  const [isGreek, setIsGreek] = React.useState(
     () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
   );
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handleLang = () => {
       setIsGreek(localStorage.getItem('preferredLang') === 'el');
     };

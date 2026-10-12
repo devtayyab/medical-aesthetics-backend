@@ -29,6 +29,21 @@ const AppointmentsPage: React.FC = () => {
  const [showBookingModal, setShowBookingModal] = useState(false);
  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
  const [showDetailModal, setShowDetailModal] = useState(false);
+ const [isGreek, setIsGreek] = useState<boolean>(
+   () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+ );
+
+ useEffect(() => {
+   const handleLang = () => {
+     setIsGreek(localStorage.getItem('preferredLang') === 'el');
+   };
+   window.addEventListener('storage', handleLang);
+   window.addEventListener('languagechange', handleLang);
+   return () => {
+     window.removeEventListener('storage', handleLang);
+     window.removeEventListener('languagechange', handleLang);
+   };
+ }, []);
 
  // Get clinicId from user context
  const userRole = user?.role?.toLowerCase();

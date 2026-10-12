@@ -28,6 +28,22 @@ const inputClass =
  "w-full h-12 px-4 bg-gray-50 border-2 border-transparent focus:border-[#CBFF38] focus:bg-white rounded-xl transition-all outline-none text-sm font-semibold text-gray-900 placeholder:text-gray-400 placeholder:font-medium";
 
 export const ContactUs: React.FC = () => {
+ const [isGreek, setIsGreek] = useState<boolean>(
+   () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+ );
+
+ useEffect(() => {
+   const handleLang = () => {
+     setIsGreek(localStorage.getItem('preferredLang') === 'el');
+   };
+   window.addEventListener('storage', handleLang);
+   window.addEventListener('languagechange', handleLang);
+   return () => {
+     window.removeEventListener('storage', handleLang);
+     window.removeEventListener('languagechange', handleLang);
+   };
+ }, []);
+
  const [form, setForm] = useState({
  name: "",
  email: "",
