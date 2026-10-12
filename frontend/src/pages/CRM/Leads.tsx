@@ -258,6 +258,22 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  const { leads, leadFilters, duplicateCheck, isLoading, salespersons, stats } = useSelector((state: RootState) => state.crm);
  const { user } = useSelector((state: RootState) => state.auth);
 
+ const [isGreek, setIsGreek] = useState<boolean>(
+   () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+ );
+
+ useEffect(() => {
+   const handleLang = () => {
+     setIsGreek(localStorage.getItem('preferredLang') === 'el');
+   };
+   window.addEventListener('storage', handleLang);
+   window.addEventListener('languagechange', handleLang);
+   return () => {
+     window.removeEventListener('storage', handleLang);
+     window.removeEventListener('languagechange', handleLang);
+   };
+ }, []);
+
  const [searchTerm, setSearchTerm] = useState('');
  const [showFilters, setShowFilters] = useState(false);
  const [showCreateForm, setShowCreateForm] = useState(false);

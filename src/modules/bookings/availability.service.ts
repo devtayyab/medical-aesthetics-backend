@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 // Riverside: missing ForbiddenException import.
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThan, In, Not } from 'typeorm';
 import { Appointment } from './entities/appointment.entity';
@@ -46,21 +47,14 @@ export class AvailabilityService {
     allowPast = false,
     excludeAppointmentId?: string | null,
   ): Promise<{ slots: any[]; count: number; reason?: string; debug?: any }> {
-    const logPath = path.join(process.cwd(), 'logs', 'availability-debug.log');
-    try {
-      if (!fs.existsSync(path.dirname(logPath))) {
-        fs.mkdirSync(path.dirname(logPath), { recursive: true });
-      }
-    } catch (e) {
-      console.error('Failed to create logs directory:', e);
-    }
+    const logPath = path.join(os.tmpdir(), 'availability-debug.log');
     const log = (msg: string, data?: any) => {
       const timestamp = new Date().toISOString();
       const line = `[${timestamp}] ${msg} ${data ? JSON.stringify(data) : ''}\n`;
       try {
         fs.appendFileSync(logPath, line);
       } catch (e) {
-        // Ignore file write errors on staging
+        // Ignore file write errors
       }
       console.log(msg, data);
     };
