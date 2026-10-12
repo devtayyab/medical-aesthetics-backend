@@ -8,8 +8,9 @@ import { Card } from"@/components/atoms/Card/Card";
 import type { RootState, AppDispatch } from"@/store";
 import { css } from"@emotion/css";
 import axios from"axios";
+import { ENV } from "@/config/env";
 
-const API_BASE = import.meta.env.VITE_API_URL ||"http://localhost:3000";
+const API_BASE = ENV.API_BASE_URL;
 
 const registerContainerStyle = css`
  display: flex;

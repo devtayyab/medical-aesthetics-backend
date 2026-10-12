@@ -34,6 +34,13 @@ export class DuplicateDetectionService {
     private customerRecordsRepository: Repository<CustomerRecord>,
   ) { }
 
+  /**
+   * Multi-tier duplicate detection scoring:
+   * 1. Exact Email Match -> High confidence (+0.9).
+   * 2. Phone Match -> Medium/High (+0.8), guarding against shared lines by verifying name overlap.
+   * 3. Fuzzy Name Similarity -> Low confidence (+0.3).
+   * 4. Lead-level matching if no existing customer match found.
+   */
   async checkForDuplicates(
     email?: string,
     phone?: string,

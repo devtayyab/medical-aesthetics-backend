@@ -26,14 +26,7 @@ import ImageUpload from"@/components/atoms/ImageUpload";
 import { toast } from"react-hot-toast";
 import { invalidateCategoryTree } from"@/hooks/useCategoryTree";
 
-const getImageUrl = (path: string) => {
- if (!path) return '';
- if (path.startsWith('http') || path.startsWith('data:')) return path;
- 
- const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
- const origin = baseUrl.replace(/\/api$/, '');
- return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { getImageUrl } from "@/utils/imageUrl";
 
 interface masterTreatment {
  id: string;

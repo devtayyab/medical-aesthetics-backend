@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from"react";
 import { useSelector, useDispatch } from"react-redux";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, ErrorState, LoadingState } from "@/components/ui";
+import { handleApiError } from "@/utils/errorHandler";
 import { DataTable } from"@/components/ui/DataTable";
 import { Button } from"@/components/atoms/Button/Button";
 import {
@@ -187,7 +188,8 @@ export const Calls: React.FC = () => {
  setRows(data);
  setError(null);
  } catch (e) {
- setError("Failed to load call logs");
+ const errorMsg = handleApiError(e, "Failed to load call logs");
+ setError(errorMsg);
  } finally {
  setLoading(false);
  setIsRefreshing(false);
@@ -424,8 +426,9 @@ export const Calls: React.FC = () => {
  </div>
  </CardHeader>
  <CardContent className="p-0">
- {error && <div className="p-20 text-center text-red-600 font-black uppercase tracking-widest">{error}</div>}
- {!error && (
+ {loading && <LoadingState message="Loading interaction database..." className="p-16" />}
+ {!loading && error && <div className="p-8"><ErrorState message={error} onRetry={() => loadData()} /></div>}
+ {!loading && !error && (
  <div className="Calls-DataTable-Container">
  <DataTable columns={columns as any} data={rows as any} searchKey="customerName" />
  </div>

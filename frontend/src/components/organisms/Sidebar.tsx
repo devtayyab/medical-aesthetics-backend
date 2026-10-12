@@ -45,16 +45,6 @@ const clinicLinks: SidebarItem[] = [
  { path:"/clinic/reports", label:"Metric Reports", icon: <BarChart size={20} />, group:"Operations" },
 ];
 
-const secretariatLinks: SidebarItem[] = [
- { path:"/messages", label:"Messages", icon: <MessageSquare className="w-5 h-5" />, group:"Communication" },
- { path:"/clinic/diary", label:"Diary", icon: <FileText className="w-5 h-5" />, group:"Operations" },
- { path:"/clinic/appointments", label:"Appointments", icon: <Calendar className="w-5 h-5" />, group:"Operations" },
- { path:"/clinic/availability-settings", label:"Availability", icon: <Clock className="w-5 h-5" />, group:"Operations" },
-];
-
-const doctorLinks: SidebarItem[] = [
- { path:"/clinic/diary", label:"My Appointments", icon: <Calendar className="w-5 h-5" />, group:"Operations" },
-];
 
 const crmLinks: SidebarItem[] = [
   { path: "/messages", label: "Messages", labelGr: "Μηνύματα", icon: <MessageSquare className="w-5 h-5" />, group: "CRM" },

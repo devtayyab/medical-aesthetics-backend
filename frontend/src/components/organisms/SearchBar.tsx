@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from"react";
-import { Search, MapPin, Calendar as CalendarIcon, Clock, ChevronDown, Check, Sparkles } from"lucide-react";
-import { motion, AnimatePresence } from"framer-motion";
-import { css } from"@emotion/css";
-import { clinicsAPI } from"@/services/api";
+import React, { useState, useRef, useEffect } from "react";
+import { Search, MapPin, Calendar as CalendarIcon, Clock, ChevronDown, Check, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { css } from "@emotion/css";
+import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
 
 export interface SearchBarProps {
  onSearch: (filters: {
@@ -72,79 +72,39 @@ export const SearchBar: React.FC<SearchBarProps> = ({
  className,
  initialFilters,
 }) => {
- const [query, setQuery] = useState(initialFilters?.query ||"");
- const [searchDate, setSearchDate] = useState<string | null>(initialFilters?.search_date || null);
- const [searchTimeWindow, setSearchTimeWindow] = useState<string | null>(initialFilters?.search_time_window || null);
+  const {
+    query,
+    setQuery,
+    searchDate,
+    setSearchDate,
+    searchTimeWindow,
+    setSearchTimeWindow,
+    suggestions,
+    showAutocomplete,
+    setShowAutocomplete,
+    isSearching,
+    searchRef,
+    handleSearchClick,
+    handleSuggestionSelect,
+  } = useSearchSuggestions({
+    initialQuery: initialFilters?.query,
+    initialDate: initialFilters?.search_date,
+    initialTimeWindow: initialFilters?.search_time_window,
+    onSearch,
+  });
 
- const [suggestions, setSuggestions] = useState<string[]>([]);
- const [showAutocomplete, setShowAutocomplete] = useState(false);
- const [showDatePicker, setShowDatePicker] = useState(false);
- const [isSearching, setIsSearching] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const dateRef = useRef<HTMLDivElement>(null);
 
- const dateRef = useRef<HTMLDivElement>(null);
- const searchRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dateRef.current && !dateRef.current.contains(e.target as Node)) setShowDatePicker(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
- // Keep inputs in sync when the parent's filters change (e.g. URL-driven navigation)
- useEffect(() => {
- setQuery(initialFilters?.query ||"");
- setSearchDate(initialFilters?.search_date || null);
- setSearchTimeWindow(initialFilters?.search_time_window || null);
- }, [initialFilters?.query, initialFilters?.search_date, initialFilters?.search_time_window]);
-
- useEffect(() => {
- const handleClickOutside = (e: MouseEvent) => {
- if (dateRef.current && !dateRef.current.contains(e.target as Node)) setShowDatePicker(false);
- if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowAutocomplete(false);
- };
- document.addEventListener("mousedown", handleClickOutside);
- return () => document.removeEventListener("mousedown", handleClickOutside);
- }, []);
-
- // Sync internal state when initialFilters change from parent
- useEffect(() => {
-   setQuery(initialFilters?.query || "");
-   setSearchDate(initialFilters?.search_date || null);
-   setSearchTimeWindow(initialFilters?.search_time_window || null);
- }, [initialFilters?.query, initialFilters?.search_date, initialFilters?.search_time_window]);
-
- // Fetch suggestions when query changes
- useEffect(() => {
- const fetchSuggestions = async () => {
- if (query.trim().length < 1) {
- setSuggestions([]);
- return;
- }
-
- setIsSearching(true);
- try {
- const response = await clinicsAPI.getSuggestions(query);
- setSuggestions(response.data || []);
- } catch (err) {
- console.error("Failed to fetch suggestions", err);
- } finally {
- setIsSearching(false);
- }
- };
-
- const debounceTimer = setTimeout(fetchSuggestions, 300);
- return () => clearTimeout(debounceTimer);
- }, [query]);
-
- const handleSearchClick = (selectedQuery?: string) => {
- onSearch({
- query: selectedQuery || query,
- search_date: searchDate,
- search_time_window: searchTimeWindow
- });
- setShowAutocomplete(false);
- };
-
- const handleSuggestionSelect = (suggestion: string) => {
- setQuery(suggestion);
- handleSearchClick(suggestion);
- };
-
- return (
+  return (
  <div className={`${containerStyle} ${className ||""}`}>
  {/* Query Block */}
  <div className="relative" ref={searchRef}>

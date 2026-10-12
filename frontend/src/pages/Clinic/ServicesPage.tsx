@@ -5,6 +5,7 @@ import { fetchServices } from"../../store/slices/clinicSlice";
 import clinicApi from"../../services/api/clinicApi";
 import { hasPermission } from"../../utils/rolePermissions";
 import { Service, CreateServiceDto } from"../../types/clinic.types";
+import { getImageUrl } from "@/utils/imageUrl";
 import {
  Plus,
  Edit2,
@@ -153,14 +154,7 @@ const ServicesPage: React.FC = () => {
 
 /* --- Helper Components --- */
 
-const getImageUrl = (path: string) => {
- if (!path) return '';
- if (path.startsWith('http') || path.startsWith('data:')) return path;
- 
- const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
- const origin = baseUrl.replace(/\/api$/, '');
- return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+
 
 const ServiceCard = ({ service, canManage, onToggle, onEdit }: any) => {
   const isActive = service.isActive;

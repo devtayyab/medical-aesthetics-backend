@@ -74,6 +74,10 @@ export class BookingsService {
     private notificationsService: NotificationsService,
   ) { }
 
+  /**
+   * Creates a 15-minute optimistic hold lock on a time slot to prevent
+   * concurrent double-booking while the client proceeds through checkout.
+   */
   async holdSlot(holdSlotDto: HoldSlotDto): Promise<AppointmentHold> {
     const { clinicId, serviceId, additionalServiceIds, providerId, startTime, endTime } = holdSlotDto;
 
@@ -117,6 +121,12 @@ export class BookingsService {
     return this.holdsRepository.save(hold);
   }
 
+  /**
+   * Finalizes appointment creation with fallback client resolution:
+   * 1. Direct User lookup by ID.
+   * 2. Walk-in details fuzzy match by email/phone.
+   * 3. Robust "God Search" across CRM CustomerRecords and Leads.
+   */
   async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker', bookedById?: string }): Promise<any> {
     let clientId = createAppointmentDto.clientId;
 

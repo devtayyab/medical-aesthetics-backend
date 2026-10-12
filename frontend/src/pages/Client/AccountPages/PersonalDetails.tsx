@@ -1,8 +1,9 @@
-import React, { useState } from"react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from"react-redux";
 import { Link } from"react-router-dom";
 import { Button } from"@/components/atoms/Button/Button";
 import axios from"axios";
+import { ENV } from "@/config/env";
 import type { RootState, AppDispatch } from"@/store";
 import { css } from"@emotion/css";
 import { setTokens } from"@/store/slices/authSlice";
@@ -213,12 +214,12 @@ export const PersonalDetails: React.FC = () => {
  const tRefresh = refreshToken || localStorage.getItem("refreshToken");
 
  if (tRefresh) {
- const refreshRes = await axios.post(`${import.meta.env.VITE_API_BASE_URL ||"/api"}/auth/refresh`, { refreshToken: tRefresh });
+ const refreshRes = await axios.post(`${ENV.API_BASE_URL}/auth/refresh`, { refreshToken: tRefresh });
  currentToken = refreshRes.data.accessToken;
  dispatch(setTokens({ accessToken: currentToken, refreshToken: refreshRes.data.refreshToken }));
  }
 
- await axios.patch(`${import.meta.env.VITE_API_BASE_URL ||"/api"}/users/me/profile`,
+ await axios.patch(`${ENV.API_BASE_URL}/users/me/profile`,
  { firstName, lastName, phone },
  { headers: { Authorization: `Bearer ${currentToken}` } }
  );

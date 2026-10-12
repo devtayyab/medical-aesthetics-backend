@@ -4,26 +4,16 @@ import {
  Phone,
  Mail,
  Calendar,
- MapPin,
- Clock,
  Euro,
  TrendingUp,
- Star,
  Award,
- AlertCircle,
  CheckCircle,
  Building,
- Stethoscope,
- Tag,
  MessageSquare,
- FileText,
  Plus,
  PhoneCall,
  X,
  Users,
- Layout,
- Check,
- ChevronRight,
  Activity,
  Search,
  Trash2,
@@ -63,9 +53,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/molecules
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/molecules/Tabs';
 import { CommunicationForm } from '@/components/organisms/CommunicationForm/CommunicationForm';
 import { ActionForm } from '@/components/organisms/ActionForm/ActionForm';
-import { TagForm } from '@/components/organisms/TagForm/TagForm';
 import { CRMBookingModal } from '@/components/crm/CRMBookingModal';
-import { crmAPI, clinicsAPI } from '@/services/api';
+import { clinicsAPI } from '@/services/api';
 import { useDispatch } from 'react-redux';
 import { completeAppointment } from '@/store/slices/bookingSlice';
 import type { AppDispatch } from '@/store';

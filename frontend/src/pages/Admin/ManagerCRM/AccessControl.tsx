@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from"react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, LoadingState, ErrorState } from "@/components/ui";
+import { handleApiError } from "@/utils/errorHandler";
 import { DataTable } from"@/components/ui/DataTable";
 import { Button } from"@/components/atoms/Button/Button";
 import {
@@ -49,8 +50,7 @@ export const AccessControl: React.FC = () => {
  const data = await fetchAccessMatrix();
  setRows(data);
  } catch (error) {
- console.error("Failed to fetch access matrix:", error);
- toast.error("Failed to sync access registry");
+ handleApiError(error, "Failed to sync access registry");
  } finally {
  setLoading(false);
  setIsRefreshing(false);
@@ -104,9 +104,8 @@ export const AccessControl: React.FC = () => {
  }
  });
  } catch (error) {
- console.error("Failed to update access:", error);
  setRows(previousRows); // Revert
- toast.error("Security sync failed. Check connectivity.");
+ handleApiError(error, "Security sync failed. Check connectivity.");
  } finally {
  setUpdatingRowId(null);
  }
@@ -269,11 +268,15 @@ export const AccessControl: React.FC = () => {
  <ShieldAlert className="w-4 h-4 text-blue-600" />
  <p className="text-[10px] font-black text-blue-700 uppercase">Changes are applied immediately to agent dashboards upon clicking clinic markers.</p>
  </div>
+ {loading ? (
+ <LoadingState message="Loading security policy matrix..." className="p-16" />
+ ) : (
  <DataTable
  columns={columns as any}
  data={rows as any}
  searchKey="agentName"
  />
+ )}
  </CardContent>
  </Card>
  </div>

@@ -15,7 +15,7 @@ import { SearchBar } from"@/components/organisms/SearchBar";
 import {
   ArrowRight,
   Sparkles,
-  Syringe,
+  Mail,
   ShieldCheck,
   Info
 } from "lucide-react";
@@ -100,7 +100,7 @@ const mainCategories = [
  id:"treatments",
  name:"Treatments",
  description:"Browse treatments by category",
- icon: <Syringe className="text-3xl" />,
+ icon: <Sparkles size={28} />,
  link:"/treatments"
  },
  {
@@ -221,7 +221,7 @@ const mainCategories = [
  className="w-full group p-6 bg-gray-50 hover:bg-black rounded-3xl flex items-center gap-6 transition-all duration-300 border border-transparent"
  >
  <div className="size-14 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform shadow-sm">
- <Syringe size={24} />
+ <Mail size={24} />
  </div>
  <div className="text-left">
  <h4 className="font-black uppercase text-gray-900 text-lg group-hover:text-[#CBFF38]">Email Inquiry</h4>

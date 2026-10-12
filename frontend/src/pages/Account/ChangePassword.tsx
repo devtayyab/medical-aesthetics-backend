@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Key, Save, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { userAPI } from '@/services/api';
 import { Button } from '@/components/atoms/Button/Button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/atoms/Input/Input';
 
 export const ChangePassword = () => {

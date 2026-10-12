@@ -1,6 +1,8 @@
 import { Button } from '@/components/atoms/Button/Button';
 import { useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, ErrorState, LoadingState } from '@/components/ui';
+import { toast } from 'react-hot-toast';
+import { handleApiError } from '@/utils/errorHandler';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/molecules/Tabs';
 import { cn } from '@/lib/utils';
 import {
@@ -274,8 +276,8 @@ export const ManagerDashboard = () => {
 
  setError(null);
  } catch (err) {
- console.error('Failed to load manager dashboard data:', err);
- setError('Failed to load dashboard data. Please try again later.');
+ const errorMsg = handleApiError(err, 'Failed to load dashboard data. Please try again later.');
+ setError(errorMsg);
  } finally {
  setIsLoading(false);
  }
@@ -302,12 +304,12 @@ export const ManagerDashboard = () => {
  const handleCreateAgent = async () => {
  // Basic validation
  if (!newAgentData.email || !newAgentData.password || !newAgentData.firstName || !newAgentData.lastName) {
- alert('Please fill all required fields (Name, Email, Password)');
+ toast.error('Please fill all required fields (Name, Email, Password)');
  return;
  }
 
  if (newAgentData.password.length < 8) {
- alert('Password must be at least 8 characters long');
+ toast.error('Password must be at least 8 characters long');
  return;
  }
 
@@ -331,12 +333,9 @@ export const ManagerDashboard = () => {
  // Refresh KPIs
  const agents = await fetchAgentKpis();
  setAgentKpis(agents);
- alert('Agent created successfully!');
+ toast.success('Agent created successfully!');
  } catch (error: any) {
- console.error('Failed to create agent:', error);
- const errorMsg = error.response?.data?.message;
- const finalMsg = Array.isArray(errorMsg) ? errorMsg.join(', ') : (errorMsg || 'Failed to create agent');
- alert(`Error: ${finalMsg}`);
+ handleApiError(error, 'Failed to create agent');
  }
  };
 
@@ -412,24 +411,40 @@ export const ManagerDashboard = () => {
  : 0;
 
  if (isLoading) {
- return (
- <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
- <Loader2 className="h-8 w-8 animate-spin text-primary" />
- <p className="text-muted-foreground">Loading dashboard data...</p>
- </div>
- );
+ return <LoadingState message="Loading dashboard data..." className="min-h-[60vh]" />;
  }
 
  if (error) {
  return (
  <div className="p-6">
- <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start" role="alert">
- <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
- <div>
- <strong className="font-bold">Error loading data: </strong>
- <span className="block sm:inline">{error}</span>
- </div>
- </div>
+ <ErrorState
+ title="Unable to load dashboard data"
+ message={error}
+ onRetry={() => {
+ setError(null);
+ setIsLoading(true);
+ const { startDate, endDate } = getPeriodDates(selectedPeriod);
+ Promise.all([
+ fetchAgentKpis(startDate, endDate),
+ fetchServiceStats(startDate, endDate),
+ fetchClinicAnalytics(startDate, endDate),
+ fetchPerformanceDashboard(startDate, endDate)
+ ]).then(([agents, services, clinics, performance]) => {
+ setAgentKpis(agents);
+ setServiceStats(services);
+ setClinicStats(clinics);
+ if (performance?.dailyProgressChart) {
+ setRevenueData(performance.dailyProgressChart);
+ }
+ setError(null);
+ }).catch(err => {
+ const msg = handleApiError(err, 'Failed to load dashboard data. Please try again later.');
+ setError(msg);
+ }).finally(() => {
+ setIsLoading(false);
+ });
+ }}
+ />
  </div>
  );
  }
@@ -468,7 +483,7 @@ export const ManagerDashboard = () => {
  <StaffDiary
  clinicId={selectedClinic.clinicId}
  onNewAppointment={() => {
- alert('To create a new appointment, please select a customer from the CRM/Customers page first.');
+ toast('To create a new appointment, please select a customer from the CRM/Customers page first.', { icon: 'ℹ️' });
  }}
  />
  </TabsContent>

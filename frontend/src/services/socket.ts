@@ -1,6 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+import { ENV } from '@/config/env';
 
 class SocketService {
  private socket: Socket | null = null;
@@ -14,10 +13,7 @@ class SocketService {
  this.socket.disconnect();
  }
 
- // Socket.io needs the base server URL, not the /api prefix
- const baseUrl = API_URL.replace(/\/api$/, '');
-
- this.socket = io(`${baseUrl}${namespace}`, {
+ this.socket = io(`${ENV.SOCKET_URL}${namespace}`, {
  auth: { token },
  transports: ['websocket'],
  });

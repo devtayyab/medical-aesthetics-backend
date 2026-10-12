@@ -1,6 +1,6 @@
-﻿import React, { useEffect, useState, useCallback } from"react";
+import React, { useEffect, useState, useCallback } from"react";
 import { useNavigate } from"react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { DataTable } from"@/components/ui/DataTable";
 import { Button } from"@/components/atoms/Button/Button";
 import {

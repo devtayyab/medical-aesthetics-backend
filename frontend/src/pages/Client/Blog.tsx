@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from"react";
 import { Link, useNavigate } from"react-router-dom";
+import { useLanguage } from "@/hooks/useLanguage";
 import { publicBlogsAPI } from"@/services/api";
 import { css } from"@emotion/css";
 import { ChevronRight, Search, ArrowRight, BookOpen, Clock, Tag, Sparkles } from"lucide-react";
@@ -13,14 +14,7 @@ const sectionStyles = css`
  background: radial-gradient(circle at top right, rgba(203, 255, 56, 0.05), transparent), #FFFFFF;
 `;
 
-const getImageUrl = (path: string) => {
- if (!path) return '';
- if (path.startsWith('http') || path.startsWith('data:')) return path;
- 
- const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
- const origin = baseUrl.replace(/\/api$/, '');
- return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { getImageUrl } from "@/utils/imageUrl";
 
 const heroSection = css`
  position: relative;
@@ -60,6 +54,7 @@ export const Blog: React.FC = () => {
  const [categories, setCategories] = useState<any[]>([]);
  const [blogPosts, setBlogPosts] = useState<any[]>([]);
  const [isLoading, setIsLoading] = useState(true);
+ const { isGreek } = useLanguage();
 
  useEffect(() => {
  const fetchInitialData = async () => {
