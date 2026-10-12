@@ -35,6 +35,23 @@ const AvailabilityPage: React.FC = () => {
  const [newSlot, setNewSlot] = useState({ date:"", startTime:"09:00", endTime:"10:00" });
  const [timezone, setTimezone] = useState("UTC");
  const [isSaving, setIsSaving] = useState(false);
+
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      clearInterval(interval);
+    };
+  }, []);
+
  const [availableClinics, setAvailableClinics] = useState<any[]>([]);
  const [selectedClinicId, setSelectedClinicId] = useState<string>("");
 
@@ -255,7 +272,7 @@ const AvailabilityPage: React.FC = () => {
  className="group h-12 px-6 bg-black text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] hover:text-black transition-all shadow-lg flex items-center gap-3"
  >
  <Save className="transition-transform" size={16} />
- {isSaving ?"Saving..." :"Save Changes"}
+ {isSaving ? (isGreek ? "Αποθήκευση..." : "Saving...") : (isGreek ? "Αποθήκευση αλλαγών" : "Save Changes")}
  </button>
  </div>
  </div>
@@ -272,7 +289,7 @@ const AvailabilityPage: React.FC = () => {
  <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
  <Clock size={18} />
  </div>
- <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">Working Hours</h2>
+ <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">{isGreek ? "Ωράριο λειτουργίας" : "Working Hours"}</h2>
  </div>
  </div>
 
@@ -315,14 +332,14 @@ const AvailabilityPage: React.FC = () => {
  </div>
  </div>
  ) : (
- <span className="text-[9px] font-black uppercase tracking-widest text-gray-300">Clinic Closed</span>
+ <span className="text-[9px] font-black uppercase tracking-widest text-gray-300">{isGreek ? "Κλειστά" : "Closed"}</span>
  )}
  </div>
  ))}
  </div>
 
  <div className="mt-8 pt-6 border-t border-gray-100">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 px-1">Timeline Configuration</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 px-1">{isGreek ? "Ζώνη ώρας" : "Time Zone"}</p>
  <div className="relative">
  <select
  value={timezone}
@@ -383,12 +400,12 @@ const AvailabilityPage: React.FC = () => {
  <div className="size-9 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
  <Calendar size={16} />
  </div>
- <h2 className="text-sm font-black uppercase tracking-tighter text-gray-900">Blackout Dates</h2>
+ <h2 className="text-sm font-black uppercase tracking-tighter text-gray-900">{isGreek ? "Ημερομηνίες μη διαθεσιμότητας" : "Unavailable Dates"}</h2>
  </div>
 
  <div className="space-y-4">
  <div className="relative">
- <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-2 mb-2">Add New Block</p>
+ <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-2 mb-2">{isGreek ? "Προσθήκη μη διαθέσιμης ημεроμηνίας" : "Add Unavailable Date"}</p>
  <div className="flex gap-2">
  <div className="relative flex-1">
  <input
@@ -411,7 +428,7 @@ const AvailabilityPage: React.FC = () => {
  <div className="space-y-3">
  {blockedDates.length === 0 ? (
  <div className="py-10 text-center border-2 border-dashed border-gray-50 rounded-3xl">
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">No Blocks</p>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">{isGreek ? "Δεν έχουν καταχωριστεί μη διαθέσιμες ημερομηνίες" : "No Unavailable Dates"}</p>
  </div>
  ) : (
  blockedDates.map((item) => (
@@ -446,7 +463,7 @@ const AvailabilityPage: React.FC = () => {
  <div className="size-9 bg-[#CBFF38] rounded-xl flex items-center justify-center text-white">
  <Clock size={16} />
  </div>
- <h2 className="text-sm font-black uppercase tracking-tighter text-white">Temporary Blocks</h2>
+ <h2 className="text-sm font-black uppercase tracking-tighter text-white">{isGreek ? "Προσωρινή μη διαθεσιμότητα" : "Temporary Unavailability"}</h2>
  </div>
 
  <div className="space-y-3 mb-6">

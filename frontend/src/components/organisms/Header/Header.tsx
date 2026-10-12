@@ -278,6 +278,11 @@ export const Header: React.FC = () => {
 
   const handleLanguageSwitch = (lang: 'en' | 'el') => {
     setCurrentLang(lang);
+    try {
+      localStorage.setItem('preferredLang', lang);
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('languagechange'));
+    } catch (e) {}
     (window as any).switchLanguage?.(lang);
   };
  const navigate = useNavigate();
@@ -338,15 +343,15 @@ export const Header: React.FC = () => {
 
 
 
- if (user.role ==="client") {
- return [
- { to:"/appointments", label:"My Appointments" },
- { to:"/my-account", label:"My Account" },
- { to:"/messages", label:"Messages" },
- { to:"/settings", label:"Settings" },
- { action: handleLogout, label:"Logout" },
- ];
- }
+ if (user.role === "client") {
+    return [
+      { to: "/appointments", label: isGreek ? "Τα ραντεβού μου" : "My Appointments" },
+      { to: "/my-account", label: isGreek ? "Ο λογαριασμός μου" : "My Account" },
+      { to: "/messages", label: isGreek ? "Μηνύματα" : "Messages" },
+      { to: "/settings", label: isGreek ? "Ρυθμίσεις" : "Settings" },
+      { action: handleLogout, label: isGreek ? "Αποσύνδεση" : "Logout" },
+    ];
+  }
 
  if (user.role ==="doctor") {
  return [
@@ -568,9 +573,7 @@ export const Header: React.FC = () => {
                         ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
                         : "text-gray-400 hover:text-white"
                     }`}
-                  >
-                    Privileges
-                  </Link>
+                  >{isGreek ? "Προνόμια" : "Benefits"}</Link>
                 </li>
 
                 {/* Articles */}
@@ -582,9 +585,7 @@ export const Header: React.FC = () => {
                         ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
                         : "text-gray-400 hover:text-white"
                     }`}
-                  >
-                    Articles
-                  </Link>
+                  >{isGreek ? "Άρθρα" : "Articles"}</Link>
                 </li>
 
                 {/* Contact */}
@@ -596,9 +597,7 @@ export const Header: React.FC = () => {
                         ? "text-[#CBFF38] drop-shadow-[0_0_8px_rgba(203,255,56,0.3)]"
                         : "text-gray-400 hover:text-white"
                     }`}
-                  >
-                    Contact
-                  </Link>
+                  >{isGreek ? "Επικοινωνία" : "Contact"}</Link>
                 </li>
 
                 {/* For Clinics */}
@@ -610,9 +609,7 @@ export const Header: React.FC = () => {
                         ? "bg-[#CBFF38] text-black border-[#CBFF38]"
                         : "text-gray-400 hover:text-white hover:border-white/40"
                     }`}
-                  >
-                    For Clinics
-                  </Link>
+                  >{isGreek ? "Για Κλινικές" : "For Clinics"}</Link>
                 </li>
               </ul>
  </div>
@@ -716,9 +713,7 @@ export const Header: React.FC = () => {
  <Link
  to="/register"
  className="bg-[#A3E635] text-black px-5 py-2 rounded-lg font-black uppercase text-[12px] tracking-wider hover:bg-white hover:scale-105 transition-all shadow-[0_10px_20px_-5px_rgba(163,230,53,0.3)] whitespace-nowrap"
- >
- Sign Up
- </Link>
+ >{isGreek ? "Εγγραφή" : "Sign Up"}</Link>
  </>
  )}
 

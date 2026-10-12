@@ -34,6 +34,20 @@ export const Payments: React.FC = () => {
  salespersonId: '',
  });
  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentLang, setCurrentLang] = useState<string>(
+    () => localStorage.getItem('preferredLang') || 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => setCurrentLang(localStorage.getItem('preferredLang') || 'el');
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+  const isEl = currentLang === 'el';
 
  useEffect(() => {
  dispatch(fetchAdminClinics());
@@ -141,15 +155,15 @@ export const Payments: React.FC = () => {
  <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
  <div>
- <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Payments & Financial Control</h1>
- <p className="text-sm text-gray-500 mt-1">Audit transactions, manage refunds, and track clinic turnover</p>
+ <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">{isEl ? 'Πληρωμές & Οικονομική Διαχείριση' : 'Payments & Financial Control'}</h1>
+ <p className="text-sm text-gray-500 mt-1">{isEl ? 'Έλεγχος συναλλαγών, διαχείριση επιστροφών και παρακολούθηση κύκλου εργασιών κλινικών' : 'Audit transactions, manage refunds, and track clinic turnover'}</p>
  </div>
  <div className="flex flex-wrap gap-3">
  <button onClick={handleExportCSV} className="flex items-center gap-2 border border-gray-200 bg-white text-gray-700 px-4 py-2.5 font-semibold rounded-xl hover:bg-gray-50 shadow-sm transition-all text-sm">
- <Download className="w-4 h-4" /> Export CSV
+ <Download className="w-4 h-4" /> {isEl ? 'Εξαγωγή CSV' : 'Export CSV'}
  </button>
  <button onClick={() => setShowManualModal(true)} className="flex items-center gap-2 bg-[#405C0B] text-white px-5 py-2.5 font-semibold rounded-xl hover:bg-[#304608] shadow-md transition-all text-sm">
- <Euro className="w-4 h-4" /> New Manual Record
+ <Euro className="w-4 h-4" /> {isEl ? 'Νέα Χειροκίνητη Εγγραφή' : 'New Manual Record'}
  </button>
  </div>
  </div>
@@ -158,36 +172,36 @@ export const Payments: React.FC = () => {
  {showManualModal && (
  <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
  <div className="bg-white rounded-3xl shadow-2xl p-4 md:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
- <h2 className="text-xl font-bold text-gray-900 mb-6">New Manual Record</h2>
+ <h2 className="text-xl font-bold text-gray-900 mb-6">{isEl ? 'Νέα Χειροκίνητη Εγγραφή' : 'New Manual Record'}</h2>
  <form onSubmit={handleManualSubmit} className="space-y-4">
  <div>
- <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Client *</label>
+ <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{isEl ? 'Πελάτης *' : 'Client *'}</label>
  <select
  value={manualForm.clientId}
  onChange={e => setManualForm(p => ({ ...p, clientId: e.target.value }))}
  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
  required
  >
- <option value="">Select Client</option>
+ <option value="">{isEl ? 'Επιλέξτε Πελάτη' : 'Select Client'}</option>
  {clients.map(u => (
  <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email || u.phone || 'No Contact'})</option>
  ))}
  </select>
  </div>
  <div>
- <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Clinic *</label>
+ <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{isEl ? 'Κλινική *' : 'Clinic *'}</label>
  <select
  value={manualForm.clinicId}
  onChange={e => setManualForm(p => ({ ...p, clinicId: e.target.value }))}
  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none"
  required
  >
- <option value="">Select Clinic</option>
+ <option value="">{isEl ? 'Επιλέξτε Κλινική' : 'Select Clinic'}</option>
  {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
  </select>
  </div>
  <div>
- <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Amount (€) *</label>
+ <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{isEl ? 'Ποσό (€) *' : 'Amount (€) *'}</label>
  <input
  type="number"
  step="0.01"
@@ -201,7 +215,7 @@ export const Payments: React.FC = () => {
  </div>
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
  <div>
- <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Type</label>
+ <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{isEl ? 'Τύπος' : 'Type'}</label>
  <select
  value={manualForm.type}
  onChange={e => setManualForm(p => ({ ...p, type: e.target.value }))}
@@ -213,7 +227,7 @@ export const Payments: React.FC = () => {
  </select>
  </div>
  <div>
- <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Method</label>
+ <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{isEl ? 'Μέθοδος' : 'Method'}</label>
  <select
  value={manualForm.method}
  onChange={e => setManualForm(p => ({ ...p, method: e.target.value }))}
@@ -283,7 +297,7 @@ export const Payments: React.FC = () => {
  onChange={(e) => handleFilterChange('clinicId', e.target.value)}
  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-[#405C0B] transition-all"
  >
- <option value="">All Clinics</option>
+ <option value="">{isEl ? 'Όλες οι Κλινικές' : 'All Clinics'}</option>
  {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
  </select>
  </div>
@@ -316,7 +330,7 @@ export const Payments: React.FC = () => {
  onChange={(e) => handleFilterChange('method', e.target.value)}
  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-[#405C0B] transition-all"
  >
- <option value="">All Methods</option>
+ <option value="">{isEl ? 'Όλες οι Μέθοδοι' : 'All Methods'}</option>
  <option value="cash">Cash</option>
  <option value="pos">POS / Card</option>
  <option value="viva_wallet">Viva Wallet</option>

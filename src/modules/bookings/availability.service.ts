@@ -29,6 +29,15 @@ export class AvailabilityService {
     private eventEmitter: EventEmitter2,
   ) { }
 
+  /**
+   * Calculates real-time bookable appointment slots for clinic services.
+   * Algorithm Steps:
+   * 1. Resolves clinic local timezone and weekly business hours.
+   * 2. Aggregates total treatment duration across multiple selected services.
+   * 3. Retrieves eligible doctors/providers for the clinic.
+   * 4. Excludes collisions against Confirmed Appointments, Active Holds (<15m), and Blocked Slots.
+   * 5. Slices open time windows into continuous candidate slot intervals.
+   */
   async getAvailableSlots(
     clinicId: string,
     serviceId: string | string[],

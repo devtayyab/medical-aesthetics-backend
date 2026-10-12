@@ -13,14 +13,7 @@ const sectionStyles = css`
  background: radial-gradient(circle at top right, rgba(203, 255, 56, 0.05), transparent), #FFFFFF;
 `;
 
-const getImageUrl = (path: string) => {
- if (!path) return '';
- if (path.startsWith('http') || path.startsWith('data:')) return path;
- 
- const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
- const origin = baseUrl.replace(/\/api$/, '');
- return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { getImageUrl } from "@/utils/imageUrl";
 
 const glassCard = css`
  background: white;

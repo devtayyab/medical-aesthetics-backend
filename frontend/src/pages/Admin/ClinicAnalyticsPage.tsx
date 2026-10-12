@@ -7,7 +7,7 @@ import {
   CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import {
-  Building2, Users, Calendar, CheckCircle2, XCircle, AlertCircle,
+  Building2, Users, Calendar, CheckCircle2, XCircle,
   TrendingUp, RefreshCw, Euro, Database, MapPin, Sparkles,
   ArrowUpRight, Activity, Percent, Search, ShieldCheck
 } from 'lucide-react';

@@ -1,617 +1,305 @@
-# Medical Aesthetics Platform Backend
+# Medical Aesthetics Platform
 
-A comprehensive backend API for a Medical Aesthetics Platform built with NestJS and PostgreSQL. This platform connects clients, clinics, salespeople, and administrators through a broker-led system handling lead intake, CRM, appointment scheduling, clinic operations, loyalty programs, and multi-channel notifications.
+A full-stack, enterprise-grade Medical Aesthetics Platform connecting clients, medical aesthetic clinics, doctors, secretariats, salespeople, and super administrators through a centralized broker-led system.
 
-## 🚀 Features
-
-### Core Functionality
-- **Authentication & Authorization**: JWT-based auth with role-based access control (RBAC)
-- **User Management**: Support for Admin, Clinic Owner, Doctor, Secretariat, Salesperson, and Client roles
-- **CRM System**: Complete lead management with status tracking and assignment
-- **Appointment Booking**: Advanced scheduling with availability management and hold functionality
-- **Task Management**: Automated task creation for follow-ups and reminders
-- **Loyalty Program**: Points-based system with tier management
-- **Multi-Channel Notifications**: Push, SMS, Viber, and Email notifications
-- **Admin Panel**: Platform management and comprehensive reporting
-
-### Technical Features
-- **Event-Driven Architecture**: Real-time event handling for business processes
-- **Background Processing**: BullMQ queues for reminders, follow-ups, and recurring tasks
-- **Audit Logging**: Complete audit trail for all system changes
-- **GDPR Compliance**: Data export, deletion, and consent management
-- **Timezone Support**: Proper timezone handling for global operations
-- **Soft Delete**: Data integrity with soft deletion capabilities
-- **Input Validation**: Comprehensive validation using class-validator
-- **API Documentation**: Auto-generated Swagger/OpenAPI documentation
-
-## 🛠️ Tech Stack
-
-- **Framework**: NestJS (Node.js)
-- **Database**: PostgreSQL with TypeORM
-- **Authentication**: JWT with Passport.js
-- **Queues**: BullMQ with Redis
-- **Notifications**: Firebase (Push), SMS/Viber gateway integration
-- **Documentation**: Swagger/OpenAPI
-- **Language**: TypeScript
-
-## 📋 Prerequisites
-
-- Node.js 18+
-- PostgreSQL 13+
-- Redis 6+
-- npm or yarn
-
-## 🔧 Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd medical-aesthetics-platform
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` with your configuration values.
-
-4. **Start services with Docker (recommended)**
-   ```bash
-   docker-compose up -d postgres redis
-   ```
-
-   Or install PostgreSQL and Redis locally.
-
-5. **Run database migrations**
-   ```bash
-   npm run migration:run
-   ```
-
-6. **Start the development server**
-   ```bash
-   npm run start:dev
-   ```
-
-## 📚 API Documentation
-
-Once the server is running, visit:
-- **Swagger UI**: http://localhost:3000/api/docs
-- **Health Check**: http://localhost:3000
-
-## 🎯 Core Endpoints
-
-### Authentication
-- `POST /auth/register` - User registration
-- `POST /auth/login` - User login
-- `POST /auth/refresh` - Refresh access token
-- `POST /auth/logout` - User logout
-
-### User Management
-- `GET /users/me` - Get current user profile
-- `PATCH /users/me/profile` - Update own profile
-- `GET /users/me/export` - Export user data (GDPR)
-- `POST /users/me/delete` - Delete user data (GDPR)
-
-### CRM & Leads
-- `POST /crm/leads` - Create lead from ads/webhook
-- `GET /crm/leads` - List/filter/search leads
-- `GET /crm/leads/{id}` - Get lead details
-- `PATCH /crm/leads/{id}` - Update lead information
-
-### Appointments & Booking
-- `GET /availability` - Get available time slots
-- `POST /appointments/hold` - Hold a slot temporarily
-- `POST /appointments` - Confirm appointment booking
-- `PATCH /appointments/{id}/reschedule` - Reschedule appointment
-- `PATCH /appointments/{id}/complete` - Mark as completed
-
-### Tasks
-- `POST /tasks` - Create task
-- `GET /tasks` - List tasks with filters
-- `PATCH /tasks/{id}` - Update task status
-
-### Loyalty Program
-- `GET /loyalty/{clientId}` - Get loyalty balance & tier
-- `POST /loyalty/redeem` - Redeem points for discount
-- `GET /loyalty/{clientId}/history` - Transaction history
-
-### Notifications
-- `POST /notifications/send` - Send notification
-- `GET /notifications` - List user notifications
-- `GET /notifications/unread-count` - Get unread count
-
-### Admin Panel
-- `POST /admin/tags` - Create CRM tag
-- `GET /admin/reports` - Platform analytics
-- `PATCH /admin/settings` - Update platform settings
-
-## 🔐 Authentication & Authorization
-
-The platform uses JWT-based authentication with the following roles:
-
-- **Admin**: Full platform access
-- **Clinic Owner**: Manage own clinics and staff
-- **Doctor**: Handle appointments and treatments
-- **Secretariat**: Manage appointments and basic CRM
-- **Salesperson**: Lead management and conversion
-- **Client**: Book appointments and view loyalty status
-
-## 🔄 Event System
-
-The platform uses an event-driven architecture for:
-
-- **Lead Events**: Automatic task creation and notifications
-- **Appointment Events**: Confirmations, reminders, loyalty point awards
-- **Loyalty Events**: Tier upgrades and point notifications
-- **Audit Events**: Complete activity logging
-
-## 📊 Background Processing
-
-BullMQ queues handle:
-
-- **Appointment Reminders**: 24-hour advance notifications
-- **Lead Follow-ups**: Automated follow-up task creation
-- **Recurring Appointments**: Scheduled appointment creation
-- **Loyalty Expiration**: Points expiration management
-
-## 🛡️ GDPR Compliance
-
-Features include:
-
-- **Consent Management**: Version-tracked consent records
-- **Data Export**: Complete user data export
-- **Data Deletion**: GDPR-compliant data removal
-- **Audit Trails**: Complete activity logging
-- **Data Retention**: Configurable retention policies
-
-## 🚀 Deployment
-
-### Using Docker
-
-1. **Build the application**
-   ```bash
-   docker-compose up -d
-   ```
-
-2. **Run migrations**
-   ```bash
-   docker-compose exec app npm run migration:run
-   ```
-
-### Manual Deployment
-
-1. **Build the application**
-   ```bash
-   npm run build
-   ```
-
-2. **Start in production mode**
-   ```bash
-   npm run start:prod
-   ```
-
-## 🧪 Testing
-
-```bash
-# Unit tests
-npm run test
-
-# Integration tests
-npm run test:e2e
-
-# Test coverage
-npm run test:cov
-```
-
-## 📝 Database Schema
-
-The platform includes the following main entities:
-
-- **Users**: Platform users with role-based access
-- **Clinics**: Medical facilities and their services
-- **Leads**: Potential clients from various sources
-- **Appointments**: Scheduled treatments and consultations
-- **Tasks**: Follow-up and reminder tasks
-- **Loyalty Ledger**: Points tracking and tier management
-- **Notifications**: Multi-channel messaging
-- **Audit Logs**: Complete activity tracking
-
-## 🔧 Configuration
-
-Key configuration options in `.env`:
-
-```bash
-# Database
-DATABASE_HOST=localhost
-DATABASE_NAME=medical_aesthetics
-
-# JWT
-JWT_SECRET=your-secret-key
-JWT_EXPIRATION=1d
-
-# Redis (for queues)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# Firebase (for push notifications)
-FIREBASE_PROJECT_ID=your-project
-
-# External APIs
-SMS_GATEWAY_API_KEY=your-sms-key
-VIBER_AUTH_TOKEN=your-viber-token
-```
-
-## 📈 Monitoring & Logging
-
-The platform includes:
-
-- **Structured Logging**: JSON-formatted logs
-- **Health Checks**: Built-in health monitoring
-- **Audit Trails**: Complete user activity tracking
-- **Queue Monitoring**: BullMQ job tracking
-- **Performance Metrics**: Request/response timing
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🆘 Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the API documentation at `/api/docs`
-- Review the example payloads in the Swagger UI
+The platform handles omni-channel lead capture, CRM pipeline management, real-time availability calculations with hold locking, appointment scheduling, loyalty reward systems, payment processing, and multi-channel notifications.
 
 ---
 
-Built with ❤️ using NestJS and TypeScript
+## 🏗️ Architecture & Technology Stack
 
--- Update AdSpendLog table structure
-ALTER TABLE ad_spend_logs 
-ALTER COLUMN spend TYPE numeric(12,2) USING spend::numeric(12,2);
+| Layer | Technologies |
+| :--- | :--- |
+| **Backend** | NestJS (Node.js), TypeScript, TypeORM, PostgreSQL |
+| **Async Queues** | BullMQ, Redis |
+| **Frontend** | React 18, TypeScript, Vite, Redux Toolkit, TailwindCSS, Emotion CSS |
+| **Auth & Security** | JWT (Access + Refresh tokens with auto-rotation), RBAC Guards, Helmet, Rate Limiter |
+| **Payments** | Viva Wallet (Smart Checkout & Webhooks), Stripe (Gift Cards/Online) |
+| **Integrations** | Facebook Leads Webhook, HubSpot CRM, Google Calendar OAuth, Firebase Cloud Messaging (FCM), AWS SES / SMTP, Viber |
+| **Documentation** | Swagger / OpenAPI (`/api/docs`) |
 
-ALTER TABLE ad_spend_logs 
-RENAME COLUMN spend TO amount;
+---
 
+## 📁 Project Folder Structure
 
--- Add FK: ad_spend_logs.campaignId → ad_campaigns(id)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
-        WHERE conname = 'fk_ad_spend_logs_campaign'
-    ) THEN
-        ALTER TABLE ad_spend_logs
-        ADD CONSTRAINT fk_ad_spend_logs_campaign
-        FOREIGN KEY (campaignId) REFERENCES ad_campaigns(id)
-        ON DELETE CASCADE;
-    END IF;
-END $$;
+```
+medical-aesthetics-platform/
+├── src/                                  # NestJS Backend Application
+│   ├── app.module.ts                     # Root application module
+│   ├── main.ts                           # Server entrypoint, CORS, Swagger setup
+│   ├── common/                           # Cross-cutting decorators, filters, enums, DTOs
+│   │   ├── decorators/                   # @Roles(), @CurrentUser()
+│   │   ├── enums/                        # UserRole, AppointmentStatus, LeadStatus
+│   │   ├── filters/                      # Global exception filters
+│   │   └── guards/                       # JwtAuthGuard, RolesGuard
+│   ├── config/                           # Database & runtime configuration
+│   ├── database/                         # TypeORM data source, migrations, seeds
+│   └── modules/                          # Domain Feature Modules
+│       ├── admin/                        # Admin dashboard, audit logs, system lists
+│       ├── auth/                         # Authentication, JWT strategy, refresh token
+│       ├── bookings/                     # Scheduling, hold locking, availability engine
+│       ├── clinics/                      # Clinics, doctors, operating hours, treatments
+│       ├── crm/                          # Leads, duplication engine, customer records
+│       ├── google-calendar/              # Two-way Google Calendar synchronization
+│       ├── loyalty/                      # Points ledger, tier rules, redemptions
+│       ├── messages/                     # Internal messaging & conversation threads
+│       ├── notifications/                # Multi-channel push (FCM), SMS, Viber, email
+│       ├── payments/                     # Viva Wallet integration, ledger, refunds
+│       ├── queue/                        # BullMQ queues for scheduled tasks & reminders
+│       ├── tasks/                        # CRM follow-up and reminder task management
+│       ├── upload/                       # Multipart file & image storage handling
+│       └── users/                        # User profiles, role-based access, GDPR tools
+│
+├── frontend/                             # React + Vite Frontend Application
+│   ├── index.html                        # Application HTML shell
+│   ├── vite.config.ts                    # Vite build configuration & path aliases (@/*)
+│   └── src/
+│       ├── main.tsx                      # Frontend mount point & Redux Provider
+│       ├── App.tsx                       # Master routing & role-based route guards
+│       ├── assets/                       # Static media, icons, and hero illustrations
+│       ├── components/                   # Atomic Design UI Components
+│       │   ├── atoms/                    # Buttons, Inputs, Badges, Modals
+│       │   ├── molecules/                # Dropdowns, Cards, TimeSlotPickers
+│       │   └── organisms/                # Navbars, Sidebars, SearchBars, Forms
+│       ├── config/                       # Client environment loader (env.ts)
+│       ├── pages/                        # View Pages
+│       │   ├── Admin/                    # Super Admin portals & metrics dashboards
+│       │   ├── Client/                   # Client booking portal, checkout, account
+│       │   ├── Clinic/                   # Clinic owner dashboard & calendar views
+│       │   └── CRM/                      # Lead pipelines, dialer, activities
+│       ├── services/                     # Central API Layer
+│       │   ├── client.ts                 # Base Axios instance & token refresh queue
+│       │   ├── api.ts                    # Central API gateway & legacy alias layer
+│       │   ├── index.ts                  # Barrel export
+│       │   └── features/                 # Modular Feature Services
+│       │       ├── auth.service.ts       # authService
+│       │       ├── user.service.ts       # userService, loyaltyService
+│       │       ├── product.service.ts    # productService (treatments, master items)
+│       │       ├── clinic.service.ts     # clinicService, publicCatalogService
+│       │       ├── booking.service.ts    # bookingService (holds, slots, appointments)
+│       │       ├── crm.service.ts        # crmService, taskService
+│       │       ├── payment.service.ts    # paymentService (wallet, vouchers)
+│       │       ├── admin.service.ts      # adminService, audit logs, system lists
+│       │       ├── blog.service.ts       # blogService
+│       │       ├── notification.service.ts# notificationService, messageService
+│       │       └── upload.service.ts     # uploadService
+│       ├── store/                        # Global State Management (Redux Toolkit)
+│       │   ├── index.ts                  # Central store & root reducer setup
+│       │   ├── hooks.ts                  # Typed useAppDispatch & useAppSelector
+│       │   └── slices/                   # authSlice, bookingSlice, crmSlice, etc.
+│       └── types/                        # TypeScript type definitions
+│
+├── docker-compose.yml                    # Containerized services (PostgreSQL, Redis)
+├── package.json                          # Root / Backend dependencies & scripts
+└── README.md                             # Project documentation
+```
 
+---
 
--- Add FK: ad_campaigns.ownerAgentId → users(id)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
-        WHERE conname = 'fk_ad_campaigns_owner_agent'
-    ) THEN
-        ALTER TABLE ad_campaigns
-        ADD CONSTRAINT fk_ad_campaigns_owner_agent
-        FOREIGN KEY (ownerAgentId) REFERENCES users(id)
-        ON DELETE SET NULL;
-    END IF;
-END $$;
+## ⚙️ Environment Variables
 
+### 1. Backend (`.env`)
 
+Copy `.env.example` to `.env` in the root directory:
 
--- Add FK: agent_user_id → users(id)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'fk_agent_clinic_access_agent_user_id'
-    ) THEN
-        ALTER TABLE agent_clinic_access
-        ADD CONSTRAINT fk_agent_clinic_access_agent_user_id
-        FOREIGN KEY (agent_user_id) REFERENCES users(id)
-        ON DELETE CASCADE;
-    END IF;
-END $$;
+```bash
+cp .env.example .env
+```
 
--- Add FK: clinic_id → clinics(id)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'fk_agent_clinic_access_clinic_id'
-    ) THEN
-        ALTER TABLE agent_clinic_access
-        ADD CONSTRAINT fk_agent_clinic_access_clinic_id
-        FOREIGN KEY (clinic_id) REFERENCES clinics(id)
-        ON DELETE CASCADE;
-    END IF;
-END $$;
+| Variable | Description | Example / Default |
+| :--- | :--- | :--- |
+| `DATABASE_HOST` | PostgreSQL server host | `localhost` |
+| `DATABASE_PORT` | PostgreSQL port | `5432` |
+| `DATABASE_USERNAME` | Database username | `postgres` |
+| `DATABASE_PASSWORD` | Database password | `postgres` |
+| `DATABASE_NAME` | Database name | `medical_aesthetics` |
+| `DB_SYNCHRONIZE` | Auto-sync TypeORM schema (disable in prod) | `false` |
+| `JWT_SECRET` | Primary JWT encryption secret | `your-secret-key` |
+| `JWT_ACCESS_SECRET` | Access token JWT secret | `your-access-secret` |
+| `JWT_REFRESH_SECRET` | Refresh token JWT secret | `your-refresh-secret` |
+| `JWT_EXPIRATION` | Access token lifespan | `1d` |
+| `JWT_REFRESH_EXPIRATION` | Refresh token lifespan | `7d` |
+| `REDIS_HOST` | Redis host for BullMQ queues | `localhost` |
+| `REDIS_PORT` | Redis port | `6379` |
+| `REDIS_PASSWORD` | Redis password (if any) | `""` |
+| `PORT` | Backend HTTP listening port | `3001` |
+| `API_BASE_URL` | Canonical backend base URL | `http://localhost:3001` |
+| `APP_FRONTEND_URL` | Allowed frontend origin for CORS | `http://localhost:5173` |
+| `FIREBASE_PROJECT_ID` | Firebase project ID for push alerts | `your-project-id` |
+| `MAIL_HOST` / `MAIL_USER` / `MAIL_PASS` | SMTP credentials for transactional emails | AWS SES / Custom SMTP |
+| `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` | Facebook Lead Ads webhook integration | Facebook Developer Portal |
+| `VIVA_CLIENT_ID` / `VIVA_CLIENT_SECRET` | Viva Wallet payment integration | Viva Payments Portal |
+| `HUBSPOT_API_TOKEN` | HubSpot CRM contact synchronization | HubSpot Private App Token |
 
+### 2. Frontend (`frontend/.env`)
 
--- Create table
-CREATE TABLE IF NOT EXISTS agent_clinic_access (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    agent_user_id UUID NOT NULL,
-    clinic_id UUID NOT NULL,
-    UNIQUE(agent_user_id, clinic_id)
-);
+Copy `frontend/.env.example` to `frontend/.env`:
 
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_agent_clinic_access_agent_user_id 
-    ON agent_clinic_access(agent_user_id);
+```bash
+cp frontend/.env.example frontend/.env
+```
 
-CREATE INDEX IF NOT EXISTS idx_agent_clinic_access_clinic_id 
-    ON agent_clinic_access(clinic_id);
+| Variable | Description | Example / Default |
+| :--- | :--- | :--- |
+| `VITE_API_BASE_URL` | Base API endpoint consumed by Axios | `http://localhost:3001/api` |
+| `VITE_NODE_ENV` | Frontend environment mode | `development` |
+| `VITE_APP_TYPE` | App target profile (`'all'`, `'client'`, `'clinic'`, `'crm'`, `'admin'`) | `all` |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key for gift card checkout | `pk_test_...` |
+| `VITE_FIREBASE_API_KEY` | Firebase Web API key for in-browser notifications | `your_api_key` |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase Web Project ID | `your_project_id` |
 
--- Add foreign key: agent_user_id
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
-        WHERE conname = 'fk_agent_clinic_access_agent_user_id'
-    ) THEN
-        ALTER TABLE agent_clinic_access
-        ADD CONSTRAINT fk_agent_clinic_access_agent_user_id
-        FOREIGN KEY (agent_user_id) REFERENCES agent_users(id)
-        ON DELETE CASCADE;
-    END IF;
-END $$;
+---
 
--- Add foreign key: clinic_id
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
-        WHERE conname = 'fk_agent_clinic_access_clinic_id'
-    ) THEN
-        ALTER TABLE agent_clinic_access
-        ADD CONSTRAINT fk_agent_clinic_access_clinic_id
-        FOREIGN KEY (clinic_id) REFERENCES clinics(id)
-        ON DELETE CASCADE;
-    END IF;
-END $$;
+## 🚀 Installation & Setup
 
+### Prerequisites
+- **Node.js**: v18.x or v20.x LTS
+- **PostgreSQL**: v13 or higher
+- **Redis**: v6 or higher
+- **npm**: v9 or higher
 
--- 1. Add ownerAgentId column if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name='ad_campaigns' 
-          AND column_name='owneragentid'
-    ) THEN
-        ALTER TABLE ad_campaigns 
-        ADD COLUMN owneragentid UUID NULL;
-    END IF;
-END $$;
+### Step 1: Clone Repository
+```bash
+git clone <repository-url>
+cd medical-aesthetics-backend
+```
 
+### Step 2: Install Backend Dependencies
+```bash
+npm install
+```
 
--- 2. Update AdSpendLog table structure (if needed)
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name='ad_spend_logs' 
-          AND column_name='spend'
-    ) THEN
-        ALTER TABLE ad_spend_logs 
-        ALTER COLUMN spend TYPE numeric(12,2) USING spend::numeric(12,2),
-        RENAME COLUMN spend TO amount;
-    END IF;
-END $$;
+### Step 3: Install Frontend Dependencies
+```bash
+cd frontend
+npm install
+cd ..
+```
 
+### Step 4: Configure Environment Files
+1. Create and review root `.env` from `.env.example`.
+2. Create and review `frontend/.env` from `frontend/.env.example`.
 
--- 3. Add channel column to ad_campaigns if missing
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name='ad_campaigns' 
-          AND column_name='channel'
-    ) THEN
-        ALTER TABLE ad_campaigns 
-        ADD COLUMN channel VARCHAR(255);
-    END IF;
-END $$;
+### Step 5: Start Infrastructure with Docker (Optional)
+If PostgreSQL and Redis are not installed locally, launch them via Docker Compose:
+```bash
+docker-compose up -d postgres redis
+```
 
+### Step 6: Run Database Migrations
+Initialize database tables, foreign keys, and indexes:
+```bash
+npm run migration:run
+```
 
--- 4. Add FK: ad_spend_logs.campaignId → ad_campaigns.id
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
-        WHERE conname = 'fk_ad_spend_logs_campaign'
-    ) THEN
-        ALTER TABLE ad_spend_logs
-        ADD CONSTRAINT fk_ad_spend_logs_campaign
-        FOREIGN KEY (campaignId) REFERENCES ad_campaigns(id)
-        ON DELETE CASCADE;
-    END IF;
-END $$;
+---
 
+## 💻 Running the Application
 
--- 5. Add FK: ad_campaigns.ownerAgentId → users.id
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
-        WHERE conname = 'fk_ad_campaigns_owner_agent'
-    ) THEN
-        ALTER TABLE ad_campaigns
-        ADD CONSTRAINT fk_ad_campaigns_owner_agent
-        FOREIGN KEY (owneragentid) REFERENCES users(id)
-        ON DELETE SET NULL;
-    END IF;
-END $$;
+### Development Mode
 
+Run the Backend server:
+```bash
+# In project root
+npm run start:dev
+```
+The backend starts at `http://localhost:3001`.
+- Swagger Documentation: `http://localhost:3001/api/docs`
 
--- 1. First, check what columns actually exist in ad_spend_logs
-SELECT column_name, data_type, is_nullable, ordinal_position
-FROM information_schema.columns 
-WHERE table_name = 'ad_spend_logs' 
-ORDER BY ordinal_position;
+In a separate terminal, run the Frontend dev server:
+```bash
+# In frontend directory
+cd frontend
+npm run dev
+```
+The frontend starts at `http://localhost:5173`.
 
+### Production Build
 
--- 2. Add missing columns to ad_spend_logs table if they don't exist
-DO $$
-BEGIN
-    -- Add campaignId column if it doesn't exist
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name='ad_spend_logs' 
-          AND column_name='campaignid'
-    ) THEN
-        ALTER TABLE ad_spend_logs ADD COLUMN campaignid UUID NULL;
-    END IF;
+Build and run the Backend:
+```bash
+npm run build
+npm run start:prod
+```
 
-    -- Rename spend to amount if spend exists
-    IF EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name='ad_spend_logs' 
-          AND column_name='spend'
-    ) THEN
-        ALTER TABLE ad_spend_logs 
-        ALTER COLUMN spend TYPE numeric(12,2) USING spend::numeric(12,2),
-        RENAME COLUMN spend TO amount;
-    END IF;
+Build and preview the Frontend bundle:
+```bash
+cd frontend
+npm run build
+npm run preview
+```
 
-    -- Add amount column if neither spend nor amount exist
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name='ad_spend_logs' 
-          AND column_name='amount'
-    ) AND NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name='ad_spend_logs' 
-          AND column_name='spend'
-    ) THEN
-        ALTER TABLE ad_spend_logs ADD COLUMN amount numeric(12,2) DEFAULT 0;
-    END IF;
-END $$;
+---
 
+## 📡 Central API Layer & Feature Services
 
--- 3. Add missing columns to ad_campaigns table if they don't exist
-DO $$
-BEGIN
-    -- Add owneragentid column if it doesn't exist
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name='ad_campaigns'
-          AND column_name='owneragentid'
-    ) THEN
-        ALTER TABLE ad_campaigns ADD COLUMN owneragentid UUID NULL;
-    END IF;
+The frontend uses a modular API architecture located in `frontend/src/services/`:
 
-    -- Add channel column if it doesn't exist
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name='ad_campaigns'
-          AND column_name='channel'
-    ) THEN
-        ALTER TABLE ad_campaigns ADD COLUMN channel VARCHAR(255);
-    END IF;
-END $$;
+1. **Base HTTP Client (`client.ts`)**:
+   - Centralizes Axios configuration, base headers, and timeouts.
+   - **Request Interceptor**: Hydrates Bearer tokens dynamically from Redux store (`state.auth.accessToken`) or `localStorage`.
+   - **Response Interceptor & Queue**: On `401 Unauthorized`, queues concurrent requests while asynchronously invoking `/auth/refresh`. When refreshed, replays queued requests with updated tokens.
+   - Exported `httpClient` helper for typed HTTP requests (`get`, `post`, `put`, `patch`, `delete`).
 
+2. **Feature Services (`features/*.service.ts`)**:
+   - Each domain capability lives in its own dedicated service file:
+     - `authService` in [`auth.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/auth.service.ts)
+     - `userService` & `loyaltyService` in [`user.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/user.service.ts)
+     - `productService` in [`product.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/product.service.ts)
+     - `clinicService` & `publicCatalogService` in [`clinic.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/clinic.service.ts)
+     - `bookingService` in [`booking.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/booking.service.ts)
+     - `crmService` & `taskService` in [`crm.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/crm.service.ts)
+     - `paymentService` in [`payment.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/payment.service.ts)
+     - `adminService`, `adminAuditLogsService`, `adminSettingsService` in [`admin.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/admin.service.ts)
+     - `blogService` in [`blog.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/blog.service.ts)
+     - `notificationService` & `messageService` in [`notification.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/notification.service.ts)
+     - `uploadService` in [`upload.service.ts`](file:///e:/ebizz/medical-aesthetics-backend/frontend/src/services/features/upload.service.ts)
 
--- 4. Add foreign key constraints if they don't exist
-DO $$
-BEGIN
-    -- FK for ad_spend_logs.campaignid -> ad_campaigns.id
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
-        WHERE conname = 'fk_ad_spend_logs_campaign'
-    ) THEN
-        ALTER TABLE ad_spend_logs
-        ADD CONSTRAINT fk_ad_spend_logs_campaign
-        FOREIGN KEY (campaignid) REFERENCES ad_campaigns(id)
-        ON DELETE CASCADE;
-    END IF;
+3. **Adding a New Endpoint**:
+   To add an endpoint to an existing service, simply add the method calling `api`:
+   ```typescript
+   // frontend/src/services/features/user.service.ts
+   export const userService = {
+     // ...existing methods
+     updatePreferences: (data: any) => api.patch('/users/me/preferences', data),
+   };
+   ```
 
-    -- FK for ad_campaigns.owneragentid -> users.id
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
-        WHERE conname = 'fk_ad_campaigns_owner_agent'
-    ) THEN
-        ALTER TABLE ad_campaigns
-        ADD CONSTRAINT fk_ad_campaigns_owner_agent
-        FOREIGN KEY (owneragentid) REFERENCES users(id)
-        ON DELETE SET NULL;
-    END IF;
-END $$;
+4. **100% Backward Compatibility (`api.ts`)**:
+   Re-exports both modern feature services and legacy aliases (`authAPI`, `clinicsAPI`, `bookingAPI`, `userAPI`, `paymentsAPI`, `crmAPI`, etc.) to guarantee zero regressions across the codebase.
 
+---
 
--- 5. Create indexes if they don't exist
-DO $$
-BEGIN
-    -- Index on ad_spend_logs.campaignid
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_indexes 
-        WHERE tablename = 'ad_spend_logs' 
-          AND indexname = 'idx_ad_spend_logs_campaign_id'
-    ) THEN
-        CREATE INDEX idx_ad_spend_logs_campaign_id ON ad_spend_logs(campaignid);
-    END IF;
+## 🧠 State Management (Redux Toolkit)
 
-    -- Index on ad_campaigns.owneragentid
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_indexes 
-        WHERE tablename = 'ad_campaigns' 
-          AND indexname = 'idx_ad_campaigns_owner_agent_id'
-    ) THEN
-        CREATE INDEX idx_ad_campaigns_owner_agent_id ON ad_campaigns(owneragentid);
-    END IF;
-END $$;
+Global state is organized in `frontend/src/store/`:
+- **Store Configuration (`store/index.ts`)**: Combines slice reducers for `auth`, `clinics`, `booking`, `crm`, `notifications`, `task`, `admin`, `messages`, `dialer`, and `ui`.
+- **Typed Hooks (`store/hooks.ts`)**: Exported `useAppDispatch` and `useAppSelector` with inferred `RootState` and `AppDispatch` types for TypeScript intellisense.
+- **Persistent Auth**: `authSlice` synchronizes credentials across Redux memory, `localStorage`, and `sessionStorage`.
 
+---
 
--- 6. Verify final structure
-SELECT 
-    'ad_campaigns' as table_name,
-    column_name,
-    data_type,
-    is_nullable,
-    ordinal_position
-FROM information_schema.columns 
-WHERE table_name = 'ad_campaigns'
+## 🧪 Testing & Verification
 
-UNION ALL
+```bash
+# Backend unit tests
+npm run test
 
-SELECT 
-    'ad_spend_logs' as table_name,
-    column_name,
-    data_type,
-    is_nullable,
-    ordinal_position
-FROM information_schema.columns 
-WHERE table_name = 'ad_spend_logs'
+# Backend end-to-end tests
+npm run test:e2e
 
-ORDER BY table_name, ordinal_position;
+# Backend test coverage
+npm run test:cov
+
+# Frontend build verification
+cd frontend && npm run build
+```
+
+---
+
+## 🔒 Security & GDPR Best Practices
+
+- **Strict RBAC**: Enforced via NestJS guards (`@Roles(...)` and `JwtAuthGuard`).
+- **Audit Trails**: All modifications to leads, customer records, and appointments are logged with actor IDs and timestamps.
+- **GDPR Compliance**: Endpoints available for data export (`GET /users/me/export`) and user deletion (`POST /users/me/delete`).
+- **Encrypted Secrets**: Sensitive tokens (Google OAuth tokens) are encrypted with AES-256 keys.

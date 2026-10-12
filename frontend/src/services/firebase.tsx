@@ -1,21 +1,10 @@
-import React from"react";
-import { initializeApp } from"firebase/app";
-import { notificationsAPI } from"./api";
-import { toast } from"react-hot-toast";
-import type { AppDispatch } from"@/store";
-import { openDialer } from"@/store/slices/dialerSlice";
-import { Phone, Bell } from"lucide-react";
-
-const firebaseConfig = {
- apiKey: import.meta.env.VITE_FIREBASE_API_KEY ||"your-api-key",
- authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ||"your-auth-domain",
- projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ||"your-project-id",
- storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ||"your-storage-bucket",
- messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ||"your-messaging-sender-id",
- appId: import.meta.env.VITE_FIREBASE_APP_ID ||"your-app-id",
-};
-
-const app = initializeApp(firebaseConfig);
+import React from "react";
+import { toast } from "react-hot-toast";
+import type { AppDispatch } from "@/store";
+import { openDialer } from "@/store/slices/dialerSlice";
+import { Phone, Bell } from "lucide-react";
+import { firebaseApp as app } from "@/config/firebase";
+import { ENV } from "@/config/env";
 
 export const initializeFirebase = async (
  dispatch: AppDispatch
@@ -41,12 +30,12 @@ export const initializeFirebase = async (
  const permission = await Notification.requestPermission();
  if (permission ==="granted") {
  const token = await getToken(messaging, {
- vapidKey:"your-vapid-key", // Replace with your VAPID key
+ vapidKey: ENV.FIREBASE.VAPID_KEY || undefined,
  });
  console.log("FCM Token:", token);
 
  // Send token to backend
- const apiUrl = import.meta.env.VITE_API_URL ||"";
+ const apiUrl = ENV.API_BASE_URL;
  await fetch(`${apiUrl}/notifications/register`, {
  method:"POST",
  headers: {"Content-Type":"application/json",

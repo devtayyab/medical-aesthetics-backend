@@ -37,6 +37,22 @@ import { Calls as ManagerCrmCalls } from '@/pages/Admin/ManagerCRM/Calls';
 import { MessagesPage } from '@/pages/Messages/MessagesPage';
 
 export const CRM: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const dispatch = useDispatch<AppDispatch>();
  const { user } = useSelector((state: RootState) => state.auth);
  const { leads } = useSelector((state: RootState) => state.crm);
@@ -125,10 +141,10 @@ export const CRM: React.FC = () => {
  <Users className="text-white w-8 h-8" />
  </div>
  <div>
- <h1 className="text-3xl font-black text-slate-900 tracking-tight">CRM Console</h1>
+ <h1 className="text-3xl font-black text-slate-900 tracking-tight">{isGreek ? 'CRM Dashboard' : 'CRM Console'}</h1>
  <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest flex items-center gap-2">
  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
- Premium Sales Management
+ {isGreek ? 'Διαχείριση Πωλήσεων' : 'Sales Management'}
  </p>
  </div>
  </div>
@@ -139,8 +155,7 @@ export const CRM: React.FC = () => {
  className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-bold px-4 h-10 text-xs"
  onClick={() => setShowQuickActions(!showQuickActions)}
  >
- <Plus className="h-3.5 w-3.5 mr-2" />
- Quick Actions
+ <Plus className="h-3.5 w-3.5 mr-2" /> {isGreek ? 'Γρήγορες ενέργειες' : 'Quick Actions'}
  <ChevronDown className={`h-3.5 w-3.5 ml-2 transition-transform duration-300 ${showQuickActions ? 'rotate-180' : ''}`} />
  </Button>
 
@@ -204,13 +219,13 @@ export const CRM: React.FC = () => {
  >
  <Card className="border-none shadow-sm p-1 bg-slate-100/80 rounded-lg mb-8">
  <TabsList className="grid grid-cols-2 lg:grid-cols-8 bg-transparent h-auto gap-1">
- <TabsTrigger value="messages" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Messages</TabsTrigger>
+ <TabsTrigger value="messages" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">{isGreek ? 'Μηνύματα' : 'Messages'}</TabsTrigger>
  <TabsTrigger value="tasks" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Tasks</TabsTrigger>
  <TabsTrigger value="leads" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Leads</TabsTrigger>
  <TabsTrigger value="lost-leads" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-sm transition-all">Lost Leads</TabsTrigger>
- <TabsTrigger value="customers" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Customers</TabsTrigger>
+ <TabsTrigger value="customers" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">{isGreek ? 'Πελάτες' : 'Customers'}</TabsTrigger>
  <TabsTrigger value="tracker" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">My Tracker</TabsTrigger>
- <TabsTrigger value="dashboard" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Statistics</TabsTrigger>
+ <TabsTrigger value="dashboard" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">{isGreek ? 'Στατιστικά' : 'Statistics'}</TabsTrigger>
  {user?.role !== 'salesperson' && (
  <TabsTrigger value="calls" className="rounded-md py-2 font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all">Calls</TabsTrigger>
  )}

@@ -12,6 +12,21 @@ import { Badge } from"@/components/atoms/Badge/Badge";
 import { Select } from"@/components/atoms/Select/Select";
 
 export const ArchivedLeads: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
  const dispatch = useDispatch<AppDispatch>();
  const { leads, isLoading, leadFilters } = useSelector(
  (state: RootState) => state.crm
@@ -61,7 +76,7 @@ export const ArchivedLeads: React.FC = () => {
  <div className="p-6 h-full flex flex-col relative space-y-6">
  <div className="flex justify-between items-center px-4">
  <Button variant="ghost" onClick={() => setSelectedCustomer(null)} className="font-bold text-xs flex items-center gap-2">
- <X className="w-4 h-4" /> Back to Archive
+ <X className="w-4 h-4" /> {isGreek ? 'Πίσω στο αρχείο' : 'Back to Archive'}
  </Button>
  </div>
  <OneCustomerDetail
@@ -78,12 +93,12 @@ export const ArchivedLeads: React.FC = () => {
  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
  <div>
  <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
- Archive Database
+ {isGreek ? 'Αρχείο Leads' : 'Archive Database'}
  <Badge className="bg-red-50 text-red-600 border-red-100 px-2 py-0.5 rounded-lg text-[10px] font-bold">
  LOST LEADS
  </Badge>
  </h1>
- <p className="text-gray-500 text-xs font-medium">Manage and review your inactive or lost contacts</p>
+ <p className="text-gray-500 text-xs font-medium">{isGreek ? 'Διαχείριση και έλεγχος ανενεργών ή χαμένων επαφών' : 'Manage and review your inactive or lost contacts'}</p>
  </div>
 
  <div className="flex flex-1 max-w-md mx-0 md:mx-4 relative">

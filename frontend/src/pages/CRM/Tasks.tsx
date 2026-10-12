@@ -168,6 +168,22 @@ interface TasksPageProps {
 
 
 export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
   const { actions: tasks, isLoading, taskKpis, salespersons, clinics } = useSelector((state: RootState) => state.crm);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
@@ -638,7 +654,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
           <p className="text-gray-500 text-[11px] mt-0.5">Manage your tasks and follow-ups</p>
         </div>
         <Button variant="primary" onClick={() => setShowCreateForm(true)} className="h-7 text-xs px-2.5 py-0 rounded-md">
-          <Plus className="h-3.5 w-3.5 mr-1" /> New Task
+          <Plus className="h-3.5 w-3.5 mr-1" /> {isGreek ? 'Νέο Task' : 'New Task'}
         </Button>
       </div>
 
@@ -719,10 +735,10 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
           <Select
             options={[
               { value: 'all', label: 'All Statuses' },
-              { value: 'pending', label: 'Pending Status' },
+              { value: 'pending', label: isGreek ? 'Εκκρεμεί' : 'Pending' },
               { value: 'in_progress', label: 'In Progress' },
-              { value: 'overdue', label: 'Overdue Status' },
-              { value: 'completed', label: 'Done' }
+              { value: 'overdue', label: isGreek ? 'Εκπρόθεσμο' : 'Overdue' },
+              { value: 'completed', label: isGreek ? 'Ολοκληρωμένα' : 'Done' }
             ]}
             value={filterStatus}
             onChange={(val) => setFilterStatus(val)}
@@ -731,9 +747,9 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
           <Select
             options={[
               { value: 'all', label: 'All Action Types' },
-              { value: 'call', label: 'Calls Only' },
-              { value: 'mobile_message', label: 'SMS/Mobile' },
-              { value: 'appointment', label: 'Appointments' }
+              { value: 'call', label: isGreek ? 'Κλήσεις' : 'Calls' },
+              { value: 'mobile_message', label: isGreek ? 'SMS' : 'SMS / Mobile' },
+              { value: 'appointment', label: isGreek ? 'Ραντεβού' : 'Appointments' }
             ]}
             value={filterType}
             onChange={(val) => setFilterType(val)}
@@ -768,7 +784,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <ListTodo size={18} />
             </div>
             <div>
-              <h3 className="text-base font-black tracking-tight text-slate-900">Global Task List</h3>
+              <h3 className="text-base font-black tracking-tight text-slate-900">{isGreek ? 'Λίστα Tasks' : 'Task List'}</h3>
               <p className="text-xs font-medium text-slate-500">Track and execute all CRM action items</p>
             </div>
           </div>
@@ -1003,7 +1019,7 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
                               size="xs"
                               variant="white"
                               className="h-8 w-8 p-0 bg-white border border-slate-200 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 rounded-xl transition-all shadow-xs"
-                              title="Log Interaction"
+                              title={isGreek ? "Καταγραφή Επικοινωνίας" : "Log Communication"}
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 try {
@@ -1079,9 +1095,9 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <div>
                 <h3 className="text-lg font-black text-slate-800">
-                  {isEditing ? 'Modify Strategy' : 'Program New Task'}
+                  {isEditing ? (isGreek ? 'Επεξεργασία Task' : 'Edit Task') : (isGreek ? 'Δημιουργία Task' : 'Create Task')}
                 </h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Operation Workflow</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isGreek ? 'Στοιχεία Task' : 'Task Details'}</p>
               </div>
               <button
                 type="button"

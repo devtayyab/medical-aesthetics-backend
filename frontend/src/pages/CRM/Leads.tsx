@@ -837,8 +837,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <div className="shrink-0 space-y-2">
  <div className="flex items-center gap-4">
  <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
- Registry
- </h1>
+            {isGreek ? 'Μητρώο Leads' : 'Leads'}
+          </h1>
  <div className="flex items-center gap-2 px-3 py-1.5 bg-[#CBFF38] text-black rounded-xl shadow-xl shadow-[#CBFF38]/20">
  <Users size={14} strokeWidth={3} />
  <span className="text-[11px] font-black uppercase tracking-widest">{stats ? stats.total.toLocaleString() : leads.length} Leads</span>
@@ -846,7 +846,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  </div>
  <div className="flex items-center gap-2">
  <div className="h-1 w-12 bg-[#CBFF38] rounded-full" />
- <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Strategic Asset Terminal</p>
+ <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{isGreek ? 'Διαχείριση Leads' : 'Lead Management'}</p>
  </div>
  </div>
 
@@ -920,7 +920,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  className="h-12 sm:h-14 px-5 sm:px-8 bg-[#CBFF38] text-slate-900 border-none rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.15em] shadow-2xl shadow-[#CBFF38]/30 transition-all hover:scale-[1.05] active:scale-[0.95] hover:bg-[#b3d81b] flex items-center gap-2"
  >
  <Plus size={18} strokeWidth={4} />
- <span className="hidden sm:inline">Add Lead</span>
+ <span className="hidden sm:inline">{isGreek ? 'Προσθήκη Lead' : 'Add Lead'}</span>
  </Button>
  </div>
     </div>
@@ -1638,8 +1638,8 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <Edit className="w-6 h-6 text-black" />
  </div>
  <div>
- <CardTitle className="text-xl font-black text-white tracking-tight">Lead Modification</CardTitle>
- <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-0.5">Strategic Terminal ID: {editingLead.id.slice(0, 8)}</p>
+ <CardTitle className="text-xl font-black text-white tracking-tight">{isGreek ? 'Επεξεργασία Lead' : 'Edit Lead'}</CardTitle>
+ <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-0.5">Lead ID: {editingLead.id.slice(0, 8)}</p>
  </div>
  </div>
  <button
@@ -1655,7 +1655,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
  <div className="space-y-6">
  <div className="flex items-center gap-2 mb-2">
  <div className="h-1 w-8 bg-[#CBFF38] rounded-full" />
- <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Identity Matrix</h4>
+ <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{isGreek ? 'Στοιχεία Lead' : 'Personal Details'}</h4>
  </div>
 
  <div className="grid grid-cols-2 gap-5">
@@ -1667,21 +1667,31 @@ export const LeadsPage: React.FC<LeadsPageProps> = ({ onViewLead, forceShowCreat
 
  <div className="grid grid-cols-2 gap-5">
  <Select
- label="Deployment Status"
+ label={isGreek ? 'Κατάσταση Lead' : 'Lead Status'}
  value={editingLead.status}
  onChange={(value) => setEditingLead({ ...editingLead, status: value as any })}
- options={[{ value: 'new', label: 'New Recruit' }, { value: 'contacted', label: 'In Contact' }, { value: 'qualified', label: 'Qualified' }, { value: 'converted', label: 'Mission Accomplished' }, { value: 'lost', label: 'Aborted' }]}
+ options={[
+                      { value: 'new', label: isGreek ? 'Νέο Lead' : 'New' },
+                      { value: 'contacted', label: isGreek ? 'Σε επικοινωνία' : 'In Conversation' },
+                      { value: 'qualified', label: isGreek ? 'Qualified Lead' : 'Qualified' },
+                      { value: 'converted', label: isGreek ? 'Μετατράπηκε σε πελάτη' : 'Converted' },
+                      { value: 'lost', label: isGreek ? 'Lost' : 'Lost' }
+                    ]}
  className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100"
  />
  <Select
- label="Acquisition Source"
+ label={isGreek ? 'Πηγή Lead' : 'Lead Source'}
  value={editingLead.source}
  onChange={(value) => setEditingLead({ ...editingLead, source: value as any })}
- options={[{ value: 'facebook_ads', label: 'Social Echo (FB)' }, { value: 'website', label: 'Direct Portal' }, { value: 'referral', label: 'Intelligence Network' }]}
+ options={[
+                      { value: 'facebook_ads', label: isGreek ? 'Διαφημίσεις Facebook' : 'Facebook Ads' },
+                      { value: 'website', label: isGreek ? 'Άμεση καταχώριση' : 'Direct Entry' },
+                      { value: 'referral', label: isGreek ? 'Συστάσεις / Δίκτυο επαφών' : 'Referral / Network' }
+                    ]}
  className="bg-slate-50/50 h-12 rounded-xl font-bold border-slate-100"
  />
  <Select
- label="Lead Owner"
+ label={isGreek ? 'Υπεύθυνος Lead' : 'Lead Owner'}
  value={editingLead.assignedSalesId || ''}
  onChange={(value) => setEditingLead({ ...editingLead, assignedSalesId: value })}
  options={providers}

@@ -18,6 +18,23 @@ const NotificationsPage: React.FC = () => {
  const [isSending, setIsSending] = useState(false);
  const [searchTerm, setSearchTerm] = useState('');
 
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      clearInterval(interval);
+    };
+  }, []);
+
+
  useEffect(() => {
  dispatch(fetchClients({}));
  }, [dispatch]);
@@ -94,7 +111,7 @@ const NotificationsPage: React.FC = () => {
  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Communication Hub</span>
  </div>
  <div className="space-y-1">
- <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">Campaign Outreach</h1>
+ <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Ενημέρωση ασθενών" : "Patient Communications"}</h1>
  <p className="text-gray-500 font-medium max-w-md text-sm">Broadcast treatment updates and clinical protocols to your patient base.</p>
  </div>
  </div>

@@ -141,6 +141,20 @@ const SkeletonRow = () => (
 export const AuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentLang, setCurrentLang] = useState<string>(
+    () => localStorage.getItem('preferredLang') || 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => setCurrentLang(localStorage.getItem('preferredLang') || 'el');
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+  const isEl = currentLang === 'el';
   const [filters, setFilters] = useState({
     resource: '',
     action: '',
@@ -184,15 +198,15 @@ export const AuditLogs: React.FC = () => {
             <History className="text-[#CBFF38]" size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 leading-tight">System Audit Logs</h1>
+            <h1 className="text-2xl font-bold text-gray-900 leading-tight">{isEl ? 'Αρχείο Καταγραφής Ενεργειών' : 'System Audit Logs'}</h1>
             <p className="text-sm text-gray-400 mt-0.5">
-              Administrative changes · Financial edits · Status updates
+              {isEl ? 'Διαχειριστικές αλλαγές · Οικονομικές εγγραφές · Ενημερώσεις κατάστασης' : 'Administrative changes · Financial edits · Status updates'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-400 bg-gray-50 px-3 py-2 rounded-xl ring-1 ring-gray-100">
           <Activity size={13} className="text-[#CBFF38]" />
-          <span>{isLoading ? '—' : logs.length} entries loaded</span>
+          <span>{isLoading ? '—' : logs.length} {isEl ? 'εγγραφές φορτώθηκαν' : 'entries loaded'}</span>
         </div>
       </div>
 
@@ -200,32 +214,32 @@ export const AuditLogs: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-5 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <SlidersHorizontal size={14} className="text-gray-400" />
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Filters</span>
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{isEl ? 'Φίλτρα' : 'Filters'}</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-gray-500">Resource</label>
+            <label className="block text-xs font-medium text-gray-500">{isEl ? 'Πόρος' : 'Resource'}</label>
             <select
               name="resource" value={filters.resource} onChange={handleFilterChange}
               className="w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBFF38] focus:border-transparent transition-all"
             >
-              <option value="">All Resources</option>
-              <option value="appointments">Appointments</option>
-              <option value="payments">Payments</option>
-              <option value="gift_cards">Gift Cards</option>
+              <option value="">{isEl ? 'Όλοι οι Πόροι' : 'All Resources'}</option>
+              <option value="appointments">{isEl ? 'Ραντεβού' : 'Appointments'}</option>
+              <option value="payments">{isEl ? 'Πληρωμές' : 'Payments'}</option>
+              <option value="gift_cards">{isEl ? 'Δωροκάρτες' : 'Gift Cards'}</option>
               <option value="leads">Leads / CRM</option>
-              <option value="users">Users</option>
+              <option value="users">{isEl ? 'Χρήστες' : 'Users'}</option>
             </select>
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-gray-500">Action</label>
+            <label className="block text-xs font-medium text-gray-500">{isEl ? 'Ενέργεια' : 'Action'}</label>
             <select
               name="action" value={filters.action} onChange={handleFilterChange}
               className="w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#CBFF38] focus:border-transparent transition-all"
             >
-              <option value="">All Actions</option>
+              <option value="">{isEl ? 'Όλες οι Ενέργειες' : 'All Actions'}</option>
               <option value="APPOINTMENT_STATUS_CHANGE">Status Change</option>
               <option value="APPOINTMENT_COMPLETE_WITH_PAYMENT">Completion &amp; Payment</option>
               <option value="APPOINTMENT_PAYMENT_RECORD">Payment Recorded</option>
@@ -237,7 +251,7 @@ export const AuditLogs: React.FC = () => {
 
           <div className="space-y-1.5">
             <label className="flex items-center gap-1 text-xs font-medium text-gray-500">
-              <Calendar size={11} /> Date From
+              <Calendar size={11} /> {isEl ? 'Από' : 'Date From'}
             </label>
             <input
               type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange}
@@ -247,7 +261,7 @@ export const AuditLogs: React.FC = () => {
 
           <div className="space-y-1.5">
             <label className="flex items-center gap-1 text-xs font-medium text-gray-500">
-              <Calendar size={11} /> Date To
+              <Calendar size={11} /> {isEl ? 'Έως' : 'Date To'}
             </label>
             <input
               type="date" name="dateTo" value={filters.dateTo} onChange={handleFilterChange}
@@ -260,7 +274,7 @@ export const AuditLogs: React.FC = () => {
               onClick={() => fetchLogs()}
               className="flex-1 inline-flex items-center justify-center gap-2 bg-[#0B1120] text-white px-4 py-2.5 text-sm font-semibold rounded-xl hover:bg-black active:scale-95 transition-all"
             >
-              <Search size={14} /> Filter
+              <Search size={14} /> {isEl ? 'Εφαρμογή' : 'Filter'}
             </button>
             <button
               onClick={resetFilters} title="Reset filters"
@@ -279,11 +293,11 @@ export const AuditLogs: React.FC = () => {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50/80 border-b border-gray-100">
-                <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">Timestamp</th>
-                <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">User</th>
-                <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Action</th>
-                <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Resource</th>
-                <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider min-w-[240px]">Changes / Info</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{isEl ? 'Χρονική Σήμανση' : 'Timestamp'}</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{isEl ? 'Χρήστης' : 'User'}</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{isEl ? 'Ενέργεια' : 'Action'}</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{isEl ? 'Πόρος' : 'Resource'}</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider min-w-[240px]">{isEl ? 'Αλλαγές / Πληροφορίες' : 'Changes / Info'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -296,8 +310,8 @@ export const AuditLogs: React.FC = () => {
                       <div className="w-16 h-16 rounded-2xl bg-gray-50 ring-1 ring-gray-100 flex items-center justify-center">
                         <History size={28} className="text-gray-300" />
                       </div>
-                      <p className="text-sm font-semibold text-gray-400">No audit logs found</p>
-                      <p className="text-xs text-gray-300">Try adjusting the filters above</p>
+                      <p className="text-sm font-semibold text-gray-400">{isEl ? 'Δεν βρέθηκαν εγγραφές καταγραφής' : 'No audit logs found'}</p>
+                      <p className="text-xs text-gray-300">{isEl ? 'Δοκιμάστε να αλλάξετε τα παραπάνω φίλτρα' : 'Try adjusting the filters above'}</p>
                     </div>
                   </td>
                 </tr>

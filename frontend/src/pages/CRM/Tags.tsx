@@ -26,6 +26,22 @@ import React, { useState, useEffect } from"react";
 import { useDispatch, useSelector } from"react-redux";
 
 export const Tags: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const dispatch = useDispatch<AppDispatch>();
  const navigate = useNavigate();
  const { isLoading } = useSelector((state: RootState) => state.crm);
@@ -183,8 +199,8 @@ export const Tags: React.FC = () => {
  {/* 1. Sleek Header */}
  <div className='flex flex-col md:flex-row md:items-center justify-between gap-4'>
  <div className='space-y-1'>
- <h1 className='text-2xl font-black text-slate-900 tracking-tight'>Tag Studio</h1>
- <p className='text-slate-500 font-medium text-xs'>Segment your database with precision tags and custom attributes.</p>
+ <h1 className='text-2xl font-black text-slate-900 tracking-tight'>{isGreek ? 'Διαχείριση Ετικετών' : 'Tag Management'}</h1>
+ <p className='text-slate-500 font-medium text-xs'>{isGreek ? 'Οργάνωση και διαχείριση ετικετών πελατών.' : 'Segment your database with precision tags and custom attributes.'}</p>
  </div>
  <div className='flex items-center gap-2'>
  <Button

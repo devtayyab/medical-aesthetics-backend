@@ -11,14 +11,7 @@ import ImageUpload from"../../components/atoms/ImageUpload";
 import { bankDetailsApi } from"../../services/api/clinicApi";
 import GoogleCalendarSection from "../../components/organisms/GoogleCalendarSection/GoogleCalendarSection";
 
-const getImageUrl = (path: string) => {
- if (!path) return '';
- if (path.startsWith('http') || path.startsWith('data:')) return path;
- 
- const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
- const origin = baseUrl.replace(/\/api$/, '');
- return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { getImageUrl } from "@/utils/imageUrl";
 
 const SettingsPage: React.FC = () => {
  const dispatch = useDispatch<AppDispatch>();
@@ -44,6 +37,23 @@ const SettingsPage: React.FC = () => {
  });
 
  const [isSaving, setIsSaving] = useState(false);
+
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      clearInterval(interval);
+    };
+  }, []);
+
 
  // --- Bank / IBAN State ---
  const [bankData, setBankData] = useState({
@@ -138,10 +148,10 @@ const SettingsPage: React.FC = () => {
  <div className="space-y-3">
  <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
  <div className="size-1.5 rounded-full bg-blue-500" />
- <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Core Configuration</span>
+ <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">{isGreek ? "Ρυθμίσεις κλινικής" : "Clinic Settings"}</span>
  </div>
  <div className="space-y-1">
- <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">Global Settings</h1>
+ <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Ρυθμίσεις κλινικής" : "Clinic Settings"}</h1>
  <p className="text-gray-500 font-medium max-w-md text-sm">Manage your clinic's digital identity and contact channels.</p>
  </div>
  </div>
@@ -153,7 +163,7 @@ const SettingsPage: React.FC = () => {
  className="h-12 px-6 bg-[#CBFF38] text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-[#CBFF38] transition-all shadow-lg shadow-lime-500/10 flex items-center gap-3 disabled:opacity-20"
  >
  <Save size={16} />
- {isSaving ?"Persisting..." :"Commit Changes"}
+ {isSaving ? (isGreek ? "Αποθήκευση..." : "Saving...") : (isGreek ? "Αποθήκευση αλλαγών" : "Save Changes")}
  </button>
  </div>
  </div>
@@ -169,12 +179,12 @@ const SettingsPage: React.FC = () => {
  <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
  <Building2 size={20} />
  </div>
- <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">Entity Profiling</h2>
+ <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">{isGreek ? "Στοιχεία κλινικής" : "Clinic Information"}</h2>
  </div>
 
  <div className="space-y-8">
  <div className="relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Legal Identity *</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">{isGreek ? "Επίσημη επωνυμία κλινικής *" : "Registered Clinic Name *"}</p>
  <input
  type="text"
  value={formData.name ||""}
@@ -186,11 +196,11 @@ const SettingsPage: React.FC = () => {
  </div>
 
  <div className="relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Clinical Abstract / Biography</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">{isGreek ? "Περιγραφή κλινικής" : "Clinic Description"}</p>
  <textarea
  value={formData.description ||""}
  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
- placeholder="Brief overview of your medical excellence..."
+ placeholder={isGreek ? "Περιγράψτε σύντομα την κλινική και τις υπηρεσίες σας..." : "Briefly describe your clinic and services..."}
  rows={4}
  className="w-full p-5 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-sm text-gray-900 focus:bg-white focus:border-black transition-all outline-none resize-none"
  />
@@ -198,7 +208,7 @@ const SettingsPage: React.FC = () => {
 
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
  <div className="relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Primary Voice Line *</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">{isGreek ? "Τηλέφωνο επικοινωνίας *" : "Contact Phone Number *"}</p>
  <div className="relative">
  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={14} />
  <input
@@ -212,7 +222,7 @@ const SettingsPage: React.FC = () => {
  </div>
 
  <div className="relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Transmission Email *</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">{isGreek ? "Email επικοινωνίας *" : "Contact Email *"}</p>
  <div className="relative">
  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={14} />
  <input
@@ -226,7 +236,7 @@ const SettingsPage: React.FC = () => {
  </div>
 
  <div className="md:col-span-2 relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Digital Domain (Website)</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">{isGreek ? "Ιστότοπος" : "Website"}</p>
  <div className="relative">
  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={14} />
  <input
@@ -247,7 +257,7 @@ const SettingsPage: React.FC = () => {
  <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
  <Camera size={20} />
  </div>
- <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">Visual Branding</h2>
+ <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">{isGreek ? "Εικόνες κλινικής" : "Clinic Images"}</h2>
  </div>
 
  <div className="space-y-8">
@@ -278,12 +288,12 @@ const SettingsPage: React.FC = () => {
  <div className="size-10 bg-black rounded-xl flex items-center justify-center text-[#CBFF38]">
  <MapPin size={20} />
  </div>
- <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">Geographical Origin</h2>
+ <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">{isGreek ? "Διεύθυνση κλινικής" : "Clinic Address"}</h2>
  </div>
 
  <div className="space-y-6">
  <div className="relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Street Protocol Address</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">{isGreek ? "Οδός και αριθμός" : "Street Address"}</p>
  <input
  type="text"
  value={formData.address?.street ||""}
@@ -294,7 +304,7 @@ const SettingsPage: React.FC = () => {
 
  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
  <div className="relative group lg:col-span-2">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Region / City</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">{isGreek ? "Πόλη" : "City"}</p>
  <input
  type="text"
  value={formData.address?.city ||""}
@@ -303,7 +313,7 @@ const SettingsPage: React.FC = () => {
  />
  </div>
  <div className="relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">State/Prov</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">{isGreek ? "Περιφέρεια / Επαρχία" : "Region / Province"}</p>
  <input
  type="text"
  value={formData.address?.state ||""}
@@ -323,7 +333,7 @@ const SettingsPage: React.FC = () => {
  </div>
 
  <div className="relative group">
- <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">Sovereign Nation (Country)</p>
+ <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3 ml-1">{isGreek ? "Χώρα" : "Country"}</p>
  <input
  type="text"
  value={formData.address?.country ||""}
@@ -341,7 +351,7 @@ const SettingsPage: React.FC = () => {
  <Landmark size={20} />
  </div>
  <div>
- <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">Payment Payout Details</h2>
+ <h2 className="text-lg font-black uppercase tracking-tighter text-gray-900">{isGreek ? "Στοιχεία τραπεζικού λογαριασμού" : "Bank Account Details"}</h2>
  <p className="text-[10px] text-gray-400 font-medium">Online payments will be transferred to this bank account</p>
  </div>
  </div>

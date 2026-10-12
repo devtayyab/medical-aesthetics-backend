@@ -127,6 +127,22 @@ const createClinicUTCDateTime = (localDate: Date, timeStr: string, timezone: str
 };
 
 export const SalesWeekCalendar: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { appointments } = useSelector((state: RootState) => state.booking);
@@ -644,10 +660,10 @@ export const SalesWeekCalendar: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-lg lg:text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-                  Sales Schedule
+                  {isGreek ? 'Ημερολόγιο Πωλήσεων' : 'Sales Calendar'}
                   <span className="hidden sm:inline-block text-[8px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-black">LIVE</span>
                 </h1>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Schedule & Dispatch</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{isGreek ? 'Πρόγραμμα Ραντεβού' : 'Schedule'}</p>
               </div>
             </div>
 

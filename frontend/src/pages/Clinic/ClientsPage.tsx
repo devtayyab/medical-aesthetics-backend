@@ -19,6 +19,23 @@ const ClientsPage: React.FC = () => {
  const [showBookingModal, setShowBookingModal] = useState(false);
  const [prefillForBooking, setPrefillForBooking] = useState<any>(null);
 
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      clearInterval(interval);
+    };
+  }, []);
+
+
  const { profile } = useSelector((state: RootState) => state.clinic);
  const user = useSelector((state: RootState) => state.auth.user);
  
@@ -62,8 +79,8 @@ const ClientsPage: React.FC = () => {
  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">CRM Database</span>
  </div>
  <div className="space-y-1">
- <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">Client Registry</h1>
- <p className="text-gray-500 font-medium max-w-md text-sm">Comprehensive patient therapeutic records and historical insights.</p>
+ <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Μητρώο ασθενών" : "Patient Directory"}</h1>
+ <p className="text-gray-500 font-medium max-w-md text-sm">{isGreek ? "Προβολή στοιχείων ασθενών και ιστορικού ραντεβού." : "View patient profiles and appointment history."}</p>
  </div>
  </div>
  
@@ -84,10 +101,10 @@ const ClientsPage: React.FC = () => {
  <div className="max-w-7xl mx-auto px-6 md:px-10 mt-8 relative z-20 pb-20">
  {/* Stats Grid */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
- <StatCard title="Active Patients" value={clients.length.toString()} icon={<Users size={16} />} trend="+12%" highlight />
- <StatCard title="Total Revenue" value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={16} />} trend="+5.4%" />
- <StatCard title="Clinical Visits" value={totalAppointments.toString()} icon={<Calendar size={16} />} trend="+18%" />
- <StatCard title="Avg Patient LTV" value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={16} />} trend="+2.1%" />
+ <StatCard title={isGreek ? "Ενεργοί ασθενείς" : "Active Patients"} value={clients.length.toString()} icon={<Users size={16} />} trend="+12%" highlight />
+ <StatCard title={isGreek ? "Καταγεγραμμένα έσοδα" : "Recorded Revenue"} value={`€${totalRevenue.toLocaleString()}`} icon={<Euro size={16} />} trend="+5.4%" />
+ <StatCard title={isGreek ? "Επισκέψεις στην κλινική" : "Clinic Visits"} value={totalAppointments.toString()} icon={<Calendar size={16} />} trend="+18%" />
+ <StatCard title={isGreek ? "Μέση αξία ανά ασθενή" : "Average Patient Value"} value={`€${avgLTV.toFixed(0)}`} icon={<TrendingUp size={16} />} trend="+2.1%" />
  </div>
 
  {/* Clients Table/Grid */}

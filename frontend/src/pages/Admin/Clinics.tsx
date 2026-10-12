@@ -12,14 +12,7 @@ import ImageUpload from "@/components/atoms/ImageUpload";
 import { PhoneInput } from "@/components/atoms/PhoneInput/PhoneInput";
 import toast from "react-hot-toast";
 
-const getImageUrl = (path: string) => {
-  if (!path) return '';
-  if (path.startsWith('http') || path.startsWith('data:')) return path;
-
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-  const origin = baseUrl.replace(/\/api$/, '');
-  return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { getImageUrl } from "@/utils/imageUrl";
 
 const TIMEZONE_OPTIONS = (() => {
   const list = (() => {
@@ -90,6 +83,22 @@ const TIMEZONE_OPTIONS = (() => {
 })();
 
 export const Clinics: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
   const dispatch = useDispatch<AppDispatch>();
   const { clinics, isLoading, error, users } = useSelector((state: RootState) => state.admin);
   const [searchTerm, setSearchTerm] = useState("");
@@ -382,14 +391,14 @@ export const Clinics: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Clinics Management</h2>
-          <p className="text-gray-500">Manage all clinics, their profiles, and status</p>
+          <h2 className="text-2xl font-bold text-gray-900">{isGreek ? 'Διαχείριση Κλινικών' : 'Clinics Management'}</h2>
+          <p className="text-gray-500">{isGreek ? 'Διαχείριση κλινικών, προφίλ και κατάστασης' : 'Manage all clinics, their profiles, and status'}</p>
         </div>
         <button
           onClick={() => handleOpenModal()}
           className="flex items-center gap-2 px-4 py-2 bg-[#CBFF38] text-[#0B1120] font-bold rounded-xl hover:bg-[#b0f020] transition-colors shadow-md"
         >
-          <Plus className="w-5 h-5" /> Add New Clinic
+          <Plus className="w-5 h-5" /> {isGreek ? 'Προσθήκη Κλινικής' : 'Add New Clinic'}
         </button>
       </div>
 

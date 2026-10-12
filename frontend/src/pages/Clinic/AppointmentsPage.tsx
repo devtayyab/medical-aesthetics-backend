@@ -120,11 +120,11 @@ const AppointmentsPage: React.FC = () => {
  <div className="space-y-3">
  <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
  <div className="size-1.5 rounded-full bg-green-500" />
- <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Live Operations</span>
+ <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">{isGreek ? "Διαχείριση Ραντεβού" : "Appointment Management"}</span>
  </div>
  <div className="space-y-1">
- <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">Appointments</h1>
- <p className="text-gray-500 font-medium max-w-md text-sm">Real-time clinical scheduling and management engine.</p>
+ <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Ραντεβού" : "Appointments"}</h1>
+ <p className="text-gray-500 font-medium max-w-md text-sm">{isGreek ? "Διαχειριστείτε τα ραντεβού της κλινικής σας σε πραγματικό χρόνο." : "Manage your clinic's appointments in real time."}</p>
  </div>
  </div>
  {activeClinicId && (
@@ -177,7 +177,7 @@ const AppointmentsPage: React.FC = () => {
  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
  <input
  type="text"
- placeholder="Search..."
+ placeholder={isGreek ? "Αναζήτηση..." : "Search..."}
  value={searchTerm}
  onChange={(e) => setSearchTerm(e.target.value)}
  className="w-full pl-10 pr-4 h-11 bg-gray-50 border-none rounded-xl focus:ring-1 focus:ring-black font-semibold text-xs"
@@ -327,7 +327,7 @@ const AppointmentsPage: React.FC = () => {
 
 /* --- Sub-Components --- */
 
-const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, onReschedule, onNoShow, onOverview }: any) => {
+const AppointmentCard = ({ appointment, user, isGreek, onConfirm, onCancel, onExecute, onReschedule, onNoShow, onOverview }: any) => {
  const isPlatform = appointment.appointmentSource === 'platform_broker';
  const status = appointment.status.toLowerCase();
  const isBlocked = !!appointment.isBlocked;
@@ -429,7 +429,15 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
  status === 'confirmed' ? 'bg-[#CBFF38] text-black border-[#CBFF38]' :
  status === 'pending' ? 'bg-black text-[#CBFF38] border-black' : 'bg-gray-50 text-gray-400 border-gray-100'
  }`}>
- {appointment.status.replace('_', ' ')}
+ {(() => {
+    const s = (appointment.status || '').toLowerCase();
+    if (s === 'pending') return isGreek ? 'Σε αναμονή' : 'Pending';
+    if (s === 'confirmed') return isGreek ? 'Επιβεβαιωμένο' : 'Confirmed';
+    if (s === 'completed') return isGreek ? 'Ολοκληρωμένο' : 'Completed';
+    if (s === 'cancelled') return isGreek ? 'Ακυρωμένο' : 'Cancelled';
+    if (s === 'no_show') return isGreek ? 'Μη προσέλευση' : 'No Show';
+    return appointment.status.replace('_', ' ');
+  })()}
  </span>
  {isPlatform && (
  <span className="px-2 py-0.5 bg-gray-900 text-[#CBFF38] text-[7px] font-black rounded-full uppercase tracking-widest">
@@ -443,14 +451,14 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
 
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
  <div className="space-y-0.5">
- <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">Client</p>
+ <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "Ασθενής" : "Patient"}</p>
  <h4 className="text-sm font-black uppercase tracking-tighter text-gray-900 truncate">
  {`${appointment.client?.firstName} ${appointment.client?.lastName}`}
  </h4>
  </div>
 
  <div className="space-y-0.5">
- <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">Service</p>
+ <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "Θεραπεία" : "Treatment"}</p>
  <h4 className="text-sm font-black uppercase tracking-tighter text-gray-900 truncate">
  {appointment.serviceName || appointment.service?.treatment?.name}
  </h4>
@@ -458,7 +466,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
  </div>
 
  <div className="space-y-0.5 hidden lg:block">
- <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">Provider</p>
+ <p className="text-[7px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "Υπεύθυνος ραντεβού" : "Assigned Staff Member"}</p>
  <div className="flex items-center gap-1.5">
  <div className="size-4 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100">
  <User size={8} className="text-gray-400" />
@@ -488,7 +496,7 @@ const AppointmentCard = ({ appointment, user, onConfirm, onCancel, onExecute, on
           ? 'bg-emerald-400 text-black hover:bg-black hover:text-emerald-400' 
           : 'bg-[#CBFF38] text-black hover:bg-black hover:text-[#CBFF38]'
       }`}>
-        {isPaid ? 'Complete' : 'Execute'}
+        {isPaid ? (isGreek ? "Ολοκλήρωση" : "Complete") : (isGreek ? "Εκτέλεση" : "Execute")}
       </button>
     );
   })()}

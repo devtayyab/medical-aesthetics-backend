@@ -44,6 +44,23 @@ const ClinicDashboard: React.FC = () => {
  const [showBookingModal, setShowBookingModal] = useState(false);
  const [queueType, setQueueType] = useState<'today' | 'pending'>('today');
 
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      clearInterval(interval);
+    };
+  }, []);
+
+
  // Get clinicId from profile or user context
  const clinicId = user?.role === 'clinic_owner' ? (user as any).ownedClinics?.[0]?.id : (user as any).assignedClinicId;
  const activeClinicId = profile?.id || clinicId || appointments[0]?.clinicId;
@@ -106,7 +123,7 @@ const ClinicDashboard: React.FC = () => {
  className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100"
  >
  <div className="size-1.5 rounded-full bg-green-500" />
- <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Operational Overview</span>
+ <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">{isGreek ? "Επισκόπηση Κλινικής" : "Clinic Overview"}</span>
  </motion.div>
 
  <div className="space-y-1">
@@ -124,7 +141,7 @@ const ClinicDashboard: React.FC = () => {
  transition={{ delay: 0.2 }}
  className="text-gray-500 font-medium text-base max-w-xl"
  >
- Clinical performance is <span className="text-black font-black">optimized</span>. You have {stats.totalToday} primary procedures scheduled for today.
+ {isGreek ? "Επισκόπηση της δραστηριότητας της κλινικής σας." : "Your clinic overview."} ({stats.totalToday} {isGreek ? "σημερινά ραντεβού" : "appointments today"})
  </motion.p>
  </div>
  </div>
@@ -140,14 +157,14 @@ const ClinicDashboard: React.FC = () => {
  className="group px-6 h-12 bg-white hover:bg-gray-50 text-gray-900 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all border border-gray-200 flex items-center gap-2"
  >
  <Calendar size={14} className="text-gray-400 group-hover:text-black transition-colors" />
- View Diary
+ {isGreek ? "Ημερολόγιο" : "Calendar"}
  </button>
  <button
  onClick={() => setShowBookingModal(true)}
  className="group px-6 h-12 bg-black text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#CBFF38] hover:text-black active:scale-95 transition-all shadow-lg flex items-center gap-2"
  >
  <Plus size={16} />
- New Booking
+ {isGreek ? "Νέο ραντεβού" : "New Appointment"}
  </button>
  </motion.div>
  </div>
@@ -160,7 +177,7 @@ const ClinicDashboard: React.FC = () => {
  {/* Statistics Layer */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
  <StatCard
- title="Daily Throughput"
+ title={isGreek ? "Σημερινά Ραντεβού" : "Today's Appointments"}
  value={stats.totalToday}
  percentage="+12%"
  trend="up"
@@ -168,7 +185,7 @@ const ClinicDashboard: React.FC = () => {
  delay={0}
  />
  <StatCard
- title="Confirmation Delay"
+ title={isGreek ? "Εκκρεμείς Επιβεβαιώσεις" : "Pending Confirmations"}
  value={stats.pending}
  percentage="Needs Action"
  trend="neutral"
@@ -177,7 +194,7 @@ const ClinicDashboard: React.FC = () => {
  highlight={stats.pending > 0}
  />
  <StatCard
- title="Procedure Yield"
+ title={isGreek ? "Ολοκληρωμένα Ραντεβού" : "Completed Appointments"}
  value={stats.completed}
  percentage="94% Success"
  trend="up"
@@ -185,7 +202,7 @@ const ClinicDashboard: React.FC = () => {
  delay={0.2}
  />
  <StatCard
- title="Entity Valuation"
+ title={isGreek ? "Καταγεγραμμένα Έσοδα" : "Recorded Revenue"}
  value={(
  <span className="flex items-center">
  <span className="font-sans mr-1">€</span>
@@ -210,8 +227,8 @@ const ClinicDashboard: React.FC = () => {
  <section className="bg-white rounded-[40px] p-5 md:p-8 border border-gray-100 shadow-sm">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
  <div>
- <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Treatment Queue</h2>
- <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">Live Clinical Feed</p>
+ <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900">{isGreek ? "Πρόγραμμα Ραντεβού" : "Appointment Schedule"}</h2>
+ <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">{isGreek ? "Σημερινό Πρόγραμμα" : "Today's Schedule"}</p>
  </div>
  <div className="flex gap-1.5 p-1 bg-gray-50 rounded-xl">
  <button 
@@ -260,8 +277,8 @@ const ClinicDashboard: React.FC = () => {
  <div className="size-20 bg-gray-50 rounded-[32px] flex items-center justify-center mx-auto mb-6 text-gray-200">
  <Calendar size={32} />
  </div>
- <h3 className="text-lg font-black uppercase tracking-tighter text-gray-900">No active procedures</h3>
- <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-2">Clinic schedule is currently clear for today.</p>
+ <h3 className="text-lg font-black uppercase tracking-tighter text-gray-900">{isGreek ? "Δεν υπάρχουν προγραμματισμένα ραντεβού" : "No Appointments Scheduled"}</h3>
+ <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-2">{isGreek ? "Δεν υπάρχουν προγραμματισμένα ραντεβού για σήμερα." : "There are no appointments scheduled for today."}</p>
  </motion.div>
  )}
  </AnimatePresence>
@@ -302,7 +319,7 @@ const ClinicDashboard: React.FC = () => {
  <TrendingUp size={10} className="text-[#CBFF38]" />
  <span className="text-[8px] font-black uppercase tracking-widest text-[#CBFF38]">Performance Index</span>
  </div>
- <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter text-white">Advanced Metrics</h3>
+ <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter text-white">{isGreek ? "Αναλυτικές αναφορές" : "Detailed Reports"}</h3>
  <p className="text-gray-400 text-[11px] max-w-xs font-medium leading-relaxed">
  Analyze conversion funnels, churn velocity, and clinical resource allocation with our proprietary data engine.
  </p>
@@ -311,7 +328,7 @@ const ClinicDashboard: React.FC = () => {
  onClick={() => navigate('/clinic/analytics')}
  className="h-12 px-8 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-[0.2em] hover:bg-[#CBFF38] hover:scale-105 active:scale-95 transition-all shadow-xl"
  >
- Access Engine
+ {isGreek ? "Προβολή αναφορών" : "View Reports"}
  </button>
  </div>
  </section>
@@ -321,32 +338,32 @@ const ClinicDashboard: React.FC = () => {
  {/* Sidebar Modules */}
  <div className="lg:col-span-4 space-y-8 sticky top-8">
  <section className="bg-white rounded-[24px] p-5 border border-gray-100 shadow-sm">
- <h2 className="text-sm font-black uppercase tracking-tighter text-gray-900 mb-6 px-2">Operational Access</h2>
+ <h2 className="text-sm font-black uppercase tracking-tighter text-gray-900 mb-6 px-2">{isGreek ? "Γρήγορη πρόσβαση" : "Quick Access"}</h2>
  <div className="grid grid-cols-2 gap-4">
  <ModernQuickAction
  icon={<Users size={22} />}
- label="Database"
+ label={isGreek ? "Ασθενείς" : "Patients"}
  desc="Client CRM"
  onClick={() => navigate('/clinic/clients')}
  color="#CBFF38"
  />
  <ModernQuickAction
  icon={<FileText size={22} />}
- label="Mastery"
+ label={isGreek ? "Θεραπείες" : "Treatments"}
  desc="Catalog"
  onClick={() => navigate('/clinic/services')}
  color="#FFD700"
  />
  <ModernQuickAction
  icon={<UserCog size={22} />}
- label="Legion"
+ label={isGreek ? "Προσωπικό" : "Staff"}
  desc="Staffing"
  onClick={() => navigate('/clinic/staff')}
  color="#00E5FF"
  />
  <ModernQuickAction
  icon={<Star size={22} />}
- label="Reputation"
+ label={isGreek ? "Αξιολογήσεις" : "Reviews"}
  desc="Reviews"
  onClick={() => navigate('/clinic/reviews')}
  color="#FF4081"
@@ -367,10 +384,10 @@ const ClinicDashboard: React.FC = () => {
  <div className="relative z-10 space-y-4">
  <div className="inline-flex items-center gap-2 text-[#CBFF38]">
  <div className="size-2 rounded-full bg-[#CBFF38] animate-ping" />
- <span className="text-[8px] font-black uppercase tracking-widest">Booking Priority</span>
+ <span className="text-[8px] font-black uppercase tracking-widest">{isGreek ? "Ραντεβού προς επιβεβαίωση" : "Appointments Requiring Confirmation"}</span>
  </div>
  <h4 className="text-lg font-black uppercase text-white tracking-tighter leading-tight">
- {stats.pending} Entries <br />Await Validation
+ {stats.pending} {isGreek ? "ραντεβού αναμένουν επιβεβαίωση" : "appointments awaiting confirmation"}
  </h4>
  <p className="text-gray-400 text-[11px] font-medium leading-relaxed">
  Confirm pending appointments to optimize resource utilization.
@@ -379,7 +396,7 @@ const ClinicDashboard: React.FC = () => {
  onClick={() => navigate("/clinic/appointments?status=pending")}
  className="w-full py-3 bg-[#CBFF38] hover:bg-white text-black rounded-xl font-black uppercase text-[9px] tracking-widest transition-all"
  >
- Confirm Queue
+ {isGreek ? "Προβολή Ραντεβού" : "Review Appointments"}
  </button>
  </div>
  </motion.div>
@@ -387,7 +404,7 @@ const ClinicDashboard: React.FC = () => {
 
  {/* System Intelligence Feed */}
  <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-200">
- <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-5">System Insights</h3>
+ <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-5">{isGreek ? "Πληροφορίες λειτουργίας" : "Operational Insights"}</h3>
  <div className="space-y-6">
  <div className="flex gap-4">
  <div className="size-1 rounded-full bg-[#CBFF38] mt-2" />

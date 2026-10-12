@@ -1,6 +1,8 @@
 import { Button } from '@/components/atoms/Button/Button';
 import { useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, ErrorState, LoadingState } from '@/components/ui';
+import { toast } from 'react-hot-toast';
+import { handleApiError } from '@/utils/errorHandler';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/molecules/Tabs';
 import { cn } from '@/lib/utils';
 import {
@@ -92,6 +94,22 @@ const formatCurrency = (value: number): string => {
 };
 
 export const ManagerDashboard = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const dispatch = useDispatch();
  const { services: clinicServices, availability: clinicAvailability, staff: clinicStaff } = useSelector((state: RootState) => state.clinic);
  const [agentKpis, setAgentKpis] = useState<AgentKpi[]>([]);
@@ -258,8 +276,8 @@ export const ManagerDashboard = () => {
 
  setError(null);
  } catch (err) {
- console.error('Failed to load manager dashboard data:', err);
- setError('Failed to load dashboard data. Please try again later.');
+ const errorMsg = handleApiError(err, 'Failed to load dashboard data. Please try again later.');
+ setError(errorMsg);
  } finally {
  setIsLoading(false);
  }
@@ -286,12 +304,12 @@ export const ManagerDashboard = () => {
  const handleCreateAgent = async () => {
  // Basic validation
  if (!newAgentData.email || !newAgentData.password || !newAgentData.firstName || !newAgentData.lastName) {
- alert('Please fill all required fields (Name, Email, Password)');
+ toast.error('Please fill all required fields (Name, Email, Password)');
  return;
  }
 
  if (newAgentData.password.length < 8) {
- alert('Password must be at least 8 characters long');
+ toast.error('Password must be at least 8 characters long');
  return;
  }
 
@@ -315,12 +333,9 @@ export const ManagerDashboard = () => {
  // Refresh KPIs
  const agents = await fetchAgentKpis();
  setAgentKpis(agents);
- alert('Agent created successfully!');
+ toast.success('Agent created successfully!');
  } catch (error: any) {
- console.error('Failed to create agent:', error);
- const errorMsg = error.response?.data?.message;
- const finalMsg = Array.isArray(errorMsg) ? errorMsg.join(', ') : (errorMsg || 'Failed to create agent');
- alert(`Error: ${finalMsg}`);
+ handleApiError(error, 'Failed to create agent');
  }
  };
 
@@ -396,24 +411,40 @@ export const ManagerDashboard = () => {
  : 0;
 
  if (isLoading) {
- return (
- <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
- <Loader2 className="h-8 w-8 animate-spin text-primary" />
- <p className="text-muted-foreground">Loading dashboard data...</p>
- </div>
- );
+ return <LoadingState message="Loading dashboard data..." className="min-h-[60vh]" />;
  }
 
  if (error) {
  return (
  <div className="p-6">
- <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start" role="alert">
- <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
- <div>
- <strong className="font-bold">Error loading data: </strong>
- <span className="block sm:inline">{error}</span>
- </div>
- </div>
+ <ErrorState
+ title="Unable to load dashboard data"
+ message={error}
+ onRetry={() => {
+ setError(null);
+ setIsLoading(true);
+ const { startDate, endDate } = getPeriodDates(selectedPeriod);
+ Promise.all([
+ fetchAgentKpis(startDate, endDate),
+ fetchServiceStats(startDate, endDate),
+ fetchClinicAnalytics(startDate, endDate),
+ fetchPerformanceDashboard(startDate, endDate)
+ ]).then(([agents, services, clinics, performance]) => {
+ setAgentKpis(agents);
+ setServiceStats(services);
+ setClinicStats(clinics);
+ if (performance?.dailyProgressChart) {
+ setRevenueData(performance.dailyProgressChart);
+ }
+ setError(null);
+ }).catch(err => {
+ const msg = handleApiError(err, 'Failed to load dashboard data. Please try again later.');
+ setError(msg);
+ }).finally(() => {
+ setIsLoading(false);
+ });
+ }}
+ />
  </div>
  );
  }
@@ -452,7 +483,7 @@ export const ManagerDashboard = () => {
  <StaffDiary
  clinicId={selectedClinic.clinicId}
  onNewAppointment={() => {
- alert('To create a new appointment, please select a customer from the CRM/Customers page first.');
+ toast('To create a new appointment, please select a customer from the CRM/Customers page first.', { icon: 'ℹ️' });
  }}
  />
  </TabsContent>
@@ -615,7 +646,7 @@ export const ManagerDashboard = () => {
  {selectedAgent.agentName}
  </h1>
  </div>
- <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-10">Strategic Deployment Terminal</p>
+ <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-10">{isGreek ? 'Στοιχεία Πωλητή' : 'Salesperson Profile'}</p>
  </div>
  </div>
 
@@ -633,7 +664,7 @@ export const ManagerDashboard = () => {
  </div>
 
  <div className="hidden lg:flex flex-col gap-1 px-4 border-l border-slate-100">
- <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Mission Velocity</span>
+ <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{isGreek ? 'Ποσοστό Μετατροπής' : 'Conversion Rate'}</span>
  <div className="flex items-center gap-2">
  <TrendingUp size={12} className="text-[#CBFF38]" />
  <span className="text-xs font-black text-slate-900">{selectedAgent.conversionRate.toFixed(1)}%</span>
@@ -703,7 +734,7 @@ export const ManagerDashboard = () => {
  <BarChart3 className="h-8 w-8 text-gray-900" />
  </div>
  <div>
- <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900">Manager Dashboard</h1>
+ <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900">{isGreek ? 'Πίνακας Διαχείρισης' : 'Manager Dashboard'}</h1>
  <p className="text-muted-foreground font-medium mt-1">Real-time performance analytics across your clinic network</p>
  </div>
  </div>
@@ -754,26 +785,26 @@ export const ManagerDashboard = () => {
  {/* Summary Cards */}
  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
  <StatCard
- title="Total Revenue"
+ title={isGreek ? "Συνολικά Έσοδα" : "Total Revenue"}
  value={formatCurrency(totalRevenue)}
  icon={<Euro className="h-4 w-4" />}
  iconBg="bg-green-100 text-green-600"
  />
  <StatCard
- title="Appointments"
+ title={isGreek ? "Ραντεβού" : "Appointments"}
  value={totalAppointments.toString()}
  icon={<Calendar className="h-4 w-4" />}
  iconBg="bg-blue-100 text-blue-600"
  description={`${completedAppointments} completed`}
  />
  <StatCard
- title="Conversion Rate"
+ title={isGreek ? "Ποσοστό Μετατροπής" : "Conversion Rate"}
  value={`${avgConversionRate.toFixed(1)}%`}
  icon={<TrendingUp className="h-4 w-4" />}
  iconBg="bg-purple-100 text-purple-600"
  />
  <StatCard
- title="Active Agents"
+ title={isGreek ? "Ενεργοί Πωλητές" : "Active Sales Team"}
  value={agentKpis.length.toString()}
  icon={<Users className="h-4 w-4" />}
  iconBg="bg-amber-100 text-amber-600"
@@ -782,22 +813,10 @@ export const ManagerDashboard = () => {
 
  <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
  <TabsList className="bg-gray-100/50 p-1.5 rounded-xl border border-gray-200/50 w-full max-w-[650px] overflow-x-auto justify-start md:justify-center">
- <TabsTrigger value="overview" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
- <BarChart3 className="h-4 w-4" />
- Overview
- </TabsTrigger>
- <TabsTrigger value="clinics" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
- <Building2 className="h-4 w-4" />
- Clinics
- </TabsTrigger>
- <TabsTrigger value="calendar-global" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
- <Calendar className="h-4 w-4" />
- Global Calendar
- </TabsTrigger>
- <TabsTrigger value="agents" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all">
- <Users className="h-4 w-4" />
- Agents
- </TabsTrigger>
+ <TabsTrigger value="overview" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all"><BarChart3 className="h-4 w-4" />{isGreek ? 'Επισκόπηση' : 'Overview'}</TabsTrigger>
+ <TabsTrigger value="clinics" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all"><Building2 className="h-4 w-4" />{isGreek ? 'Κλινικές' : 'Clinics'}</TabsTrigger>
+ <TabsTrigger value="calendar-global" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all"><Calendar className="h-4 w-4" />{isGreek ? 'Κεντρικό Ημερολόγιο' : 'Global Calendar'}</TabsTrigger>
+ <TabsTrigger value="agents" className="flex items-center gap-2 rounded-lg py-2 px-3 md:px-6 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md font-bold transition-all"><Users className="h-4 w-4" />{isGreek ? 'Πωλητές' : 'Sales Team'}</TabsTrigger>
  </TabsList>
  <TabsContent value="calendar-global" className="h-[calc(100vh-200px)]">
  <SalesWeekCalendar />
@@ -807,7 +826,7 @@ export const ManagerDashboard = () => {
  <TabsContent value="clinics">
  <Card>
  <CardHeader>
- <CardTitle>Clinic Performance</CardTitle>
+ <CardTitle>{isGreek ? 'Απόδοση ανά Κλινική' : 'Clinic Performance'}</CardTitle>
  <CardDescription>Overview of performance by clinic location</CardDescription>
  </CardHeader>
  <CardContent>
@@ -855,7 +874,7 @@ export const ManagerDashboard = () => {
  </Card>
  <Card className="md:col-span-2 lg:col-span-3">
  <CardHeader>
- <CardTitle>Top Performing Services</CardTitle>
+ <CardTitle>{isGreek ? 'Υπηρεσίες με τα υψηλότερα έσοδα' : 'Top Performing Services'}</CardTitle>
  <CardDescription>By revenue and appointments</CardDescription>
  </CardHeader>
  <CardContent>

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import {
  ColumnDef,
  useReactTable,
@@ -18,10 +18,10 @@ interface DataTableProps<TData> {
 }
 
 export function DataTable<TData>({
- columns,
- data,
- searchKey,
- placeholder = 'Filter...',
+  columns,
+  data,
+  searchKey: _searchKey,
+  placeholder = 'Filter...',
 }: DataTableProps<TData>) {
  const [globalFilter, setGlobalFilter] = React.useState('');
 

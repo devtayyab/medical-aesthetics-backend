@@ -9,6 +9,20 @@ export const ReviewModeration: React.FC = () => {
  const [reviews, setReviews] = useState<any[]>([]);
  const [isLoading, setIsLoading] = useState(true);
  const [error, setError] = useState<string | null>(null);
+  const [currentLang, setCurrentLang] = useState<string>(
+    () => localStorage.getItem('preferredLang') || 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => setCurrentLang(localStorage.getItem('preferredLang') || 'el');
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+  const isEl = currentLang === 'el';
 
  const fetchPendingReviews = async () => {
  try {
@@ -47,10 +61,10 @@ export const ReviewModeration: React.FC = () => {
  <div className="p-4 md:p-8 max-w-6xl mx-auto">
  <div className="mb-8">
  <h1 className="text-2xl md:text-3xl font-black text-gray-900 uppercase tracking-tight">
- Review Moderation
+ {isEl ? 'Διαχείριση Αξιολογήσεων' : 'Review Moderation'}
  </h1>
  <p className="text-gray-500 uppercase text-xs font-bold tracking-widest mt-1">
- Manage and approve customer feedback
+ {isEl ? 'Διαχείριση και έγκριση αξιολογήσεων πελατών' : 'Manage and approve customer feedback'}
  </p>
  </div>
 
@@ -63,8 +77,8 @@ export const ReviewModeration: React.FC = () => {
  {reviews.length === 0 ? (
  <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-sm">
  <Check className="mx-auto h-12 w-12 text-lime-500 mb-4" />
- <h3 className="text-xl font-black text-gray-900 uppercase">All caught up!</h3>
- <p className="text-gray-500 mt-2 uppercase text-xs font-bold tracking-widest">No pending reviews to moderate.</p>
+ <h3 className="text-xl font-black text-gray-900 uppercase">{isEl ? 'Δεν υπάρχουν αξιολογήσεις σε εκκρεμότητα.' : 'All caught up!'}</h3>
+ <p className="text-gray-500 mt-2 uppercase text-xs font-bold tracking-widest">{isEl ? 'Καμία εκκρεμής αξιολόγηση προς έλεγχο.' : 'No pending reviews to moderate.'}</p>
  </div>
  ) : (
  <div className="grid gap-6">
@@ -79,7 +93,7 @@ export const ReviewModeration: React.FC = () => {
  <Home size={16} />
  </div>
  <div className="min-w-0">
- <p className="text-[10px] font-black uppercase text-gray-400">Clinic</p>
+ <p className="text-[10px] font-black uppercase text-gray-400">{isEl ? 'Κλινική' : 'Clinic'}</p>
  <p className="text-sm font-black text-gray-900 truncate uppercase tracking-tight">{review.clinic?.name}</p>
  </div>
  </div>
@@ -89,7 +103,7 @@ export const ReviewModeration: React.FC = () => {
  <User size={16} />
  </div>
  <div className="min-w-0">
- <p className="text-[10px] font-black uppercase text-gray-400">Consumer</p>
+ <p className="text-[10px] font-black uppercase text-gray-400">{isEl ? 'Πελάτης' : 'Consumer'}</p>
  <p className="text-sm font-black text-gray-900 truncate uppercase tracking-tight">{review.client?.firstName} {review.client?.lastName}</p>
  </div>
  </div>
@@ -100,7 +114,7 @@ export const ReviewModeration: React.FC = () => {
  <Calendar size={16} />
  </div>
  <div className="min-w-0">
- <p className="text-[10px] font-black uppercase text-gray-400">Appointment</p>
+ <p className="text-[10px] font-black uppercase text-gray-400">{isEl ? 'Ραντεβού' : 'Appointment'}</p>
  <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">
  {format(new Date(review.appointment.startTime),"MMM d, yyyy")}
  </p>
@@ -122,7 +136,7 @@ export const ReviewModeration: React.FC = () => {
  />
  ))}
  <span className="ml-2 text-sm font-black text-gray-900 uppercase">
- {review.rating}/5 Rating
+ {review.rating}/5 {isEl ? 'Αξιολόγηση' : 'Rating'}
  </span>
  </div>
 

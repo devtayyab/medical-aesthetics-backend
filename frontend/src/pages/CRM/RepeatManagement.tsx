@@ -11,6 +11,22 @@ import { User, Calendar, Clock, RotateCcw, Loader2, CheckCircle2 } from"lucide-r
 import { format } from"date-fns";
 
 export const RepeatManagement: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const dispatch = useDispatch<AppDispatch>();
  const { customerRecord, isLoading } = useSelector((state: RootState) => state.crm);
  const { user } = useSelector((state: RootState) => state.auth);
@@ -183,7 +199,7 @@ export const RepeatManagement: React.FC = () => {
 return (
  <>
  <h2 className="text-2xl font-bold mb-4">
- Schedule Recurring Appointments
+ {isGreek ? 'Διαχείριση Επαναληπτικών Επαφών' : 'Schedule Recurring Appointments'}
  </h2>
  <form onSubmit={handleSubmit} className="flex flex-col gap-4">
  {error && (

@@ -35,6 +35,22 @@ const badgeStyle = (type: string) => {
 };
 
 export const Communication: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const dispatch = useDispatch<AppDispatch>();
  const navigate = useNavigate();
  const { communications = [], isLoading } = useSelector((state: RootState) => state.crm || {} as any);
@@ -214,9 +230,9 @@ export const Communication: React.FC = () => {
  {/* Header Section Compact */}
  <div className="mb-6">
  <h1 className="text-2xl font-black uppercase tracking-tighter mb-1 flex items-center gap-2">
- Communication <span className="text-gray-900">History</span>
+ {isGreek ? 'Ιστορικό Επικοινωνίας' : <>Communication <span className="text-gray-900">History</span></>}
  </h1>
- <p className="text-gray-500 font-medium text-xs">Track and manage all customer interactions and tasks.</p>
+ <p className="text-gray-500 font-medium text-xs">{isGreek ? 'Παρακολούθηση και διαχείριση επικοινωνιών και ενεργειών.' : 'Track and manage all customer interactions and tasks.'}</p>
  </div>
 
  <div className="flex flex-col xl:flex-row gap-6">

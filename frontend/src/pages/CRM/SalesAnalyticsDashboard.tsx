@@ -109,7 +109,7 @@ export const SalesAnalyticsDashboard = () => {
  // Simplified raw CSV export
  if (!filteredReport.length) return;
 
- const headers = ["Sales Person","Client","Date","Event Type","Task Performed","Result/Status","Revenue","Execution","Rebook Request"];
+ const headers = ["Assigned Staff Member","Client","Date","Event Type","Task Performed","Result/Status","Revenue","Execution","Rebook Request"];
  const csvContent ="data:text/csv;charset=utf-8,"
  + headers.join(",") +"\n"
  + filteredReport.map((r: any) =>
@@ -463,7 +463,7 @@ export const SalesAnalyticsDashboard = () => {
  {/* 4. Personal Pipeline (Agent Contribution) */}
  <Card className="border-none shadow-sm bg-white overflow-hidden rounded-xl">
  <CardHeader className="pt-6 px-6 pb-2">
- <CardTitle className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Personal Pipeline (Agent Performance)</CardTitle>
+ <CardTitle className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">{isGreek ? 'Σύγκριση Απόδοσης Πωλητών' : 'Agent Performance'}</CardTitle>
  </CardHeader>
  <CardContent className="p-6 h-72">
  {data.performanceReport?.length > 0 ? (
@@ -493,7 +493,7 @@ export const SalesAnalyticsDashboard = () => {
  <div>
  <h3 className="text-xs font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
  <Filter className="w-4 h-4 text-blue-600" />
- Performance Execution Log
+ {isGreek ? 'Ημερήσια δραστηριότητα και έσοδα' : 'Daily Activity & Revenue'}
  </h3>
  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Real-time Daily Record</p>
  </div>

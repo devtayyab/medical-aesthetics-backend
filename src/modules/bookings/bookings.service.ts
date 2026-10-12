@@ -41,10 +41,14 @@ export class BookingsService {
   private readonly logPath = path.join(process.cwd(), 'logs', 'appointment-debug.log');
 
   private logDebug(msg: string, data?: any) {
-    const timestamp = new Date().toISOString();
-    const line = `[${timestamp}] ${msg} ${data ? JSON.stringify(data) : ''}\n`;
-    if (!fs.existsSync(path.dirname(this.logPath))) fs.mkdirSync(path.dirname(this.logPath), { recursive: true });
-    fs.appendFileSync(this.logPath, line);
+    try {
+      const timestamp = new Date().toISOString();
+      const line = `[${timestamp}] ${msg} ${data ? JSON.stringify(data) : ''}\n`;
+      if (!fs.existsSync(path.dirname(this.logPath))) fs.mkdirSync(path.dirname(this.logPath), { recursive: true });
+      fs.appendFileSync(this.logPath, line);
+    } catch {
+      // Ignore file writing permission errors inside Docker so it never crashes the request
+    }
     console.log(msg, data);
   }
   constructor(
@@ -70,6 +74,10 @@ export class BookingsService {
     private notificationsService: NotificationsService,
   ) { }
 
+  /**
+   * Creates a 15-minute optimistic hold lock on a time slot to prevent
+   * concurrent double-booking while the client proceeds through checkout.
+   */
   async holdSlot(holdSlotDto: HoldSlotDto): Promise<AppointmentHold> {
     const { clinicId, serviceId, additionalServiceIds, providerId, startTime, endTime } = holdSlotDto;
 
@@ -113,6 +121,12 @@ export class BookingsService {
     return this.holdsRepository.save(hold);
   }
 
+  /**
+   * Finalizes appointment creation with fallback client resolution:
+   * 1. Direct User lookup by ID.
+   * 2. Walk-in details fuzzy match by email/phone.
+   * 3. Robust "God Search" across CRM CustomerRecords and Leads.
+   */
   async createAppointment(createAppointmentDto: CreateAppointmentDto & { appointmentSource?: 'clinic_own' | 'platform_broker', bookedById?: string }): Promise<any> {
     let clientId = createAppointmentDto.clientId;
 

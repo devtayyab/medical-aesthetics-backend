@@ -13,6 +13,23 @@ const ReviewsPage: React.FC = () => {
  const [respondingTo, setRespondingTo] = useState<string | null>(null);
  const [responseText, setResponseText] = useState('');
 
+  const [isGreek, setIsGreek] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    const interval = setInterval(handleLang, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      clearInterval(interval);
+    };
+  }, []);
+
+
  useEffect(() => {
  dispatch(fetchReviews(undefined));
  dispatch(fetchReviewStatistics());
@@ -66,10 +83,10 @@ const ReviewsPage: React.FC = () => {
  <div className="space-y-3">
  <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
  <div className="size-1.5 rounded-full bg-green-500" />
- <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Public Feedback Analysis</span>
+ <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">{isGreek ? "Σχόλια ασθενών" : "Patient Feedback"}</span>
  </div>
  <div className="space-y-1">
- <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">Trust Matrix</h1>
+ <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none text-gray-900">{isGreek ? "Αξιολογήσεις ασθενών" : "Patient Reviews"}</h1>
  <p className="text-gray-500 font-medium max-w-md text-sm">Monitor and curate patient signal protocols and clinical standards.</p>
  </div>
  </div>
@@ -77,7 +94,7 @@ const ReviewsPage: React.FC = () => {
  <div className="flex items-center gap-4">
  <div className="px-5 py-2.5 bg-gray-50 border border-gray-100 rounded-xl flex items-center gap-3">
  <div className="size-2 bg-green-500 rounded-full" />
- <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Curation Active</span>
+ <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">{isGreek ? "Η διαχείριση αξιολογήσεων είναι ενεργή" : "Review Management Active"}</span>
  </div>
  </div>
  </div>
@@ -88,16 +105,16 @@ const ReviewsPage: React.FC = () => {
  {/* Statistics Grid */}
  {reviewStats && (
  <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8">
- <StatCard title="Total Verdicts" value={reviewStats.totalReviews.toString()} icon={<MessageSquare size={16} />} highlight />
+ <StatCard title={isGreek ? "Σύνολο αξιολογήσεων" : "Total Reviews"} value={reviewStats.totalReviews.toString()} icon={<MessageSquare size={16} />} highlight />
  <StatCard 
- title="Global Score" 
+ title={isGreek ? "Μέση βαθμολογία" : "Average Rating"} 
  value={reviewStats.averageRating.toFixed(1)} 
  icon={<Star size={16} />} 
  />
  {([5, 4, 3]).map(rating => (
  <StatCard 
  key={rating}
- title={`${rating} Star Signal`} 
+ title={`${rating} ${isGreek ? "αστέρων" : "Star Reviews"}`} 
  value={reviewStats.distribution[rating] || 0} 
  icon={<ArrowUpRight size={14} />} 
  />
@@ -114,7 +131,7 @@ const ReviewsPage: React.FC = () => {
  ) : reviews.length === 0 ? (
  <div className="bg-white rounded-[40px] p-20 text-center border border-gray-100 shadow-sm">
  <Star className="w-16 h-16 text-gray-100 mx-auto mb-6" />
- <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900 mb-2">Matrix is Silent</h3>
+ <h3 className="text-xl font-black uppercase tracking-tighter text-gray-900 mb-2">{isGreek ? "Δεν υπάρχουν ακόμη αξιολογήσεις" : "No Reviews Yet"}</h3>
  <p className="text-gray-400 font-medium max-w-sm mx-auto">No patients have submitted clinical feedback to the central database yet.</p>
  </div>
  ) : (

@@ -1,8 +1,9 @@
-import React, { useState } from"react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from"react-redux";
 import { Link } from"react-router-dom";
 import { Button } from"@/components/atoms/Button/Button";
 import axios from"axios";
+import { ENV } from "@/config/env";
 import type { RootState, AppDispatch } from"@/store";
 import { css } from"@emotion/css";
 import { setTokens } from"@/store/slices/authSlice";
@@ -160,6 +161,22 @@ const inputGroup = css`
 `;
 
 export const PersonalDetails: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const dispatch = useDispatch<AppDispatch>();
  const { user, accessToken, refreshToken } = useSelector((state: RootState) => state.auth);
 
@@ -197,12 +214,12 @@ export const PersonalDetails: React.FC = () => {
  const tRefresh = refreshToken || localStorage.getItem("refreshToken");
 
  if (tRefresh) {
- const refreshRes = await axios.post(`${import.meta.env.VITE_API_BASE_URL ||"/api"}/auth/refresh`, { refreshToken: tRefresh });
+ const refreshRes = await axios.post(`${ENV.API_BASE_URL}/auth/refresh`, { refreshToken: tRefresh });
  currentToken = refreshRes.data.accessToken;
  dispatch(setTokens({ accessToken: currentToken, refreshToken: refreshRes.data.refreshToken }));
  }
 
- await axios.patch(`${import.meta.env.VITE_API_BASE_URL ||"/api"}/users/me/profile`,
+ await axios.patch(`${ENV.API_BASE_URL}/users/me/profile`,
  { firstName, lastName, phone },
  { headers: { Authorization: `Bearer ${currentToken}` } }
  );
@@ -232,17 +249,17 @@ export const PersonalDetails: React.FC = () => {
  <div className="container mx-auto px-4 sm:px-8 relative z-10">
  <div className="max-w-2xl">
  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-6 text-gray-400 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em]">
- <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">ACCOUNT</Link>
+ <Link to="/my-account" className="text-gray-900 border-b border-gray-900 pb-0.5">{isGreek ? "ΛΟΓΑΡΙΑΣΜΟΣ" : "ACCOUNT"}</Link>
  <ChevronRight size={12} className="text-lime-600" />
- <span className="text-lime-600 font-extrabold">PROFILE MANAGEMENT</span>
+ <span className="text-lime-600 font-extrabold">{isGreek ? "ΔΙΑΧΕΙΡΙΣΗ ΠΡΟΦΙΛ" : "PROFILE MANAGEMENT"}</span>
  </div>
 
  <h1 className="text-2xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter leading-tight text-gray-900">
- PERSONAL <span className="text-[#84cc16] sm:text-[#CBFF38]">DETAILS</span>
+ {isGreek ? "ΠΡΟΣΩΠΙΚΑ ΣΤΟΙΧΕΙΑ" : <>PERSONAL <span className="text-[#84cc16] sm:text-[#CBFF38]">DETAILS</span></>}
  </h1>
 
  <p className="text-gray-600 mt-2 sm:mt-4 font-semibold text-xs sm:text-base max-w-lg leading-snug sm:leading-relaxed">
- Keep your account details up to date for appointments, account notifications and communication with your selected clinics and doctors.
+ {isGreek ? "Διατηρήστε τα στοιχεία σας ενημερωμένα για τα ραντεβού σας, τις ειδοποιήσεις λογαριασμού και την επικοινωνία με τις επιλεγμένες κλινικές και ιατρούς." : "Keep your account details up to date for appointments, account notifications and communication with your selected clinics and doctors."}
  </p>
  </div>
  </div>
@@ -262,8 +279,8 @@ export const PersonalDetails: React.FC = () => {
  <User className="size-6 sm:size-8" />
  </div>
  <div>
- <h3 className="text-lg sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Information</h3>
- <p className="text-[10px] sm:text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] sm:tracking-[0.2em] mt-0.5 sm:mt-1">Profile Identity Settings</p>
+ <h3 className="text-lg sm:text-2xl font-black uppercase text-gray-900 tracking-tight">{isGreek ? "Στοιχεία προφίλ" : "Information"}</h3>
+ <p className="text-[10px] sm:text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] sm:tracking-[0.2em] mt-0.5 sm:mt-1">{isGreek ? "Προσωπικά στοιχεία" : "Profile Identity Settings"}</p>
  </div>
  </div>
 
@@ -274,7 +291,7 @@ export const PersonalDetails: React.FC = () => {
  className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-10 bg-gradient-to-br from-[#A3E635] to-[#86efac] sm:from-[#CBFF38] sm:to-[#B6EF2B] hover:from-black hover:to-gray-900 hover:text-[#CBFF38] text-black text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] rounded-xl sm:rounded-2xl transition-all duration-300 shadow-lg flex items-center justify-center gap-2.5 sm:gap-3 group"
  >
  <Edit3 size={16} className="group-hover:rotate-12 transition-transform" />
- Edit Profile
+ {isGreek ? "Επεξεργασία στοιχείων" : "Edit Profile"}
  </button>
  ) : (
  <div className="w-full sm:w-auto flex items-center justify-end gap-3 sm:gap-4">
@@ -283,14 +300,13 @@ export const PersonalDetails: React.FC = () => {
  onClick={() => setIsEditing(false)}
  className="h-12 sm:h-14 px-4 sm:px-8 text-gray-400 hover:text-red-500 text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] transition-colors"
  >
- Cancel
- </button>
+ {isGreek ? "Ακύρωση" : "Cancel"}</button>
  <button
  type="submit"
  disabled={isLoading}
  className="h-12 sm:h-14 px-6 sm:px-10 bg-gradient-to-br from-black to-gray-800 text-[#CBFF38] hover:from-[#CBFF38] hover:to-[#B6EF2B] hover:text-black text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] rounded-xl sm:rounded-2xl transition-all duration-300 shadow-2xl flex items-center gap-3"
  >
- {isLoading ?"Saving..." :"Save Changes"}
+ {isLoading ? (isGreek ? "Αποθήκευση..." : "Saving...") : (isGreek ? "Αποθήκευση αλλαγών" : "Save Changes")}
  </button>
  </div>
  )}
@@ -298,7 +314,7 @@ export const PersonalDetails: React.FC = () => {
 
  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
  <div className={inputGroup}>
- <label>First Name</label>
+ <label>{isGreek ? "Όνομα" : "First Name"}</label>
  <div className="input-wrapper">
  <User className="icon" />
  <input
@@ -312,7 +328,7 @@ export const PersonalDetails: React.FC = () => {
  </div>
 
  <div className={inputGroup}>
- <label>Last Name</label>
+ <label>{isGreek ? "Επώνυμο" : "Last Name"}</label>
  <div className="input-wrapper">
  <User className="icon" />
  <input
@@ -326,7 +342,7 @@ export const PersonalDetails: React.FC = () => {
  </div>
 
  <div className={inputGroup}>
- <label>Email Address</label>
+ <label>{isGreek ? "Διεύθυνση Email" : "Email Address"}</label>
  <div className="input-wrapper">
  <Mail className="icon" />
  <input
@@ -340,7 +356,7 @@ export const PersonalDetails: React.FC = () => {
  </div>
 
  <div className={inputGroup}>
- <label>Phone Number</label>
+ <label>{isGreek ? "Τηλέφωνο επικοινωνίας" : "Phone Number"}</label>
  <div className="input-wrapper">
  <Phone className="icon" />
  <input

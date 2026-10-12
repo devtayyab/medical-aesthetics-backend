@@ -1,5 +1,5 @@
-﻿import React, { useEffect, useState } from"react";
-import { Card, CardContent, CardHeader, CardTitle } from"@/components/ui/card";
+import React, { useEffect, useState } from"react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { DataTable } from"@/components/ui/DataTable";
 import { fetchAdvertisementStats, fetchServicePerformance, AdvertisementStat, ServicePerformance } from"@/services/managerCrm.service";
 

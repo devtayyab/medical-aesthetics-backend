@@ -27,6 +27,8 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
   onFiltersChange,
   onClose,
 }) => {
+  const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
+
   const update = (key: keyof CalendarFilters, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -118,15 +120,15 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
             </div>
           </div>
 
-          {/* Sales Person Filter */}
+          {/* Assigned Staff Member / Υπεύθυνος ραντεβού Filter */}
           <div>
             <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
-              Sales Person
+              {isGreek ? 'Υπεύθυνος ραντεβού' : 'Assigned Staff Member'}
             </label>
             <div className="space-y-1.5">
               <FilterOption
                 value="all"
-                label="All Staff"
+                label={isGreek ? 'Όλο το προσωπικό' : 'All Staff'}
                 isSelected={filters.salesPersonId === 'all'}
                 onClick={() => update('salesPersonId', 'all')}
               />
@@ -145,7 +147,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           {/* Appointment Status Filter */}
           <div>
             <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
-              Appointment Status
+              {isGreek ? 'Κατάσταση ραντεβού' : 'Appointment Status'}
             </label>
             <div className="grid grid-cols-2 gap-1.5">
               <button
@@ -155,7 +157,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
                     : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
                   }`}
               >
-                All
+                {isGreek ? 'Όλα' : 'All'}
               </button>
               {APPOINTMENT_STATUS_OPTIONS.map(opt => {
                 const cfg = STATUS_CONFIG[opt.value] || STATUS_CONFIG.PENDING;
@@ -170,7 +172,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
                       }`}
                   >
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isSelected ? cfg.dot : 'bg-slate-300'}`} />
-                    {opt.label}
+                    {(opt as any).labelGr && isGreek ? (opt as any).labelGr : opt.label}
                   </button>
                 );
               })}

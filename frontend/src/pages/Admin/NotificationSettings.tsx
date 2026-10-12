@@ -25,6 +25,20 @@ export const NotificationSettings: React.FC = () => {
  isActive: true
  });
  const [isSaving, setIsSaving] = useState(false);
+  const [currentLang, setCurrentLang] = useState<string>(
+    () => localStorage.getItem('preferredLang') || 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => setCurrentLang(localStorage.getItem('preferredLang') || 'el');
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+  const isEl = currentLang === 'el';
 
  const fetchTemplates = async () => {
  try {
@@ -94,8 +108,8 @@ export const NotificationSettings: React.FC = () => {
  <div className="p-4 md:p-6 max-w-7xl mx-auto">
  <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center mb-8">
  <div>
- <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Notification Settings</h1>
- <p className="text-gray-500 mt-1">Manage email and push notification templates and rules</p>
+ <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{isEl ? 'Ρυθμίσεις Ειδοποιήσεων' : 'Notification Settings'}</h1>
+ <p className="text-gray-500 mt-1">{isEl ? 'Διαχείριση προτύπων και κανόνων ειδοποιήσεων email και push' : 'Manage email and push notification templates and rules'}</p>
  </div>
  <div className="flex flex-wrap gap-3">
  <button
@@ -119,12 +133,12 @@ export const NotificationSettings: React.FC = () => {
  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 items-start mb-4">
  <Info className="text-blue-500 mt-0.5" size={20} />
  <div>
- <h4 className="font-semibold text-blue-900">Customizing Templates</h4>
+ <h4 className="font-semibold text-blue-900">{isEl ? 'Προσαρμογή Προτύπων' : 'Customizing Templates'}</h4>
  <p className="text-sm text-blue-800 mt-1">
- You can use placeholders like <code className="bg-blue-100 px-1 rounded">{"{{customerName}}"}</code>, 
+ {isEl ? 'Μπορείτε να χρησιμοποιήσετε μεταβλητές όπως ' : 'You can use placeholders like '}<code className="bg-blue-100 px-1 rounded">{"{{customerName}}"}</code>, 
  <code className="bg-blue-100 px-1 rounded">{"{{appointmentDate}}"}</code>, 
  <code className="bg-blue-100 px-1 rounded">{"{{appointmentTime}}"}</code>, and 
- <code className="bg-blue-100 px-1 rounded">{"{{clinicName}}"}</code> in your templates.
+ <code className="bg-blue-100 px-1 rounded">{"{{clinicName}}"}</code>{isEl ? ' στα πρότυπά σας.' : ' in your templates.'}
  </p>
  </div>
  </div>
@@ -139,16 +153,16 @@ export const NotificationSettings: React.FC = () => {
  <table className="w-full text-left border-collapse">
  <thead>
  <tr className="bg-gray-50 border-bottom border-gray-100">
- <th className="px-6 py-4 font-semibold text-gray-600 text-sm">Trigger</th>
- <th className="px-6 py-4 font-semibold text-gray-600 text-sm">Channel</th>
- <th className="px-6 py-4 font-semibold text-gray-600 text-sm">Subject / Title</th>
- <th className="px-6 py-4 font-semibold text-gray-600 text-sm">Status</th>
- <th className="px-6 py-4 font-semibold text-gray-600 text-sm text-right">Actions</th>
+ <th className="px-6 py-4 font-semibold text-gray-600 text-sm">{isEl ? 'Συνθήκη ενεργοποίησης' : 'Trigger'}</th>
+ <th className="px-6 py-4 font-semibold text-gray-600 text-sm">{isEl ? 'Κανάλι' : 'Channel'}</th>
+ <th className="px-6 py-4 font-semibold text-gray-600 text-sm">{isEl ? 'Θέμα / Τίτλος' : 'Subject / Title'}</th>
+ <th className="px-6 py-4 font-semibold text-gray-600 text-sm">{isEl ? 'Κατάσταση' : 'Status'}</th>
+ <th className="px-6 py-4 font-semibold text-gray-600 text-sm text-right">{isEl ? 'Ενέργειες' : 'Actions'}</th>
  </tr>
  </thead>
  <tbody className="divide-y divide-gray-50">
  {templates.length === 0 && (
- <tr><td colSpan={5} className="text-center py-8 text-gray-400">No records found</td></tr>
+ <tr><td colSpan={5} className="text-center py-8 text-gray-400">{isEl ? 'Δεν βρέθηκαν εγγραφές' : 'No records found'}</td></tr>
  )}
  {templates.map((template) => (
  <tr key={template.id} className="hover:bg-gray-50 transition-colors">
@@ -172,7 +186,7 @@ export const NotificationSettings: React.FC = () => {
  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
  template.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
  }`}>
- {template.isActive ? 'Active' : 'Inactive'}
+ {template.isActive ? (isEl ? 'Ενεργό' : 'Active') : (isEl ? 'Ανενεργό' : 'Inactive')}
  </span>
  </td>
  <td className="px-6 py-4 text-right">
@@ -196,7 +210,7 @@ export const NotificationSettings: React.FC = () => {
  <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[10000] backdrop-blur-sm">
  <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
  <div className="p-6 border-b border-gray-100 flex justify-between items-center">
- <h2 className="text-xl font-bold text-gray-900">Edit Template: {getTriggerLabel(editingTemplate.trigger)}</h2>
+ <h2 className="text-xl font-bold text-gray-900">{isEl ? 'Επεξεργασία Προτύπου: ' : 'Edit Template: '}{getTriggerLabel(editingTemplate.trigger)}</h2>
  <button onClick={() => setEditingTemplate(null)} className="text-gray-400 hover:text-gray-600">
  <X size={24} />
  </button>
@@ -204,7 +218,7 @@ export const NotificationSettings: React.FC = () => {
  <form onSubmit={handleUpdate} className="p-6 space-y-4">
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <div>
- <label className="block text-sm font-medium text-gray-700 mb-1">Trigger</label>
+ <label className="block text-sm font-medium text-gray-700 mb-1">{isEl ? 'Συνθήκη ενεργοποίησης' : 'Trigger'}</label>
  <input
  type="text"
  value={getTriggerLabel(editingTemplate.trigger)}
@@ -213,7 +227,7 @@ export const NotificationSettings: React.FC = () => {
  />
  </div>
  <div>
- <label className="block text-sm font-medium text-gray-700 mb-1">Channel</label>
+ <label className="block text-sm font-medium text-gray-700 mb-1">{isEl ? 'Κανάλι' : 'Channel'}</label>
  <input
  type="text"
  value={editingTemplate.type.toUpperCase()}
@@ -225,7 +239,7 @@ export const NotificationSettings: React.FC = () => {
 
  <div>
  <label className="block text-sm font-medium text-gray-700 mb-1">
- {editingTemplate.type === 'email' ? 'Email Subject' : 'Push Title'}
+ {editingTemplate.type === 'email' ? (isEl ? 'Θέμα Email' : 'Email Subject') : (isEl ? 'Τίτλος Push' : 'Push Title')}
  </label>
  <input
  type="text"
@@ -238,7 +252,7 @@ export const NotificationSettings: React.FC = () => {
  </div>
 
  <div>
- <label className="block text-sm font-medium text-gray-700 mb-1">Content / Message</label>
+ <label className="block text-sm font-medium text-gray-700 mb-1">{isEl ? 'Περιεχόμενο / Μήνυμα' : 'Content / Message'}</label>
  <textarea
  value={editingTemplate.content}
  onChange={(e) => setEditingTemplate({ ...editingTemplate, content: e.target.value })}
@@ -256,7 +270,7 @@ export const NotificationSettings: React.FC = () => {
  onChange={(e) => setEditingTemplate({ ...editingTemplate, isActive: e.target.checked })}
  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
  />
- <label htmlFor="isActive" className="text-sm font-medium text-gray-700">Active</label>
+ <label htmlFor="isActive" className="text-sm font-medium text-gray-700">{isEl ? 'Ενεργό' : 'Active'}</label>
  </div>
 
  <div className="flex justify-end gap-3 pt-4">
@@ -287,7 +301,7 @@ export const NotificationSettings: React.FC = () => {
  <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
  <Plus className="text-blue-500" size={24} />
- Create New Notification Trigger
+ {isEl ? 'Δημιουργία Νέας Ειδοποίησης' : 'Create New Notification Trigger'}
  </h2>
  <button 
  onClick={() => {

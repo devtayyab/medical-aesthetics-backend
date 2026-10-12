@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from"react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { DataTable } from"@/components/ui/DataTable";
 import { Button } from"@/components/atoms/Button/Button";
 import {

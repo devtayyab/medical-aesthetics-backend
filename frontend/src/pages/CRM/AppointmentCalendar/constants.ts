@@ -86,14 +86,28 @@ export const GRID_END_HOUR = 24;
 // ─── Appointment Status Options ────────────────────────────────────────────────
 
 export const APPOINTMENT_STATUS_OPTIONS = [
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'CONFIRMED', label: 'Confirmed' },
-  { value: 'ARRIVED', label: 'Arrived' },
-  { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-  { value: 'NO_SHOW', label: 'No Show' },
+  { value: 'PENDING', label: 'Pending', labelGr: 'Σε αναμονή' },
+  { value: 'CONFIRMED', label: 'Confirmed', labelGr: 'Επιβεβαιωμένο' },
+  { value: 'ARRIVED', label: 'Arrived', labelGr: 'Ο ασθενής προσήλθε' },
+  { value: 'IN_PROGRESS', label: 'In Progress', labelGr: 'Σε εξέλιξη' },
+  { value: 'COMPLETED', label: 'Completed', labelGr: 'Ολοκληρωμένο' },
+  { value: 'CANCELLED', label: 'Cancelled', labelGr: 'Ακυρωμένο' },
+  { value: 'NO_SHOW', label: 'No Show', labelGr: 'Μη προσέλευση' },
 ];
+
+export const getAppointmentStatusLabel = (status: string, isGreek = false): string => {
+  const s = (status || '').toUpperCase();
+  switch (s) {
+    case 'PENDING': return isGreek ? 'Σε αναμονή' : 'Pending';
+    case 'CONFIRMED': return isGreek ? 'Επιβεβαιωμένο' : 'Confirmed';
+    case 'ARRIVED': return isGreek ? 'Ο ασθενής προσήλθε' : 'Arrived';
+    case 'IN_PROGRESS': return isGreek ? 'Σε εξέλιξη' : 'In Progress';
+    case 'COMPLETED': return isGreek ? 'Ολοκληρωμένο' : 'Completed';
+    case 'CANCELLED': return isGreek ? 'Ακυρωμένο' : 'Cancelled';
+    case 'NO_SHOW': return isGreek ? 'Μη προσέλευση' : 'No Show';
+    default: return status;
+  }
+};
 
 // ─── Time Slot Options ────────────────────────────────────────────────────────
 

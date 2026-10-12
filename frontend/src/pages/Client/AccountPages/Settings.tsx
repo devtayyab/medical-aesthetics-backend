@@ -51,6 +51,22 @@ const toggleSwitch = (active: boolean) => css`
 `;
 
 export const Settings: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const navigate = useNavigate();
 
  const dispatch = useDispatch<AppDispatch>();
@@ -185,11 +201,11 @@ export const Settings: React.FC = () => {
  </div>
  
  <h1 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none text-gray-900">
- SYSTEM CONTROLS
- </h1>
+            {isGreek ? "ΡΥΘΜΙΣΕΙΣ ΛΟΓΑΡΙΑΣΜΟΥ" : "ACCOUNT SETTINGS"}
+          </h1>
  
  <p className="text-gray-500 mt-4 sm:mt-6 font-bold text-sm sm:text-lg max-w-lg leading-relaxed">
- Fine-tune your clinical journey. Manage communications, security protocols, and privacy data.
+ {isGreek ? "Διαχειριστείτε τις ειδοποιήσεις, τις προτιμήσεις επικοινωνίας και την ασφάλεια του λογαριασμού σας." : "Manage your notifications, communication preferences, and account security."}
  </p>
  </div>
  </div>
@@ -224,8 +240,8 @@ export const Settings: React.FC = () => {
  <Bell size={24} />
  </div>
  <div>
- <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">Notification Feed</h3>
- <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Manage service notifications & marketing preferences</p>
+ <h3 className="text-xl sm:text-2xl font-black uppercase text-gray-900 tracking-tight">{isGreek ? "Ειδοποιήσεις" : "Notifications"}</h3>
+ <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">{isGreek ? "Διαχείριση ειδοποιήσεων και προτιμήσεων επικοινωνίας" : "Manage service notifications & marketing preferences"}</p>
  </div>
  </div>
 
@@ -270,8 +286,8 @@ export const Settings: React.FC = () => {
  <Trash2 size={24} />
  </div>
  <div className="text-center md:text-left">
- <h3 className="text-xl md:text-2xl font-black uppercase text-red-600 tracking-tighter">DELETE ACCOUNT</h3>
- <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Request deletion of your Beauty Doctors account.</p>
+ <h3 className="text-xl md:text-2xl font-black uppercase text-red-600 tracking-tighter">{isGreek ? "ΔΙΑΓΡΑΦΗ ΛΟΓΑΡΙΑΣΜΟΥ" : "DELETE ACCOUNT"}</h3>
+ <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{isGreek ? "Αίτημα διαγραφής του λογαριασμού σας Beauty Doctors." : "Request deletion of your Beauty Doctors account."}</p>
  </div>
  </div>
  <button 
@@ -279,14 +295,14 @@ export const Settings: React.FC = () => {
  disabled={isDeactivating}
  className="w-full md:w-auto h-14 px-6 md:px-10 rounded-2xl bg-black text-white hover:bg-red-600 font-black uppercase text-[10px] tracking-[0.3em] transition-all shadow-2xl border border-white/10"
  >
- {isDeactivating ? "PROCESSING..." : "REQUEST ACCOUNT DELETION"}
+ {isDeactivating ? (isGreek ? "ΕΠΕΞΕΡΓΑΣΙΑ..." : "PROCESSING...") : (isGreek ? "ΑΙΤΗΜΑ ΔΙΑΓΡΑΦΗΣ ΛΟΓΑΡΙΑΣΜΟΥ" : "REQUEST ACCOUNT DELETION")}
  </button>
  </div>
               
               {/* Deletion Legal Retention Disclaimer */}
               <div className="mt-4 p-3.5 rounded-xl bg-red-50/70 border border-red-100 text-left w-full">
                 <p className="text-[10px] text-red-900 font-medium leading-relaxed">
-                  * Deleting your Beauty Doctors account does not necessarily delete medical records held independently by doctors or clinics, or information that must be retained where required by law.
+                  {isGreek ? "* Η διαγραφή του λογαριασμού σας στο BeautyDoctors δεν συνεπάγεται απαραίτητα τη διαγραφή ιατρικών αρχείων που τηρούνται ανεξάρτητα από ιατρούς ή κλινικές, ή πληροφοριών που απαιτείται να διατηρούνται βάσει νόμου." : "* Deleting your Beauty Doctors account does not necessarily delete medical records held independently by doctors or clinics, or information that must be retained where required by law."}
                 </p>
               </div>
 

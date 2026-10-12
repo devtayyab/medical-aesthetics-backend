@@ -31,6 +31,21 @@ import { crmAPI } from '@/services/api';
 import { toast } from 'react-hot-toast';
 
 export const LostLeadsPage: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { leads, isLoading, salespersons } = useSelector((state: RootState) => state.crm);
@@ -146,7 +161,7 @@ export const LostLeadsPage: React.FC = () => {
           </div>
           <div>
             <h1 className="text-2xl font-black text-gray-900 tracking-tight">Lost Leads</h1>
-            <p className="text-xs text-gray-500 font-medium mt-0.5">Manage and reactivate non-converting leads</p>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">{isGreek ? 'Διαχείριση και επανενεργοποίηση χαμένων leads' : 'Manage and reactivate non-converting leads'}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -155,7 +170,7 @@ export const LostLeadsPage: React.FC = () => {
             onClick={handleExportCSV}
             className="h-10 text-xs font-bold uppercase tracking-wider border-gray-200 hover:bg-gray-50 gap-2"
           >
-            <Download size={16} /> Export CSV
+            <Download size={16} /> {isGreek ? 'Εξαγωγή CSV' : 'Export CSV'}
           </Button>
         </div>
       </div>

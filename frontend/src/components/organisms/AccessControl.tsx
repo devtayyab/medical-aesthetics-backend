@@ -19,6 +19,9 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  onToggleStatus,
  onCreateUser,
 }) => {
+  const [isGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
  const [activeTab, setActiveTab] = useState("All");
  const [searchQuery, setSearchQuery] = useState("");
  const [showInactive, setShowInactive] = useState(false);
@@ -315,13 +318,13 @@ export const AccessControl: React.FC<AccessControlProps> = ({
  value={editForm.role}
  onChange={e => setEditForm(prev => ({ ...prev, role: e.target.value }))}
  >
- <option value="client">Client</option>
+ <option value="client">{isGreek ? 'Πελάτης' : 'Client'}</option>
  <option value="admin">Admin</option>
  <option value="SUPER_ADMIN">Super Admin</option>
- <option value="clinic_owner">Clinic Owner</option>
- <option value="doctor">Doctor</option>
- <option value="secretariat">Secretariat</option>
- <option value="salesperson">Salesperson</option>
+ <option value="clinic_owner">{isGreek ? 'Ιδιοκτήτης Κλινικής' : 'Clinic Owner'}</option>
+ <option value="doctor">{isGreek ? 'Γιατρός' : 'Doctor'}</option>
+ <option value="secretariat">{isGreek ? 'Γραμματεία' : 'Secretariat'}</option>
+ <option value="salesperson">{isGreek ? 'Πωλητής' : 'Salesperson'}</option>
  <option value="manager">Manager</option>
  </select>
  </div>

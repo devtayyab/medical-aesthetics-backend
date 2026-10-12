@@ -1,22 +1,16 @@
-﻿import React, { useState } from"react";
-import { Button } from"@/components/atoms/Button/Button";
+import React from "react";
 
 type ClinicInfoProps = {
- title: string;
- duration: string;
- description: string;
- discount: string;
- price: string;
- id: number;
+  title?: string;
+  duration?: string;
+  description: string;
+  discount?: string;
+  price?: string;
+  id?: number;
 };
 
 const ClinicInfo: React.FC<ClinicInfoProps> = ({
- title,
- duration,
- description,
- discount,
- price,
- id,
+  description,
 }) => {
  // const [selectedId, setSelectedId] = useState<number | null>(null);
 

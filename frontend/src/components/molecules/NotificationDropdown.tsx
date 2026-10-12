@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from"react";
 import { useSelector, useDispatch } from"react-redux";
-import { useNavigate, Link } from"react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Bell, CheckCircle, Clock, ExternalLink } from"lucide-react";
 import { formatDistanceToNow } from"date-fns";
 import { css } from"@emotion/css";
@@ -86,8 +86,8 @@ interface NotificationDropdownProps {
 }
 
 export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose }) => {
- const dispatch = useDispatch<AppDispatch>();
  const navigate = useNavigate();
+ const dispatch = useDispatch<AppDispatch>();
  const { notifications, isLoading } = useSelector((state: RootState) => state.notifications);
  const { user } = useSelector((state: RootState) => state.auth);
  const dropdownRef = useRef<HTMLDivElement>(null);

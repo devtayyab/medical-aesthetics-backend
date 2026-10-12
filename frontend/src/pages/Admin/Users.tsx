@@ -8,6 +8,22 @@ import type { Clinic } from"@/types";
 import { adminAPI } from"@/services/api";
 
 export const Users: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const dispatch = useDispatch<AppDispatch>();
  const { users, isLoading, error } = useSelector(
  (state: RootState) => state.admin
@@ -46,8 +62,8 @@ export const Users: React.FC = () => {
  <div className="space-y-6">
  <div className="flex justify-between items-center mb-6">
  <div>
- <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
- <p className="text-gray-500">Manage all system users, roles, and permissions</p>
+ <h2 className="text-2xl font-bold text-gray-900">{isGreek ? 'Διαχείριση Χρηστών' : 'User Management'}</h2>
+ <p className="text-gray-500">{isGreek ? 'Διαχείριση χρηστών, ρόλων και δικαιωμάτων' : 'Manage all system users, roles, and permissions'}</p>
  </div>
  </div>
 

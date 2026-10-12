@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from"react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from"@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, LoadingState, ErrorState } from "@/components/ui";
+import { handleApiError } from "@/utils/errorHandler";
 import { DataTable } from"@/components/ui/DataTable";
 import { Button } from"@/components/atoms/Button/Button";
 import {
@@ -20,6 +21,22 @@ import { cn } from"@/lib/utils";
 import { toast } from"react-hot-toast";
 
 export const AccessControl: React.FC = () => {
+  const [isGreek, setIsGreek] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el'
+  );
+
+  useEffect(() => {
+    const handleLang = () => {
+      setIsGreek(localStorage.getItem('preferredLang') === 'el');
+    };
+    window.addEventListener('storage', handleLang);
+    window.addEventListener('languagechange', handleLang);
+    return () => {
+      window.removeEventListener('storage', handleLang);
+      window.removeEventListener('languagechange', handleLang);
+    };
+  }, []);
+
  const [rows, setRows] = useState<AccessMatrixRow[]>([]);
  const [loading, setLoading] = useState(true);
  const [isRefreshing, setIsRefreshing] = useState(false);
@@ -33,8 +50,7 @@ export const AccessControl: React.FC = () => {
  const data = await fetchAccessMatrix();
  setRows(data);
  } catch (error) {
- console.error("Failed to fetch access matrix:", error);
- toast.error("Failed to sync access registry");
+ handleApiError(error, "Failed to sync access registry");
  } finally {
  setLoading(false);
  setIsRefreshing(false);
@@ -88,9 +104,8 @@ export const AccessControl: React.FC = () => {
  }
  });
  } catch (error) {
- console.error("Failed to update access:", error);
  setRows(previousRows); // Revert
- toast.error("Security sync failed. Check connectivity.");
+ handleApiError(error, "Security sync failed. Check connectivity.");
  } finally {
  setUpdatingRowId(null);
  }
@@ -168,11 +183,11 @@ export const AccessControl: React.FC = () => {
  </div>
  <div>
  <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 uppercase">
- Access Control <span className="text-blue-600">Matrix</span>
+ {isGreek ? 'Διαχείριση Πρόσβασης' : <>Access Control <span className="text-blue-600">Matrix</span></>}
  </h1>
  <div className="flex items-center gap-2 mt-1">
  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
- <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Deployment System v4.0 PRO</p>
+ <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{isGreek ? 'Ρυθμίσεις Δικαιωμάτων Πρόσβασης' : 'Access Permissions'}</p>
  </div>
  </div>
  </div>
@@ -253,11 +268,15 @@ export const AccessControl: React.FC = () => {
  <ShieldAlert className="w-4 h-4 text-blue-600" />
  <p className="text-[10px] font-black text-blue-700 uppercase">Changes are applied immediately to agent dashboards upon clicking clinic markers.</p>
  </div>
+ {loading ? (
+ <LoadingState message="Loading security policy matrix..." className="p-16" />
+ ) : (
  <DataTable
  columns={columns as any}
  data={rows as any}
  searchKey="agentName"
  />
+ )}
  </CardContent>
  </Card>
  </div>

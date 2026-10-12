@@ -1,4 +1,4 @@
-﻿import React, { useState } from"react";
+import React, { useState } from"react";
 import { loadStripe } from"@stripe/stripe-js";
 import {
  Elements,
@@ -7,8 +7,9 @@ import {
  useElements,
 } from"@stripe/react-stripe-js";
 import { Button } from"@/components/atoms/Button/Button";
+import { ENV } from "@/config/env";
 
-const stripePromise = loadStripe("your-publishable-key"); // Replace with your Stripe publishable key
+const stripePromise = loadStripe(ENV.STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder");
 
 interface PaymentFormProps {
  amount: number;
@@ -30,7 +31,7 @@ const PaymentFormInner: React.FC<PaymentFormProps> = ({
 
  setProcessing(true);
  try {
- const response = await fetch("http://localhost:3001/payments/intent", {
+ const response = await fetch(`${ENV.API_BASE_URL}/payments/intent`, {
  method:"POST",
  headers: {"Content-Type":"application/json" },
  body: JSON.stringify({ amount }),

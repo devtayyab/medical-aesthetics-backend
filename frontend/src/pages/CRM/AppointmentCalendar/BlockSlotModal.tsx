@@ -26,6 +26,7 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const isGreek = typeof window !== 'undefined' && localStorage.getItem('preferredLang') === 'el';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<BlockSlotFormData>({
     clinicId: clinics[0]?.id || '',
@@ -126,17 +127,20 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
             </select>
           </div>
 
-          {/* Sales Person (optional) */}
+          {/* Assigned Staff Member (optional) */}
           <div>
             <label className="block text-[11px] font-black text-slate-600 uppercase tracking-wide mb-1.5">
-              Sales Person <span className="text-slate-400 font-normal">(optional — leave blank for all)</span>
+              {isGreek ? 'Υπεύθυνος ραντεβού' : 'Assigned Staff Member'}{' '}
+              <span className="text-slate-400 font-normal">
+                {isGreek ? '(προαιρετικό — αφήστε κενό για όλους)' : '(optional — leave blank for all)'}
+              </span>
             </label>
             <select
               value={form.salesPersonId}
               onChange={e => setForm(prev => ({ ...prev, salesPersonId: e.target.value }))}
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
             >
-              <option value="">All Staff</option>
+              <option value="">{isGreek ? 'Όλο το προσωπικό' : 'All Staff'}</option>
               {salespersons.map(sp => (
                 <option key={sp.id} value={sp.id}>{sp.name}</option>
               ))}
