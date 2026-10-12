@@ -263,11 +263,16 @@ export const Header: React.FC = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+  const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
   const [currentLang, setCurrentLang] = useState<'en' | 'el'>(
     (localStorage.getItem('preferredLang') as 'en' | 'el') || 'en'
   );
   const { categories: navCategories } = useCategoryTree();
   const isGreek = currentLang === 'el';
+
+  const activeCategory = navCategories.find((c) => c.id === hoveredCategoryId);
+  const activeSubcategories = activeCategory?.children || [];
+  const hasActiveSubcategories = activeSubcategories.length > 0;
   const getCategoryLabel = (name: string) => {
     const lower = (name || '').toLowerCase().trim();
     if (lower === 'hair removal' || lower === 'μόνιμη αποτρίχωση' || lower === 'αποτρίχωση') {
@@ -480,7 +485,10 @@ export const Header: React.FC = () => {
                 <li
                   className="cursor-pointer relative"
                   onMouseEnter={() => setIsCategoriesOpen(true)}
-                  onMouseLeave={() => setIsCategoriesOpen(false)}
+                  onMouseLeave={() => {
+                    setIsCategoriesOpen(false);
+                    setHoveredCategoryId(null);
+                  }}
                 >
                   <Link
                     to="/treatments"
@@ -494,71 +502,127 @@ export const Header: React.FC = () => {
                   </Link>
 
                   {isCategoriesOpen && navCategories.length > 0 && (
-                    <div className="absolute left-0 top-full pt-2.5 z-50 w-72 sm:w-80 whitespace-normal">
-                      <div className="bg-[#0B1120] border border-white/10 rounded-2xl shadow-2xl p-2.5 backdrop-blur-xl">
-                        <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 mb-1.5">
-                          <span className="text-gray-400 text-[10px] font-black uppercase tracking-wider">
-                            Categories
-                          </span>
-                          <Link
-                            to="/treatments"
-                            onClick={() => setIsCategoriesOpen(false)}
-                            className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] hover:underline flex items-center gap-1"
-                          >
-                            All Treatments &rarr;
-                          </Link>
-                        </div>
+                    <div className="absolute left-0 top-full pt-2.5 z-50 whitespace-normal">
+                      <div className="flex bg-[#0B1120] border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden transition-all duration-200">
+                        {/* Column 1: Main Categories */}
+                        <div className="w-72 sm:w-80 p-2.5 shrink-0 flex flex-col">
+                          <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 mb-1.5">
+                            <span className="text-gray-400 text-[10px] font-black uppercase tracking-wider">
+                              {isGreek ? "Κατηγορίες" : "Categories"}
+                            </span>
+                            <Link
+                              to="/treatments"
+                              onClick={() => {
+                                setIsCategoriesOpen(false);
+                                setHoveredCategoryId(null);
+                              }}
+                              className="text-[10px] font-black uppercase tracking-widest text-[#CBFF38] hover:underline flex items-center gap-1"
+                            >
+                              {isGreek ? "Όλες οι θεραπείες →" : "All Treatments →"}
+                            </Link>
+                          </div>
 
-                        <div className="flex flex-col space-y-1 max-h-[65vh] overflow-y-auto pr-1">
-                          {navCategories.map((cat) => (
-                            <div key={cat.id} className="relative group/sub">
-                              <button
-                                onClick={() => {
-                                  setIsCategoriesOpen(false);
-                                  navigate(`/search?category=${encodeURIComponent(cat.name)}`);
-                                }}
-                                className="w-full text-left font-bold text-xs uppercase tracking-wider text-gray-200 hover:text-black hover:bg-[#CBFF38] group-hover/sub:bg-[#CBFF38] group-hover/sub:text-black transition-all px-3 py-2 rounded-xl flex items-center justify-between gap-2"
-                              >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  {cat.icon ? (
-                                    <span className="text-sm shrink-0">{cat.icon}</span>
-                                  ) : (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#CBFF38] group-hover/sub:bg-black shrink-0 transition-colors" />
-                                  )}
-                                  <span className="leading-snug notranslate" translate="no">{getCategoryLabel(cat.name)}</span>
-                                </div>
-                                {(cat.children || []).length > 0 && (
-                                  <ChevronRight size={13} className="shrink-0 text-gray-400 group-hover/sub:text-black transition-colors" />
-                                )}
-                              </button>
+                          <div className="flex flex-col space-y-1 max-h-[65vh] overflow-y-auto pr-1">
+                            {navCategories.map((cat) => {
+                              const hasChildren = (cat.children || []).length > 0;
+                              const isHovered = hoveredCategoryId === cat.id;
 
-                              {(cat.children || []).length > 0 && (
-                                <div className="hidden group-hover/sub:block absolute left-full top-0 pl-2 z-50 w-64">
-                                  <div className="bg-[#0B1120] border border-white/10 rounded-2xl shadow-2xl p-2 backdrop-blur-xl flex flex-col space-y-1">
-                                    <div className="px-3 py-1.5 border-b border-white/10 mb-1">
-                                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                                        {getCategoryLabel(cat.name)}
-                                      </span>
-                                    </div>
-                                    {(cat.children || []).map((sub) => (
-                                      <button
-                                        key={sub.id}
-                                        onClick={() => {
-                                          setIsCategoriesOpen(false);
-                                          navigate(`/search?category=${encodeURIComponent(sub.name)}`);
-                                        }}
-                                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-gray-300 hover:text-black hover:bg-[#CBFF38] transition-all leading-snug flex items-center gap-2"
-                                      >
-                                        <span className="w-1 h-1 rounded-full bg-[#CBFF38] shrink-0" />
-                                        <span className="notranslate" translate="no">{getCategoryLabel(sub.name)}</span>
-                                      </button>
-                                    ))}
+                              return (
+                                <button
+                                  key={cat.id}
+                                  onMouseEnter={() => setHoveredCategoryId(cat.id)}
+                                  onClick={() => {
+                                    setIsCategoriesOpen(false);
+                                    setHoveredCategoryId(null);
+                                    navigate(`/search?category=${encodeURIComponent(cat.name)}`);
+                                  }}
+                                  className={`w-full text-left font-bold text-xs uppercase tracking-wider transition-all px-3 py-2 rounded-xl flex items-center justify-between gap-2 ${
+                                    isHovered
+                                      ? "bg-[#CBFF38] text-black"
+                                      : "text-gray-200 hover:text-black hover:bg-[#CBFF38]"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    {cat.icon ? (
+                                      <span className="text-sm shrink-0">{cat.icon}</span>
+                                    ) : (
+                                      <span
+                                        className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${
+                                          isHovered ? "bg-black" : "bg-[#CBFF38]"
+                                        }`}
+                                      />
+                                    )}
+                                    <span className="leading-snug notranslate truncate" translate="no">
+                                      {getCategoryLabel(cat.name)}
+                                    </span>
                                   </div>
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                  {hasChildren && (
+                                    <ChevronRight
+                                      size={13}
+                                      className={`shrink-0 transition-all ${
+                                        isHovered ? "text-black translate-x-0.5" : "text-gray-400"
+                                      }`}
+                                    />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
+
+                        {/* Column 2: Subcategories */}
+                        {hasActiveSubcategories && activeCategory && (
+                          <div className="w-72 sm:w-80 p-2.5 shrink-0 flex flex-col border-l border-white/10 bg-[#0E1726]/60 animate-in fade-in duration-150">
+                            <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 mb-1.5">
+                              <span className="text-gray-300 text-[10px] font-black uppercase tracking-wider truncate max-w-[170px]">
+                                {getCategoryLabel(activeCategory.name)}
+                              </span>
+                              <span className="text-[10px] font-bold text-[#CBFF38] uppercase tracking-widest shrink-0">
+                                {activeSubcategories.length} {isGreek ? "Υποκατηγορίες" : "Subcategories"}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-col space-y-1 max-h-[65vh] overflow-y-auto pr-1">
+                              {activeSubcategories.map((sub) => (
+                                <button
+                                  key={sub.id}
+                                  onClick={() => {
+                                    setIsCategoriesOpen(false);
+                                    setHoveredCategoryId(null);
+                                    navigate(`/search?category=${encodeURIComponent(sub.name)}`);
+                                  }}
+                                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-gray-300 hover:text-black hover:bg-[#CBFF38] transition-all leading-snug flex items-center justify-between gap-2 group/subitem"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#CBFF38] group-hover/subitem:bg-black shrink-0 transition-colors" />
+                                    <span className="notranslate truncate" translate="no">
+                                      {getCategoryLabel(sub.name)}
+                                    </span>
+                                  </div>
+                                  <ChevronRight
+                                    size={12}
+                                    className="opacity-0 group-hover/subitem:opacity-100 text-black shrink-0 transition-opacity"
+                                  />
+                                </button>
+                              ))}
+
+                              <div className="pt-2 mt-1 border-t border-white/5">
+                                <button
+                                  onClick={() => {
+                                    setIsCategoriesOpen(false);
+                                    setHoveredCategoryId(null);
+                                    navigate(`/search?category=${encodeURIComponent(activeCategory.name)}`);
+                                  }}
+                                  className="w-full text-center py-2 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider text-[#CBFF38] hover:bg-[#CBFF38]/10 transition-colors"
+                                >
+                                  {isGreek
+                                    ? `Όλες οι θεραπείες σε ${getCategoryLabel(activeCategory.name)} →`
+                                    : `All in ${getCategoryLabel(activeCategory.name)} →`}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
