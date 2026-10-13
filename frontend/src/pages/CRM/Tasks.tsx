@@ -788,13 +788,20 @@ export const Tasks: React.FC<TasksPageProps> = ({ onViewTask }) => {
               <p className="text-xs font-medium text-slate-500">Track and execute all CRM action items</p>
             </div>
           </div>
-          <span className="px-3 py-1 bg-slate-100 text-slate-800 rounded-xl text-xs font-black">
-            {filteredTasks.length} {filteredTasks.length === 1 ? 'Task' : 'Tasks'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 bg-slate-100 text-slate-800 rounded-xl text-xs font-black">
+              {filteredTasks.length} {filteredTasks.length === 1 ? 'Task' : 'Tasks'}
+            </span>
+            {isLoading && tasks.length > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full bg-lime-100 text-lime-800 text-[10px] font-bold animate-pulse">
+                Syncing...
+              </span>
+            )}
+          </div>
         </div>
 
         <div>
-          {isLoading ? (
+          {isLoading && tasks.length === 0 ? (
             <div className="text-center py-12 text-xs font-bold text-slate-500">Loading tasks...</div>
           ) : filteredTasks.length === 0 ? (
             <div className="text-center py-12 text-xs font-bold text-slate-400">No tasks found.</div>

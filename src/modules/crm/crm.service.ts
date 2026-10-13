@@ -41,6 +41,7 @@ import { HubspotService } from '../hubspot/hubspot.service';
 @Injectable()
 export class CrmService implements OnModuleInit {
   private readonly logger = new Logger(CrmService.name);
+  private leadStatsCache: { timestamp: number; data: any } | null = null;
 
   constructor(
     @InjectRepository(Lead)
@@ -116,6 +117,22 @@ export class CrmService implements OnModuleInit {
         await queryRunner.query('ALTER TABLE "clinics" ADD COLUMN "treatmentRooms" integer DEFAULT 1');
         this.logger.log('Successfully added treatmentRooms column to clinics table.');
       }
+
+      // ─── Ensure High-Performance Indexes for Leads & CRM Actions ───
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS "IDX_leads_coalesce_sort" 
+        ON "leads" ((COALESCE("lastMetaFormSubmittedAt" AT TIME ZONE 'UTC', "createdAt")) DESC, "createdAt" DESC);
+      `);
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS "IDX_leads_status_not_converted_lost" 
+        ON "leads" ("status") WHERE "status" NOT IN ('converted', 'lost');
+      `);
+      await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_crm_actions_salespersonId" ON "crm_actions" ("salespersonId");`);
+      await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_crm_actions_status" ON "crm_actions" ("status");`);
+      await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_crm_actions_dueDate" ON "crm_actions" ("dueDate");`);
+      await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_crm_actions_customerId" ON "crm_actions" ("customerId");`);
+      await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_crm_actions_relatedLeadId" ON "crm_actions" ("relatedLeadId");`);
+      await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_crm_actions_sort_pending" ON "crm_actions" ("status", "dueDate" ASC);`);
 
       // ─── Backfill: CSV-imported leads have NULL lastMetaFormSubmittedAt ───
       // For any lead where this date is missing, set it to createdAt so the
@@ -684,6 +701,7 @@ export class CrmService implements OnModuleInit {
     // Emit event for the merged lead
     this.eventEmitter.emit('lead.created', savedLead);
 
+    this.leadStatsCache = null;
     return savedLead;
   }
 
@@ -1083,8 +1101,8 @@ export class CrmService implements OnModuleInit {
       qb.orderBy('COALESCE(lead.convertedAt, lead.updatedAt, lead.createdAt)', 'DESC')
         .addOrderBy('lead.createdAt', 'DESC');
     } else {
-      // Newest form submissions or creations first (DESC)
-      qb.orderBy('COALESCE(lead.lastMetaFormSubmittedAt, lead.createdAt)', 'DESC')
+      // Newest form submissions or creations first (DESC) using optimized index
+      qb.orderBy("COALESCE(lead.lastMetaFormSubmittedAt AT TIME ZONE 'UTC', lead.createdAt)", 'DESC')
         .addOrderBy('lead.createdAt', 'DESC');
     }
 
@@ -1138,6 +1156,11 @@ export class CrmService implements OnModuleInit {
   }
 
   async getLeadStats(filters: any = {}): Promise<{ total: number; newInquiries: number; inConversation: number; converted: number; lost: number }> {
+    const isDefault = !filters.source && (!filters.search || !filters.search.trim()) && !filters.formNames && !filters.submissionDateFrom && !filters.submissionDateTo;
+    if (isDefault && this.leadStatsCache && (Date.now() - this.leadStatsCache.timestamp < 15000)) {
+      return this.leadStatsCache.data;
+    }
+
     const qb = this.leadsRepository.createQueryBuilder('lead');
 
     // Note: Do not filter by filters.status in getLeadStats so overall status breakdown counters remain intact across tabs
@@ -1165,6 +1188,11 @@ export class CrmService implements OnModuleInit {
       );
     }
 
+    if (filters.formNames) {
+      const formNamesArray = Array.isArray(filters.formNames) ? filters.formNames : [filters.formNames];
+      qb.andWhere('lead.lastMetaFormName IN (:...formNames)', { formNames: formNamesArray });
+    }
+
     const rawStats = await qb
       .select('COUNT(lead.id)', 'total')
       .addSelect("COUNT(CASE WHEN lead.status = 'new' THEN 1 END)", 'newInquiries')
@@ -1173,13 +1201,19 @@ export class CrmService implements OnModuleInit {
       .addSelect("COUNT(CASE WHEN lead.status = 'lost' THEN 1 END)", 'lost')
       .getRawOne();
 
-    return {
+    const result = {
       total: parseInt(rawStats?.total || '0', 10),
       newInquiries: parseInt(rawStats?.newInquiries || '0', 10),
       inConversation: parseInt(rawStats?.inConversation || '0', 10),
       converted: parseInt(rawStats?.converted || '0', 10),
       lost: parseInt(rawStats?.lost || '0', 10),
     };
+
+    if (isDefault) {
+      this.leadStatsCache = { timestamp: Date.now(), data: result };
+    }
+
+    return result;
   }
 
   async getLead(id: string): Promise<Lead> {
@@ -2257,9 +2291,30 @@ export class CrmService implements OnModuleInit {
       const qb = this.crmActionsRepository
         .createQueryBuilder('action')
         .leftJoinAndSelect('action.customer', 'customer')
-        .leftJoinAndSelect('customer.customer', 'clientUser') // Join with actual User for name
+        .leftJoinAndSelect('customer.customer', 'clientUser')
         .leftJoinAndSelect('action.relatedLead', 'relatedLead')
-        .leftJoinAndSelect('action.salesperson', 'salesperson');
+        .leftJoinAndSelect('action.salesperson', 'salesperson')
+        .select([
+          'action',
+          'customer.id',
+          'customer.customerId',
+          'customer.customerStatus',
+          'clientUser.id',
+          'clientUser.firstName',
+          'clientUser.lastName',
+          'clientUser.phone',
+          'clientUser.email',
+          'relatedLead.id',
+          'relatedLead.firstName',
+          'relatedLead.lastName',
+          'relatedLead.phone',
+          'relatedLead.email',
+          'relatedLead.status',
+          'salesperson.id',
+          'salesperson.firstName',
+          'salesperson.lastName',
+          'salesperson.email',
+        ]);
 
       // 1. Authorization Filter
       if (user?.role === UserRole.SALESPERSON) {
@@ -2327,28 +2382,27 @@ export class CrmService implements OnModuleInit {
   }
 
   async getTaskKpis(salespersonId?: string): Promise<any> {
-    const now = new Date();
-
     const qb = this.crmActionsRepository.createQueryBuilder('action');
 
     if (salespersonId && salespersonId !== 'all') {
       qb.where('action.salespersonId = :sid', { sid: salespersonId });
     }
 
-    const stats = await qb
-      .select('action.status', 'status')
-      .addSelect('action.dueDate', 'dueDate')
-      .getRawMany();
+    const raw = await qb
+      .select('COUNT(action.id)', 'total')
+      .addSelect("COUNT(CASE WHEN action.status = 'pending' AND (action.dueDate IS NULL OR action.dueDate >= CURRENT_TIMESTAMP) THEN 1 END)", 'pending')
+      .addSelect("COUNT(CASE WHEN action.status = 'pending' AND action.dueDate < CURRENT_TIMESTAMP THEN 1 END)", 'overdue')
+      .addSelect("COUNT(CASE WHEN action.status = 'in_progress' THEN 1 END)", 'inProgress')
+      .addSelect("COUNT(CASE WHEN action.status = 'completed' THEN 1 END)", 'completed')
+      .getRawOne();
 
-    const result = {
-      total: stats.length,
-      pending: stats.filter(s => s.status === 'pending' && (!s.dueDate || new Date(s.dueDate) >= now)).length,
-      overdue: stats.filter(s => s.status === 'pending' && s.dueDate && new Date(s.dueDate) < now).length,
-      inProgress: stats.filter(s => s.status === 'in_progress').length,
-      completed: stats.filter(s => s.status === 'completed').length,
+    return {
+      total: parseInt(raw?.total || '0', 10),
+      pending: parseInt(raw?.pending || '0', 10),
+      overdue: parseInt(raw?.overdue || '0', 10),
+      inProgress: parseInt(raw?.inProgress || '0', 10),
+      completed: parseInt(raw?.completed || '0', 10),
     };
-
-    return result;
   }
 
   async getPendingActions(salespersonId: string): Promise<CrmAction[]> {
