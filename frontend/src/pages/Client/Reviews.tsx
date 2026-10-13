@@ -5,7 +5,7 @@ import { fetchUserAppointments, submitReview } from"@/store/slices/clientSlice";
 import { AppointmentStatus } from"@/types";
 import { ReviewForm } from"@/components/molecules/ReviewForm";
 import { format } from"date-fns";
-import { Star, Clock, MapPin, ArrowLeft, ChevronRight, MessageSquare, CheckCircle, Sparkles } from"lucide-react";
+import { Star, Clock, MapPin, ArrowLeft, ChevronRight, ChevronLeft, MessageSquare, CheckCircle, Sparkles } from "lucide-react";
 import { css } from"@emotion/css";
 import { Link } from"react-router-dom";
 import { motion, AnimatePresence } from"framer-motion";
@@ -106,6 +106,8 @@ export const Reviews: React.FC = () => {
  const { appointments, isLoading } = useSelector((state: RootState) => state.client);
  const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+ const [currentPage, setCurrentPage] = useState(1);
+ const itemsPerPage = 6;
 
  useEffect(() => {
  dispatch(fetchUserAppointments());
@@ -113,6 +115,12 @@ export const Reviews: React.FC = () => {
 
  const completedAppointments = appointments.filter(
  (apt) => apt.status === AppointmentStatus.COMPLETED
+ );
+
+ const totalPages = Math.ceil(completedAppointments.length / itemsPerPage);
+ const paginatedAppointments = completedAppointments.slice(
+ (currentPage - 1) * itemsPerPage,
+ currentPage * itemsPerPage
  );
 
  const handleSubmitReview = async (rating: number, comment: string) => {
@@ -260,8 +268,9 @@ export const Reviews: React.FC = () => {
  </Link>
  </div>
  ) : (
- <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 mb-20">
- {completedAppointments.map((apt, i) => (
+ <>
+ <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 mb-8">
+ {paginatedAppointments.map((apt, i) => (
  <motion.div
  key={apt.id}
  initial={{ opacity: 0, y: 20 }}
@@ -304,6 +313,37 @@ export const Reviews: React.FC = () => {
  </motion.div>
  ))}
  </div>
+
+ {totalPages > 1 && (
+ <div className="mb-20 px-6 py-5 bg-white rounded-3xl border border-gray-100 shadow-xl shadow-black/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+ <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+ {isGreek ? `Εμφάνιση ${(currentPage - 1) * itemsPerPage + 1} - ${Math.min(currentPage * itemsPerPage, completedAppointments.length)} από ${completedAppointments.length}` : `Showing ${(currentPage - 1) * itemsPerPage + 1} - ${Math.min(currentPage * itemsPerPage, completedAppointments.length)} of ${completedAppointments.length} appointments`}
+ </p>
+ <div className="flex items-center gap-2">
+ <button type="button" onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 250, behavior: 'smooth' }); }} disabled={currentPage === 1} className="size-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-700 hover:bg-black hover:text-[#CBFF38] hover:border-black disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-200 disabled:cursor-not-allowed transition-all shadow-sm" title="Previous page">
+ <ChevronLeft size={16} />
+ </button>
+ <div className="flex items-center gap-1.5">
+ {Array.from({ length: totalPages }, (_, idx) => idx + 1).map(pageNum => {
+ if (totalPages > 6 && pageNum !== 1 && pageNum !== totalPages && Math.abs(pageNum - currentPage) > 1) {
+ if (pageNum === 2 || pageNum === totalPages - 1) return <span key={pageNum} className="px-1 text-gray-400 text-xs font-black">...</span>;
+ return null;
+ }
+ const isActive = pageNum === currentPage;
+ return (
+ <button key={pageNum} type="button" onClick={() => { setCurrentPage(pageNum); window.scrollTo({ top: 250, behavior: 'smooth' }); }} className={`size-9 rounded-xl text-xs font-black transition-all ${isActive ? 'bg-black text-[#CBFF38] shadow-md shadow-black/10' : 'bg-white border border-gray-200 text-gray-700 hover:border-black hover:text-black'}`}>
+ {pageNum}
+ </button>
+ );
+ })}
+ </div>
+ <button type="button" onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 250, behavior: 'smooth' }); }} disabled={currentPage === totalPages} className="size-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-700 hover:bg-black hover:text-[#CBFF38] hover:border-black disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-200 disabled:cursor-not-allowed transition-all shadow-sm" title="Next page">
+ <ChevronRight size={16} />
+ </button>
+ </div>
+ </div>
+ )}
+ </>
  )}
  </motion.div>
  )}

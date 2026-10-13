@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from"react";
 import { Link } from"react-router-dom";
 import { css } from"@emotion/css";
-import { User, ChevronRight, CreditCard, Building2, Receipt, Search, ArrowRight, Wallet, History, Gift, X } from"lucide-react";
+import { User, ChevronRight, ChevronLeft, CreditCard, Building2, Receipt, Search, ArrowRight, Wallet, History, Gift, X } from "lucide-react";
 import { paymentsAPI, bookingAPI } from"@/services/api";
 import { format } from"date-fns";
 import { motion, AnimatePresence } from"framer-motion";
@@ -16,56 +16,59 @@ const sectionStyles = css`
 `;
 
 const heroSection = css`
- position: relative;
- min-height: 240px;
- @media (min-width: 640px) {
- height: 380px;
- }
- @media (min-width: 1024px) {
- height: 520px;
- }
- width: 100%;
- display: flex;
- align-items: center;
- overflow: hidden;
- padding: 24px 0 50px;
- @media (min-width: 640px) {
- padding: 0;
- }
- 
- &::after {
- content: '';
- position: absolute;
- inset: 0;
- background: linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0.85) 40%, transparent 80%);
- z-index: 1;
- }
+  position: relative;
+  min-height: 380px;
+  @media (min-width: 640px) {
+    min-height: 460px;
+  }
+  @media (min-width: 1024px) {
+    min-height: 520px;
+  }
+  width: 100%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 36px 0 60px;
+  @media (min-width: 640px) {
+    padding: 48px 0 70px;
+  }
+  @media (min-width: 1024px) {
+    padding: 60px 0 80px;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0.88) 42%, transparent 85%);
+    z-index: 1;
+  }
 
- @media (max-width: 640px) {
- &::after {
- background: linear-gradient(to top, rgba(255,255,255,1) 15%, rgba(255,255,255,0.92) 75%, transparent 100%);
- }
- }
+  @media (max-width: 640px) {
+    &::after {
+      background: linear-gradient(to top, rgba(255,255,255,1) 20%, rgba(255,255,255,0.92) 80%, transparent 100%);
+    }
+  }
 `;
 
 const glassCard = css`
- background: white;
- border-radius: 20px;
- box-shadow: 0 20px 80px rgba(0, 0, 0, 0.03);
- border: 1px solid #F1F5F9;
- width: 100%;
- max-width: 1100px;
- margin: -30px auto 40px;
- @media (min-width: 640px) {
- border-radius: 40px;
- margin: -80px auto 50px;
- }
- @media (min-width: 1024px) {
- margin: -140px auto 60px;
- }
- position: relative;
- z-index: 10;
- overflow: hidden;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.03);
+  border: 1px solid #F1F5F9;
+  width: 100%;
+  max-width: 1100px;
+  margin: 12px auto 40px;
+  @media (min-width: 640px) {
+    border-radius: 40px;
+    margin: 16px auto 50px;
+  }
+  @media (min-width: 1024px) {
+    margin: 20px auto 60px;
+  }
+  position: relative;
+  z-index: 10;
+  overflow: hidden;
 `;
 
 const statItem = css`
@@ -99,8 +102,10 @@ export const Payments: React.FC = () => {
     };
   }, []);
 
- const [payments, setPayments] = useState<any[]>([]);
- const [loading, setLoading] = useState(true);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
  const fetchUnifiedFinancials = async () => {
  try {
@@ -163,6 +168,12 @@ export const Payments: React.FC = () => {
  .filter(p => p.type === 'refund')
  .reduce((acc, p) => acc + Number(p.amount), 0);
 
+ const totalPages = Math.ceil(payments.length / itemsPerPage);
+ const paginatedPayments = payments.slice(
+   (currentPage - 1) * itemsPerPage,
+   currentPage * itemsPerPage
+ );
+
  return (
  <div className={sectionStyles}>
  {/* Immersive Hero */}
@@ -191,17 +202,17 @@ export const Payments: React.FC = () => {
  {isGreek ? "Το πλήρες ιστορικό πληρωμών σας σε συνεργαζόμενες κλινικές και θεραπείες." : "Your complete financial history across all clinics and treatments. Track every deposit and transaction."}
  </p>
 
- {/* Summary Quick Stats */}
- <div className="flex flex-wrap gap-4 mt-10">
- <div className="bg-white/80 backdrop-blur px-6 py-4 rounded-2xl border border-white/20 shadow-xl shadow-black/5">
- <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isGreek ? "Συνολικό Ποσό" : "Total Spent"}</p>
- <p className="text-2xl font-black text-gray-900 tabular-nums">€{totalSpend.toFixed(2)}</p>
- </div>
- <div className="bg-white/80 backdrop-blur px-6 py-4 rounded-2xl border border-white/20 shadow-xl shadow-black/5">
- <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isGreek ? "Συναλλαγές" : "Transactions"}</p>
- <p className="text-2xl font-black text-gray-900 tabular-nums">{payments.length}</p>
- </div>
- </div>
+            {/* Summary Quick Stats */}
+            <div className="flex flex-wrap gap-4 mt-8 sm:mt-10">
+              <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/60 shadow-lg shadow-black/5">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isGreek ? "Συνολικό Ποσό" : "Total Spent"}</p>
+                <p className="text-2xl font-black text-gray-900 tabular-nums">€{totalSpend.toFixed(2)}</p>
+              </div>
+              <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/60 shadow-lg shadow-black/5">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isGreek ? "Συναλλαγές" : "Transactions"}</p>
+                <p className="text-2xl font-black text-gray-900 tabular-nums">{payments.length}</p>
+              </div>
+            </div>
  </div>
  </div>
  </div>
@@ -236,14 +247,14 @@ export const Payments: React.FC = () => {
  <p className="text-gray-400 font-black text-[11px] uppercase tracking-[0.2em]">Syncing global ledger...</p>
  </div>
  ) : payments.length > 0 ? (
- <div className="divide-y divide-gray-100/60">
- {payments.map((payment, i) => (
+   <>
+   <div className="divide-y divide-gray-100/60">
+ {paginatedPayments.map((payment, i) => (
  <motion.div
  key={payment.id}
  initial={{ opacity: 0, x: -10 }}
- whileInView={{ opacity: 1, x: 0 }}
- viewport={{ once: true }}
- transition={{ delay: i * 0.05 }}
+ animate={{ opacity: 1, x: 0 }}
+ transition={{ delay: i * 0.04 }}
  className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 sm:px-10 py-6 sm:py-8 gap-4 sm:gap-0 hover:bg-gray-50/80 transition-all group"
  >
  <div className="flex items-center gap-4 sm:gap-8">
@@ -279,7 +290,76 @@ export const Payments: React.FC = () => {
  </motion.div>
  ))}
  </div>
- ) : (
+
+ {totalPages > 1 && (
+   <div className="px-6 sm:px-10 py-5 bg-gray-50/40 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+     <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+       {isGreek
+         ? `Εμφάνιση ${(currentPage - 1) * itemsPerPage + 1} - ${Math.min(currentPage * itemsPerPage, payments.length)} από ${payments.length}`
+         : `Showing ${(currentPage - 1) * itemsPerPage + 1} - ${Math.min(currentPage * itemsPerPage, payments.length)} of ${payments.length} transactions`}
+     </p>
+
+     <div className="flex items-center gap-2">
+       <button
+         type="button"
+         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+         disabled={currentPage === 1}
+         className="size-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-700 hover:bg-black hover:text-[#CBFF38] hover:border-black disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-200 disabled:cursor-not-allowed transition-all shadow-sm"
+         title={isGreek ? "Προηγούμενη σελίδα" : "Previous page"}
+       >
+         <ChevronLeft size={16} />
+       </button>
+
+       <div className="flex items-center gap-1.5">
+         {Array.from({ length: totalPages }, (_, idx) => idx + 1).map(pageNum => {
+           if (
+             totalPages > 6 &&
+             pageNum !== 1 &&
+             pageNum !== totalPages &&
+             Math.abs(pageNum - currentPage) > 1
+           ) {
+             if (pageNum === 2 || pageNum === totalPages - 1) {
+               return (
+                 <span key={pageNum} className="px-1 text-gray-400 text-xs font-black">
+                   ...
+                 </span>
+               );
+             }
+             return null;
+           }
+
+           const isActive = pageNum === currentPage;
+           return (
+             <button
+               key={pageNum}
+               type="button"
+               onClick={() => setCurrentPage(pageNum)}
+               className={`size-9 rounded-xl text-xs font-black transition-all ${
+                 isActive
+                   ? 'bg-black text-[#CBFF38] shadow-md shadow-black/10'
+                   : 'bg-white border border-gray-200 text-gray-700 hover:border-black hover:text-black'
+               }`}
+             >
+               {pageNum}
+             </button>
+           );
+         })}
+       </div>
+
+       <button
+         type="button"
+         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+         disabled={currentPage === totalPages}
+         className="size-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-700 hover:bg-black hover:text-[#CBFF38] hover:border-black disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-200 disabled:cursor-not-allowed transition-all shadow-sm"
+         title={isGreek ? "Επόμενη σελίδα" : "Next page"}
+       >
+         <ChevronRight size={16} />
+       </button>
+     </div>
+   </div>
+        )}
+      </>
+    ) : (
  <div className="text-center py-32 px-10">
  <CreditCard className="size-20 mx-auto mb-8 text-gray-100" />
  <h4 className="text-3xl font-black uppercase text-gray-900 mb-3 tracking-tighter">{isGreek ? "Δεν υπάρχουν συναλλαγές" : "No Transactions Yet"}</h4>

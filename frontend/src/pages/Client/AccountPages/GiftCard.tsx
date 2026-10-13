@@ -16,56 +16,59 @@ const sectionStyles = css`
 `;
 
 const heroSection = css`
- position: relative;
- min-height: 240px;
- @media (min-width: 640px) {
- height: 380px;
- }
- @media (min-width: 1024px) {
- height: 520px;
- }
- width: 100%;
- display: flex;
- align-items: center;
- overflow: hidden;
- padding: 24px 0 50px;
- @media (min-width: 640px) {
- padding: 0;
- }
- 
- &::after {
- content: '';
- position: absolute;
- inset: 0;
- background: linear-gradient(to right, rgba(255,255,255,0.85) 0%, transparent 60%);
- z-index: 1;
- }
+  position: relative;
+  min-height: 380px;
+  @media (min-width: 640px) {
+    min-height: 460px;
+  }
+  @media (min-width: 1024px) {
+    min-height: 520px;
+  }
+  width: 100%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 36px 0 60px;
+  @media (min-width: 640px) {
+    padding: 48px 0 70px;
+  }
+  @media (min-width: 1024px) {
+    padding: 60px 0 80px;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.6) 50%, transparent 80%);
+    z-index: 1;
+  }
 
- @media (max-width: 640px) {
- &::after {
- background: linear-gradient(to top, rgba(255,255,255,1) 15%, rgba(255,255,255,0.9) 75%, transparent 100%);
- }
- }
+  @media (max-width: 640px) {
+    &::after {
+      background: linear-gradient(to top, rgba(255,255,255,1) 15%, rgba(255,255,255,0.9) 75%, transparent 100%);
+    }
+  }
 `;
 
 const glassCard = css`
- background: white;
- border-radius: 20px;
- box-shadow: 0 20px 80px rgba(0, 0, 0, 0.04);
- border: 1px solid #F1F5F9;
- width: 100%;
- max-width: 1100px;
- margin: -30px auto 40px;
- @media (min-width: 640px) {
- border-radius: 40px;
- margin: -80px auto 50px;
- }
- @media (min-width: 1024px) {
- margin: -140px auto 60px;
- }
- position: relative;
- z-index: 10;
- overflow: hidden;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.04);
+  border: 1px solid #F1F5F9;
+  width: 100%;
+  max-width: 1100px;
+  margin: 12px auto 40px;
+  @media (min-width: 640px) {
+    border-radius: 40px;
+    margin: 16px auto 50px;
+  }
+  @media (min-width: 1024px) {
+    margin: 20px auto 60px;
+  }
+  position: relative;
+  z-index: 10;
+  overflow: hidden;
 `;
 
 const giftInput = css`
